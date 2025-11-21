@@ -1,0 +1,44 @@
+{
+  "name": "@nefol/user-panel",
+  "version": "1.0.0",
+  "description": "Nefol User Panel - Customer-facing e-commerce storefront with product catalog, shopping cart, checkout, order management, wishlist, loyalty rewards, and real-time features",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch"
+  },
+  "dependencies": {
+    "@types/aos": "^3.0.7",
+    "aos": "^2.3.4",
+    "lenis": "^1.3.13",
+    "lucide-react": "^0.545.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sharp": "^0.34.5",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/react": "^18.3.4",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "@vitest/ui": "^1.0.4",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^23.0.1",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "terser": "^5.44.1",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "vitest": "^1.0.4"
+  }
+}

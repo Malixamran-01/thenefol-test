@@ -1,0 +1,52 @@
+{
+  "name": "nefol-project",
+  "version": "1.0.0",
+  "testFrameworks": [
+    {
+      "name": "vitest",
+      "type": "vitest",
+      "configPath": "vitest.config.ts",
+      "testPattern": "**/*.{test,spec}.{ts,tsx}",
+      "rootDirs": [
+        "user-panel",
+        "admin-panel"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "user-panel",
+      "path": "./user-panel",
+      "testFramework": "vitest",
+      "includes": [
+        "src/**/*.{ts,tsx}",
+        "src/**/__tests__/**/*.{ts,tsx}"
+      ],
+      "excludes": [
+        "node_modules/**",
+        "dist/**",
+        "**/*.d.ts"
+      ]
+    },
+    {
+      "name": "admin-panel",
+      "path": "./admin-panel",
+      "testFramework": "vitest",
+      "includes": [
+        "src/**/*.{ts,tsx}",
+        "src/**/__tests__/**/*.{ts,tsx}"
+      ],
+      "excludes": [
+        "node_modules/**",
+        "dist/**",
+        "**/*.d.ts"
+      ]
+    }
+  ],
+  "settings": {
+    "autoGenerateTests": true,
+    "testCoverage": true,
+    "watchMode": false
+  }
+}
+

@@ -1,0 +1,98 @@
+{
+  "name": "nefol-monorepo",
+  "version": "1.0.0",
+  "description": "Nefol - A comprehensive e-commerce platform with admin panel, user panel, and backend services. Features include product management, order processing, payment integration (Razorpay), shipping (ShipRocket), WhatsApp notifications, affiliate program, loyalty rewards, real-time updates, and more.",
+  "private": true,
+  "workspaces": [
+    "admin-panel",
+    "backend",
+    "common",
+    "user-panel"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:admin\" \"npm run dev:user\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:admin": "cd admin-panel && npm run dev",
+    "dev:user": "cd user-panel && npm run dev",
+    "build": "npm run build:backend && npm run build:admin && npm run build:user",
+    "build:backend": "cd backend && npm run build",
+    "build:admin": "cd admin-panel && npm run build",
+    "build:user": "cd user-panel && npm run build",
+    "build:common": "cd common && npm run build",
+    "start": "concurrently \"npm run start:backend\" \"npm run preview:admin\" \"npm run preview:user\"",
+    "start:backend": "cd backend && npm run start",
+    "preview:admin": "cd admin-panel && npm run preview",
+    "preview:user": "cd user-panel && npm run preview",
+    "test": "npm run test:admin",
+    "test:admin": "cd admin-panel && npm run test",
+    "test:user": "cd user-panel && npm run test",
+    "test:all": "npm run test:user && npm run test:admin",
+    "test:admin:syntax": "cd admin-panel && npm run test:syntax",
+    "test:admin:build": "cd admin-panel && npm run test:build",
+    "test:coverage": "npm run test:user:coverage && npm run test:admin:coverage",
+    "test:user:coverage": "cd user-panel && npm run test:coverage",
+    "test:admin:coverage": "cd admin-panel && npm run test:coverage",
+    "testsprite": "npx -y @testsprite/testsprite-mcp@latest",
+    "testsprite:analyze": "npx -y @testsprite/testsprite-mcp@latest analyze",
+    "testsprite:generate": "npx -y @testsprite/testsprite-mcp@latest generate",
+    "testsprite:run": "npx -y @testsprite/testsprite-mcp@latest run",
+    "migrate": "cd backend && npm run migrate",
+    "reset-db": "cd backend && npm run reset-db",
+    "install:all": "npm install && npm run install:workspaces",
+    "install:workspaces": "npm install --workspaces",
+    "clean": "npm run clean:node-modules && npm run clean:dist && npm run clean:build",
+    "clean:node-modules": "rm -rf node_modules && rm -rf */node_modules && rm -rf scripts/node_modules",
+    "clean:dist": "rm -rf */dist",
+    "clean:build": "rm -rf */tsconfig.tsbuildinfo && rm -rf */node_modules/.cache",
+    "lint": "npm run lint:workspaces",
+    "lint:workspaces": "npm run lint --workspaces --if-present",
+    "type-check": "npm run type-check:workspaces",
+    "type-check:workspaces": "npm run type-check --workspaces --if-present"
+  },
+  "dependencies": {
+    "axios": "^1.12.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/nefol.git"
+  },
+  "keywords": [
+    "e-commerce",
+    "ecommerce",
+    "monorepo",
+    "react",
+    "typescript",
+    "express",
+    "postgresql",
+    "socket.io",
+    "admin-panel",
+    "user-panel",
+    "razorpay",
+    "shiprocket",
+    "whatsapp",
+    "affiliate",
+    "loyalty-program",
+    "pos",
+    "inventory-management",
+    "cms",
+    "blog",
+    "real-time",
+    "vite",
+    "tailwindcss"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/your-username/nefol/issues"
+  },
+  "homepage": "https://github.com/your-username/nefol#readme"
+}

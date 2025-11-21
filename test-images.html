@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Test</title>
+</head>
+<body>
+    <h1>Testing Images</h1>
+    
+    <h2>Direct Backend Access:</h2>
+    <img src="http://localhost:4000/IMAGES/BANNER (1).jpg" alt="Banner 1" style="width: 300px; height: 200px; border: 1px solid #ccc;">
+    
+    <h2>Proxy Access (should work from user panel):</h2>
+    <img src="/IMAGES/BANNER (1).jpg" alt="Banner 1 Proxy" style="width: 300px; height: 200px; border: 1px solid #ccc;">
+    
+    <h2>Other Test Images:</h2>
+    <img src="http://localhost:4000/IMAGES/light theme logo.png" alt="Logo" style="width: 200px; height: 100px; border: 1px solid #ccc;">
+    <br><br>
+    <img src="http://localhost:4000/IMAGES/cart icon.svg" alt="Cart Icon" style="width: 50px; height: 50px; border: 1px solid #ccc;">
+    
+    <script>
+        // Test if images load
+        document.querySelectorAll('img').forEach(img => {
+            img.onload = () => console.log('✅ Image loaded:', img.src);
+            img.onerror = () => console.log('❌ Image failed:', img.src);
+        });
+    </script>
+</body>
+</html>

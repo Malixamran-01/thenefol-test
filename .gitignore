@@ -1,0 +1,35 @@
+# TestSprite
+.testsprite/
+testsprite_tests/
+*.testsprite.json
+
+# Test coverage
+coverage/
+*.lcov
+
+# Environment variables
+.env.local
+.env.*.local
+
+# IDE
+.vscode/settings.json
+.idea/
+node_modules
+
+# Large upload files (exceed GitHub 100MB limit)
+# Exclude entire uploads folder
+backend/uploads/
+
+# Exclude IMAGES folders
+/IMAGES
+user-panel/public/IMAGES
+admin-panel/public/IMAGES
+
+# Exclude dist folders (build outputs)
+user-panel/dist/
+admin-panel/dist/
+backend/dist/
+
+# Exclude large video files
+*.mp4
+*.webm

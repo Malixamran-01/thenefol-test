@@ -1,0 +1,24 @@
+{
+  "name": "nefol-affiliate-monitor",
+  "version": "1.0.0",
+  "description": "Real-time monitoring script for Nefol Affiliate Program",
+  "main": "affiliate-monitor.js",
+  "scripts": {
+    "start": "node affiliate-monitor.js",
+    "monitor": "node affiliate-monitor.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "monitoring",
+    "affiliate",
+    "nefol",
+    "real-time"
+  ],
+  "author": "Nefol Team",
+  "license": "MIT"
+}
