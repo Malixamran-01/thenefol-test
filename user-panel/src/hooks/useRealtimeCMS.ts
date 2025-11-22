@@ -64,7 +64,7 @@ export function useRealtimeCMS(pageName: string) {
 
   // Setup WebSocket connection for real-time updates
   useEffect(() => {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.36:2000'
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://thenefol.com/api'
     
     const socketConnection = io(API_BASE, {
       transports: ['websocket', 'polling'],
@@ -180,7 +180,7 @@ export function useRealtimeSettings() {
   }, [loadSettings])
 
   useEffect(() => {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.36:2000'
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://thenefol.com/api'
     
     const socketConnection = io(API_BASE, {
       transports: ['websocket', 'polling']

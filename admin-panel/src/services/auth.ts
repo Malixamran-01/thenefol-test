@@ -1,6 +1,6 @@
 // Authentication service for admin panel
 import apiService from './api'
-const API_BASE_URL = import.meta.env.VITE_API_URL || `http://192.168.1.36:2000`
+const API_BASE_URL = import.meta.env.VITE_API_URL || `https://thenefol.com/api`
 
 interface User {
   id: number

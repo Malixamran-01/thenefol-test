@@ -26,7 +26,7 @@ export default function BlogRequestManagement() {
   const [selectedRequest, setSelectedRequest] = useState<BlogRequest | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
 
   // Fetch blog requests
   const fetchBlogRequests = async () => {
@@ -433,6 +433,7 @@ function BlogDetailsModal({
   blog: BlogRequest
   onClose: () => void
 }) {
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">

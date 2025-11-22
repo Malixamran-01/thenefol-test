@@ -69,7 +69,7 @@ async function callMetaAPI(
       params.append('access_token', token)
       const fullUrl = `${url}?${params.toString()}`
       const response = await fetch(fullUrl, options)
-      const data = await response.json()
+      const data = await response.json() as any
       
       if (!response.ok && data.error) {
         throw new Error(data.error.message || 'API request failed')
@@ -82,7 +82,7 @@ async function callMetaAPI(
       options.body = JSON.stringify(requestBody)
       
       const response = await fetch(url, options)
-      const data = await response.json()
+      const data = await response.json() as any
       
       if (!response.ok && data.error) {
         throw new Error(data.error.message || 'API request failed')

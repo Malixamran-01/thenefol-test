@@ -355,7 +355,7 @@ export default function Confirmation() {
                             <div className={`w-2 h-2 rounded-full mt-1.5 ${
                               index === 0 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
                             }`} />
-                            {index < trackingData.tracking_data.shipment_track_activities!.length - 1 && (
+                            {trackingData.tracking_data?.shipment_track_activities && index < trackingData.tracking_data.shipment_track_activities.length - 1 && (
                               <div className="w-0.5 h-6 bg-gray-300 dark:bg-gray-600 ml-0.5" />
                             )}
                           </div>

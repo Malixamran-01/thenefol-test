@@ -5,7 +5,7 @@ import {
   Settings, RefreshCw, Download, Filter, Calendar
 } from 'lucide-react'
 
-const apiBase = (import.meta as any).env.VITE_API_URL || 'http://192.168.1.36:2000'
+const apiBase = (import.meta as any).env.VITE_API_URL || 'https://thenefol.com/api'
 
 interface Campaign {
   id?: number

@@ -4590,7 +4590,7 @@ ensureSchema(pool)
     server.listen(port, host, () => {
       console.log(`🚀 Nefol API running on http://${host}:${port}`)
       console.log(`📡 WebSocket server ready for real-time updates`)
-      const backendHost = process.env.BACKEND_HOST || '192.168.1.36'
+      const backendHost = process.env.BACKEND_HOST || 'thenefol.com'
       console.log(`🌐 Accessible from network: http://${backendHost}:${port}`)
       console.log(`✅ All routes optimized and centralized`)
       console.log(`🔧 CSV path fixed: ../product description page.csv`)

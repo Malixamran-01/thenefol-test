@@ -4,7 +4,7 @@ import Can from '../../components/Can'
 type StaffUser = { id: number; name: string; email: string; roles: any[] }
 
 export default function Staff() {
-  const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`
+  const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
   const [users, setUsers] = useState<StaffUser[]>([])
   const [roles, setRoles] = useState<any[]>([])
   const [loading, setLoading] = useState(false)

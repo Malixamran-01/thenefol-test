@@ -153,7 +153,7 @@ export default function WhatsAppChat() {
     setSendResult(null)
 
     try {
-      const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`
+      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
       
       const response = await fetch(`${apiBase}/api/whatsapp-chat/send`, {
         method: 'POST',
@@ -192,7 +192,7 @@ export default function WhatsAppChat() {
     }
 
     try {
-      const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`
+      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
       
       const requestBody: any = {
         name: newTemplateName,
@@ -242,7 +242,7 @@ export default function WhatsAppChat() {
     }
 
     try {
-      const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`
+      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
       
       const requestBody: any = {
         name: newAutoName,

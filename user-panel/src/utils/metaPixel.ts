@@ -1,6 +1,6 @@
 // Meta Pixel tracking utility
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'
+const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
 const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || ''
 
 // Initialize Meta Pixel
@@ -12,7 +12,7 @@ export function initMetaPixel() {
 
   // Load Meta Pixel script
   if (typeof window !== 'undefined' && !(window as any).fbq) {
-    ;(function(f: any, b: any, e: string, v: string, n?: string, t?: string, s?: string) {
+    ;(function(f: any, b: any, e: string, v: string, n?: any, t?: any, s?: any) {
       if (f.fbq) return
       n = f.fbq = function() {
         n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments)

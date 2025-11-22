@@ -1,7 +1,7 @@
 // API Service for Admin Panel to User Panel Integration
 // This service handles all API calls between admin panel and user panel
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
 
 interface ApiResponse<T> {
   success: boolean

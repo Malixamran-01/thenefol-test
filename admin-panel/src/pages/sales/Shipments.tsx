@@ -465,7 +465,7 @@ export default function Shipments() {
                 {shipments.map((shipment) => (
                   <tr key={shipment.id} className="hover:bg-slate-50 dark:hover:bg-slate-700">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {shipment.order_number || shipment.order_id}
+                      {shipment.order_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
                       <div>

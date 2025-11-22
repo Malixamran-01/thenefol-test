@@ -499,7 +499,9 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
             }
 
             // Create payout using Razorpay
-            const payout = await razorpay.payouts.create(payoutData)
+            // Note: Razorpay payouts API may require different SDK methods
+            // Using type assertion as payouts might not be in TypeScript definitions
+            const payout = await (razorpay as any).payouts.create(payoutData)
             razorpayPayoutId = payout.id
             
             console.log(`Razorpay payout created: ${razorpayPayoutId} for withdrawal ${withdrawalId}, amount: ₹${amountInRupees.toFixed(2)}`)
@@ -780,7 +782,7 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
       // Convert relative URLs to absolute URLs
       const getBaseUrl = () => {
         const protocol = req.protocol || 'http'
-        const host = req.get('host') || '192.168.1.36:2000'
+        const host = req.get('host') || 'thenefol.com'
         return `${protocol}://${host}`
       }
       const baseUrl = getBaseUrl()

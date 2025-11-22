@@ -18,7 +18,7 @@ interface Video {
   created_at: string
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'
+const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
 
 const VideoManager: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([])
@@ -403,7 +403,7 @@ const VideoManager: React.FC = () => {
 
   const getVideoUrl = (video: Video): string => {
     if (video.video_type === 'local') {
-      const apiHost = import.meta.env.VITE_BACKEND_HOST || '192.168.1.36'
+      const apiHost = import.meta.env.VITE_BACKEND_HOST || 'thenefol.com'
       const apiPort = import.meta.env.VITE_BACKEND_PORT || '2000'
       return `http://${apiHost}:${apiPort}/uploads/${video.video_url}`
     }

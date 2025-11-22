@@ -22,7 +22,7 @@ export default function Forms() {
   const [forms, setForms] = useState<Form[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`
+  const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
 
   // Fetch forms and submissions from API
   useEffect(() => {

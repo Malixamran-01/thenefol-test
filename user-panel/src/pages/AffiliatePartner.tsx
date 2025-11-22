@@ -1079,7 +1079,6 @@ const AffiliatePartner: React.FC = () => {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300 text-sm"
                     style={{ 
                       letterSpacing: '0.05em',
-                      focusRingColor: 'var(--arctic-blue-primary)'
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -1784,7 +1783,6 @@ const AffiliatePartner: React.FC = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                     style={{ 
                       letterSpacing: '0.05em',
-                      focusRingColor: 'var(--arctic-blue-primary)'
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -1879,7 +1877,6 @@ const AffiliatePartner: React.FC = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                     style={{ 
                       letterSpacing: '0.05em',
-                      focusRingColor: 'var(--arctic-blue-primary)'
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -1904,7 +1901,6 @@ const AffiliatePartner: React.FC = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                     style={{ 
                       letterSpacing: '0.05em',
-                      focusRingColor: 'var(--arctic-blue-primary)'
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -1929,7 +1925,6 @@ const AffiliatePartner: React.FC = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                     style={{ 
                       letterSpacing: '0.05em',
-                      focusRingColor: 'var(--arctic-blue-primary)'
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -1955,7 +1950,6 @@ const AffiliatePartner: React.FC = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                       style={{ 
                         letterSpacing: '0.05em',
-                        focusRingColor: 'var(--arctic-blue-primary)'
                       }}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -1979,7 +1973,6 @@ const AffiliatePartner: React.FC = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                       style={{ 
                         letterSpacing: '0.05em',
-                        focusRingColor: 'var(--arctic-blue-primary)'
                       }}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -2003,7 +1996,6 @@ const AffiliatePartner: React.FC = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                     style={{ 
                       letterSpacing: '0.05em',
-                      focusRingColor: 'var(--arctic-blue-primary)'
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -2035,7 +2027,6 @@ const AffiliatePartner: React.FC = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300 resize-none"
                     style={{ 
                       letterSpacing: '0.05em',
-                      focusRingColor: 'var(--arctic-blue-primary)'
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
@@ -2058,7 +2049,6 @@ const AffiliatePartner: React.FC = () => {
                     className="h-4 w-4 rounded border-gray-300 focus:ring-2 focus:ring-opacity-50"
                     style={{ 
                       accentColor: 'var(--arctic-blue-primary)',
-                      focusRingColor: 'var(--arctic-blue-primary)'
                     }}
                   />
                   <label htmlFor="agreeTerms" className="ml-2 block text-sm text-gray-700 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>

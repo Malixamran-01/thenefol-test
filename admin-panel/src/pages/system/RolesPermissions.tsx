@@ -4,7 +4,7 @@ type Role = { id: number; name: string }
 type Permission = { id: number; code: string; description?: string }
 
 export default function RolesPermissions() {
-  const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`
+  const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
   const [roles, setRoles] = useState<Role[]>([])
   const [perms, setPerms] = useState<Permission[]>([])
   const [matrix, setMatrix] = useState<Record<string, boolean>>({})

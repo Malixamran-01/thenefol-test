@@ -32,7 +32,7 @@ interface Form {
   created_at?: string
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'
+const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
 
 export default function Forms() {
   const { user } = useAuth()

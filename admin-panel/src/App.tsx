@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import Can from './components/Can'
@@ -63,13 +63,13 @@ export default function App() {
     if (socketInitialized.current) return
     socketInitialized.current = true
     
-    console.log('🔌 Initializing admin socket connection...')
+    console.log('?? Initializing admin socket connection...')
     // Initialize Socket.IO connection for real-time updates
     socketService.connect()
     
     // Subscribe to order updates (consolidated to avoid duplicates)
     const unsubscribeOrderCreated = socketService.subscribe('order_created', (data: any) => {
-      console.log('✅ New order created:', data)
+      console.log('? New order created:', data)
       // You can add notification logic here
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('New Order!', {
@@ -83,43 +83,43 @@ export default function App() {
     const unsubscribeOrdersCreated = socketService.subscribe('orders_created', (data: any) => {
       // Deduplicate: only log if not already handled by order_created
       // This prevents duplicate notifications
-      console.log('✅ Order created (batch):', data)
+      console.log('? Order created (batch):', data)
     })
     
     const unsubscribeOrderUpdated = socketService.subscribe('order_updated', (data: any) => {
-      console.log('🔄 Order updated:', data)
+      console.log('?? Order updated:', data)
     })
     
     const unsubscribeOrdersUpdated = socketService.subscribe('orders_updated', (data: any) => {
-      console.log('🔄 Order updated (batch):', data)
+      console.log('?? Order updated (batch):', data)
     })
     
     const unsubscribeUserProfileUpdated = socketService.subscribe('user_profile_updated', (data: any) => {
-      console.log('👤 User profile updated:', data)
+      console.log('?? User profile updated:', data)
     })
     
     const unsubscribeUsersCreated = socketService.subscribe('users_created', (data: any) => {
-      console.log('👤 New user registered:', data)
+      console.log('?? New user registered:', data)
     })
     
     const unsubscribeProductsCreated = socketService.subscribe('products_created', (data: any) => {
-      console.log('🛍️ Product created:', data)
+      console.log('??? Product created:', data)
     })
     
     const unsubscribeProductsUpdated = socketService.subscribe('products_updated', (data: any) => {
-      console.log('🛍️ Product updated:', data)
+      console.log('??? Product updated:', data)
     })
     
     const unsubscribeProductsDeleted = socketService.subscribe('products_deleted', (data: any) => {
-      console.log('🗑️ Product deleted:', data)
+      console.log('??? Product deleted:', data)
     })
     
     const unsubscribeDeliveryStatusUpdated = socketService.subscribe('delivery_status_updated', (data: any) => {
-      console.log('🚚 Delivery status updated:', data)
+      console.log('?? Delivery status updated:', data)
     })
     
     const unsubscribeContactMessageCreated = socketService.subscribe('contact_message_created', (data: any) => {
-      console.log('💬 New contact message:', data)
+      console.log('?? New contact message:', data)
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('New Contact Message!', {
           body: `Message from ${data.name}`,
@@ -129,13 +129,13 @@ export default function App() {
     })
     
     const unsubscribeContactMessageUpdated = socketService.subscribe('contact_message_updated', (data: any) => {
-      console.log('💬 Contact message updated:', data)
+      console.log('?? Contact message updated:', data)
     })
     
     // Subscribe to WhatsApp subscription updates
     const unsubscribeUpdate = socketService.subscribe('update', (data: any) => {
       if (data.type === 'whatsapp-subscription') {
-        console.log('📱 New WhatsApp subscription:', data.data)
+        console.log('?? New WhatsApp subscription:', data.data)
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('New WhatsApp Subscription!', {
             body: data.data.message || `New subscription: ${data.data.subscription?.phone}`,

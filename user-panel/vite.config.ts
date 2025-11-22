@@ -22,7 +22,7 @@ export default defineConfig({
     },
     allowedHosts: [
       'localhost',
-      process.env.VITE_BACKEND_HOST || '192.168.1.36',
+      process.env.VITE_BACKEND_HOST || 'thenefol.com',
       '.ngrok.io',
       '.ngrok-free.dev',
       'subcontained-clelia-scorchingly.ngrok-free.dev'

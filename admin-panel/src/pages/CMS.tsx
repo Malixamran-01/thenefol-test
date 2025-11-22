@@ -43,7 +43,7 @@ export default function CMS() {
   const [blogPosts, setBlogPosts] = useState<any[]>([])
   const [blogLoading, setBlogLoading] = useState(false)
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
 
   // Fetch all pages
   const fetchPages = async () => {

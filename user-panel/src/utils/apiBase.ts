@@ -36,8 +36,8 @@ export const getApiBase = () => {
   
   // Ensure we have a valid URL
   if (!host || !port) {
-    console.warn('⚠️ API base URL configuration missing, using default 192.168.1.36:2000')
-    return 'http://192.168.1.36:2000'
+    console.warn('⚠️ API base URL configuration missing, using default https://thenefol.com/api')
+    return 'https://thenefol.com/api'
   }
   
   const devUrl = `${proto}//${host}:${port}`

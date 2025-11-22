@@ -152,7 +152,7 @@ export default function UserDetail() {
   const fetchUserData = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'}/api/users/${id}`)
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/users/${id}`)
       if (response.ok) {
         const data = await response.json()
         setUserData(data)
@@ -169,7 +169,7 @@ export default function UserDetail() {
   const addNote = async () => {
     if (!newNote.trim()) return
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'}/api/users/${id}/notes`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/users/${id}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: newNote, note_type: 'general' })
@@ -186,7 +186,7 @@ export default function UserDetail() {
   const addTag = async () => {
     if (!newTag.trim()) return
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'}/api/users/${id}/tags`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/users/${id}/tags`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tag: newTag })
@@ -202,7 +202,7 @@ export default function UserDetail() {
 
   const removeTag = async (tag: string) => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'}/api/users/${id}/tags`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/users/${id}/tags`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tag })

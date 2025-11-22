@@ -95,8 +95,8 @@ export default function SwipeNavigation({
 
       const currentX = e.touches[0].clientX
       const currentY = e.touches[0].clientY
-      const deltaX = Math.abs(currentX - touchStartX.current)
-      const deltaY = Math.abs(currentY - touchStartY.current)
+      const deltaX = Math.abs(currentX - (touchStartX.current || 0))
+      const deltaY = Math.abs(currentY - (touchStartY.current || 0))
 
       // If vertical scroll is more than horizontal, it's a scroll, not a swipe
       if (deltaY > deltaX) {

@@ -14,7 +14,7 @@ import { ensureSchema } from './utils/schema'
 const app = express()
 app.use(express.json())
 
-const clientOrigin = process.env.CLIENT_ORIGIN || 'http://192.168.1.36:2001'
+const clientOrigin = process.env.CLIENT_ORIGIN || 'https://thenefol.com'
 app.use(cors({ origin: (_origin, cb) => cb(null, true), credentials: true }))
 
 // Create HTTP server and Socket.IO

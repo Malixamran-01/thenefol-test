@@ -300,7 +300,7 @@ export async function verifyAffiliateCode(pool: Pool, req: Request, res: Respons
     `, [new Date(), userId, affiliate.id])
 
     // Generate affiliate link
-    const affiliateLink = `${process.env.CLIENT_ORIGIN || 'http://192.168.1.36:2001'}?ref=${affiliate.id}`
+    const affiliateLink = `${process.env.CLIENT_ORIGIN || 'https://thenefol.com'}?ref=${affiliate.id}`
 
     sendSuccess(res, {
       message: 'Account verified successfully',

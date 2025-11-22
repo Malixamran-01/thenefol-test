@@ -56,7 +56,7 @@ const Payment = () => {
   const loadPaymentData = async () => {
     try {
       setLoading(true);
-      const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`;
+      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`;
       const [methodsRes, transactionsRes, reportRes] = await Promise.all([
         fetch(`${apiBase}/api/payment-methods`),
         fetch(`${apiBase}/api/payment-transactions`),

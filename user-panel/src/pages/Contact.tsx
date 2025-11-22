@@ -26,7 +26,7 @@ export default function Contact() {
     setSuccess(false)
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://192.168.1.36:2000'}/api/contact/submit`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/contact/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
