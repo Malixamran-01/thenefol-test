@@ -669,7 +669,6 @@ const AffiliatePartner: React.FC = () => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--arctic-blue-primary)' }}></div>
               <p className="text-gray-600 mb-2 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Loading affiliate data...</p>
               <p className="text-sm text-gray-500 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>This may take a few moments</p>
               <div className="mt-6">
@@ -898,7 +897,6 @@ const AffiliatePartner: React.FC = () => {
               </div>
               {referralsLoading ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--arctic-blue-primary)' }}></div>
                   <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Loading referrals...</p>
                 </div>
               ) : referrals.length > 0 ? (
@@ -1263,7 +1261,6 @@ const AffiliatePartner: React.FC = () => {
                                           }}
                                         >
                                           <span className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
                                             {file.name}
                                           </span>
                                           <Download className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
@@ -1457,7 +1454,6 @@ const AffiliatePartner: React.FC = () => {
                                           }}
                                         >
                                           <span className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
                                             {file.name}
                                           </span>
                                           <Download className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
@@ -1608,7 +1604,6 @@ const AffiliatePartner: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--arctic-blue-primary)' }}></div>
                   <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Loading marketing materials...</p>
                 </div>
               )}

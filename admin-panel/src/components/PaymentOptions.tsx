@@ -21,7 +21,6 @@ interface PaymentGateway {
 
 const paymentTypes = [
   { value: 'razorpay', label: 'Razorpay', icon: '💳', color: 'bg-blue-500' },
-  { value: 'easybuzz', label: 'Easybuzz', icon: '🏦', color: 'bg-green-500' },
   { value: 'phonepe', label: 'PhonePe', icon: '📱', color: 'bg-purple-500' },
   { value: 'googlepay', label: 'Google Pay', icon: '🔵', color: 'bg-blue-600' },
   { value: 'paytm', label: 'Paytm', icon: '🟡', color: 'bg-yellow-500' },

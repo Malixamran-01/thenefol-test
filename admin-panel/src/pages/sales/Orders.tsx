@@ -69,12 +69,17 @@ export default function Orders() {
       
       const data = await res.json()
       // Ensure data is an array
-      if (Array.isArray(data)) {
-        setItems(data)
-      } else if (data && Array.isArray(data.data)) {
-        setItems(data.data)
-      } else {
-        setItems([])
+      let orders = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : [])
+      
+      // Transform backend fields to frontend format
+      const transformedOrders = orders.map((order: any) => ({
+        ...order,
+        customer: order.customer_name || order.customer || '',
+        createdAt: order.created_at || order.createdAt || new Date().toISOString()
+      }))
+      
+      setItems(transformedOrders)
+      if (transformedOrders.length === 0 && orders.length === 0) {
         setError('Invalid response format from server')
       }
       setSelected([])
@@ -93,13 +98,23 @@ export default function Orders() {
     // Subscribe to real-time order updates
     const unsubscribeOrderCreated = socketService.subscribe('order_created', (newOrder: any) => {
       console.log('New order received:', newOrder)
-      setItems(prev => [newOrder, ...prev])
+      const transformed = {
+        ...newOrder,
+        customer: newOrder.customer_name || newOrder.customer || '',
+        createdAt: newOrder.created_at || newOrder.createdAt || new Date().toISOString()
+      }
+      setItems(prev => [transformed, ...prev])
     })
     
     const unsubscribeOrderUpdated = socketService.subscribe('order_updated', (updatedOrder: any) => {
       console.log('Order updated:', updatedOrder)
+      const transformed = {
+        ...updatedOrder,
+        customer: updatedOrder.customer_name || updatedOrder.customer || '',
+        createdAt: updatedOrder.created_at || updatedOrder.createdAt || new Date().toISOString()
+      }
       setItems(prev => prev.map(order => 
-        order.id === updatedOrder.id ? updatedOrder : order
+        order.id === transformed.id ? transformed : order
       ))
     })
     
@@ -186,10 +201,34 @@ export default function Orders() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+        <style>{`
+          :root {
+            --arctic-blue-primary: #7DD3D3;
+            --arctic-blue-primary-hover: #5EC4C4;
+            --arctic-blue-primary-dark: #4A9FAF;
+            --arctic-blue-light: #E0F5F5;
+            --arctic-blue-lighter: #F0F9F9;
+            --arctic-blue-background: #F4F9F9;
+          }
+        `}</style>
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-          <div className="flex items-center gap-2">
+          <div>
+            <h1 
+              className="text-3xl font-light mb-2 tracking-[0.15em]" 
+              style={{
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                letterSpacing: '0.15em'
+              }}
+            >
+              Orders
+            </h1>
+            <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+              Manage and track all customer orders
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
             <button onClick={load} className="btn-secondary">Refresh</button>
             <button
               onClick={() => {
@@ -221,31 +260,64 @@ export default function Orders() {
           </div>
         </div>
         <div className="metric-card">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-            <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search order #" className="input" />
-            <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <input 
+              value={q} 
+              onChange={e=>setQ(e.target.value)} 
+              placeholder="Search order #" 
+              className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+              style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+            />
+            <select 
+              value={status} 
+              onChange={e=>setStatus(e.target.value)} 
+              className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+              style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+            >
               <option value="">All Status</option>
               <option value="pending">Pending</option>
               <option value="paid">Paid</option>
               <option value="shipped">Shipped</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <select value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)} className="input">
+            <select 
+              value={paymentStatus} 
+              onChange={e=>setPaymentStatus(e.target.value)} 
+              className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+              style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+            >
               <option value="">Any Payment</option>
               <option value="unpaid">Unpaid</option>
               <option value="paid">Paid</option>
               <option value="refunded">Refunded</option>
               <option value="failed">Failed</option>
             </select>
-            <select value={cod} onChange={e=>setCod(e.target.value)} className="input">
+            <select 
+              value={cod} 
+              onChange={e=>setCod(e.target.value)} 
+              className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+              style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+            >
               <option value="">COD/Prepaid</option>
               <option value="true">COD</option>
               <option value="false">Prepaid</option>
             </select>
             <div className="grid grid-cols-2 gap-3 md:col-span-5">
-              <input type="date" value={from} onChange={e=>setFrom(e.target.value)} className="input" />
-              <input type="date" value={to} onChange={e=>setTo(e.target.value)} className="input" />
-              <button onClick={load} className="btn-primary">Apply Filters</button>
+              <input 
+                type="date" 
+                value={from} 
+                onChange={e=>setFrom(e.target.value)} 
+                className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+                style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+              />
+              <input 
+                type="date" 
+                value={to} 
+                onChange={e=>setTo(e.target.value)} 
+                className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+                style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+              />
+              <button onClick={load} className="btn-primary md:col-span-2">Apply Filters</button>
             </div>
           </div>
         </div>
@@ -254,28 +326,28 @@ export default function Orders() {
           {loading ? <p>Loading...</p> : error ? <p className="text-red-600">{error}</p> : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-gray-200 text-xs uppercase text-gray-500">
+                <thead className="border-b text-xs uppercase" style={{ borderColor: 'var(--arctic-blue-light)', color: 'var(--text-muted)' }}>
                   <tr>
-                    <th className="py-3 pr-4"><input type="checkbox" onChange={e=>{
+                    <th className="py-4 pr-4"><input type="checkbox" onChange={e=>{
                       if (e.target.checked && Array.isArray(items)) setSelected(items.map(i=>i.id)); else setSelected([])
                     }} checked={selected.length>0 && Array.isArray(items) && selected.length===items.length} /></th>
-                    <th className="py-3 pr-4">ID</th>
-                    <th className="py-3 pr-4">Customer</th>
-                    <th className="py-3 pr-4">Total</th>
-                    <th className="py-3 pr-4">Status</th>
-                    <th className="py-3 pr-4">Placed</th>
-                    <th className="py-3 pr-4">Actions</th>
+                    <th className="py-4 pr-4 font-medium">ID</th>
+                    <th className="py-4 pr-4 font-medium">Customer</th>
+                    <th className="py-4 pr-4 font-medium">Total</th>
+                    <th className="py-4 pr-4 font-medium">Status</th>
+                    <th className="py-4 pr-4 font-medium">Placed</th>
+                    <th className="py-4 pr-4 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {Array.isArray(items) && items.length > 0 ? items.map(o => (
-                    <tr key={o.id} className="border-b border-gray-100">
-                      <td className="py-3 pr-4"><input type="checkbox" checked={selected.includes(o.id)} onChange={e=>toggleSelect(o.id, e.target.checked)} /></td>
-                      <td className="py-3 pr-4 font-medium">{o.id}</td>
-                      <td className="py-3 pr-4">{o.customer}</td>
-                      <td className="py-3 pr-4 font-semibold">₹{Number(o.total).toFixed(2)}</td>
-                      <td className="py-3 pr-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
+                    <tr key={o.id} className="border-b transition-colors hover:bg-[var(--arctic-blue-lighter)]" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+                      <td className="py-4 pr-4"><input type="checkbox" checked={selected.includes(o.id)} onChange={e=>toggleSelect(o.id, e.target.checked)} /></td>
+                      <td className="py-4 pr-4 font-medium" style={{ color: 'var(--text-primary)' }}>{o.id}</td>
+                      <td className="py-4 pr-4" style={{ color: 'var(--text-secondary)' }}>{o.customer}</td>
+                      <td className="py-4 pr-4 font-semibold" style={{ color: 'var(--arctic-blue-primary-dark)' }}>₹{Number(o.total).toFixed(2)}</td>
+                      <td className="py-4 pr-4">
+                        <span className={`px-3 py-1 text-xs rounded-full font-medium ${
                           o.status === 'paid' ? 'bg-green-100 text-green-800' :
                           o.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
                           o.status === 'cancelled' ? 'bg-red-100 text-red-800' :
@@ -284,18 +356,27 @@ export default function Orders() {
                           {o.status}
                         </span>
                       </td>
-                      <td className="py-3 pr-4 text-gray-600">{new Date(o.createdAt).toLocaleString()}</td>
-                      <td className="py-3 pr-4">
+                      <td className="py-4 pr-4" style={{ color: 'var(--text-muted)' }}>
+                        {o.createdAt ? (() => {
+                          try {
+                            const date = new Date(o.createdAt)
+                            return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString()
+                          } catch {
+                            return 'Invalid Date'
+                          }
+                        })() : 'Invalid Date'}
+                      </td>
+                      <td className="py-4 pr-4">
                         <div className="flex flex-wrap gap-2">
-                          <button onClick={()=>navigate(`/admin/orders/${o.id}`)} className="btn-secondary text-xs px-2 py-1">Details</button>
+                          <button onClick={()=>navigate(`/admin/orders/${o.id}`)} className="btn-secondary text-xs px-3 py-1.5">Details</button>
                           <Can permission="orders:update">
-                            <button onClick={()=>updateStatus(o.id,'paid')} className="btn-secondary text-xs px-2 py-1">Mark Paid</button>
+                            <button onClick={()=>updateStatus(o.id,'paid')} className="btn-secondary text-xs px-3 py-1.5">Mark Paid</button>
                           </Can>
                           <Can permission="orders:update">
-                            <button onClick={()=>updateStatus(o.id,'shipped')} className="btn-secondary text-xs px-2 py-1">Mark Shipped</button>
+                            <button onClick={()=>updateStatus(o.id,'shipped')} className="btn-secondary text-xs px-3 py-1.5">Mark Shipped</button>
                           </Can>
                           <Can permission="shipping:update">
-                            <button onClick={()=>createAwb(o.id)} className="btn-secondary text-xs px-2 py-1">Create AWB</button>
+                            <button onClick={()=>createAwb(o.id)} className="btn-secondary text-xs px-3 py-1.5">Create AWB</button>
                           </Can>
                           <Can permission="orders:update">
                             <CancelButton onConfirm={()=>updateStatus(o.id,'cancelled')} />
@@ -305,7 +386,7 @@ export default function Orders() {
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-gray-500">
+                      <td colSpan={7} className="py-12 text-center" style={{ color: 'var(--text-muted)' }}>
                         {error ? error : 'No orders found'}
                       </td>
                     </tr>

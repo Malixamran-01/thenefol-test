@@ -170,12 +170,31 @@ export default function FormSubmissions() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Form Submissions</h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Form Submissions
+          </h1>
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
             View and manage all form submissions from users
           </p>
         </div>
@@ -183,14 +202,14 @@ export default function FormSubmissions() {
           <button
             onClick={exportSubmissions}
             disabled={filteredSubmissions.length === 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="h-4 w-4" />
             <span>Export CSV</span>
           </button>
-          <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg">
-            <div className="text-sm text-blue-600 dark:text-blue-400">Total Submissions</div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          <div className="metric-card px-4 py-2">
+            <div className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Total Submissions</div>
+            <div className="text-2xl font-light" style={{ color: 'var(--arctic-blue-primary-dark)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>
               {submissions.length}
             </div>
           </div>

@@ -97,7 +97,11 @@ export default function PhoneInput({
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value
     // Only allow digits
-    const digitsOnly = inputValue.replace(/\D/g, '')
+    let digitsOnly = inputValue.replace(/\D/g, '')
+    // For India (+91), limit to 10 digits for Shiprocket compatibility
+    if (selectedCountry.dialCode === '+91') {
+      digitsOnly = digitsOnly.slice(0, 10)
+    }
     onChange(digitsOnly)
   }
 
@@ -170,10 +174,10 @@ export default function PhoneInput({
           type="tel"
           value={value}
           onChange={handlePhoneChange}
-          placeholder={placeholder || `Enter phone number`}
+          placeholder={placeholder || (selectedCountry.dialCode === '+91' ? 'Enter 10-digit phone number' : 'Enter phone number')}
           required={required}
           disabled={disabled}
-          maxLength={15}
+          maxLength={selectedCountry.dialCode === '+91' ? 10 : 15}
           className={`
             flex-1 px-3 lg:px-4 py-2.5 lg:py-3 rounded-lg border 
             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent

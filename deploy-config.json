@@ -1,0 +1,22 @@
+{
+  "server": {
+    "host": "your-server-ip-or-domain.com",
+    "user": "your-username",
+    "path": "/var/www/nefol",
+    "method": "scp"
+  },
+  "deployment": {
+    "uploadBackend": true,
+    "uploadAdmin": true,
+    "uploadUser": true,
+    "skipBuild": false,
+    "buildOnly": false
+  },
+  "notes": {
+    "method": "Options: 'scp', 'sftp', or 'manual'",
+    "path": "Remote path on server where files will be uploaded",
+    "host": "Server IP address or domain name",
+    "user": "SSH username for server access"
+  }
+}
+

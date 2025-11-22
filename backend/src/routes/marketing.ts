@@ -898,7 +898,9 @@ export const sendWhatsAppMessage = async (pool: Pool, req: Request, res: Respons
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
     
     if (!accessToken || !phoneNumberId) {
-      return sendError(res, 400, 'WhatsApp credentials not configured')
+      console.error('❌ WhatsApp credentials not configured')
+      console.error('   Missing:', !accessToken ? 'WHATSAPP_ACCESS_TOKEN' : '', !phoneNumberId ? 'WHATSAPP_PHONE_NUMBER_ID' : '')
+      return sendError(res, 400, 'WhatsApp credentials not configured. Please check your environment variables.')
     }
     
     if (!to) {
@@ -950,7 +952,9 @@ export const sendWhatsAppMessage = async (pool: Pool, req: Request, res: Respons
     const responseData = await response.json() as any
     
     if (!response.ok) {
-      console.error('WhatsApp API error:', responseData)
+      console.error('❌ WhatsApp API error:', JSON.stringify(responseData, null, 2))
+      console.error('   Phone:', to)
+      console.error('   Status:', response.status)
       return sendError(res, response.status, responseData.error?.message || 'Failed to send WhatsApp message', responseData)
     }
     
@@ -1024,17 +1028,17 @@ export const saveWhatsAppConfig = async (pool: Pool, req: Request, res: Response
 
 export const createWhatsAppTemplate = async (pool: Pool, req: Request, res: Response) => {
   try {
-    const { name, content, category, language } = req.body
+    const { name, content, category, language, scheduled_date, scheduled_time, is_scheduled } = req.body
     
     if (!name || !content) {
       return sendError(res, 400, 'Name and content are required')
     }
     
     const { rows } = await pool.query(`
-      INSERT INTO whatsapp_templates (name, category, content, is_approved, created_at)
-      VALUES ($1, $2, $3, false, NOW())
+      INSERT INTO whatsapp_templates (name, category, content, is_approved, scheduled_date, scheduled_time, is_scheduled, created_at, updated_at)
+      VALUES ($1, $2, $3, false, $4, $5, $6, NOW(), NOW())
       RETURNING *
-    `, [name, category || 'Custom', content])
+    `, [name, category || 'Custom', content, scheduled_date || null, scheduled_time || null, is_scheduled || false])
     
     sendSuccess(res, rows[0], 201)
   } catch (err) {
@@ -1044,21 +1048,70 @@ export const createWhatsAppTemplate = async (pool: Pool, req: Request, res: Resp
 
 export const createWhatsAppAutomation = async (pool: Pool, req: Request, res: Response) => {
   try {
-    const { name, trigger, action, template } = req.body
+    const { name, trigger, action, template_id, scheduled_date, scheduled_time, is_scheduled } = req.body
     
     if (!name || !trigger) {
       return sendError(res, 400, 'Name and trigger are required')
     }
     
     const { rows } = await pool.query(`
-      INSERT INTO whatsapp_automations (name, trigger, condition, action, is_active, created_at)
-      VALUES ($1, $2, $3, $4, false, NOW())
+      INSERT INTO whatsapp_automations (name, trigger, condition, action, template_id, scheduled_date, scheduled_time, is_scheduled, is_active, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, NOW(), NOW())
       RETURNING *
-    `, [name, trigger, 'Always', action || 'Send WhatsApp Message'])
+    `, [name, trigger, 'Always', action || 'Send WhatsApp Message', template_id || null, scheduled_date || null, scheduled_time || null, is_scheduled || false])
     
     sendSuccess(res, rows[0], 201)
   } catch (err) {
     sendError(res, 500, 'Failed to create automation', err)
+  }
+}
+
+// Get scheduled WhatsApp messages
+export const getScheduledWhatsAppMessages = async (pool: Pool, req: Request, res: Response) => {
+  try {
+    const { status } = req.query
+    let query = `
+      SELECT sm.*, 
+             t.name as template_name,
+             a.name as automation_name
+      FROM whatsapp_scheduled_messages sm
+      LEFT JOIN whatsapp_templates t ON sm.template_id = t.id
+      LEFT JOIN whatsapp_automations a ON sm.automation_id = a.id
+    `
+    const params: any[] = []
+    
+    if (status) {
+      query += ' WHERE sm.status = $1'
+      params.push(status)
+    }
+    
+    query += ' ORDER BY sm.scheduled_at ASC'
+    
+    const { rows } = await pool.query(query, params)
+    sendSuccess(res, rows)
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch scheduled messages', err)
+  }
+}
+
+// Create scheduled WhatsApp message
+export const createScheduledWhatsAppMessage = async (pool: Pool, req: Request, res: Response) => {
+  try {
+    const { template_id, automation_id, phone, message, scheduled_at } = req.body
+    
+    if (!phone || !message || !scheduled_at) {
+      return sendError(res, 400, 'Phone, message, and scheduled_at are required')
+    }
+    
+    const { rows } = await pool.query(`
+      INSERT INTO whatsapp_scheduled_messages (template_id, automation_id, phone, message, scheduled_at, status, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, 'pending', NOW(), NOW())
+      RETURNING *
+    `, [template_id || null, automation_id || null, phone, message, scheduled_at])
+    
+    sendSuccess(res, rows[0], 201)
+  } catch (err) {
+    sendError(res, 500, 'Failed to create scheduled message', err)
   }
 }
 

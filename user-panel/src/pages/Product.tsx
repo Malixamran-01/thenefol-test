@@ -43,12 +43,63 @@ export default function ProductPage() {
   const [hoverZoom, setHoverZoom] = useState({ show: false, x: 0, y: 0 })
   const mainImageRef = useRef<HTMLDivElement>(null)
   
+  // Delivery availability state
+  const [deliveryPincode, setDeliveryPincode] = useState('')
+  const [checkingDelivery, setCheckingDelivery] = useState(false)
+  const [deliveryInfo, setDeliveryInfo] = useState<any>(null)
+  const [deliveryError, setDeliveryError] = useState<string | null>(null)
+  
   // Use cart context and auth
   const cartContext = useCart()
   const { isAuthenticated, user } = useAuth()
   
   // Safely access cart methods
   const addItem = cartContext?.addItem
+
+  // Check delivery availability function
+  const checkDeliveryAvailability = async () => {
+    if (deliveryPincode.length !== 6) {
+      setDeliveryError('Please enter a valid 6-digit pincode')
+      return
+    }
+
+    setCheckingDelivery(true)
+    setDeliveryError(null)
+    setDeliveryInfo(null)
+
+    try {
+      const apiBase = getApiBase()
+      const response = await fetch(
+        `${apiBase}/api/public/shiprocket/serviceability?delivery_postcode=${encodeURIComponent(deliveryPincode)}&cod=0&weight=0.5`
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to check delivery availability')
+      }
+
+      const data = await response.json()
+      setDeliveryInfo(data)
+    } catch (err: any) {
+      setDeliveryError(err.message || 'Unable to check delivery. Please try again later.')
+      setDeliveryInfo(null)
+    } finally {
+      setCheckingDelivery(false)
+    }
+  }
+
+  // Calculate delivery date helper
+  const calculateDeliveryDate = (days: number): string => {
+    const today = new Date()
+    const deliveryDate = new Date(today)
+    deliveryDate.setDate(today.getDate() + days)
+    return deliveryDate.toLocaleDateString('en-IN', { 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    })
+  }
 
   // Track view duration on unmount
   useEffect(() => {
@@ -639,7 +690,7 @@ export default function ProductPage() {
                         className="w-full h-full object-contain transition-transform duration-300 max-w-full"
                         loading="eager"
                         decoding="async"
-                        fetchPriority="high"
+                        {...({ fetchpriority: 'high' } as any)}
                         onClick={() => {
                           setZoomImageIndex(0)
                           setShowImageZoom(true)
@@ -744,7 +795,7 @@ export default function ProductPage() {
                         const ratingValue = overallRating || 0
                         const filled = i < Math.round(ratingValue)
                         return (
-                          <svg key={i} className={`w-5 h-5 ${filled ? 'text-yellow-400' : 'text-gray-300'}`} fill={filled ? 'currentColor' : 'none'} stroke={filled ? 'none' : 'currentColor'} viewBox="0 0 20 20">
+                          <svg key={`main-rating-${i}`} className={`w-5 h-5 ${filled ? 'text-yellow-400' : 'text-gray-300'}`} fill={filled ? 'currentColor' : 'none'} stroke={filled ? 'none' : 'currentColor'} viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                           </svg>
                         )
@@ -814,12 +865,63 @@ export default function ProductPage() {
                   <input 
                     type="text" 
                     placeholder="Enter Pincode" 
+                    value={deliveryPincode || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 6)
+                      setDeliveryPincode(value)
+                      setDeliveryError(null)
+                      setDeliveryInfo(null)
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && deliveryPincode.length === 6) {
+                        checkDeliveryAvailability()
+                      }
+                    }}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm flex-1"
+                    maxLength={6}
                   />
-                  <button className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800">
-                    CHECK
+                  <button 
+                    onClick={checkDeliveryAvailability}
+                    disabled={deliveryPincode.length !== 6 || checkingDelivery}
+                    className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {checkingDelivery ? 'CHECKING...' : 'CHECK'}
                   </button>
                 </div>
+                {deliveryError && (
+                  <div className="text-sm text-red-600 mt-2">{deliveryError}</div>
+                )}
+                {deliveryInfo && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                    {deliveryInfo.data?.available_courier_companies && deliveryInfo.data.available_courier_companies.length > 0 ? (
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold text-green-800">✓ Delivery Available</div>
+                        {(() => {
+                          // Get all delivery days and find min/max
+                          const deliveryDays = deliveryInfo.data.available_courier_companies
+                            .map((courier: any) => courier.estimated_delivery_days)
+                            .filter((days: number) => days && days > 0)
+                            .sort((a: number, b: number) => a - b)
+                          
+                          if (deliveryDays.length === 0) {
+                            return <div className="text-sm text-green-700">Delivery available</div>
+                          }
+                          
+                          const minDays = deliveryDays[0]
+                          const maxDays = deliveryDays[deliveryDays.length - 1]
+                          
+                          if (minDays === maxDays) {
+                            return <div className="text-sm text-green-700 font-medium">{minDays} {minDays === 1 ? 'day' : 'days'}</div>
+                          } else {
+                            return <div className="text-sm text-green-700 font-medium">{minDays}-{maxDays} days</div>
+                          }
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-orange-800">⚠️ Delivery may not be available to this pincode. Please contact support.</div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Quantity Selector */}
@@ -950,8 +1052,8 @@ export default function ProductPage() {
               {/* Product Claims/Badges */}
               {csvProduct?.['Special Attributes (Badges)'] && (
                 <div className="flex flex-wrap gap-3 mb-6">
-                  {csvProduct['Special Attributes (Badges)'].split('|').map((badge: string, index: number) => (
-                    <div key={index} className="flex items-center space-x-2 px-3 py-2 bg-gray-100 rounded-full">
+                  {csvProduct['Special Attributes (Badges)'].split('|').filter((badge: string) => badge.trim()).map((badge: string, index: number) => (
+                    <div key={`badge-${index}-${badge.trim().substring(0, 10)}`} className="flex items-center space-x-2 px-3 py-2 bg-gray-100 rounded-full">
                       <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
                         <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1008,19 +1110,19 @@ export default function ProductPage() {
                         {csvProduct?.['Skin/Hair Type'] || 'All Skin Types'}
                       </p>
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center space-x-2">
+                        <div key="skin-type-all" className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span>All Skin Types</span>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div key="skin-type-sensitive" className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span>Sensitive Skin</span>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div key="skin-type-dry" className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span>Dry Skin</span>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div key="skin-type-oily" className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span>Oily Skin</span>
                         </div>
@@ -1044,8 +1146,8 @@ export default function ProductPage() {
                     <div className="pb-4 text-sm text-gray-600">
                       <ol className="list-decimal list-inside space-y-1">
                         {csvProduct?.['How to Use (Steps)'] ? 
-                          csvProduct['How to Use (Steps)'].split(',').map((step: string, index: number) => (
-                            <li key={index}>{step.trim()}</li>
+                          csvProduct['How to Use (Steps)'].split(',').filter((step: string) => step.trim()).map((step: string, index: number) => (
+                            <li key={`howtouse-csv-${index}-${step.trim().substring(0, 10)}`}>{step.trim()}</li>
                           )) :
                           [
                             'Cleanse your face with a gentle cleanser',
@@ -1053,7 +1155,7 @@ export default function ProductPage() {
                             'Gently massage in circular motions',
                             'Use twice daily for best results'
                           ].map((step, index) => (
-                            <li key={index}>{step}</li>
+                            <li key={`howtouse-default-${index}-${step.substring(0, 10)}`}>{step}</li>
                           ))
                         }
                       </ol>
@@ -1202,8 +1304,8 @@ export default function ProductPage() {
                     {expandedSections.videos && (
                       <div className="pb-4 text-sm text-gray-600">
                         <div className="space-y-2">
-                          {csvProduct['Video Links'].split(',').map((link: string, index: number) => (
-                            <div key={index} className="flex items-center space-x-2">
+                          {csvProduct['Video Links'].split(',').filter((link: string) => link.trim()).map((link: string, index: number) => (
+                            <div key={`video-${index}-${link.trim().substring(0, 20)}`} className="flex items-center space-x-2">
                               <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                               </svg>
@@ -1449,7 +1551,7 @@ export default function ProductPage() {
                     {ingredients.map((ingredient: string, index: number) => {
                       const imageUrl = getIngredientImage(ingredient)
                       return (
-                        <div key={index} className="text-center w-full">
+                        <div key={`ingredient-${index}-${ingredient.substring(0, 10)}`} className="text-center w-full">
                           <div className="w-20 sm:w-24 md:w-28 mx-auto mb-4 bg-white rounded-full shadow-md overflow-hidden relative" style={{ aspectRatio: '1 / 1', borderRadius: '50%', flexShrink: 0 }}>
                             {imageUrl ? (
                               <img 
@@ -1528,8 +1630,8 @@ export default function ProductPage() {
               </button>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {visibleRelatedProducts.map((item, index) => (
-                <div key={index} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                {visibleRelatedProducts.map((item: any, index) => (
+                <div key={`related-product-${item.id || item.slug || 'no-id'}-${index}`} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
                 <a href={`#/user/product/${item.slug}`}>
                     <div className="relative">
                   <img 
@@ -1565,7 +1667,7 @@ export default function ProductPage() {
                               {[...Array(5)].map((_, i) => {
                                 const filled = i < Math.round(rating)
                                 return (
-                                  <svg key={i} className={`w-4 h-4 ${filled ? 'text-yellow-400' : 'text-gray-300'}`} fill={filled ? 'currentColor' : 'none'} stroke={filled ? 'none' : 'currentColor'} viewBox="0 0 20 20">
+                                  <svg key={`related-${item.id || item.slug || index}-rating-${i}`} className={`w-4 h-4 ${filled ? 'text-yellow-400' : 'text-gray-300'}`} fill={filled ? 'currentColor' : 'none'} stroke={filled ? 'none' : 'currentColor'} viewBox="0 0 20 20">
                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                   </svg>
                                 )
@@ -1650,7 +1752,7 @@ export default function ProductPage() {
                           const filled = i < Math.round(ratingValue)
                           const halfFilled = i < ratingValue && i + 1 > ratingValue
                           return (
-                            <svg key={i} className={`h-5 w-5 ${filled ? 'fill-current' : halfFilled ? 'fill-current opacity-50' : 'text-gray-300'}`} viewBox="0 0 20 20">
+                            <svg key={`reviews-overall-${i}`} className={`h-5 w-5 ${filled ? 'fill-current' : halfFilled ? 'fill-current opacity-50' : 'text-gray-300'}`} viewBox="0 0 20 20">
                               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                             </svg>
                           )
@@ -1689,7 +1791,7 @@ export default function ProductPage() {
                       <p className="text-gray-600 text-center py-8">No reviews yet. Be the first to review this product!</p>
                     ) : (
                       allProductReviews.slice(0, reviewsToShow).map((review: any, index) => (
-                <div key={review.id || index} className={`p-4 border rounded-lg ${review.isFeatured ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200'}`}>
+                <div key={`review-${review.id || 'no-id'}-${index}`} className={`p-4 border rounded-lg ${review.isFeatured ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200'}`}>
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-2">
                       <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
@@ -1709,7 +1811,7 @@ export default function ProductPage() {
                         </div>
                               <div className="flex text-yellow-400">
                                 {[...Array(5)].map((_, i) => (
-                                  <svg key={i} className={`h-4 w-4 ${i < (review.rating || 0) ? 'fill-current' : 'text-gray-300'}`} viewBox="0 0 20 20">
+                                  <svg key={`review-${review.id || index}-rating-${i}`} className={`h-4 w-4 ${i < (review.rating || 0) ? 'fill-current' : 'text-gray-300'}`} viewBox="0 0 20 20">
                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                   </svg>
                                 ))}
@@ -1744,7 +1846,7 @@ export default function ProductPage() {
             <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">NEED HELP? FREQUENTLY ASKED QUESTIONS</h2>
             <div className="max-w-3xl mx-auto space-y-2">
               {getFAQItems().map((faq, index) => (
-                <div key={index} className="border-b border-gray-200">
+                <div key={`faq-${index}-${faq.question.substring(0, 10)}`} className="border-b border-gray-200">
                   <button
                     onClick={() => toggleSection(`faq-${index}`)}
                     className="flex items-center justify-between w-full py-4 text-left font-semibold text-gray-900"

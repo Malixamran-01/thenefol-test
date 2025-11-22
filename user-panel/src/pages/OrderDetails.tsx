@@ -216,7 +216,6 @@ export default function OrderDetails() {
     return (
       <main className="min-h-screen bg-white flex items-center justify-center py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--arctic-blue-primary)' }}></div>
           <p style={{ color: '#666' }}>Loading order details...</p>
         </div>
       </main>
@@ -536,7 +535,7 @@ export default function OrderDetails() {
               {taxSettings && (
                 <div className="flex justify-between font-light tracking-wide" style={{ color: '#666' }}>
                   <span>Tax (GST {taxSettings.rate.toFixed(0)}%)</span>
-                  <span>₹{order.tax.toFixed(2)}</span>
+                  <span>₹{typeof order.tax === 'number' ? order.tax.toFixed(2) : Number(order.tax || 0).toFixed(2)}</span>
                 </div>
               )}
               <div className="border-t pt-4 mt-4" style={{ borderColor: '#E0F5F5' }}>

@@ -350,6 +350,8 @@ export async function sendOTP(pool: Pool, req: Request, res: Response) {
   try {
     const { phone } = req.body
     
+    console.log('📱 OTP Request received:', { phone, raw: req.body })
+    
     const validationError = validateRequired(req.body, ['phone'])
     if (validationError) {
       return sendError(res, 400, validationError)
@@ -357,6 +359,7 @@ export async function sendOTP(pool: Pool, req: Request, res: Response) {
     
     // Normalize phone number (remove spaces, +, etc.)
     const normalizedPhone = phone.replace(/[\s+\-()]/g, '')
+    console.log('📱 Normalized phone:', normalizedPhone)
     
     // Check if user already exists
     const existingUser = await pool.query(
@@ -391,14 +394,106 @@ export async function sendOTP(pool: Pool, req: Request, res: Response) {
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
     
     if (!accessToken || !phoneNumberId) {
-      console.error('WhatsApp credentials not configured')
-      return sendError(res, 500, 'WhatsApp service not configured')
+      console.error('❌ WhatsApp credentials not configured')
+      console.error('   Missing:', !accessToken ? 'WHATSAPP_ACCESS_TOKEN' : '', !phoneNumberId ? 'WHATSAPP_PHONE_NUMBER_ID' : '')
+      return sendError(res, 500, 'WhatsApp service not configured. Please check your environment variables.')
     }
     
     // Send OTP via WhatsApp
-    const message = `Your NEFÖL verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nDo not share this code with anyone.`
+    // Try template first, fallback to text message
+    const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME || 'otp_verification'
+    const templateLanguage = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en_US'
+    const useTemplate = process.env.WHATSAPP_USE_TEMPLATE === 'true'
     
     const facebookUrl = `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`
+    
+    let requestBody: any
+    
+    if (useTemplate) {
+      // Use template message (works without 24-hour session)
+      // Get contact info from env or use default
+      // Note: Template expects phone number format for {{2}} parameter (max 20 chars)
+      const contactInfo = process.env.WHATSAPP_CONTACT_INFO || '918887847213'
+      
+      // Build parameters array based on template requirements
+      const bodyParameters = [
+        {
+          type: 'text',
+          text: otp
+        }
+      ]
+      
+      // If template requires contact info (2nd parameter), add it
+      // Check if we should send 2 parameters (some templates have {{2}} for contact)
+      const sendContactInfo = process.env.WHATSAPP_TEMPLATE_HAS_CONTACT === 'true'
+      if (sendContactInfo) {
+        // Normalize contact info - remove spaces, +, dashes, etc.
+        // Template expects phone number format (digits only, max 20 chars)
+        const normalizedContact = contactInfo.replace(/[\s+\-()]/g, '').substring(0, 20)
+        bodyParameters.push({
+          type: 'text',
+          text: normalizedContact
+        })
+      }
+      
+      // Build components array
+      const components: any[] = [
+        {
+          type: 'body',
+          parameters: bodyParameters
+        }
+      ]
+      
+      // Check if template has buttons that require parameters
+      // URL buttons require a parameter (the URL)
+      const buttonUrl = process.env.WHATSAPP_BUTTON_URL || 'https://nefol.com'
+      const hasButton = process.env.WHATSAPP_TEMPLATE_HAS_BUTTON === 'true'
+      
+      if (hasButton) {
+        // Add button component with URL parameter
+        components.push({
+          type: 'button',
+          sub_type: 'url',
+          index: 0,
+          parameters: [
+            {
+              type: 'text',
+              text: buttonUrl
+            }
+          ]
+        })
+      }
+      
+      requestBody = {
+        messaging_product: 'whatsapp',
+        to: normalizedPhone,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: {
+            code: templateLanguage
+          },
+          components: components
+        }
+      }
+    } else {
+      // Use text message (requires 24-hour session)
+      const message = `Your NEFÖL verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nDo not share this code with anyone.`
+      requestBody = {
+        messaging_product: 'whatsapp',
+        to: normalizedPhone,
+        type: 'text',
+        text: {
+          body: message
+        }
+      }
+    }
+    
+    console.log('📤 Sending OTP via:', useTemplate ? 'Template' : 'Text Message')
+    if (useTemplate) {
+      console.log('   Template Name:', templateName)
+      console.log('   Template Language:', templateLanguage)
+    }
     
     const whatsappResponse = await fetch(facebookUrl, {
       method: 'POST',
@@ -406,26 +501,22 @@ export async function sendOTP(pool: Pool, req: Request, res: Response) {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: normalizedPhone,
-        type: 'text',
-        text: {
-          body: message
-        }
-      })
+      body: JSON.stringify(requestBody)
     })
     
     const whatsappData = await whatsappResponse.json() as any
     
     if (!whatsappResponse.ok) {
-      console.error('WhatsApp API error:', whatsappData)
+      console.error('❌ WhatsApp API error:', JSON.stringify(whatsappData, null, 2))
+      console.error('   Phone:', normalizedPhone)
+      console.error('   Status:', whatsappResponse.status)
       // Still return success to user (don't expose WhatsApp errors)
       // But log the error for debugging
       return sendError(res, 500, 'Failed to send OTP. Please try again.')
     }
     
     console.log('✅ OTP sent successfully to:', normalizedPhone)
+    console.log('   Message ID:', whatsappData.messages?.[0]?.id || 'N/A')
     
     sendSuccess(res, {
       message: 'OTP sent successfully to your WhatsApp',
@@ -545,6 +636,304 @@ export async function verifyOTPSignup(pool: Pool, req: Request, res: Response) {
     } else {
       sendError(res, 500, 'Failed to verify OTP', err)
     }
+  }
+}
+
+// Send OTP via WhatsApp for login
+export async function sendOTPLogin(pool: Pool, req: Request, res: Response) {
+  try {
+    const { phone } = req.body
+    
+    console.log('📱 Login OTP Request received:', { phone, raw: req.body })
+    
+    const validationError = validateRequired(req.body, ['phone'])
+    if (validationError) {
+      return sendError(res, 400, validationError)
+    }
+    
+    // Normalize phone number (remove spaces, +, etc.)
+    const normalizedPhone = phone.replace(/[\s+\-()]/g, '')
+    console.log('📱 Normalized phone:', normalizedPhone)
+    
+    // Check if user exists
+    const { rows: userRows } = await pool.query(
+      'SELECT id, name, email, phone FROM users WHERE phone = $1',
+      [normalizedPhone]
+    )
+    
+    if (userRows.length === 0) {
+      return sendError(res, 404, 'User not found. Please sign up first.')
+    }
+    
+    const user = userRows[0]
+    
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    
+    // Set expiration to 10 minutes from now
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+    
+    // Delete any existing OTPs for this phone
+    await pool.query(
+      'DELETE FROM otp_verifications WHERE phone = $1',
+      [normalizedPhone]
+    )
+    
+    // Store OTP in database
+    await pool.query(`
+      INSERT INTO otp_verifications (phone, otp, expires_at)
+      VALUES ($1, $2, $3)
+    `, [normalizedPhone, otp, expiresAt])
+    
+    // Get WhatsApp credentials from environment
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+    
+    if (!accessToken || !phoneNumberId) {
+      console.error('❌ WhatsApp credentials not configured')
+      console.error('   Missing:', !accessToken ? 'WHATSAPP_ACCESS_TOKEN' : '', !phoneNumberId ? 'WHATSAPP_PHONE_NUMBER_ID' : '')
+      return sendError(res, 500, 'WhatsApp service not configured. Please check your environment variables.')
+    }
+    
+    // Send OTP via WhatsApp
+    // Try template first, fallback to text message
+    const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME || 'otp_verification'
+    const templateLanguage = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en_US'
+    const useTemplate = process.env.WHATSAPP_USE_TEMPLATE === 'true'
+    
+    const facebookUrl = `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`
+    
+    let requestBody: any
+    
+    if (useTemplate) {
+      // Use template message (works without 24-hour session)
+      // Get contact info from env or use default
+      // Note: Template expects phone number format for {{2}} parameter (max 20 chars)
+      const contactInfo = process.env.WHATSAPP_CONTACT_INFO || '918887847213'
+      
+      // Build parameters array based on template requirements
+      const bodyParameters = [
+        {
+          type: 'text',
+          text: otp
+        }
+      ]
+      
+      // If template requires contact info (2nd parameter), add it
+      // Check if we should send 2 parameters (some templates have {{2}} for contact)
+      const sendContactInfo = process.env.WHATSAPP_TEMPLATE_HAS_CONTACT === 'true'
+      if (sendContactInfo) {
+        // Normalize contact info - remove spaces, +, dashes, etc.
+        // Template expects phone number format (digits only, max 20 chars)
+        const normalizedContact = contactInfo.replace(/[\s+\-()]/g, '').substring(0, 20)
+        bodyParameters.push({
+          type: 'text',
+          text: normalizedContact
+        })
+      }
+      
+      // Build components array
+      const components: any[] = [
+        {
+          type: 'body',
+          parameters: bodyParameters
+        }
+      ]
+      
+      // Check if template has buttons that require parameters
+      // URL buttons require a parameter (the URL)
+      const buttonUrl = process.env.WHATSAPP_BUTTON_URL || 'https://nefol.com'
+      const hasButton = process.env.WHATSAPP_TEMPLATE_HAS_BUTTON === 'true'
+      
+      if (hasButton) {
+        // Add button component with URL parameter
+        components.push({
+          type: 'button',
+          sub_type: 'url',
+          index: 0,
+          parameters: [
+            {
+              type: 'text',
+              text: buttonUrl
+            }
+          ]
+        })
+      }
+      
+      requestBody = {
+        messaging_product: 'whatsapp',
+        to: normalizedPhone,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: {
+            code: templateLanguage
+          },
+          components: components
+        }
+      }
+    } else {
+      // Use text message (requires 24-hour session)
+      const message = `Your NEFÖL login verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nDo not share this code with anyone.`
+      requestBody = {
+        messaging_product: 'whatsapp',
+        to: normalizedPhone,
+        type: 'text',
+        text: {
+          body: message
+        }
+      }
+    }
+    
+    console.log('📤 Sending Login OTP via:', useTemplate ? 'Template' : 'Text Message')
+    if (useTemplate) {
+      console.log('   Template Name:', templateName)
+      console.log('   Template Language:', templateLanguage)
+    }
+    
+    const whatsappResponse = await fetch(facebookUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    })
+    
+    const whatsappData = await whatsappResponse.json() as any
+    
+    if (!whatsappResponse.ok) {
+      console.error('❌ WhatsApp API error:', JSON.stringify(whatsappData, null, 2))
+      console.error('   Phone:', normalizedPhone)
+      console.error('   Status:', whatsappResponse.status)
+      // Still return success to user (don't expose WhatsApp errors)
+      // But log the error for debugging
+      return sendError(res, 500, 'Failed to send OTP. Please try again.')
+    }
+    
+    console.log('✅ Login OTP sent successfully to:', normalizedPhone)
+    console.log('   Message ID:', whatsappData.messages?.[0]?.id || 'N/A')
+    
+    sendSuccess(res, {
+      message: 'OTP sent successfully to your WhatsApp',
+      expiresIn: 600 // 10 minutes in seconds
+    })
+  } catch (err: any) {
+    console.error('❌ Error sending login OTP:', err)
+    sendError(res, 500, 'Failed to send OTP', err)
+  }
+}
+
+// Verify OTP and login
+export async function verifyOTPLogin(pool: Pool, req: Request, res: Response) {
+  try {
+    const { phone, otp } = req.body
+    
+    const validationError = validateRequired(req.body, ['phone', 'otp'])
+    if (validationError) {
+      return sendError(res, 400, validationError)
+    }
+    
+    // Normalize phone number
+    const normalizedPhone = phone.replace(/[\s+\-()]/g, '')
+    
+    // Find the OTP record
+    const { rows } = await pool.query(`
+      SELECT * FROM otp_verifications
+      WHERE phone = $1 AND verified = false
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [normalizedPhone])
+    
+    if (rows.length === 0) {
+      return sendError(res, 400, 'OTP not found or already used. Please request a new OTP.')
+    }
+    
+    const otpRecord = rows[0]
+    
+    // Check if OTP is expired
+    if (new Date(otpRecord.expires_at) < new Date()) {
+      await pool.query(
+        'DELETE FROM otp_verifications WHERE id = $1',
+        [otpRecord.id]
+      )
+      return sendError(res, 400, 'OTP has expired. Please request a new one.')
+    }
+    
+    // Check if too many attempts
+    if (otpRecord.attempts >= 5) {
+      await pool.query(
+        'DELETE FROM otp_verifications WHERE id = $1',
+        [otpRecord.id]
+      )
+      return sendError(res, 400, 'Too many failed attempts. Please request a new OTP.')
+    }
+    
+    // Verify OTP
+    if (otpRecord.otp !== otp) {
+      // Increment attempts
+      await pool.query(
+        'UPDATE otp_verifications SET attempts = attempts + 1 WHERE id = $1',
+        [otpRecord.id]
+      )
+      return sendError(res, 400, 'Invalid OTP. Please try again.')
+    }
+    
+    // Find user by phone
+    const { rows: userRows } = await pool.query(
+      'SELECT id, name, email, phone FROM users WHERE phone = $1',
+      [normalizedPhone]
+    )
+    
+    if (userRows.length === 0) {
+      // Mark OTP as verified
+      await pool.query(
+        'UPDATE otp_verifications SET verified = true WHERE id = $1',
+        [otpRecord.id]
+      )
+      return sendError(res, 404, 'User not found')
+    }
+    
+    const user = userRows[0]
+    
+    // Mark OTP as verified
+    await pool.query(
+      'UPDATE otp_verifications SET verified = true WHERE id = $1',
+      [otpRecord.id]
+    )
+    
+    // Generate token
+    const token = `user_token_${user.id}_${Date.now()}`
+    
+    // Update last login
+    await pool.query(
+      'UPDATE users SET updated_at = NOW() WHERE id = $1',
+      [user.id]
+    )
+    
+    console.log('✅ User logged in via WhatsApp OTP:', normalizedPhone)
+    
+    // Log login activity
+    await logUserActivity(pool, {
+      user_id: user.id,
+      activity_type: 'auth',
+      activity_subtype: 'whatsapp_login',
+      user_agent: req.headers['user-agent'],
+      ip_address: req.ip || req.connection.remoteAddress
+    })
+    
+    sendSuccess(res, {
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      }
+    })
+  } catch (err: any) {
+    console.error('❌ Error verifying login OTP:', err)
+    sendError(res, 500, 'Failed to verify OTP', err)
   }
 }
 

@@ -278,35 +278,61 @@ export default function UserDetail() {
   const { user, stats, addresses, orders, activities, sessions, notes, tags, cart, wishlist, activitySummary, topPages, productInteractions } = userData
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/admin/users')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="p-2 hover:bg-[var(--arctic-blue-lighter)] rounded-xl transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h1>
-            <p className="text-gray-600 dark:text-gray-400">User ID: {user.id}</p>
+            <h1 
+              className="text-3xl font-light mb-2 tracking-[0.15em]" 
+              style={{
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                letterSpacing: '0.15em'
+              }}
+            >
+              {user.name}
+            </h1>
+            <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+              User ID: {user.id}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
             user.is_verified 
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
-              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
-          }`}>
+              ? ''
+              : ''
+          }`}
+          style={user.is_verified 
+            ? { backgroundColor: '#D1FAE5', color: '#059669' }
+            : { backgroundColor: '#FEF3C7', color: '#D97706' }
+          }>
             {user.is_verified ? 'Verified' : 'Unverified'}
           </span>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="metric-card">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Orders</p>

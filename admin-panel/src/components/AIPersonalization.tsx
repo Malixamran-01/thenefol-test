@@ -120,30 +120,47 @@ export default function AIPersonalization() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
+    <div className="max-w-7xl mx-auto p-6 space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
             AI Personalization
           </h1>
-          <p className="text-slate-600 dark:text-slate-400">
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
             Deliver personalized experiences using AI-powered insights
           </p>
         </div>
         <div className="flex space-x-3">
           <button
             onClick={loadPersonalizationData}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+            className="btn-secondary flex items-center space-x-2"
           >
             <Sparkles className="h-4 w-4" />
             <span>Refresh</span>
           </button>
-          <button className="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center space-x-2">
+          <button className="btn-secondary flex items-center space-x-2">
             <Settings className="h-4 w-4" />
             <span>Settings</span>
           </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+          <button className="btn-primary flex items-center space-x-2">
             <Sparkles className="h-4 w-4" />
             <span>Create Rule</span>
           </button>
@@ -211,9 +228,13 @@ export default function AIPersonalization() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                      ? ''
+                      : 'border-transparent'
                   }`}
+                  style={activeTab === tab.id 
+                    ? { borderColor: 'var(--arctic-blue-primary)', color: 'var(--arctic-blue-primary-dark)' }
+                    : { color: 'var(--text-muted)' }
+                  }
                 >
                   <IconComponent className="h-4 w-4" />
                   <span>{tab.label}</span>

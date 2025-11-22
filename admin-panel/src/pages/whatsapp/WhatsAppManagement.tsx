@@ -495,19 +495,36 @@ export default function WhatsAppManagement() {
   )
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-6 space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+        <h1 
+          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          style={{
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+            letterSpacing: '0.15em'
+          }}
+        >
           WhatsApp Business Management
         </h1>
-        <p className="text-slate-600 dark:text-slate-400">
+        <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
           Complete WhatsApp integration - Configuration, Templates, Automations, and More
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200 dark:border-slate-700">
+      <div className="border-b" style={{ borderColor: 'var(--arctic-blue-light)' }}>
         <div className="flex space-x-8">
           {[
             { id: 'config', label: 'Configuration', icon: Settings },
@@ -521,9 +538,13 @@ export default function WhatsAppManagement() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center space-x-2 pb-4 border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? ''
+                  : 'border-transparent'
               }`}
+              style={activeTab === tab.id 
+                ? { borderColor: 'var(--arctic-blue-primary)', color: 'var(--arctic-blue-primary-dark)' }
+                : { color: 'var(--text-muted)' }
+              }
             >
               <tab.icon className="h-5 w-5" />
               <span className="font-medium">{tab.label}</span>

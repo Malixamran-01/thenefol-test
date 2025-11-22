@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useCart, parsePrice } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
-import { CreditCard, Smartphone, Wallet, Building, Coins, MapPin } from 'lucide-react'
+import { CreditCard, Smartphone, Wallet, Coins, MapPin } from 'lucide-react'
 import PricingDisplay from '../components/PricingDisplay'
 import AuthGuard from '../components/AuthGuard'
 import PhoneInput from '../components/PhoneInput'
@@ -10,7 +10,6 @@ import { pixelEvents, formatPurchaseData, formatCartData } from '../utils/metaPi
 
 const paymentMethods = [
   { id: 'razorpay', name: 'Razorpay Secure (UPI, Cards, Int\'l Cards, Wallets)', icon: CreditCard, color: 'bg-blue-500' },
-  { id: 'easybuzz', name: 'Easebuzz', icon: Building, color: 'bg-green-500' },
   { id: 'cod', name: 'Cash on Delivery (COD)', icon: CreditCard, color: 'bg-green-600' }
 ]
 
@@ -66,6 +65,8 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   const [billingState, setBillingState] = useState('Uttar Pradesh')
   const [billingZip, setBillingZip] = useState('')
   const [billingCountry, setBillingCountry] = useState('India')
+  const [billingPhone, setBillingPhone] = useState('')
+  const [billingCountryCode, setBillingCountryCode] = useState('+91')
   const [savedAddresses, setSavedAddresses] = useState<any[]>([])
   const [selectedSavedAddress, setSelectedSavedAddress] = useState<string>('')
 
@@ -507,7 +508,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           state: state.trim(), 
           zip: zip.trim(),
           pincode: zip.trim(), // Also include pincode for Shiprocket compatibility
-          phone: `${countryCode}${phone.replace(/\D/g, '')}`,
+          phone: getTenDigitPhone(phone, countryCode), // Shiprocket requires exactly 10 digits
           country: country || 'India',
           email: email.trim()
         },
@@ -521,18 +522,21 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           state: state.trim(),
           zip: zip.trim(),
           country: country || 'India',
-          phone: `${countryCode}${phone.replace(/\D/g, '')}`,
+          phone: getTenDigitPhone(phone, countryCode), // Shiprocket requires exactly 10 digits
           email: email.trim()
         } : {
-          firstName: billingFirstName,
-          lastName: billingLastName,
-          company: billingCompany,
-          address: billingAddress,
-          apartment: billingApartment,
-          city: billingCity,
-          state: billingState,
-          zip: billingZip,
-          country: billingCountry
+          firstName: billingFirstName.trim(),
+          lastName: billingLastName.trim(),
+          company: billingCompany.trim() || undefined,
+          address: billingAddress.trim(),
+          apartment: billingApartment.trim() || undefined,
+          city: billingCity.trim(),
+          state: billingState.trim(),
+          zip: billingZip.trim(),
+          pincode: billingZip.trim(), // Also include pincode for Shiprocket compatibility
+          country: billingCountry || 'India',
+          phone: getTenDigitPhone(billingPhone || phone, billingCountryCode || countryCode), // Shiprocket requires exactly 10 digits
+          email: email.trim()
         },
         items: enrichedItems,
         subtotal: Number(calcSubtotal.toFixed(2)),
@@ -558,7 +562,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         order_number: orderNumber,
         customer_name: `${firstName} ${lastName}`.trim(),
         customer_email: email,
-        customer_phone: `${countryCode}${phone.replace(/\D/g, '')}`
+        customer_phone: `${countryCode}${getTenDigitPhone(phone, countryCode)}`
       })
 
       // Initialize Razorpay checkout
@@ -572,7 +576,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         prefill: {
           name: `${firstName} ${lastName}`.trim(),
           email: email,
-          contact: `${countryCode}${phone.replace(/\D/g, '')}`
+          contact: `${countryCode}${getTenDigitPhone(phone, countryCode)}`
         },
         handler: async function(response: any) {
           try {
@@ -621,6 +625,25 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
     }
   }
 
+  // Helper function to extract 10-digit phone number for Shiprocket
+  const getTenDigitPhone = (phoneValue: string, countryCodeValue: string): string => {
+    // Remove all non-digits
+    const cleanPhone = phoneValue.replace(/\D/g, '')
+    
+    // If phone includes country code (e.g., +919876543210), extract last 10 digits
+    if (cleanPhone.length > 10) {
+      return cleanPhone.slice(-10)
+    }
+    
+    // If phone is exactly 10 digits, return as is
+    if (cleanPhone.length === 10) {
+      return cleanPhone
+    }
+    
+    // If phone is less than 10 digits, pad with zeros (shouldn't happen with validation)
+    return cleanPhone.padStart(10, '0').slice(-10)
+  }
+
   // Validate shipping address for Shiprocket requirements
   const validateShippingAddress = (): string | null => {
     // Required fields for Shiprocket
@@ -633,10 +656,19 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
     if (!phone?.trim()) return 'Phone number is required'
     if (!email?.trim()) return 'Email is required'
     
-    // Validate phone number (6-15 digits, excluding country code)
+    // Validate phone number - must be exactly 10 digits for Shiprocket
     const cleanPhone = phone.replace(/\D/g, '')
-    if (cleanPhone.length < 6 || cleanPhone.length > 15) {
-      return 'Please enter a valid phone number (6-15 digits)'
+    if (cleanPhone.length !== 10) {
+      return 'Please enter a valid 10-digit phone number'
+    }
+    
+    // Validate billing phone if different billing address
+    if (!sameAsShipping) {
+      if (!billingPhone?.trim()) return 'Billing phone number is required'
+      const cleanBillingPhone = billingPhone.replace(/\D/g, '')
+      if (cleanBillingPhone.length !== 10) {
+        return 'Please enter a valid 10-digit billing phone number'
+      }
     }
     
     // Validate PIN code (6 digits for India)
@@ -644,6 +676,14 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
     const cleanZip = zip.replace(/\D/g, '')
     if (cleanZip.length !== 6 || !zipRegex.test(cleanZip)) {
       return 'Please enter a valid 6-digit PIN code'
+    }
+    
+    // Validate billing PIN if different billing address
+    if (!sameAsShipping && billingZip) {
+      const cleanBillingZip = billingZip.replace(/\D/g, '')
+      if (cleanBillingZip.length !== 6 || !zipRegex.test(cleanBillingZip)) {
+        return 'Please enter a valid 6-digit billing PIN code'
+      }
     }
     
     // Validate email format
@@ -681,15 +721,6 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         return
       }
 
-      // Handle Easybuzz payment (for remaining amount if coins used, or full amount)
-      if (selectedPayment === 'easybuzz') {
-        // Similar to Razorpay but with Easybuzz gateway
-        // For now, redirect to payment or show message
-        alert('Easybuzz payment integration pending. Please use Razorpay or COD.')
-        setLoading(false)
-        return
-      }
-
       // Handle other payment methods (COD, etc.)
       const orderNumber = `NEFOL-${Date.now()}`
       
@@ -714,7 +745,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           state: state.trim(), 
           zip: zip.trim(),
           pincode: zip.trim(), // Also include pincode for Shiprocket compatibility
-          phone: `${countryCode}${phone.replace(/\D/g, '')}`,
+          phone: getTenDigitPhone(phone, countryCode), // Shiprocket requires exactly 10 digits
           country: country || 'India',
           email: email.trim()
         },
@@ -728,18 +759,21 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           state: state.trim(),
           zip: zip.trim(),
           country: country || 'India',
-          phone: `${countryCode}${phone.replace(/\D/g, '')}`,
+          phone: getTenDigitPhone(phone, countryCode), // Shiprocket requires exactly 10 digits
           email: email.trim()
         } : {
-          firstName: billingFirstName,
-          lastName: billingLastName,
-          company: billingCompany,
-          address: billingAddress,
-          apartment: billingApartment,
-          city: billingCity,
-          state: billingState,
-          zip: billingZip,
-          country: billingCountry
+          firstName: billingFirstName.trim(),
+          lastName: billingLastName.trim(),
+          company: billingCompany.trim() || undefined,
+          address: billingAddress.trim(),
+          apartment: billingApartment.trim() || undefined,
+          city: billingCity.trim(),
+          state: billingState.trim(),
+          zip: billingZip.trim(),
+          pincode: billingZip.trim(), // Also include pincode for Shiprocket compatibility
+          country: billingCountry || 'India',
+          phone: getTenDigitPhone(billingPhone || phone, billingCountryCode || countryCode), // Shiprocket requires exactly 10 digits
+          email: email.trim()
         },
         items: enrichedItems,
         subtotal: Number(calcSubtotal.toFixed(2)),
@@ -1016,15 +1050,20 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
             <div className="mb-3">
               <PhoneInput
                 value={phone}
-                onChange={setPhone}
+                onChange={(value) => {
+                  // Ensure only digits and limit to 10 digits for Shiprocket
+                  const digitsOnly = value.replace(/\D/g, '').slice(0, 10)
+                  setPhone(digitsOnly)
+                }}
                 onCountryCodeChange={setCountryCode}
                 defaultCountry={countryCode}
-                placeholder="Enter phone number"
+                placeholder="Enter 10-digit phone number"
                 required
                 showLabel
                 label="Phone"
                 className="mb-3"
               />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Enter exactly 10 digits (required for shipping)</p>
             </div>
 
             {/* Checkboxes */}
@@ -1189,41 +1228,6 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                     Select Payment Method for Remaining Amount: ₹{Math.max(0, finalSubtotal - (coinsToUse / 10)).toFixed(2)}
                   </p>
                 </div>
-              )}
-
-              {/* Easebuzz - Hide if coins cover full amount */}
-              {(!useCoins || (coinsToUse / 10) < finalSubtotal) && (
-                <label className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  selectedPayment === 'easybuzz'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
-                }`}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="easybuzz"
-                    checked={selectedPayment === 'easybuzz'}
-                    onChange={(e) => setSelectedPayment(e.target.value)}
-                    disabled={useCoins && (coinsToUse / 10) >= finalSubtotal}
-                    className="mt-1 mr-3"
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium text-slate-700 dark:text-slate-300">
-                      Easebuzz
-                      {useCoins && (coinsToUse / 10) < finalSubtotal && (
-                        <span className="text-xs text-slate-500 ml-2">
-                          (Pay ₹{Math.max(0, finalSubtotal - (coinsToUse / 10)).toFixed(2)})
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {useCoins && (coinsToUse / 10) < finalSubtotal 
-                        ? `Pay remaining ₹${Math.max(0, finalSubtotal - (coinsToUse / 10)).toFixed(2)} via Easebuzz`
-                        : 'After clicking "Pay now", you will be redirected to Easebuzz to complete your purchase securely.'
-                      }
-                    </div>
-                  </div>
-                </label>
               )}
 
               {/* Razorpay Secure - Hide if coins cover full amount */}
@@ -1413,15 +1417,41 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">PIN code</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      PIN code <span className="text-red-500">*</span>
+                    </label>
                     <input 
                       className="w-full rounded border border-slate-300 px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100" 
-                      placeholder="PIN code" 
+                      placeholder="6-digit PIN code" 
                       value={billingZip} 
-                      onChange={e=>setBillingZip(e.target.value)} 
+                      onChange={e=>setBillingZip(e.target.value.replace(/\D/g, '').slice(0, 6))} 
                       required={!sameAsShipping}
+                      pattern="\d{6}"
+                      minLength={6}
+                      maxLength={6}
                     />
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Required for shipping</p>
                   </div>
+                </div>
+
+                {/* Billing Phone */}
+                <div className="mb-3">
+                  <PhoneInput
+                    value={billingPhone}
+                    onChange={(value) => {
+                      // Ensure only digits and limit to 10 digits for Shiprocket
+                      const digitsOnly = value.replace(/\D/g, '').slice(0, 10)
+                      setBillingPhone(digitsOnly)
+                    }}
+                    onCountryCodeChange={setBillingCountryCode}
+                    defaultCountry={billingCountryCode}
+                    placeholder="Enter 10-digit phone number"
+                    required={!sameAsShipping}
+                    showLabel
+                    label="Billing Phone"
+                    className="mb-3"
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Enter exactly 10 digits (required for shipping)</p>
                 </div>
               </div>
             )}
@@ -1436,7 +1466,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           >
             {loading ? 'Processing Order...' : 
              useCoins && (coinsToUse / 10) >= finalSubtotal ? `Place Order (Paid with ${coinsToUse} Coins)` :
-             useCoins && (coinsToUse / 10) < finalSubtotal ? `Use ${coinsToUse} Coins + Pay ₹${grandTotal.toFixed(2)} ${isCOD ? '(COD)' : selectedPayment === 'razorpay' || selectedPayment === 'easybuzz' ? 'Now' : ''}` :
+             useCoins && (coinsToUse / 10) < finalSubtotal ? `Use ${coinsToUse} Coins + Pay ₹${grandTotal.toFixed(2)} ${isCOD ? '(COD)' : selectedPayment === 'razorpay' ? 'Now' : ''}` :
              isCOD ? `Place Order (COD) - ₹${grandTotal.toFixed(2)}` : 
              `Pay now`}
           </button>

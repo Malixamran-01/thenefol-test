@@ -140,22 +140,43 @@ export default function BlogRequestManagement() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Blog Request Management</h1>
-          <p className="text-gray-600 mt-2">Manage blog submissions and published posts</p>
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Blog Request Management
+          </h1>
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+            Manage blog submissions and published posts
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-yellow-500" />
-            <span className="text-sm text-gray-600">
+            <Clock className="w-5 h-5" style={{ color: '#D97706' }} />
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {blogRequests.filter(r => r.status === 'pending').length} pending
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-500" />
-            <span className="text-sm text-gray-600">
+            <CheckCircle className="w-5 h-5" style={{ color: '#059669' }} />
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {blogPosts.filter(p => p.status === 'approved').length} published
             </span>
           </div>

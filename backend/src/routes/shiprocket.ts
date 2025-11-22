@@ -78,6 +78,28 @@ export async function getShiprocketConfig(pool: Pool, req: Request, res: Respons
   }
 }
 
+// Get available pickup locations from Shiprocket
+export async function getPickupLocations(pool: Pool) {
+  try {
+    const token = await getToken(pool)
+    if (!token) return null
+    
+    const base = getBaseUrl()
+    const resp = await fetch(`${base}/settings/company/pickup`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    if (!resp.ok) return null
+    
+    const data: any = await resp.json()
+    // Shiprocket returns locations in data.data array
+    return data?.data || data || []
+  } catch (err) {
+    console.error('Error fetching pickup locations:', err)
+    return null
+  }
+}
+
 // Create shipment in Shiprocket
 export async function createShipment(pool: Pool, req: Request, res: Response) {
   try {
@@ -98,11 +120,41 @@ export async function createShipment(pool: Pool, req: Request, res: Response) {
     const token = await getToken(pool)
     if (!token) return sendError(res, 400, 'Invalid Shiprocket credentials')
     
+    // Get available pickup locations and use the first one
+    const pickupLocations = await getPickupLocations(pool)
+    let pickupLocation = 'work' // Default to 'work' based on error response, fallback to 'Primary' if needed
+    if (pickupLocations && pickupLocations.length > 0) {
+      // Use the first available pickup location's name
+      pickupLocation = pickupLocations[0].pickup_location || pickupLocations[0].id?.toString() || 'work'
+      console.log(`✅ Using pickup location: ${pickupLocation} (from ${pickupLocations.length} available locations)`)
+    } else {
+      // Use 'work' as default since that's what Shiprocket expects based on error response
+      pickupLocation = 'work'
+      console.log('⚠️ No pickup locations found via API, using default: work')
+    }
+    
+    // Helper function to extract 10-digit phone number for Shiprocket
+    const getTenDigitPhone = (phoneValue: string | undefined): string => {
+      if (!phoneValue) return ''
+      // Remove all non-digits
+      const cleanPhone = phoneValue.replace(/\D/g, '')
+      // If phone includes country code (e.g., +919876543210), extract last 10 digits
+      if (cleanPhone.length > 10) {
+        return cleanPhone.slice(-10)
+      }
+      // If phone is exactly 10 digits, return as is
+      if (cleanPhone.length === 10) {
+        return cleanPhone
+      }
+      // If phone is less than 10 digits, return empty (will fail validation)
+      return cleanPhone
+    }
+
     // Prepare shipment payload for Shiprocket
     const shipmentPayload = {
       order_id: order.order_number || `ORDER-${order.id}`,
       order_date: new Date(order.created_at || Date.now()).toISOString().split('T')[0],
-      pickup_location: 'Primary', // Default pickup location, can be configured
+      pickup_location: pickupLocation,
       billing_customer_name: order.customer_name,
       billing_last_name: shippingAddress.lastName || '',
       billing_address: shippingAddress.address || '',
@@ -112,7 +164,7 @@ export async function createShipment(pool: Pool, req: Request, res: Response) {
       billing_state: shippingAddress.state || '',
       billing_country: shippingAddress.country || 'India',
       billing_email: order.customer_email,
-      billing_phone: shippingAddress.phone || '',
+      billing_phone: getTenDigitPhone(shippingAddress.phone || (order.billing_address?.phone)),
       shipping_is_billing: !order.billing_address,
       shipping_customer_name: order.customer_name,
       shipping_last_name: shippingAddress.lastName || '',
@@ -123,7 +175,7 @@ export async function createShipment(pool: Pool, req: Request, res: Response) {
       shipping_state: shippingAddress.state || '',
       shipping_country: shippingAddress.country || 'India',
       shipping_email: order.customer_email,
-      shipping_phone: shippingAddress.phone || '',
+      shipping_phone: getTenDigitPhone(shippingAddress.phone),
       order_items: items.map((item: any, index: number) => ({
         name: item.name || item.title || `Product ${index + 1}`,
         sku: item.sku || item.variant_id || `SKU-${item.product_id || index}`,
@@ -159,8 +211,91 @@ export async function createShipment(pool: Pool, req: Request, res: Response) {
     const shipmentData: any = await shipmentResp.json()
     
     if (!shipmentResp.ok) {
-      console.error('Shiprocket shipment creation error:', shipmentData)
-      return sendError(res, 400, 'Failed to create shipment in Shiprocket', shipmentData)
+      // If error is about pickup location, try to get the correct one from error response
+      if (shipmentData?.message?.includes('Pickup location') || shipmentData?.message?.includes('pickup')) {
+        // Try to extract location from error response - check multiple possible structures
+        let correctLocation = 'work' // Default fallback
+        if (shipmentData?.data?.data?.length > 0) {
+          correctLocation = shipmentData.data.data[0].pickup_location || shipmentData.data.data[0].id?.toString() || 'work'
+        } else if (shipmentData?.data?.length > 0) {
+          correctLocation = shipmentData.data[0].pickup_location || shipmentData.data[0].id?.toString() || 'work'
+        }
+        console.log(`⚠️ Pickup location error detected, retrying with: ${correctLocation}`)
+        console.log(`   Error message: ${shipmentData?.message}`)
+        
+        // Retry with correct pickup location
+        shipmentPayload.pickup_location = correctLocation
+        const retryResp = await fetch(`${base}/orders/create/adhoc`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(shipmentPayload)
+        })
+        
+        const retryData: any = await retryResp.json()
+        
+        if (retryResp.ok && retryData) {
+          // Use retry data
+          const shipmentId = retryData?.shipment_id || retryData?.order_id || null
+          const awbCode = retryData?.awb_code || null
+          
+          // Check if shipment already exists
+          const existingShipment = await pool.query(
+            'SELECT id FROM shiprocket_shipments WHERE order_id = $1',
+            [order.id]
+          )
+          
+          if (existingShipment.rows.length === 0) {
+            const { rows } = await pool.query(
+              `INSERT INTO shiprocket_shipments (order_id, shipment_id, tracking_url, status, awb_code, label_url, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+               RETURNING *`,
+              [
+                order.id,
+                shipmentId ? String(shipmentId) : null,
+                retryData?.tracking_url || null,
+                retryData?.status || 'pending',
+                awbCode,
+                retryData?.label_url || null
+              ]
+            )
+            
+            return sendSuccess(res, {
+              ...rows[0],
+              shiprocket_response: retryData
+            }, 201)
+          } else {
+            // Update existing
+            const { rows } = await pool.query(
+              `UPDATE shiprocket_shipments 
+               SET shipment_id = $1, tracking_url = $2, status = $3, awb_code = $4, label_url = $5, updated_at = NOW()
+               WHERE order_id = $6
+               RETURNING *`,
+              [
+                shipmentId ? String(shipmentId) : null,
+                retryData?.tracking_url || null,
+                retryData?.status || 'pending',
+                awbCode,
+                retryData?.label_url || null,
+                order.id
+              ]
+            )
+            
+            return sendSuccess(res, {
+              ...rows[0],
+              shiprocket_response: retryData
+            }, 200)
+          }
+        } else {
+          console.error('Shiprocket shipment creation error (after retry):', retryData)
+          return sendError(res, 400, 'Failed to create shipment in Shiprocket', retryData)
+        }
+      } else {
+        console.error('Shiprocket shipment creation error:', shipmentData)
+        return sendError(res, 400, 'Failed to create shipment in Shiprocket', shipmentData)
+      }
     }
     
     const shipmentId = shipmentData?.shipment_id || shipmentData?.order_id || null

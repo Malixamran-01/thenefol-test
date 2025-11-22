@@ -18,12 +18,36 @@ export default function OnlineStore() {
   ])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Online Store</h1>
+        <div>
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Online Store
+          </h1>
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+            Configure your online store settings
+          </p>
+        </div>
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-          <span className="text-sm text-gray-600">Store is live</span>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Store is live</span>
         </div>
       </div>
 
@@ -32,8 +56,8 @@ export default function OnlineStore() {
         <div className="metric-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Store Status</p>
-              <p className="text-2xl font-bold text-green-600">Live</p>
+              <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Store Status</p>
+              <p className="text-2xl font-light" style={{ color: '#059669', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>Live</p>
             </div>
             <div className="text-2xl">🟢</div>
           </div>
@@ -41,8 +65,8 @@ export default function OnlineStore() {
         <div className="metric-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Domain</p>
-              <p className="text-lg font-bold text-gray-900">nefol.com</p>
+              <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Domain</p>
+              <p className="text-lg font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>nefol.com</p>
             </div>
             <div className="text-2xl">🌐</div>
           </div>
@@ -50,8 +74,8 @@ export default function OnlineStore() {
         <div className="metric-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Theme</p>
-              <p className="text-lg font-bold text-gray-900">Nefol Classic</p>
+              <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Theme</p>
+              <p className="text-lg font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>Nefol Classic</p>
             </div>
             <div className="text-2xl">🎨</div>
           </div>
@@ -60,7 +84,7 @@ export default function OnlineStore() {
 
       {/* Store Settings */}
       <div className="metric-card">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Store Settings</h2>
+        <h2 className="text-xl font-light mb-4" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)', letterSpacing: '0.15em' }}>Store Settings</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Store Name</label>

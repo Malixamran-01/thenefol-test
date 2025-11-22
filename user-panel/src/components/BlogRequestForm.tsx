@@ -293,7 +293,6 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Submitting...
                 </>
               ) : (

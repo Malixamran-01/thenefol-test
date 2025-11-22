@@ -228,7 +228,6 @@ export default function NefolCoins() {
     return (
       <main className="min-h-screen bg-white flex items-center justify-center" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-slate-600" style={{ color: '#666' }}>Loading your coins...</p>
         </div>
       </main>

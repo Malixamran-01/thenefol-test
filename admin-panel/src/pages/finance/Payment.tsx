@@ -241,12 +241,33 @@ const Payment: React.FC = () => {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
-          <p className="text-gray-600">Manage payment methods, gateways, and transactions</p>
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Payment Management
+          </h1>
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+            Manage payment methods, gateways, and transactions
+          </p>
         </div>
         <div className="flex space-x-3">
           {activeTab === 'methods' && (

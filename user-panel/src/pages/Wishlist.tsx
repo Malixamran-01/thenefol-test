@@ -77,7 +77,6 @@ export default function Wishlist() {
       <main className="py-10 dark:bg-slate-900 min-h-screen">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         </div>
       </main>

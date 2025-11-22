@@ -2,6 +2,7 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { sendWelcomeOffer } from '../utils/whatsappUtils'
 
 // Subscribe to WhatsApp
 export async function subscribeWhatsApp(pool: Pool, req: Request, res: Response) {
@@ -163,7 +164,26 @@ export async function subscribeWhatsApp(pool: Pool, req: Request, res: Response)
       console.log('📱 Emitted WhatsApp subscription notification to admin panel')
     }
 
-    // TODO: Send welcome WhatsApp message here
+    // Send welcome offer WhatsApp message
+    if (isNewSubscription) {
+      try {
+        // Send welcome offer asynchronously (don't block the response)
+        sendWelcomeOffer(normalizedPhone, name || undefined, pool)
+          .then((result) => {
+            if (result.success) {
+              console.log(`🎉 Welcome offer sent successfully to ${normalizedPhone}`)
+            } else {
+              console.error(`⚠️ Failed to send welcome offer to ${normalizedPhone}:`, result.error)
+            }
+          })
+          .catch((err) => {
+            console.error(`⚠️ Error sending welcome offer to ${normalizedPhone}:`, err)
+          })
+      } catch (err) {
+        // Log error but don't fail the subscription
+        console.error('Error initiating welcome offer send:', err)
+      }
+    }
 
     sendSuccess(res, { 
       message: 'Successfully subscribed to WhatsApp updates',

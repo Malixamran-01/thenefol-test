@@ -59,42 +59,70 @@ export default function POSSystem() {
   }, [])
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">POS System</h1>
-
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-3">Open POS Session</h2>
-        <input
-          type="number"
-          value={openSession.staff_id}
-          onChange={(e) => setOpenSession({ ...openSession, staff_id: e.target.value })}
-          placeholder="Staff ID"
-          className="border p-2 rounded mr-2"
-        />
-        <input
-          type="number"
-          value={openSession.opening_amount}
-          onChange={(e) => setOpenSession({ ...openSession, opening_amount: e.target.value })}
-          placeholder="Opening amount"
-          className="border p-2 rounded mr-2"
-        />
-        <button onClick={handleOpenSession} className="px-4 py-2 bg-green-500 text-white rounded">
-          Open Session
-        </button>
+    <div className="p-6 space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div>
+        <h1 
+          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          style={{
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+            letterSpacing: '0.15em'
+          }}
+        >
+          POS System
+        </h1>
+        <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+          Manage point of sale transactions and sessions
+        </p>
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Recent Transactions</h2>
+      <div className="metric-card">
+        <h2 className="text-xl font-light mb-4" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)', letterSpacing: '0.15em' }}>Open POS Session</h2>
+        <div className="flex gap-3 flex-wrap">
+          <input
+            type="number"
+            value={openSession.staff_id}
+            onChange={(e) => setOpenSession({ ...openSession, staff_id: e.target.value })}
+            placeholder="Staff ID"
+            className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+            style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+          />
+          <input
+            type="number"
+            value={openSession.opening_amount}
+            onChange={(e) => setOpenSession({ ...openSession, opening_amount: e.target.value })}
+            placeholder="Opening amount"
+            className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+            style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+          />
+          <button onClick={handleOpenSession} className="btn-primary">
+            Open Session
+          </button>
+        </div>
+      </div>
+
+      <div className="metric-card">
+        <h2 className="text-xl font-light mb-4" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)', letterSpacing: '0.15em' }}>Recent Transactions</h2>
         {transactions.length === 0 ? (
-          <p className="text-gray-500">No transactions</p>
+          <p style={{ color: 'var(--text-muted)' }}>No transactions</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {transactions.map(t => (
-              <div key={t.id} className="border p-3 rounded">
-                <p><strong>Transaction:</strong> {t.transaction_number}</p>
-                <p><strong>Total:</strong> ₹{t.total}</p>
-                <p><strong>Method:</strong> {t.payment_method}</p>
-                <p className="text-sm text-gray-500">{new Date(t.created_at).toLocaleString()}</p>
+              <div key={t.id} className="border p-4 rounded-xl transition-colors hover:bg-[var(--arctic-blue-lighter)]" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+                <p className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}><strong>Transaction:</strong> {t.transaction_number}</p>
+                <p style={{ color: 'var(--text-secondary)' }}><strong>Total:</strong> ₹{t.total}</p>
+                <p style={{ color: 'var(--text-secondary)' }}><strong>Method:</strong> {t.payment_method}</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{new Date(t.created_at).toLocaleString()}</p>
               </div>
             ))}
           </div>

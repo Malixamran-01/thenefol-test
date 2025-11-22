@@ -25,6 +25,7 @@ interface AuthContextValue {
   isLoading: boolean
   error: string | null
   login: (email: string, password: string) => Promise<boolean>
+  loginWithWhatsApp: (phone: string, otp: string) => Promise<boolean>
   signup: (userData: SignupData) => Promise<boolean>
   logout: () => void
   updateProfile: (data: Partial<User>) => Promise<boolean>
@@ -106,6 +107,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const { user, token } = data
+
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
+        
+        setUser(user)
+        setIsAuthenticated(true)
+        return true
+      } else {
+        const errorData = await response.json()
+        setError(errorData.message || 'Login failed')
+        return false
+      }
+    } catch (error) {
+      setError('Network error. Please try again.')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const loginWithWhatsApp = async (phone: string, otp: string): Promise<boolean> => {
+    try {
+      setError(null)
+      setIsLoading(true)
+
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/auth/verify-otp-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp })
       })
 
       if (response.ok) {
@@ -230,6 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     error,
     login,
+    loginWithWhatsApp,
     signup,
     logout,
     updateProfile,

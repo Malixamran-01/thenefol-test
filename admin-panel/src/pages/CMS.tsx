@@ -289,24 +289,43 @@ export default function CMS() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Content Management System</h1>
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Content Management System
+          </h1>
           <div className="flex items-center gap-2 mt-2">
             {isRealtimeConnected ? (
               <>
-                <Wifi className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-green-600">Live • Real-time updates enabled</span>
+                <Wifi className="w-4 h-4" style={{ color: '#059669' }} />
+                <span className="text-sm" style={{ color: '#059669' }}>Live • Real-time updates enabled</span>
               </>
             ) : (
               <>
-                <WifiOff className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-400">Offline • Changes may not sync</span>
+                <WifiOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Offline • Changes may not sync</span>
               </>
             )}
             {lastUpdate && (
-              <span className="text-xs text-gray-500 ml-4">
+              <span className="text-xs ml-4" style={{ color: 'var(--text-muted)' }}>
                 Last update: {lastUpdate.toLocaleTimeString()}
               </span>
             )}

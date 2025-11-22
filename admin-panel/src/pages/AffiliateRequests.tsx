@@ -369,16 +369,33 @@ export default function AffiliateRequests() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)', backgroundColor: 'var(--arctic-blue-background)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="metric-card border-b" style={{ borderColor: 'var(--arctic-blue-light)' }}>
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 
+                className="text-3xl font-light mb-2 tracking-[0.15em]" 
+                style={{
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  letterSpacing: '0.15em'
+                }}
+              >
                 Affiliate Requests Management
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
                 Review and manage affiliate applications
               </p>
             </div>
@@ -386,12 +403,12 @@ export default function AffiliateRequests() {
               <button
                 onClick={fetchApplications}
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="btn-secondary inline-flex items-center gap-2"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
-              <button className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+              <button className="btn-primary inline-flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 Export
               </button>

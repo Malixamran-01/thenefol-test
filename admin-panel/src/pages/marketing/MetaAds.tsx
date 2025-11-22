@@ -240,17 +240,38 @@ export default function MetaAds() {
   }), { impressions: 0, clicks: 0, spend: 0, reach: 0, conversions: 0, conversion_value: 0 })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Meta Ads Management</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Create and manage your Facebook & Instagram ad campaigns</p>
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Meta Ads Management
+          </h1>
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+            Create and manage your Facebook & Instagram ad campaigns
+          </p>
         </div>
         <div className="flex space-x-3">
           <button
             onClick={() => setShowConfigModal(true)}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+            className="btn-secondary flex items-center space-x-2"
           >
             <Settings className="h-4 w-4" />
             <span>Settings</span>
@@ -258,7 +279,7 @@ export default function MetaAds() {
           {activeTab === 'campaigns' && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              className="btn-primary flex items-center space-x-2"
             >
               <Plus className="h-4 w-4" />
               <span>Create Campaign</span>
@@ -290,11 +311,15 @@ export default function MetaAds() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                    ? ''
+                    : 'border-transparent'
                 }`}
+                style={activeTab === tab.id 
+                  ? { borderColor: 'var(--arctic-blue-primary)', color: 'var(--arctic-blue-primary-dark)' }
+                  : { color: 'var(--text-muted)' }
+                }
               >
                 <Icon className="h-4 w-4" />
                 <span>{tab.label}</span>

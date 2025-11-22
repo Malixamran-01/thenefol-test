@@ -68,8 +68,15 @@ export default function WhatsAppChat() {
   const [sendResult, setSendResult] = useState<any>(null)
   const [newTemplateName, setNewTemplateName] = useState('')
   const [newTemplateContent, setNewTemplateContent] = useState('')
+  const [newTemplateCategory, setNewTemplateCategory] = useState('Custom')
+  const [newTemplateScheduledDate, setNewTemplateScheduledDate] = useState('')
+  const [newTemplateScheduledTime, setNewTemplateScheduledTime] = useState('')
+  const [newTemplateIsScheduled, setNewTemplateIsScheduled] = useState(false)
   const [newAutoName, setNewAutoName] = useState('')
   const [newAutoTrigger, setNewAutoTrigger] = useState('')
+  const [newAutoScheduledDate, setNewAutoScheduledDate] = useState('')
+  const [newAutoScheduledTime, setNewAutoScheduledTime] = useState('')
+  const [newAutoIsScheduled, setNewAutoIsScheduled] = useState(false)
 
   useEffect(() => {
     loadWhatsAppData()
@@ -178,50 +185,103 @@ export default function WhatsAppChat() {
     }
   }
 
-  const handleCreateTemplate = () => {
+  const handleCreateTemplate = async () => {
     if (!newTemplateName.trim() || !newTemplateContent.trim()) {
       alert('Please enter template name and content')
       return
     }
 
-    const newTemplate = {
-      id: Date.now().toString(),
-      name: newTemplateName,
-      category: 'Custom',
-      content: newTemplateContent,
-      variables: [],
-      isApproved: false
-    }
+    try {
+      const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`
+      
+      const requestBody: any = {
+        name: newTemplateName,
+        content: newTemplateContent,
+        category: newTemplateCategory
+      }
 
-    setTemplates([...templates, newTemplate])
-    setShowCreateTemplate(false)
-    setNewTemplateName('')
-    setNewTemplateContent('')
-    alert('✅ Template created! (Local - not saved to database)')
+      if (newTemplateIsScheduled) {
+        requestBody.scheduled_date = newTemplateScheduledDate
+        requestBody.scheduled_time = newTemplateScheduledTime
+        requestBody.is_scheduled = true
+      }
+
+      const response = await fetch(`${apiBase}/api/whatsapp/templates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert('✅ Template created successfully!')
+        setShowCreateTemplate(false)
+        setNewTemplateName('')
+        setNewTemplateContent('')
+        setNewTemplateCategory('Custom')
+        setNewTemplateScheduledDate('')
+        setNewTemplateScheduledTime('')
+        setNewTemplateIsScheduled(false)
+        loadWhatsAppData() // Reload templates
+      } else {
+        alert(`❌ Failed to create template: ${data.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Failed to create template:', error)
+      alert('❌ Network error occurred')
+    }
   }
 
-  const handleCreateAutomation = () => {
+  const handleCreateAutomation = async () => {
     if (!newAutoName.trim() || !newAutoTrigger.trim()) {
       alert('Please enter automation name and trigger')
       return
     }
 
-    const newAuto = {
-      id: Date.now().toString(),
-      name: newAutoName,
-      trigger: newAutoTrigger,
-      condition: 'Always',
-      action: 'Send WhatsApp Message',
-      isActive: false,
-      messagesSent: 0,
-      responseRate: 0
-    }
+    try {
+      const apiBase = (import.meta as any).env.VITE_API_URL || `http://192.168.1.36:2000`
+      
+      const requestBody: any = {
+        name: newAutoName,
+        trigger: newAutoTrigger,
+        action: 'Send WhatsApp Message'
+      }
 
-    setAutomations([...automations, newAuto])
-    setShowCreateAutomation(false)
-    setNewAutoName('')
-    setNewAutoTrigger('')
-    alert('✅ Automation created! (Local - not saved to database)')
+      if (newAutoIsScheduled) {
+        requestBody.scheduled_date = newAutoScheduledDate
+        requestBody.scheduled_time = newAutoScheduledTime
+        requestBody.is_scheduled = true
+      }
+
+      const response = await fetch(`${apiBase}/api/whatsapp/automations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert('✅ Automation created successfully!')
+        setShowCreateAutomation(false)
+        setNewAutoName('')
+        setNewAutoTrigger('')
+        setNewAutoScheduledDate('')
+        setNewAutoScheduledTime('')
+        setNewAutoIsScheduled(false)
+        loadWhatsAppData() // Reload automations
+      } else {
+        alert(`❌ Failed to create automation: ${data.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Failed to create automation:', error)
+      alert('❌ Network error occurred')
+    }
   }
 
   const handleSessionSelect = (session: ChatSession) => {
@@ -717,6 +777,57 @@ export default function WhatsAppChat() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Category</label>
+                <select
+                  value={newTemplateCategory}
+                  onChange={(e) => setNewTemplateCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                >
+                  <option value="Custom">Custom</option>
+                  <option value="Welcome">Welcome</option>
+                  <option value="Promotional">Promotional</option>
+                  <option value="Transactional">Transactional</option>
+                  <option value="Reminder">Reminder</option>
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="scheduleTemplate"
+                  checked={newTemplateIsScheduled}
+                  onChange={(e) => setNewTemplateIsScheduled(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="scheduleTemplate" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Schedule this template
+                </label>
+              </div>
+
+              {newTemplateIsScheduled && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Scheduled Date</label>
+                    <input
+                      type="date"
+                      value={newTemplateScheduledDate}
+                      onChange={(e) => setNewTemplateScheduledDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Scheduled Time</label>
+                    <input
+                      type="time"
+                      value={newTemplateScheduledTime}
+                      onChange={(e) => setNewTemplateScheduledTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex space-x-3">
                 <button
                   onClick={handleCreateTemplate}
@@ -769,6 +880,42 @@ export default function WhatsAppChat() {
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
                 />
               </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="scheduleAutomation"
+                  checked={newAutoIsScheduled}
+                  onChange={(e) => setNewAutoIsScheduled(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="scheduleAutomation" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Schedule this automation
+                </label>
+              </div>
+
+              {newAutoIsScheduled && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Scheduled Date</label>
+                    <input
+                      type="date"
+                      value={newAutoScheduledDate}
+                      onChange={(e) => setNewAutoScheduledDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Scheduled Time</label>
+                    <input
+                      type="time"
+                      value={newAutoScheduledTime}
+                      onChange={(e) => setNewAutoScheduledTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex space-x-3">
                 <button

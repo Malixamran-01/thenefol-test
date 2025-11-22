@@ -693,7 +693,11 @@ export async function ensureSchema(pool: Pool) {
       content text not null,
       variables text[],
       is_approved boolean default false,
-      created_at timestamptz default now()
+      scheduled_date timestamptz,
+      scheduled_time text,
+      is_scheduled boolean default false,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now()
     );
     
     create table if not exists whatsapp_automations (
@@ -702,12 +706,33 @@ export async function ensureSchema(pool: Pool) {
       trigger text not null,
       condition text,
       action text not null,
+      template_id integer references whatsapp_templates(id) on delete set null,
+      scheduled_date timestamptz,
+      scheduled_time text,
+      is_scheduled boolean default false,
       is_active boolean default false,
       messages_sent integer default 0,
       response_rate numeric(5,2) default 0,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
+    
+    create table if not exists whatsapp_scheduled_messages (
+      id serial primary key,
+      template_id integer references whatsapp_templates(id) on delete set null,
+      automation_id integer references whatsapp_automations(id) on delete set null,
+      phone text not null,
+      message text not null,
+      scheduled_at timestamptz not null,
+      status text default 'pending' check (status in ('pending', 'sent', 'failed', 'cancelled')),
+      sent_at timestamptz,
+      error_message text,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now()
+    );
+    
+    create index if not exists idx_whatsapp_scheduled_messages_status on whatsapp_scheduled_messages(status);
+    create index if not exists idx_whatsapp_scheduled_messages_scheduled_at on whatsapp_scheduled_messages(scheduled_at);
     
     create table if not exists whatsapp_config (
       id serial primary key,

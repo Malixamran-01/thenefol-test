@@ -30,6 +30,14 @@ export default function Body() {
   const [products, setProducts] = useState<Product[]>([])
   const [combos, setCombos] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Get all product slugs for review stats
+  const allProductSlugs = useMemo(() => {
+    return [...products, ...combos].map(p => p.slug).filter(Boolean) as string[]
+  }, [products, combos])
+  
+  // Fetch review stats for all products
+  const { stats: reviewStats } = useProductReviewStats(allProductSlugs)
 
   useEffect(() => {
     fetchProducts()

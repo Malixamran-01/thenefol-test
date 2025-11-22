@@ -247,9 +247,33 @@ export default function Discounts() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Discounts</h1>
+        <div>
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Discounts
+          </h1>
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+            Create and manage discount codes and promotions
+          </p>
+        </div>
         <button 
           onClick={() => setShowCreateModal(true)}
           className="btn-primary"
@@ -259,7 +283,7 @@ export default function Discounts() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b" style={{ borderColor: 'var(--arctic-blue-light)' }}>
         <nav className="-mb-px flex space-x-8">
           {[
             { id: 'discounts', name: 'Discount Codes', count: discounts.length },
@@ -269,11 +293,12 @@ export default function Discounts() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === tab.id
-                  ? 'border-brand-primary text-brand-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'text-[var(--arctic-blue-primary-dark)]'
+                  : 'border-transparent hover:text-[var(--text-primary)]'
               }`}
+              style={activeTab === tab.id ? { borderColor: 'var(--arctic-blue-primary)' } : { color: 'var(--text-muted)' }}
             >
               {tab.name} ({tab.count})
             </button>
@@ -294,7 +319,7 @@ export default function Discounts() {
             ].map((stat, index) => (
               <div key={index} className="metric-card">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                   </div>

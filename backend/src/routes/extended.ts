@@ -8,8 +8,8 @@ import Razorpay from 'razorpay'
 import { generateAmazonInvoiceHTML } from '../utils/amazonInvoiceTemplate'
 
 // Initialize Razorpay for payouts
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_RYUiNXjGPYECIB'
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'QoMYD9QaYxXVDuKiyd9P1mxR'
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_live_RigxrHNSReeV37'
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
 const razorpay = new Razorpay({
   key_id: RAZORPAY_KEY_ID,
   key_secret: RAZORPAY_KEY_SECRET

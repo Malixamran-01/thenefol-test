@@ -56,23 +56,47 @@ export default function RolesPermissions() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Roles & Permission Matrix</h1>
+    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div>
+        <h1 
+          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          style={{
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+            letterSpacing: '0.15em'
+          }}
+        >
+          Roles & Permission Matrix
+        </h1>
+        <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+          Configure role-based access control
+        </p>
+      </div>
       {loading ? 'Loading...' : (
         <div className="overflow-x-auto metric-card">
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th className="text-left py-2 pr-4">Permission</th>
+                <th className="text-left py-2 pr-4" style={{ color: 'var(--text-primary)' }}>Permission</th>
                 {roles.map(r => (
-                  <th key={r.id} className="text-left py-2 pr-4">{r.name}</th>
+                  <th key={r.id} className="text-left py-2 pr-4" style={{ color: 'var(--text-primary)' }}>{r.name}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {perms.map(p => (
-                <tr key={p.id} className="border-t">
-                  <td className="py-2 pr-4 font-medium">{p.code}</td>
+                <tr key={p.id} className="border-t" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+                  <td className="py-2 pr-4 font-medium" style={{ color: 'var(--text-secondary)' }}>{p.code}</td>
                   {roles.map(r => (
                     <td key={r.id} className="py-2 pr-4">
                       <input type="checkbox" checked={!!matrix[key(r.id, p.id)]} onChange={()=>toggle(r.id, p.id)} />

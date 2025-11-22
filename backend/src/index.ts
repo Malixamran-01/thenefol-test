@@ -47,6 +47,7 @@ import * as recommendationRoutes from './routes/recommendations'
 import * as subscriptionRoutes from './routes/subscriptions'
 import * as productCollectionRoutes from './routes/productCollections'
 import { createAPIManagerRouter } from './routes/apiManager'
+import { processScheduledWhatsAppMessages } from './utils/whatsappScheduler'
 
 // Extend Request interface to include userId
 declare global {
@@ -721,6 +722,34 @@ app.post('/api/shiprocket/config', authenticateAndAttach as any, requireRole(['a
 app.post('/api/shiprocket/orders/:orderId/shipment', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => shiprocketRoutes.createShipment(pool, req, res))
 app.post('/api/shiprocket/orders/:orderId/awb', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => shiprocketRoutes.createAwbAndLabel(pool, req, res))
 app.get('/api/shiprocket/orders/:orderId/track', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) => shiprocketRoutes.trackShipment(pool, req, res))
+// Public endpoint for checking delivery serviceability (for product pages)
+app.get('/api/public/shiprocket/serviceability', async (req, res) => {
+  try {
+    const { delivery_postcode, cod = '0', weight = '0.5' } = (req.query || {}) as any
+    if (!delivery_postcode) return sendError(res, 400, 'delivery_postcode is required')
+    
+    const { getToken, getPickupLocations } = await import('./routes/shiprocket')
+    const token = await getToken(pool)
+    if (!token) return sendError(res, 400, 'Invalid Shiprocket credentials')
+    
+    // Get pickup postcode from first available pickup location
+    const pickupLocations = await getPickupLocations(pool)
+    let pickupPostcode = '110001' // Default fallback
+    if (pickupLocations && pickupLocations.length > 0) {
+      pickupPostcode = pickupLocations[0].pickup_pincode || pickupLocations[0].pincode || '110001'
+    }
+    
+    const base = process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external'
+    const url = `${base}/courier/serviceability?pickup_postcode=${encodeURIComponent(pickupPostcode)}&delivery_postcode=${encodeURIComponent(delivery_postcode)}&cod=${encodeURIComponent(cod)}&weight=${encodeURIComponent(weight)}`
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    const data = await resp.json()
+    if (!resp.ok) return sendError(res, 400, 'Failed to check serviceability', data)
+    sendSuccess(res, data)
+  } catch (err) {
+    sendError(res, 500, 'Failed to check pincode serviceability', err)
+  }
+})
+
 app.get('/api/shiprocket/serviceability', authenticateAndAttach as any, requirePermission(['shipping:read']), (req, res) => shiprocketRoutes.checkPincodeServiceability(pool, req, res))
 app.post('/api/shiprocket/manifest', authenticateAndAttach as any, requirePermission(['shipping:update']), (req, res) => shiprocketRoutes.createManifest(pool, req, res))
 app.post('/api/shiprocket/pickup', authenticateAndAttach as any, requirePermission(['shipping:update']), (req, res) => shiprocketRoutes.schedulePickup(pool, req, res))
@@ -902,6 +931,8 @@ app.post('/api/auth/register', (req, res) => cartRoutes.register(pool, req, res)
 app.post('/api/auth/signup', (req, res) => cartRoutes.register(pool, req, res))
 app.post('/api/auth/send-otp', (req, res) => cartRoutes.sendOTP(pool, req, res))
 app.post('/api/auth/verify-otp-signup', (req, res) => cartRoutes.verifyOTPSignup(pool, req, res))
+app.post('/api/auth/send-otp-login', (req, res) => cartRoutes.sendOTPLogin(pool, req, res))
+app.post('/api/auth/verify-otp-login', (req, res) => cartRoutes.verifyOTPLogin(pool, req, res))
 
 // ==================== OPTIMIZED USER PROFILE API ====================
 app.get('/api/user/profile', authenticateToken, (req, res) => cartRoutes.getUserProfile(pool, req, res))
@@ -1014,8 +1045,8 @@ async function recordCoinTransaction(
   type: string,
   description: string,
   status: string = 'completed',
-  orderId?: number,
-  withdrawalId?: number,
+  orderId?: number | null,
+  withdrawalId?: number | null,
   metadata?: any
 ) {
   try {
@@ -1057,8 +1088,8 @@ app.get('/api/payment-gateways', async (req, res) => {
         type: 'online',
         is_active: true,
         config: {
-          key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_RYUiNXjGPYECIB',
-          key_secret: process.env.RAZORPAY_KEY_SECRET || 'QoMYD9QaYxXVDuKiyd9P1mxR'
+          key_id: process.env.RAZORPAY_KEY_ID || 'rzp_live_RigxrHNSReeV37',
+          key_secret: process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
         }
       },
       {
@@ -1168,6 +1199,8 @@ app.get('/api/whatsapp/config', marketingRoutes.getWhatsAppConfig.bind(null, poo
 app.post('/api/whatsapp/config', marketingRoutes.saveWhatsAppConfig.bind(null, pool))
 app.post('/api/whatsapp/templates', marketingRoutes.createWhatsAppTemplate.bind(null, pool))
 app.post('/api/whatsapp/automations', marketingRoutes.createWhatsAppAutomation.bind(null, pool))
+app.get('/api/whatsapp/scheduled-messages', marketingRoutes.getScheduledWhatsAppMessages.bind(null, pool))
+app.post('/api/whatsapp/scheduled-messages', marketingRoutes.createScheduledWhatsAppMessage.bind(null, pool))
 
 // Live Chat APIs
 app.get('/api/live-chat/sessions', marketingRoutes.getLiveChatSessions.bind(null, pool))
@@ -1861,9 +1894,33 @@ app.get('/api/analytics', async (req, res) => {
 // Shiprocket shipments endpoint (must come before generic CRUD)
 app.get('/api/shiprocket/shipments', async (req, res) => {
   try {
+    // Get the most recent shipment for each order to avoid duplicates
     const { rows } = await pool.query(`
-      SELECT * FROM shiprocket_shipments
-      ORDER BY created_at DESC
+      SELECT 
+        ss.id,
+        ss.order_id,
+        ss.shipment_id,
+        ss.tracking_url,
+        ss.status,
+        ss.awb_code,
+        ss.label_url,
+        ss.created_at,
+        ss.updated_at,
+        o.order_number,
+        o.customer_name,
+        o.customer_email,
+        o.total,
+        o.status as order_status,
+        o.payment_method,
+        o.payment_status
+      FROM shiprocket_shipments ss
+      LEFT JOIN orders o ON ss.order_id = o.id
+      WHERE ss.id IN (
+        SELECT MAX(id) 
+        FROM shiprocket_shipments 
+        GROUP BY order_id
+      )
+      ORDER BY ss.created_at DESC
     `)
     sendSuccess(res, rows)
   } catch (err) {
@@ -2878,6 +2935,234 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       }
     }
     
+    // Automatically create Shiprocket shipment if payment is successful or COD
+    // Only create if shipping address is complete
+    if ((payment_status === 'paid' || cod === true) && shipping_address?.address && shipping_address?.city && shipping_address?.pincode) {
+      try {
+        console.log(`🚀 Attempting to auto-create Shiprocket shipment for order ${order_number}`)
+        const { getToken } = await import('./routes/shiprocket')
+        const shiprocketToken = await getToken(pool)
+        
+        if (shiprocketToken) {
+          const baseUrl = process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external'
+          
+          // Get available pickup locations and use the first one
+          const { getPickupLocations } = await import('./routes/shiprocket')
+          const pickupLocations = await getPickupLocations(pool)
+          let pickupLocation = 'work' // Default to 'work' based on Shiprocket response
+          if (pickupLocations && pickupLocations.length > 0) {
+            pickupLocation = pickupLocations[0].pickup_location || pickupLocations[0].id?.toString() || 'work'
+            console.log(`✅ Using pickup location: ${pickupLocation} (from ${pickupLocations.length} available locations)`)
+          } else {
+            // Use 'work' as default since that's what Shiprocket expects
+            pickupLocation = 'work'
+            console.log('⚠️ No pickup locations found via API, using default: work')
+          }
+          
+          // Helper function to extract 10-digit phone number for Shiprocket
+          const getTenDigitPhone = (phoneValue: string | undefined): string => {
+            if (!phoneValue) return ''
+            // Remove all non-digits
+            const cleanPhone = phoneValue.replace(/\D/g, '')
+            // If phone includes country code (e.g., +919876543210), extract last 10 digits
+            if (cleanPhone.length > 10) {
+              return cleanPhone.slice(-10)
+            }
+            // If phone is exactly 10 digits, return as is
+            if (cleanPhone.length === 10) {
+              return cleanPhone
+            }
+            // If phone is less than 10 digits, return empty (will fail validation)
+            return cleanPhone
+          }
+
+          // Prepare shipment payload
+          const shipmentPayload = {
+            order_id: order.order_number || `ORDER-${order.id}`,
+            order_date: new Date(order.created_at || Date.now()).toISOString().split('T')[0],
+            pickup_location: pickupLocation,
+            billing_customer_name: order.customer_name,
+            billing_last_name: shipping_address.lastName || '',
+            billing_address: shipping_address.address || '',
+            billing_address_2: shipping_address.apartment || '',
+            billing_city: shipping_address.city || '',
+            billing_pincode: shipping_address.zip || shipping_address.pincode || '',
+            billing_state: shipping_address.state || '',
+            billing_country: shipping_address.country || 'India',
+            billing_email: order.customer_email,
+            billing_phone: getTenDigitPhone(shipping_address.phone || (billing_address?.phone)),
+            shipping_is_billing: !billing_address,
+            shipping_customer_name: order.customer_name,
+            shipping_last_name: shipping_address.lastName || '',
+            shipping_address: shipping_address.address || '',
+            shipping_address_2: shipping_address.apartment || '',
+            shipping_city: shipping_address.city || '',
+            shipping_pincode: shipping_address.zip || shipping_address.pincode || '',
+            shipping_state: shipping_address.state || '',
+            shipping_country: shipping_address.country || 'India',
+            shipping_email: order.customer_email,
+            shipping_phone: getTenDigitPhone(shipping_address.phone),
+            order_items: items.map((item: any, index: number) => ({
+              name: item.name || item.title || `Product ${index + 1}`,
+              sku: item.sku || item.variant_id || `SKU-${item.product_id || index}`,
+              units: item.quantity || 1,
+              selling_price: item.price || item.unit_price || 0
+            })),
+            payment_method: cod ? 'COD' : 'Prepaid',
+            sub_total: subtotal || 0,
+            length: 10,
+            breadth: 10,
+            height: 10,
+            weight: 0.5,
+            total_discount: discount_amount || 0,
+            shipping_charges: shipping || 0,
+            giftwrap_charges: 0,
+            transaction_charges: 0,
+            total_discounts: discount_amount || 0,
+            cod_charges: cod ? (total * 0.02) : 0,
+            add_charges: 0,
+            comment: `Order from NEFOL - ${order.order_number || order.id}`
+          }
+          
+          const shipmentResp = await fetch(`${baseUrl}/orders/create/adhoc`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${shiprocketToken}`
+            },
+            body: JSON.stringify(shipmentPayload)
+          })
+          
+          const shipmentData: any = await shipmentResp.json()
+          
+          if (shipmentResp.ok && shipmentData) {
+            const shipmentId = shipmentData?.shipment_id || shipmentData?.order_id || null
+            const awbCode = shipmentData?.awb_code || null
+            
+            // Check if shipment already exists
+            const existingShipment = await pool.query(
+              'SELECT id FROM shiprocket_shipments WHERE order_id = $1',
+              [order.id]
+            )
+            
+            if (existingShipment.rows.length === 0) {
+              // Save to database
+              await pool.query(
+                `INSERT INTO shiprocket_shipments (order_id, shipment_id, tracking_url, status, awb_code, label_url, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+                [
+                  order.id,
+                  shipmentId ? String(shipmentId) : null,
+                  shipmentData?.tracking_url || null,
+                  shipmentData?.status || 'pending',
+                  awbCode,
+                  shipmentData?.label_url || null
+                ]
+              )
+            } else {
+              // Update existing shipment
+              await pool.query(
+                `UPDATE shiprocket_shipments 
+                 SET shipment_id = $1, tracking_url = $2, status = $3, awb_code = $4, label_url = $5, updated_at = NOW()
+                 WHERE order_id = $6`,
+                [
+                  shipmentId ? String(shipmentId) : null,
+                  shipmentData?.tracking_url || null,
+                  shipmentData?.status || 'pending',
+                  awbCode,
+                  shipmentData?.label_url || null,
+                  order.id
+                ]
+              )
+            }
+            
+            console.log(`✅ Shiprocket shipment created automatically for order ${order_number}, shipment_id: ${shipmentId}`)
+          } else {
+            // If error is about pickup location, try to get the correct one from error response
+            if (shipmentData?.message?.includes('Pickup location') || shipmentData?.message?.includes('pickup')) {
+              // Try to extract location from error response - check multiple possible structures
+              let correctLocation = 'work' // Default fallback
+              if (shipmentData?.data?.data?.length > 0) {
+                correctLocation = shipmentData.data.data[0].pickup_location || shipmentData.data.data[0].id?.toString() || 'work'
+              } else if (shipmentData?.data?.length > 0) {
+                correctLocation = shipmentData.data[0].pickup_location || shipmentData.data[0].id?.toString() || 'work'
+              }
+              console.log(`⚠️ Pickup location error detected, retrying with: ${correctLocation}`)
+              console.log(`   Error message: ${shipmentData?.message}`)
+              
+              // Retry with correct pickup location
+              shipmentPayload.pickup_location = correctLocation
+              const retryResp = await fetch(`${baseUrl}/orders/create/adhoc`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${shiprocketToken}`
+                },
+                body: JSON.stringify(shipmentPayload)
+              })
+              
+              const retryData: any = await retryResp.json()
+              
+              if (retryResp.ok && retryData) {
+                const shipmentId = retryData?.shipment_id || retryData?.order_id || null
+                const awbCode = retryData?.awb_code || null
+                
+                // Check if shipment already exists
+                const existingShipment = await pool.query(
+                  'SELECT id FROM shiprocket_shipments WHERE order_id = $1',
+                  [order.id]
+                )
+                
+                if (existingShipment.rows.length === 0) {
+                  await pool.query(
+                    `INSERT INTO shiprocket_shipments (order_id, shipment_id, tracking_url, status, awb_code, label_url, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+                    [
+                      order.id,
+                      shipmentId ? String(shipmentId) : null,
+                      retryData?.tracking_url || null,
+                      retryData?.status || 'pending',
+                      awbCode,
+                      retryData?.label_url || null
+                    ]
+                  )
+                } else {
+                  await pool.query(
+                    `UPDATE shiprocket_shipments 
+                     SET shipment_id = $1, tracking_url = $2, status = $3, awb_code = $4, label_url = $5, updated_at = NOW()
+                     WHERE order_id = $6`,
+                    [
+                      shipmentId ? String(shipmentId) : null,
+                      retryData?.tracking_url || null,
+                      retryData?.status || 'pending',
+                      awbCode,
+                      retryData?.label_url || null,
+                      order.id
+                    ]
+                  )
+                }
+                
+                console.log(`✅ Shiprocket shipment created automatically (after retry) for order ${order_number}, shipment_id: ${shipmentId}`)
+              } else {
+                console.error('⚠️ Failed to auto-create Shiprocket shipment (after retry):', retryData)
+                // Don't fail the order if Shiprocket fails - just log it
+              }
+            } else {
+              console.error('⚠️ Failed to auto-create Shiprocket shipment:', shipmentData)
+              // Don't fail the order if Shiprocket fails - just log it
+            }
+          }
+        } else {
+          console.log('⚠️ Shiprocket credentials not configured, skipping auto-shipment creation')
+        }
+      } catch (shiprocketErr: any) {
+        console.error('❌ Error auto-creating Shiprocket shipment:', shiprocketErr)
+        // Don't fail the order if Shiprocket fails - just log it
+      }
+    } else {
+      console.log(`ℹ️ Skipping auto-shipment creation for order ${order_number} (payment_status: ${payment_status}, cod: ${cod}, address complete: ${!!(shipping_address?.address && shipping_address?.city && shipping_address?.pincode)})`)
+    }
+    
     sendSuccess(res, order, 201)
   } catch (err) {
     sendError(res, 500, 'Failed to create order', err)
@@ -2907,6 +3192,84 @@ app.put('/api/orders/:id', authenticateAndAttach as any, requirePermission(['ord
       return sendError(res, 400, 'No fields to update')
     }
     
+    // Get current order details first to check old status
+    const { rows: currentOrderRows } = await pool.query('SELECT * FROM orders WHERE id = $1', [id])
+    if (currentOrderRows.length === 0) {
+      return sendError(res, 404, 'Order not found')
+    }
+    const currentOrder = currentOrderRows[0]
+    const isCancelling = body.status === 'cancelled' && currentOrder.status !== 'cancelled'
+    
+    // Handle Shiprocket cancellation if status is being changed to 'cancelled'
+    let shiprocketCancelled = false
+    if (isCancelling) {
+      try {
+        const { rows: shipments } = await pool.query(
+          'SELECT * FROM shiprocket_shipments WHERE order_id = $1 ORDER BY id DESC LIMIT 1',
+          [id]
+        )
+
+        if (shipments.length > 0 && shipments[0].shipment_id) {
+          // Import Shiprocket functions
+          const { getToken } = await import('./routes/shiprocket')
+          const token = await getToken(pool)
+          
+          if (token) {
+            const baseUrl = process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external'
+            const cancelResp = await fetch(`${baseUrl}/orders/cancel/shipment/${shipments[0].shipment_id}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            })
+
+            if (cancelResp.ok) {
+              shiprocketCancelled = true
+              console.log(`✅ Order ${currentOrder.order_number} cancelled in Shiprocket by admin`)
+            } else {
+              const errorData = await cancelResp.json().catch(() => ({}))
+              console.error('Failed to cancel in Shiprocket:', errorData)
+            }
+          }
+        }
+      } catch (shiprocketErr: any) {
+        console.error('Error cancelling in Shiprocket:', shiprocketErr)
+        // Continue with cancellation even if Shiprocket fails
+      }
+
+      // Create cancellation record if it doesn't exist
+      try {
+        const { rows: existingCancellation } = await pool.query(
+          'SELECT * FROM order_cancellations WHERE order_id = $1 AND status IN ($2, $3)',
+          [id, 'pending', 'approved']
+        )
+
+        if (existingCancellation.length === 0) {
+          const cancellationReason = note || 'Cancelled by admin'
+          const refundAmount = parseFloat(currentOrder.total || '0')
+          
+          await pool.query(
+            `INSERT INTO order_cancellations 
+            (order_id, order_number, user_id, cancellation_reason, cancellation_type, refund_amount, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              id,
+              currentOrder.order_number,
+              null, // Admin cancellation, no user_id
+              cancellationReason,
+              'full',
+              refundAmount,
+              'approved' // Auto-approve admin cancellations
+            ]
+          )
+        }
+      } catch (cancellationErr: any) {
+        console.error('Error creating cancellation record:', cancellationErr)
+        // Continue even if cancellation record creation fails
+      }
+    }
+    
     // Only update orders table if there are fields to update (excluding note)
     let rows
     if (fields.length > 0) {
@@ -2924,9 +3287,7 @@ app.put('/api/orders/:id', authenticateAndAttach as any, requirePermission(['ord
       )
       rows = result.rows
     } else {
-      // If only note is provided, fetch the order first
-      const result = await pool.query('SELECT * FROM orders WHERE id = $1', [id])
-      rows = result.rows
+      rows = currentOrderRows
     }
     
     if (rows.length === 0) {
@@ -2964,7 +3325,13 @@ app.put('/api/orders/:id', authenticateAndAttach as any, requirePermission(['ord
     // Broadcast to users
     broadcastToUsers('order-updated', rows[0])
     
-    sendSuccess(res, rows[0])
+    // Include Shiprocket cancellation status in response if order was cancelled
+    const response = { ...rows[0] }
+    if (isCancelling) {
+      (response as any).shiprocket_cancelled = shiprocketCancelled
+    }
+    
+    sendSuccess(res, response)
   } catch (err) {
     sendError(res, 500, 'Failed to update order', err)
   }
@@ -3247,44 +3614,7 @@ app.get('/api/marketing/templates', async (req, res) => {
   }
 })
 
-// Shiprocket/Shipments endpoints
-app.get('/api/shiprocket/shipments', async (req, res) => {
-  try {
-    const shipments = [
-      {
-        id: 1,
-        order_id: 'ORD-001',
-        shipment_id: 'SR-001',
-        awb_code: 'AWB123456',
-        courier_name: 'Shiprocket',
-        tracking_url: 'https://shiprocket.co/tracking/123456',
-        status: 'delivered',
-        customer_name: 'John Doe',
-        customer_email: 'john@example.com',
-        total: 1299,
-        order_status: 'completed',
-        created_at: '2024-01-15T10:30:00Z'
-      },
-      {
-        id: 2,
-        order_id: 'ORD-002',
-        shipment_id: 'SR-002',
-        awb_code: 'AWB123457',
-        courier_name: 'Shiprocket',
-        tracking_url: 'https://shiprocket.co/tracking/123457',
-        status: 'shipped',
-        customer_name: 'Jane Smith',
-        customer_email: 'jane@example.com',
-        total: 899,
-        order_status: 'shipped',
-        created_at: '2024-01-16T14:20:00Z'
-      }
-    ]
-    res.json(shipments)
-  } catch (err) {
-    sendError(res, 500, 'Failed to fetch shipments', err)
-  }
-})
+// Duplicate endpoint removed - using the one at line 1862 that joins with orders table
 
 // Invoices endpoints
 app.get('/api/invoices', async (req, res) => {
@@ -4307,6 +4637,18 @@ cron.schedule('*/30 * * * *', async () => {
     }
   } catch (err) {
     console.error('Low stock check failed', err)
+  }
+})
+
+// Process scheduled WhatsApp messages every minute
+cron.schedule('* * * * *', async () => {
+  try {
+    const result = await processScheduledWhatsAppMessages(pool)
+    if (result.processed > 0) {
+      console.log(`📅 Processed ${result.processed} scheduled WhatsApp messages: ${result.success} sent, ${result.failed} failed`)
+    }
+  } catch (err) {
+    console.error('Scheduled WhatsApp messages processing failed', err)
   }
 })
 // ... existing code ...

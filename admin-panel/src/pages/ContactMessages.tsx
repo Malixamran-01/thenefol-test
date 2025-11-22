@@ -110,14 +110,31 @@ export default function ContactMessages() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Contact Messages
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
             Manage and respond to customer inquiries
           </p>
         </div>
@@ -132,57 +149,57 @@ export default function ContactMessages() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 shadow">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="metric-card">
           <div className="flex items-center space-x-3">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Mail className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+              <Mail className="w-6 h-6" style={{ color: 'var(--arctic-blue-primary)' }} />
             </div>
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Total</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Total</p>
+              <p className="text-2xl font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>
                 {messages.length}
               </p>
             </div>
           </div>
         </div>
         
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 shadow">
+        <div className="metric-card">
           <div className="flex items-center space-x-3">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+              <Clock className="w-6 h-6" style={{ color: 'var(--arctic-blue-primary)' }} />
             </div>
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Unread</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Unread</p>
+              <p className="text-2xl font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>
                 {unreadCount}
               </p>
             </div>
           </div>
         </div>
         
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 shadow">
+        <div className="metric-card">
           <div className="flex items-center space-x-3">
-            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="p-3 rounded-xl" style={{ backgroundColor: '#D1FAE5' }}>
+              <CheckCircle className="w-6 h-6" style={{ color: '#059669' }} />
             </div>
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Replied</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Replied</p>
+              <p className="text-2xl font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>
                 {messages.filter(msg => msg.status === 'replied').length}
               </p>
             </div>
           </div>
         </div>
         
-        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 shadow">
+        <div className="metric-card">
           <div className="flex items-center space-x-3">
-            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-              <Eye className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="p-3 rounded-xl" style={{ backgroundColor: '#E9D5FF' }}>
+              <Eye className="w-6 h-6" style={{ color: '#7C3AED' }} />
             </div>
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Read</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Read</p>
+              <p className="text-2xl font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>
                 {messages.filter(msg => msg.status === 'read').length}
               </p>
             </div>

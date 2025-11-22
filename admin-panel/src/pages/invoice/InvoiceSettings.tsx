@@ -306,24 +306,45 @@ const InvoiceSettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-brand-primary">Invoice Settings</h1>
-          <p className="text-gray-600 mt-1">Customize your invoice design and details</p>
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Invoice Settings
+          </h1>
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+            Customize your invoice design and details
+          </p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={() => setShowImageModal(true)}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="btn-secondary flex items-center gap-2"
           >
             <ImageIcon className="w-5 h-5" />
             Upload Images
           </button>
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="btn-secondary flex items-center gap-2"
           >
             <Eye className="w-5 h-5" />
             {showPreview ? 'Hide' : 'Show'} Preview
@@ -352,16 +373,20 @@ const InvoiceSettingsPage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b" style={{ borderColor: 'var(--arctic-blue-light)' }}>
         {['Company', 'Design', 'Tax', 'Terms'].map((tab, idx) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab.toLowerCase().replace('tax', 'tax').replace('terms', 'terms').replace('company', 'company').replace('design', 'design') as any)}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === (tab === 'Company' ? 'company' : tab === 'Design' ? 'design' : tab === 'Tax' ? 'tax' : 'terms')
-                ? 'border-b-2 border-brand-primary text-brand-primary'
-                : 'text-gray-600 hover:text-brand-primary'
+                ? 'border-b-2'
+                : ''
             }`}
+            style={activeTab === (tab === 'Company' ? 'company' : tab === 'Design' ? 'design' : tab === 'Tax' ? 'tax' : 'terms') 
+              ? { borderColor: 'var(--arctic-blue-primary)', color: 'var(--arctic-blue-primary-dark)' }
+              : { color: 'var(--text-muted)' }
+            }
           >
             {tab}
           </button>

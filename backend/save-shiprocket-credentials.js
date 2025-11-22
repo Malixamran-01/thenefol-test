@@ -7,8 +7,8 @@ const pool = new Pool({
 })
 
 async function saveCredentials() {
-  const email = 'rahulseth8512@gmail.com'
-  const password = 'B1jVu7K^X9gdTwK$'
+  const email = 'divyantechnologies@gmail.com'
+  const password = 'Py3I8m@Yr0&3gr&a'
   
   try {
     console.log('Connecting to database...')

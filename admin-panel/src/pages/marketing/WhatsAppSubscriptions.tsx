@@ -204,29 +204,50 @@ export default function WhatsAppSubscriptions() {
   }, [])
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">WhatsApp Subscriptions</h1>
-        <p className="text-gray-600">Manage and view all WhatsApp subscriptions</p>
+    <div className="p-6 space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div>
+        <h1 
+          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          style={{
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+            letterSpacing: '0.15em'
+          }}
+        >
+          WhatsApp Subscriptions
+        </h1>
+        <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+          Manage and view all WhatsApp subscriptions
+        </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-600 mb-1">Total Subscribers</div>
-          <div className="text-2xl font-bold">{stats.total_subscribers || 0}</div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="metric-card">
+          <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Total Subscribers</div>
+          <div className="text-2xl font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>{stats.total_subscribers || 0}</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-600 mb-1">Active</div>
-          <div className="text-2xl font-bold text-green-600">{stats.active_subscribers || 0}</div>
+        <div className="metric-card">
+          <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Active</div>
+          <div className="text-2xl font-light" style={{ color: '#059669', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>{stats.active_subscribers || 0}</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-600 mb-1">Last 24 Hours</div>
-          <div className="text-2xl font-bold text-blue-600">{stats.new_last_24_hours || 0}</div>
+        <div className="metric-card">
+          <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Last 24 Hours</div>
+          <div className="text-2xl font-light" style={{ color: 'var(--arctic-blue-primary-dark)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>{stats.new_last_24_hours || 0}</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-sm text-gray-600 mb-1">Last 7 Days</div>
-          <div className="text-2xl font-bold">{stats.new_last_7_days || 0}</div>
+        <div className="metric-card">
+          <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Last 7 Days</div>
+          <div className="text-2xl font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>{stats.new_last_7_days || 0}</div>
         </div>
       </div>
 

@@ -61,8 +61,32 @@ export default function InventoryManagement() {
 
   return (
     <>
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Inventory Management</h1>
+    <div className="p-6 space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div>
+        <h1 
+          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          style={{
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+            letterSpacing: '0.15em'
+          }}
+        >
+          Inventory Management
+        </h1>
+        <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+          Track and manage product inventory levels
+        </p>
+      </div>
 
       <div className="mb-6">
         <h2 className="text-lg font-semibold mb-3">Product Inventory Summary</h2>

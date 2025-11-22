@@ -124,7 +124,6 @@ function DefaultLoading() {
   return (
     <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#F4F9F9'}}>
       <div className="text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" style={{color: '#4B97C9'}} />
         <p className="mt-4 text-lg" style={{color: '#1B4965'}}>Loading...</p>
       </div>
     </div>

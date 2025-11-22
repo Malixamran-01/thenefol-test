@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
-import { Search, X, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, X, ArrowRight } from 'lucide-react'
 import NotificationBell from '../components/NotificationBell'
 import Can from '../components/Can'
-
-type LayoutView = 'categorized' | 'all-expanded' | 'compact'
 
 interface NavigationSection {
   title: string
@@ -29,8 +27,6 @@ const Layout = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [searchResults, setSearchResults] = useState<any[]>([])
-  const [layoutView, setLayoutView] = useState<LayoutView>('categorized')
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
 
   // Define all admin options grouped by category
   const navigationSections: NavigationSection[] = [
@@ -194,9 +190,13 @@ const Layout = () => {
     }))
   )
 
-  const navigation = layoutView === 'all-expanded' 
-    ? navigationSections.flatMap(s => s.items)
-    : navigationSections.flatMap(s => s.items)
+  // Flatten and sort all navigation items alphabetically
+  const allNavigationItems = navigationSections.flatMap(section => 
+    section.items.map(item => ({
+      ...item,
+      category: section.title
+    }))
+  ).sort((a, b) => a.name.localeCompare(b.name))
 
   // Permission mapping by path
   const permissionByHref: Record<string, { permission?: string; anyOf?: string[]; role?: string }> = {
@@ -223,18 +223,6 @@ const Layout = () => {
     '/admin/whatsapp-notifications': { permission: 'notifications:read' },
   }
 
-  // Toggle section collapse
-  const toggleSection = (sectionTitle: string) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [sectionTitle]: !prev[sectionTitle]
-    }))
-  }
-
-  // Check if section is collapsed
-  const isSectionCollapsed = (sectionTitle: string) => {
-    return collapsedSections[sectionTitle] || false
-  }
 
   // Search functionality
   const handleSearch = (query: string) => {
@@ -334,89 +322,14 @@ const Layout = () => {
             </button>
           </div>
 
-          {/* Layout View Toggle */}
-          <div className="px-4 py-3 border-b border-[var(--brand-border)]">
-            <div className="relative">
-              <select
-                value={layoutView}
-                onChange={(e) => setLayoutView(e.target.value as LayoutView)}
-                className="w-full bg-[var(--brand-highlight)] text-[var(--text-secondary)] border border-[var(--brand-border)] rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)] cursor-pointer hover:bg-[var(--brand-accent-soft)]"
-              >
-                <option value="categorized">📁 Categorized View</option>
-                <option value="all-expanded">📋 All Expanded</option>
-                <option value="compact">📊 Compact View</option>
-              </select>
-            </div>
-          </div>
-
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-3 overflow-y-auto">
-            {layoutView === 'categorized' ? (
-              // Categorized View with Collapsible Sections
-              <>
-                {navigationSections.map((section, idx) => {
-                  const isCollapsed = isSectionCollapsed(section.title)
-                  const hasActiveItem = section.items.some(item => item.current)
-                  
-                  return (
-                    <div key={section.title} className="mb-4">
-                      {/* Section Header */}
-                      <button
-                        onClick={() => toggleSection(section.title)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg mb-2 border transition-colors ${
-                          hasActiveItem 
-                            ? 'bg-[var(--brand-accent-soft)] text-[var(--brand-primary)] border-[var(--brand-border)] shadow-sm' 
-                            : 'text-[var(--text-muted)] border-transparent hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <span className="text-lg">{section.icon}</span>
-                          <span className="text-sm font-semibold text-[var(--text-secondary)]">{section.title}</span>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--brand-highlight)] text-[var(--text-muted)]">
-                            {section.items.length}
-                          </span>
-                        </div>
-                        {isCollapsed ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronUp className="w-4 h-4" />
-                        )}
-                      </button>
-                      
-                      {/* Section Items */}
-                      {!isCollapsed && (
-                        <div className="space-y-1 ml-3 pl-3 border-l border-[var(--brand-border)]">
-                          {section.items.map((item) => {
-                            const gate = permissionByHref[item.href] || {}
-                            return (
-                              <Can key={item.name} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
-                            <Link
-                              to={item.href}
-                              className={`nav-item ${item.current ? 'active' : ''}`}
-                            >
-                              <span className="text-base">{item.icon}</span>
-                              <span className="text-sm">{item.name}</span>
-                              {item.badge && (
-                                <span className="badge ml-auto">{item.badge}</span>
-                              )}
-                            </Link>
-                              </Can>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </>
-            ) : layoutView === 'all-expanded' ? (
-              // All Expanded View (Flat List)
-              <div className="space-y-1">
-                {navigationSections.flatMap(section => 
-                  section.items.map((item) => {
-                    const gate = permissionByHref[item.href] || {}
-                    return (
-                      <Can key={item.name} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
+          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+            {/* All Expanded View (Alphabetically Sorted) */}
+            <div className="space-y-1">
+              {allNavigationItems.map((item) => {
+                const gate = permissionByHref[item.href] || {}
+                return (
+                  <Can key={item.name} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
                     <Link
                       to={item.href}
                       className={`nav-item ${item.current ? 'active' : ''}`}
@@ -427,42 +340,10 @@ const Layout = () => {
                         <span className="badge ml-auto">{item.badge}</span>
                       )}
                     </Link>
-                      </Can>
-                    )
-                  })
-                )}
-              </div>
-            ) : (
-              // Compact View
-              <div className="grid grid-cols-2 gap-2">
-                {navigationSections.flatMap(section => 
-                  section.items.map((item) => {
-                    const gate = permissionByHref[item.href] || {}
-                    return (
-                      <Can key={item.name} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
-                    <Link
-                      to={item.href}
-                      className={`relative flex flex-col items-center justify-center p-2 rounded-lg border transition-colors ${
-                        item.current 
-                          ? 'bg-brand-secondary text-white border-[var(--brand-accent)] shadow-md' 
-                          : 'bg-[var(--brand-highlight)] text-[var(--text-muted)] border-transparent hover:text-[var(--text-primary)] hover:bg-[var(--brand-accent-soft)]'
-                      }`}
-                      title={item.name}
-                    >
-                      <span className="text-xl mb-1">{item.icon}</span>
-                      <span className="text-xs text-center px-1 truncate w-full leading-tight">{item.name}</span>
-                      {item.badge && (
-                        <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold">
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                      </Can>
-                    )
-                  })
-                )}
-              </div>
-            )}
+                  </Can>
+                )
+              })}
+            </div>
           </nav>
 
           {/* Settings */}

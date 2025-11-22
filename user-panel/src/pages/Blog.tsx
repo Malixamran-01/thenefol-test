@@ -159,7 +159,6 @@ export default function Blog() {
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p style={{color: '#9DB4C0'}}>Loading blog posts...</p>
           </div>
         ) : error ? (

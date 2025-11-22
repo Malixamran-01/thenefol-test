@@ -105,21 +105,45 @@ export default function ProductVariants() {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Product Variants</h1>
+    <div className="p-6 space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div>
+        <h1 
+          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          style={{
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+            letterSpacing: '0.15em'
+          }}
+        >
+          Product Variants
+        </h1>
+        <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+          Manage product variants with multiple sizes or colors
+        </p>
+      </div>
       
       {/* Info banner for single-size products */}
-      <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+      <div className="metric-card" style={{ backgroundColor: 'var(--arctic-blue-lighter)', borderColor: 'var(--arctic-blue-primary)' }}>
         <div className="flex items-start gap-3">
           <span className="text-2xl">ℹ️</span>
           <div>
-            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Product Variants Page</h3>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
+            <h3 className="font-medium mb-2" style={{ color: 'var(--arctic-blue-primary-dark)' }}>Product Variants Page</h3>
+            <p className="text-sm" style={{ color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
               Yeh page sirf un products ke liye hai jinke multiple variants hain (jaise: Size S, M, L ya different Colors).
               <br />
               <strong>Agar aapke products mein sirf ek hi size hai, to is page ki zaroorat nahi hai.</strong>
               <br />
-              Single-size products ko directly <a href="/admin/products" className="underline font-semibold">Products page</a> se manage karein.
+              Single-size products ko directly <a href="/admin/products" className="underline font-semibold" style={{ color: 'var(--arctic-blue-primary-dark)' }}>Products page</a> se manage karein.
             </p>
           </div>
         </div>

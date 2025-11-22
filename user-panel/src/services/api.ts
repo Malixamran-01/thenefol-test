@@ -165,6 +165,27 @@ export const authAPI = {
     return handleResponse(response)
   },
 
+  async sendOTPLogin(phone: string) {
+    const response = await fetch(`${API_BASE}/api/auth/send-otp-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    })
+    return handleResponse(response)
+  },
+
+  async verifyOTPLogin(data: {
+    phone: string
+    otp: string
+  }) {
+    const response = await fetch(`${API_BASE}/api/auth/verify-otp-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    return handleResponse(response)
+  },
+
   async logout() {
     // Clear local storage
     localStorage.removeItem('token')

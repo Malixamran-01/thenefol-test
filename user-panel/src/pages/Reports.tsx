@@ -137,7 +137,6 @@ export default function Reports() {
   if (loading) {
     return (
       <main className="py-10 dark:bg-slate-900 min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </main>
     )
   }
@@ -219,7 +218,7 @@ export default function Reports() {
               <span className="font-medium dark:text-slate-100">Earnings Report</span>
               <span className="text-sm text-slate-600 dark:text-slate-400">Commission details</span>
               {generatingReport === 'earnings' && (
-                <div className="mt-2 animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                <div className="mt-2"></div>
               )}
             </button>
             <button
@@ -231,7 +230,7 @@ export default function Reports() {
               <span className="font-medium dark:text-slate-100">Referral Report</span>
               <span className="text-sm text-slate-600 dark:text-slate-400">Referral analytics</span>
               {generatingReport === 'referrals' && (
-                <div className="mt-2 animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <div className="mt-2"></div>
               )}
             </button>
             <button
@@ -243,7 +242,7 @@ export default function Reports() {
               <span className="font-medium dark:text-slate-100">Performance Report</span>
               <span className="text-sm text-slate-600 dark:text-slate-400">Performance metrics</span>
               {generatingReport === 'performance' && (
-                <div className="mt-2 animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                <div className="mt-2"></div>
               )}
             </button>
             <button
@@ -255,7 +254,7 @@ export default function Reports() {
               <span className="font-medium dark:text-slate-100">Monthly Summary</span>
               <span className="text-sm text-slate-600 dark:text-slate-400">Monthly overview</span>
               {generatingReport === 'monthly' && (
-                <div className="mt-2 animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+                <div className="mt-2"></div>
               )}
             </button>
           </div>

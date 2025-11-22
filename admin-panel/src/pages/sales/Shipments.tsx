@@ -146,37 +146,77 @@ export default function Shipments() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: #7DD3D3;
+          --arctic-blue-primary-hover: #5EC4C4;
+          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Shipments</h1>
-          <p className="text-slate-600 dark:text-slate-400">Manage Shiprocket deliveries</p>
+          <h1 
+            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            Shipments
+          </h1>
+          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+            Manage Shiprocket deliveries
+          </p>
         </div>
         <button 
           onClick={load}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="btn-primary"
         >
           Refresh
         </button>
       </div>
 
       {/* Pincode Serviceability Checker */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4">
-        <h2 className="text-lg font-semibold mb-3 text-slate-900 dark:text-slate-100">Pincode Serviceability</h2>
-        <div className="flex flex-wrap gap-3 items-end">
+      <div className="metric-card">
+        <h2 className="text-xl font-light mb-4" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)', letterSpacing: '0.15em' }}>Pincode Serviceability</h2>
+        <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1">Pickup Postcode</label>
-            <input value={pickupPin} onChange={e => setPickupPin(e.target.value)} placeholder="110001" className="border px-3 py-2 rounded w-40 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+            <label className="block text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Pickup Postcode</label>
+            <input 
+              value={pickupPin} 
+              onChange={e => setPickupPin(e.target.value)} 
+              placeholder="110001" 
+              className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)] w-40"
+              style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+            />
           </div>
           <div>
-            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1">Delivery Postcode</label>
-            <input value={deliveryPin} onChange={e => setDeliveryPin(e.target.value)} placeholder="560001" className="border px-3 py-2 rounded w-40 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+            <label className="block text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Delivery Postcode</label>
+            <input 
+              value={deliveryPin} 
+              onChange={e => setDeliveryPin(e.target.value)} 
+              placeholder="560001" 
+              className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)] w-40"
+              style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+            />
           </div>
           <div>
-            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1">Weight (kg)</label>
-            <input type="number" step="0.1" value={weight} onChange={e => setWeight(e.target.value)} className="border px-3 py-2 rounded w-28 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+            <label className="block text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Weight (kg)</label>
+            <input 
+              type="number" 
+              step="0.1" 
+              value={weight} 
+              onChange={e => setWeight(e.target.value)} 
+              className="px-4 py-2 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)] w-28"
+              style={{ borderColor: 'var(--arctic-blue-light)', backgroundColor: 'var(--arctic-blue-lighter)' }}
+            />
           </div>
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+          <label className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <input type="checkbox" checked={isCOD} onChange={e => setIsCOD(e.target.checked)} /> COD
           </label>
           <button
@@ -198,7 +238,7 @@ export default function Shipments() {
                 setServiceability({ success: false, message: 'Failed to check serviceability' })
               }
             }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            className="btn-primary"
           >
             Check Serviceability
           </button>
@@ -425,16 +465,16 @@ export default function Shipments() {
                 {shipments.map((shipment) => (
                   <tr key={shipment.id} className="hover:bg-slate-50 dark:hover:bg-slate-700">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {shipment.order_id}
+                      {shipment.order_number || shipment.order_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
                       <div>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{shipment.customer_name}</div>
-                        <div className="text-slate-500 dark:text-slate-400">{shipment.customer_email}</div>
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{shipment.customer_name || 'N/A'}</div>
+                        <div className="text-slate-500 dark:text-slate-400">{shipment.customer_email || 'N/A'}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-100">
-                      ₹{Number(shipment.total).toFixed(2)}
+                      ₹{shipment.total ? Number(shipment.total).toFixed(2) : '0.00'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(shipment.status)}`}>

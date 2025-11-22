@@ -97,7 +97,6 @@ export default function BlogDetail() {
       <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
         <div className="mx-auto max-w-4xl px-4">
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p style={{color: '#9DB4C0'}}>Loading blog post...</p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Home, Search, ShoppingCart, Grid3x3, Heart, User } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { useWishlist } from '../contexts/WishlistContext'
@@ -8,7 +8,21 @@ export default function BottomNavigation() {
   const { items: cartItems } = useCart()
   const { items: wishlistItems } = useWishlist()
   const { isAuthenticated } = useAuth()
-  const currentPath = window.location.hash
+  const [currentPath, setCurrentPath] = useState(window.location.hash || '#/user/')
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentPath(window.location.hash || '#/user/')
+    }
+    
+    window.addEventListener('hashchange', handleHashChange)
+    // Set initial value
+    setCurrentPath(window.location.hash || '#/user/')
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [])
 
   const navItems = [
     {

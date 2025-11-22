@@ -6,8 +6,8 @@ import Razorpay from 'razorpay'
 const router = Router()
 
 // Get Razorpay credentials
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_RYUiNXjGPYECIB'
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'QoMYD9QaYxXVDuKiyd9P1mxR'
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_live_RigxrHNSReeV37'
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
