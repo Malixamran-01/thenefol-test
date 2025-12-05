@@ -177,7 +177,7 @@ export default function RelatedProductsCarousel({
             aria-label="Previous"
             disabled={!canGoPrevious}
           >
-            <ChevronLeft className="w-6 h-6" style={{color: '#1B4965'}} />
+            <ChevronLeft className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
           </button>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -263,7 +263,7 @@ export default function RelatedProductsCarousel({
                   <div className="mt-auto">
                     <button
                       className="w-full px-4 py-2 text-white text-sm font-medium rounded-lg transition-all hover:scale-105"
-                      style={{backgroundColor: '#4B97C9'}}
+                      style={{backgroundColor: 'rgb(75,151,201)'}}
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
@@ -290,7 +290,7 @@ export default function RelatedProductsCarousel({
             aria-label="Next"
             disabled={!canGoNext}
           >
-            <ChevronRight className="w-6 h-6" style={{color: '#1B4965'}} />
+            <ChevronRight className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
           </button>
         </div>
       </div>

@@ -29,6 +29,7 @@ export default function Body() {
   const { addItem } = useCart()
   const [products, setProducts] = useState<Product[]>([])
   const [combos, setCombos] = useState<Product[]>([])
+  const [csvProducts, setCsvProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
   // Get all product slugs for review stats
@@ -41,7 +42,21 @@ export default function Body() {
 
   useEffect(() => {
     fetchProducts()
+    fetchCsvProducts()
   }, [])
+
+  const fetchCsvProducts = async () => {
+    try {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/products-csv`)
+      if (response.ok) {
+        const data = await response.json()
+        setCsvProducts(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch CSV products:', error)
+    }
+  }
 
   const fetchProducts = async () => {
     try {
@@ -87,7 +102,7 @@ export default function Body() {
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]" 
             style={{
               color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
@@ -107,7 +122,7 @@ export default function Body() {
           ) : products.length === 0 ? (
             <div className="col-span-full text-center py-16">
               <div className="rounded-2xl p-12" style={{ backgroundColor: '#D0E8F2' }}>
-                <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#4B97C9' }}>
+                <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'rgb(75,151,201)' }}>
                   <Heart className="w-12 h-12 text-white" />
                 </div>
                 <h3 className="text-3xl font-bold mb-4" style={{ color: '#1B4965' }}>
@@ -134,14 +149,14 @@ export default function Body() {
                     <a href={`#/user/product/${product.slug}`}>
                       {product.list_image && (
                         <img 
-                          src={product.list_image || '/IMAGES/BANNER (1).jpg'} 
+                          src={product.list_image || '/IMAGES/BANNER (1).webp'} 
                           alt={product.title}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 rounded-xl" 
                           loading="lazy"
                           style={{ aspectRatio: '1 / 1' }}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
-                            target.src = '/IMAGES/BANNER (1).jpg'
+                            target.src = '/IMAGES/BANNER (1).webp'
                           }}
                         />
                       )}
@@ -162,6 +177,21 @@ export default function Body() {
                     <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-1 line-clamp-2 overflow-hidden" style={{color: '#1a1a1a', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
                       {product.title}
                     </h3>
+                    {/* Subtitle */}
+                    {(() => {
+                      const csvMatch = csvProducts?.find((csv: any) => {
+                        const csvSlug = csv['Slug'] || csv['Product Name']?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
+                        return csvSlug === product.slug
+                      })
+                      const subtitle = csvMatch?.['Subtitle / Tagline'] || 
+                                       (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
+                                       (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
+                      return subtitle ? (
+                        <p className="text-sm text-gray-600 mb-1 line-clamp-1" style={{color: '#666'}}>
+                          {subtitle}
+                        </p>
+                      ) : null
+                    })()}
                     {(() => {
                       const rating = getProductRating(product.slug || '')
                       const reviewCount = getProductReviewCount(product.slug || '')
@@ -219,15 +249,16 @@ export default function Body() {
                           }}
                           className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900 rounded-xl"
                           style={{
-                            backgroundColor: 'var(--arctic-blue-primary)',
+                            backgroundColor: 'rgb(75,151,201)',
+                            color: '#FFFFFF',
                             minHeight: '44px',
                             letterSpacing: '0.15em'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                           }}
                         >
                           Add to Cart
@@ -259,7 +290,7 @@ export default function Body() {
                 className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 tracking-[0.15em]" 
                 style={{
                   color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
@@ -379,15 +410,16 @@ export default function Body() {
                           }}
                           className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900 rounded-xl"
                           style={{
-                            backgroundColor: 'var(--arctic-blue-primary)',
+                            backgroundColor: 'rgb(75,151,201)',
+                            color: '#FFFFFF',
                             minHeight: '44px',
                             letterSpacing: '0.15em'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                           }}
                         >
                           Add to Cart
@@ -412,7 +444,7 @@ export default function Body() {
         )}
 
         {/* Call to Action */}
-        <div className="text-center rounded-2xl p-12 text-white" style={{ backgroundColor: '#4B97C9' }}>
+        <div className="text-center rounded-2xl p-12 text-white" style={{ backgroundColor: 'rgb(75,151,201)' }}>
           <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Body Care?</h2>
           <p className="text-xl mb-8 opacity-90">
             Experience the power of natural ingredients with Nefol body care products.

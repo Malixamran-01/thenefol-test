@@ -14,7 +14,7 @@
  * 
  * Requirements:
  *   - Node.js 18+ (for fetch) or install node-fetch
- *   - Backend running on http://192.168.1.36:2000
+ *   - Backend running on https://thenefol.com
  *   - Database accessible via DATABASE_URL env var
  *   - Affiliate with ID=1 must exist in database
  */
@@ -31,7 +31,7 @@ try {
   process.exit(1);
 }
 
-const API_BASE = 'http://192.168.1.36:2000';
+const API_BASE = process.env.API_BASE_URL || 'https://thenefol.com';
 const AFFILIATE_ID = 1; // From ref=1 in the referral link
 
 // Database connection for adding coins

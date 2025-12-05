@@ -39,7 +39,17 @@ const Tax: React.FC = () => {
   const loadTaxData = async () => {
     try {
       setLoading(true);
-      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`;
+      const getApiBase = () => {
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
+      }
+      const apiBase = getApiBase();
       const [ratesRes, rulesRes] = await Promise.all([
         fetch(`${apiBase}/api/tax-rates`),
         fetch(`${apiBase}/api/tax-rules`)

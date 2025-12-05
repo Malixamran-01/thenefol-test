@@ -113,7 +113,9 @@ export default function BlogDetail() {
             <button
               onClick={handleBack}
               className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg"
-              style={{backgroundColor: '#1B4965'}}
+              style={{backgroundColor: 'rgb(75,151,201)'}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Blog

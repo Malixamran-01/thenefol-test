@@ -71,8 +71,10 @@ function ProductsManager() {
   const [bulkRows, setBulkRows] = useState<Record<string, string>[]>([])
   const [bulkLoading, setBulkLoading] = useState(false)
   const [selected, setSelected] = useState<Product | null>(null)
-  const [pdpImages, setPdpImages] = useState<string[]>([])
-  const [bannerImages, setBannerImages] = useState<string[]>([])
+  const [pdpImages, setPdpImages] = useState<Array<{ id: number; url: string; type?: string; display_order?: number }>>([])
+  const [bannerImages, setBannerImages] = useState<Array<{ id: number; url: string; type?: string; display_order?: number }>>([])
+  const [draggedImage, setDraggedImage] = useState<{ id: number; type: 'pdp' | 'banner'; index: number } | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<{ type: 'pdp' | 'banner'; index: number } | null>(null)
   const [form, setForm] = useState<Partial<Product>>({
     slug: '', title: '', category: '', price: '', list_image: '', description: '',     details: {
       sku: '', hsn: '', mrp: '', websitePrice: '', discountPercent: '', brand: '', subtitle: '',
@@ -87,12 +89,41 @@ function ProductsManager() {
   const [formPdpImages, setFormPdpImages] = useState<File[]>([])
 
   const getApiBase = () => {
-    if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-    const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-    const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-    return `http://${host}:${port}`
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+      // For any other domain, always use production URL
+      return 'https://thenefol.com/api'
+    }
+    return 'https://thenefol.com/api'
   }
   const apiBase = getApiBase()
+  
+  // Function to save image order to backend
+  const saveImageOrder = async (images: Array<{ id: number; url: string; type?: string; display_order?: number }>, type: 'pdp' | 'banner') => {
+    if (!selected) return
+    try {
+      const orderUpdates = images.map((img, index) => ({
+        id: img.id,
+        display_order: index + 1
+      }))
+      const res = await fetch(`${apiBase}/products/${selected.id}/images/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: orderUpdates, type })
+      })
+      if (res.ok) {
+        notify('success', 'Image order updated')
+      } else {
+        notify('error', 'Failed to update image order')
+      }
+    } catch (err) {
+      notify('error', 'Failed to update image order')
+    }
+  }
   const toAbs = (u?: string) => {
     if (!u) return ''
     if (/^https?:\/\//i.test(u)) return u
@@ -105,10 +136,10 @@ function ProductsManager() {
     try {
       setLoading(true)
       setError('')
-      console.log('🔄 Loading products from API:', `${apiBase}/api/products`)
+      console.log('🔄 Loading products from API:', `${apiBase}/products`)
       
       // Add timestamp to prevent caching
-      const res = await fetch(`${apiBase}/api/products?_=${Date.now()}`, {
+      const res = await fetch(`${apiBase}/products?_=${Date.now()}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -166,7 +197,7 @@ function ProductsManager() {
           return
         }
       }
-      const res = await fetch(`${apiBase}/api/products`, {
+      const res = await fetch(`${apiBase}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -188,7 +219,7 @@ function ProductsManager() {
             const url = await uploadFile(f, apiBase)
             uploaded.push(url)
           }
-          await fetch(`${apiBase}/api/products/${created.id}/images`, {
+          await fetch(`${apiBase}/products/${created.id}/images`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ images: uploaded })
@@ -212,7 +243,7 @@ function ProductsManager() {
   
   const remove = async (id: number) => {
     try {
-      const res = await fetch(`${apiBase}/api/products/${id}`, { method: 'DELETE' })
+      const res = await fetch(`${apiBase}/products/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('delete failed')
       setSelectedProducts(prev => {
         const next = new Set(prev)
@@ -234,7 +265,7 @@ function ProductsManager() {
     
     try {
       const ids = Array.from(selectedProducts)
-      const res = await fetch(`${apiBase}/api/products/bulk-delete`, {
+      const res = await fetch(`${apiBase}/products/bulk-delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids })
@@ -298,7 +329,7 @@ function ProductsManager() {
       return
     }
     try {
-      const res = await fetch(`${apiBase}/api/products/${editing.id}`, {
+      const res = await fetch(`${apiBase}/products/${editing.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -534,7 +565,7 @@ function ProductsManager() {
                 }
                 
                 try {
-                  const res = await fetch(`${apiBase}/api/products`, {
+                  const res = await fetch(`${apiBase}/products`, {
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify(payload)
@@ -729,7 +760,7 @@ function ProductsManager() {
               <button className="rounded bg-white/10 px-3 py-2 text-sm hover:bg-white/15" onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}>{sortDir==='asc'?'Asc':'Desc'}</button>
             </div>
               <button onClick={load} className="rounded bg-white/10 px-3 py-2 text-sm hover:bg-white/15">Refresh</button>
-              <form onSubmit={async (e)=>{e.preventDefault(); const input=(e.currentTarget.elements.namedItem('csv') as HTMLInputElement); const file=input.files?.[0]; if(!file) return; const fd=new FormData(); fd.append('file', file); const r=await fetch(`${apiBase}/api/products-csv/upload`,{method:'POST', body: fd}); if(r.ok){alert('CSV uploaded');} else {alert('CSV upload failed')}}} className="flex items-center gap-2">
+              <form onSubmit={async (e)=>{e.preventDefault(); const input=(e.currentTarget.elements.namedItem('csv') as HTMLInputElement); const file=input.files?.[0]; if(!file) return; const fd=new FormData(); fd.append('file', file); const r=await fetch(`${apiBase}/products-csv/upload`,{method:'POST', body: fd}); if(r.ok){alert('CSV uploaded');} else {alert('CSV upload failed')}}} className="flex items-center gap-2">
                 <input name="csv" type="file" accept=".csv" className="rounded border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                 <button className="rounded bg-white/10 px-3 py-2 text-sm hover:bg-white/15">Upload CSV</button>
               </form>
@@ -798,12 +829,20 @@ function ProductsManager() {
                           setBannerImages([])
                           // Load existing images
                           try {
-                            const imagesRes = await fetch(`${apiBase}/api/products/${p.id}/images`)
+                            const imagesRes = await fetch(`${apiBase}/products/${p.id}/images`)
                             if (imagesRes.ok) {
-                              const images = await imagesRes.json()
-                              // Deduplicate images by URL
-                              const pdpImgs: string[] = [...new Set(images.filter((img: any) => img.type === 'pdp' || !img.type).map((img: any) => img.url).filter(Boolean))] as string[]
-                              const bannerImgs: string[] = [...new Set(images.filter((img: any) => img.type === 'banner').map((img: any) => img.url).filter(Boolean))] as string[]
+                              const response = await imagesRes.json()
+                              // Handle both direct array response and wrapped response
+                              const images = Array.isArray(response) ? response : (response.data || response.images || [])
+                              // Store full image objects with IDs for deletion, sorted by display_order
+                              const pdpImgs: Array<{ id: number; url: string; type?: string; display_order?: number }> = images
+                                .filter((img: any) => (img.type === 'pdp' || !img.type) && img.url && img.id)
+                                .map((img: any) => ({ id: img.id, url: img.url, type: img.type, display_order: img.display_order || img.id }))
+                                .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+                              const bannerImgs: Array<{ id: number; url: string; type?: string; display_order?: number }> = images
+                                .filter((img: any) => img.type === 'banner' && img.url && img.id)
+                                .map((img: any) => ({ id: img.id, url: img.url, type: img.type, display_order: img.display_order || img.id }))
+                                .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
                               setPdpImages(pdpImgs)
                               setBannerImages(bannerImgs)
                             }
@@ -832,13 +871,51 @@ function ProductsManager() {
                 <div>
                   <div className="mb-2 text-sm text-gray-700">Main image</div>
                   <div className="flex items-center gap-3">
-                    {selected.list_image ? <img src={toAbs(selected.list_image)} className="h-16 w-16 rounded object-cover" /> : <div className="h-16 w-16 rounded border border-gray-300 bg-gray-50" />}
+                    <div className="relative group">
+                      {selected.list_image ? (
+                        <>
+                          <img src={toAbs(selected.list_image)} className="h-16 w-16 rounded object-cover" />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm('Are you sure you want to remove the main image?')) return
+                              try {
+                                const res = await fetch(`${apiBase}/products/${selected.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ listImage: '' })
+                                })
+                                if (!res.ok) {
+                                  const txt = await res.text().catch(() => '')
+                                  throw new Error(txt || 'Update failed')
+                                }
+                                // Update local table and modal state
+                                setItems(prev => prev.map(p => p.id === selected.id ? { ...p, list_image: '' } : p))
+                                setSelected(prev => prev ? { ...(prev as Product), list_image: '' } : prev)
+                                await load()
+                                notify('success', 'Main image removed')
+                              } catch (_) {
+                                notify('error', 'Failed to remove main image')
+                              }
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            title="Remove main image"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </>
+                      ) : (
+                        <div className="h-16 w-16 rounded border border-gray-300 bg-gray-50" />
+                      )}
+                    </div>
                     <input type="file" accept="image/*" className="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" onChange={async e=>{
                       const file = e.target.files?.[0]
                       if (!file) return
                       try {
                         const url = await uploadFile(file, apiBase)
-                        const res = await fetch(`${apiBase}/api/products/${selected.id}`, {
+                        const res = await fetch(`${apiBase}/products/${selected.id}`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ listImage: url })
@@ -860,15 +937,85 @@ function ProductsManager() {
                   </div>
                 </div>
                 <div>
-                  <div className="mb-2 text-sm text-gray-700">PDP images</div>
+                  <div className="mb-2 text-sm text-gray-700">PDP images <span className="text-xs text-gray-500">(Drag to reorder)</span></div>
                   <div className="flex flex-wrap gap-2">
-                    {pdpImages.map((u,idx)=>{
-                      const abs = toAbs(u)
+                    {pdpImages.map((img, idx) => {
+                      const abs = toAbs(img.url)
                       const isVid = /\.(mp4|webm|ogg)(\?|$)/i.test(abs)
-                      return isVid ? (
-                        <video key={idx} src={abs} className="h-16 w-16 rounded object-cover" />
-                      ) : (
-                        <img key={idx} src={abs} className="h-16 w-16 rounded object-cover" />
+                      const isDragging = draggedImage?.id === img.id && draggedImage?.type === 'pdp'
+                      const isDragOver = dragOverIndex?.type === 'pdp' && dragOverIndex?.index === idx
+                      return (
+                        <div 
+                          key={img.id || idx} 
+                          className={`relative group cursor-move ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'ring-2 ring-blue-500' : ''}`}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedImage({ id: img.id, type: 'pdp', index: idx })
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            e.dataTransfer.dropEffect = 'move'
+                            setDragOverIndex({ type: 'pdp', index: idx })
+                          }}
+                          onDragLeave={() => {
+                            setDragOverIndex(null)
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            if (draggedImage && draggedImage.type === 'pdp' && draggedImage.id !== img.id) {
+                              const newImages = [...pdpImages]
+                              const draggedItem = newImages[draggedImage.index]
+                              newImages.splice(draggedImage.index, 1)
+                              newImages.splice(idx, 0, draggedItem)
+                              setPdpImages(newImages)
+                              // Save new order to backend
+                              saveImageOrder(newImages, 'pdp')
+                            }
+                            setDraggedImage(null)
+                            setDragOverIndex(null)
+                          }}
+                          onDragEnd={() => {
+                            setDraggedImage(null)
+                            setDragOverIndex(null)
+                          }}
+                        >
+                          <div className="absolute top-1 left-1 bg-blue-500 text-white rounded-full p-1 text-xs z-10">
+                            {idx + 1}
+                          </div>
+                          {isVid ? (
+                            <video src={abs} className="h-16 w-16 rounded object-cover" />
+                          ) : (
+                            <img src={abs} className="h-16 w-16 rounded object-cover" />
+                          )}
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              if (!confirm('Are you sure you want to delete this image?')) return
+                              try {
+                                const res = await fetch(`${apiBase}/products/${selected.id}/images/${img.id}`, {
+                                  method: 'DELETE'
+                                })
+                                if (res.ok) {
+                                  // Remove from local state
+                                  setPdpImages(prev => prev.filter(i => i.id !== img.id))
+                                  await load()
+                                  notify('success', 'Image deleted successfully')
+                                } else {
+                                  notify('error', 'Failed to delete image')
+                                }
+                              } catch (err) {
+                                notify('error', 'Failed to delete image')
+                              }
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 z-10"
+                            title="Delete image"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
                       )
                     })}
                   </div>
@@ -882,17 +1029,22 @@ function ProductsManager() {
                           const url = await uploadFile(f, apiBase)
                           uploaded.push(url)
                         }
-                        await fetch(`${apiBase}/api/products/${selected.id}/images`, {
+                        await fetch(`${apiBase}/products/${selected.id}/images`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ images: uploaded, type: 'pdp' })
                         })
-                        // Reload images from database to avoid duplicates
-                        const imagesRes = await fetch(`${apiBase}/api/products/${selected.id}/images`)
+                        // Reload images from database to get full objects with IDs
+                        const imagesRes = await fetch(`${apiBase}/products/${selected.id}/images`)
                         if (imagesRes.ok) {
-                          const images = await imagesRes.json()
-                          // Deduplicate images by URL
-                          const pdpImgs: string[] = [...new Set(images.filter((img: any) => img.type === 'pdp' || !img.type).map((img: any) => img.url).filter(Boolean))] as string[]
+                          const response = await imagesRes.json()
+                          // Handle both direct array response and wrapped response
+                          const images = Array.isArray(response) ? response : (response.data || response.images || [])
+                          // Store full image objects with IDs for deletion, sorted by display_order
+                          const pdpImgs: Array<{ id: number; url: string; type?: string; display_order?: number }> = images
+                            .filter((img: any) => (img.type === 'pdp' || !img.type) && img.url && img.id)
+                            .map((img: any) => ({ id: img.id, url: img.url, type: img.type, display_order: img.display_order || img.id }))
+                            .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
                           setPdpImages(pdpImgs)
                         }
                         await load()
@@ -904,15 +1056,85 @@ function ProductsManager() {
                   </div>
                 </div>
                 <div>
-                  <div className="mb-2 text-sm text-gray-700">Banner images</div>
+                  <div className="mb-2 text-sm text-gray-700">Banner images <span className="text-xs text-gray-500">(Drag to reorder)</span></div>
                   <div className="flex flex-wrap gap-2">
-                    {bannerImages.map((u,idx)=>{
-                      const abs = toAbs(u)
+                    {bannerImages.map((img, idx) => {
+                      const abs = toAbs(img.url)
                       const isVid = /\.(mp4|webm|ogg)(\?|$)/i.test(abs)
-                      return isVid ? (
-                        <video key={idx} src={abs} className="h-16 w-16 rounded object-cover" />
-                      ) : (
-                        <img key={idx} src={abs} className="h-16 w-16 rounded object-cover" />
+                      const isDragging = draggedImage?.id === img.id && draggedImage?.type === 'banner'
+                      const isDragOver = dragOverIndex?.type === 'banner' && dragOverIndex?.index === idx
+                      return (
+                        <div 
+                          key={img.id || idx} 
+                          className={`relative group cursor-move ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'ring-2 ring-blue-500' : ''}`}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedImage({ id: img.id, type: 'banner', index: idx })
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            e.dataTransfer.dropEffect = 'move'
+                            setDragOverIndex({ type: 'banner', index: idx })
+                          }}
+                          onDragLeave={() => {
+                            setDragOverIndex(null)
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            if (draggedImage && draggedImage.type === 'banner' && draggedImage.id !== img.id) {
+                              const newImages = [...bannerImages]
+                              const draggedItem = newImages[draggedImage.index]
+                              newImages.splice(draggedImage.index, 1)
+                              newImages.splice(idx, 0, draggedItem)
+                              setBannerImages(newImages)
+                              // Save new order to backend
+                              saveImageOrder(newImages, 'banner')
+                            }
+                            setDraggedImage(null)
+                            setDragOverIndex(null)
+                          }}
+                          onDragEnd={() => {
+                            setDraggedImage(null)
+                            setDragOverIndex(null)
+                          }}
+                        >
+                          <div className="absolute top-1 left-1 bg-blue-500 text-white rounded-full p-1 text-xs z-10">
+                            {idx + 1}
+                          </div>
+                          {isVid ? (
+                            <video src={abs} className="h-16 w-16 rounded object-cover" />
+                          ) : (
+                            <img src={abs} className="h-16 w-16 rounded object-cover" />
+                          )}
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              if (!confirm('Are you sure you want to delete this image?')) return
+                              try {
+                                const res = await fetch(`${apiBase}/products/${selected.id}/images/${img.id}`, {
+                                  method: 'DELETE'
+                                })
+                                if (res.ok) {
+                                  // Remove from local state
+                                  setBannerImages(prev => prev.filter(i => i.id !== img.id))
+                                  await load()
+                                  notify('success', 'Image deleted successfully')
+                                } else {
+                                  notify('error', 'Failed to delete image')
+                                }
+                              } catch (err) {
+                                notify('error', 'Failed to delete image')
+                              }
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 z-10"
+                            title="Delete image"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
                       )
                     })}
                   </div>
@@ -926,17 +1148,19 @@ function ProductsManager() {
                           const url = await uploadFile(f, apiBase)
                           uploaded.push(url)
                         }
-                        await fetch(`${apiBase}/api/products/${selected.id}/images`, {
+                        await fetch(`${apiBase}/products/${selected.id}/images`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ images: uploaded, type: 'banner' })
                         })
-                        // Reload images from database to avoid duplicates
-                        const imagesRes = await fetch(`${apiBase}/api/products/${selected.id}/images`)
+                        // Reload images from database to get full objects with IDs
+                        const imagesRes = await fetch(`${apiBase}/products/${selected.id}/images`)
                         if (imagesRes.ok) {
-                          const images = await imagesRes.json()
-                          // Deduplicate images by URL
-                          const bannerImgs: string[] = [...new Set(images.filter((img: any) => img.type === 'banner').map((img: any) => img.url).filter(Boolean))] as string[]
+                          const response = await imagesRes.json()
+                          // Handle both direct array response and wrapped response
+                          const images = Array.isArray(response) ? response : (response.data || response.images || [])
+                          // Store full image objects with IDs for deletion
+                          const bannerImgs: Array<{ id: number; url: string; type?: string }> = images.filter((img: any) => img.type === 'banner' && img.url && img.id).map((img: any) => ({ id: img.id, url: img.url, type: img.type }))
                           setBannerImages(bannerImgs)
                         }
                         await load()

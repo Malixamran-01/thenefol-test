@@ -22,7 +22,17 @@ export default function Forms() {
   const [forms, setForms] = useState<Form[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
+  const getApiBase = () => {
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
+  }
+  const apiBase = getApiBase()
 
   // Fetch forms and submissions from API
   useEffect(() => {

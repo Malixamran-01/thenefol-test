@@ -3,6 +3,7 @@ import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import Razorpay from 'razorpay'
+import { WhatsAppService } from '../services/whatsappService'
 
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
 const razorpay = new Razorpay({
@@ -250,6 +251,27 @@ export async function approveCancellation(pool: Pool, req: Request, res: Respons
           WHERE id = $3`,
           [refund.id, refund.id, id]
         )
+        
+        // Send WhatsApp refund notification (async, don't wait)
+        try {
+          const userResult = await pool.query(
+            'SELECT name, phone FROM users WHERE id = (SELECT user_id FROM order_cancellations WHERE id = $1) OR email = $2',
+            [id, cancellation.customer_email || '']
+          )
+          
+          if (userResult.rows.length > 0 && userResult.rows[0].phone) {
+            const whatsappService = new WhatsAppService(pool)
+            whatsappService.sendRefundWhatsApp(
+              { name: userResult.rows[0].name || 'Customer', phone: userResult.rows[0].phone },
+              cancellation.order_number,
+              parseFloat(cancellation.refund_amount)
+            ).catch(err => {
+              console.error('Failed to send WhatsApp refund notification:', err)
+            })
+          }
+        } catch (waErr: any) {
+          console.error('Error sending WhatsApp refund notification:', waErr)
+        }
 
         sendSuccess(res, {
           cancellation_id: id,
@@ -271,6 +293,27 @@ export async function approveCancellation(pool: Pool, req: Request, res: Respons
         `UPDATE order_cancellations SET refund_status = 'processed' WHERE id = $1`,
         [id]
       )
+      
+      // Send WhatsApp refund notification for COD (async, don't wait)
+      try {
+        const userResult = await pool.query(
+          'SELECT name, phone FROM users WHERE id = (SELECT user_id FROM order_cancellations WHERE id = $1) OR email = $2',
+          [id, cancellation.customer_email || '']
+        )
+        
+        if (userResult.rows.length > 0 && userResult.rows[0].phone) {
+          const whatsappService = new WhatsAppService(pool)
+          whatsappService.sendRefundWhatsApp(
+            { name: userResult.rows[0].name || 'Customer', phone: userResult.rows[0].phone },
+            cancellation.order_number,
+            parseFloat(cancellation.refund_amount)
+          ).catch(err => {
+            console.error('Failed to send WhatsApp refund notification:', err)
+          })
+        }
+      } catch (waErr: any) {
+        console.error('Error sending WhatsApp refund notification:', waErr)
+      }
 
       sendSuccess(res, {
         cancellation_id: id,
@@ -436,6 +479,157 @@ export async function cancelOrderImmediate(pool: Pool, req: Request, res: Respon
       `UPDATE orders SET status = 'cancelled', cancellation_requested_at = now(), can_cancel = false, updated_at = now() WHERE order_number = $1`,
       [order_number]
     )
+
+    // Reverse coins if coins were used for payment
+    if (order.coins_used && order.coins_used > 0) {
+      try {
+        // Get user by email
+        const userResult = await pool.query('SELECT id, loyalty_points FROM users WHERE email = $1', [order.customer_email])
+        const userId = userResult.rows[0]?.id
+        
+        if (userId) {
+          // Refund coins back to user
+          await pool.query(`
+            UPDATE users 
+            SET loyalty_points = loyalty_points + $1
+            WHERE id = $2
+          `, [order.coins_used, userId])
+          
+          // Record coin transaction for refund
+          await pool.query(`
+            INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `, [
+            userId,
+            order.coins_used, // Positive amount for refund
+            'refund',
+            `Refunded ${order.coins_used} coins (₹${(order.coins_used / 10).toFixed(2)}) for cancelled order ${order_number}`,
+            'completed',
+            order.id,
+            new Date()
+          ])
+          
+          console.log(`✅ Refunded ${order.coins_used} coins to user ${order.customer_email} for cancelled order ${order_number}`)
+        }
+      } catch (coinsErr) {
+        console.error('Error refunding coins:', coinsErr)
+        // Don't fail cancellation if coins refund fails
+      }
+    }
+
+    // Reverse referral coins if this was a referred order
+    if (order.affiliate_id) {
+      try {
+        // Find the affiliate user
+        const affiliateResult = await pool.query(`
+          SELECT user_id, id FROM affiliate_partners WHERE id = $1
+        `, [order.affiliate_id])
+        
+        if (affiliateResult.rows.length > 0 && affiliateResult.rows[0].user_id) {
+          const affiliateUserId = affiliateResult.rows[0].user_id
+          
+          // Find referral coins transaction for this order (within last 8 days)
+          const referralCoinsResult = await pool.query(`
+            SELECT amount, id FROM coin_transactions
+            WHERE user_id = $1
+              AND type = 'referral_commission'
+              AND order_id = $2
+              AND amount > 0
+              AND created_at > NOW() - INTERVAL '8 days'
+            ORDER BY created_at DESC
+            LIMIT 1
+          `, [affiliateUserId, order.id])
+          
+          if (referralCoinsResult.rows.length > 0) {
+            const referralCoins = referralCoinsResult.rows[0].amount
+            
+            // Deduct referral coins from affiliate
+            await pool.query(`
+              UPDATE users 
+              SET loyalty_points = loyalty_points - $1
+              WHERE id = $2
+            `, [referralCoins, affiliateUserId])
+            
+            // Update affiliate partner stats
+            const commissionEarned = referralCoins / 10 // Convert coins to rupees
+            await pool.query(`
+              UPDATE affiliate_partners 
+              SET total_referrals = GREATEST(0, total_referrals - 1),
+                  total_earnings = GREATEST(0, total_earnings - $1),
+                  pending_earnings = GREATEST(0, pending_earnings - $1)
+              WHERE id = $2
+            `, [commissionEarned, order.affiliate_id])
+            
+            // Record reversal transaction
+            await pool.query(`
+              INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, created_at)
+              VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `, [
+              affiliateUserId,
+              -referralCoins, // Negative amount for reversal
+              'referral_commission_reversed',
+              `Reversed ${referralCoins} referral coins (₹${commissionEarned.toFixed(2)}) due to cancelled order ${order_number}`,
+              'completed',
+              order.id,
+              new Date()
+            ])
+            
+            console.log(`✅ Reversed ${referralCoins} referral coins from affiliate ${affiliateUserId} for cancelled order ${order_number}`)
+          }
+        }
+      } catch (referralErr) {
+        console.error('Error reversing referral coins:', referralErr)
+        // Don't fail cancellation if referral reversal fails
+      }
+    }
+
+    // Reverse cashback coins (5% of order total) if they were added
+    try {
+      // Find cashback coins transaction for this order
+      const cashbackResult = await pool.query(`
+        SELECT amount, id FROM coin_transactions
+        WHERE user_id = (SELECT id FROM users WHERE email = $1)
+          AND type = 'cashback'
+          AND order_id = $2
+          AND amount > 0
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [order.customer_email, order.id])
+      
+      if (cashbackResult.rows.length > 0) {
+        const cashbackCoins = cashbackResult.rows[0].amount
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [order.customer_email])
+        const userId = userResult.rows[0]?.id
+        
+        if (userId) {
+          // Deduct cashback coins
+          await pool.query(`
+            UPDATE users 
+            SET loyalty_points = loyalty_points - $1
+            WHERE id = $2
+          `, [cashbackCoins, userId])
+          
+          // Record reversal transaction
+          await pool.query(`
+            INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `, [
+            userId,
+            -cashbackCoins, // Negative amount for reversal
+            'cashback_reversed',
+            `Reversed ${cashbackCoins} cashback coins (₹${(cashbackCoins / 10).toFixed(2)}) due to cancelled order ${order_number}`,
+            'completed',
+            order.id,
+            new Date()
+          ])
+          
+          console.log(`✅ Reversed ${cashbackCoins} cashback coins from user ${order.customer_email} for cancelled order ${order_number}`)
+        }
+      }
+    } catch (cashbackErr) {
+      console.error('Error reversing cashback coins:', cashbackErr)
+      // Don't fail cancellation if cashback reversal fails
+    }
 
     // Process refund if payment was made via Razorpay
     if (order.razorpay_payment_id && order.payment_method !== 'cod') {

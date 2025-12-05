@@ -108,7 +108,7 @@ export default function StickyAddToCart({
         <button
           onClick={handleAddToCart}
           className="sticky-add-to-cart-btn flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 rounded-lg shadow-md hover:shadow-lg hover:scale-105"
-          style={{backgroundColor: '#4B97C9', minWidth: '160px'}}
+          style={{backgroundColor: 'rgb(75,151,201)', minWidth: '160px'}}
         >
           <ShoppingCart className="w-5 h-5" />
           <span>Add to Cart</span>

@@ -56,10 +56,22 @@ export default function CoinWithdrawals() {
     fetchWithdrawals()
   }, [filterStatus])
 
+  const getApiBase = () => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+      // Always use production URL - no environment variables
+    }
+    return 'https://thenefol.com/api'
+  }
+
   const fetchWithdrawals = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/coin-withdrawals${filterStatus !== 'all' ? `?status=${filterStatus}` : ''}`, {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/admin/coin-withdrawals${filterStatus !== 'all' ? `?status=${filterStatus}` : ''}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -105,7 +117,8 @@ export default function CoinWithdrawals() {
         headers['x-user-permissions'] = permissions
       }
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/coin-withdrawals/${selectedWithdrawal.id}/process`, {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/admin/coin-withdrawals/${selectedWithdrawal.id}/process`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(processForm)

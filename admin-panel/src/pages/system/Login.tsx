@@ -43,7 +43,7 @@ export default function Login() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input 
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-primary focus:outline-none" 
-              placeholder="admin@nefol.com" 
+              placeholder="Enter your email" 
               value={email} 
               onChange={e=>setEmail(e.target.value)} 
             />

@@ -10,10 +10,7 @@ export default defineConfig({
     strictPort: false, // Allow fallback if port is taken
     allowedHosts: [
       'localhost',
-      process.env.VITE_BACKEND_HOST || 'thenefol.com',
-      '.ngrok.io',
-      '.ngrok-free.dev',
-      'subcontained-clelia-scorchingly.ngrok-free.dev'
+      process.env.VITE_BACKEND_HOST || 'thenefol.com'
     ],
     proxy: {
       '/api': {

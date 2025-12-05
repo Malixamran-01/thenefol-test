@@ -48,10 +48,14 @@ const Returns = () => {
     try {
       setLoading(true);
       const getApiBase = () => {
-        if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-        const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-        const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-        return `http://${host}:${port}`
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
       }
       const apiBase = getApiBase();
       const response = await fetch(`${apiBase}/api/returns`, { headers: { 'x-user-role': 'admin', 'x-user-permissions': 'returns:read' } });
@@ -90,10 +94,14 @@ const Returns = () => {
     setLoading(true)
     try {
       const getApiBase = () => {
-        if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-        const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-        const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-        return `http://${host}:${port}`
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
       }
       const apiBase = getApiBase();
       const payload = {
@@ -152,10 +160,14 @@ const Returns = () => {
     setLoading(true)
     try {
       const getApiBase = () => {
-        if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-        const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-        const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-        return `http://${host}:${port}`
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
       }
       const apiBase = getApiBase();
       const response = await fetch(`${apiBase}/api/returns/${returnId}`, {
@@ -178,10 +190,14 @@ const Returns = () => {
     setLoading(true)
     try {
       const getApiBase = () => {
-        if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-        const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-        const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-        return `http://${host}:${port}`
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
       }
       const apiBase = getApiBase();
       const response = await fetch(`${apiBase}/api/returns/${returnId}/status`, {
@@ -205,10 +221,14 @@ const Returns = () => {
   const handleGenerateLabel = async (returnId: string) => {
     try {
       const getApiBase = () => {
-        if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-        const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-        const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-        return `http://${host}:${port}`
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
       }
       const apiBase = getApiBase();
       const res = await fetch(`${apiBase}/api/returns/${returnId}/label`, {

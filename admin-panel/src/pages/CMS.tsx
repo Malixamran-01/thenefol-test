@@ -43,12 +43,24 @@ export default function CMS() {
   const [blogPosts, setBlogPosts] = useState<any[]>([])
   const [blogLoading, setBlogLoading] = useState(false)
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
+  const getApiBase = () => {
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+      // For any other domain, always use production URL
+      return 'https://thenefol.com/api'
+    }
+    return 'https://thenefol.com/api'
+  }
+  const API_BASE = getApiBase()
 
   // Fetch all pages
   const fetchPages = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/cms/pages`)
+      const response = await fetch(`${API_BASE}/cms/pages`)
       const data = await response.json()
       setPages(data)
       if (data.length > 0 && !selectedPage) {
@@ -62,7 +74,7 @@ export default function CMS() {
   // Fetch sections for selected page
   const fetchSections = async (pageName: string) => {
     try {
-      const response = await fetch(`${API_BASE}/api/cms/sections/${pageName}`)
+      const response = await fetch(`${API_BASE}/cms/sections/${pageName}`)
       const data = await response.json()
       setSections(data)
     } catch (error) {
@@ -119,7 +131,7 @@ export default function CMS() {
   // Save page
   const handleSavePage = async (pageData: Partial<CMSPage>) => {
     try {
-      const response = await fetch(`${API_BASE}/api/cms/pages`, {
+      const response = await fetch(`${API_BASE}/cms/pages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pageData)
@@ -140,7 +152,7 @@ export default function CMS() {
     if (!confirm('Are you sure you want to delete this page and all its sections?')) return
     
     try {
-      await fetch(`${API_BASE}/api/cms/pages/${pageName}`, { method: 'DELETE' })
+      await fetch(`${API_BASE}/cms/pages/${pageName}`, { method: 'DELETE' })
       await fetchPages()
       if (selectedPage === pageName) {
         setSelectedPage('')
@@ -153,7 +165,7 @@ export default function CMS() {
   // Save section
   const handleSaveSection = async (sectionData: Partial<CMSSection>) => {
     try {
-      const response = await fetch(`${API_BASE}/api/cms/sections`, {
+      const response = await fetch(`${API_BASE}/cms/sections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -177,7 +189,7 @@ export default function CMS() {
     if (!confirm('Are you sure you want to delete this section?')) return
     
     try {
-      await fetch(`${API_BASE}/api/cms/sections/${sectionId}`, { method: 'DELETE' })
+      await fetch(`${API_BASE}/cms/sections/${sectionId}`, { method: 'DELETE' })
       await fetchSections(selectedPage)
     } catch (error) {
       console.error('Failed to delete section:', error)
@@ -208,7 +220,7 @@ export default function CMS() {
   const fetchBlogRequests = async () => {
     try {
       setBlogLoading(true)
-      const response = await fetch(`${API_BASE}/api/blog/admin/requests`)
+      const response = await fetch(`${API_BASE}/blog/admin/requests`)
       const data = await response.json()
       setBlogRequests(data)
     } catch (error) {
@@ -221,7 +233,7 @@ export default function CMS() {
   const fetchBlogPosts = async () => {
     try {
       setBlogLoading(true)
-      const response = await fetch(`${API_BASE}/api/blog/admin/posts`)
+      const response = await fetch(`${API_BASE}/blog/admin/posts`)
       const data = await response.json()
       setBlogPosts(data)
     } catch (error) {
@@ -233,7 +245,7 @@ export default function CMS() {
 
   const approveBlogRequest = async (requestId: string, featured = false) => {
     try {
-      const response = await fetch(`${API_BASE}/api/blog/admin/approve/${requestId}`, {
+      const response = await fetch(`${API_BASE}/blog/admin/approve/${requestId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ featured })
@@ -250,7 +262,7 @@ export default function CMS() {
 
   const rejectBlogRequest = async (requestId: string, reason: string) => {
     try {
-      const response = await fetch(`${API_BASE}/api/blog/admin/reject/${requestId}`, {
+      const response = await fetch(`${API_BASE}/blog/admin/reject/${requestId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason })
@@ -268,7 +280,7 @@ export default function CMS() {
     if (!confirm('Are you sure you want to delete this blog post?')) return
     
     try {
-      const response = await fetch(`${API_BASE}/api/blog/admin/posts/${postId}`, {
+      const response = await fetch(`${API_BASE}/blog/admin/posts/${postId}`, {
         method: 'DELETE'
       })
       

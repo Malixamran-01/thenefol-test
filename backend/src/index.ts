@@ -31,9 +31,12 @@ import blogRouter, { initBlogRouter } from './routes/blog'
 import * as affiliateRoutes from './routes/affiliate'
 import * as searchRoutes from './routes/search'
 import * as marketingRoutes from './routes/marketing'
+import * as whatsappWebhookRoutes from './routes/whatsappWebhook'
 import * as paymentRoutes from './routes/payment'
-import * as userRoutes from './routes/users'
+import * as otpRoutes from './routes/otp'
 import * as notificationRoutes from './routes/notifications'
+import * as userRoutes from './routes/users'
+import * as authRoutes from './routes/auth'
 import * as cancellationRoutes from './routes/cancellations'
 import { seedCMSContent } from './utils/seedCMS'
 import { updateAllProductsWithPricing } from './utils/updateAllProducts'
@@ -48,6 +51,9 @@ import * as subscriptionRoutes from './routes/subscriptions'
 import * as productCollectionRoutes from './routes/productCollections'
 import { createAPIManagerRouter } from './routes/apiManager'
 import { processScheduledWhatsAppMessages } from './utils/whatsappScheduler'
+import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail, sendOrderShippedEmail, sendOrderDeliveredEmail } from './services/emailService'
+import { startCartAbandonmentCron } from './cron/cartAbandonment'
+import rateLimit from 'express-rate-limit'
 
 // Extend Request interface to include userId
 declare global {
@@ -57,12 +63,34 @@ declare global {
       userRole?: string
       userPermissions?: string[]
       io?: any
+      staffId?: number
+      staffSessionId?: number
+      staffSessionToken?: string
+      staffContext?: any
     }
   }
 }
 
 const app = express()
-app.use(express.json())
+
+// Trust proxy for accurate IP detection behind reverse proxy (Nginx)
+// Required for express-rate-limit to work correctly with X-Forwarded-For header
+app.set('trust proxy', 1)
+
+// Register GET webhook route early (doesn't need pool, and must be before express.json())
+// This handles Meta's webhook verification
+app.get('/api/whatsapp/webhook', whatsappWebhookRoutes.verifyWebhook)
+
+// Apply JSON parsing for all routes EXCEPT the WhatsApp webhook POST route
+// The webhook needs raw body for signature verification
+app.use((req, res, next) => {
+  // Skip JSON parsing for WhatsApp webhook POST route (needs raw body for signature verification)
+  if (req.path === '/api/whatsapp/webhook' && req.method === 'POST') {
+    return next()
+  }
+  // Apply JSON parsing for all other routes
+  express.json()(req, res, next)
+})
 
 // Serve uploaded files with CORS headers
 app.use('/uploads', (req, res, next) => {
@@ -75,8 +103,27 @@ app.use('/uploads', (req, res, next) => {
   next()
 }, express.static('uploads'))
 
-// Serve user panel images with CORS headers
-app.use('/IMAGES', (req, res, next) => {
+// Serve panel images with CORS headers from multiple possible locations
+// Priority: explicit env override -> built dist assets -> public fallbacks
+const imageSourceCandidates = [
+  process.env.IMAGES_PATH,
+  path.join(__dirname, '../../user-panel/dist/IMAGES'),
+  path.join(__dirname, '../../admin-panel/dist/IMAGES'),
+  path.join(__dirname, '../../user-panel/public/IMAGES'),
+  path.join(__dirname, '../../admin-panel/public/IMAGES')
+].filter((candidate): candidate is string => Boolean(candidate && candidate.trim()))
+
+const imageSources = imageSourceCandidates.filter((candidate, idx, arr) => {
+  const resolved = path.resolve(candidate)
+  const exists = fs.existsSync(resolved)
+  if (!exists) {
+    return false
+  }
+  // Deduplicate identical resolved paths
+  return arr.findIndex((original) => path.resolve(original || '') === resolved) === idx
+})
+
+const imageCorsMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Methods', 'GET, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Content-Type')
@@ -84,13 +131,24 @@ app.use('/IMAGES', (req, res, next) => {
     return res.sendStatus(200)
   }
   next()
-}, express.static(path.join(__dirname, '../../user-panel/public/IMAGES')))
+}
 
-// Debug: Log the path being used
-console.log('Serving IMAGES from:', path.join(__dirname, '../../user-panel/public/IMAGES'))
-console.log('Path exists:', fs.existsSync(path.join(__dirname, '../../user-panel/public/IMAGES')))
+app.use('/IMAGES', imageCorsMiddleware)
 
-const clientOrigin = process.env.CLIENT_ORIGIN || `http://${process.env.BACKEND_HOST || 'localhost'}:${process.env.USER_PANEL_PORT || '5173'}`
+if (imageSources.length === 0) {
+  const fallback = path.join(__dirname, '../../user-panel/dist/IMAGES')
+  console.warn('[IMAGES] No image directories found. Requests will 404 unless assets exist at', fallback)
+  app.use('/IMAGES', express.static(fallback))
+} else {
+  imageSources.forEach((source) => {
+    const resolved = path.resolve(source)
+    console.log('[IMAGES] Serving static assets from:', resolved)
+    app.use('/IMAGES', express.static(resolved))
+  })
+}
+
+// Always default to production - no localhost fallbacks
+const clientOrigin = process.env.CLIENT_ORIGIN || 'https://thenefol.com'
 app.use(cors({ origin: true, credentials: true }))
 
 // Basic in-memory rate limiting (IP-based)
@@ -208,7 +266,31 @@ async function attachRBACContext(req: express.Request) {
 }
 
 // Combined authenticate + RBAC attach middleware
-function authenticateAndAttach(req: express.Request, res: express.Response, next: Function) {
+const authenticateAndAttach = (req: express.Request, res: express.Response, next: Function) => {
+  const authHeader = req.headers.authorization
+  const token = authHeader?.replace('Bearer ', '').trim()
+
+  if (token && token.startsWith('staff_')) {
+    staffRoutes.getStaffContextByToken(pool, token)
+      .then((context) => {
+        if (!context) {
+          return sendError(res, 401, 'Invalid admin session')
+        }
+        ;(req as any).staffId = context.staffId
+        ;(req as any).staffSessionId = context.sessionId
+        ;(req as any).staffSessionToken = context.token
+        ;(req as any).userRole = context.primaryRole
+        ;(req as any).userPermissions = context.permissions
+        ;(req as any).staffContext = context
+        next()
+      })
+      .catch((err) => {
+        console.error('Staff session validation failed:', err)
+        sendError(res, 401, 'Invalid admin session')
+      })
+    return
+  }
+
   authenticateToken(req, res, async () => {
     await attachRBACContext(req)
     next()
@@ -229,6 +311,17 @@ const io = new SocketIOServer(server, {
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/nefol'
 const pool = new Pool({ connectionString })
+const staffAuthMiddleware = staffRoutes.createStaffAuthMiddleware(pool)
+
+// Register POST webhook route after pool is defined (must use raw body, not express.json())
+// This route must be registered before other routes to ensure raw body middleware is used
+app.post('/api/whatsapp/webhook', 
+  express.raw({ 
+    type: 'application/json',
+    limit: '10mb' // Allow larger payloads if needed
+  }), 
+  whatsappWebhookRoutes.handleWebhook.bind(null, pool)
+)
 
 // Middleware to allow staff with permissions OR regular authenticated users to create orders
 function allowOrderCreation(req: express.Request, res: express.Response, next: Function) {
@@ -679,8 +772,10 @@ app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarket
 
 // ==================== OPTIMIZED PRODUCTS API ====================
 app.get('/api/products', (req, res) => productRoutes.getProducts(pool, res))
-app.get('/api/products/:id', (req, res) => productRoutes.getProductById(pool, req, res))
+// Specific routes must come before generic :id route
+app.post('/api/products/:productId/view', (req, res) => recommendationRoutes.trackProductView(pool, req, res))
 app.get('/api/products/slug/:slug', (req, res) => productRoutes.getProductBySlug(pool, req, res))
+app.get('/api/products/:id', (req, res) => productRoutes.getProductById(pool, req, res))
 app.post('/api/products', (req, res) => productRoutes.createProduct(pool, req, res))
 app.put('/api/products/:id', (req, res) => productRoutes.updateProduct(pool, req, res, io))
 app.delete('/api/products/:id', (req, res) => productRoutes.deleteProduct(pool, req, res))
@@ -700,6 +795,7 @@ app.post('/api/products/:id/images', (req, res) => {
   }
 })
 app.get('/api/products/:id/images', (req, res) => productRoutes.getProductImages(pool, req, res))
+app.put('/api/products/:id/images/reorder', authenticateAndAttach as any, requirePermission(['products:update']), (req, res) => productRoutes.reorderProductImages(pool, req, res))
 app.delete('/api/products/:id/images/:imageId', (req, res) => productRoutes.deleteProductImage(pool, req, res))
 
 // ==================== VARIANTS & INVENTORY ====================
@@ -732,12 +828,8 @@ app.get('/api/public/shiprocket/serviceability', async (req, res) => {
     const token = await getToken(pool)
     if (!token) return sendError(res, 400, 'Invalid Shiprocket credentials')
     
-    // Get pickup postcode from first available pickup location
-    const pickupLocations = await getPickupLocations(pool)
-    let pickupPostcode = '110001' // Default fallback
-    if (pickupLocations && pickupLocations.length > 0) {
-      pickupPostcode = pickupLocations[0].pickup_pincode || pickupLocations[0].pincode || '110001'
-    }
+    // Use fixed pickup postcode: 226002 (Lucknow - 703, BCC Tower, Sultanpur Road, Arjunganj, Ahmamau)
+    const pickupPostcode = '226002'
     
     const base = process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external'
     const url = `${base}/courier/serviceability?pickup_postcode=${encodeURIComponent(pickupPostcode)}&delivery_postcode=${encodeURIComponent(delivery_postcode)}&cod=${encodeURIComponent(cod)}&weight=${encodeURIComponent(weight)}`
@@ -832,6 +924,9 @@ app.get('/api/alerts/config', (req, res) => notificationRoutes.getConfig(pool, r
 app.post('/api/alerts/config', (req, res) => notificationRoutes.saveConfig(pool, req, res))
 app.post('/api/alerts/test/whatsapp', (req, res) => notificationRoutes.testWhatsApp(pool, req, res))
 app.post('/api/alerts/test/email', (req, res) => notificationRoutes.testEmail(pool, req, res))
+
+// Order Notification Route (WhatsApp) - New modular endpoint
+app.post('/api/notifications/order', (req, res) => notificationRoutes.sendOrderNotification(pool, req, res))
 app.get('/api/returns', authenticateAndAttach as any, requirePermission(['returns:read']), (req, res) => returnRoutes.listReturns(pool, req, res))
 app.post('/api/returns', authenticateAndAttach as any, requirePermission(['returns:create']), (req, res) => returnRoutes.createReturn(pool, req, res))
 app.put('/api/returns/:id/status', authenticateAndAttach as any, requirePermission(['returns:update']), (req, res) => returnRoutes.updateReturnStatus(pool, req, res))
@@ -848,6 +943,10 @@ app.get('/api/staff/permissions', (req, res) => staffRoutes.listPermissions(pool
 app.get('/api/staff/role-permissions', (req, res) => staffRoutes.getRolePermissions(pool, req, res))
 app.post('/api/staff/role-permissions/set', (req, res) => staffRoutes.setRolePermissions(pool, req, res))
 app.get('/api/staff/activity', (req, res) => staffRoutes.listStaffActivity(pool, req, res))
+app.post('/api/staff/auth/login', (req, res) => staffRoutes.staffLogin(pool, req, res))
+app.post('/api/staff/auth/logout', staffAuthMiddleware as any, (req, res) => staffRoutes.staffLogout(pool, req, res))
+app.get('/api/staff/auth/me', staffAuthMiddleware as any, (req, res) => staffRoutes.staffMe(pool, req, res))
+app.post('/api/staff/auth/change-password', staffAuthMiddleware as any, (req, res) => staffRoutes.staffChangePassword(pool, req, res))
 app.post('/api/staff/users/reset-password', (req, res) => staffRoutes.resetPassword(pool, req, res))
 app.post('/api/staff/users/disable', (req, res) => staffRoutes.disableStaff(pool, req, res))
 app.post('/api/staff/seed-standard', (req, res) => staffRoutes.seedStandardRolesAndPermissions(pool, req, res))
@@ -880,7 +979,7 @@ app.post('/api/search/track', (req, res) => recommendationRoutes.trackSearch(poo
 app.get('/api/search/popular', (req, res) => recommendationRoutes.getPopularSearches(pool, req, res))
 
 // ==================== RECOMMENDATIONS & RECENTLY VIEWED ====================
-app.post('/api/products/:productId/view', (req, res) => recommendationRoutes.trackProductView(pool, req, res))
+// Note: /api/products/:productId/view is defined above in PRODUCTS API section
 app.get('/api/recommendations/recently-viewed', (req, res) => recommendationRoutes.getRecentlyViewed(pool, req, res))
 app.get('/api/recommendations/related/:productId', (req, res) => recommendationRoutes.getRelatedProducts(pool, req, res))
 app.get('/api/recommendations', (req, res) => recommendationRoutes.getRecommendedProducts(pool, req, res))
@@ -929,6 +1028,32 @@ app.delete('/api/cart', authenticateToken, (req, res) => cartRoutes.clearCart(po
 app.post('/api/auth/login', (req, res) => cartRoutes.login(pool, req, res))
 app.post('/api/auth/register', (req, res) => cartRoutes.register(pool, req, res))
 app.post('/api/auth/signup', (req, res) => cartRoutes.register(pool, req, res))
+
+// Rate limiting for OTP and password reset endpoints
+const otpRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: parseInt(process.env.RATE_LIMIT_OTP_PER_HOUR || '5'),
+  message: { error: 'Too many requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for internal/admin requests (optional)
+    return false
+  }
+})
+
+// Password Reset Routes (with rate limiting)
+app.post('/api/auth/request-reset', otpRateLimit, (req, res) => authRoutes.forgotPassword(pool, req, res))
+app.post('/api/auth/forgot-password', otpRateLimit, (req, res) => authRoutes.forgotPassword(pool, req, res)) // Legacy route
+app.post('/api/auth/reset-password', (req, res) => authRoutes.resetPassword(pool, req, res))
+
+// OTP Routes (WhatsApp + Email) with rate limiting
+app.post('/api/auth/send-otp', otpRateLimit, (req, res) => otpRoutes.sendOTP(pool, req, res))
+app.post('/api/auth/verify-otp', (req, res) => otpRoutes.verifyOTP(pool, req, res))
+app.post('/api/otp/send', otpRateLimit, (req, res) => otpRoutes.sendOTP(pool, req, res)) // Legacy route
+app.post('/api/otp/verify', (req, res) => otpRoutes.verifyOTP(pool, req, res)) // Legacy route
+
+// Legacy OTP routes (backward compatibility - using cart routes)
 app.post('/api/auth/send-otp', (req, res) => cartRoutes.sendOTP(pool, req, res))
 app.post('/api/auth/verify-otp-signup', (req, res) => cartRoutes.verifyOTPSignup(pool, req, res))
 app.post('/api/auth/send-otp-login', (req, res) => cartRoutes.sendOTPLogin(pool, req, res))
@@ -1198,6 +1323,8 @@ app.post('/api/whatsapp-chat/send', marketingRoutes.sendWhatsAppMessage.bind(nul
 app.get('/api/whatsapp/config', marketingRoutes.getWhatsAppConfig.bind(null, pool))
 app.post('/api/whatsapp/config', marketingRoutes.saveWhatsAppConfig.bind(null, pool))
 app.post('/api/whatsapp/templates', marketingRoutes.createWhatsAppTemplate.bind(null, pool))
+app.post('/api/whatsapp/templates/sync', marketingRoutes.syncWhatsAppTemplates.bind(null, pool))
+app.delete('/api/whatsapp/templates/:id', marketingRoutes.deleteWhatsAppTemplate.bind(null, pool))
 app.post('/api/whatsapp/automations', marketingRoutes.createWhatsAppAutomation.bind(null, pool))
 app.get('/api/whatsapp/scheduled-messages', marketingRoutes.getScheduledWhatsAppMessages.bind(null, pool))
 app.post('/api/whatsapp/scheduled-messages', marketingRoutes.createScheduledWhatsAppMessage.bind(null, pool))
@@ -1443,6 +1570,17 @@ app.get('/api/testimonials', async (req, res) => {
 app.get('/api/product-reviews/product/:productId', async (req, res) => {
   try {
     const { productId } = req.params
+    
+    // Validate productId parameter
+    if (!productId || productId === 'undefined' || productId === 'null') {
+      return sendError(res, 400, 'Invalid product ID')
+    }
+    
+    const productIdNum = parseInt(productId, 10)
+    if (isNaN(productIdNum) || productIdNum <= 0) {
+      return sendError(res, 400, 'Invalid product ID')
+    }
+    
     const { rows } = await pool.query(`
       SELECT 
         id,
@@ -1463,7 +1601,7 @@ app.get('/api/product-reviews/product/:productId', async (req, res) => {
       ORDER BY 
         is_featured DESC,
         created_at DESC
-    `, [productId])
+    `, [productIdNum])
     sendSuccess(res, rows)
   } catch (err) {
     sendError(res, 500, 'Failed to fetch product reviews', err)
@@ -1736,17 +1874,34 @@ app.post('/api/discounts/apply', async (req, res) => {
   try {
     const { code, amount } = req.body || {}
     
-    if (!code || !amount) {
-      return sendError(res, 400, 'Discount code and order amount are required')
+    // Validate input
+    if (!code || typeof code !== 'string' || code.trim() === '') {
+      console.error('Invalid discount code input:', { code, type: typeof code })
+      return sendError(res, 400, 'Discount code is required and must be a non-empty string')
     }
+    
+    if (amount === undefined || amount === null) {
+      console.error('Missing order amount:', { amount })
+      return sendError(res, 400, 'Order amount is required')
+    }
+    
+    const orderAmount = parseFloat(String(amount))
+    if (isNaN(orderAmount) || orderAmount < 0) {
+      console.error('Invalid order amount:', { amount, parsed: orderAmount })
+      return sendError(res, 400, 'Order amount must be a valid positive number')
+    }
+
+    const codeUpper = code.trim().toUpperCase()
+    console.log('Applying discount code:', { code: codeUpper, amount: orderAmount })
 
     // Find the discount by code
     const discountResult = await pool.query(
       `SELECT * FROM discounts WHERE code = $1 AND is_active = true`,
-      [code.toUpperCase()]
+      [codeUpper]
     )
 
     if (discountResult.rows.length === 0) {
+      console.log('Discount code not found or inactive:', codeUpper)
       return sendError(res, 404, 'Invalid or inactive discount code')
     }
 
@@ -1755,41 +1910,59 @@ app.post('/api/discounts/apply', async (req, res) => {
 
     // Check if discount is within validity period
     if (discount.valid_from && new Date(discount.valid_from) > now) {
-      return sendError(res, 400, 'Discount code is not yet valid')
+      console.log('Discount code not yet valid:', { code: codeUpper, valid_from: discount.valid_from })
+      return sendError(res, 400, `Discount code is not yet valid. Valid from ${new Date(discount.valid_from).toLocaleDateString()}`)
     }
 
     if (discount.valid_until && new Date(discount.valid_until) < now) {
-      return sendError(res, 400, 'Discount code has expired')
+      console.log('Discount code expired:', { code: codeUpper, valid_until: discount.valid_until })
+      return sendError(res, 400, `Discount code has expired. Expired on ${new Date(discount.valid_until).toLocaleDateString()}`)
     }
 
     // Check minimum purchase amount
-    if (discount.min_purchase && amount < parseFloat(discount.min_purchase)) {
-      return sendError(res, 400, `Minimum purchase amount of ₹${discount.min_purchase} required`)
+    if (discount.min_purchase) {
+      const minPurchase = parseFloat(String(discount.min_purchase))
+      if (orderAmount < minPurchase) {
+        console.log('Minimum purchase not met:', { code: codeUpper, orderAmount, minPurchase })
+        return sendError(res, 400, `Minimum purchase amount of ₹${minPurchase} required. Current order amount: ₹${orderAmount}`)
+      }
     }
 
     // Check usage limit
-    if (discount.usage_limit && discount.usage_count >= discount.usage_limit) {
-      return sendError(res, 400, 'Discount code usage limit reached')
+    if (discount.usage_limit) {
+      const usageCount = parseInt(String(discount.usage_count || 0))
+      const usageLimit = parseInt(String(discount.usage_limit))
+      if (usageCount >= usageLimit) {
+        console.log('Discount usage limit reached:', { code: codeUpper, usageCount, usageLimit })
+        return sendError(res, 400, `Discount code usage limit reached (${usageCount}/${usageLimit} uses)`)
+      }
     }
 
     // Calculate discount amount
     let discountAmount = 0
+    const discountValue = parseFloat(String(discount.value || 0))
+    
     if (discount.type === 'percentage') {
-      discountAmount = (amount * parseFloat(discount.value)) / 100
+      discountAmount = (orderAmount * discountValue) / 100
       // Apply max discount limit if set
-      if (discount.max_discount && discountAmount > parseFloat(discount.max_discount)) {
-        discountAmount = parseFloat(discount.max_discount)
+      if (discount.max_discount) {
+        const maxDiscount = parseFloat(String(discount.max_discount))
+        if (discountAmount > maxDiscount) {
+          discountAmount = maxDiscount
+        }
       }
     } else if (discount.type === 'fixed') {
-      discountAmount = parseFloat(discount.value)
+      discountAmount = discountValue
       // Don't allow discount to exceed order amount
-      if (discountAmount > amount) {
-        discountAmount = amount
+      if (discountAmount > orderAmount) {
+        discountAmount = orderAmount
       }
+    } else {
+      console.error('Invalid discount type:', { code: codeUpper, type: discount.type })
+      return sendError(res, 400, `Invalid discount type: ${discount.type}`)
     }
 
-    // Return discount details
-    sendSuccess(res, {
+    const response = {
       id: discount.id,
       code: discount.code,
       name: discount.name,
@@ -1797,9 +1970,18 @@ app.post('/api/discounts/apply', async (req, res) => {
       value: parseFloat(discount.value),
       discountAmount: Math.round(discountAmount * 100) / 100,
       maxDiscount: discount.max_discount ? parseFloat(discount.max_discount) : null
+    }
+
+    console.log('✅ Discount applied successfully:', { code: codeUpper, discountAmount: response.discountAmount })
+    
+    // Return discount details
+    sendSuccess(res, response)
+  } catch (err: any) {
+    console.error('Error applying discount:', {
+      error: err.message,
+      stack: err.stack,
+      body: req.body
     })
-  } catch (err) {
-    console.error('Error applying discount:', err)
     sendError(res, 500, 'Failed to apply discount code', err)
   }
 })
@@ -1840,53 +2022,73 @@ app.get('/api/analytics', async (req, res) => {
     // Get analytics data
     const ordersQuery = await pool.query(`
       SELECT 
-        COUNT(*) as total_orders,
-        SUM(total) as total_revenue,
-        COUNT(DISTINCT customer_email) as unique_customers
+        COUNT(*)::int as total_orders,
+        COALESCE(SUM(total), 0)::numeric as total_revenue,
+        COUNT(DISTINCT customer_email)::int as unique_customers
       FROM orders
       WHERE created_at >= $1
     `, [startDate])
     
-    const pageViewsQuery = await pool.query(`
-      SELECT COUNT(*) as page_views
-      FROM analytics_data
-      WHERE metric_name = 'page_view' AND created_at >= $1
-    `, [startDate])
+    // Safely query analytics_data table (might not exist)
+    let pageViews = 0
+    try {
+      const pageViewsQuery = await pool.query(`
+        SELECT COUNT(*)::int as page_views
+        FROM analytics_data
+        WHERE metric_name = 'page_view' AND created_at >= $1
+      `, [startDate])
+      pageViews = Number(pageViewsQuery.rows[0]?.page_views) || 0
+    } catch (analyticsErr) {
+      // analytics_data table might not exist, use 0
+      console.warn('analytics_data table query failed, using default:', analyticsErr)
+      pageViews = 0
+    }
     
     // Get chart data grouped by date
     const chartDataQuery = await pool.query(`
       SELECT 
         DATE(created_at) as date,
-        COUNT(*) as orders,
-        SUM(total) as revenue
+        COUNT(*)::int as orders,
+        COALESCE(SUM(total), 0)::numeric as revenue
       FROM orders
       WHERE created_at >= $1
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `, [startDate])
     
-    const orders = ordersQuery.rows[0]
-    const pageViews = pageViewsQuery.rows[0]?.page_views || 0
+    const orders = ordersQuery.rows[0] || {}
+    const totalOrders = Number(orders.total_orders) || 0
+    const totalRevenue = Number(orders.total_revenue) || 0
+    const uniqueCustomers = Number(orders.unique_customers) || 0
     
     sendSuccess(res, {
       overview: {
-        sessions: Math.floor(parseInt(pageViews) * 0.6),
-        pageViews: parseInt(pageViews),
+        sessions: Math.floor(pageViews * 0.6),
+        pageViews: pageViews,
         bounceRate: 45.2,
         avgSessionDuration: '2:34',
         conversionRate: 3.2,
-        revenue: parseFloat(orders.total_revenue || 0),
-        orders: parseInt(orders.total_orders || 0),
-        customers: parseInt(orders.unique_customers || 0)
+        revenue: totalRevenue,
+        orders: totalOrders,
+        customers: uniqueCustomers,
+        sessionsChange: 0,
+        pageViewsChange: 0,
+        bounceRateChange: 0,
+        avgSessionDurationChange: 0,
+        conversionRateChange: 0,
+        revenueChange: 0,
+        ordersChange: 0,
+        customersChange: 0
       },
       chartData: chartDataQuery.rows.map((row: any) => ({
         date: row.date,
         sessions: Math.floor(Math.random() * 200) + 100,
-        revenue: parseFloat(row.revenue || 0),
-        orders: parseInt(row.orders || 0)
+        revenue: Number(row.revenue) || 0,
+        orders: Number(row.orders) || 0
       }))
     })
   } catch (err) {
+    console.error('Analytics endpoint error:', err)
     sendError(res, 500, 'Failed to fetch analytics', err)
   }
 })
@@ -2571,7 +2773,7 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       coins_used = 0 // Coins used for payment
     } = req.body || {}
     
-    if (!order_number || !customer_name || !customer_email || !shipping_address || !items || !total) {
+    if (!customer_name || !customer_email || !shipping_address || !items || !total) {
       return sendError(res, 400, 'Missing required fields')
     }
     
@@ -2583,13 +2785,25 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12,2) DEFAULT 0`)
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS billing_address JSONB`)
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS coins_used INTEGER DEFAULT 0`)
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS invoice_number TEXT`)
+
+    // Import order number generation utilities
+    const { generateOrderNumber, generateNewInvoiceNumber } = await import('./utils/invoiceUtils')
+    
+    // Auto-generate order number in new format (N-093011251001)
+    // If order_number is provided, use it; otherwise generate new format
+    const generatedOrderNumber = order_number || await generateOrderNumber(pool, items)
+    
+    // Generate invoice number in new format (N09LKO3011251001)
+    const invoiceNumber = await generateNewInvoiceNumber(pool, shipping_address)
 
     const { rows } = await pool.query(`
-      INSERT INTO orders (order_number, customer_name, customer_email, shipping_address, billing_address, items, subtotal, shipping, tax, total, payment_method, payment_type, payment_status, cod, affiliate_id, discount_code, discount_amount, coins_used)
-      VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      INSERT INTO orders (order_number, invoice_number, customer_name, customer_email, shipping_address, billing_address, items, subtotal, shipping, tax, total, payment_method, payment_type, payment_status, cod, affiliate_id, discount_code, discount_amount, coins_used)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *
     `, [
-      order_number, 
+      generatedOrderNumber, 
+      invoiceNumber,
       customer_name, 
       customer_email, 
       JSON.stringify(shipping_address), 
@@ -2935,233 +3149,32 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       }
     }
     
-    // Automatically create Shiprocket shipment if payment is successful or COD
-    // Only create if shipping address is complete
-    if ((payment_status === 'paid' || cod === true) && shipping_address?.address && shipping_address?.city && shipping_address?.pincode) {
+    // Automatically create Shiprocket shipment if shipping address is complete
+    // Creates shipment regardless of payment status (for both paid and unpaid orders)
+    if (shipping_address?.address && shipping_address?.city && shipping_address?.pincode) {
       try {
-        console.log(`🚀 Attempting to auto-create Shiprocket shipment for order ${order_number}`)
-        const { getToken } = await import('./routes/shiprocket')
-        const shiprocketToken = await getToken(pool)
-        
-        if (shiprocketToken) {
-          const baseUrl = process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external'
-          
-          // Get available pickup locations and use the first one
-          const { getPickupLocations } = await import('./routes/shiprocket')
-          const pickupLocations = await getPickupLocations(pool)
-          let pickupLocation = 'work' // Default to 'work' based on Shiprocket response
-          if (pickupLocations && pickupLocations.length > 0) {
-            pickupLocation = pickupLocations[0].pickup_location || pickupLocations[0].id?.toString() || 'work'
-            console.log(`✅ Using pickup location: ${pickupLocation} (from ${pickupLocations.length} available locations)`)
-          } else {
-            // Use 'work' as default since that's what Shiprocket expects
-            pickupLocation = 'work'
-            console.log('⚠️ No pickup locations found via API, using default: work')
-          }
-          
-          // Helper function to extract 10-digit phone number for Shiprocket
-          const getTenDigitPhone = (phoneValue: string | undefined): string => {
-            if (!phoneValue) return ''
-            // Remove all non-digits
-            const cleanPhone = phoneValue.replace(/\D/g, '')
-            // If phone includes country code (e.g., +919876543210), extract last 10 digits
-            if (cleanPhone.length > 10) {
-              return cleanPhone.slice(-10)
-            }
-            // If phone is exactly 10 digits, return as is
-            if (cleanPhone.length === 10) {
-              return cleanPhone
-            }
-            // If phone is less than 10 digits, return empty (will fail validation)
-            return cleanPhone
-          }
-
-          // Prepare shipment payload
-          const shipmentPayload = {
-            order_id: order.order_number || `ORDER-${order.id}`,
-            order_date: new Date(order.created_at || Date.now()).toISOString().split('T')[0],
-            pickup_location: pickupLocation,
-            billing_customer_name: order.customer_name,
-            billing_last_name: shipping_address.lastName || '',
-            billing_address: shipping_address.address || '',
-            billing_address_2: shipping_address.apartment || '',
-            billing_city: shipping_address.city || '',
-            billing_pincode: shipping_address.zip || shipping_address.pincode || '',
-            billing_state: shipping_address.state || '',
-            billing_country: shipping_address.country || 'India',
-            billing_email: order.customer_email,
-            billing_phone: getTenDigitPhone(shipping_address.phone || (billing_address?.phone)),
-            shipping_is_billing: !billing_address,
-            shipping_customer_name: order.customer_name,
-            shipping_last_name: shipping_address.lastName || '',
-            shipping_address: shipping_address.address || '',
-            shipping_address_2: shipping_address.apartment || '',
-            shipping_city: shipping_address.city || '',
-            shipping_pincode: shipping_address.zip || shipping_address.pincode || '',
-            shipping_state: shipping_address.state || '',
-            shipping_country: shipping_address.country || 'India',
-            shipping_email: order.customer_email,
-            shipping_phone: getTenDigitPhone(shipping_address.phone),
-            order_items: items.map((item: any, index: number) => ({
-              name: item.name || item.title || `Product ${index + 1}`,
-              sku: item.sku || item.variant_id || `SKU-${item.product_id || index}`,
-              units: item.quantity || 1,
-              selling_price: item.price || item.unit_price || 0
-            })),
-            payment_method: cod ? 'COD' : 'Prepaid',
-            sub_total: subtotal || 0,
-            length: 10,
-            breadth: 10,
-            height: 10,
-            weight: 0.5,
-            total_discount: discount_amount || 0,
-            shipping_charges: shipping || 0,
-            giftwrap_charges: 0,
-            transaction_charges: 0,
-            total_discounts: discount_amount || 0,
-            cod_charges: cod ? (total * 0.02) : 0,
-            add_charges: 0,
-            comment: `Order from NEFOL - ${order.order_number || order.id}`
-          }
-          
-          const shipmentResp = await fetch(`${baseUrl}/orders/create/adhoc`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${shiprocketToken}`
-            },
-            body: JSON.stringify(shipmentPayload)
-          })
-          
-          const shipmentData: any = await shipmentResp.json()
-          
-          if (shipmentResp.ok && shipmentData) {
-            const shipmentId = shipmentData?.shipment_id || shipmentData?.order_id || null
-            const awbCode = shipmentData?.awb_code || null
-            
-            // Check if shipment already exists
-            const existingShipment = await pool.query(
-              'SELECT id FROM shiprocket_shipments WHERE order_id = $1',
-              [order.id]
-            )
-            
-            if (existingShipment.rows.length === 0) {
-              // Save to database
-              await pool.query(
-                `INSERT INTO shiprocket_shipments (order_id, shipment_id, tracking_url, status, awb_code, label_url, created_at, updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
-                [
-                  order.id,
-                  shipmentId ? String(shipmentId) : null,
-                  shipmentData?.tracking_url || null,
-                  shipmentData?.status || 'pending',
-                  awbCode,
-                  shipmentData?.label_url || null
-                ]
-              )
-            } else {
-              // Update existing shipment
-              await pool.query(
-                `UPDATE shiprocket_shipments 
-                 SET shipment_id = $1, tracking_url = $2, status = $3, awb_code = $4, label_url = $5, updated_at = NOW()
-                 WHERE order_id = $6`,
-                [
-                  shipmentId ? String(shipmentId) : null,
-                  shipmentData?.tracking_url || null,
-                  shipmentData?.status || 'pending',
-                  awbCode,
-                  shipmentData?.label_url || null,
-                  order.id
-                ]
-              )
-            }
-            
-            console.log(`✅ Shiprocket shipment created automatically for order ${order_number}, shipment_id: ${shipmentId}`)
-          } else {
-            // If error is about pickup location, try to get the correct one from error response
-            if (shipmentData?.message?.includes('Pickup location') || shipmentData?.message?.includes('pickup')) {
-              // Try to extract location from error response - check multiple possible structures
-              let correctLocation = 'work' // Default fallback
-              if (shipmentData?.data?.data?.length > 0) {
-                correctLocation = shipmentData.data.data[0].pickup_location || shipmentData.data.data[0].id?.toString() || 'work'
-              } else if (shipmentData?.data?.length > 0) {
-                correctLocation = shipmentData.data[0].pickup_location || shipmentData.data[0].id?.toString() || 'work'
-              }
-              console.log(`⚠️ Pickup location error detected, retrying with: ${correctLocation}`)
-              console.log(`   Error message: ${shipmentData?.message}`)
-              
-              // Retry with correct pickup location
-              shipmentPayload.pickup_location = correctLocation
-              const retryResp = await fetch(`${baseUrl}/orders/create/adhoc`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${shiprocketToken}`
-                },
-                body: JSON.stringify(shipmentPayload)
-              })
-              
-              const retryData: any = await retryResp.json()
-              
-              if (retryResp.ok && retryData) {
-                const shipmentId = retryData?.shipment_id || retryData?.order_id || null
-                const awbCode = retryData?.awb_code || null
-                
-                // Check if shipment already exists
-                const existingShipment = await pool.query(
-                  'SELECT id FROM shiprocket_shipments WHERE order_id = $1',
-                  [order.id]
-                )
-                
-                if (existingShipment.rows.length === 0) {
-                  await pool.query(
-                    `INSERT INTO shiprocket_shipments (order_id, shipment_id, tracking_url, status, awb_code, label_url, created_at, updated_at)
-                     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
-                    [
-                      order.id,
-                      shipmentId ? String(shipmentId) : null,
-                      retryData?.tracking_url || null,
-                      retryData?.status || 'pending',
-                      awbCode,
-                      retryData?.label_url || null
-                    ]
-                  )
-                } else {
-                  await pool.query(
-                    `UPDATE shiprocket_shipments 
-                     SET shipment_id = $1, tracking_url = $2, status = $3, awb_code = $4, label_url = $5, updated_at = NOW()
-                     WHERE order_id = $6`,
-                    [
-                      shipmentId ? String(shipmentId) : null,
-                      retryData?.tracking_url || null,
-                      retryData?.status || 'pending',
-                      awbCode,
-                      retryData?.label_url || null,
-                      order.id
-                    ]
-                  )
-                }
-                
-                console.log(`✅ Shiprocket shipment created automatically (after retry) for order ${order_number}, shipment_id: ${shipmentId}`)
-              } else {
-                console.error('⚠️ Failed to auto-create Shiprocket shipment (after retry):', retryData)
-                // Don't fail the order if Shiprocket fails - just log it
-              }
-            } else {
-              console.error('⚠️ Failed to auto-create Shiprocket shipment:', shipmentData)
-              // Don't fail the order if Shiprocket fails - just log it
-            }
-          }
-        } else {
-          console.log('⚠️ Shiprocket credentials not configured, skipping auto-shipment creation')
-        }
-      } catch (shiprocketErr: any) {
+        const { autoCreateShiprocketShipment } = await import('./routes/shiprocket')
+        autoCreateShiprocketShipment(pool, order).catch((shiprocketErr: any) => {
         console.error('❌ Error auto-creating Shiprocket shipment:', shiprocketErr)
         // Don't fail the order if Shiprocket fails - just log it
+        })
+      } catch (importErr: any) {
+        console.error('❌ Error importing Shiprocket module:', importErr)
+        // Don't fail the order if import fails
       }
     } else {
-      console.log(`ℹ️ Skipping auto-shipment creation for order ${order_number} (payment_status: ${payment_status}, cod: ${cod}, address complete: ${!!(shipping_address?.address && shipping_address?.city && shipping_address?.pincode)})`)
+      console.log(`ℹ️ Skipping auto-shipment creation for order ${order_number} - incomplete shipping address (address: ${!!shipping_address?.address}, city: ${!!shipping_address?.city}, pincode: ${!!shipping_address?.pincode})`)
     }
+    
+    // Send order confirmation email (async, don't wait)
+    // Send to customer
+    sendOrderConfirmationEmail(order, false).catch(err => {
+      console.error('Failed to send order confirmation email to customer:', err)
+    })
+    // Also send copy to admin
+    sendOrderConfirmationEmail(order, true).catch(err => {
+      console.error('Failed to send order confirmation email to admin:', err)
+    })
     
     sendSuccess(res, order, 201)
   } catch (err) {
@@ -3317,6 +3330,58 @@ app.put('/api/orders/:id', authenticateAndAttach as any, requirePermission(['ord
       }
     } catch (e) {
       console.error('Failed to write order status history:', e)
+    }
+
+    // Send order status update email and WhatsApp if status changed to shipped/out_for_delivery/delivered
+    if (Object.prototype.hasOwnProperty.call(body, 'status')) {
+      const newStatus = body.status?.toLowerCase()
+      if (['shipped', 'out_for_delivery', 'delivered'].includes(newStatus)) {
+        // For backward compatibility, keep using the generic status update email
+        sendOrderStatusUpdateEmail(rows[0]).catch(err => {
+          console.error('Failed to send order status update email:', err)
+        })
+
+        // Also call more specific shipped/delivered helpers for clearer email copy
+        if (newStatus === 'shipped' || newStatus === 'out_for_delivery') {
+          sendOrderShippedEmail(rows[0]).catch(err => {
+            console.error('Failed to send order shipped email:', err)
+          })
+        } else if (newStatus === 'delivered') {
+          sendOrderDeliveredEmail(rows[0]).catch(err => {
+            console.error('Failed to send order delivered email:', err)
+          })
+        }
+        
+        // Send WhatsApp notification
+        try {
+          const { WhatsAppService } = await import('./services/whatsappService')
+          const whatsappService = new WhatsAppService(pool)
+          
+          // Get user phone from order
+          const userResult = await pool.query(
+            'SELECT name, phone FROM users WHERE id = $1 OR email = $2',
+            [rows[0].user_id, rows[0].customer_email]
+          )
+          
+          if (userResult.rows.length > 0 && userResult.rows[0].phone) {
+            const user = userResult.rows[0]
+            const orderId = rows[0].order_number || rows[0].order_id || rows[0].id.toString()
+            const tracking = rows[0].tracking || rows[0].tracking_url || 'N/A'
+            
+            if (newStatus === 'shipped' || newStatus === 'out_for_delivery') {
+              whatsappService.sendOrderShippedWhatsApp(user, orderId, tracking).catch(err => {
+                console.error('Failed to send WhatsApp order shipped notification:', err)
+              })
+            } else if (newStatus === 'delivered') {
+              whatsappService.sendOrderDeliveredWhatsApp(user, orderId).catch(err => {
+                console.error('Failed to send WhatsApp order delivered notification:', err)
+              })
+            }
+          }
+        } catch (waErr: any) {
+          console.error('Error sending WhatsApp order notification:', waErr)
+        }
+      }
     }
 
     // Broadcast to admin
@@ -4587,6 +4652,9 @@ ensureSchema(pool)
     // Sample products removed - no longer adding sample products on startup
     
     const host = process.env.HOST || '0.0.0.0' // Listen on all network interfaces
+    // Start cart abandonment cron job
+    startCartAbandonmentCron(pool)
+
     server.listen(port, host, () => {
       console.log(`🚀 Nefol API running on http://${host}:${port}`)
       console.log(`📡 WebSocket server ready for real-time updates`)

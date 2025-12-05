@@ -92,8 +92,8 @@ export interface Discount {
   is_active: boolean
 }
 
-// API Configuration
-const API_BASE = getApiBase()
+// API Configuration - get at runtime to ensure correct URL based on current hostname
+const getApiBaseUrl = () => getApiBase()
 
 // Utility functions
 const getAuthHeaders = () => {
@@ -118,7 +118,7 @@ const handleResponse = async (response: Response) => {
 // Authentication API
 export const authAPI = {
   async login(email: string, password: string) {
-    const response = await fetch(`${API_BASE}/api/auth/login`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -133,7 +133,7 @@ export const authAPI = {
     phone: string
     address: any
   }) {
-    const response = await fetch(`${API_BASE}/api/auth/signup`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
@@ -142,7 +142,7 @@ export const authAPI = {
   },
 
   async sendOTP(phone: string) {
-    const response = await fetch(`${API_BASE}/api/auth/send-otp`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/send-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
@@ -157,7 +157,7 @@ export const authAPI = {
     email?: string
     address?: any
   }) {
-    const response = await fetch(`${API_BASE}/api/auth/verify-otp-signup`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/verify-otp-signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -166,7 +166,7 @@ export const authAPI = {
   },
 
   async sendOTPLogin(phone: string) {
-    const response = await fetch(`${API_BASE}/api/auth/send-otp-login`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/send-otp-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
@@ -178,7 +178,25 @@ export const authAPI = {
     phone: string
     otp: string
   }) {
-    const response = await fetch(`${API_BASE}/api/auth/verify-otp-login`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/verify-otp-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    return handleResponse(response)
+  },
+
+  async requestPasswordReset(data: { phone?: string; email?: string }) {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/request-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    return handleResponse(response)
+  },
+
+  async resetPassword(data: { email: string; token: string; newPassword: string }) {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -196,14 +214,14 @@ export const authAPI = {
 // User Profile API
 export const userAPI = {
   async getProfile(): Promise<User> {
-    const response = await fetch(`${API_BASE}/api/users/profile`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/profile`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async updateProfile(data: Partial<User>): Promise<User> {
-    const response = await fetch(`${API_BASE}/api/users/profile`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/profile`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(data)
@@ -212,21 +230,21 @@ export const userAPI = {
   },
 
   async getSavedCards() {
-    const response = await fetch(`${API_BASE}/api/users/saved-cards`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/saved-cards`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async getAddresses() {
-    const response = await fetch(`${API_BASE}/api/users/addresses`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/addresses`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async createAddress(addressData: any) {
-    const response = await fetch(`${API_BASE}/api/users/addresses`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/addresses`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(addressData)
@@ -235,7 +253,7 @@ export const userAPI = {
   },
 
   async updateAddress(addressId: number, addressData: any) {
-    const response = await fetch(`${API_BASE}/api/users/addresses/${addressId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/addresses/${addressId}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(addressData)
@@ -244,7 +262,7 @@ export const userAPI = {
   },
 
   async deleteAddress(addressId: number) {
-    const response = await fetch(`${API_BASE}/api/users/addresses/${addressId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/addresses/${addressId}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     })
@@ -252,7 +270,7 @@ export const userAPI = {
   },
 
   async setDefaultAddress(addressId: number) {
-    const response = await fetch(`${API_BASE}/api/users/addresses/${addressId}/default`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/addresses/${addressId}/default`, {
       method: 'PUT',
       headers: getAuthHeaders()
     })
@@ -263,27 +281,27 @@ export const userAPI = {
 // Products API
 export const productsAPI = {
   async getAll(): Promise<Product[]> {
-    const response = await fetch(`${API_BASE}/api/products`)
+    const response = await fetch(`${getApiBaseUrl()}/api/products`)
     return handleResponse(response)
   },
 
   async getBySlug(slug: string): Promise<Product> {
-    const response = await fetch(`${API_BASE}/api/products/slug/${slug}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/products/slug/${slug}`)
     return handleResponse(response)
   },
 
   async getById(id: number): Promise<Product> {
-    const response = await fetch(`${API_BASE}/api/products/${id}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/products/${id}`)
     return handleResponse(response)
   },
 
   async getByCategory(category: string): Promise<Product[]> {
-    const response = await fetch(`${API_BASE}/api/products/category/${category}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/products/category/${category}`)
     return handleResponse(response)
   },
 
   async search(query: string): Promise<Product[]> {
-    const response = await fetch(`${API_BASE}/api/products/search?q=${encodeURIComponent(query)}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/products/search?q=${encodeURIComponent(query)}`)
     return handleResponse(response)
   }
 }
@@ -291,7 +309,7 @@ export const productsAPI = {
 // Cart API (Backend Integration)
 export const cartAPI = {
   async getCart() {
-    const response = await fetch(`${API_BASE}/api/cart`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cart`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
@@ -299,7 +317,7 @@ export const cartAPI = {
 
   async addToCart(productId: number, quantity: number = 1) {
     console.log('🌐 API: Adding to cart', { productId, quantity, headers: getAuthHeaders() })
-    const response = await fetch(`${API_BASE}/api/cart`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cart`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ product_id: productId, quantity })
@@ -309,7 +327,7 @@ export const cartAPI = {
   },
 
   async updateCartItem(cartItemId: number, quantity: number) {
-    const response = await fetch(`${API_BASE}/api/cart/${cartItemId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cart/${cartItemId}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ quantity })
@@ -318,7 +336,7 @@ export const cartAPI = {
   },
 
   async removeFromCart(cartItemId: number) {
-    const response = await fetch(`${API_BASE}/api/cart/${cartItemId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cart/${cartItemId}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     })
@@ -326,7 +344,7 @@ export const cartAPI = {
   },
 
   async clearCart() {
-    const response = await fetch(`${API_BASE}/api/cart`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cart`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     })
@@ -337,14 +355,14 @@ export const cartAPI = {
 // Wishlist API
 export const wishlistAPI = {
   async getWishlist() {
-    const response = await fetch(`${API_BASE}/api/wishlist`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/wishlist`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async addToWishlist(productId: number) {
-    const response = await fetch(`${API_BASE}/api/wishlist`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/wishlist`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ product_id: productId })
@@ -353,7 +371,7 @@ export const wishlistAPI = {
   },
 
   async removeFromWishlist(productId: number) {
-    const response = await fetch(`${API_BASE}/api/wishlist/${productId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/wishlist/${productId}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     })
@@ -366,7 +384,7 @@ export const ordersAPI = {
   async getAll(): Promise<Order[]> {
     // Try user-specific endpoint first (for regular users)
     try {
-      const userResponse = await fetch(`${API_BASE}/api/user/orders`, {
+      const userResponse = await fetch(`${getApiBaseUrl()}/api/user/orders`, {
         headers: getAuthHeaders()
       })
       if (userResponse.ok) {
@@ -377,21 +395,21 @@ export const ordersAPI = {
     }
     
     // Fall back to admin endpoint (for staff/admin)
-    const response = await fetch(`${API_BASE}/api/orders`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/orders`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async getById(orderId: string): Promise<Order> {
-    const response = await fetch(`${API_BASE}/api/orders/${orderId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/orders/${orderId}`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async createOrder(orderData: {
-    order_number: string
+    order_number?: string // Optional - backend will auto-generate if not provided
     customer_name: string
     customer_email: string
     shipping_address: any
@@ -403,8 +421,13 @@ export const ordersAPI = {
     payment_method: string
     payment_type: string
     status: string
+    affiliate_id?: string | null
+    discount_code?: string | null
+    discount_amount?: number
+    coins_used?: number
+    billing_address?: any
   }) {
-    const response = await fetch(`${API_BASE}/api/orders`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/orders`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(orderData)
@@ -413,7 +436,7 @@ export const ordersAPI = {
   },
 
   async updateOrderStatus(orderId: string, status: string, additionalData?: any) {
-    const response = await fetch(`${API_BASE}/api/orders/${orderId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/orders/${orderId}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status, ...additionalData })
@@ -422,7 +445,7 @@ export const ordersAPI = {
   },
 
   async updatePaymentCancelled(orderNumber: string) {
-    const response = await fetch(`${API_BASE}/api/user/orders/${orderNumber}/payment-cancelled`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/user/orders/${orderNumber}/payment-cancelled`, {
       method: 'PUT',
       headers: getAuthHeaders()
     })
@@ -433,12 +456,18 @@ export const ordersAPI = {
 // Reviews API
 export const reviewsAPI = {
   async getProductReviews(productId: number): Promise<Review[]> {
-    const response = await fetch(`${API_BASE}/api/product-reviews/product/${productId}`)
+    // Validate productId before making API call
+    if (!productId || typeof productId !== 'number' || productId <= 0) {
+      console.warn('Invalid productId provided to getProductReviews:', productId)
+      return Promise.resolve([])
+    }
+    
+    const response = await fetch(`${getApiBaseUrl()}/api/product-reviews/product/${productId}`)
     return handleResponse(response)
   },
 
   async getTestimonials(): Promise<any[]> {
-    const response = await fetch(`${API_BASE}/api/testimonials`)
+    const response = await fetch(`${getApiBaseUrl()}/api/testimonials`)
     return handleResponse(response)
   },
 
@@ -452,7 +481,7 @@ export const reviewsAPI = {
     review_text?: string
     images?: any[]
   }) {
-    const response = await fetch(`${API_BASE}/api/product-reviews`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/product-reviews`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reviewData)
@@ -474,7 +503,7 @@ export const reviewsAPI = {
   },
 
   async updateReviewStatus(reviewId: number, status: string) {
-    const response = await fetch(`${API_BASE}/api/product-reviews/${reviewId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/product-reviews/${reviewId}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status })
@@ -486,12 +515,12 @@ export const reviewsAPI = {
 // Discounts API
 export const discountsAPI = {
   async getAll(): Promise<Discount[]> {
-    const response = await fetch(`${API_BASE}/api/discounts`)
+    const response = await fetch(`${getApiBaseUrl()}/api/discounts`)
     return handleResponse(response)
   },
 
   async applyDiscount(code: string, amount: number) {
-    const response = await fetch(`${API_BASE}/api/discounts/apply`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/discounts/apply`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ code, amount })
@@ -503,12 +532,12 @@ export const discountsAPI = {
 // Payment API
 export const paymentAPI = {
   async getPaymentGateways() {
-    const response = await fetch(`${API_BASE}/api/payment/gateways`)
+    const response = await fetch(`${getApiBaseUrl()}/api/payment/gateways`)
     return handleResponse(response)
   },
 
   async createPaymentGateway(gatewayData: any) {
-    const response = await fetch(`${API_BASE}/api/payment/gateways`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/payment/gateways`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(gatewayData)
@@ -525,7 +554,7 @@ export const paymentAPI = {
     customer_email: string
     customer_phone: string
   }) {
-    const response = await fetch(`${API_BASE}/api/payment/razorpay/create-order`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/payment/razorpay/create-order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
@@ -539,7 +568,7 @@ export const paymentAPI = {
     razorpay_signature: string
     order_number: string
   }) {
-    const response = await fetch(`${API_BASE}/api/payment/razorpay/verify`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/payment/razorpay/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(paymentData)
@@ -551,14 +580,14 @@ export const paymentAPI = {
 // Analytics API
 export const analyticsAPI = {
   async getPersonalizedContent() {
-    const response = await fetch(`${API_BASE}/api/ai-personalization/content`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/ai-personalization/content`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async getCashbackBalance() {
-    const response = await fetch(`${API_BASE}/api/cashback/balance`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cashback/balance`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
@@ -573,7 +602,7 @@ export const cancellationsAPI = {
     cancellation_type?: 'full' | 'partial'
     items_to_cancel?: any[]
   }) {
-    const response = await fetch(`${API_BASE}/api/cancellations/request`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cancellations/request`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data)
@@ -585,7 +614,7 @@ export const cancellationsAPI = {
     order_number: string
     reason: string
   }) {
-    const response = await fetch(`${API_BASE}/api/cancellations/cancel`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cancellations/cancel`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data)
@@ -594,14 +623,14 @@ export const cancellationsAPI = {
   },
 
   async getUserCancellations() {
-    const response = await fetch(`${API_BASE}/api/cancellations`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cancellations`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async getCancellationDetails(id: string | number) {
-    const response = await fetch(`${API_BASE}/api/cancellations/${id}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/cancellations/${id}`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
@@ -611,12 +640,12 @@ export const cancellationsAPI = {
 // Videos API
 export const videosAPI = {
   async getAll() {
-    const response = await fetch(`${API_BASE}/api/videos`)
+    const response = await fetch(`${getApiBaseUrl()}/api/videos`)
     return handleResponse(response)
   },
 
   async getById(id: number) {
-    const response = await fetch(`${API_BASE}/api/videos/${id}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/videos/${id}`)
     return handleResponse(response)
   }
 }
@@ -624,7 +653,7 @@ export const videosAPI = {
 // Live Chat API
 export const liveChatAPI = {
   async createSession(data: { userId?: string | number, customerName?: string, customerEmail?: string, customerPhone?: string }) {
-    const response = await fetch(`${API_BASE}/api/live-chat/sessions`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/live-chat/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -634,12 +663,12 @@ export const liveChatAPI = {
 
   async getMessages(sessionId: number | string) {
     const params = new URLSearchParams({ sessionId: String(sessionId) }).toString()
-    const response = await fetch(`${API_BASE}/api/live-chat/messages?${params}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/live-chat/messages?${params}`)
     return handleResponse(response)
   },
 
   async sendMessage(data: { sessionId: number | string, sender: 'customer' | 'agent', senderName?: string, message: string, type?: string }) {
-    const response = await fetch(`${API_BASE}/api/live-chat/messages`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/live-chat/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -648,7 +677,7 @@ export const liveChatAPI = {
   },
 
   async createSupportRequest(data: { sessionId: number | string, subject: string, description: string, priority?: 'low' | 'medium' | 'high' }) {
-    const response = await fetch(`${API_BASE}/api/live-chat/support-request`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/live-chat/support-request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -660,35 +689,44 @@ export const liveChatAPI = {
 // Recommendations API
 export const recommendationsAPI = {
   async trackProductView(productId: number | string, data?: { viewDuration?: number, source?: string }) {
-    const response = await fetch(`${API_BASE}/api/products/${productId}/view`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data || {})
-    })
-    return handleResponse(response)
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/products/${productId}/view`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data || {})
+      })
+      // Silently handle 404s (product doesn't exist) - this is expected for deleted products
+      if (response.status === 404) {
+        return { success: true, message: 'Product not found, view not tracked' }
+      }
+      return handleResponse(response)
+    } catch (err) {
+      // Silently ignore tracking errors - they shouldn't break the user experience
+      return { success: false, error: 'Tracking failed' }
+    }
   },
 
   async getRecentlyViewed(limit: number = 10) {
-    const response = await fetch(`${API_BASE}/api/recommendations/recently-viewed?limit=${limit}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/recommendations/recently-viewed?limit=${limit}`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async getRelatedProducts(productId: number | string, limit: number = 8) {
-    const response = await fetch(`${API_BASE}/api/recommendations/related/${productId}?limit=${limit}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/recommendations/related/${productId}?limit=${limit}`)
     return handleResponse(response)
   },
 
   async getRecommendations(type: string = 'based_on_browsing', limit: number = 8) {
-    const response = await fetch(`${API_BASE}/api/recommendations?type=${type}&limit=${limit}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/recommendations?type=${type}&limit=${limit}`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
   },
 
   async trackSearch(query: string, resultsCount: number = 0) {
-    const response = await fetch(`${API_BASE}/api/search/track`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/search/track`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ query, resultsCount })
@@ -697,7 +735,7 @@ export const recommendationsAPI = {
   },
 
   async getPopularSearches(limit: number = 10) {
-    const response = await fetch(`${API_BASE}/api/search/popular?limit=${limit}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/search/popular?limit=${limit}`)
     return handleResponse(response)
   }
 }
@@ -705,12 +743,12 @@ export const recommendationsAPI = {
 // Product Collections API
 export const collectionsAPI = {
   async getCollections(type: 'offers' | 'new_arrivals' | 'best_sellers' | 'recommendations', published: boolean = true) {
-    const response = await fetch(`${API_BASE}/api/collections?type=${type}&published=${published}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/collections?type=${type}&published=${published}`)
     return handleResponse(response)
   },
 
   async getRecommendationPosts(published: boolean = true) {
-    const response = await fetch(`${API_BASE}/api/recommendation-posts?published=${published}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/recommendation-posts?published=${published}`)
     return handleResponse(response)
   }
 }
@@ -718,7 +756,7 @@ export const collectionsAPI = {
 // WhatsApp Subscription API
 export const whatsappAPI = {
   async subscribe(phone: string, name?: string, source?: string) {
-    const response = await fetch(`${API_BASE}/api/whatsapp/subscribe`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/whatsapp/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, name, source })
@@ -727,7 +765,7 @@ export const whatsappAPI = {
   },
 
   async unsubscribe(phone: string) {
-    const response = await fetch(`${API_BASE}/api/whatsapp/unsubscribe`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/whatsapp/unsubscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
@@ -759,7 +797,7 @@ export const api = {
 // Product Questions API
 export const productQuestionsAPI = {
   async getProductQuestions(productId: number) {
-    const response = await fetch(`${API_BASE}/api/product-questions/product/${productId}`)
+    const response = await fetch(`${getApiBaseUrl()}/api/product-questions/product/${productId}`)
     return handleResponse(response)
   },
 
@@ -770,7 +808,7 @@ export const productQuestionsAPI = {
     customer_phone?: string
     question: string
   }) {
-    const response = await fetch(`${API_BASE}/api/product-questions`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/product-questions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(questionData)

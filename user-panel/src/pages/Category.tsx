@@ -98,7 +98,7 @@ export default function CategoryPage() {
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]" 
             style={{
               color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
@@ -193,15 +193,16 @@ export default function CategoryPage() {
                           }}
                           className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900"
                           style={{
-                            backgroundColor: 'var(--arctic-blue-primary)',
+                            backgroundColor: 'rgb(75,151,201)',
+                            color: '#FFFFFF',
                             minHeight: '44px',
                             letterSpacing: '0.15em'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                           }}
                         >
                           Add to Cart

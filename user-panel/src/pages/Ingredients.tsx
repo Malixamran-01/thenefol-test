@@ -4662,11 +4662,33 @@ export default function Ingredients() {
         onAnimationEnd={handleOverlayAnimationEnd}
         onClose={handleOverlayClose}
       />
-      <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
-        <div className="mx-auto max-w-7xl px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-serif mb-4" style={{color: '#1B4965'}}>INGREDIENTS</h1>
-          <p className="text-lg font-light max-w-2xl mx-auto" style={{color: '#9DB4C0'}}>
+      <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+        <style>{`
+          :root {
+            --arctic-blue-primary: rgb(75,151,201);
+            --arctic-blue-primary-hover: rgb(60,120,160);
+            --arctic-blue-primary-dark: rgb(50,100,140);
+            --arctic-blue-light: #E0F5F5;
+            --arctic-blue-lighter: #F0F9F9;
+            --arctic-blue-background: #F4F9F9;
+          }
+        `}</style>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12 sm:mb-16">
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
+            INGREDIENTS
+          </h1>
+          <p 
+            className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
             Discover the powerful natural ingredients that make our products effective and gentle on your skin.
           </p>
         </div>
@@ -4675,7 +4697,16 @@ export default function Ingredients() {
           {/* Ingredients List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-serif mb-6" style={{color: '#1B4965'}}>Our Ingredients</h2>
+              <h2 
+                className="text-xl sm:text-2xl font-light mb-6 tracking-[0.15em]"
+                style={{
+                  color: '#1a1a1a',
+                  fontFamily: 'var(--font-heading-family)',
+                  letterSpacing: '0.15em'
+                }}
+              >
+                Our Ingredients
+              </h2>
               <div className="space-y-2">
                 {ingredients.map((ingredient) => (
                   <button
@@ -4687,8 +4718,8 @@ export default function Ingredients() {
                         : 'hover:shadow-sm'
                     }`}
                     style={{
-                      backgroundColor: selectedIngredient.id === ingredient.id ? '#D0E8F2' : '#F4F9F9',
-                      color: '#1B4965',
+                      backgroundColor: selectedIngredient.id === ingredient.id ? 'var(--arctic-blue-light)' : 'var(--arctic-blue-lighter)',
+                      color: '#1a1a1a',
                       padding: '0',
                       borderRadius: '50%',
                       overflow: 'hidden',
@@ -4742,17 +4773,24 @@ export default function Ingredients() {
               {/* Content below image */}
               <div className="p-6">
                 <div className="text-center mb-6">
-                  <h2 className="text-4xl font-serif" style={{color: '#1B4965'}}>
+                  <h2 
+                    className="text-2xl sm:text-3xl md:text-4xl font-light tracking-[0.15em]"
+                    style={{
+                      color: '#1a1a1a',
+                      fontFamily: 'var(--font-heading-family)',
+                      letterSpacing: '0.15em'
+                    }}
+                  >
                     {selectedIngredient.name}
                   </h2>
                 </div>
                 
                 <div className="prose max-w-none">
                   <div 
-                    className="text-base font-light leading-relaxed whitespace-pre-line"
-                    style={{color: '#9DB4C0'}}
+                    className="text-sm sm:text-base font-light leading-relaxed whitespace-pre-line tracking-wide"
+                    style={{ color: '#666', letterSpacing: '0.05em' }}
                     dangerouslySetInnerHTML={{
-                      __html: selectedIngredient.description.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1B4965;">$1</strong>')
+                      __html: selectedIngredient.description.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1a1a1a;">$1</strong>')
                     }}
                   />
                 </div>
@@ -4764,51 +4802,152 @@ export default function Ingredients() {
         {/* Benefits Section */}
         <div className="mt-16">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-serif mb-4" style={{color: '#1B4965'}}>Why Natural Ingredients?</h2>
-            <p className="text-lg font-light max-w-2xl mx-auto" style={{color: '#9DB4C0'}}>
+            <h2 
+              className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
+              style={{
+                color: '#1a1a1a',
+                fontFamily: 'var(--font-heading-family)',
+                letterSpacing: '0.15em'
+              }}
+            >
+              Why Natural Ingredients?
+            </h2>
+            <p 
+              className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide"
+              style={{ color: '#666', letterSpacing: '0.05em' }}
+            >
               Our commitment to natural, plant-based ingredients ensures gentle yet effective skincare solutions.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: '#D0E8F2'}}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            <div className="bg-white rounded-lg shadow-sm p-6 text-center border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--arctic-blue-light)'}}>
                 <span className="text-2xl">🌿</span>
               </div>
-              <h3 className="text-lg font-medium mb-2" style={{color: '#1B4965'}}>Natural</h3>
-              <p className="text-sm font-light" style={{color: '#9DB4C0'}}>
+              <h3 
+                className="text-lg font-light mb-2 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
+                Natural
+              </h3>
+              <p 
+                className="text-sm font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 Pure plant-based ingredients without harmful chemicals
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: '#D0E8F2'}}>
+            <div className="bg-white rounded-lg shadow-sm p-6 text-center border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--arctic-blue-light)'}}>
                 <span className="text-2xl">✨</span>
               </div>
-              <h3 className="text-lg font-medium mb-2" style={{color: '#1B4965'}}>Gentle & Safe</h3>
-              <p className="text-sm font-light" style={{color: '#9DB4C0'}}>
+              <h3 
+                className="text-lg font-light mb-2 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
+                Gentle & Safe
+              </h3>
+              <p 
+                className="text-sm font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 Suitable for all skin types, including sensitive skin
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: '#D0E8F2'}}>
+            <div className="bg-white rounded-lg shadow-sm p-6 text-center border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--arctic-blue-light)'}}>
                 <span className="text-2xl">🔬</span>
               </div>
-              <h3 className="text-lg font-medium mb-2" style={{color: '#1B4965'}}>Scientifically Proven</h3>
-              <p className="text-sm font-light" style={{color: '#9DB4C0'}}>
+              <h3 
+                className="text-lg font-light mb-2 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
+                Scientifically Proven
+              </h3>
+              <p 
+                className="text-sm font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 Backed by research and traditional knowledge
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: '#D0E8F2'}}>
+            <div className="bg-white rounded-lg shadow-sm p-6 text-center border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--arctic-blue-light)'}}>
                 <span className="text-2xl">🌍</span>
               </div>
-              <h3 className="text-lg font-medium mb-2" style={{color: '#1B4965'}}>Eco-Friendly</h3>
-              <p className="text-sm font-light" style={{color: '#9DB4C0'}}>
+              <h3 
+                className="text-lg font-light mb-2 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
+                Eco-Friendly
+              </h3>
+              <p 
+                className="text-sm font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 Sustainable sourcing and environmentally conscious
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Call to Action */}
+        <div className="text-center mt-12 sm:mt-16">
+          <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 md:p-10">
+            <h2 
+              className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
+              style={{
+                color: '#1a1a1a',
+                fontFamily: 'var(--font-heading-family)',
+                letterSpacing: '0.15em'
+              }}
+            >
+              Experience Natural Ingredients
+            </h2>
+            <p 
+              className="text-sm sm:text-base font-light mb-6 sm:mb-8 max-w-2xl mx-auto tracking-wide"
+              style={{ color: '#666', letterSpacing: '0.05em' }}
+            >
+              Discover our range of products enriched with these powerful natural ingredients 
+              and experience the difference for yourself.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a 
+                href="#/user/shop"
+                className="px-8 py-3 text-white font-light transition-all duration-300 text-xs tracking-[0.15em] uppercase rounded-xl hover:opacity-90 flex items-center justify-center"
+                style={{ 
+                  backgroundColor: 'var(--arctic-blue-primary)',
+                  letterSpacing: '0.15em'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                }}
+              >
+                SHOP NOW
+              </a>
+              <a 
+                href="#/user/contact"
+                className="px-8 py-3 text-white font-light transition-all duration-300 text-xs tracking-[0.15em] uppercase rounded-xl hover:opacity-90 flex items-center justify-center"
+                style={{ 
+                  backgroundColor: 'var(--arctic-blue-primary)',
+                  letterSpacing: '0.15em'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                }}
+              >
+                CONTACT US
+              </a>
             </div>
           </div>
         </div>

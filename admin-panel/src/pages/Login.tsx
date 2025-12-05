@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   if (isAuthenticated) {
-    const from = location.state?.from?.pathname || '/admin'
+    const from = location.state?.from?.pathname || '/admin/dashboard'
     return <Navigate to={from} replace />
   }
 
@@ -111,12 +111,6 @@ export default function LoginPage() {
                 'Sign in'
               )}
             </button>
-          </div>
-
-          <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Demo credentials: admin@nefol.com / password
-            </p>
           </div>
         </form>
       </div>

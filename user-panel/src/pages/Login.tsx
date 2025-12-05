@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { authAPI } from '../services/api'
-import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff, MessageCircle } from 'lucide-react'
+import { Mail, Lock, User, Phone, Eye, EyeOff, MessageCircle } from 'lucide-react'
 import PhoneInput from '../components/PhoneInput'
 
 export default function LoginPage() {
@@ -173,8 +173,13 @@ export default function LoginPage() {
             phone: formattedPhone,
             otp: otp,
             name: signupData.name,
-            email: signupData.email || undefined,
-            address: signupData.address
+            email: undefined,
+            address: {
+              street: '',
+              city: '',
+              state: '',
+              zip: ''
+            }
           })
 
           if (result.token && result.user) {
@@ -205,8 +210,13 @@ export default function LoginPage() {
           name: signupData.name,
           email: signupData.email,
           password: signupData.password,
-          phone: `${countryCode}${signupData.phone.replace(/\D/g, '')}`,
-          address: signupData.address
+          phone: '',
+          address: {
+            street: '',
+            city: '',
+            state: '',
+            zip: ''
+          }
         })
 
         if (!success) {
@@ -231,7 +241,7 @@ export default function LoginPage() {
             className="mt-6 text-center text-3xl sm:text-4xl font-light tracking-[0.15em]"
             style={{
               color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
@@ -328,13 +338,13 @@ export default function LoginPage() {
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
                   <input
                     type="text"
                     required
                     value={signupData.name}
                     onChange={(e) => setSignupData(prev => ({ ...prev, name: e.target.value }))}
-                    className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                    className="pl-11 w-full rounded-md border border-slate-200 bg-white pr-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
                     style={{ letterSpacing: '0.02em' }}
                     placeholder="Enter your full name"
                   />
@@ -347,13 +357,13 @@ export default function LoginPage() {
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
                     <input
                       type="email"
                       required
                       value={signupData.email}
                       onChange={(e) => setSignupData(prev => ({ ...prev, email: e.target.value }))}
-                      className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                      className="pl-11 w-full rounded-md border border-slate-200 bg-white pr-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
                       style={{ letterSpacing: '0.02em' }}
                       placeholder="Enter your email"
                     />
@@ -361,46 +371,28 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {useOTP && !otpSent && (
+              {useOTP && (
                 <div>
-                  <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
-                    Email Address (Optional)
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                    <input
-                      type="email"
-                      value={signupData.email}
-                      onChange={(e) => setSignupData(prev => ({ ...prev, email: e.target.value }))}
-                      className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                      style={{ letterSpacing: '0.02em' }}
-                      placeholder="Enter your email (optional)"
-                    />
-                  </div>
+                  <PhoneInput
+                    value={signupData.phone}
+                    onChange={(value) => setSignupData(prev => ({ ...prev, phone: value }))}
+                    onCountryCodeChange={setCountryCode}
+                    defaultCountry={countryCode}
+                    placeholder="Enter your phone number"
+                    required
+                    showLabel
+                    label="Phone Number"
+                    disabled={otpSent}
+                  />
                 </div>
               )}
-
-              <div>
-                <PhoneInput
-                  value={signupData.phone}
-                  onChange={(value) => setSignupData(prev => ({ ...prev, phone: value }))}
-                  onCountryCodeChange={setCountryCode}
-                  defaultCountry={countryCode}
-                  placeholder="Enter your phone number"
-                  required
-                  showLabel
-                  label="Phone Number"
-                  disabled={otpSent}
-                />
-              </div>
 
               {useOTP && otpSent && (
                 <div>
                   <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                     Enter OTP
                   </label>
-                  <div className="relative">
-                    <MessageCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <div className="relative mb-3">
                     <input
                       type="text"
                       required
@@ -411,148 +403,33 @@ export default function LoginPage() {
                         setOtp(value)
                         setError('')
                       }}
-                      className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all text-center text-2xl tracking-widest"
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all text-center text-2xl tracking-widest"
                       style={{ letterSpacing: '0.1em' }}
                       placeholder="000000"
                     />
                   </div>
                   {otpCountdown > 0 && (
-                    <p className="text-xs text-slate-500 mt-2 text-center">
+                    <p className="text-xs text-slate-500 mb-2 text-center">
                       OTP expires in {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, '0')}
                     </p>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpSent(false)
-                      setOtp('')
-                      setOtpCountdown(0)
-                      setError('')
-                    }}
-                    className="text-xs text-slate-600 hover:text-slate-900 mt-2 underline"
-                  >
-                    Resend OTP
-                  </button>
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOtpSent(false)
+                        setOtp('')
+                        setOtpCountdown(0)
+                        setError('')
+                      }}
+                      className="text-xs text-slate-600 hover:text-slate-900 underline"
+                    >
+                      Resend OTP
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {!useOTP && (
-                <div>
-                  <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
-                    Address
-                  </label>
-                <div className="relative mb-2">
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    value={signupData.address.street}
-                    onChange={(e) => setSignupData(prev => ({ 
-                      ...prev, 
-                      address: { ...prev.address, street: e.target.value }
-                    }))}
-                    className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                    style={{ letterSpacing: '0.02em' }}
-                    placeholder="Street Address"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <input
-                    type="text"
-                    required
-                    value={signupData.address.city}
-                    onChange={(e) => setSignupData(prev => ({ 
-                      ...prev, 
-                      address: { ...prev.address, city: e.target.value }
-                    }))}
-                    className="rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                    style={{ letterSpacing: '0.02em' }}
-                    placeholder="City"
-                  />
-                  <input
-                    type="text"
-                    required
-                    value={signupData.address.state}
-                    onChange={(e) => setSignupData(prev => ({ 
-                      ...prev, 
-                      address: { ...prev.address, state: e.target.value }
-                    }))}
-                    className="rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                    style={{ letterSpacing: '0.02em' }}
-                    placeholder="State"
-                  />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={signupData.address.zip}
-                  onChange={(e) => setSignupData(prev => ({ 
-                    ...prev, 
-                    address: { ...prev.address, zip: e.target.value }
-                  }))}
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                  style={{ letterSpacing: '0.02em' }}
-                  placeholder="ZIP Code"
-                />
-                </div>
-              )}
-
-              {useOTP && !otpSent && (
-                <div>
-                  <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
-                    Address (Optional)
-                  </label>
-                  <div className="relative mb-2">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={signupData.address.street}
-                      onChange={(e) => setSignupData(prev => ({ 
-                        ...prev, 
-                        address: { ...prev.address, street: e.target.value }
-                      }))}
-                      className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                      style={{ letterSpacing: '0.02em' }}
-                      placeholder="Street Address (optional)"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={signupData.address.city}
-                      onChange={(e) => setSignupData(prev => ({ 
-                        ...prev, 
-                        address: { ...prev.address, city: e.target.value }
-                      }))}
-                      className="rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                      style={{ letterSpacing: '0.02em' }}
-                      placeholder="City (optional)"
-                    />
-                    <input
-                      type="text"
-                      value={signupData.address.state}
-                      onChange={(e) => setSignupData(prev => ({ 
-                        ...prev, 
-                        address: { ...prev.address, state: e.target.value }
-                      }))}
-                      className="rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                      style={{ letterSpacing: '0.02em' }}
-                      placeholder="State (optional)"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={signupData.address.zip}
-                    onChange={(e) => setSignupData(prev => ({ 
-                      ...prev, 
-                      address: { ...prev.address, zip: e.target.value }
-                    }))}
-                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                    style={{ letterSpacing: '0.02em' }}
-                    placeholder="ZIP Code (optional)"
-                  />
-                </div>
-              )}
 
               {!useOTP && (
                 <>
@@ -561,20 +438,20 @@ export default function LoginPage() {
                       Password
                     </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={signupData.password}
                     onChange={(e) => setSignupData(prev => ({ ...prev, password: e.target.value }))}
-                    className="pl-10 pr-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                    className="pl-11 pr-11 w-full rounded-md border border-slate-200 bg-white py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
                     style={{ letterSpacing: '0.02em' }}
                     placeholder="Create a password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors z-10"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -586,13 +463,13 @@ export default function LoginPage() {
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
                   <input
                     type="password"
                     required
                     value={signupData.confirmPassword}
                     onChange={(e) => setSignupData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                    className="pl-11 w-full rounded-md border border-slate-200 bg-white pr-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
                     style={{ letterSpacing: '0.02em' }}
                     placeholder="Confirm your password"
                   />
@@ -612,14 +489,14 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full flex justify-center py-3 px-6 border border-transparent text-xs font-light tracking-[0.15em] uppercase text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  backgroundColor: 'var(--arctic-blue-primary)',
+                  backgroundColor: 'rgb(75,151,201)',
                   letterSpacing: '0.15em'
                 }}
                 onMouseEnter={(e) => {
-                  if (!loading) e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                  if (!loading) e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading) e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                  if (!loading) e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                 }}
               >
                 {loading 
@@ -703,8 +580,7 @@ export default function LoginPage() {
                         <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                           Enter OTP
                         </label>
-                        <div className="relative">
-                          <MessageCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                        <div className="relative mb-3">
                           <input
                             type="text"
                             required
@@ -715,28 +591,30 @@ export default function LoginPage() {
                               setOtp(value)
                               setError('')
                             }}
-                            className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all text-center text-2xl tracking-widest"
+                            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all text-center text-2xl tracking-widest"
                             style={{ letterSpacing: '0.1em' }}
                             placeholder="000000"
                           />
                         </div>
                         {otpCountdown > 0 && (
-                          <p className="text-xs text-slate-500 mt-2 text-center">
+                          <p className="text-xs text-slate-500 mb-2 text-center">
                             OTP expires in {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, '0')}
                           </p>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOtpSent(false)
-                            setOtp('')
-                            setOtpCountdown(0)
-                            setError('')
-                          }}
-                          className="text-xs text-slate-600 hover:text-slate-900 mt-2 underline"
-                        >
-                          Resend OTP
-                        </button>
+                        <div className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOtpSent(false)
+                              setOtp('')
+                              setOtpCountdown(0)
+                              setError('')
+                            }}
+                            className="text-xs text-slate-600 hover:text-slate-900 underline"
+                          >
+                            Resend OTP
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}
@@ -748,13 +626,13 @@ export default function LoginPage() {
                       Email Address
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                        className="pl-11 w-full rounded-md border border-slate-200 bg-white pr-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
                         style={{ letterSpacing: '0.02em' }}
                         placeholder="Enter your email"
                       />
@@ -766,22 +644,35 @@ export default function LoginPage() {
                       Password
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 pr-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                        className="pl-11 pr-11 w-full rounded-md border border-slate-200 bg-white py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
                         style={{ letterSpacing: '0.02em' }}
                         placeholder="Enter your password"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors z-10"
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Navigate via hash routing to in-app reset password page
+                          window.location.hash = '#/user/reset-password'
+                        }}
+                        className="text-xs font-light text-slate-600 hover:text-slate-900 underline tracking-[0.08em]"
+                        style={{ letterSpacing: '0.08em' }}
+                      >
+                        Forgot password?
                       </button>
                     </div>
                   </div>
@@ -799,14 +690,14 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full flex justify-center py-3 px-6 border border-transparent text-xs font-light tracking-[0.15em] uppercase text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  backgroundColor: 'var(--arctic-blue-primary)',
+                  backgroundColor: 'rgb(75,151,201)',
                   letterSpacing: '0.15em'
                 }}
                 onMouseEnter={(e) => {
-                  if (!loading) e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                  if (!loading) e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading) e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                  if (!loading) e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                 }}
               >
                 {loading 

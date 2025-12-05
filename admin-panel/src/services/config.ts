@@ -49,13 +49,19 @@ interface AppConfig {
 }
 
 const getDynamicApiBase = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL
+  // Always use production URL - no environment variables
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    // If on production domain, use current domain
+    if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+      return `${window.location.protocol}//${window.location.host}/api`
+    }
+    // For any other domain, always use production URL
+    // This ensures we never use local IPs or development URLs in production builds
+    return 'https://thenefol.com/api'
   }
-  const proto = window.location.protocol
-  const host = (import.meta.env.VITE_BACKEND_HOST as string) || (import.meta.env.VITE_API_HOST as string) || window.location.hostname
-  const port = (import.meta.env.VITE_BACKEND_PORT as string) || (import.meta.env.VITE_API_PORT as string) || '2000'
-  return `${proto}//${host}:${port}`
+  // Default to production API URL
+  return 'https://thenefol.com/api'
 }
 
 class ConfigService {

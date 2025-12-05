@@ -27,10 +27,14 @@ export default function Orders() {
   const [cod, setCod] = useState('')
   const [selected, setSelected] = useState<number[]>([])
   const getApiBase = () => {
-    if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-    const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-    const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-    return `http://${host}:${port}`
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
   }
   const apiBase = getApiBase()
 

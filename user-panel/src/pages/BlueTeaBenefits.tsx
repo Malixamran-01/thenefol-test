@@ -223,21 +223,65 @@ export default function BlueTeaBenefits() {
         </div>
 
         {/* Call to Action */}
-        <div className="text-center bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-white">
-          <h2 className="text-3xl font-bold mb-4">Experience Blue Tea Benefits</h2>
-          <p className="text-xl mb-8 opacity-90">
+        <div className="text-center rounded-2xl p-12" style={{ backgroundColor: 'var(--arctic-blue-lighter)' }}>
+          <h2 
+            className="text-3xl font-bold mb-4" 
+            style={{ 
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.05em'
+            }}
+          >
+            Experience Blue Tea Benefits
+          </h2>
+          <p 
+            className="text-xl mb-8" 
+            style={{ 
+              color: '#666',
+              fontFamily: 'var(--font-body-family, sans-serif)',
+              lineHeight: '1.6',
+              letterSpacing: '0.02em'
+            }}
+          >
             Discover our range of Blue Tea-infused skincare products and experience the natural power of this incredible ingredient.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
               href="#/user/shop" 
-              className="inline-block bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+              className="inline-block px-8 py-3 rounded-lg font-semibold transition-colors"
+              style={{ 
+                backgroundColor: 'var(--arctic-blue-primary)', 
+                color: '#fff',
+                letterSpacing: '0.05em'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+              }}
             >
               Shop Blue Tea Products
             </a>
             <a 
               href="#/user/contact" 
-              className="inline-block border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
+              className="inline-block px-8 py-3 rounded-lg font-semibold transition-colors"
+              style={{ 
+                backgroundColor: 'transparent', 
+                color: '#1a1a1a',
+                border: '2px solid #1a1a1a',
+                letterSpacing: '0.05em'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                e.currentTarget.style.color = '#fff'
+                e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#1a1a1a'
+                e.currentTarget.style.borderColor = '#1a1a1a'
+              }}
             >
               Learn More
             </a>

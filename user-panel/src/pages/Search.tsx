@@ -610,7 +610,10 @@ export default function Search({ addToWishlist }: SearchProps) {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-6 py-3 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
               >
                 Clear Search
               </button>
@@ -637,7 +640,7 @@ export default function Search({ addToWishlist }: SearchProps) {
                     <Heart className={`w-4 h-4 ${wishlistItems.includes(product.slug) ? 'fill-current' : ''}`} />
                   </button>
                   {product.category && (
-                    <div className="absolute top-3 left-3 px-2 py-1 bg-blue-500 text-white text-xs rounded-full">
+                    <div className="absolute top-3 left-3 px-2 py-1 text-white text-xs rounded-full" style={{ backgroundColor: 'rgb(75,151,201)' }}>
                       {product.category}
                     </div>
                   )}
@@ -656,7 +659,14 @@ export default function Search({ addToWishlist }: SearchProps) {
                     </div>
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors"
+                      style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+                      }}
                     >
                       <ShoppingCart className="w-4 h-4" />
                       Add to Cart

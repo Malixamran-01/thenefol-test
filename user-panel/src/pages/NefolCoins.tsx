@@ -243,9 +243,9 @@ export default function NefolCoins() {
     <main className="min-h-screen bg-white overflow-x-hidden py-8 sm:py-12 md:py-16" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: #7DD3D3;
-          --arctic-blue-primary-hover: #5EC4C4;
-          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-primary: rgb(75,151,201);
+          --arctic-blue-primary-hover: rgb(60,120,160);
+          --arctic-blue-primary-dark: rgb(50,100,140);
           --arctic-blue-light: #E0F5F5;
           --arctic-blue-lighter: #F0F9F9;
           --arctic-blue-background: #F4F9F9;
@@ -259,7 +259,7 @@ export default function NefolCoins() {
             className="text-3xl sm:text-4xl md:text-5xl font-light tracking-[0.15em] mb-6"
             style={{
               color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
@@ -404,7 +404,7 @@ export default function NefolCoins() {
               className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
             >
@@ -486,7 +486,7 @@ export default function NefolCoins() {
                 className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
                 style={{
                   color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
@@ -504,7 +504,7 @@ export default function NefolCoins() {
                     className="text-2xl sm:text-3xl font-light"
                     style={{ 
                       color: '#1a1a1a',
-                      fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                      fontFamily: 'var(--font-heading-family)',
                       fontVariantNumeric: 'tabular-nums',
                       lineHeight: '1',
                       letterSpacing: '0.05em'
@@ -524,7 +524,7 @@ export default function NefolCoins() {
                     className="text-2xl sm:text-3xl font-light"
                     style={{ 
                       color: '#1a1a1a',
-                      fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                      fontFamily: 'var(--font-heading-family)',
                       fontVariantNumeric: 'tabular-nums',
                       lineHeight: '1',
                       letterSpacing: '0.05em'
@@ -545,7 +545,7 @@ export default function NefolCoins() {
               className="text-2xl sm:text-3xl font-light tracking-[0.15em]"
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
             >

@@ -42,17 +42,23 @@ export default function CMSManagement() {
   const [activeTab, setActiveTab] = useState<'pages' | 'sections' | 'settings'>('pages')
 
   const getApiBase = () => {
-    if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-    const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-    const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-    return `http://${host}:${port}`
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+      // For any other domain, always use production URL
+      return 'https://thenefol.com/api'
+    }
+    return 'https://thenefol.com/api'
   }
   const API_BASE = getApiBase()
 
   // Fetch all pages
   const fetchPages = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/cms/pages`)
+      const response = await fetch(`${API_BASE}/cms/pages`)
       const data = await response.json()
       // Transform data to match our interface
       const transformedData = data.map((page: any) => ({
@@ -77,7 +83,7 @@ export default function CMSManagement() {
   // Fetch sections for selected page
   const fetchSections = async (pageName: string) => {
     try {
-      const response = await fetch(`${API_BASE}/api/cms/sections/${pageName}`)
+      const response = await fetch(`${API_BASE}/cms/sections/${pageName}`)
       const data = await response.json()
       // Transform data to match our interface
       const transformedData = data.map((section: any) => ({
@@ -141,7 +147,7 @@ export default function CMSManagement() {
   // Save page
   const handleSavePage = async (pageData: Partial<CMSPage>) => {
     try {
-      const response = await fetch(`${API_BASE}/api/cms/pages`, {
+      const response = await fetch(`${API_BASE}/cms/pages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -168,7 +174,7 @@ export default function CMSManagement() {
   const [confirmDeletePage, setConfirmDeletePage] = useState<string | null>(null)
   const handleDeletePage = async (pageName: string) => {
     try {
-      await fetch(`${API_BASE}/api/cms/pages/${pageName}`, { method: 'DELETE' })
+      await fetch(`${API_BASE}/cms/pages/${pageName}`, { method: 'DELETE' })
       await fetchPages()
       if (selectedPage === pageName) {
         setSelectedPage('')
@@ -183,7 +189,7 @@ export default function CMSManagement() {
   // Save section
   const handleSaveSection = async (sectionData: Partial<CMSSection>) => {
     try {
-      const response = await fetch(`${API_BASE}/api/cms/sections`, {
+      const response = await fetch(`${API_BASE}/cms/sections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -212,7 +218,7 @@ export default function CMSManagement() {
   const [confirmDeleteSection, setConfirmDeleteSection] = useState<number | null>(null)
   const handleDeleteSection = async (sectionId: number) => {
     try {
-      await fetch(`${API_BASE}/api/cms/sections/${sectionId}`, { method: 'DELETE' })
+      await fetch(`${API_BASE}/cms/sections/${sectionId}`, { method: 'DELETE' })
       await fetchSections(selectedPage)
       notify('success','Section deleted')
     } catch (error) {

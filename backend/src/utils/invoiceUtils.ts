@@ -133,6 +133,125 @@ export async function generateInvoiceNumber(pool: any, orderId: number): Promise
   return invoiceNumber
 }
 
+// District code mapping (for invoice numbers)
+export const DISTRICT_CODES: { [key: string]: string } = {
+  'lucknow': 'LKO',
+  'delhi': 'DEL',
+  'mumbai': 'BOM',
+  'bangalore': 'BLR',
+  'hyderabad': 'HYD',
+  'chennai': 'MAA',
+  'kolkata': 'CCU',
+  'pune': 'PNQ',
+  'ahmedabad': 'AMD',
+  'jaipur': 'JAI'
+  // Add more district codes as needed
+}
+
+// Get district code from city name
+export function getDistrictCode(cityName: string): string {
+  if (!cityName) return 'LKO' // Default to Lucknow
+  const normalized = cityName.toLowerCase().trim()
+  return DISTRICT_CODES[normalized] || 'LKO' // Default to Lucknow if not found
+}
+
+// Check if order contains combo products
+export function isComboOrder(items: any[]): boolean {
+  if (!items || items.length === 0) return false
+  
+  return items.some((item: any) => {
+    const category = (item.category || item.details?.category || '').toLowerCase()
+    const slug = (item.slug || '').toLowerCase()
+    const title = (item.title || item.name || '').toLowerCase()
+    
+    return category.includes('combo') || 
+           category.includes('combo pack') ||
+           slug.includes('combo') ||
+           title.includes('combo')
+  })
+}
+
+// Generate new format order number
+// Format: N-093011251001
+// N + GST Code (09) + Date (DDMMYY) + Invoice Number (4 digits)
+export async function generateOrderNumber(pool: any, items: any[]): Promise<string> {
+  // Use single prefix "N" for all orders (single or combo)
+  const prefix = 'N'
+  const gstCode = '09'
+  
+  // Get current date in DDMMYY format
+  const now = new Date()
+  const day = now.getDate().toString().padStart(2, '0')
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  const year = now.getFullYear().toString().slice(-2)
+  const dateStr = `${day}${month}${year}`
+  
+  // Get next invoice number (starting from 1001)
+  const invoiceNum = await getNextInvoiceSequenceNumber(pool)
+  
+  // Format: N-093011251001
+  return `${prefix}-${gstCode}${dateStr}${invoiceNum}`
+}
+
+// Generate new format invoice number
+// Format: N09LKO3011251001
+// N + GST Code (09) + District Code (LKO) + Date (DDMMYY) + Invoice Number (4 digits)
+export async function generateNewInvoiceNumber(pool: any, shippingAddress: any): Promise<string> {
+  const prefix = 'N'
+  const gstCode = '09'
+  
+  // Get district code from shipping address
+  const city = shippingAddress?.city || shippingAddress?.district || 'Lucknow'
+  const districtCode = getDistrictCode(city)
+  
+  // Get current date in DDMMYY format
+  const now = new Date()
+  const day = now.getDate().toString().padStart(2, '0')
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  const year = now.getFullYear().toString().slice(-2)
+  const dateStr = `${day}${month}${year}`
+  
+  // Get next invoice number (starting from 1001)
+  const invoiceNum = await getNextInvoiceSequenceNumber(pool)
+  
+  // Format: N09LKO3011251001
+  return `${prefix}${gstCode}${districtCode}${dateStr}${invoiceNum}`
+}
+
+// Get next invoice sequence number (starting from 1001)
+export async function getNextInvoiceSequenceNumber(pool: any): Promise<string> {
+  try {
+    // Check if invoice_sequence table exists, create if not
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS invoice_sequence (
+        id SERIAL PRIMARY KEY,
+        current_number INTEGER NOT NULL DEFAULT 1000,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    
+    // Initialize if empty
+    const checkResult = await pool.query('SELECT current_number FROM invoice_sequence LIMIT 1')
+    if (checkResult.rows.length === 0) {
+      await pool.query('INSERT INTO invoice_sequence (current_number) VALUES (1000)')
+    }
+    
+    // Get and increment the sequence number
+    const result = await pool.query(`
+      UPDATE invoice_sequence 
+      SET current_number = current_number + 1, updated_at = CURRENT_TIMESTAMP
+      RETURNING current_number
+    `)
+    
+    const nextNumber = result.rows[0].current_number
+    return nextNumber.toString().padStart(4, '0') // Ensure 4 digits (1001, 1002, etc.)
+  } catch (err: any) {
+    console.error('Error getting invoice sequence number:', err)
+    // Fallback: use timestamp-based number if table fails
+    return Date.now().toString().slice(-4)
+  }
+}
+
 // Get or generate invoice number for an order
 export async function getOrGenerateInvoiceNumber(pool: any, order: any): Promise<string> {
   // Ensure invoice_number column exists

@@ -205,7 +205,9 @@ export default function Blog() {
                   <a 
                     href={`#/user/blog/${post.id}`}
                     className="inline-block px-8 py-4 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg"
-                    style={{backgroundColor: '#1B4965'}}
+                    style={{backgroundColor: 'rgb(75,151,201)'}}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                   >
                     READ MORE
                   </a>
@@ -294,7 +296,10 @@ export default function Blog() {
             </p>
             <button
               onClick={() => setShowRequestForm(true)}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors text-sm tracking-wide uppercase shadow-lg"
+              className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium rounded-lg transition-colors text-sm tracking-wide uppercase shadow-lg"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               <Plus className="w-5 h-5" />
               Submit Your Blog Post

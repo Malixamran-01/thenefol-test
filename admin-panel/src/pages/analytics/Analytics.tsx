@@ -56,7 +56,17 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('30d')
 
-  const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
+  const getApiBase = () => {
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
+  }
+  const apiBase = getApiBase()
 
   useEffect(() => {
     loadAnalyticsData()
@@ -65,9 +75,33 @@ export default function Analytics() {
   const loadAnalyticsData = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/analytics?range=${timeRange}`)
+      const res = await fetch(`${apiBase}/analytics?range=${timeRange}`)
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`)
+      }
       const data = await res.json()
-      setAnalyticsData(data.overview || analyticsData)
+      
+      // Safely merge overview data, ensuring all fields have default values
+      if (data.overview) {
+        setAnalyticsData({
+          sessions: data.overview.sessions ?? 0,
+          pageViews: data.overview.pageViews ?? 0,
+          bounceRate: data.overview.bounceRate ?? 0,
+          avgSessionDuration: data.overview.avgSessionDuration ?? '0:00',
+          conversionRate: data.overview.conversionRate ?? 0,
+          revenue: data.overview.revenue ?? 0,
+          orders: data.overview.orders ?? 0,
+          customers: data.overview.customers ?? 0,
+          sessionsChange: data.overview.sessionsChange ?? 0,
+          pageViewsChange: data.overview.pageViewsChange ?? 0,
+          bounceRateChange: data.overview.bounceRateChange ?? 0,
+          avgSessionDurationChange: data.overview.avgSessionDurationChange ?? 0,
+          conversionRateChange: data.overview.conversionRateChange ?? 0,
+          revenueChange: data.overview.revenueChange ?? 0,
+          ordersChange: data.overview.ordersChange ?? 0,
+          customersChange: data.overview.customersChange ?? 0
+        })
+      }
       setChartData(data.chartData || [])
       setTopPages(data.topPages || [])
     } catch (error) {

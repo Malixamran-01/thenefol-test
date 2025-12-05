@@ -231,7 +231,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
               />
               <label
                 htmlFor="image-upload"
-                className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer disabled:opacity-50"
+                className="inline-block px-4 py-2 text-white rounded-lg cursor-pointer disabled:opacity-50"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 Choose Images
               </label>
@@ -288,7 +291,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+              onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               disabled={isSubmitting}
             >
               {isSubmitting ? (

@@ -10,6 +10,7 @@ import { getProductRating, getProductReviewCount, hasVerifiedReviews } from '../
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import VerifiedBadge from '../components/VerifiedBadge'
 import { getSessionId } from '../utils/session'
+import { getApiBase } from '../utils/apiBase'
 
 // Social Media Videos Component with auto-slide in horizontal line
 const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<HTMLDivElement> }> = ({ videos, scrollerRef }) => {
@@ -20,10 +21,8 @@ const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<
   const apiVideos = (videos || []).map((v: any) => ({
     ...v,
     videoUrl: v.video_type === 'local' ? (() => {
-      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-      const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
-      return `${apiBase}/uploads/${v.video_url}`
+      const apiBase = getApiBase()
+      return `${apiBase.replace('/api', '')}/uploads/${v.video_url}`
     })() : v.video_url
   }))
   
@@ -49,9 +48,7 @@ const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-        const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-        const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+        const apiBase = getApiBase()
         
         const response = await fetch(`${apiBase}/api/carousel-settings`)
         if (response.ok) {
@@ -151,9 +148,7 @@ const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<
 
   const trackVideoView = async (videoId: number) => {
     try {
-      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-      const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+      const apiBase = getApiBase()
       
       const sessionId = getSessionId()
       const userId = user?.id || null
@@ -405,6 +400,23 @@ export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
   const { addItem } = useCart()
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [csvProducts, setCsvProducts] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchCsvProducts = async () => {
+      try {
+        const apiBase = getApiBase()
+        const response = await fetch(`${apiBase}/api/products-csv`)
+        if (response.ok) {
+          const data = await response.json()
+          setCsvProducts(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch CSV products:', error)
+      }
+    }
+    fetchCsvProducts()
+  }, [])
   const [videos, setVideos] = useState<any[]>([])
   const videoScrollerRef = useRef<HTMLDivElement>(null)
   const [justLandedIndex, setJustLandedIndex] = useState(0)
@@ -433,9 +445,9 @@ export default function Home() {
   const [topMediaIndex, setTopMediaIndex] = useState(0)
 
   const [heroImages, setHeroImages] = useState<string[]>([
-    '/IMAGES/BANNER (1).jpg',
-    '/IMAGES/BANNER (2).jpg',
-    '/IMAGES/BANNER (3).jpg'
+    '/IMAGES/BANNER (1).webp',
+    '/IMAGES/BANNER (2).webp',
+    '/IMAGES/BANNER (3).webp'
   ])
   const [heroSettings, setHeroSettings] = useState<any>({
     animationType: 'fade',
@@ -450,10 +462,10 @@ export default function Home() {
   const [heroIndex, setHeroIndex] = useState(0)
 
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({
-    'Body': '/IMAGES/body.jpg',
-    'Face': '/IMAGES/face.jpg',
-    'Hair': '/IMAGES/hair.jpg',
-    'Combos': '/IMAGES/combo.jpg'
+    'Body': '/IMAGES/body.webp',
+    'Face': '/IMAGES/face.webp',
+    'Hair': '/IMAGES/hair.webp',
+    'Combos': '/IMAGES/combo.webp'
   })
   const [commitmentImages, setCommitmentImages] = useState<string[]>([])
   const [completeKitImage, setCompleteKitImage] = useState<string>('')
@@ -467,7 +479,7 @@ export default function Home() {
     buttonLink: '/shop'
   })
   const [whatsappSubscription, setWhatsappSubscription] = useState({
-    image: '/IMAGES/BANNER (1).jpg',
+    image: '/IMAGES/BANNER (1).webp',
     logo: '',
     heading: 'Join The Nefol Circle',
     description: 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
@@ -497,30 +509,39 @@ export default function Home() {
     buttonLink: '/shop'
   })
 
-  // Helper function to get API base URL
-  const getApiBase = () => {
-    if ((import.meta as any).env?.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-    const host = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-    const port = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-    return `${window.location.protocol}//${host}:${port}`
-  }
 
   // Helper function to normalize URLs
   const normalizeUrl = (url: string) => {
     if (!url) return ''
-    if (/^https?:\/\//i.test(url)) return url
-    const apiBase = getApiBase()
-    if (url.startsWith('/')) {
-      return `${apiBase}${url}`
+    const normalizedInput = url.trim()
+
+    if (/^https?:\/\//i.test(normalizedInput)) {
+      return normalizedInput
     }
-    return `${apiBase}/${url}`
+
+    // Serve local static assets (like /IMAGES) directly without rewriting extensions
+    if (normalizedInput.startsWith('/IMAGES/') || normalizedInput.startsWith('/favicon') || normalizedInput.startsWith('/sw.js')) {
+      return normalizedInput
+    }
+    
+    const apiBase = getApiBase()
+    if (normalizedInput.startsWith('/')) {
+      return `${apiBase}${normalizedInput}`
+    }
+    return `${apiBase}/${normalizedInput}`
+  }
+
+  const getCmsApiBase = () => {
+    const apiBase = getApiBase().replace(/\/$/, '')
+    const normalized = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`
+    return `${normalized}/cms`
   }
 
   // Fetch Top Media Carousel from CMS
   const fetchTopMediaCarousel = async () => {
     try {
-      const apiBase = getApiBase()
-      const response = await fetch(`${apiBase}/api/cms/sections/home`)
+      const cmsBase = getCmsApiBase()
+      const response = await fetch(`${cmsBase}/sections/home`)
       if (response.ok) {
         const sections = await response.json()
         const topMediaSection = sections.find((s: any) => s.section_type === 'top_media_carousel')
@@ -552,8 +573,8 @@ export default function Home() {
   // Fetch Hero Banner from CMS
   const fetchHeroBanner = async () => {
     try {
-      const apiBase = getApiBase()
-      const response = await fetch(`${apiBase}/api/cms/sections/home`)
+      const cmsBase = getCmsApiBase()
+      const response = await fetch(`${cmsBase}/sections/home`)
       if (response.ok) {
         const sections = await response.json()
         const heroSection = sections.find((s: any) => s.section_type === 'hero_banner')
@@ -579,8 +600,8 @@ export default function Home() {
   // Fetch all CMS sections
   const fetchCMSSections = async () => {
     try {
-      const apiBase = getApiBase()
-      const response = await fetch(`${apiBase}/api/cms/sections/home`)
+      const cmsBase = getCmsApiBase()
+      const response = await fetch(`${cmsBase}/sections/home`)
       if (response.ok) {
         const sections = await response.json()
         
@@ -688,7 +709,7 @@ export default function Home() {
         const whatsappSection = sections.find((s: any) => s.section_type === 'whatsappsubscription')
         if (whatsappSection && whatsappSection.content) {
           setWhatsappSubscription({
-            image: whatsappSection.content.image ? normalizeUrl(whatsappSection.content.image) : '/IMAGES/BANNER (1).jpg',
+            image: whatsappSection.content.image ? normalizeUrl(whatsappSection.content.image) : '/IMAGES/BANNER (1).webp',
             logo: whatsappSection.content.logo ? normalizeUrl(whatsappSection.content.logo) : '',
             heading: whatsappSection.content.heading || 'Join The Nefol Circle',
             description: whatsappSection.content.description || 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
@@ -802,9 +823,9 @@ export default function Home() {
     <main className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: #7DD3D3;
-          --arctic-blue-primary-hover: #5EC4C4;
-          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-primary: rgb(75,151,201);
+          --arctic-blue-primary-hover: rgb(60,120,160);
+          --arctic-blue-primary-dark: rgb(50,100,140);
           --arctic-blue-light: #E0F5F5;
           --arctic-blue-lighter: #F0F9F9;
           --arctic-blue-background: #F4F9F9;
@@ -812,7 +833,7 @@ export default function Home() {
       `}</style>
       {/* Scrolling Text Banner - Between Navbar and Top Media Carousel */}
       {scrollingText && (
-        <section className="relative py-2 overflow-hidden" style={{ backgroundColor: 'var(--arctic-blue-primary)' }}>
+        <section className="relative py-2 overflow-hidden mt-0 sm:mt-2 md:mt-4" style={{ backgroundColor: 'var(--arctic-blue-primary)' }}>
           <div className="scrolling-text-wrapper">
             <div className="scrolling-text-content">
               <span className="scrolling-text-item">{scrollingText}</span>
@@ -886,7 +907,7 @@ export default function Home() {
       )}
       {/* Top Media Carousel Section - Above Hero Banner */}
       {topMediaImages.length > 0 && (
-        <section className="relative bg-white w-full" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+        <section className="relative bg-white w-full mt-2 sm:mt-4 md:mt-6" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
           <div className="mx-auto w-full py-0 sm:py-2 md:py-4">
             <div className="relative top-media-carousel-container">
               {topMediaImages[topMediaIndex] && (
@@ -938,7 +959,7 @@ export default function Home() {
                 className="text-xl sm:text-2xl md:text-3xl font-light mb-4 tracking-[0.15em]" 
                 style={{
                   color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
@@ -1004,7 +1025,7 @@ export default function Home() {
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-12 sm:mb-16 text-center tracking-[0.15em]" 
             style={{
               color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
@@ -1125,6 +1146,22 @@ export default function Home() {
                         </h3>
                       </a>
                       
+                      {/* Subtitle */}
+                      {(() => {
+                        const csvMatch = csvProducts.find((csv: any) => {
+                          const csvSlug = csv['Slug'] || csv['Product Name']?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
+                          return csvSlug === product.slug
+                        })
+                        const subtitle = csvMatch?.['Subtitle / Tagline'] || 
+                                         (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
+                                         (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
+                        return subtitle ? (
+                          <p className="text-sm text-gray-600 mb-1 line-clamp-1" style={{color: '#666'}}>
+                            {subtitle}
+                          </p>
+                        ) : null
+                      })()}
+                      
                       {/* Rating */}
                       {rating > 0 && (
                         <div className="flex items-center gap-1 mb-2">
@@ -1181,16 +1218,16 @@ export default function Home() {
                           }}
                           className="w-full mt-4 py-3 px-4 text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase flex items-center justify-center gap-2 rounded-xl"
                           style={{ 
-                            backgroundColor: 'var(--arctic-blue-primary)',
-                            color: '#fff',
+                            backgroundColor: 'rgb(75,151,201)',
+                            color: '#FFFFFF',
                             letterSpacing: '0.15em'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                           }}
                           onMouseLeave={(e) => {
                             if (!e.currentTarget.innerHTML.includes('Added')) {
-                              e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                              e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                             }
                           }}
                         >
@@ -1228,7 +1265,7 @@ export default function Home() {
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-12 sm:mb-16 text-center tracking-[0.15em]" 
             style={{
               color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
@@ -1248,12 +1285,12 @@ export default function Home() {
                 }}
               >
                 <img
-                  src={categoryImages['Body'] || '/IMAGES/body.jpg'}
+                  src={categoryImages['Body'] || '/IMAGES/body.webp'}
                   alt="Body"
                   className="block w-full h-full object-contain"
                   style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/IMAGES/body.jpg'
+                    e.currentTarget.src = '/IMAGES/body.webp'
                   }}
                 />
               </div>
@@ -1273,12 +1310,12 @@ export default function Home() {
                 }}
               >
                 <img
-                  src={categoryImages['Face'] || '/IMAGES/face.jpg'}
+                  src={categoryImages['Face'] || '/IMAGES/face.webp'}
                   alt="Face"
                   className="block w-full h-full object-contain"
                   style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/IMAGES/face.jpg'
+                    e.currentTarget.src = '/IMAGES/face.webp'
                   }}
                 />
               </div>
@@ -1298,12 +1335,12 @@ export default function Home() {
                 }}
               >
                 <img
-                  src={categoryImages['Hair'] || '/IMAGES/hair.jpg'}
+                  src={categoryImages['Hair'] || '/IMAGES/hair.webp'}
                   alt="Hair"
                   className="block w-full h-full object-contain"
                   style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/IMAGES/hair.jpg'
+                    e.currentTarget.src = '/IMAGES/hair.webp'
                   }}
                 />
               </div>
@@ -1323,12 +1360,12 @@ export default function Home() {
                 }}
               >
                 <img
-                  src={categoryImages['Combos'] || '/IMAGES/combo.jpg'}
+                  src={categoryImages['Combos'] || '/IMAGES/combo.webp'}
                   alt="Combos"
                   className="block w-full h-full object-contain"
                   style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/IMAGES/combo.jpg'
+                    e.currentTarget.src = '/IMAGES/combo.webp'
                   }}
                 />
               </div>
@@ -1365,7 +1402,7 @@ export default function Home() {
                   <h2 
                     className="complete-kit-title font-light mb-4 sm:mb-6 text-white tracking-[0.15em]" 
                     style={{
-                      fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                      fontFamily: 'var(--font-heading-family)',
                       letterSpacing: '0.15em'
                     }}
                   >
@@ -1466,39 +1503,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* Marketplace Logos Section */}
-      {marketplaceLogos.length > 0 && (
-        <section className="py-12 sm:py-16 md:py-20 bg-white">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 
-                className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
-                style={{
-                  color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
-                  letterSpacing: '0.15em'
-                }}
-              >
-                Also Available On
-              </h2>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 md:gap-16">
-              {marketplaceLogos.map((logo, idx) => (
-                <img 
-                  key={idx} 
-                  src={logo} 
-                  alt={`Marketplace ${idx + 1}`}
-                  className="h-10 sm:h-12 md:h-14 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-200"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Nefol Collection Section */}
       {nefolCollection.image && (
         <section className="py-12 sm:py-16 md:py-20 bg-white relative overflow-hidden">
@@ -1533,7 +1537,7 @@ export default function Home() {
                   className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]" 
                   style={{
                     color: '#1a1a1a',
-                    fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                    fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
@@ -1582,7 +1586,7 @@ export default function Home() {
                 className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
                 style={{
                   color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
@@ -1607,7 +1611,7 @@ export default function Home() {
                     <h3 
                       className="text-white text-lg sm:text-xl font-light tracking-[0.15em]" 
                       style={{
-                        fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                        fontFamily: 'var(--font-heading-family)',
                         letterSpacing: '0.15em'
                       }}
                     >
@@ -1630,7 +1634,7 @@ export default function Home() {
                     <h3 
                       className="text-white text-lg sm:text-xl font-light tracking-[0.15em]" 
                       style={{
-                        fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                        fontFamily: 'var(--font-heading-family)',
                         letterSpacing: '0.15em'
                       }}
                     >
@@ -1654,7 +1658,7 @@ export default function Home() {
                   className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]" 
                   style={{
                     color: '#1a1a1a',
-                    fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                    fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
@@ -1669,12 +1673,12 @@ export default function Home() {
                 <button 
                   onClick={() => window.location.hash = `#/user${naturalBeauty.buttonLink || '/shop'}`}
                   className="px-6 sm:px-8 py-3 text-white font-medium transition-all duration-300 text-xs sm:text-sm tracking-wide uppercase rounded-xl"
-                  style={{ backgroundColor: '#7DD3D3' }}
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#5EC4C4'
+                    e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#7DD3D3'
+                    e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                   }}
                 >
                   {naturalBeauty.buttonText}
@@ -1718,7 +1722,7 @@ export default function Home() {
               className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
             >
@@ -1783,7 +1787,7 @@ export default function Home() {
                       className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.1em]" 
                       style={{
                         color: '#1a1a1a',
-                        fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                        fontFamily: 'var(--font-heading-family)',
                         letterSpacing: '0.1em'
                       }}
                     >
@@ -1836,6 +1840,39 @@ export default function Home() {
           }}
         />
       </section>
+
+      {/* Marketplace Logos Section - Moved to last before footer */}
+      {marketplaceLogos.length > 0 && (
+        <section className="py-12 sm:py-16 md:py-20 bg-white">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 
+                className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
+                style={{
+                  color: '#1a1a1a',
+                  fontFamily: 'var(--font-heading-family)',
+                  letterSpacing: '0.15em'
+                }}
+              >
+                Also Available On
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 md:gap-16">
+              {marketplaceLogos.map((logo, idx) => (
+                <img 
+                  key={idx} 
+                  src={logo} 
+                  alt={`Marketplace ${idx + 1}`}
+                  className="h-10 sm:h-12 md:h-14 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-200"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Subscription Modal */}
       <SubscriptionModal 

@@ -4,10 +4,15 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import { uploadFile } from '../../utils/upload'
 
 const getApiBase = () => {
-  if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-  const host = (import.meta as any).env.VITE_BACKEND_HOST || 'localhost'
-  const port = (import.meta as any).env.VITE_BACKEND_PORT || '4000'
-  return `http://${host}:${port}`
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+      return `${window.location.protocol}//${window.location.host}/api`
+    }
+    // For any other domain, always use production URL
+    // Removed env var check to ensure we never use local IPs
+  }
+  return 'https://thenefol.com/api'
 }
 
 type CollectionType = 'offers' | 'new_arrivals' | 'best_sellers' | 'recommendations'
@@ -88,8 +93,8 @@ export default function ProductCollections() {
   const loadProducts = async () => {
     try {
       setProductsLoading(true)
-      console.log('🔄 Loading products from API:', `${apiBase}/api/products`)
-      const res = await fetch(`${apiBase}/api/products?_=${Date.now()}`, {
+      console.log('🔄 Loading products from API:', `${apiBase}/products`)
+      const res = await fetch(`${apiBase}/products?_=${Date.now()}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -148,7 +153,7 @@ export default function ProductCollections() {
   const loadCollections = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/collections?type=${activeTab}`)
+      const res = await fetch(`${apiBase}/collections?type=${activeTab}`)
       const data = await res.json()
       if (data.success) {
         setCollections(data.data || [])
@@ -164,7 +169,7 @@ export default function ProductCollections() {
   const loadRecommendationPosts = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/recommendation-posts`)
+      const res = await fetch(`${apiBase}/recommendation-posts`)
       const data = await res.json()
       if (data.success) {
         setRecommendationPosts(data.data || [])
@@ -184,8 +189,8 @@ export default function ProductCollections() {
       const permissions = localStorage.getItem('permissions') || 'orders:read,orders:update,shipping:read,shipping:update,invoices:read,products:update'
       
       const url = editing?.id
-        ? `${apiBase}/api/${activeTab === 'recommendation_posts' ? 'recommendation-posts' : 'collections'}/${editing.id}`
-        : `${apiBase}/api/${activeTab === 'recommendation_posts' ? 'recommendation-posts' : 'collections'}`
+        ? `${apiBase}/${activeTab === 'recommendation_posts' ? 'recommendation-posts' : 'collections'}/${editing.id}`
+        : `${apiBase}/${activeTab === 'recommendation_posts' ? 'recommendation-posts' : 'collections'}`
       
       const method = editing?.id ? 'PUT' : 'POST'
       
@@ -228,8 +233,8 @@ export default function ProductCollections() {
       const permissions = localStorage.getItem('permissions') || 'orders:read,orders:update,shipping:read,shipping:update,invoices:read,products:update'
       
       const url = deleteConfirm.type === 'post'
-        ? `${apiBase}/api/recommendation-posts/${deleteConfirm.id}`
-        : `${apiBase}/api/collections/${deleteConfirm.id}`
+        ? `${apiBase}/recommendation-posts/${deleteConfirm.id}`
+        : `${apiBase}/collections/${deleteConfirm.id}`
 
       const res = await fetch(url, {
         method: 'DELETE',
@@ -345,7 +350,7 @@ export default function ProductCollections() {
               const role = localStorage.getItem('role') || 'admin'
               const permissions = localStorage.getItem('permissions') || 'orders:read,orders:update,shipping:read,shipping:update,invoices:read,products:update'
               
-              const res = await fetch(`${apiBase}/api/collections/${id}`, {
+              const res = await fetch(`${apiBase}/collections/${id}`, {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
@@ -383,7 +388,7 @@ export default function ProductCollections() {
               const role = localStorage.getItem('role') || 'admin'
               const permissions = localStorage.getItem('permissions') || 'orders:read,orders:update,shipping:read,shipping:update,invoices:read,products:update'
               
-              const res = await fetch(`${apiBase}/api/recommendation-posts/${id}`, {
+              const res = await fetch(`${apiBase}/recommendation-posts/${id}`, {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
@@ -448,10 +453,14 @@ function CollectionsTable({
   onTogglePublish: (id: number, isPublished: boolean) => void
 }) {
   const getApiBase = () => {
-    if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-    const host = (import.meta as any).env.VITE_BACKEND_HOST || 'localhost'
-    const port = (import.meta as any).env.VITE_BACKEND_PORT || '4000'
-    return `http://${host}:${port}`
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+      // Always use production URL - no environment variables
+    }
+    return 'https://thenefol.com/api'
   }
   const apiBase = getApiBase()
   
@@ -674,10 +683,14 @@ function CollectionForm({
   const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   const getApiBase = () => {
-    if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-    const host = (import.meta as any).env.VITE_BACKEND_HOST || 'localhost'
-    const port = (import.meta as any).env.VITE_BACKEND_PORT || '4000'
-    return `http://${host}:${port}`
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+      // Always use production URL - no environment variables
+    }
+    return 'https://thenefol.com/api'
   }
   const apiBase = getApiBase()
 

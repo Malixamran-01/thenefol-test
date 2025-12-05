@@ -139,7 +139,10 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
             </p>
             <button
               onClick={() => window.location.hash = `#/user/order/${orderNumber}`}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="text-white px-6 py-2 rounded-lg transition-colors"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               Back to Order Details
             </button>

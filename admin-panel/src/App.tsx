@@ -11,7 +11,7 @@ import {
   Analytics, Marketing, MetaAds, WhatsAppSubscriptions, Discounts, FacebookInstagram, OnlineStore, GoogleYouTube, Forms,
   Invoice, InvoiceSettings, Tax, Returns, Payment, UserProfiles, UserNotifications, LoyaltyProgramManagement,
   StaticPagesManagement, CommunityManagement, CartCheckoutManagement, AffiliateManagement, AffiliateRequests,
-  Staff, RolesPermissions, AuditLogs, AlertSettings, HomepageLayoutManager, ProductCollections
+  Staff, RolesPermissions, AuditLogs, AlertSettings, HomepageLayoutManager, ProductCollections, AccountSecurity
 } from './pages'
 import UserDetail from './pages/users/UserDetail'
 import Shipments from './pages/sales/Shipments'
@@ -174,93 +174,119 @@ export default function App() {
     <AuthProvider>
       <ToastProvider>
       <Routes>
+        {/* Authentication */}
         <Route path="/admin/login" element={<LoginPage />} />
+        
+        {/* Protected Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute />}>
           <Route element={<Layout />}>
-            <Route index element={<Dashboard />} />
+            {/* Default redirect */}
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            
+            {/* ========== DASHBOARD ========== */}
+            <Route path="dashboard" element={<Dashboard />} />
+            
+            {/* ========== PRODUCTS & CATALOG ========== */}
             <Route path="products" element={<Products />} />
+            <Route path="product-variants" element={<ProductVariants />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="product-collections" element={<ProductCollections />} />
+            
+            {/* ========== INVENTORY & WAREHOUSES ========== */}
+            <Route path="inventory" element={<InventoryManagement />} />
+            <Route path="warehouses" element={<Warehouses />} />
+            
+            {/* ========== SALES & ORDERS ========== */}
             <Route path="orders" element={<Orders />} />
             <Route path="orders/:orderNumber" element={<OrderDetails />} />
-            <Route path="invoices" element={<Invoice />} />
-            <Route path="invoice-settings" element={<InvoiceSettings />} />
             <Route path="shipments" element={<Shipments />} />
+            <Route path="returns" element={<Returns />} />
+            
+            {/* ========== CUSTOMERS & USERS ========== */}
             <Route path="customers" element={<Customers />} />
             <Route path="users" element={<Users />} />
             <Route path="users/:id" element={<UserDetail />} />
-            <Route path="categories" element={<Categories />} />
+            <Route path="user-profiles" element={<UserProfiles />} />
+            <Route path="user-notifications" element={<UserNotifications />} />
+            <Route path="contact-messages" element={<ContactMessages />} />
+            
+            {/* ========== FINANCE & PAYMENTS ========== */}
+            <Route path="invoices" element={<Invoice />} />
+            <Route path="invoice-settings" element={<InvoiceSettings />} />
             <Route path="tax" element={<Tax />} />
-            <Route path="returns" element={<Returns />} />
             <Route path="payment" element={<Payment />} />
-            <Route path="analytics" element={<Analytics />} />
+            <Route path="payment-options" element={<PaymentOptions />} />
+            <Route path="coin-withdrawals" element={<CoinWithdrawals />} />
+            
+            {/* ========== MARKETING & COMMUNICATIONS ========== */}
             <Route path="marketing" element={<Marketing />} />
             <Route path="meta-ads" element={<MetaAds />} />
-            <Route path="whatsapp-subscriptions" element={<WhatsAppSubscriptions />} />
             <Route path="discounts" element={<Discounts />} />
+            <Route path="whatsapp-subscriptions" element={<WhatsAppSubscriptions />} />
+            <Route path="whatsapp-notifications" element={<WhatsAppNotifications />} />
+            <Route path="whatsapp-chat" element={<WhatsAppChat />} />
+            <Route path="whatsapp-management" element={<WhatsAppManagement />} />
+            
+            {/* ========== ANALYTICS & REPORTING ========== */}
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="advanced-analytics" element={<AdvancedAnalytics />} />
+            <Route path="actionable-analytics" element={<ActionableAnalytics />} />
+            <Route path="journey-tracking" element={<CustomerJourneyTracking />} />
+            <Route path="journey-funnel" element={<JourneyFunnel />} />
+            
+            {/* ========== CUSTOMER ENGAGEMENT ========== */}
+            <Route path="loyalty-program" element={<LoyaltyProgram />} />
+            <Route path="loyalty-program-management" element={<LoyaltyProgramManagement />} />
+            <Route path="affiliate-program" element={<AffiliateManagement />} />
+            <Route path="affiliate-requests" element={<AffiliateRequests />} />
+            <Route path="cashback" element={<CashbackSystem />} />
+            <Route path="live-chat" element={<LiveChat />} />
+            <Route path="customer-segmentation" element={<CustomerSegmentation />} />
+            
+            {/* ========== AI & PERSONALIZATION ========== */}
+            <Route path="ai-box" element={<AIBox />} />
+            <Route path="ai-personalization" element={<AIPersonalization />} />
+            <Route path="custom-audience" element={<CustomAudience />} />
+            
+            {/* ========== CONTENT MANAGEMENT ========== */}
+            <Route path="cms" element={<CMSManagement />} />
+            <Route path="static-pages" element={<StaticPagesManagement />} />
+            <Route path="community-management" element={<CommunityManagement />} />
+            <Route path="homepage-layout" element={<HomepageLayoutManager />} />
+            <Route path="blog-requests" element={<BlogRequestManagement />} />
+            <Route path="video-manager" element={<VideoManager />} />
+            
+            {/* ========== E-COMMERCE & FORMS ========== */}
+            <Route path="cart-checkout" element={<CartCheckoutManagement />} />
+            <Route path="forms" element={<Forms />} />
+            <Route path="form-builder" element={<FormBuilder />} />
+            <Route path="form-submissions" element={<FormSubmissions />} />
+            <Route path="workflow-automation" element={<WorkflowAutomation />} />
+            
+            {/* ========== INTEGRATIONS & CHANNELS ========== */}
+            <Route path="omni-channel" element={<OmniChannel />} />
+            <Route path="api-manager" element={<APICodeManager />} />
+            <Route path="marketplaces" element={<Can role="admin"><MarketplaceIntegrations /></Can>} />
             <Route path="facebook" element={<FacebookInstagram />} />
+            <Route path="fb-shop" element={<FBShopIntegration />} />
             <Route path="store" element={<OnlineStore />} />
             <Route path="google" element={<GoogleYouTube />} />
-            <Route path="forms" element={<Forms />} />
+            
+            {/* ========== POS SYSTEM ========== */}
+            <Route path="pos" element={<Can anyOf={["pos:read","pos:update"]}><POSSystem /></Can>} />
+            
+            {/* ========== SYSTEM & SETTINGS ========== */}
             <Route path="settings" element={<Settings />} />
             <Route path="system/alerts" element={<Can role="admin"><AlertSettings /></Can>} />
             <Route path="system/staff" element={<Can role="admin"><Staff /></Can>} />
             <Route path="system/roles" element={<Can role="admin"><RolesPermissions /></Can>} />
             <Route path="system/audit-logs" element={<Can role="admin"><AuditLogs /></Can>} />
-            
-            {/* New User Management Routes */}
-            <Route path="user-profiles" element={<UserProfiles />} />
-            <Route path="user-notifications" element={<UserNotifications />} />
-            <Route path="loyalty-program-management" element={<LoyaltyProgramManagement />} />
-            
-            {/* WhatsApp Notifications */}
-            <Route path="whatsapp-notifications" element={<WhatsAppNotifications />} />
-            <Route path="whatsapp-chat" element={<WhatsAppChat />} />
-            <Route path="whatsapp-management" element={<WhatsAppManagement />} />
-            
-            {/* New Content Management Routes */}
-            <Route path="static-pages" element={<StaticPagesManagement />} />
-            <Route path="community-management" element={<CommunityManagement />} />
-            <Route path="homepage-layout" element={<HomepageLayoutManager />} />
-            <Route path="product-collections" element={<ProductCollections />} />
-            
-            {/* New E-commerce Management Routes */}
-            <Route path="cart-checkout" element={<CartCheckoutManagement />} />
-            
-            {/* New Customer Engagement Features */}
-            <Route path="loyalty-program" element={<LoyaltyProgram />} />
-            <Route path="affiliate-program" element={<AffiliateManagement />} />
-            <Route path="cashback" element={<CashbackSystem />} />
-            <Route path="live-chat" element={<LiveChat />} />
-            <Route path="advanced-analytics" element={<AdvancedAnalytics />} />
-            <Route path="form-builder" element={<FormBuilder />} />
-            <Route path="form-submissions" element={<FormSubmissions />} />
-            <Route path="workflow-automation" element={<WorkflowAutomation />} />
-            <Route path="customer-segmentation" element={<CustomerSegmentation />} />
-            <Route path="journey-tracking" element={<CustomerJourneyTracking />} />
-            <Route path="actionable-analytics" element={<ActionableAnalytics />} />
-            <Route path="ai-box" element={<AIBox />} />
-            <Route path="journey-funnel" element={<JourneyFunnel />} />
-            <Route path="ai-personalization" element={<AIPersonalization />} />
-            <Route path="custom-audience" element={<CustomAudience />} />
-            <Route path="omni-channel" element={<OmniChannel />} />
-            <Route path="api-manager" element={<APICodeManager />} />
-            <Route path="payment-options" element={<PaymentOptions />} />
-            <Route path="video-manager" element={<VideoManager />} />
-            <Route path="cms" element={<CMSManagement />} />
-            <Route path="blog-requests" element={<BlogRequestManagement />} />
-            <Route path="affiliate-requests" element={<AffiliateRequests />} />
-            <Route path="contact-messages" element={<ContactMessages />} />
-            <Route path="coin-withdrawals" element={<CoinWithdrawals />} />
-            
-            {/* Phase 1-4 New Routes */}
-            <Route path="product-variants" element={<ProductVariants />} />
-            <Route path="inventory" element={<InventoryManagement />} />
-            <Route path="marketplaces" element={<Can role="admin"><MarketplaceIntegrations /></Can>} />
-            <Route path="warehouses" element={<Warehouses />} />
-            <Route path="pos" element={<Can anyOf={["pos:read","pos:update"]}><POSSystem /></Can>} />
-            <Route path="fb-shop" element={<FBShopIntegration />} />
+            <Route path="account-security" element={<AccountSecurity />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        
+        {/* Catch-all route - redirect to dashboard */}
+        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
       </Routes>
       </ToastProvider>
     </AuthProvider>

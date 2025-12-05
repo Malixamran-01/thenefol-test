@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useCart, parsePrice } from '../contexts/CartContext'
+import { useCart, parsePrice, roundPrice } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
 import { CreditCard, Smartphone, Wallet, Coins, MapPin } from 'lucide-react'
@@ -7,10 +7,11 @@ import PricingDisplay from '../components/PricingDisplay'
 import AuthGuard from '../components/AuthGuard'
 import PhoneInput from '../components/PhoneInput'
 import { pixelEvents, formatPurchaseData, formatCartData } from '../utils/metaPixel'
+import { getApiBase } from '../utils/apiBase'
 
 const paymentMethods = [
-  { id: 'razorpay', name: 'Razorpay Secure (UPI, Cards, Int\'l Cards, Wallets)', icon: CreditCard, color: 'bg-blue-500' },
-  { id: 'cod', name: 'Cash on Delivery (COD)', icon: CreditCard, color: 'bg-green-600' }
+  { id: 'razorpay', name: 'Razorpay Secure (UPI, Cards, Int\'l Cards, Wallets)', icon: CreditCard, color: 'rgb(75,151,201)' },
+  { id: 'cod', name: 'Cash on Delivery', icon: CreditCard, color: 'bg-green-600' }
 ]
 
 interface CheckoutProps {
@@ -55,6 +56,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   const [country, setCountry] = useState('India')
   const [saveInfo, setSaveInfo] = useState(false)
   const [newsOffers, setNewsOffers] = useState(false)
+  const [gstNumber, setGstNumber] = useState('')
   const [sameAsShipping, setSameAsShipping] = useState(true)
   const [billingFirstName, setBillingFirstName] = useState('')
   const [billingLastName, setBillingLastName] = useState('')
@@ -70,6 +72,14 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   const [savedAddresses, setSavedAddresses] = useState<any[]>([])
   const [selectedSavedAddress, setSelectedSavedAddress] = useState<string>('')
 
+  // Normalize any stored phone (with or without country code) to 10 digits for UI
+  const normalizeTenDigitPhone = (raw: string): string => {
+    if (!raw) return ''
+    const clean = raw.replace(/\D/g, '')
+    if (clean.length <= 10) return clean
+    return clean.slice(-10)
+  }
+
   useEffect(() => {
     const u = new URL(window.location.href)
     const s = u.hash.split('?')[1] || ''
@@ -84,7 +94,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       setFirstName(nameParts[0] || '')
       setLastName(nameParts.slice(1).join(' ') || '')
       setEmail(user.email || '')
-      setPhone(user.phone || '')
+      setPhone(normalizeTenDigitPhone(user.phone || ''))
       setAddress(user.address?.street || '')
       setCity(user.address?.city || '')
       setState(user.address?.state || 'Uttar Pradesh')
@@ -128,7 +138,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
     const nameParts = fullName.split(' ')
     setFirstName(nameParts[0] || '')
     setLastName(nameParts.slice(1).join(' ') || '')
-    setPhone(savedAddress.phone || '')
+    setPhone(normalizeTenDigitPhone(savedAddress.phone || ''))
     setAddress(savedAddress.street || '')
     setApartment(savedAddress.area || '')
     setCity(savedAddress.city || '')
@@ -151,9 +161,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       const token = localStorage.getItem('token')
       if (!token) return
       
-      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-      const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+      const apiBase = getApiBase()
       
       // Fetch loyalty points (Nefol coins)
       const coinsResponse = await fetch(`${apiBase}/api/nefol-coins`, {
@@ -170,25 +178,36 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       }
       
       // Fetch affiliate earnings to calculate coins (1 rupee = 10 coins)
+      // Only fetch if user is authenticated
       let affiliateCoins = 0
-      try {
-        const affiliateResponse = await fetch(`${apiBase}/api/affiliate/dashboard`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+      if (isAuthenticated && token) {
+        try {
+          const affiliateResponse = await fetch(`${apiBase}/api/affiliate/dashboard`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (affiliateResponse.ok) {
+            const affiliateData = await affiliateResponse.json()
+            if (affiliateData.total_earnings) {
+              // Calculate coins from affiliate earnings: 1 rupee = 10 coins
+              affiliateCoins = Math.floor(affiliateData.total_earnings * 10)
+            }
+          } else if (affiliateResponse.status !== 404) {
+            // Only log non-404 errors (404 means user is not an affiliate, which is expected)
+            console.warn('Affiliate dashboard error:', affiliateResponse.status)
           }
-        })
-        
-        if (affiliateResponse.ok) {
-          const affiliateData = await affiliateResponse.json()
-          if (affiliateData.total_earnings) {
-            // Calculate coins from affiliate earnings: 1 rupee = 10 coins
-            affiliateCoins = Math.floor(affiliateData.total_earnings * 10)
+        } catch (error) {
+          // Ignore affiliate errors - user might not be an affiliate
+          // Only log if it's not a network error
+          if (error instanceof TypeError && error.message.includes('fetch')) {
+            // Network error, silently ignore
+          } else {
+            console.warn('Affiliate check failed:', error)
           }
         }
-      } catch (error) {
-        // Ignore affiliate errors - user might not be an affiliate
-        console.log('Affiliate check failed (user may not be affiliate)')
       }
       
       setTotalCoins(loyaltyCoins + affiliateCoins)
@@ -199,9 +218,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   
   const fetchCsvProducts = async () => {
     try {
-      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-      const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+      const apiBase = getApiBase()
       const response = await fetch(`${apiBase}/api/products-csv`)
       if (response.ok) {
         const data = await response.json()
@@ -271,7 +288,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
     try {
       const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
       const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-      const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+      const apiBase = getApiBase()
       const response = await fetch(`${apiBase}/api/payment-gateways`)
       if (response.ok) {
         const data = await response.json()
@@ -284,40 +301,62 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
 
   const applyDiscountCode = async () => {
     try {
-      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || 'localhost'
-      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-      const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+      if (!discountCode || discountCode.trim() === '') {
+        setError('Please enter a discount code')
+        return
+      }
+
+      if (!calcSubtotal || calcSubtotal <= 0) {
+        setError('Order amount must be greater than zero')
+        return
+      }
+
+      const apiBase = getApiBase()
+      console.log('Applying discount code:', { code: discountCode, amount: calcSubtotal })
+      
       const response = await fetch(`${apiBase}/api/discounts/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: discountCode, amount: calcSubtotal })
+        body: JSON.stringify({ code: discountCode.trim(), amount: calcSubtotal })
       })
       
       if (response.ok) {
         const responseData = await response.json()
         const discount = responseData.data || responseData // Handle both { data: ... } and direct response
+        console.log('Discount applied successfully:', discount)
         setAppliedDiscount(discount)
         setError(null)
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Invalid discount code' }))
-        setError(errorData.message || 'Invalid discount code')
+        const errorData = await response.json().catch(() => ({ message: 'Failed to apply discount code' }))
+        const errorMessage = errorData.message || errorData.error || 'Invalid discount code'
+        console.error('Discount code error:', { 
+          code: discountCode, 
+          status: response.status, 
+          error: errorMessage 
+        })
+        setError(errorMessage)
         setAppliedDiscount(null)
       }
-    } catch (error) {
-      setError('Failed to apply discount code')
+    } catch (error: any) {
+      console.error('Error applying discount code:', error)
+      setError(error?.message || 'Failed to apply discount code. Please try again.')
+      setAppliedDiscount(null)
     }
   }
 
   const calcSubtotal = useMemo(() => {
-    if (buySlug) return orderItems.reduce((s, i) => s + parsePrice(i.price) * (i.quantity || 1), 0)
-    return subtotal
+    if (buySlug) {
+      const total = orderItems.reduce((s, i) => s + parsePrice(i.price) * (i.quantity || 1), 0)
+      return roundPrice(total)
+    }
+    return roundPrice(subtotal)
   }, [buySlug, orderItems, subtotal])
 
   const calculateDiscountAmount = () => {
     if (!appliedDiscount) return 0
     // Use discountAmount from API response if available (already calculated)
     if (appliedDiscount.discountAmount !== undefined) {
-      return appliedDiscount.discountAmount
+      return roundPrice(appliedDiscount.discountAmount)
     }
     // Fallback to calculating locally
     if (appliedDiscount.type === 'percentage') {
@@ -326,9 +365,9 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       if (appliedDiscount.maxDiscount && discount > appliedDiscount.maxDiscount) {
         discount = appliedDiscount.maxDiscount
       }
-      return discount
+      return roundPrice(discount)
     }
-    return appliedDiscount.value
+    return roundPrice(appliedDiscount.value)
   }
 
   const calculateFinalTotal = () => {
@@ -357,9 +396,9 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       const basePrice = itemPrice / (1 + taxRate)
       const itemTax = itemPrice - basePrice
       
-      return itemTax * (item.quantity || 1)
+      return roundPrice(itemTax * (item.quantity || 1))
     }
-    return tax
+    return roundPrice(tax)
   }
   
   // Calculate MRP total and product discount
@@ -394,7 +433,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       if (mrp === 0) {
         console.warn(`⚠️ MRP is 0 for item: ${item.title || item.slug}`)
       }
-      return total + (mrp * (item.quantity || 1))
+      return total + roundPrice(mrp * (item.quantity || 1))
     }, 0)
   }
 
@@ -422,21 +461,21 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       const mrp = parsePrice(itemMrp || '0')
       const currentPrice = parsePrice(item.price) // This is websitePrice (after product discount)
       const productDiscount = (mrp - currentPrice) * (item.quantity || 1)
-      return total + Math.max(0, productDiscount)
+      return total + Math.max(0, roundPrice(productDiscount))
     }, 0)
   }
 
-  const calculatedTax = calculateTax()
+  const calculatedTax = roundPrice(calculateTax())
   const discountAmount = calculateDiscountAmount() // Coupon code discount
   const mrpTotal = calculateMrpTotal()
   const productDiscount = calculateProductDiscount()
   // 1 rupee = 10 coins, so coins discount = coinsToUse / 10 (in rupees)
-  const coinsDiscount = useCoins ? Math.min(coinsToUse / 10, calcSubtotal - discountAmount) : 0
-  const finalSubtotal = calcSubtotal - discountAmount - coinsDiscount
+  const coinsDiscount = useCoins ? roundPrice(Math.min(coinsToUse / 10, calcSubtotal - discountAmount)) : 0
+  const finalSubtotal = roundPrice(calcSubtotal - discountAmount - coinsDiscount)
   // Grand Total = Subtotal (already includes tax) - coupon discount - coins discount + shipping
   const grandTotal = buySlug 
-    ? Math.max(0, finalSubtotal + shipping) 
-    : Math.max(0, (subtotal - discountAmount - coinsDiscount) + shipping)
+    ? roundPrice(Math.max(0, finalSubtotal + shipping))
+    : roundPrice(Math.max(0, (subtotal - discountAmount - coinsDiscount) + shipping))
 
   // Payment rules: <1000 prepaid/postpaid, >1000 prepaid only
   const canUsePostpaid = grandTotal < 1000
@@ -490,18 +529,20 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   // Handle Razorpay payment
   const handleRazorpayPayment = async () => {
     try {
-      const orderNumber = `NEFOL-${Date.now()}`
+      // Order number will be auto-generated by backend in new format (NS-093011251001 or NC-093011251001)
+      // Don't generate it here - backend will create it
       const enrichedItems = enrichOrderItems()
       
       const discountAmount = calculateDiscountAmount()
       const orderData = {
-        order_number: orderNumber,
+        // order_number: removed - backend will auto-generate in new format
         customer_name: `${firstName} ${lastName}`.trim(),
         customer_email: email,
         shipping_address: { 
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           company: company.trim() || undefined,
+          gst_number: company.trim() ? gstNumber.trim() : undefined,
           address: address.trim(), 
           apartment: apartment.trim() || undefined,
           city: city.trim(), 
@@ -539,21 +580,28 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           email: email.trim()
         },
         items: enrichedItems,
-        subtotal: Number(calcSubtotal.toFixed(2)),
-        shipping,
-        tax: calculatedTax,
-        total: Number(grandTotal.toFixed(2)), // This is remaining amount after coins
+        subtotal: roundPrice(calcSubtotal),
+        shipping: roundPrice(shipping),
+        tax: roundPrice(calculatedTax),
+        total: roundPrice(grandTotal), // This is remaining amount after coins
         payment_method: useCoins && coinsToUse > 0 ? 'coins+razorpay' : 'razorpay',
         payment_type: paymentType,
         status: 'created',
         affiliate_id: affiliateId,
         discount_code: appliedDiscount?.code || null,
-        discount_amount: discountAmount > 0 ? Number(discountAmount.toFixed(2)) : 0,
+        discount_amount: discountAmount > 0 ? roundPrice(discountAmount) : 0,
         coins_used: useCoins ? coinsToUse : 0 // Coins used for partial payment
       }
 
-      // Create order in backend first
-      await api.orders.createOrder(orderData)
+      // Create order in backend first - backend will auto-generate order_number in new format (NS-093011251001 or NC-093011251001)
+      const createdOrder = await api.orders.createOrder(orderData)
+      
+      // Get the generated order_number from backend response
+      const orderNumber = createdOrder.order_number
+      
+      if (!orderNumber) {
+        throw new Error('Failed to get order number from backend')
+      }
 
       // Create Razorpay order for remaining amount (after coins discount)
       const razorpayOrder = await api.payment.createRazorpayOrder({
@@ -563,6 +611,29 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         customer_name: `${firstName} ${lastName}`.trim(),
         customer_email: email,
         customer_phone: `${countryCode}${getTenDigitPhone(phone, countryCode)}`
+      })
+
+      // Validate Razorpay order response
+      if (!razorpayOrder || !razorpayOrder.id || !razorpayOrder.key_id) {
+        console.error('Invalid Razorpay order response:', razorpayOrder)
+        setError('Failed to initialize payment gateway. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      // Validate order ID format (should start with 'order_')
+      if (!razorpayOrder.id.startsWith('order_')) {
+        console.error('Invalid Razorpay order ID format:', razorpayOrder.id)
+        setError('Invalid payment order. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      console.log('Razorpay order created:', {
+        order_id: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        key_id: razorpayOrder.key_id
       })
 
       // Initialize Razorpay checkout
@@ -580,13 +651,32 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         },
         handler: async function(response: any) {
           try {
+            // Validate payment response
+            if (!response.razorpay_order_id || !response.razorpay_payment_id || !response.razorpay_signature) {
+              console.error('Invalid Razorpay response:', response)
+              setError('Payment verification failed: Invalid payment response')
+              setLoading(false)
+              return
+            }
+
+            if (!orderNumber) {
+              console.error('Order number missing during payment verification')
+              setError('Payment verification failed: Order number is missing')
+              setLoading(false)
+              return
+            }
+
+            console.log('Verifying payment for order:', orderNumber)
+
             // Verify payment
-            await api.payment.verifyRazorpayPayment({
+            const verificationResult = await api.payment.verifyRazorpayPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               order_number: orderNumber
             })
+
+            console.log('Payment verified successfully:', verificationResult)
 
             // Track Purchase event for Meta Pixel
             pixelEvents.purchase(formatPurchaseData({
@@ -595,10 +685,60 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
               items: enrichedItems,
             }))
 
+            // Save address if checkbox is checked
+            if (saveInfo && isAuthenticated) {
+              try {
+                await api.user.createAddress({
+                  name: `${firstName} ${lastName}`.trim(),
+                  phone: getTenDigitPhone(phone, countryCode),
+                  street: address.trim(),
+                  area: apartment.trim() || undefined,
+                  city: city.trim(),
+                  state: state.trim(),
+                  zip: zip.trim(),
+                  country: country || 'India',
+                  is_default: true
+                })
+              } catch (err) {
+                console.error('Failed to save address:', err)
+                // Don't block order completion if address save fails
+              }
+            }
+
+            // Subscribe to WhatsApp if checkbox is checked
+            if (newsOffers && phone) {
+              try {
+                await api.whatsapp.subscribe(
+                  `${countryCode}${getTenDigitPhone(phone, countryCode)}`,
+                  `${firstName} ${lastName}`.trim(),
+                  'checkout'
+                )
+              } catch (err) {
+                console.error('Failed to subscribe to WhatsApp:', err)
+                // Don't block order completion if subscription fails
+              }
+            }
+
             if (clear) clear()
             window.location.hash = `#/user/confirmation?order=${encodeURIComponent(orderNumber)}`
           } catch (err: any) {
-            setError('Payment verification failed: ' + err.message)
+            console.error('Payment verification error:', {
+              error: err,
+              message: err?.message,
+              orderNumber,
+              response: response
+            })
+            
+            const errorMessage = err?.message || err?.error?.message || 'Payment verification failed. Please contact support if payment was deducted.'
+            setError(errorMessage)
+            setLoading(false)
+            
+            // Optionally update order status to pending_payment on verification failure
+            try {
+              await api.orders.updatePaymentCancelled(orderNumber)
+            } catch (updateErr) {
+              console.error('Failed to update order status after verification error:', updateErr)
+            }
           }
         },
         modal: {
@@ -617,10 +757,42 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       }
 
       const rzp = (window as any).Razorpay(options)
-      rzp.open()
+      
+      // Add error handler for Razorpay checkout
+      rzp.on('payment.failed', function(response: any) {
+        console.error('Razorpay payment failed:', response)
+        setError(`Payment failed: ${response.error?.description || response.error?.reason || 'Unknown error'}`)
+        setLoading(false)
+      })
+
+      rzp.on('payment.error', function(response: any) {
+        console.error('Razorpay payment error:', response)
+        setError(`Payment error: ${response.error?.description || response.error?.reason || 'Unknown error'}`)
+        setLoading(false)
+      })
+
+      try {
+        rzp.open()
+      } catch (openErr: any) {
+        console.error('Error opening Razorpay checkout:', openErr)
+        setError(`Failed to open payment gateway: ${openErr?.message || 'Unknown error'}`)
+        setLoading(false)
+        
+        // Update order status to pending_payment on checkout failure
+        try {
+          await api.orders.updatePaymentCancelled(orderNumber)
+        } catch (updateErr) {
+          console.error('Failed to update order status after checkout error:', updateErr)
+        }
+      }
 
     } catch (err: any) {
-      setError(err?.message || 'Payment initiation failed')
+      console.error('Payment initiation error:', {
+        error: err,
+        message: err?.message,
+        response: err?.response
+      })
+      setError(err?.message || err?.error?.message || 'Payment initiation failed')
       setLoading(false)
     }
   }
@@ -646,15 +818,15 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
 
   // Validate shipping address for Shiprocket requirements
   const validateShippingAddress = (): string | null => {
-    // Required fields for Shiprocket
-    if (!firstName?.trim()) return 'First name is required'
-    if (!lastName?.trim()) return 'Last name is required'
-    if (!address?.trim()) return 'Address is required'
-    if (!city?.trim()) return 'City is required'
-    if (!state?.trim()) return 'State is required'
-    if (!zip?.trim()) return 'PIN code is required'
-    if (!phone?.trim()) return 'Phone number is required'
-    if (!email?.trim()) return 'Email is required'
+    // Required fields for Shiprocket (all mandatory)
+    if (!firstName?.trim()) return 'First name is required for shipping'
+    if (!lastName?.trim()) return 'Last name is required for shipping (Shiprocket requirement)'
+    if (!address?.trim()) return 'Address is required for shipping'
+    if (!city?.trim()) return 'City is required for shipping'
+    if (!state?.trim() || state === '') return 'State is required for shipping'
+    if (!zip?.trim() || zip.length !== 6) return 'Valid 6-digit PIN code is required for shipping'
+    if (!phone?.trim()) return 'Phone number is required for shipping'
+    if (!email?.trim()) return 'Email is required for shipping'
     
     // Validate phone number - must be exactly 10 digits for Shiprocket
     const cleanPhone = phone.replace(/\D/g, '')
@@ -662,8 +834,14 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       return 'Please enter a valid 10-digit phone number'
     }
     
-    // Validate billing phone if different billing address
+    // Validate billing address if different from shipping (Shiprocket requires complete billing info)
     if (!sameAsShipping) {
+      if (!billingFirstName?.trim()) return 'Billing first name is required'
+      if (!billingLastName?.trim()) return 'Billing last name is required (Shiprocket requirement)'
+      if (!billingAddress?.trim()) return 'Billing address is required'
+      if (!billingCity?.trim()) return 'Billing city is required'
+      if (!billingState?.trim() || billingState === '') return 'Billing state is required'
+      if (!billingZip?.trim() || billingZip.length !== 6) return 'Valid 6-digit billing PIN code is required'
       if (!billingPhone?.trim()) return 'Billing phone number is required'
       const cleanBillingPhone = billingPhone.replace(/\D/g, '')
       if (cleanBillingPhone.length !== 10) {
@@ -671,11 +849,11 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       }
     }
     
-    // Validate PIN code (6 digits for India)
+    // Validate PIN code (6 digits for India - Shiprocket requirement)
     const zipRegex = /^\d{6}$/
     const cleanZip = zip.replace(/\D/g, '')
     if (cleanZip.length !== 6 || !zipRegex.test(cleanZip)) {
-      return 'Please enter a valid 6-digit PIN code'
+      return 'Please enter a valid 6-digit PIN code (required for shipping)'
     }
     
     // Validate billing PIN if different billing address
@@ -721,8 +899,9 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         return
       }
 
-      // Handle other payment methods (COD, etc.)
-      const orderNumber = `NEFOL-${Date.now()}`
+      // Handle other payment methods (Cash on Delivery, etc.)
+      // Order number will be auto-generated by backend in new format (NS-093011251001 or NC-093011251001)
+      // Don't send order_number - let backend generate it
       
       if (affiliateId) {
         console.log('🎯 Processing order with affiliate ID:', affiliateId)
@@ -732,13 +911,14 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       const discountAmount = calculateDiscountAmount()
       
       const orderData = {
-        order_number: orderNumber,
+        // order_number: removed - backend will auto-generate in new format
         customer_name: `${firstName} ${lastName}`.trim(),
         customer_email: email,
         shipping_address: { 
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           company: company.trim() || undefined,
+          gst_number: company.trim() ? gstNumber.trim() : undefined,
           address: address.trim(), 
           apartment: apartment.trim() || undefined,
           city: city.trim(), 
@@ -776,30 +956,72 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           email: email.trim()
         },
         items: enrichedItems,
-        subtotal: Number(calcSubtotal.toFixed(2)),
-        shipping,
-        tax: calculatedTax,
-        total: Number(grandTotal.toFixed(2)),
+        subtotal: roundPrice(calcSubtotal),
+        shipping: roundPrice(shipping),
+        tax: roundPrice(calculatedTax),
+        total: roundPrice(grandTotal),
         payment_method: useCoins && (coinsToUse / 10) >= finalSubtotal ? 'coins' : selectedPayment,
         payment_type: isCOD ? 'cod' : (useCoins && (coinsToUse / 10) >= finalSubtotal ? 'prepaid' : paymentType),
         status: 'created',
         affiliate_id: affiliateId,
         discount_code: appliedDiscount?.code || null,
-        discount_amount: discountAmount > 0 ? Number(discountAmount.toFixed(2)) : 0,
+        discount_amount: discountAmount > 0 ? roundPrice(discountAmount) : 0,
         coins_used: useCoins ? coinsToUse : 0
       }
       
+      // Create order - backend will auto-generate order_number in new format (NS-093011251001 or NC-093011251001)
       const data = await api.orders.createOrder(orderData)
+      
+      // Get the generated order_number from backend response
+      const orderNumber = data.order_number
+      
+      if (!orderNumber) {
+        throw new Error('Failed to get order number from backend')
+      }
       
       // Track Purchase event for Meta Pixel
       pixelEvents.purchase(formatPurchaseData({
         ...orderData,
-        order_number: data.order_number || orderNumber,
+        order_number: orderNumber,
         items: enrichedItems,
       }))
+
+      // Save address if checkbox is checked
+      if (saveInfo && isAuthenticated) {
+        try {
+          await api.user.createAddress({
+            name: `${firstName} ${lastName}`.trim(),
+            phone: getTenDigitPhone(phone, countryCode),
+            street: address.trim(),
+            area: apartment.trim() || undefined,
+            city: city.trim(),
+            state: state.trim(),
+            zip: zip.trim(),
+            country: country || 'India',
+            is_default: true
+          })
+        } catch (err) {
+          console.error('Failed to save address:', err)
+          // Don't block order completion if address save fails
+        }
+      }
+
+      // Subscribe to WhatsApp if checkbox is checked
+      if (newsOffers && phone) {
+        try {
+          await api.whatsapp.subscribe(
+            `${countryCode}${getTenDigitPhone(phone, countryCode)}`,
+            `${firstName} ${lastName}`.trim(),
+            'checkout'
+          )
+        } catch (err) {
+          console.error('Failed to subscribe to WhatsApp:', err)
+          // Don't block order completion if subscription fails
+        }
+      }
       
       if (clear) clear()
-      window.location.hash = `#/user/confirmation?order=${encodeURIComponent(data.order_number || orderNumber)}`
+      window.location.hash = `#/user/confirmation?order=${encodeURIComponent(orderNumber)}`
     } catch (err: any) {
       setError(err?.message || 'Order failed')
     } finally {
@@ -810,10 +1032,10 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   if (!orderItems.length) {
     return (
       <AuthGuard>
-        <main className="py-10 dark:bg-slate-900">
-          <div className="mx-auto max-w-3xl px-4">
-            <h1 className="text-2xl font-bold dark:text-slate-100">Checkout</h1>
-            <p className="mt-2 text-slate-600 dark:text-slate-400">Your cart is empty.</p>
+        <main className="py-10 dark:bg-slate-900 overflow-x-hidden">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+            <h1 className="text-xl sm:text-2xl font-bold dark:text-slate-100">Checkout</h1>
+            <p className="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-400">Your cart is empty.</p>
           </div>
         </main>
       </AuthGuard>
@@ -824,11 +1046,11 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
     <AuthGuard>
     <main className="py-10 dark:bg-slate-900 w-full overflow-x-hidden">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 w-full">
-        <form onSubmit={submit} className="md:col-span-2 space-y-6">
+        <form onSubmit={submit} className="md:col-span-2 space-y-4 sm:space-y-6">
           {/* Delivery Section */}
           <div>
-            <h2 className="text-2xl font-bold dark:text-slate-100 mb-4">Delivery</h2>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            <h2 className="text-xl sm:text-2xl font-bold dark:text-slate-100 mb-3 sm:mb-4">Delivery</h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-3 sm:mb-4">
               Fields marked with <span className="text-red-500">*</span> are required for shipping. Please ensure all information is accurate.
             </p>
             
@@ -942,8 +1164,10 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   placeholder="Last name" 
                   value={lastName} 
                   onChange={e=>setLastName(e.target.value)} 
-                  required 
+                  required
+                  minLength={1}
                 />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Required for shipping (Shiprocket requirement)</p>
               </div>
             </div>
 
@@ -957,6 +1181,28 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                 onChange={e=>setCompany(e.target.value)} 
               />
             </div>
+
+            {/* GST Number - Show only when company is filled */}
+            {company.trim() && (
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  GST Number <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  className="w-full rounded border border-slate-300 px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100" 
+                  placeholder="15-character GSTIN (e.g. 27ABCDE1234F1Z5)" 
+                  value={gstNumber} 
+                  onChange={e=>setGstNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15))} 
+                  required={company.trim() !== ''}
+                  pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}"
+                  minLength={15}
+                  maxLength={15}
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Enter standard 15-character GSTIN: 2-digit state code, PAN, entity code, default &quot;Z&quot;, checksum.
+                </p>
+              </div>
+            )}
 
             {/* Address */}
             <div className="mb-3">
@@ -1001,17 +1247,50 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   State <span className="text-red-500">*</span>
                 </label>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-600 dark:text-slate-400 text-sm">UP</span>
-                  <select 
-                    className="flex-1 rounded border border-slate-300 px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100" 
-                    value={state} 
-                    onChange={e=>setState(e.target.value)} 
-                    required
-                  >
-                    <option value="Uttar Pradesh">Uttar Pradesh</option>
-                  </select>
-                </div>
+                <select 
+                  className="w-full rounded border border-slate-300 px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100" 
+                  value={state} 
+                  onChange={e=>setState(e.target.value)} 
+                  required
+                >
+                  <option value="">Select State</option>
+                  <option value="Andhra Pradesh">Andhra Pradesh</option>
+                  <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                  <option value="Assam">Assam</option>
+                  <option value="Bihar">Bihar</option>
+                  <option value="Chhattisgarh">Chhattisgarh</option>
+                  <option value="Goa">Goa</option>
+                  <option value="Gujarat">Gujarat</option>
+                  <option value="Haryana">Haryana</option>
+                  <option value="Himachal Pradesh">Himachal Pradesh</option>
+                  <option value="Jharkhand">Jharkhand</option>
+                  <option value="Karnataka">Karnataka</option>
+                  <option value="Kerala">Kerala</option>
+                  <option value="Madhya Pradesh">Madhya Pradesh</option>
+                  <option value="Maharashtra">Maharashtra</option>
+                  <option value="Manipur">Manipur</option>
+                  <option value="Meghalaya">Meghalaya</option>
+                  <option value="Mizoram">Mizoram</option>
+                  <option value="Nagaland">Nagaland</option>
+                  <option value="Odisha">Odisha</option>
+                  <option value="Punjab">Punjab</option>
+                  <option value="Rajasthan">Rajasthan</option>
+                  <option value="Sikkim">Sikkim</option>
+                  <option value="Tamil Nadu">Tamil Nadu</option>
+                  <option value="Telangana">Telangana</option>
+                  <option value="Tripura">Tripura</option>
+                  <option value="Uttar Pradesh">Uttar Pradesh</option>
+                  <option value="Uttarakhand">Uttarakhand</option>
+                  <option value="West Bengal">West Bengal</option>
+                  <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                  <option value="Chandigarh">Chandigarh</option>
+                  <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                  <option value="Delhi">Delhi</option>
+                  <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                  <option value="Ladakh">Ladakh</option>
+                  <option value="Lakshadweep">Lakshadweep</option>
+                  <option value="Puducherry">Puducherry</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -1133,7 +1412,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
             {appliedDiscount && (
               <div className="mt-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
                 <p className="text-sm text-green-700 dark:text-green-300">
-                  ✅ Coupon applied: {appliedDiscount.code} - Save ₹{discountAmount.toFixed(2)}
+                  ✅ Coupon applied: {appliedDiscount.code} - Save ₹{roundPrice(discountAmount).toLocaleString()}
                 </p>
               </div>
             )}
@@ -1204,9 +1483,9 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                             className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                           />
                           <div className="text-sm text-slate-600 dark:text-slate-400">
-                            <p>Coins value: ₹{(coinsToUse / 10).toFixed(2)}</p>
+                            <p>Coins value: ₹{roundPrice(coinsToUse / 10).toLocaleString()}</p>
                             <p className="font-semibold">
-                              Remaining to pay: ₹{Math.max(0, finalSubtotal - (coinsToUse / 10)).toFixed(2)}
+                              Remaining to pay: ₹{roundPrice(Math.max(0, finalSubtotal - (coinsToUse / 10))).toLocaleString()}
                             </p>
                             {(coinsToUse / 10) >= finalSubtotal && (
                               <p className="text-green-600 dark:text-green-400 font-semibold">
@@ -1225,7 +1504,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
               {useCoins && (coinsToUse / 10) < finalSubtotal && (
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-3">
-                    Select Payment Method for Remaining Amount: ₹{Math.max(0, finalSubtotal - (coinsToUse / 10)).toFixed(2)}
+                    Select Payment Method for Remaining Amount: ₹{roundPrice(Math.max(0, finalSubtotal - (coinsToUse / 10))).toLocaleString()}
                   </p>
                 </div>
               )}
@@ -1251,13 +1530,13 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                       Razorpay Secure (UPI, Cards, Int'l Cards, Wallets)
                       {useCoins && (coinsToUse / 10) < finalSubtotal && (
                         <span className="text-xs text-slate-500 ml-2">
-                          (Pay ₹{Math.max(0, finalSubtotal - (coinsToUse / 10)).toFixed(2)})
+                          (Pay ₹{roundPrice(Math.max(0, finalSubtotal - (coinsToUse / 10))).toLocaleString()})
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                       {useCoins && (coinsToUse / 10) < finalSubtotal ? (
-                        <span>Pay remaining ₹{Math.max(0, finalSubtotal - (coinsToUse / 10)).toFixed(2)} via Razorpay</span>
+                        <span>Pay remaining ₹{roundPrice(Math.max(0, finalSubtotal - (coinsToUse / 10))).toLocaleString()} via Razorpay</span>
                       ) : (
                         <>
                           <span>UPI</span>
@@ -1294,10 +1573,10 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   />
                   <div className="flex-1">
                     <div className="font-medium text-slate-700 dark:text-slate-300">
-                      Cash on Delivery (COD)
+                      Cash on Delivery
                       {useCoins && (coinsToUse / 10) < finalSubtotal && (
                         <span className="text-xs text-slate-500 ml-2">
-                          (Pay ₹{Math.max(0, grandTotal).toFixed(2)} on delivery)
+                          (Pay ₹{roundPrice(Math.max(0, grandTotal)).toLocaleString()} on delivery)
                         </span>
                       )}
                     </div>
@@ -1404,17 +1683,50 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">State</label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-600 dark:text-slate-400 text-sm">UP</span>
-                      <select 
-                        className="flex-1 rounded border border-slate-300 px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100" 
-                        value={billingState} 
-                        onChange={e=>setBillingState(e.target.value)} 
-                        required={!sameAsShipping}
-                      >
-                        <option value="Uttar Pradesh">Uttar Pradesh</option>
-                      </select>
-                    </div>
+                    <select 
+                      className="w-full rounded border border-slate-300 px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100" 
+                      value={billingState} 
+                      onChange={e=>setBillingState(e.target.value)} 
+                      required={!sameAsShipping}
+                    >
+                      <option value="">Select State</option>
+                      <option value="Andhra Pradesh">Andhra Pradesh</option>
+                      <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                      <option value="Assam">Assam</option>
+                      <option value="Bihar">Bihar</option>
+                      <option value="Chhattisgarh">Chhattisgarh</option>
+                      <option value="Goa">Goa</option>
+                      <option value="Gujarat">Gujarat</option>
+                      <option value="Haryana">Haryana</option>
+                      <option value="Himachal Pradesh">Himachal Pradesh</option>
+                      <option value="Jharkhand">Jharkhand</option>
+                      <option value="Karnataka">Karnataka</option>
+                      <option value="Kerala">Kerala</option>
+                      <option value="Madhya Pradesh">Madhya Pradesh</option>
+                      <option value="Maharashtra">Maharashtra</option>
+                      <option value="Manipur">Manipur</option>
+                      <option value="Meghalaya">Meghalaya</option>
+                      <option value="Mizoram">Mizoram</option>
+                      <option value="Nagaland">Nagaland</option>
+                      <option value="Odisha">Odisha</option>
+                      <option value="Punjab">Punjab</option>
+                      <option value="Rajasthan">Rajasthan</option>
+                      <option value="Sikkim">Sikkim</option>
+                      <option value="Tamil Nadu">Tamil Nadu</option>
+                      <option value="Telangana">Telangana</option>
+                      <option value="Tripura">Tripura</option>
+                      <option value="Uttar Pradesh">Uttar Pradesh</option>
+                      <option value="Uttarakhand">Uttarakhand</option>
+                      <option value="West Bengal">West Bengal</option>
+                      <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                      <option value="Chandigarh">Chandigarh</option>
+                      <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                      <option value="Delhi">Delhi</option>
+                      <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                      <option value="Ladakh">Ladakh</option>
+                      <option value="Lakshadweep">Lakshadweep</option>
+                      <option value="Puducherry">Puducherry</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -1462,12 +1774,15 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           <button 
             type="submit"
             disabled={loading} 
-            className="w-full rounded bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full rounded px-5 py-3 font-semibold text-white disabled:opacity-50 transition-colors"
+            style={{ backgroundColor: 'rgb(75,151,201)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
           >
             {loading ? 'Processing Order...' : 
              useCoins && (coinsToUse / 10) >= finalSubtotal ? `Place Order (Paid with ${coinsToUse} Coins)` :
-             useCoins && (coinsToUse / 10) < finalSubtotal ? `Use ${coinsToUse} Coins + Pay ₹${grandTotal.toFixed(2)} ${isCOD ? '(COD)' : selectedPayment === 'razorpay' ? 'Now' : ''}` :
-             isCOD ? `Place Order (COD) - ₹${grandTotal.toFixed(2)}` : 
+             useCoins && (coinsToUse / 10) < finalSubtotal ? `Use ${coinsToUse} Coins + Pay ₹${roundPrice(grandTotal).toLocaleString()} ${isCOD ? '(Cash on Delivery)' : selectedPayment === 'razorpay' ? 'Now' : ''}` :
+             isCOD ? `Place Order (Cash on Delivery) - ₹${roundPrice(grandTotal).toLocaleString()}` : 
              `Pay now`}
           </button>
         </form>
@@ -1486,43 +1801,43 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                     />
                   </div>
                 </div>
-                <span className="dark:text-slate-100">₹{(parsePrice(i.price) * i.quantity).toFixed(2)}</span>
+                <span className="dark:text-slate-100">₹{roundPrice(parsePrice(i.price) * i.quantity).toLocaleString()}</span>
               </div>
             ))}
             <div className="border-t border-slate-200 dark:border-slate-700 pt-3 text-sm space-y-2">
               {/* MRP Total */}
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">MRP</span>
-                <span className="dark:text-slate-100">₹{mrpTotal.toFixed(2)}</span>
+                <span className="dark:text-slate-100">₹{roundPrice(mrpTotal).toLocaleString()}</span>
               </div>
               
               {/* Product Discount */}
               {productDiscount > 0 && (
                 <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>Product Discount</span>
-                  <span>-₹{productDiscount.toFixed(2)}</span>
+                  <span>-₹{roundPrice(productDiscount).toLocaleString()}</span>
                 </div>
               )}
               
               {/* Subtotal */}
               <div className="flex justify-between font-medium">
                 <span className="text-slate-700 dark:text-slate-300">Subtotal</span>
-                <span className="dark:text-slate-100">₹{calcSubtotal.toFixed(2)}</span>
+                <span className="dark:text-slate-100">₹{roundPrice(calcSubtotal).toLocaleString()}</span>
               </div>
               
               {/* Coupon Code Discount */}
               {appliedDiscount && discountAmount > 0 && (
                 <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>Coupon Code ({appliedDiscount.code})</span>
-                  <span>-₹{discountAmount.toFixed(2)}</span>
+                  <span>-₹{roundPrice(discountAmount).toLocaleString()}</span>
                 </div>
               )}
               
               {/* Coins Discount */}
               {useCoins && coinsToUse > 0 && (
                 <div className="flex justify-between text-yellow-600 dark:text-yellow-400">
-                  <span>Nefol Coins Used ({coinsToUse} coins = ₹{(coinsToUse / 10).toFixed(2)})</span>
-                  <span>-₹{coinsDiscount.toFixed(2)}</span>
+                  <span>Nefol Coins Used ({coinsToUse} coins = ₹{roundPrice(coinsToUse / 10).toLocaleString()})</span>
+                  <span>-₹{roundPrice(coinsDiscount).toLocaleString()}</span>
                 </div>
               )}
               
@@ -1530,7 +1845,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">Shipping Charges</span>
                 <span className={shipping > 0 ? 'dark:text-slate-100' : 'text-green-600 dark:text-green-400'}>
-                  {shipping > 0 ? `₹${shipping.toFixed(2)}` : 'Free'}
+                  {shipping > 0 ? `₹${roundPrice(shipping).toLocaleString()}` : 'Free'}
                 </span>
               </div>
               
@@ -1540,14 +1855,14 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   GST ({buySlug ? (orderItems[0]?.category?.toLowerCase().includes('hair') ? '5%' : '18%') : 'Mixed'}) 
                   <span className="text-xs ml-1">(Inclusive)</span>
                 </span>
-                <span className="dark:text-slate-100">₹{calculatedTax.toFixed(2)}</span>
+                <span className="dark:text-slate-100">₹{roundPrice(calculatedTax).toLocaleString()}</span>
               </div>
               
               {/* Grand Total */}
               <div className="border-t border-slate-300 dark:border-slate-600 pt-2 mt-2">
                 <div className="flex justify-between text-lg font-bold">
                   <span className="dark:text-slate-100">Grand Total</span>
-                  <span className="dark:text-slate-100">₹{grandTotal.toFixed(2)}</span>
+                  <span className="dark:text-slate-100">₹{roundPrice(grandTotal).toLocaleString()}</span>
                 </div>
               </div>
               

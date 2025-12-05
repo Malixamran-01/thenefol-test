@@ -8,7 +8,17 @@ export default function FBShopIntegration() {
   const [jobId, setJobId] = useState<string | null>(null)
   const [mapping, setMapping] = useState<{ [k: string]: string }>({ brand: 'Nefol', condition: 'new', availability: 'in stock' })
   const [lastRun, setLastRun] = useState<any>(null)
-  const apiBase = (import.meta as any).env.VITE_API_URL || ''
+  const getApiBase = () => {
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
+  }
+  const apiBase = getApiBase()
   const headers = useMemo(()=>({ 'Content-Type': 'application/json' }), [])
 
   const saveConfig = async () => {

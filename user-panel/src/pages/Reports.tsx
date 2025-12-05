@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Download, Calendar, TrendingUp, DollarSign, Users, BarChart3, PieChart, FileText } from 'lucide-react'
-
-const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
-  const host = (import.meta.env.VITE_BACKEND_HOST as string) || (import.meta.env.VITE_API_HOST as string) || 'localhost'
-  const port = (import.meta.env.VITE_BACKEND_PORT as string) || (import.meta.env.VITE_API_PORT as string) || '4000'
-  return `http://${host}:${port}`
-}
-const API_BASE_URL = getApiBaseUrl()
+import { getApiBase } from '../utils/apiBase'
 
 interface ReportData {
   id: string
@@ -46,7 +39,8 @@ export default function Reports() {
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/affiliate/reports`, {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/affiliate/reports`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -310,7 +304,10 @@ export default function Reports() {
                   </span>
                   <button
                     onClick={() => downloadReport(report.id, report.name)}
-                    className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    className="flex items-center gap-2 px-3 py-1 text-white rounded-lg transition-colors text-sm"
+                    style={{ backgroundColor: 'rgb(75,151,201)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                   >
                     <Download className="h-3 w-3" />
                     Download

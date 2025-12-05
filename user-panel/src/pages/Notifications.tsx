@@ -211,7 +211,10 @@ export default function Notifications() {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 text-sm text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
               >
                 Mark all as read
               </button>
@@ -232,7 +235,7 @@ export default function Notifications() {
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
                 {f === 'unread' && unreadCount > 0 && (
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-blue-600 text-white rounded-full">
+                  <span className="ml-2 px-2 py-0.5 text-xs text-white rounded-full" style={{ backgroundColor: 'rgb(75,151,201)' }}>
                     {unreadCount}
                   </span>
                 )}

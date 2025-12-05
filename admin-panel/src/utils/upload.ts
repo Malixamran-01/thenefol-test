@@ -18,7 +18,7 @@ export async function uploadFile(file: File, apiBase: string): Promise<string> {
     headers['x-user-permissions'] = permissions
   }
   
-  const res = await fetch(`${apiBase}/api/upload`, { 
+  const res = await fetch(`${apiBase}/upload`, { 
     method: 'POST', 
     body: form,
     headers
@@ -42,7 +42,13 @@ export async function uploadFile(file: File, apiBase: string): Promise<string> {
   if (!url) throw new Error('upload failed: no URL in response')
   // normalize to absolute URL for consistent previews across origins
   if (/^https?:\/\//i.test(url)) return url
-  const base = apiBase.replace(/\/$/, '')
+  
+  // For uploads, remove /api from base since uploads are served from root
+  let base = apiBase.replace(/\/$/, '')
+  if (url.startsWith('/uploads/') && base.endsWith('/api')) {
+    base = base.replace(/\/api$/, '')
+  }
+  
   const path = url.startsWith('/') ? url : `/${url}`
   return `${base}${path}`
 }

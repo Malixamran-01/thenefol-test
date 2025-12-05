@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Users, Calendar, DollarSign, Package, TrendingUp, Filter, Download } from 'lucide-react'
-
-const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
-  const host = (import.meta.env.VITE_BACKEND_HOST as string) || (import.meta.env.VITE_API_HOST as string) || 'localhost'
-  const port = (import.meta.env.VITE_BACKEND_PORT as string) || (import.meta.env.VITE_API_PORT as string) || '4000'
-  return `http://${host}:${port}`
-}
-const API_BASE_URL = getApiBaseUrl()
+import { getApiBase } from '../utils/apiBase'
 
 interface ReferralData {
   id: string
@@ -52,7 +45,8 @@ export default function ReferralHistory() {
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/affiliate/referrals`, {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/affiliate/referrals`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -163,7 +157,10 @@ export default function ReferralHistory() {
             </div>
             <button
               onClick={exportToCSV}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               <Download className="h-4 w-4" />
               Export CSV

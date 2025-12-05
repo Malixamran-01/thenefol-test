@@ -149,10 +149,22 @@ export default function UserDetail() {
     fetchUserData()
   }, [id])
 
+  const getApiBase = () => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+      // Always use production URL - no environment variables
+    }
+    return 'https://thenefol.com/api'
+  }
+
   const fetchUserData = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/users/${id}`)
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/users/${id}`)
       if (response.ok) {
         const data = await response.json()
         setUserData(data)
@@ -169,7 +181,8 @@ export default function UserDetail() {
   const addNote = async () => {
     if (!newNote.trim()) return
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/users/${id}/notes`, {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/users/${id}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: newNote, note_type: 'general' })
@@ -186,7 +199,8 @@ export default function UserDetail() {
   const addTag = async () => {
     if (!newTag.trim()) return
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/users/${id}/tags`, {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/users/${id}/tags`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tag: newTag })
@@ -202,7 +216,8 @@ export default function UserDetail() {
 
   const removeTag = async (tag: string) => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || 'https://thenefol.com/api'}/api/users/${id}/tags`, {
+      const apiBase = getApiBase()
+      await fetch(`${apiBase}/users/${id}/tags`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tag })

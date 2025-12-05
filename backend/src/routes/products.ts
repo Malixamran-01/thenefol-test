@@ -50,6 +50,11 @@ export async function getProductById(pool: Pool, req: Request, res: Response) {
   try {
     const { id } = req.params
     
+    // Validate id parameter
+    if (!id || id === 'undefined' || id === 'null') {
+      return sendError(res, 400, 'Invalid product ID')
+    }
+    
     const { rows } = await pool.query(`
       SELECT p.*, 
              COALESCE(
@@ -91,6 +96,11 @@ export async function getProductById(pool: Pool, req: Request, res: Response) {
 export async function getProductBySlug(pool: Pool, req: Request, res: Response) {
   try {
     const { slug } = req.params
+    
+    // Validate slug parameter
+    if (!slug || slug === 'undefined' || slug === 'null') {
+      return sendError(res, 400, 'Invalid product slug')
+    }
     
     const { rows } = await pool.query(`
       SELECT p.*, 
@@ -324,10 +334,12 @@ export async function getProductImages(pool: Pool, req: Request, res: Response) 
   try {
     const { id } = req.params
     
-    const { rows } = await pool.query(
-      'SELECT * FROM product_images WHERE product_id = $1 ORDER BY created_at ASC',
-      [id]
-    )
+    // Check if display_order column exists, if not use created_at
+    const { rows } = await pool.query(`
+      SELECT * FROM product_images 
+      WHERE product_id = $1 
+      ORDER BY COALESCE(display_order, id) ASC, created_at ASC
+    `, [id])
     
     sendSuccess(res, rows)
   } catch (err) {
@@ -352,6 +364,48 @@ export async function deleteProductImage(pool: Pool, req: Request, res: Response
     sendSuccess(res, { message: 'Product image deleted successfully' })
   } catch (err) {
     sendError(res, 500, 'Failed to delete product image', err)
+  }
+}
+
+// Reorder product images
+export async function reorderProductImages(pool: Pool, req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    const { images, type } = req.body
+    
+    if (!images || !Array.isArray(images)) {
+      return sendError(res, 400, 'Images array is required')
+    }
+    
+    // Check if product exists
+    const productCheck = await pool.query('SELECT id FROM products WHERE id = $1', [id])
+    if (productCheck.rows.length === 0) {
+      return sendError(res, 404, 'Product not found')
+    }
+    
+    // Update display_order for each image
+    // First, check if display_order column exists
+    try {
+      await pool.query('SELECT display_order FROM product_images LIMIT 1')
+    } catch (err: any) {
+      // Column doesn't exist, add it
+      await pool.query('ALTER TABLE product_images ADD COLUMN IF NOT EXISTS display_order INTEGER')
+    }
+    
+    // Update each image's display_order
+    for (const img of images) {
+      if (img.id && typeof img.display_order === 'number') {
+        await pool.query(
+          'UPDATE product_images SET display_order = $1 WHERE id = $2 AND product_id = $3 AND (type = $4 OR ($4 IS NULL AND type IS NULL))',
+          [img.display_order, img.id, id, type || null]
+        )
+      }
+    }
+    
+    sendSuccess(res, { message: 'Image order updated successfully' })
+  } catch (err) {
+    console.error('Failed to reorder images:', err)
+    sendError(res, 500, 'Failed to reorder images', err)
   }
 }
 

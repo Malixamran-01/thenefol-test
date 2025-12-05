@@ -211,7 +211,7 @@ export default function Confirmation() {
   const getPaymentMethodName = (method: string) => {
     switch (method?.toLowerCase()) {
       case 'cod':
-        return 'Cash on Delivery (COD)'
+        return 'Cash on Delivery'
       case 'razorpay':
         return 'Razorpay Secure (UPI, Cards, Int\'l Cards, Wallets)'
       case 'coins':
@@ -250,7 +250,7 @@ export default function Confirmation() {
         <div className="mx-auto max-w-3xl px-4 text-center">
           <h1 className="text-3xl font-bold mb-2 dark:text-slate-100">Order Not Found</h1>
           <p className="text-slate-600 dark:text-slate-400">{error || 'Unable to load order details'}</p>
-          <a href="#/user/shop" className="inline-block mt-6 rounded bg-blue-600 px-5 py-2.5 font-semibold text-white hover:bg-blue-700">Continue Shopping</a>
+          <a href="#/user/shop" className="inline-block mt-6 rounded px-5 py-2.5 font-semibold text-white" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>Continue Shopping</a>
         </div>
       </main>
     )
@@ -639,7 +639,7 @@ export default function Confirmation() {
                   onClick={() => {
                     const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
                     const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                    const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+                    const apiBase = getApiBase()
                     window.open(`${apiBase}/api/invoices/${orderDetails.order_number}/download`, '_blank')
                   }}
                   className="w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"

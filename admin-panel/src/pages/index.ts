@@ -20,6 +20,7 @@ export { default as InvoiceSettings } from './invoice/InvoiceSettings'
 export { default as Tax } from './tax/Tax'
 export { default as Returns } from './returns/Returns'
 export { default as Payment } from './payment/Payment'
+export { default as AccountSecurity } from './account/AccountSecurity'
 
 // New User Management Pages
 export { default as UserProfiles } from './users/UserProfiles'

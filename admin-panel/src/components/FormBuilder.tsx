@@ -41,7 +41,8 @@ interface FormSubmission {
   created_at: string
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
+import { getApiBaseUrl } from '../utils/apiUrl'
+const API_BASE = getApiBaseUrl()
 
 export default function FormBuilder() {
   const [forms, setForms] = useState<Form[]>([])
@@ -78,7 +79,7 @@ export default function FormBuilder() {
   const fetchForms = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE}/api/forms`)
+      const response = await fetch(`${API_BASE}/forms`)
       if (response.ok) {
         const data = await response.json()
         const formsData = data.forms || data || []
@@ -96,7 +97,7 @@ export default function FormBuilder() {
 
   const fetchSubmissions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/forms/submissions`)
+      const response = await fetch(`${API_BASE}/forms/submissions`)
       if (response.ok) {
         const data = await response.json()
         setSubmissions(data.submissions || data || [])
@@ -119,7 +120,7 @@ export default function FormBuilder() {
         status: 'draft'
       }
 
-      const response = await fetch(`${API_BASE}/api/forms`, {
+      const response = await fetch(`${API_BASE}/forms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -194,7 +195,7 @@ export default function FormBuilder() {
     try {
       const updatedForm = { ...selectedForm, fields }
       
-      const response = await fetch(`${API_BASE}/api/forms/${selectedForm.id}`, {
+      const response = await fetch(`${API_BASE}/forms/${selectedForm.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -226,7 +227,7 @@ export default function FormBuilder() {
       const form = forms.find(f => f.id === formId)
       if (!form) return
 
-      const response = await fetch(`${API_BASE}/api/forms/${formId}`, {
+      const response = await fetch(`${API_BASE}/forms/${formId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -253,7 +254,7 @@ export default function FormBuilder() {
       const form = forms.find(f => f.id === formId)
       if (!form) return
 
-      const response = await fetch(`${API_BASE}/api/forms/${formId}`, {
+      const response = await fetch(`${API_BASE}/forms/${formId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -280,7 +281,7 @@ export default function FormBuilder() {
       const form = forms.find(f => f.id === formId)
       if (!form) return
 
-      const response = await fetch(`${API_BASE}/api/forms`, {
+      const response = await fetch(`${API_BASE}/forms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -306,7 +307,7 @@ export default function FormBuilder() {
     if (!confirm('Are you sure you want to delete this form? This action cannot be undone.')) return
 
     try {
-      const response = await fetch(`${API_BASE}/api/forms/${formId}`, {
+      const response = await fetch(`${API_BASE}/forms/${formId}`, {
         method: 'DELETE'
       })
 

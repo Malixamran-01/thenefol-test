@@ -133,7 +133,7 @@ export default function PaymentMethods() {
                       Set as Default
                     </button>
                   )}
-                  <button className="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400">
+                  <button className="text-slate-600 dark:text-slate-400" onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'} onMouseLeave={(e) => e.currentTarget.style.color = ''}>
                     <Edit className="w-5 h-5" />
                   </button>
                   <button
@@ -152,7 +152,10 @@ export default function PaymentMethods() {
         {!showAddForm ? (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
+            className="w-full text-white py-4 rounded-xl font-semibold transition-colors flex items-center justify-center"
+            style={{ backgroundColor: 'rgb(75,151,201)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
           >
             <Plus className="w-5 h-5 mr-2" />
             Add New Payment Method
@@ -241,7 +244,10 @@ export default function PaymentMethods() {
               <div className="flex space-x-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  className="flex-1 text-white py-3 rounded-lg font-semibold transition-colors"
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                 >
                   Add Payment Method
                 </button>

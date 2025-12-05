@@ -245,29 +245,91 @@ export default function Offers() {
           </div>
         </section>
 
-        <section className="mt-16 grid gap-6 rounded-3xl border border-slate-200 bg-slate-900 p-8 text-white md:grid-cols-2">
+        <section className="mt-16 grid gap-6 rounded-3xl p-8 md:grid-cols-2" style={{ backgroundColor: 'var(--arctic-blue-lighter)' }}>
           <div>
-            <h2 className="text-3xl font-semibold">Join Nefol Circle</h2>
-            <p className="mt-3 text-slate-200">
+            <h2 
+              className="text-3xl font-semibold mb-3"
+              style={{ 
+                color: '#1a1a1a',
+                fontFamily: 'var(--font-heading-family)',
+                letterSpacing: '0.05em'
+              }}
+            >
+              Join Nefol Circle
+            </h2>
+            <p 
+              className="mt-3"
+              style={{ 
+                color: '#666',
+                fontFamily: 'var(--font-body-family, sans-serif)',
+                lineHeight: '1.6',
+                letterSpacing: '0.02em'
+              }}
+            >
               Inspired by loyalty programs like Lakmé Absolute Rewards and Sugar Circle, Nefol Circle offers members-only perks, birthday specials, and early access to product drops.
             </p>
             <button
               onClick={() => (window.location.hash = '#/user/loyalty-rewards')}
-              className="mt-6 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+              className="mt-6 rounded-full px-5 py-3 text-sm font-semibold transition-colors"
+              style={{ 
+                backgroundColor: 'var(--arctic-blue-primary)', 
+                color: '#fff',
+                letterSpacing: '0.05em'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+              }}
             >
               Explore Loyalty Rewards
             </button>
           </div>
           <div className="space-y-4">
-            <div className="rounded-2xl bg-white/10 p-4">
-              <h3 className="text-lg font-semibold">Refer & Earn</h3>
-              <p className="mt-1 text-sm text-slate-200">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}>
+              <h3 
+                className="text-lg font-semibold"
+                style={{ 
+                  color: '#1a1a1a',
+                  fontFamily: 'var(--font-heading-family)',
+                  letterSpacing: '0.03em'
+                }}
+              >
+                Refer & Earn
+              </h3>
+              <p 
+                className="mt-1 text-sm"
+                style={{ 
+                  color: '#666',
+                  fontFamily: 'var(--font-body-family, sans-serif)',
+                  lineHeight: '1.5',
+                  letterSpacing: '0.02em'
+                }}
+              >
                 Share Nefol with friends and earn bonus coins when they place their first order—mirroring referral programs from Sugar Cosmetics and Minimalist.
               </p>
             </div>
-            <div className="rounded-2xl bg-white/10 p-4">
-              <h3 className="text-lg font-semibold">Birthday Boutique</h3>
-              <p className="mt-1 text-sm text-slate-200">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}>
+              <h3 
+                className="text-lg font-semibold"
+                style={{ 
+                  color: '#1a1a1a',
+                  fontFamily: 'var(--font-heading-family)',
+                  letterSpacing: '0.03em'
+                }}
+              >
+                Birthday Boutique
+              </h3>
+              <p 
+                className="mt-1 text-sm"
+                style={{ 
+                  color: '#666',
+                  fontFamily: 'var(--font-body-family, sans-serif)',
+                  lineHeight: '1.5',
+                  letterSpacing: '0.02em'
+                }}
+              >
                 Enjoy birthday month exclusives and complimentary miniatures inspired by Forest Essentials and Kama Ayurveda gifting suites.
               </p>
             </div>

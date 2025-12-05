@@ -133,7 +133,10 @@ export default function DeliveryNotification({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowReviewForm(true)}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
               >
                 <Star className="h-4 w-4" />
                 Write Review & Earn Points

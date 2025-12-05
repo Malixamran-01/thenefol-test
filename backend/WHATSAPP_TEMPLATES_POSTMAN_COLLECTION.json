@@ -1,0 +1,671 @@
+{
+	"info": {
+		"_postman_id": "whatsapp-templates-nefol-2024",
+		"name": "Nefol WhatsApp Templates - Production",
+		"description": "Complete collection for testing all WhatsApp Business Cloud API templates on https://thenefol.com/",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "nefol-whatsapp"
+	},
+	"item": [
+		{
+			"name": "1. Authentication Templates",
+			"item": [
+				{
+					"name": "1.1 Send OTP (nefol_verify_code)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has success field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('success');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/send-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"send-otp"
+							]
+						},
+						"description": "Sends OTP via WhatsApp using nefol_verify_code template. Meta automatically generates the OTP code.\n\n**Template:** nefol_verify_code\n**Variables:** None (Meta auto-generates)\n**Language:** en"
+					},
+					"response": []
+				},
+				{
+					"name": "1.2 Verify OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\",\n  \"otp\": \"123456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/verify-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"verify-otp"
+							]
+						},
+						"description": "Verifies the OTP code sent via WhatsApp"
+					},
+					"response": []
+				},
+				{
+					"name": "1.3 Password Reset (nefol_reset_password)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/request-reset",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"request-reset"
+							]
+						},
+						"description": "Sends password reset code via WhatsApp using nefol_reset_password template.\n\n**Template:** nefol_reset_password\n**Variables:** [resetCode]\n**Language:** en"
+					},
+					"response": []
+				},
+				{
+					"name": "1.4 User Signup (nefol_signup_success)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"phone\": \"{{test_phone}}\",\n  \"email\": \"test{{$randomInt}}@example.com\",\n  \"password\": \"TestPass123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registers a new user and automatically sends nefol_signup_success template.\n\n**Template:** nefol_signup_success\n**Variables:** [name]\n**Language:** en"
+					},
+					"response": []
+				},
+				{
+					"name": "1.5 User Login (nefol_login_alert)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\",\n  \"password\": \"TestPass123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Logs in user and sends nefol_login_alert template if login is from new device/IP.\n\n**Template:** nefol_login_alert\n**Variables:** [name, deviceInfo, timestamp]\n**Language:** en"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication-related WhatsApp templates (no fallback, language: en)"
+		},
+		{
+			"name": "2. Order & Transaction Templates",
+			"item": [
+				{
+					"name": "2.1 Order Shipped (nefol_order_shipped)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"shipped\",\n  \"tracking\": \"https://tracking.example.com/ABC123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/{{order_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"{{order_id}}"
+							]
+						},
+						"description": "Updates order status to 'shipped' and sends nefol_order_shipped template.\n\n**Template:** nefol_order_shipped\n**Variables:** [name, orderId, trackingUrl]\n**Requires:** Admin authentication"
+					},
+					"response": []
+				},
+				{
+					"name": "2.2 Order Delivered (nefol_order_delivered)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"delivered\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/{{order_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"{{order_id}}"
+							]
+						},
+						"description": "Updates order status to 'delivered' and sends nefol_order_delivered template.\n\n**Template:** nefol_order_delivered\n**Variables:** [name, orderId]\n**Requires:** Admin authentication"
+					},
+					"response": []
+				},
+				{
+					"name": "2.3 Order Status Update (Generic)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"processing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/orders/{{order_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"{{order_id}}"
+							]
+						},
+						"description": "Updates order status (triggers email notification, not WhatsApp template)"
+					},
+					"response": []
+				}
+			],
+			"description": "Order and transaction-related WhatsApp templates (has fallback to plain text)"
+		},
+		{
+			"name": "3. Marketing Templates",
+			"item": [
+				{
+					"name": "3.1 Cart Recovery (nefol_cart_recover)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cron/cart-abandonment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"cron",
+								"cart-abandonment"
+							]
+						},
+						"description": "**Note:** This is triggered automatically by cron job for abandoned carts (1+ hour old).\n\n**Template:** nefol_cart_recover\n**Variables:** [name, cartUrl]\n**Manual Test:** Add items to cart, wait 1+ hour, cron will send message"
+					},
+					"response": []
+				}
+			],
+			"description": "Marketing and engagement WhatsApp templates"
+		},
+		{
+			"name": "4. Utility Endpoints",
+			"item": [
+				{
+					"name": "4.1 Test WhatsApp (Plain Text)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Message sent successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('sent');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone_number\": \"{{test_phone}}\",\n  \"message\": \"Test message from Postman - {{$timestamp}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/alerts/test/whatsapp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"alerts",
+								"test",
+								"whatsapp"
+							]
+						},
+						"description": "Sends a plain text WhatsApp message (not a template). Useful for testing WhatsApp API connectivity."
+					},
+					"response": []
+				},
+				{
+					"name": "4.2 WhatsApp Webhook Verification",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token={{verify_token}}&hub.challenge=test123",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"whatsapp",
+								"webhook"
+							],
+							"query": [
+								{
+									"key": "hub.mode",
+									"value": "subscribe"
+								},
+								{
+									"key": "hub.verify_token",
+									"value": "{{verify_token}}"
+								},
+								{
+									"key": "hub.challenge",
+									"value": "test123"
+								}
+							]
+						},
+						"description": "Webhook verification endpoint for Meta WhatsApp Business API"
+					},
+					"response": []
+				},
+				{
+					"name": "4.3 WhatsApp Subscribe",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/whatsapp/subscribe",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"whatsapp",
+								"subscribe"
+							]
+						},
+						"description": "Subscribe a phone number to WhatsApp updates"
+					},
+					"response": []
+				},
+				{
+					"name": "4.4 WhatsApp Unsubscribe",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/whatsapp/unsubscribe",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"whatsapp",
+								"unsubscribe"
+							]
+						},
+						"description": "Unsubscribe a phone number from WhatsApp updates"
+					},
+					"response": []
+				}
+			],
+			"description": "Utility endpoints for testing and managing WhatsApp integration"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://thenefol.com",
+			"type": "string"
+		},
+		{
+			"key": "test_phone",
+			"value": "919876543210",
+			"type": "string",
+			"description": "Test phone number with country code (no + sign)"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string",
+			"description": "Admin JWT token for authenticated endpoints"
+		},
+		{
+			"key": "order_id",
+			"value": "1",
+			"type": "string",
+			"description": "Order ID for testing order-related templates"
+		},
+		{
+			"key": "verify_token",
+			"value": "",
+			"type": "string",
+			"description": "WhatsApp webhook verify token from .env"
+		}
+	]
+}
+

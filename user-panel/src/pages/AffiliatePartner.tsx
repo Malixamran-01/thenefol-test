@@ -658,9 +658,9 @@ const AffiliatePartner: React.FC = () => {
       <main className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
-            --arctic-blue-primary: #7DD3D3;
-            --arctic-blue-primary-hover: #5EC4C4;
-            --arctic-blue-primary-dark: #4A9FAF;
+            --arctic-blue-primary: rgb(75,151,201);
+            --arctic-blue-primary-hover: rgb(60,120,160);
+            --arctic-blue-primary-dark: rgb(50,100,140);
             --arctic-blue-light: #E0F5F5;
             --arctic-blue-lighter: #F0F9F9;
             --arctic-blue-background: #F4F9F9;
@@ -693,9 +693,9 @@ const AffiliatePartner: React.FC = () => {
       <main className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
-            --arctic-blue-primary: #7DD3D3;
-            --arctic-blue-primary-hover: #5EC4C4;
-            --arctic-blue-primary-dark: #4A9FAF;
+            --arctic-blue-primary: rgb(75,151,201);
+            --arctic-blue-primary-hover: rgb(60,120,160);
+            --arctic-blue-primary-dark: rgb(50,100,140);
             --arctic-blue-light: #E0F5F5;
             --arctic-blue-lighter: #F0F9F9;
             --arctic-blue-background: #F4F9F9;
@@ -718,7 +718,7 @@ const AffiliatePartner: React.FC = () => {
                   className="text-3xl sm:text-4xl md:text-5xl font-light mb-3 tracking-[0.15em]" 
                   style={{
                     color: '#1a1a1a',
-                    fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                    fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
@@ -836,7 +836,7 @@ const AffiliatePartner: React.FC = () => {
                 className="text-xl sm:text-2xl font-light mb-6 tracking-[0.15em]" 
                 style={{
                   color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
@@ -883,7 +883,7 @@ const AffiliatePartner: React.FC = () => {
                   className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                   style={{
                     color: '#1a1a1a',
-                    fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                    fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
@@ -1063,7 +1063,7 @@ const AffiliatePartner: React.FC = () => {
                   className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                   style={{
                     color: '#1a1a1a',
-                    fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                    fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
@@ -1618,9 +1618,9 @@ const AffiliatePartner: React.FC = () => {
     <main className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: #7DD3D3;
-          --arctic-blue-primary-hover: #5EC4C4;
-          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-primary: rgb(75,151,201);
+          --arctic-blue-primary-hover: rgb(60,120,160);
+          --arctic-blue-primary-dark: rgb(50,100,140);
           --arctic-blue-light: #E0F5F5;
           --arctic-blue-lighter: #F0F9F9;
           --arctic-blue-background: #F4F9F9;
@@ -1642,7 +1642,7 @@ const AffiliatePartner: React.FC = () => {
               className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]" 
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
             >
@@ -1726,7 +1726,7 @@ const AffiliatePartner: React.FC = () => {
                   <Key className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
                 )}
               </div>
-              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)', letterSpacing: '0.15em' }}>
+              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
                 {isAlreadyVerified ? 'Account Already Verified' : 'Verify Your Account'}
               </h3>
               <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
@@ -1850,7 +1850,7 @@ const AffiliatePartner: React.FC = () => {
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                 <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
               </div>
-              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)', letterSpacing: '0.15em' }}>Apply for Partnership</h3>
+              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>Apply for Partnership</h3>
               <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Submit your application to become an affiliate partner</p>
             </div>
 
@@ -2083,7 +2083,7 @@ const AffiliatePartner: React.FC = () => {
           <h3 
             className="text-xl sm:text-2xl font-light text-gray-900 mb-8 tracking-[0.15em]" 
             style={{
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >

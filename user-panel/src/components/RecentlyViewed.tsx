@@ -68,14 +68,18 @@ export default function RecentlyViewed({
       const apiBase = getApiBase()
       for (const productId of localViewed.slice(0, 10)) {
         try {
-          await fetch(`${apiBase}/api/products/${productId}/view`, {
+          const response = await fetch(`${apiBase}/api/products/${productId}/view`, {
             method: 'POST',
             credentials: 'include',
             headers: getHeaders(),
             body: JSON.stringify({ source: 'localStorage_sync' })
           })
+          // Only log errors for actual failures, not 404s (product doesn't exist)
+          if (!response.ok && response.status !== 404) {
+            console.error('Failed to sync product view:', response.status, response.statusText)
+          }
         } catch (err) {
-          console.error('Failed to sync product view:', err)
+          // Silently ignore network errors for tracking
         }
       }
     } catch (error) {
@@ -199,7 +203,7 @@ export default function RecentlyViewed({
             aria-label="Previous"
             disabled={!canGoPrevious}
           >
-            <ChevronLeft className="w-6 h-6" style={{color: '#1B4965'}} />
+            <ChevronLeft className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
           </button>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -287,7 +291,7 @@ export default function RecentlyViewed({
             aria-label="Next"
             disabled={!canGoNext}
           >
-            <ChevronRight className="w-6 h-6" style={{color: '#1B4965'}} />
+            <ChevronRight className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
           </button>
         </div>
       </div>

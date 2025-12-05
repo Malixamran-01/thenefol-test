@@ -1,6 +1,24 @@
 // Authentication service for admin panel
 import apiService from './api'
-const API_BASE_URL = import.meta.env.VITE_API_URL || `https://thenefol.com/api`
+
+const getApiBaseUrl = () => {
+  // Always use production URL - no environment variables
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    // If on production domain, use current domain
+    if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+      return `${window.location.protocol}//${window.location.host}/api`
+    }
+    // For any other domain, always use production URL
+    // This ensures we never use local IPs or development URLs in production builds
+    return 'https://thenefol.com/api'
+  }
+  // Default to production API URL
+  return 'https://thenefol.com/api'
+}
+
+// Get API base URL at runtime, not build time
+const getApiBaseUrlRuntime = () => getApiBaseUrl()
 
 interface User {
   id: number
@@ -37,23 +55,42 @@ class AuthService {
     this.initializeFromStorage()
   }
 
+  private getToken(): string | null {
+    return localStorage.getItem('auth_token')
+  }
+
+  private normalizeUser(raw: any): User {
+    if (!raw) {
+      throw new Error('Invalid user payload')
+    }
+    const permissions = Array.isArray(raw.permissions)
+      ? raw.permissions
+      : typeof raw.permissions === 'string'
+        ? raw.permissions.split(',').map((p: string) => p.trim()).filter(Boolean)
+        : []
+    const rolesArray = Array.isArray(raw.roles)
+      ? raw.roles
+      : typeof raw.roles === 'string'
+        ? raw.roles.split(',').map((r: string) => r.trim()).filter(Boolean)
+        : []
+    return {
+      id: raw.id,
+      email: raw.email,
+      name: raw.name || raw.email,
+      role: raw.role || rolesArray[0] || 'admin',
+      permissions
+    }
+  }
+
   // Initialize auth state from localStorage
   private initializeFromStorage() {
     try {
-      const token = localStorage.getItem('auth_token')
+      const token = this.getToken()
       const userStr = localStorage.getItem('user')
 
       if (token && userStr) {
         const parsed = JSON.parse(userStr)
-        const user = {
-          ...parsed,
-          // Normalize permissions to a string[] to avoid runtime errors
-          permissions: Array.isArray(parsed?.permissions)
-            ? parsed.permissions
-            : typeof parsed?.permissions === 'string'
-              ? parsed.permissions.split(',').map((p: string) => p.trim()).filter(Boolean)
-              : [],
-        }
+        const user = this.normalizeUser(parsed)
         this.authState = {
           user,
           isAuthenticated: true,
@@ -143,7 +180,8 @@ class AuthService {
       this.setAuthState({ isLoading: true, error: null })
 
       // Call authentication API
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const apiBase = getApiBaseUrlRuntime()
+      const response = await fetch(`${apiBase}/staff/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,7 +191,8 @@ class AuthService {
 
       if (response.ok) {
         const data = await response.json()
-        const { user, token } = data
+        const { user: rawUser, token } = data
+        const user = this.normalizeUser(rawUser)
 
         // Store token in localStorage
         localStorage.setItem('auth_token', token)
@@ -168,10 +207,10 @@ class AuthService {
 
         return true
       } else {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         this.setAuthState({
           isLoading: false,
-          error: errorData.message || 'Login failed. Please check your credentials.'
+          error: errorData.error || errorData.message || 'Login failed. Please check your credentials.'
         })
         return false
       }
@@ -187,6 +226,17 @@ class AuthService {
   // Logout user
   async logout(): Promise<void> {
     try {
+      const token = this.getToken()
+      const apiBase = getApiBaseUrlRuntime()
+      if (token) {
+        await fetch(`${apiBase}/staff/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }).catch(() => {})
+      }
+
       // Clear stored data
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
@@ -207,7 +257,7 @@ class AuthService {
     try {
       this.setAuthState({ isLoading: true })
       
-      const token = localStorage.getItem('auth_token')
+      const token = this.getToken()
       const userStr = localStorage.getItem('user')
 
       if (!token || !userStr) {
@@ -223,7 +273,8 @@ class AuthService {
       const user = JSON.parse(userStr)
       
       // Validate token with API
-      const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+      const apiBase = getApiBaseUrlRuntime()
+      const response = await fetch(`${apiBase}/staff/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -231,8 +282,12 @@ class AuthService {
       })
 
       if (response.ok) {
+        const data = await response.json()
+        const freshUser = this.normalizeUser(data.user || user)
+        localStorage.setItem('user', JSON.stringify(freshUser))
+
         this.setAuthState({
-          user,
+          user: freshUser,
           isAuthenticated: true,
           isLoading: false,
           error: null
@@ -307,14 +362,32 @@ class AuthService {
   }
 
   // Change password
-  async changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
+  async changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Promise<boolean> {
     try {
-      // In a real app, you would call your API to change password
-      console.log('Changing password...')
-      return true
+      const token = this.getToken()
+      if (!token) {
+        throw new Error('Not authenticated')
+      }
+
+      const apiBase = getApiBaseUrlRuntime()
+      const response = await fetch(`${apiBase}/staff/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword, confirmNewPassword })
+      })
+
+      if (response.ok) {
+        return true
+      }
+
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || errorData.message || 'Failed to update password')
     } catch (error) {
       console.error('Password change error:', error)
-      return false
+      throw error
     }
   }
 }

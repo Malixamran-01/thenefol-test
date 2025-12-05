@@ -9,7 +9,8 @@ export function generateAmazonInvoiceHTML(
   signature: string,
   currency: string,
   logoUrl: string | null = null,
-  signatoryPhotoUrl: string | null = null
+  signatoryPhotoUrl: string | null = null,
+  shipmentInfo: any = null
 ): string {
   try {
     const items = Array.isArray(order.items) ? order.items : JSON.parse(order.items || '[]')
@@ -157,45 +158,103 @@ export function generateAmazonInvoiceHTML(
   <title>Tax Invoice - ${invoiceNumber}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; font-size: 12px; }
-    .invoice-container { max-width: 210mm; margin: 0 auto; background: white; padding: 20px; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; font-size: 11px; }
+    .invoice-container { max-width: 210mm; margin: 0 auto; background: white; padding: 10mm; min-height: 297mm; max-height: 297mm; overflow: hidden; }
+    .print-button { 
+      position: fixed; 
+      top: 20px; 
+      right: 20px; 
+      background: #232f3e; 
+      color: white; 
+      padding: 12px 24px; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-size: 14px; 
+      font-weight: bold;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .print-button:hover { background: #37475a; }
+    @media print {
+      body { background: white; padding: 0; }
+      .print-button { display: none; }
+      .invoice-container { 
+        max-width: 210mm; 
+        margin: 0; 
+        padding: 10mm; 
+        box-shadow: none;
+        page-break-after: avoid;
+      }
+      @page { 
+        size: A4; 
+        margin: 0;
+        size: 210mm 297mm;
+      }
+      .invoice-container { 
+        max-width: 210mm; 
+        margin: 0; 
+        padding: 10mm; 
+        box-shadow: none;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        height: 277mm;
+        overflow: hidden;
+      }
+      * { 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 2px solid #333; padding-bottom: 10px; }
     .logo-section { flex: 1; }
-    .logo { ${logoUrl ? `background: url('${logoUrl}') center/contain no-repeat;` : 'background: #232f3e; color: white;'} width: 150px; height: 60px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
-    .invoice-title { flex: 1; text-align: right; font-size: 14px; font-weight: bold; color: #333; }
-    .seller-section { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; }
-    .seller-title { font-weight: bold; font-size: 13px; margin-bottom: 10px; color: #333; }
-    .seller-info { font-size: 12px; line-height: 1.6; color: #333; }
-    .address-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .address-box { padding: 15px; background: #f9f9f9; border: 1px solid #ddd; }
-    .address-title { font-weight: bold; font-size: 13px; margin-bottom: 10px; color: #333; }
-    .address-content { font-size: 12px; line-height: 1.8; color: #333; }
-    .order-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; }
-    .info-item { font-size: 12px; }
+    .logo { ${logoUrl ? `background: url('${logoUrl}') center/contain no-repeat;` : 'background: #232f3e; color: white;'} width: 120px; height: 50px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; }
+    .invoice-title { flex: 1; text-align: right; font-size: 12px; font-weight: bold; color: #333; }
+    .seller-section { margin-bottom: 12px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
+    .seller-title { font-weight: bold; font-size: 11px; margin-bottom: 6px; color: #333; }
+    .seller-info { font-size: 10px; line-height: 1.5; color: #333; }
+    .address-section { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .address-box { padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
+    .address-title { font-weight: bold; font-size: 11px; margin-bottom: 6px; color: #333; }
+    .address-content { font-size: 10px; line-height: 1.6; color: #333; }
+    .order-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
+    .info-item { font-size: 10px; }
     .info-label { font-weight: bold; color: #333; }
-    .info-value { color: #333; margin-top: 4px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-    th { background: #232f3e; color: white; padding: 10px 8px; text-align: left; font-weight: bold; border: 1px solid #ddd; }
-    td { padding: 8px; border: 1px solid #ddd; color: #333; }
+    .info-value { color: #333; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 9px; }
+    th { background: #232f3e; color: white; padding: 6px 4px; text-align: left; font-weight: bold; border: 1px solid #ddd; font-size: 9px; }
+    td { padding: 5px 4px; border: 1px solid #ddd; color: #333; font-size: 9px; }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
-    .summary-section { margin-top: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; }
-    .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #ddd; font-size: 12px; }
+    .summary-section { margin-top: 12px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
+    .summary-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #ddd; font-size: 10px; }
     .summary-label { font-weight: 500; color: #333; }
     .summary-value { font-weight: bold; color: #333; }
-    .grand-total { background: #232f3e; color: white; padding: 15px; margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; }
-    .amount-words { margin-top: 15px; padding: 10px; background: #fff; border: 1px solid #ddd; font-size: 12px; font-weight: bold; color: #333; }
-    .footer { margin-top: 30px; padding-top: 20px; border-top: 2px solid #333; }
-    .signature-section { margin-top: 30px; }
+    .grand-total { background: #232f3e; color: white; padding: 10px; margin-top: 10px; display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; }
+    .amount-words { margin-top: 10px; padding: 8px; background: #fff; border: 1px solid #ddd; font-size: 10px; font-weight: bold; color: #333; }
+    .footer { margin-top: 15px; padding-top: 12px; border-top: 2px solid #333; }
+    .signature-section { margin-top: 15px; }
     .signature-box { text-align: right; }
-    .signature-photo { max-width: 150px; max-height: 80px; border: 1px solid #ddd; margin-bottom: 10px; }
-    .signature-text { font-weight: bold; font-size: 12px; color: #333; }
-    .reverse-charge { margin-top: 20px; font-size: 12px; color: #333; }
-    .footer-note { margin-top: 20px; font-size: 11px; color: #666; line-height: 1.6; }
-    .page-number { text-align: right; margin-top: 20px; font-size: 11px; color: #666; }
+    .signature-photo { max-width: 120px; max-height: 60px; border: 1px solid #ddd; margin-bottom: 6px; }
+    .signature-text { font-weight: bold; font-size: 10px; color: #333; }
+    .reverse-charge { margin-top: 12px; font-size: 10px; color: #333; }
+    .footer-note { margin-top: 12px; font-size: 9px; color: #666; line-height: 1.5; }
+    .page-number { text-align: right; margin-top: 12px; font-size: 9px; color: #666; }
   </style>
+  <script>
+    function printInvoice() {
+      window.print();
+    }
+    // Auto-print on load (optional - can be removed if not desired)
+    // window.addEventListener('load', function() {
+    //   setTimeout(function() {
+    //     window.print();
+    //   }, 500);
+    // });
+  </script>
 </head>
 <body>
+  <button class="print-button" onclick="printInvoice()">🖨️ Print Invoice</button>
   <div class="invoice-container">
     <!-- Header -->
     <div class="header">
@@ -297,6 +356,18 @@ export function generateAmazonInvoiceHTML(
         <div class="summary-label">Amount in Words:</div>
         <div class="summary-value">${amountInWords}</div>
       </div>
+      ${shipmentInfo?.awb_code ? `
+      <div class="summary-row" style="border-top: 1px solid #ddd; margin-top: 8px; padding-top: 8px;">
+        <div class="summary-label">AWB Code:</div>
+        <div class="summary-value"><strong>${shipmentInfo.awb_code}</strong></div>
+      </div>
+      ` : ''}
+      ${shipmentInfo?.tracking_url ? `
+      <div class="summary-row">
+        <div class="summary-label">Tracking:</div>
+        <div class="summary-value"><a href="${shipmentInfo.tracking_url}" target="_blank" style="color: #0066cc; text-decoration: none;">Track Shipment →</a></div>
+      </div>
+      ` : ''}
     </div>
     
     <!-- Footer -->

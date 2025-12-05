@@ -1,7 +1,8 @@
 // API Service for Admin Panel to User Panel Integration
 // This service handles all API calls between admin panel and user panel
+import { getApiBaseUrl } from '../utils/apiUrl'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
+const API_BASE_URL = getApiBaseUrl()
 
 interface ApiResponse<T> {
   success: boolean
@@ -58,22 +59,22 @@ class AdminUserIntegrationService {
 
   // User Management APIs
   async getUserProfiles(page = 1, limit = 10, search = '') {
-    return this.apiCall(`/api/admin/users/profiles?page=${page}&limit=${limit}&search=${search}`)
+    return this.apiCall(`/admin/users/profiles?page=${page}&limit=${limit}&search=${search}`)
   }
 
   async getUserProfile(userId: number) {
-    return this.apiCall(`/api/admin/users/profiles/${userId}`)
+    return this.apiCall(`/admin/users/profiles/${userId}`)
   }
 
   async updateUserProfile(userId: number, profileData: any) {
-    return this.apiCall(`/api/admin/users/profiles/${userId}`, {
+    return this.apiCall(`/admin/users/profiles/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(profileData),
     })
   }
 
   async deleteUserProfile(userId: number) {
-    return this.apiCall(`/api/admin/users/profiles/${userId}`, {
+    return this.apiCall(`/admin/users/profiles/${userId}`, {
       method: 'DELETE',
     })
   }
@@ -85,70 +86,70 @@ class AdminUserIntegrationService {
       limit: limit.toString(),
       ...filters,
     })
-    return this.apiCall(`/api/admin/notifications?${queryParams}`)
+    return this.apiCall(`/admin/notifications?${queryParams}`)
   }
 
   async createNotification(notificationData: any) {
-    return this.apiCall('/api/admin/notifications', {
+    return this.apiCall('/admin/notifications', {
       method: 'POST',
       body: JSON.stringify(notificationData),
     })
   }
 
   async updateNotification(notificationId: number, notificationData: any) {
-    return this.apiCall(`/api/admin/notifications/${notificationId}`, {
+    return this.apiCall(`/admin/notifications/${notificationId}`, {
       method: 'PUT',
       body: JSON.stringify(notificationData),
     })
   }
 
   async deleteNotification(notificationId: number) {
-    return this.apiCall(`/api/admin/notifications/${notificationId}`, {
+    return this.apiCall(`/admin/notifications/${notificationId}`, {
       method: 'DELETE',
     })
   }
 
   async sendNotification(notificationId: number) {
-    return this.apiCall(`/api/admin/notifications/${notificationId}/send`, {
+    return this.apiCall(`/admin/notifications/${notificationId}/send`, {
       method: 'POST',
     })
   }
 
   // Loyalty Program APIs
   async getLoyaltyPrograms() {
-    return this.apiCall('/api/admin/loyalty/programs')
+    return this.apiCall('/admin/loyalty/programs')
   }
 
   async createLoyaltyProgram(programData: any) {
-    return this.apiCall('/api/admin/loyalty/programs', {
+    return this.apiCall('/admin/loyalty/programs', {
       method: 'POST',
       body: JSON.stringify(programData),
     })
   }
 
   async updateLoyaltyProgram(programId: number, programData: any) {
-    return this.apiCall(`/api/admin/loyalty/programs/${programId}`, {
+    return this.apiCall(`/admin/loyalty/programs/${programId}`, {
       method: 'PUT',
       body: JSON.stringify(programData),
     })
   }
 
   async deleteLoyaltyProgram(programId: number) {
-    return this.apiCall(`/api/admin/loyalty/programs/${programId}`, {
+    return this.apiCall(`/admin/loyalty/programs/${programId}`, {
       method: 'DELETE',
     })
   }
 
   async getLoyaltyTiers() {
-    return this.apiCall('/api/admin/loyalty/tiers')
+    return this.apiCall('/admin/loyalty/tiers')
   }
 
   async getLoyaltyUsers(page = 1, limit = 10) {
-    return this.apiCall(`/api/admin/loyalty/users?page=${page}&limit=${limit}`)
+    return this.apiCall(`/admin/loyalty/users?page=${page}&limit=${limit}`)
   }
 
   async adjustUserPoints(userId: number, points: number, reason: string) {
-    return this.apiCall(`/api/admin/loyalty/users/${userId}/adjust`, {
+    return this.apiCall(`/admin/loyalty/users/${userId}/adjust`, {
       method: 'POST',
       body: JSON.stringify({ points, reason }),
     })
@@ -156,31 +157,31 @@ class AdminUserIntegrationService {
 
   // Static Pages APIs
   async getStaticPages() {
-    return this.apiCall('/api/admin/static-pages')
+    return this.apiCall('/admin/static-pages')
   }
 
   async createStaticPage(pageData: any) {
-    return this.apiCall('/api/admin/static-pages', {
+    return this.apiCall('/admin/static-pages', {
       method: 'POST',
       body: JSON.stringify(pageData),
     })
   }
 
   async updateStaticPage(pageId: number, pageData: any) {
-    return this.apiCall(`/api/admin/static-pages/${pageId}`, {
+    return this.apiCall(`/admin/static-pages/${pageId}`, {
       method: 'PUT',
       body: JSON.stringify(pageData),
     })
   }
 
   async deleteStaticPage(pageId: number) {
-    return this.apiCall(`/api/admin/static-pages/${pageId}`, {
+    return this.apiCall(`/admin/static-pages/${pageId}`, {
       method: 'DELETE',
     })
   }
 
   async toggleStaticPageStatus(pageId: number, isActive: boolean) {
-    return this.apiCall(`/api/admin/static-pages/${pageId}/toggle`, {
+    return this.apiCall(`/admin/static-pages/${pageId}/toggle`, {
       method: 'PUT',
       body: JSON.stringify({ is_active: isActive }),
     })
@@ -193,7 +194,7 @@ class AdminUserIntegrationService {
       limit: limit.toString(),
       ...filters,
     })
-    return this.apiCall(`/api/admin/community/posts?${queryParams}`)
+    return this.apiCall(`/admin/community/posts?${queryParams}`)
   }
 
   async getCommunityComments(page = 1, limit = 10, filters = {}) {
@@ -202,31 +203,31 @@ class AdminUserIntegrationService {
       limit: limit.toString(),
       ...filters,
     })
-    return this.apiCall(`/api/admin/community/comments?${queryParams}`)
+    return this.apiCall(`/admin/community/comments?${queryParams}`)
   }
 
   async updatePostStatus(postId: number, status: string) {
-    return this.apiCall(`/api/admin/community/posts/${postId}/status`, {
+    return this.apiCall(`/admin/community/posts/${postId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
     })
   }
 
   async updateCommentStatus(commentId: number, status: string) {
-    return this.apiCall(`/api/admin/community/comments/${commentId}/status`, {
+    return this.apiCall(`/admin/community/comments/${commentId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
     })
   }
 
   async deletePost(postId: number) {
-    return this.apiCall(`/api/admin/community/posts/${postId}`, {
+    return this.apiCall(`/admin/community/posts/${postId}`, {
       method: 'DELETE',
     })
   }
 
   async deleteComment(commentId: number) {
-    return this.apiCall(`/api/admin/community/comments/${commentId}`, {
+    return this.apiCall(`/admin/community/comments/${commentId}`, {
       method: 'DELETE',
     })
   }
@@ -238,18 +239,18 @@ class AdminUserIntegrationService {
       limit: limit.toString(),
       ...filters,
     })
-    return this.apiCall(`/api/admin/cart/items?${queryParams}`)
+    return this.apiCall(`/admin/cart/items?${queryParams}`)
   }
 
   async updateCartItemQuantity(itemId: number, quantity: number) {
-    return this.apiCall(`/api/admin/cart/items/${itemId}`, {
+    return this.apiCall(`/admin/cart/items/${itemId}`, {
       method: 'PUT',
       body: JSON.stringify({ quantity }),
     })
   }
 
   async removeCartItem(itemId: number) {
-    return this.apiCall(`/api/admin/cart/items/${itemId}`, {
+    return this.apiCall(`/admin/cart/items/${itemId}`, {
       method: 'DELETE',
     })
   }
@@ -260,11 +261,11 @@ class AdminUserIntegrationService {
       limit: limit.toString(),
       ...filters,
     })
-    return this.apiCall(`/api/admin/checkout/sessions?${queryParams}`)
+    return this.apiCall(`/admin/checkout/sessions?${queryParams}`)
   }
 
   async updateSessionStatus(sessionId: number, status: string) {
-    return this.apiCall(`/api/admin/checkout/sessions/${sessionId}/status`, {
+    return this.apiCall(`/admin/checkout/sessions/${sessionId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
     })
@@ -272,19 +273,19 @@ class AdminUserIntegrationService {
 
   // Analytics APIs
   async getDashboardStats() {
-    return this.apiCall('/api/admin/dashboard/stats')
+    return this.apiCall('/admin/dashboard/stats')
   }
 
   async getUserAnalytics(timeRange = '30d') {
-    return this.apiCall(`/api/admin/analytics/users?range=${timeRange}`)
+    return this.apiCall(`/admin/analytics/users?range=${timeRange}`)
   }
 
   async getOrderAnalytics(timeRange = '30d') {
-    return this.apiCall(`/api/admin/analytics/orders?range=${timeRange}`)
+    return this.apiCall(`/admin/analytics/orders?range=${timeRange}`)
   }
 
   async getRevenueAnalytics(timeRange = '30d') {
-    return this.apiCall(`/api/admin/analytics/revenue?range=${timeRange}`)
+    return this.apiCall(`/admin/analytics/revenue?range=${timeRange}`)
   }
 
   // Real-time Updates
@@ -300,21 +301,21 @@ class AdminUserIntegrationService {
 
   // Bulk Operations
   async bulkUpdateUserStatus(userIds: number[], status: string) {
-    return this.apiCall('/api/admin/users/bulk-status', {
+    return this.apiCall('/admin/users/bulk-status', {
       method: 'PUT',
       body: JSON.stringify({ userIds, status }),
     })
   }
 
   async bulkSendNotifications(userIds: number[], notificationData: any) {
-    return this.apiCall('/api/admin/notifications/bulk-send', {
+    return this.apiCall('/admin/notifications/bulk-send', {
       method: 'POST',
       body: JSON.stringify({ userIds, notificationData }),
     })
   }
 
   async bulkDeletePosts(postIds: number[]) {
-    return this.apiCall('/api/admin/community/posts/bulk-delete', {
+    return this.apiCall('/admin/community/posts/bulk-delete', {
       method: 'DELETE',
       body: JSON.stringify({ postIds }),
     })
@@ -322,14 +323,14 @@ class AdminUserIntegrationService {
 
   // Export/Import
   async exportUserData(format = 'csv') {
-    return this.apiCall(`/api/admin/users/export?format=${format}`)
+    return this.apiCall(`/admin/users/export?format=${format}`)
   }
 
   async importUserData(file: File) {
     const formData = new FormData()
     formData.append('file', file)
     
-    return this.apiCall('/api/admin/users/import', {
+    return this.apiCall('/admin/users/import', {
       method: 'POST',
       body: formData,
       headers: {}, // Let browser set Content-Type for FormData
@@ -338,11 +339,11 @@ class AdminUserIntegrationService {
 
   // System Health Check
   async getSystemHealth() {
-    return this.apiCall('/api/admin/system/health')
+    return this.apiCall('/admin/system/health')
   }
 
   async getApiStatus() {
-    return this.apiCall('/api/admin/system/api-status')
+    return this.apiCall('/admin/system/api-status')
   }
 }
 

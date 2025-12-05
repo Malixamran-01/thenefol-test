@@ -18,7 +18,7 @@ export default function ProtectedRoute({ allow }: { allow?: Role[] }) {
   }
 
   if (allow && !allow.includes(role)) {
-    return <Navigate to="/admin" replace key="redirect-to-home" />
+    return <Navigate to="/admin/dashboard" replace key="redirect-to-home" />
   }
 
   return <Outlet />

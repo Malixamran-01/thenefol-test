@@ -137,7 +137,7 @@ export default function Shop() {
               className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]" 
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
               data-aos="fade-up"
@@ -220,6 +220,21 @@ export default function Shop() {
                       <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-0.5 line-clamp-2 overflow-hidden" style={{color: '#1a1a1a', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
                         {product.title}
                       </h3>
+                      {/* Subtitle */}
+                      {(() => {
+                        const csvMatch = csvProducts.find((csv: any) => {
+                          const csvSlug = csv['Slug'] || csv['Product Name']?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
+                          return csvSlug === product.slug
+                        })
+                        const subtitle = csvMatch?.['Subtitle / Tagline'] || 
+                                         (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
+                                         (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
+                        return subtitle ? (
+                          <p className="text-sm text-gray-600 mb-1 line-clamp-1" style={{color: '#666'}}>
+                            {subtitle}
+                          </p>
+                        ) : null
+                      })()}
                       {(() => {
                         const slug = product.slug || ''
                         // Use database stats if available, otherwise fallback to static
@@ -276,15 +291,16 @@ export default function Shop() {
                             }}
                             className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900 rounded-xl"
                             style={{
-                              backgroundColor: 'var(--arctic-blue-primary)',
+                              backgroundColor: 'rgb(75,151,201)',
+                              color: '#FFFFFF',
                               minHeight: '44px',
                               letterSpacing: '0.15em'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                              e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                              e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                             }}
                           >
                             Add to Cart

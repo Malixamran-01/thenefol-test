@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { getApiBase } from '../utils/apiBase'
 
 interface SplashScreenProps {
   onComplete: () => void
@@ -6,16 +7,38 @@ interface SplashScreenProps {
 
 type VideoType = 'portrait' | 'tablet' | 'desktop'
 
+const DEFAULT_SPLASH_VIDEOS = {
+  desktop: '/IMAGES/SS LOGO.mp4',
+  tablet: '/IMAGES/SS LOGO TAB.mp4',
+  mobile: '/IMAGES/SS LOGO PORTRAIT.mp4'
+}
+
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false)
   const [showSkipButton, setShowSkipButton] = useState(false)
   const [videoError, setVideoError] = useState(false)
   const [videoType, setVideoType] = useState<VideoType>('desktop')
   const [isPlaying, setIsPlaying] = useState(false)
+  const [splashVideos, setSplashVideos] = useState(DEFAULT_SPLASH_VIDEOS)
   const videoRef = useRef<HTMLVideoElement>(null)
   const hasStartedPlayingRef = useRef(false)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const splashTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const getCmsApiBase = () => {
+    const apiBase = getApiBase().replace(/\/$/, '')
+    const normalized = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`
+    return `${normalized}/cms`
+  }
+
+  const normalizeVideoUrl = (url?: string) => {
+    if (!url) return ''
+    if (/^https?:\/\//i.test(url)) return url
+    if (url.startsWith('/')) {
+      return `${getApiBase().replace(/\/$/, '')}${url}`
+    }
+    return `${getApiBase().replace(/\/$/, '')}/${url.replace(/^\/+/, '')}`
+  }
 
   // Detect device type and aspect ratio
   useEffect(() => {
@@ -58,6 +81,33 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       window.removeEventListener('resize', detectVideoType)
       window.removeEventListener('orientationchange', detectVideoType)
     }
+  }, [])
+
+  useEffect(() => {
+    const fetchSplashContent = async () => {
+      try {
+        const cmsBase = getCmsApiBase()
+        const response = await fetch(`${cmsBase}/sections/home`)
+        if (response.ok) {
+          const sections = await response.json()
+          const splashSection = sections.find((s: any) => s.section_type === 'splash_screen')
+          if (splashSection?.content) {
+            const desktopVideo = normalizeVideoUrl(splashSection.content.desktop?.video)
+            const tabletVideo = normalizeVideoUrl(splashSection.content.tablet?.video)
+            const mobileVideo = normalizeVideoUrl(splashSection.content.mobile?.video)
+            setSplashVideos({
+              desktop: desktopVideo || DEFAULT_SPLASH_VIDEOS.desktop,
+              tablet: tabletVideo || DEFAULT_SPLASH_VIDEOS.tablet,
+              mobile: mobileVideo || DEFAULT_SPLASH_VIDEOS.mobile
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load splash screen videos:', error)
+      }
+    }
+
+    fetchSplashContent()
   }, [])
 
   useEffect(() => {
@@ -165,15 +215,13 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
   // Get the appropriate video source based on device type
   const getVideoSource = () => {
-    switch (videoType) {
-      case 'portrait':
-        return '/IMAGES/SS LOGO PORTRAIT.mp4'
-      case 'tablet':
-        return '/IMAGES/SS LOGO TAB.mp4'
-      case 'desktop':
-      default:
-        return '/IMAGES/SS LOGO.mp4'
+    if (videoType === 'portrait') {
+      return splashVideos.mobile || DEFAULT_SPLASH_VIDEOS.mobile
     }
+    if (videoType === 'tablet') {
+      return splashVideos.tablet || DEFAULT_SPLASH_VIDEOS.tablet
+    }
+    return splashVideos.desktop || DEFAULT_SPLASH_VIDEOS.desktop
   }
 
   return (

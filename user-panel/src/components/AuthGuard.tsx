@@ -331,7 +331,12 @@ export default function AuthGuard({ children, fallback }: AuthGuardProps) {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: 'rgb(75,151,201)' }}
+                    onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                    onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+                    onFocus={(e) => e.currentTarget.style.outline = '2px solid rgb(75,151,201)'}
+                    onBlur={(e) => e.currentTarget.style.outline = 'none'}
                   >
                     {loading ? 'Creating Account...' : 'Create Account'}
                   </button>
@@ -388,7 +393,12 @@ export default function AuthGuard({ children, fallback }: AuthGuardProps) {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: 'rgb(75,151,201)' }}
+                    onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                    onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+                    onFocus={(e) => e.currentTarget.style.outline = '2px solid rgb(75,151,201)'}
+                    onBlur={(e) => e.currentTarget.style.outline = 'none'}
                   >
                     {loading ? 'Signing In...' : 'Sign In'}
                   </button>
@@ -429,7 +439,10 @@ export default function AuthGuard({ children, fallback }: AuthGuardProps) {
                 setIsSignup(false)
                 setShowAuthModal(true)
               }}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="px-6 py-3 text-white rounded-lg transition-colors font-medium"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               Sign In
             </button>

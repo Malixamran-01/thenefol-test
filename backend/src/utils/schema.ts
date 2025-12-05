@@ -87,23 +87,51 @@ export async function ensureSchema(pool: Pool) {
       total_orders integer default 0,
       member_since timestamptz default now(),
       is_verified boolean default false,
+      reset_password_token text,
+      reset_password_expires timestamptz,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
     
-    -- OTP table for WhatsApp authentication
-    create table if not exists otp_verifications (
+    -- Ensure password reset columns exist (migration for existing tables)
+    do $$ 
+    begin
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'users' and column_name = 'reset_password_token'
+      ) then
+        alter table users add column reset_password_token text;
+      end if;
+      
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'users' and column_name = 'reset_password_expires'
+      ) then
+        alter table users add column reset_password_expires timestamptz;
+      end if;
+    end $$;
+    
+    -- Add indexes for password reset fields
+    create index if not exists idx_users_reset_token on users(reset_password_token) where reset_password_token is not null;
+    create index if not exists idx_users_reset_expires on users(reset_password_expires) where reset_password_expires is not null;
+    
+    -- OTP table for WhatsApp/Email authentication (matches otpService.ts)
+    create table if not exists otps (
       id serial primary key,
-      phone text not null,
-      otp text not null,
-      expires_at timestamptz not null,
-      verified boolean default false,
+      phone_or_email text not null,
+      otp_hash text not null,
       attempts integer default 0,
+      expires_at timestamptz not null,
+      used boolean default false,
       created_at timestamptz default now()
     );
     
-    create index if not exists idx_otp_phone on otp_verifications(phone);
-    create index if not exists idx_otp_expires on otp_verifications(expires_at);
+    create index if not exists idx_otps_phone_email on otps(phone_or_email);
+    create index if not exists idx_otps_expires on otps(expires_at);
+    create index if not exists idx_otps_used on otps(used) where used = false;
+    
+    -- Legacy OTP table (otp_verifications) - keep for backward compatibility if it exists
+    -- The new system uses 'otps' table above
     
     create table if not exists videos (
       id serial primary key,
@@ -213,6 +241,23 @@ export async function ensureSchema(pool: Pool) {
     begin
       if not exists (select 1 from information_schema.columns where table_name = 'orders' and column_name = 'billing_address') then
         alter table orders add column billing_address jsonb;
+      end if;
+    end $$;
+    
+    -- Add tracking column to orders table for WhatsApp notifications
+    do $$ 
+    begin
+      if not exists (select 1 from information_schema.columns where table_name = 'orders' and column_name = 'tracking') then
+        alter table orders add column tracking text;
+      end if;
+    end $$;
+    
+    -- Add user_id column to orders table for WhatsApp notifications (if not exists)
+    do $$ 
+    begin
+      if not exists (select 1 from information_schema.columns where table_name = 'orders' and column_name = 'user_id') then
+        alter table orders add column user_id integer references users(id) on delete set null;
+        create index if not exists idx_orders_user_id on orders(user_id);
       end if;
     end $$;
     
@@ -686,6 +731,18 @@ export async function ensureSchema(pool: Pool) {
       updated_at timestamptz default now()
     );
     
+    -- Ensure unique constraint on customer_phone exists (adds it if table exists but constraint doesn't)
+    do $$
+    begin
+      if not exists (
+        select 1 from pg_constraint 
+        where conname = 'whatsapp_chat_sessions_customer_phone_key'
+        and conrelid = 'whatsapp_chat_sessions'::regclass
+      ) then
+        alter table whatsapp_chat_sessions add constraint whatsapp_chat_sessions_customer_phone_key unique (customer_phone);
+      end if;
+    end $$;
+    
     create table if not exists whatsapp_templates (
       id serial primary key,
       name text not null,
@@ -699,6 +756,28 @@ export async function ensureSchema(pool: Pool) {
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
+    
+    -- Ensure whatsapp template metadata columns exist
+    alter table whatsapp_templates
+      add column if not exists language text default 'en',
+      add column if not exists status text default 'pending',
+      add column if not exists meta_template_id text,
+      add column if not exists components jsonb;
+
+    create unique index if not exists idx_whatsapp_templates_meta_id
+      on whatsapp_templates(meta_template_id)
+      where meta_template_id is not null;
+
+    do $$
+    begin
+      if not exists (
+        select 1 from pg_constraint
+        where conname = 'whatsapp_templates_name_key'
+          and conrelid = 'whatsapp_templates'::regclass
+      ) then
+        alter table whatsapp_templates add constraint whatsapp_templates_name_key unique (name);
+      end if;
+    end $$;
     
     create table if not exists whatsapp_automations (
       id serial primary key,
@@ -744,6 +823,40 @@ export async function ensureSchema(pool: Pool) {
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
+    
+    -- WhatsApp incoming messages log
+    create table if not exists whatsapp_incoming_messages (
+      id serial primary key,
+      message_id text unique not null,
+      from_phone text not null,
+      to_phone text,
+      message_type text not null, -- 'text', 'image', 'document', 'video', 'audio', etc.
+      message_text text,
+      media_url text,
+      timestamp timestamptz not null,
+      status text default 'received' check (status in ('received', 'processed', 'replied')),
+      raw_payload jsonb,
+      created_at timestamptz default now()
+    );
+    
+    create index if not exists idx_whatsapp_incoming_messages_from_phone on whatsapp_incoming_messages(from_phone);
+    create index if not exists idx_whatsapp_incoming_messages_timestamp on whatsapp_incoming_messages(timestamp);
+    create index if not exists idx_whatsapp_incoming_messages_status on whatsapp_incoming_messages(status);
+    
+    -- WhatsApp message status tracking
+    create table if not exists whatsapp_message_status (
+      id serial primary key,
+      message_id text not null,
+      status text not null check (status in ('sent', 'delivered', 'read', 'failed')),
+      timestamp timestamptz not null,
+      error_code text,
+      error_message text,
+      created_at timestamptz default now()
+    );
+    
+    create index if not exists idx_whatsapp_message_status_message_id on whatsapp_message_status(message_id);
+    create index if not exists idx_whatsapp_message_status_status on whatsapp_message_status(status);
+    create index if not exists idx_whatsapp_message_status_timestamp on whatsapp_message_status(timestamp);
     
     -- Live Chat
     create table if not exists live_chat_sessions (
@@ -1370,9 +1483,28 @@ export async function ensureSchema(pool: Pool) {
       email text unique not null,
       password text not null,
       is_active boolean default true,
+      last_login_at timestamptz,
+      last_logout_at timestamptz,
+      password_changed_at timestamptz,
+      failed_login_attempts integer default 0,
+      last_failed_login_at timestamptz,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
+
+    create table if not exists staff_sessions (
+      id serial primary key,
+      staff_id integer not null references staff_users(id) on delete cascade,
+      token text not null unique,
+      user_agent text,
+      ip_address text,
+      metadata jsonb,
+      created_at timestamptz default now(),
+      expires_at timestamptz not null,
+      revoked_at timestamptz
+    );
+
+    create index if not exists idx_staff_sessions_token on staff_sessions(token);
 
     create table if not exists roles (
       id serial primary key,

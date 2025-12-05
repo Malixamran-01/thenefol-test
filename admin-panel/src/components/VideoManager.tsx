@@ -18,7 +18,8 @@ interface Video {
   created_at: string
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
+import { getApiBaseUrl } from '../utils/apiUrl'
+const API_BASE = getApiBaseUrl()
 
 const VideoManager: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([])
@@ -62,7 +63,7 @@ const VideoManager: React.FC = () => {
     formData.append('file', file)
     formData.append('type', type)
 
-    const response = await fetch(`${API_BASE}/api/upload`, {
+    const response = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
       body: formData
     })
@@ -116,7 +117,7 @@ const VideoManager: React.FC = () => {
 
   const fetchVideos = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/videos`)
+      const response = await fetch(`${API_BASE}/videos`)
       if (response.ok) {
         const data = await response.json()
         setVideos(data)
@@ -133,7 +134,7 @@ const VideoManager: React.FC = () => {
 
   const loadCarouselSettings = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/carousel-settings`)
+      const response = await fetch(`${API_BASE}/carousel-settings`)
       if (response.ok) {
         const data = await response.json()
         if (data && data.length > 0) {
@@ -158,7 +159,7 @@ const VideoManager: React.FC = () => {
     setSavingSettings(true)
     try {
       // Save to database
-      const response = await fetch(`${API_BASE}/api/carousel-settings`, {
+      const response = await fetch(`${API_BASE}/carousel-settings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -240,8 +241,8 @@ const VideoManager: React.FC = () => {
       const videoType = selectedFile ? 'local' : getVideoTypeFromUrl(formData.video_url)
 
       const url = editingVideo 
-        ? `${API_BASE}/api/videos/${editingVideo.id}`
-        : `${API_BASE}/api/videos`
+        ? `${API_BASE}/videos/${editingVideo.id}`
+        : `${API_BASE}/videos`
       
       const method = editingVideo ? 'PUT' : 'POST'
 
@@ -309,7 +310,7 @@ const VideoManager: React.FC = () => {
     if (!confirm('Are you sure you want to delete this video?')) return
 
     try {
-      const response = await fetch(`${API_BASE}/api/videos/${id}`, {
+      const response = await fetch(`${API_BASE}/videos/${id}`, {
         method: 'DELETE'
       })
 
@@ -323,7 +324,7 @@ const VideoManager: React.FC = () => {
 
   const toggleActive = async (video: Video) => {
     try {
-      const response = await fetch(`${API_BASE}/api/videos/${video.id}`, {
+      const response = await fetch(`${API_BASE}/videos/${video.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -360,7 +361,7 @@ const VideoManager: React.FC = () => {
       formData.append('file', croppedImageBlob, 'cropped-thumbnail.jpg')
       formData.append('type', 'thumbnail')
 
-      const uploadResponse = await fetch(`${API_BASE}/api/upload`, {
+      const uploadResponse = await fetch(`${API_BASE}/upload`, {
         method: 'POST',
         body: formData
       })
@@ -375,7 +376,7 @@ const VideoManager: React.FC = () => {
       const newThumbnailUrl = uploadData.filename
 
       // Update video with new thumbnail - only send updatable fields
-      const updateResponse = await fetch(`${API_BASE}/api/videos/${croppingVideo.id}`, {
+      const updateResponse = await fetch(`${API_BASE}/videos/${croppingVideo.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -403,9 +404,8 @@ const VideoManager: React.FC = () => {
 
   const getVideoUrl = (video: Video): string => {
     if (video.video_type === 'local') {
-      const apiHost = import.meta.env.VITE_BACKEND_HOST || 'thenefol.com'
-      const apiPort = import.meta.env.VITE_BACKEND_PORT || '2000'
-      return `http://${apiHost}:${apiPort}/uploads/${video.video_url}`
+      const apiBase = getApiBaseUrl().replace('/api', '')
+      return `${apiBase.replace('/api', '')}/uploads/${video.video_url}`
     }
     return video.video_url
   }

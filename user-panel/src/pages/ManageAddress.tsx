@@ -339,7 +339,10 @@ export default function ManageAddress() {
               })
             }}
             disabled={addresses.length >= 5}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed"
+            style={{ backgroundColor: 'rgb(75,151,201)' }}
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+            onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
           >
             <Plus className="w-5 h-5" />
             Add New Address
@@ -685,7 +688,10 @@ export default function ManageAddress() {
               <div className="flex gap-4 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="flex-1 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                 >
                   {editAddress ? 'Update' : 'Save'} Address
                 </button>
@@ -716,7 +722,10 @@ export default function ManageAddress() {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="inline-block text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               Add Your First Address
             </button>

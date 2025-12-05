@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { FileText, CheckCircle, X, Star } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { getApiBase } from '../utils/apiBase'
 
 interface FormField {
   id: string
@@ -32,8 +33,6 @@ interface Form {
   created_at?: string
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
-
 export default function Forms() {
   const { user } = useAuth()
   const [forms, setForms] = useState<Form[]>([])
@@ -51,7 +50,8 @@ export default function Forms() {
   const fetchForms = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE}/api/forms`)
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/forms`)
       if (response.ok) {
         const data = await response.json()
         const formsData = data.forms || data || []
@@ -114,7 +114,8 @@ export default function Forms() {
         ...(user?.name && { name: user.name })
       }
 
-      const response = await fetch(`${API_BASE}/api/forms/${selectedForm.id}/submit`, {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/forms/${selectedForm.id}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -392,7 +393,10 @@ export default function Forms() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-6 py-3 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                  onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
                 >
                   {submitting ? 'Submitting...' : 'Submit Form'}
                 </button>
@@ -448,7 +452,7 @@ export default function Forms() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   {form.fields?.length || 0} fields
                 </p>
-                <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <button className="w-full px-4 py-2 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>
                   Fill Form
                 </button>
               </div>

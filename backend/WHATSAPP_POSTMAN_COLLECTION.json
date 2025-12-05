@@ -1,0 +1,190 @@
+{
+  "info": {
+    "name": "WhatsApp Business API Integration",
+    "description": "Complete WhatsApp Business Cloud API integration with 11 templates",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "OTP",
+      "item": [
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"919876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/send-otp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "send-otp"]
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"919876543210\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/verify-otp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "verify-otp"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Password Reset",
+      "item": [
+        {
+          "name": "Request Reset (Phone)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"919876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/request-reset",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "request-reset"]
+            }
+          }
+        },
+        {
+          "name": "Request Reset (Email)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/request-reset",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "request-reset"]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"token\": \"raw_token_from_email\",\n  \"newPassword\": \"NewSecurePass123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "reset-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhook",
+      "item": [
+        {
+          "name": "Verify Webhook (GET)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token={{verify_token}}&hub.challenge=test123",
+              "host": ["{{base_url}}"],
+              "path": ["api", "whatsapp", "webhook"],
+              "query": [
+                {
+                  "key": "hub.mode",
+                  "value": "subscribe"
+                },
+                {
+                  "key": "hub.verify_token",
+                  "value": "{{verify_token}}"
+                },
+                {
+                  "key": "hub.challenge",
+                  "value": "test123"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Receive Webhook (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Hub-Signature-256",
+                "value": "sha256=calculated_signature"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [{\n    \"id\": \"WHATSAPP_BUSINESS_ACCOUNT_ID\",\n    \"changes\": [{\n      \"value\": {\n        \"messaging_product\": \"whatsapp\",\n        \"metadata\": {\n          \"display_phone_number\": \"918887847213\",\n          \"phone_number_id\": \"348342798363678\"\n        },\n        \"messages\": [{\n          \"from\": \"919876543210\",\n          \"id\": \"wamid.xxx\",\n          \"timestamp\": \"1234567890\",\n          \"type\": \"text\",\n          \"text\": {\n            \"body\": \"YES\"\n          }\n        }]\n      },\n      \"field\": \"messages\"\n    }]\n  }]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/whatsapp/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["api", "whatsapp", "webhook"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://thenefol.com"
+    },
+    {
+      "key": "verify_token",
+      "value": "b7c24bff34961adc0f0a1d199d78b622687f33ad57aa018702630c7519e8c1ef"
+    }
+  ]
+}
+

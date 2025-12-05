@@ -793,7 +793,22 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
         signatoryPhotoUrl = signatoryPhotoUrl.startsWith('/') ? `${baseUrl}${signatoryPhotoUrl}` : `${baseUrl}/${signatoryPhotoUrl}`
       }
 
-      const invoiceHtml = generateAmazonInvoiceHTML(order, companyDetails, taxSettings, terms, signature, currency, logoUrl, signatoryPhotoUrl)
+      // Fetch Shiprocket shipment details for invoice
+      let shipmentInfo: any = null
+      try {
+        const shipmentResult = await pool.query(
+          'SELECT shipment_id, tracking_url, awb_code, status FROM shiprocket_shipments WHERE order_id = $1 ORDER BY id DESC LIMIT 1',
+          [order.id]
+        )
+        if (shipmentResult.rows.length > 0) {
+          shipmentInfo = shipmentResult.rows[0]
+        }
+      } catch (shipmentErr) {
+        console.error('Error fetching Shiprocket shipment info for invoice:', shipmentErr)
+        // Continue without shipment info - don't fail invoice generation
+      }
+
+      const invoiceHtml = generateAmazonInvoiceHTML(order, companyDetails, taxSettings, terms, signature, currency, logoUrl, signatoryPhotoUrl, shipmentInfo)
       res.setHeader('Content-Type', 'text/html')
       res.send(invoiceHtml)
     } catch (err) {

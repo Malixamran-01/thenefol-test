@@ -1,8 +1,15 @@
 // Optimized Cart and Authentication APIs
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
+import bcrypt from 'bcrypt'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import { logUserActivity } from '../utils/userActivitySchema'
+import { sendWelcomeEmail, sendCartAddedEmail, sendVerificationEmail, sendLoginAlertEmail } from '../services/emailService'
+import { WhatsAppService } from '../services/whatsappService'
+import { verifyOtp } from '../services/otpService'
+import { sendWhatsAppTemplate, TemplateVariable } from '../utils/whatsappTemplateHelper'
+
+const SALT_ROUNDS = 10
 
 // Optimized GET /api/cart
 export async function getCart(pool: Pool, req: Request, res: Response) {
@@ -113,6 +120,22 @@ export async function addToCart(pool: Pool, req: Request, res: Response) {
         user_agent: req.headers['user-agent'],
         ip_address: req.ip || req.connection.remoteAddress
       })
+
+      // Send cart reminder email (async, don't wait)
+      // Only send if this is a new item (not an update to existing)
+      if (existingItem.rows.length === 0) {
+        const userData = await pool.query('SELECT email, name FROM users WHERE id = $1', [userId])
+        if (userData.rows.length > 0 && userData.rows[0].email) {
+          sendCartAddedEmail(
+            userData.rows[0].email,
+            userData.rows[0].name || 'Customer',
+            productData.rows[0].title,
+            parseFloat(productData.rows[0].price)
+          ).catch(err => {
+            console.error('Failed to send cart reminder email:', err)
+          })
+        }
+      }
     }
   } catch (err) {
     sendError(res, 500, 'Failed to add to cart', err)
@@ -248,8 +271,28 @@ export async function login(pool: Pool, req: Request, res: Response) {
     
     const user = rows[0]
     
-    // Simple password check (in production, use bcrypt)
-    if (user.password !== password) {
+    // Check password using bcrypt (with backward compatibility for plain text)
+    let passwordValid = false
+    
+    // Check if password is bcrypt hash (starts with $2a$, $2b$, or $2y$)
+    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$')) {
+      // Password is hashed with bcrypt
+      passwordValid = await bcrypt.compare(password, user.password)
+    } else {
+      // Backward compatibility: plain text password (migrate on successful login)
+      if (user.password === password) {
+        passwordValid = true
+        // Migrate to bcrypt hash on successful login
+        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
+        await pool.query(
+          'UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2',
+          [hashedPassword, user.id]
+        )
+        console.log(`✅ Migrated password to bcrypt for user: ${user.id}`)
+      }
+    }
+    
+    if (!passwordValid) {
       return sendError(res, 401, 'Invalid credentials')
     }
     
@@ -271,14 +314,24 @@ export async function login(pool: Pool, req: Request, res: Response) {
       }
     })
     
+    const userAgent = req.headers['user-agent'] as string | undefined
+    const ipAddress = req.ip || req.connection.remoteAddress
+    
     // Log login activity
     await logUserActivity(pool, {
       user_id: user.id,
       activity_type: 'auth',
       activity_subtype: 'login',
-      user_agent: req.headers['user-agent'],
-      ip_address: req.ip || req.connection.remoteAddress
+      user_agent: userAgent,
+      ip_address: ipAddress
     })
+
+    // Send login alert email (async, do not block response)
+    if (user.email) {
+      sendLoginAlertEmail(user.email, ipAddress, userAgent).catch(err => {
+        console.error('Failed to send login alert email:', err)
+      })
+    }
   } catch (err) {
     sendError(res, 500, 'Login failed', err)
   }
@@ -310,17 +363,110 @@ export async function register(pool: Pool, req: Request, res: Response) {
     
     console.log('✅ Creating new user...')
     
+    // Hash password with bcrypt before storing
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
+    
     // Create new user
     const { rows } = await pool.query(`
-      INSERT INTO users (name, email, password, phone)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (name, email, password, phone, address)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id, name, email, phone, created_at
-    `, [name, email, password, phone])
+    `, [name, email, hashedPassword, phone, req.body.address ? JSON.stringify(req.body.address) : null])
     
     const user = rows[0]
     const token = `user_token_${user.id}_${Date.now()}`
     
     console.log('✅ User created successfully:', user.email)
+
+    // Send welcome email (async, don't wait)
+    sendWelcomeEmail(user.email, user.name).catch(err => {
+      console.error('Failed to send welcome email:', err)
+    })
+
+    // Send email verification OTP (async, don't wait)
+    try {
+      const rawOtp = Math.floor(100000 + Math.random() * 900000).toString()
+      await sendVerificationEmail(user.email, rawOtp)
+      console.log(`✅ Verification email OTP sent to: ${user.email}`)
+    } catch (verr: any) {
+      console.error('Failed to send verification email:', verr)
+    }
+    
+    // Send WhatsApp signup success notification (async, don't wait)
+    if (user.phone) {
+      const whatsappService = new WhatsAppService(pool)
+      whatsappService.sendSignupWhatsApp({
+        name: user.name,
+        phone: user.phone,
+        email: user.email
+      }).catch(err => {
+        console.error('Failed to send WhatsApp signup notification:', err)
+      })
+      
+      // Also send welcome WhatsApp message
+      whatsappService.sendWelcomeWhatsApp({
+        name: user.name,
+        phone: user.phone
+      }).catch(err => {
+        console.error('Failed to send WhatsApp welcome message:', err)
+      })
+    }
+    
+    // If address is provided, create a default address
+    if (req.body.address && req.body.address.street) {
+      try {
+        // Ensure user_addresses table exists
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS user_addresses (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            name VARCHAR(255),
+            phone VARCHAR(20),
+            street TEXT NOT NULL,
+            area TEXT,
+            landmark TEXT,
+            city VARCHAR(100) NOT NULL,
+            state VARCHAR(100) NOT NULL,
+            zip VARCHAR(20) NOT NULL,
+            country VARCHAR(100) DEFAULT 'India',
+            address_type VARCHAR(20) DEFAULT 'house',
+            address_label VARCHAR(100),
+            is_default BOOLEAN DEFAULT false,
+            delivery_instructions TEXT,
+            weekend_delivery JSONB,
+            is_house_type BOOLEAN DEFAULT false,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `)
+        
+        // Unset any existing defaults
+        await pool.query(`
+          UPDATE user_addresses SET is_default = false WHERE user_id = $1
+        `, [user.id])
+        
+        // Create default address
+        await pool.query(`
+          INSERT INTO user_addresses (user_id, name, phone, street, city, state, zip, country, address_type, is_default)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+        `, [
+          user.id,
+          name,
+          phone,
+          req.body.address.street || '',
+          req.body.address.city || '',
+          req.body.address.state || '',
+          req.body.address.zip || '',
+          'India',
+          'house'
+        ])
+        
+        console.log('✅ Default address created for user:', user.email)
+      } catch (addrErr) {
+        console.error('⚠️ Error creating default address:', addrErr)
+        // Don't fail registration if address creation fails
+      }
+    }
     
     sendSuccess(res, {
       token,
@@ -401,8 +547,9 @@ export async function sendOTP(pool: Pool, req: Request, res: Response) {
     
     // Send OTP via WhatsApp
     // Try template first, fallback to text message
-    const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME || 'otp_verification'
-    const templateLanguage = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en_US'
+    // Use nefol_login_otp template for login (same structure as nefol_verify_code)
+    const templateName = process.env.WHATSAPP_LOGIN_OTP_TEMPLATE_NAME || 'nefol_login_otp'
+    const templateLanguage = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en'
     const useTemplate = process.env.WHATSAPP_USE_TEMPLATE === 'true'
     
     const facebookUrl = `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`
@@ -410,72 +557,29 @@ export async function sendOTP(pool: Pool, req: Request, res: Response) {
     let requestBody: any
     
     if (useTemplate) {
-      // Use template message (works without 24-hour session)
-      // Get contact info from env or use default
-      // Note: Template expects phone number format for {{2}} parameter (max 20 chars)
-      const contactInfo = process.env.WHATSAPP_CONTACT_INFO || '918887847213'
-      
-      // Build parameters array based on template requirements
-      const bodyParameters = [
-        {
-          type: 'text',
-          text: otp
-        }
+      // Use centralized helper so nefol_login_otp uses SAME parameter structure as nefol_verify_code
+      const variables: TemplateVariable[] = [
+        { type: 'text', text: otp }
       ]
-      
-      // If template requires contact info (2nd parameter), add it
-      // Check if we should send 2 parameters (some templates have {{2}} for contact)
-      const sendContactInfo = process.env.WHATSAPP_TEMPLATE_HAS_CONTACT === 'true'
-      if (sendContactInfo) {
-        // Normalize contact info - remove spaces, +, dashes, etc.
-        // Template expects phone number format (digits only, max 20 chars)
-        const normalizedContact = contactInfo.replace(/[\s+\-()]/g, '').substring(0, 20)
-        bodyParameters.push({
-          type: 'text',
-          text: normalizedContact
-        })
+
+      console.log('📤 Sending OTP via WhatsApp template helper')
+      console.log('   Template Name:', templateName)
+      console.log('   Template Language:', templateLanguage)
+
+      const result = await sendWhatsAppTemplate(normalizedPhone, templateName, variables, templateLanguage)
+
+      if (!result.ok) {
+        console.error('❌ WhatsApp OTP template send failed:', result.error)
+        return sendError(res, 500, 'Failed to send OTP. Please try again.', result.error)
       }
-      
-      // Build components array
-      const components: any[] = [
-        {
-          type: 'body',
-          parameters: bodyParameters
-        }
-      ]
-      
-      // Check if template has buttons that require parameters
-      // URL buttons require a parameter (the URL)
-      const buttonUrl = process.env.WHATSAPP_BUTTON_URL || 'https://nefol.com'
-      const hasButton = process.env.WHATSAPP_TEMPLATE_HAS_BUTTON === 'true'
-      
-      if (hasButton) {
-        // Add button component with URL parameter
-        components.push({
-          type: 'button',
-          sub_type: 'url',
-          index: 0,
-          parameters: [
-            {
-              type: 'text',
-              text: buttonUrl
-            }
-          ]
-        })
-      }
-      
-      requestBody = {
-        messaging_product: 'whatsapp',
-        to: normalizedPhone,
-        type: 'template',
-        template: {
-          name: templateName,
-          language: {
-            code: templateLanguage
-          },
-          components: components
-        }
-      }
+
+      console.log('✅ OTP sent successfully to:', normalizedPhone)
+      console.log('   Message ID:', result.providerId || 'N/A')
+
+      return sendSuccess(res, {
+        message: 'OTP sent successfully to your WhatsApp',
+        expiresIn: 600 // 10 minutes in seconds
+      })
     } else {
       // Use text message (requires 24-hour session)
       const message = `Your NEFÖL verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nDo not share this code with anyone.`
@@ -533,55 +637,28 @@ export async function verifyOTPSignup(pool: Pool, req: Request, res: Response) {
   try {
     const { phone, otp, name, email, address } = req.body
     
+    console.log(`🔍 OTP Signup Verification Request: phone="${phone}", otp="${otp ? otp.substring(0, 2) + '****' : 'missing'}", name="${name}"`)
+    
     const validationError = validateRequired(req.body, ['phone', 'otp', 'name'])
     if (validationError) {
       return sendError(res, 400, validationError)
     }
     
-    // Normalize phone number
-    const normalizedPhone = phone.replace(/[\s+\-()]/g, '')
+    // Verify OTP using the new OTP service (handles normalization and hashing)
+    const otpResult = await verifyOtp(pool, phone, otp)
     
-    // Find the OTP record
-    const { rows } = await pool.query(`
-      SELECT * FROM otp_verifications
-      WHERE phone = $1 AND verified = false
-      ORDER BY created_at DESC
-      LIMIT 1
-    `, [normalizedPhone])
-    
-    if (rows.length === 0) {
-      return sendError(res, 400, 'OTP not found or already used. Please request a new OTP.')
+    if (!otpResult.ok) {
+      console.error(`❌ OTP verification failed for signup: ${otpResult.error?.message}`)
+      return sendError(res, 400, otpResult.error?.message || 'OTP verification failed')
     }
     
-    const otpRecord = rows[0]
-    
-    // Check if OTP is expired
-    if (new Date(otpRecord.expires_at) < new Date()) {
-      await pool.query(
-        'DELETE FROM otp_verifications WHERE id = $1',
-        [otpRecord.id]
-      )
-      return sendError(res, 400, 'OTP has expired. Please request a new one.')
-    }
-    
-    // Check if too many attempts
-    if (otpRecord.attempts >= 5) {
-      await pool.query(
-        'DELETE FROM otp_verifications WHERE id = $1',
-        [otpRecord.id]
-      )
-      return sendError(res, 400, 'Too many failed attempts. Please request a new OTP.')
-    }
-    
-    // Verify OTP
-    if (otpRecord.otp !== otp) {
-      // Increment attempts
-      await pool.query(
-        'UPDATE otp_verifications SET attempts = attempts + 1 WHERE id = $1',
-        [otpRecord.id]
-      )
-      return sendError(res, 400, 'Invalid OTP. Please try again.')
-    }
+    // Normalize phone number for user lookup (use same normalization as OTP service)
+    // Import normalizePhoneNumber to match OTP service behavior
+    const { normalizePhoneNumber } = await import('../utils/whatsappTemplateHelper')
+    const phoneDigits = phone.replace(/[\s+\-()]/g, '')
+    const normalizedPhone = /^\d{10,15}$/.test(phoneDigits) 
+      ? normalizePhoneNumber(phoneDigits) 
+      : phoneDigits.toLowerCase().trim()
     
     // Check if user already exists
     const existingUser = await pool.query(
@@ -590,31 +667,82 @@ export async function verifyOTPSignup(pool: Pool, req: Request, res: Response) {
     )
     
     if (existingUser.rows.length > 0) {
-      // Mark OTP as verified
-      await pool.query(
-        'UPDATE otp_verifications SET verified = true WHERE id = $1',
-        [otpRecord.id]
-      )
       return sendError(res, 409, 'User already exists')
     }
     
-    // Mark OTP as verified
-    await pool.query(
-      'UPDATE otp_verifications SET verified = true WHERE id = $1',
-      [otpRecord.id]
-    )
+    // Generate placeholder email if not provided (email is required in users table)
+    // Format: phone_918081013175@thenefol.com
+    const userEmail = email || `phone_${normalizedPhone}@thenefol.com`
     
     // Create new user (no password required for OTP signup)
     const { rows: userRows } = await pool.query(`
       INSERT INTO users (name, email, phone, address, password, is_verified)
       VALUES ($1, $2, $3, $4, $5, true)
       RETURNING id, name, email, phone, created_at
-    `, [name, email || null, normalizedPhone, address || null, 'otp_signup_' + Date.now()])
+    `, [name, userEmail, normalizedPhone, address ? JSON.stringify(address) : null, 'otp_signup_' + Date.now()])
+    
+    console.log(`✅ OTP verified and user created: ${normalizedPhone}`)
     
     const user = userRows[0]
     const token = `user_token_${user.id}_${Date.now()}`
     
     console.log('✅ User created via OTP signup:', normalizedPhone)
+    
+    // If address is provided, create a default address
+    if (address && address.street) {
+      try {
+        // Ensure user_addresses table exists
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS user_addresses (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            name VARCHAR(255),
+            phone VARCHAR(20),
+            street TEXT NOT NULL,
+            area TEXT,
+            landmark TEXT,
+            city VARCHAR(100) NOT NULL,
+            state VARCHAR(100) NOT NULL,
+            zip VARCHAR(20) NOT NULL,
+            country VARCHAR(100) DEFAULT 'India',
+            address_type VARCHAR(20) DEFAULT 'house',
+            address_label VARCHAR(100),
+            is_default BOOLEAN DEFAULT false,
+            delivery_instructions TEXT,
+            weekend_delivery JSONB,
+            is_house_type BOOLEAN DEFAULT false,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `)
+        
+        // Unset any existing defaults
+        await pool.query(`
+          UPDATE user_addresses SET is_default = false WHERE user_id = $1
+        `, [user.id])
+        
+        // Create default address
+        await pool.query(`
+          INSERT INTO user_addresses (user_id, name, phone, street, city, state, zip, country, address_type, is_default)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+        `, [
+          user.id,
+          name,
+          normalizedPhone,
+          address.street || '',
+          address.city || '',
+          address.state || '',
+          address.zip || '',
+          'India',
+          'house'
+        ])
+        
+        console.log('✅ Default address created for OTP signup user:', normalizedPhone)
+      } catch (addrErr) {
+        console.error('⚠️ Error creating default address:', addrErr)
+        // Don't fail registration if address creation fails
+      }
+    }
     
     // Log registration activity
     await logUserActivity(pool, {
@@ -697,85 +825,40 @@ export async function sendOTPLogin(pool: Pool, req: Request, res: Response) {
     
     // Send OTP via WhatsApp
     // Try template first, fallback to text message
-    const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME || 'otp_verification'
-    const templateLanguage = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en_US'
+    // Use nefol_login_otp template for login (same structure as nefol_verify_code)
+    const templateName = process.env.WHATSAPP_LOGIN_OTP_TEMPLATE_NAME || 'nefol_login_otp'
+    const templateLanguage = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en'
     const useTemplate = process.env.WHATSAPP_USE_TEMPLATE === 'true'
     
     const facebookUrl = `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`
     
-    let requestBody: any
-    
     if (useTemplate) {
-      // Use template message (works without 24-hour session)
-      // Get contact info from env or use default
-      // Note: Template expects phone number format for {{2}} parameter (max 20 chars)
-      const contactInfo = process.env.WHATSAPP_CONTACT_INFO || '918887847213'
-      
-      // Build parameters array based on template requirements
-      const bodyParameters = [
-        {
-          type: 'text',
-          text: otp
-        }
+      const variables: TemplateVariable[] = [
+        { type: 'text', text: otp }
       ]
       
-      // If template requires contact info (2nd parameter), add it
-      // Check if we should send 2 parameters (some templates have {{2}} for contact)
-      const sendContactInfo = process.env.WHATSAPP_TEMPLATE_HAS_CONTACT === 'true'
-      if (sendContactInfo) {
-        // Normalize contact info - remove spaces, +, dashes, etc.
-        // Template expects phone number format (digits only, max 20 chars)
-        const normalizedContact = contactInfo.replace(/[\s+\-()]/g, '').substring(0, 20)
-        bodyParameters.push({
-          type: 'text',
-          text: normalizedContact
-        })
+      console.log('📤 Sending Login OTP via template helper')
+      console.log('   Template Name:', templateName)
+      console.log('   Template Language:', templateLanguage)
+      
+      const result = await sendWhatsAppTemplate(normalizedPhone, templateName, variables, templateLanguage)
+      
+      if (!result.ok) {
+        console.error('❌ WhatsApp login OTP template send failed:', result.error)
+        return sendError(res, 500, 'Failed to send OTP. Please try again.', result.error)
       }
       
-      // Build components array
-      const components: any[] = [
-        {
-          type: 'body',
-          parameters: bodyParameters
-        }
-      ]
+      console.log('✅ Login OTP sent successfully to:', normalizedPhone)
+      console.log('   Message ID:', result.providerId || 'N/A')
       
-      // Check if template has buttons that require parameters
-      // URL buttons require a parameter (the URL)
-      const buttonUrl = process.env.WHATSAPP_BUTTON_URL || 'https://nefol.com'
-      const hasButton = process.env.WHATSAPP_TEMPLATE_HAS_BUTTON === 'true'
-      
-      if (hasButton) {
-        // Add button component with URL parameter
-        components.push({
-          type: 'button',
-          sub_type: 'url',
-          index: 0,
-          parameters: [
-            {
-              type: 'text',
-              text: buttonUrl
-            }
-          ]
-        })
-      }
-      
-      requestBody = {
-        messaging_product: 'whatsapp',
-        to: normalizedPhone,
-        type: 'template',
-        template: {
-          name: templateName,
-          language: {
-            code: templateLanguage
-          },
-          components: components
-        }
-      }
+      return sendSuccess(res, {
+        message: 'OTP sent successfully to your WhatsApp',
+        expiresIn: 600 // 10 minutes in seconds
+      })
     } else {
       // Use text message (requires 24-hour session)
       const message = `Your NEFÖL login verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nDo not share this code with anyone.`
-      requestBody = {
+      const requestBody = {
         messaging_product: 'whatsapp',
         to: normalizedPhone,
         type: 'text',
@@ -783,41 +866,35 @@ export async function sendOTPLogin(pool: Pool, req: Request, res: Response) {
           body: message
         }
       }
+      
+      console.log('📤 Sending Login OTP via: Text Message')
+      
+      const whatsappResponse = await fetch(facebookUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      })
+      
+      const whatsappData = await whatsappResponse.json() as any
+      
+      if (!whatsappResponse.ok) {
+        console.error('❌ WhatsApp API error:', JSON.stringify(whatsappData, null, 2))
+        console.error('   Phone:', normalizedPhone)
+        console.error('   Status:', whatsappResponse.status)
+        return sendError(res, 500, 'Failed to send OTP. Please try again.')
+      }
+      
+      console.log('✅ Login OTP sent successfully to:', normalizedPhone)
+      console.log('   Message ID:', whatsappData.messages?.[0]?.id || 'N/A')
+      
+      return sendSuccess(res, {
+        message: 'OTP sent successfully to your WhatsApp',
+        expiresIn: 600 // 10 minutes in seconds
+      })
     }
-    
-    console.log('📤 Sending Login OTP via:', useTemplate ? 'Template' : 'Text Message')
-    if (useTemplate) {
-      console.log('   Template Name:', templateName)
-      console.log('   Template Language:', templateLanguage)
-    }
-    
-    const whatsappResponse = await fetch(facebookUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    })
-    
-    const whatsappData = await whatsappResponse.json() as any
-    
-    if (!whatsappResponse.ok) {
-      console.error('❌ WhatsApp API error:', JSON.stringify(whatsappData, null, 2))
-      console.error('   Phone:', normalizedPhone)
-      console.error('   Status:', whatsappResponse.status)
-      // Still return success to user (don't expose WhatsApp errors)
-      // But log the error for debugging
-      return sendError(res, 500, 'Failed to send OTP. Please try again.')
-    }
-    
-    console.log('✅ Login OTP sent successfully to:', normalizedPhone)
-    console.log('   Message ID:', whatsappData.messages?.[0]?.id || 'N/A')
-    
-    sendSuccess(res, {
-      message: 'OTP sent successfully to your WhatsApp',
-      expiresIn: 600 // 10 minutes in seconds
-    })
   } catch (err: any) {
     console.error('❌ Error sending login OTP:', err)
     sendError(res, 500, 'Failed to send OTP', err)

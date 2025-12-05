@@ -653,7 +653,7 @@ export default function SearchPage() {
                     <Heart className={`w-4 h-4 ${isInWishlist(parseInt(product.id)) ? 'fill-current' : ''}`} />
                   </button>
                   {product.category && (
-                    <div className="absolute top-3 left-3 px-2 py-1 bg-blue-500 text-white text-xs rounded-full">
+                    <div className="absolute top-3 left-3 px-2 py-1 text-white text-xs rounded-full" style={{ backgroundColor: 'rgb(75,151,201)' }}>
                       {product.category}
                     </div>
                   )}
@@ -684,7 +684,14 @@ export default function SearchPage() {
                     </div>
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors"
+                      style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+                      }}
                     >
                       <ShoppingCart className="w-4 h-4" />
                       Add to Cart
@@ -706,7 +713,10 @@ export default function SearchPage() {
             </p>
             <button
               onClick={clearFilters}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-6 py-3 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               Clear Filters
             </button>
@@ -732,9 +742,10 @@ export default function SearchPage() {
                   onClick={() => handlePageChange(page)}
                   className={`px-4 py-2 border rounded-lg transition-colors ${
                     currentPage === page
-                      ? 'bg-blue-600 text-white border-blue-600'
+                      ? 'text-white border-blue-600'
                       : 'border-slate-300 hover:bg-slate-50'
                   }`}
+                  style={currentPage === page ? { backgroundColor: 'rgb(75,151,201)' } : undefined}
                 >
                   {page}
                 </button>

@@ -3,6 +3,7 @@ import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendSuccess, sendError } from '../utils/apiHelpers'
 import crypto from 'crypto'
+import { sendAffiliateCodeEmail, sendAffiliateApplicationSubmittedEmail } from '../services/emailService'
 
 // Generate 20-digit verification code
 function generateVerificationCode(): string {
@@ -101,6 +102,14 @@ export async function submitAffiliateApplication(pool: Pool, req: Request, res: 
       houseNumber, street, building || null, apartment || null, road, city, pincode, state,
       agreeTerms, 'pending', new Date()
     ])
+
+    // Send confirmation email to applicant
+    if (email) {
+      sendAffiliateApplicationSubmittedEmail(email, name).catch((err) => {
+        console.error('❌ Error sending affiliate application confirmation email:', err)
+        // Don't fail the application if email fails
+      })
+    }
 
     sendSuccess(res, rows[0], 201)
   } catch (err: any) {
@@ -206,6 +215,21 @@ export async function approveAffiliateApplication(pool: Pool, req: Request, res:
       'unverified', 10.0, 0, 0, 0, new Date()
     ])
 
+    // Send Email notification with verification code (if email is available)
+    // Note: WhatsApp template not approved yet, using email only
+    if (application.email) {
+      sendAffiliateCodeEmail(
+        application.email,
+        application.name,
+        verificationCode
+      ).catch((err: any) => {
+        console.error('❌ Error sending affiliate code via Email:', err)
+        // Don't fail the approval if email fails
+      })
+    } else {
+      console.warn('⚠️ No email address found for affiliate application, cannot send verification code')
+    }
+
     sendSuccess(res, {
       application: rows[0],
       verificationCode,
@@ -278,9 +302,8 @@ export async function verifyAffiliateCode(pool: Pool, req: Request, res: Respons
       // Check if this user is already linked to this affiliate
       if (affiliate.user_id === userId) {
         // User is already verified and linked
-        const backendHost = process.env.BACKEND_HOST || 'localhost'
-        const userPanelPort = process.env.USER_PANEL_PORT || '5173'
-        const affiliateLink = `${process.env.CLIENT_ORIGIN || `http://${backendHost}:${userPanelPort}`}?ref=${affiliate.id}`
+        // Always use production URL - no localhost fallbacks
+        const affiliateLink = `${process.env.CLIENT_ORIGIN || 'https://thenefol.com'}?ref=${affiliate.id}`
         return sendSuccess(res, {
           message: 'Account already verified',
           affiliateLink,
@@ -433,9 +456,8 @@ export async function getAffiliateDashboard(pool: Pool, req: Request, res: Respo
     `, [affiliate.id])
 
     // Generate referral link for verified affiliates
-    const backendHost = process.env.BACKEND_HOST || 'localhost'
-    const userPanelPort = process.env.USER_PANEL_PORT || '5173'
-    const referralLink = `${process.env.CLIENT_ORIGIN || `http://${backendHost}:${userPanelPort}`}?ref=${affiliate.id}`
+    // Always use production URL - no localhost fallbacks
+    const referralLink = `${process.env.CLIENT_ORIGIN || 'https://thenefol.com'}?ref=${affiliate.id}`
 
     sendSuccess(res, {
       ...affiliate,

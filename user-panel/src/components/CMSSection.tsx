@@ -307,7 +307,7 @@ function CTASection({ content }: { content: any }) {
       <div className="mx-auto max-w-7xl px-4">
         <div className="rounded-xl border border-gray-200 p-8" style={{backgroundColor: '#D0E8F2'}}>
           {content.icon && (
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{backgroundColor: '#4B97C9'}}>
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{backgroundColor: 'rgb(75,151,201)'}}>
               <span className="text-xl text-white">{content.icon}</span>
             </div>
           )}
@@ -335,7 +335,9 @@ function CTASection({ content }: { content: any }) {
             <a 
               href={content.buttonLink} 
               className="inline-block px-8 py-4 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg"
-              style={{backgroundColor: '#1B4965'}}
+              style={{backgroundColor: 'rgb(75,151,201)'}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               {content.buttonText}
             </a>

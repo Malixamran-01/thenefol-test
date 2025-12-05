@@ -41,8 +41,18 @@ const Invoice: React.FC = () => {
   const loadInvoices = async () => {
     try {
       setLoading(true);
-      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`;
-      const response = await fetch(`${apiBase}/api/invoices`);
+      const getApiBase = () => {
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
+      }
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/invoices`);
       if (response.ok) {
         const data = await response.json();
         setInvoices(data);
@@ -76,9 +86,19 @@ const Invoice: React.FC = () => {
   const handleCreateInvoice = async (invoiceData: Partial<Invoice>) => {
     setLoading(true);
     try {
-      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`;
+      const getApiBase = () => {
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
+      }
+      const apiBase = getApiBase();
       // API call to create invoice
-      const response = await fetch(`${apiBase}/api/invoices`, {
+      const response = await fetch(`${apiBase}/invoices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(invoiceData)
@@ -99,8 +119,18 @@ const Invoice: React.FC = () => {
   const handleUpdateStatus = async (invoiceId: string, newStatus: string) => {
     setLoading(true);
     try {
-      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`;
-      const response = await fetch(`${apiBase}/api/invoices/${invoiceId}`, {
+      const getApiBase = () => {
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
+      }
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/invoices/${invoiceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -121,8 +151,18 @@ const Invoice: React.FC = () => {
   const handleSendInvoice = async (invoiceId: string) => {
     setLoading(true);
     try {
-      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`;
-      const response = await fetch(`${apiBase}/api/invoices/${invoiceId}/send`, {
+      const getApiBase = () => {
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
+      }
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/invoices/${invoiceId}/send`, {
         method: 'POST'
       });
       
@@ -140,8 +180,18 @@ const Invoice: React.FC = () => {
 
   const handleDownloadInvoice = async (invoiceId: string) => {
     try {
-      const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`;
-      const url = `${apiBase}/api/invoices/${invoiceId}/download`;
+      const getApiBase = () => {
+        // Always use production URL - no environment variables
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+        }
+        return 'https://thenefol.com/api'
+      }
+      const apiBase = getApiBase();
+      const url = `${apiBase}/invoices/${invoiceId}/download`;
       // Open invoice in new window for printing with Arctic Blue gradient
       window.open(url, '_blank');
     } catch (error) {

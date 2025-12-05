@@ -3,53 +3,92 @@ import { Truck, Clock, Package, MapPin, AlertCircle, CheckCircle, Mail } from 'l
 
 export default function ShippingPolicy() {
   return (
-    <main className="py-10 dark:bg-slate-900 min-h-screen">
-      <div className="mx-auto max-w-4xl px-4">
+    <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: rgb(75,151,201);
+          --arctic-blue-primary-hover: rgb(60,120,160);
+          --arctic-blue-primary-dark: rgb(50,100,140);
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Truck className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+            <Truck className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: 'var(--arctic-blue-primary)' }} />
           </div>
-          <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Shipping Policy
           </h1>
-          <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
+          <p 
+            className="text-sm sm:text-base font-light max-w-3xl mx-auto tracking-wide"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
             At Nefol, we are committed to ensuring that your experience with our premium cosmetic products 
             is seamless and enjoyable from the moment you place an order to when it arrives at your doorstep.
           </p>
         </div>
 
         {/* Order Processing */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+        <div className="mb-8 sm:mb-12">
+          <h2 
+            className="text-2xl sm:text-3xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             1. Order Processing
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-4">
-                  <Clock className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+                  <Clock className="w-6 h-6" style={{ color: 'var(--arctic-blue-primary)' }} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <h3 
+                  className="text-lg font-light tracking-wide"
+                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                >
                   Processing Time
                 </h3>
               </div>
-              <p className="text-slate-600 dark:text-slate-400">
+              <p 
+                className="font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 All orders are processed within 1-2 business days (excluding weekends and holidays) 
                 after payment confirmation. Orders placed after 12 PM will be processed the following business day.
               </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
+            <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-4">
-                  <CheckCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+                  <CheckCircle className="w-6 h-6" style={{ color: 'var(--arctic-blue-primary)' }} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <h3 
+                  className="text-lg font-light tracking-wide"
+                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                >
                   Order Confirmation
                 </h3>
               </div>
-              <p className="text-slate-600 dark:text-slate-400">
+              <p 
+                className="font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 You will receive an email confirmation with your order details as soon as your order is placed.
               </p>
             </div>
@@ -57,68 +96,113 @@ export default function ShippingPolicy() {
         </div>
 
         {/* Shipping Methods */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+        <div className="mb-8 sm:mb-12">
+          <h2 
+            className="text-2xl sm:text-3xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             2. Shipping Methods & Delivery Times
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 rounded-xl p-6">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="rounded-xl p-4 sm:p-6 border" style={{ backgroundColor: 'var(--arctic-blue-lighter)', borderColor: 'var(--arctic-blue-light)' }}>
+              <h3 
+                className="text-lg sm:text-xl font-light mb-2 sm:mb-3 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
                 Standard Shipping
               </h3>
-              <p className="text-slate-600 dark:text-slate-400 mb-4">
+              <p 
+                className="font-light mb-4 tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 Typically takes 3-7 business days within India. Shipping times may vary based on your 
                 location and external conditions.
               </p>
-              <div className="flex items-center text-green-600 dark:text-green-400">
+              <div className="flex items-center" style={{ color: 'var(--arctic-blue-primary)' }}>
                 <CheckCircle className="w-5 h-5 mr-2" />
-                <span className="font-semibold">Free on orders over ₹1999</span>
+                <span className="font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Free on orders over ₹1999</span>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 rounded-xl p-6">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-3">
+            <div className="rounded-xl p-4 sm:p-6 border" style={{ backgroundColor: 'var(--arctic-blue-lighter)', borderColor: 'var(--arctic-blue-light)' }}>
+              <h3 
+                className="text-lg sm:text-xl font-light mb-2 sm:mb-3 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
                 Express Shipping
               </h3>
-              <p className="text-slate-600 dark:text-slate-400 mb-4">
+              <p 
+                className="font-light mb-4 tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 Available upon request, with an estimated delivery time of 1-3 business days. 
                 Additional charges may apply.
               </p>
-              <div className="flex items-center text-purple-600 dark:text-purple-400">
+              <div className="flex items-center" style={{ color: 'var(--arctic-blue-primary)' }}>
                 <Package className="w-5 h-5 mr-2" />
-                <span className="font-semibold">Calculated at checkout</span>
+                <span className="font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Calculated at checkout</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Shipping Charges */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+        <div className="mb-8 sm:mb-12">
+          <h2 
+            className="text-2xl sm:text-3xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             3. Shipping Charges
           </h2>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">
+                <h3 
+                  className="text-lg font-light mb-3 tracking-wide"
+                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                >
                   Standard Shipping
                 </h3>
-                <ul className="space-y-2 text-slate-600 dark:text-slate-400">
+                <ul className="space-y-2">
                   <li className="flex items-center">
-                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
-                    Free on orders over ₹1999
+                    <CheckCircle className="w-5 h-5 mr-2" style={{ color: 'var(--arctic-blue-primary)' }} />
+                    <span 
+                      className="font-light tracking-wide"
+                      style={{ color: '#666', letterSpacing: '0.05em' }}
+                    >
+                      Free on orders over ₹1999
+                    </span>
                   </li>
                   <li className="flex items-center">
-                    <span className="text-orange-600 dark:text-orange-400 mr-2">•</span>
-                    For orders under ₹599, a flat rate of ₹99 will be applied
+                    <span className="mr-2" style={{ color: 'var(--arctic-blue-primary)' }}>•</span>
+                    <span 
+                      className="font-light tracking-wide"
+                      style={{ color: '#666', letterSpacing: '0.05em' }}
+                    >
+                      For orders under ₹599, a flat rate of ₹99 will be applied
+                    </span>
                   </li>
                 </ul>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">
+                <h3 
+                  className="text-lg font-light mb-3 tracking-wide"
+                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                >
                   Express Shipping
                 </h3>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p 
+                  className="font-light tracking-wide"
+                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                >
                   Calculated at checkout based on location and package weight.
                 </p>
               </div>
@@ -128,16 +212,26 @@ export default function ShippingPolicy() {
 
         {/* Order Tracking */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+          <h2 
+            className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             4. Order Tracking
           </h2>
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-slate-800 dark:to-slate-800 rounded-xl p-6">
+          <div className="rounded-xl p-6 border" style={{ backgroundColor: 'var(--arctic-blue-lighter)', borderColor: 'var(--arctic-blue-light)' }}>
             <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0">
-                <Package className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+                <Package className="w-6 h-6" style={{ color: 'var(--arctic-blue-primary)' }} />
               </div>
               <div>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p 
+                  className="font-light leading-relaxed tracking-wide"
+                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                >
                   Once your order has been shipped, you will receive a shipment confirmation email with 
                   a tracking number and a link to track your package.
                 </p>
@@ -148,24 +242,43 @@ export default function ShippingPolicy() {
 
         {/* International Shipping */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+          <h2 
+            className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             5. International Shipping
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">
+            <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+              <h3 
+                className="text-lg font-light mb-3 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
                 Availability
               </h3>
-              <p className="text-slate-600 dark:text-slate-400">
+              <p 
+                className="font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 We offer international shipping to select countries. Please check at checkout if we ship to your destination.
               </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">
+            <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+              <h3 
+                className="text-lg font-light mb-3 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
                 Customs Fees
               </h3>
-              <p className="text-slate-600 dark:text-slate-400">
+              <p 
+                className="font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 Any customs, duties, or taxes imposed by the destination country are the responsibility of the customer.
               </p>
             </div>
@@ -174,20 +287,33 @@ export default function ShippingPolicy() {
 
         {/* Delays & Issues */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+          <h2 
+            className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             6. Delays & Issues
           </h2>
           <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
+            <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+                  <AlertCircle className="w-6 h-6" style={{ color: 'var(--arctic-blue-primary)' }} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">
+                  <h3 
+                    className="text-lg font-light mb-2 tracking-wide"
+                    style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  >
                     Unforeseen Delays
                   </h3>
-                  <p className="text-slate-600 dark:text-slate-400">
+                  <p 
+                    className="font-light tracking-wide"
+                    style={{ color: '#666', letterSpacing: '0.05em' }}
+                  >
                     While we strive to meet all estimated delivery times, Nefol is not responsible for delays 
                     caused by external factors such as customs clearance, severe weather conditions, or carrier issues.
                   </p>
@@ -195,18 +321,24 @@ export default function ShippingPolicy() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
+            <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Package className="w-6 h-6 text-red-600 dark:text-red-400" />
+                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+                  <Package className="w-6 h-6" style={{ color: 'var(--arctic-blue-primary)' }} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">
+                  <h3 
+                    className="text-lg font-light mb-2 tracking-wide"
+                    style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  >
                     Lost or Damaged Packages
                   </h3>
-                  <p className="text-slate-600 dark:text-slate-400">
+                  <p 
+                    className="font-light tracking-wide"
+                    style={{ color: '#666', letterSpacing: '0.05em' }}
+                  >
                     If your package is lost or arrives damaged, please contact us at 
-                    <a href="mailto:support@thenefol.com" className="text-blue-600 dark:text-blue-400 hover:underline ml-1">
+                    <a href="mailto:support@thenefol.com" className="hover:underline ml-1" style={{ color: 'var(--arctic-blue-primary)' }}>
                       support@thenefol.com
                     </a> within 7 days of delivery for assistance.
                   </p>
@@ -218,25 +350,44 @@ export default function ShippingPolicy() {
 
         {/* Additional Information */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+          <h2 
+            className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Additional Information
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">
+            <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+              <h3 
+                className="text-lg font-light mb-3 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
                 Incorrect Shipping Information
               </h3>
-              <p className="text-slate-600 dark:text-slate-400">
+              <p 
+                className="font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 Customers are responsible for providing accurate shipping details. Any packages returned 
                 due to incorrect or incomplete addresses will require an additional shipping fee for reshipment.
               </p>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">
+            <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+              <h3 
+                className="text-lg font-light mb-3 tracking-wide"
+                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+              >
                 Non-Delivery Areas
               </h3>
-              <p className="text-slate-600 dark:text-slate-400">
+              <p 
+                className="font-light tracking-wide"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 We do not currently ship to restricted areas. Please check with our support team for 
                 specific delivery restrictions.
               </p>
@@ -245,30 +396,66 @@ export default function ShippingPolicy() {
         </div>
 
         {/* Contact */}
-        <div className="text-center bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-white">
-          <h2 className="text-3xl font-bold mb-4">Questions About Shipping?</h2>
-          <p className="text-xl mb-8 opacity-90">
-            For any questions or concerns regarding shipping, please reach out to our customer support team.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a 
-              href="mailto:support@thenefol.com" 
-              className="inline-block bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+        <div className="text-center">
+          <div className="bg-white rounded-xl shadow-sm p-8 sm:p-10 md:p-12">
+            <h2 
+              className="text-2xl sm:text-3xl font-light mb-4 tracking-[0.15em]"
+              style={{
+                color: '#1a1a1a',
+                fontFamily: 'var(--font-heading-family)',
+                letterSpacing: '0.15em'
+              }}
             >
-              <Mail className="w-5 h-5 inline mr-2" />
-              Contact Support
-            </a>
-            <a 
-              href="#/user/contact" 
-              className="inline-block border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
+              Questions About Shipping?
+            </h2>
+            <p 
+              className="text-sm sm:text-base font-light mb-8 tracking-wide max-w-2xl mx-auto"
+              style={{ color: '#666', letterSpacing: '0.05em' }}
             >
-              Support Center
-            </a>
+              For any questions or concerns regarding shipping, please reach out to our customer support team.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a 
+                href="mailto:support@thenefol.com" 
+                className="px-8 py-3 text-white font-light transition-all duration-300 text-xs tracking-[0.15em] uppercase rounded-xl hover:opacity-90 flex items-center justify-center"
+                style={{ 
+                  backgroundColor: 'var(--arctic-blue-primary)',
+                  letterSpacing: '0.15em'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                }}
+              >
+                CONTACT SUPPORT
+              </a>
+              <a 
+                href="#/user/contact" 
+                className="px-8 py-3 text-white font-light transition-all duration-300 text-xs tracking-[0.15em] uppercase rounded-xl hover:opacity-90 flex items-center justify-center"
+                style={{ 
+                  backgroundColor: 'var(--arctic-blue-primary)',
+                  letterSpacing: '0.15em'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                }}
+              >
+                SUPPORT CENTER
+              </a>
+            </div>
+            <p 
+              className="mt-6 text-sm sm:text-base font-light tracking-wide"
+              style={{ color: '#666', letterSpacing: '0.05em' }}
+            >
+              Thank you for choosing Nefol. We look forward to serving you and helping you achieve 
+              radiant beauty with our high-quality cosmetic products!
+            </p>
           </div>
-          <p className="mt-6 text-lg opacity-90">
-            Thank you for choosing Nefol. We look forward to serving you and helping you achieve 
-            radiant beauty with our high-quality cosmetic products!
-          </p>
         </div>
       </div>
     </main>

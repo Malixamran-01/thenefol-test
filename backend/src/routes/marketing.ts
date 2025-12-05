@@ -3,6 +3,78 @@ import { Request, Response } from 'express'
 import { sendSuccess, sendError } from '../utils/apiHelpers'
 import nodemailer from 'nodemailer'
 
+const GRAPH_API_VERSION = process.env.META_WA_API_VERSION || 'v17.0'
+const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
+
+const getEnvWhatsAppConfig = () => {
+  const accessToken = process.env.META_WA_TOKEN || process.env.WHATSAPP_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN
+  const phoneNumberId = process.env.META_WA_NUMBER_ID || process.env.WHATSAPP_PHONE_NUMBER_ID
+  const businessAccountId = process.env.META_WA_BUSINESS_ACCOUNT_ID || process.env.WHATSAPP_BUSINESS_ACCOUNT_ID
+
+  if (accessToken || phoneNumberId || businessAccountId) {
+    return {
+      access_token: accessToken,
+      phone_number_id: phoneNumberId,
+      business_account_id: businessAccountId
+    }
+  }
+  return null
+}
+
+const getWhatsAppConfigRecord = async (pool: Pool) => {
+  const envConfig = getEnvWhatsAppConfig()
+  if (envConfig?.access_token && (envConfig.phone_number_id || envConfig.business_account_id)) {
+    return envConfig
+  }
+  const { rows } = await pool.query('SELECT * FROM whatsapp_config ORDER BY updated_at DESC LIMIT 1')
+  return rows[0]
+}
+
+const extractTemplateVariables = (components: any[]): string[] | null => {
+  if (!Array.isArray(components)) return null
+  const bodyComponent = components.find((c) => c.type === 'BODY')
+  if (!bodyComponent?.text) return null
+  const matches = bodyComponent.text.match(/{{\d+}}/g) as string[] | null
+  return matches ? matches.map((matchToken: string) => matchToken.replace(/[{}]/g, '')) : null
+}
+
+const upsertWhatsAppTemplate = async (
+  pool: Pool,
+  template: any,
+  rawContent: any
+) => {
+  const variables = extractTemplateVariables(template.components || [])
+  await pool.query(
+    `
+    INSERT INTO whatsapp_templates (
+      name, category, content, variables, is_approved, status, language, meta_template_id, components, updated_at
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,NOW())
+    ON CONFLICT (name) DO UPDATE SET
+      category = EXCLUDED.category,
+      content = EXCLUDED.content,
+      variables = EXCLUDED.variables,
+      is_approved = EXCLUDED.is_approved,
+      status = EXCLUDED.status,
+      language = EXCLUDED.language,
+      meta_template_id = COALESCE(EXCLUDED.meta_template_id, whatsapp_templates.meta_template_id),
+      components = EXCLUDED.components,
+      updated_at = NOW()
+  `,
+    [
+      template.name,
+      template.category || 'UTILITY',
+      JSON.stringify(rawContent),
+      variables,
+      template.status?.toUpperCase?.() === 'APPROVED',
+      template.status || 'PENDING',
+      template.language || 'en',
+      template.id || template.template_id || null,
+      JSON.stringify(template.components || []),
+    ]
+  )
+}
+
 // ==================== CASHBACK SYSTEM ====================
 
 export const getCashbackWallet = async (pool: Pool, req: Request, res: Response) => {
@@ -876,6 +948,39 @@ export const getWhatsAppTemplates = async (pool: Pool, req: Request, res: Respon
   }
 }
 
+export const syncWhatsAppTemplates = async (pool: Pool, req: Request, res: Response) => {
+  try {
+    const config = await getWhatsAppConfigRecord(pool)
+    if (!config?.access_token || !config?.business_account_id) {
+      return sendError(res, 400, 'WhatsApp business account ID or access token not configured')
+    }
+
+    let templates: any[] = []
+    let nextUrl = `${GRAPH_API_BASE}/${config.business_account_id}/message_templates?access_token=${config.access_token}&limit=200`
+
+    while (nextUrl) {
+      const response = await fetch(nextUrl)
+      const data: any = await response.json().catch(() => ({} as any))
+      if (!response.ok) {
+        return sendError(res, response.status, data?.error?.message || 'Failed to sync templates', data)
+      }
+      if (Array.isArray(data?.data)) {
+        templates = templates.concat(data.data)
+      }
+      nextUrl = data?.paging?.next || null
+    }
+
+    for (const template of templates) {
+      await upsertWhatsAppTemplate(pool, template, template)
+    }
+
+    const { rows } = await pool.query('SELECT * FROM whatsapp_templates ORDER BY updated_at DESC')
+    sendSuccess(res, rows)
+  } catch (err) {
+    sendError(res, 500, 'Failed to sync WhatsApp templates', err)
+  }
+}
+
 export const getWhatsAppAutomations = async (pool: Pool, req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(`
@@ -919,7 +1024,7 @@ export const sendWhatsAppMessage = async (pool: Pool, req: Request, res: Respons
         template: {
           name: template.name,
           language: {
-            code: template.language || 'en_US'
+            code: template.language || 'en'
           }
         }
       }
@@ -960,12 +1065,47 @@ export const sendWhatsAppMessage = async (pool: Pool, req: Request, res: Respons
     
     // Log the message to database if chat_sessions table exists
     try {
-      await pool.query(`
-        INSERT INTO whatsapp_chat_sessions (customer_name, customer_phone, last_message, last_message_time, status)
-        VALUES ($1, $2, $3, NOW(), 'active')
-      `, [`Customer_${to}`, to, message || JSON.stringify(template)])
-    } catch (dbErr) {
-      console.error('Failed to log WhatsApp message:', dbErr)
+      const customerName = `Customer_${to}`
+      const lastMessage = message || JSON.stringify(template)
+      
+      // First try to update existing session
+      const updateResult = await pool.query(`
+        UPDATE whatsapp_chat_sessions
+        SET 
+          last_message = $1,
+          last_message_time = NOW(),
+          status = 'active',
+          message_count = message_count + 1,
+          updated_at = NOW()
+        WHERE customer_phone = $2
+      `, [lastMessage, to])
+
+      // If no rows were updated, insert a new session
+      if (updateResult.rowCount === 0) {
+        await pool.query(`
+          INSERT INTO whatsapp_chat_sessions (customer_name, customer_phone, last_message, last_message_time, status, message_count)
+          VALUES ($1, $2, $3, NOW(), 'active', 1)
+        `, [customerName, to, lastMessage])
+      }
+    } catch (dbErr: any) {
+      console.error('Failed to log WhatsApp message:', dbErr.message)
+      // If it's a unique constraint violation, try update again (race condition)
+      if (dbErr.code === '23505') {
+        try {
+          await pool.query(`
+            UPDATE whatsapp_chat_sessions
+            SET 
+              last_message = $1,
+              last_message_time = NOW(),
+              status = 'active',
+              message_count = message_count + 1,
+              updated_at = NOW()
+            WHERE customer_phone = $2
+          `, [message || JSON.stringify(template), to])
+        } catch (retryErr: any) {
+          console.error('Failed to update chat session on retry:', retryErr.message)
+        }
+      }
     }
     
     sendSuccess(res, {
@@ -1028,19 +1168,65 @@ export const saveWhatsAppConfig = async (pool: Pool, req: Request, res: Response
 
 export const createWhatsAppTemplate = async (pool: Pool, req: Request, res: Response) => {
   try {
-    const { name, content, category, language, scheduled_date, scheduled_time, is_scheduled } = req.body
-    
-    if (!name || !content) {
-      return sendError(res, 400, 'Name and content are required')
+    const {
+      name,
+      category,
+      language,
+      components,
+      allow_category_change,
+      quality_score
+    } = req.body
+
+    if (!name || !components || !Array.isArray(components) || components.length === 0) {
+      return sendError(res, 400, 'Name and components are required')
     }
-    
-    const { rows } = await pool.query(`
-      INSERT INTO whatsapp_templates (name, category, content, is_approved, scheduled_date, scheduled_time, is_scheduled, created_at, updated_at)
-      VALUES ($1, $2, $3, false, $4, $5, $6, NOW(), NOW())
-      RETURNING *
-    `, [name, category || 'Custom', content, scheduled_date || null, scheduled_time || null, is_scheduled || false])
-    
-    sendSuccess(res, rows[0], 201)
+
+    const config = await getWhatsAppConfigRecord(pool)
+    if (!config?.access_token || !config?.business_account_id) {
+      return sendError(res, 400, 'WhatsApp business account ID or access token not configured')
+    }
+
+    const sanitizedName = name.toLowerCase().replace(/[^a-z0-9_]/g, '_')
+    const requestBody = {
+      name: sanitizedName,
+      category: (category || 'UTILITY').toUpperCase(),
+      language: (language || 'en').replace('-', '_'),
+      allow_category_change: !!allow_category_change,
+      components
+    }
+
+    const response = await fetch(`${GRAPH_API_BASE}/${config.business_account_id}/message_templates`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    const data: any = await response.json().catch(() => ({} as any))
+    if (!response.ok) {
+      return sendError(res, response.status, data?.error?.message || 'Failed to create template', data)
+    }
+
+    const templateId = data?.id || data?.message_template_id || null
+    const metaPayload = (data && typeof data === 'object') ? data : {}
+    await upsertWhatsAppTemplate(
+      pool,
+      {
+        id: templateId,
+        name: sanitizedName,
+        category: requestBody.category,
+        language: requestBody.language,
+        status: 'SUBMITTED',
+        components,
+        quality_score
+      },
+      { ...metaPayload, request: requestBody }
+    )
+
+    const created = await pool.query('SELECT * FROM whatsapp_templates WHERE name = $1', [sanitizedName])
+    sendSuccess(res, created.rows[0], 201)
   } catch (err) {
     sendError(res, 500, 'Failed to create template', err)
   }
@@ -1063,6 +1249,40 @@ export const createWhatsAppAutomation = async (pool: Pool, req: Request, res: Re
     sendSuccess(res, rows[0], 201)
   } catch (err) {
     sendError(res, 500, 'Failed to create automation', err)
+  }
+}
+
+export const deleteWhatsAppTemplate = async (pool: Pool, req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    if (!id) {
+      return sendError(res, 400, 'Template ID is required')
+    }
+
+    const { rows } = await pool.query('SELECT * FROM whatsapp_templates WHERE id = $1', [id])
+    if (rows.length === 0) {
+      return sendError(res, 404, 'Template not found')
+    }
+
+    const template = rows[0]
+    const config = await getWhatsAppConfigRecord(pool)
+    if (!config?.access_token || !config?.business_account_id) {
+      return sendError(res, 400, 'WhatsApp business account ID or access token not configured')
+    }
+
+    if (template.meta_template_id) {
+      const deleteUrl = `${GRAPH_API_BASE}/${template.meta_template_id}?access_token=${config.access_token}`
+      const response = await fetch(deleteUrl, { method: 'DELETE' })
+      const data: any = await response.json().catch(() => ({} as any))
+      if (!response.ok) {
+        return sendError(res, response.status, data?.error?.message || 'Failed to delete template on Meta', data)
+      }
+    }
+
+    await pool.query('DELETE FROM whatsapp_templates WHERE id = $1', [id])
+    sendSuccess(res, { message: 'Template deleted successfully' })
+  } catch (err) {
+    sendError(res, 500, 'Failed to delete WhatsApp template', err)
   }
 }
 

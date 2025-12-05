@@ -32,6 +32,7 @@ export default function ProductPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showImageZoom, setShowImageZoom] = useState(false)
   const [zoomImageIndex, setZoomImageIndex] = useState(0)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0) // Track which image is currently displayed
   const [viewStartTime, setViewStartTime] = useState<number>(Date.now())
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showQuestionModal, setShowQuestionModal] = useState(false)
@@ -69,8 +70,11 @@ export default function ProductPage() {
 
     try {
       const apiBase = getApiBase()
+      // Use product weight if available, otherwise default to 0.5kg
+      const productWeight = (product as any)?.weight || (product as any)?.details?.weight || csvProduct?.['Weight (kg)'] || csvProduct?.['Weight'] || '0.5'
+      const weight = parseFloat(String(productWeight)) || 0.5
       const response = await fetch(
-        `${apiBase}/api/public/shiprocket/serviceability?delivery_postcode=${encodeURIComponent(deliveryPincode)}&cod=0&weight=0.5`
+        `${apiBase}/api/public/shiprocket/serviceability?delivery_postcode=${encodeURIComponent(deliveryPincode)}&cod=0&weight=${encodeURIComponent(weight)}`
       )
 
       if (!response.ok) {
@@ -233,6 +237,10 @@ export default function ProductPage() {
             // Reset reviews to show to 5 for new product
             setReviewsToShow(5)
             
+            // Reset image index when product changes
+            setCurrentImageIndex(0)
+            setZoomImageIndex(0)
+            
             // Track product view (non-blocking)
             if (item.id) {
               // Fire and forget tracking calls
@@ -269,7 +277,7 @@ export default function ProductPage() {
               }
               
               // Load reviews from database (non-blocking) - parallel with other operations
-              if (item.id) {
+              if (item.id && typeof item.id === 'number' && item.id > 0) {
                 const productId = item.id
                 // Load reviews immediately but don't block rendering
                 api.reviews.getProductReviews(productId)
@@ -310,7 +318,7 @@ export default function ProductPage() {
                     'Dead Weight (Packaging Only)': dbDetails.deadWeight || '',
                     'MRP ': dbDetails.mrp || item.price,
                     'website price': dbDetails.websitePrice || '',
-                    'GST %': dbDetails.gstPercent || '',
+                    'GST %': dbDetails.gstPercent || dbDetails.gst || '',
                     'Country of Origin': dbDetails.countryOfOrigin || '',
                     'Manufacturer / Packer / Importer': dbDetails.manufacturer || '',
                     'Key Ingredients': dbDetails.keyIngredients || '',
@@ -338,6 +346,13 @@ export default function ProductPage() {
 
   // Load product reviews from database
   const loadProductReviews = useCallback(async (productId: number) => {
+    // Validate productId before making API call
+    if (!productId || typeof productId !== 'number' || productId <= 0) {
+      console.warn('Invalid productId provided to loadProductReviews:', productId)
+      setDbReviews([])
+      return
+    }
+    
     try {
       setReviewsLoading(true)
       const reviews = await api.reviews.getProductReviews(productId)
@@ -602,7 +617,7 @@ export default function ProductPage() {
     if (r.pdp_image_4) images.push(toAbs(r.pdp_image_4))
     if (r.pdp_image_5) images.push(toAbs(r.pdp_image_5))
     if (r.pdp_image_6) images.push(toAbs(r.pdp_image_6))
-    return images.length > 0 ? images : ['/IMAGES/BANNER (1).jpg']
+    return images.length > 0 ? images : ['/IMAGES/BANNER (1).webp']
   }
 
   const toggleSection = (section: string) => {
@@ -664,112 +679,141 @@ export default function ProductPage() {
           <div className="grid grid-cols-1 gap-6 sm:gap-8 md:gap-12 lg:grid-cols-2 mb-8 sm:mb-12 md:mb-16 w-full">
             {/* Product Media */}
             <div className="space-y-2 sm:space-y-4 relative">
-              {/* Main Product Image - First with Amazon-style hover zoom */}
-              <div 
-                ref={mainImageRef}
-                className="aspect-square overflow-hidden rounded-lg border border-gray-200 flex items-center justify-center bg-gray-50 cursor-zoom-in group w-full relative"
-                onMouseMove={(e) => {
-                  if (!mainImageRef.current) return
-                  const rect = mainImageRef.current.getBoundingClientRect()
-                  const x = ((e.clientX - rect.left) / rect.width) * 100
-                  const y = ((e.clientY - rect.top) / rect.height) * 100
-                  setHoverZoom({ show: true, x, y })
-                }}
-                onMouseLeave={() => setHoverZoom({ show: false, x: 0, y: 0 })}
-              >
-                {(() => {
-                  const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
-                  const mainImage = allImages[0] || ''
-                  // Displaying main image
-                  
-                  return mainImage ? (
-                    <>
-                      <img
-                        src={mainImage}
-                        alt={product.title}
-                        className="w-full h-full object-contain transition-transform duration-300 max-w-full"
-                        loading="eager"
-                        decoding="async"
-                        {...({ fetchpriority: 'high' } as any)}
-                        onClick={() => {
-                          setZoomImageIndex(0)
-                          setShowImageZoom(true)
-                        }}
-                        onError={(e) => {
-                          console.log('❌ Image failed to load:', mainImage)
-                          e.currentTarget.style.display = 'none'
-                        }}
-                        draggable={false}
-                      />
-                      {/* Amazon-style hover zoom lens effect */}
-                      {hoverZoom.show && (
-                        <div 
-                          className="absolute pointer-events-none z-20 rounded-full border-2 border-gray-300 shadow-2xl"
-                          style={{
-                            width: '200px',
-                            height: '200px',
-                            left: `calc(${hoverZoom.x}% - 100px)`,
-                            top: `calc(${hoverZoom.y}% - 100px)`,
-                            background: `url(${mainImage})`,
-                            backgroundSize: '300%',
-                            backgroundPosition: `${hoverZoom.x}% ${hoverZoom.y}%`,
-                            backgroundRepeat: 'no-repeat',
-                            transform: 'scale(1.2)',
-                            transition: 'transform 0.1s ease-out',
-                            boxShadow: '0 0 20px rgba(0,0,0,0.3)'
-                          }}
-                        />
-                      )}
-                    </>
-                  ) : null
-                })()}
-              </div>
-
-              {/* Thumbnail Gallery - Below Main Image */}
+              {/* Main Product Image - Carousel style with click to zoom */}
               {(() => {
                 const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
-                // Deduplicate images by URL to avoid showing duplicates
                 const uniqueImages = [...new Map(allImages.map((img, idx) => [img, idx])).keys()]
+                const currentImage = uniqueImages[currentImageIndex] || ''
+                
+                return currentImage ? (
+                  <div 
+                    ref={mainImageRef}
+                    className="aspect-square overflow-hidden rounded-lg border border-gray-200 flex items-center justify-center bg-gray-50 cursor-zoom-in group w-full relative"
+                    onMouseMove={(e) => {
+                      if (!mainImageRef.current) return
+                      const rect = mainImageRef.current.getBoundingClientRect()
+                      const x = ((e.clientX - rect.left) / rect.width) * 100
+                      const y = ((e.clientY - rect.top) / rect.height) * 100
+                      setHoverZoom({ show: true, x, y })
+                    }}
+                    onMouseLeave={() => setHoverZoom({ show: false, x: 0, y: 0 })}
+                  >
+                    <img
+                      src={currentImage}
+                      alt={product.title}
+                      className="w-full h-full object-contain transition-opacity duration-300 max-w-full"
+                      loading={currentImageIndex === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      {...(currentImageIndex === 0 ? { fetchpriority: 'high' } as any : {})}
+                      onClick={() => {
+                        setZoomImageIndex(currentImageIndex)
+                        setShowImageZoom(true)
+                      }}
+                      onError={(e) => {
+                        console.log('❌ Image failed to load:', currentImage)
+                        e.currentTarget.style.display = 'none'
+                      }}
+                      draggable={false}
+                    />
+                    {/* Amazon-style hover zoom lens effect */}
+                    {hoverZoom.show && (
+                      <div 
+                        className="absolute pointer-events-none z-20 rounded-full border-2 border-gray-300 shadow-2xl"
+                        style={{
+                          width: '200px',
+                          height: '200px',
+                          left: `calc(${hoverZoom.x}% - 100px)`,
+                          top: `calc(${hoverZoom.y}% - 100px)`,
+                          background: `url(${currentImage})`,
+                          backgroundSize: '300%',
+                          backgroundPosition: `${hoverZoom.x}% ${hoverZoom.y}%`,
+                          backgroundRepeat: 'no-repeat',
+                          transform: 'scale(1.2)',
+                          transition: 'transform 0.1s ease-out',
+                          boxShadow: '0 0 20px rgba(0,0,0,0.3)'
+                        }}
+                      />
+                    )}
+                  </div>
+                ) : null
+              })()}
+
+              {/* Thumbnail Gallery - Carousel style like reference site */}
+              {(() => {
+                const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
+                const uniqueImages = [...new Map(allImages.map((img, idx) => [img, idx])).keys()]
+                
                 return uniqueImages.length > 1 && (
                   <div className="w-full">
-                    <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 w-full overflow-x-auto pb-2">
-                      {uniqueImages.map((src, index) => (
-                        <button
-                          key={`${src}-${index}`}
-                          onClick={() => {
-                            setZoomImageIndex(index)
-                            setShowImageZoom(true)
-                          }}
-                          className={`relative aspect-square overflow-hidden rounded-lg border-2 transition-all cursor-zoom-in w-full flex-shrink-0 ${
-                            index === 0
-                              ? 'border-gray-900 ring-2 ring-gray-300' 
-                              : 'border-gray-200 hover:border-gray-400'
-                          }`}
-                        >
-                          {/\.(mp4|webm|ogg)(\?|$)/i.test(src) ? (
-                            <video 
-                              src={src} 
-                              className="h-full w-full object-cover max-w-full"
-                              muted
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none'
-                              }}
-                            />
-                          ) : (
-                            <img 
-                              src={src} 
-                              alt={`${product.title} ${index + 1}`} 
-                              className="h-full w-full object-cover max-w-full"
-                              loading="lazy"
-                              decoding="async"
-                              onError={(e) => {
-                                console.log('❌ Thumbnail image failed to load:', src)
-                                e.currentTarget.style.display = 'none'
-                              }}
-                            />
-                          )}
-                        </button>
-                      ))}
+                    <div 
+                      className="flex gap-2 sm:gap-3 overflow-x-auto pb-2"
+                      style={{ 
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: '#cbd5e1 transparent',
+                        msOverflowStyle: 'none'
+                      }}
+                    >
+                      <style>{`
+                        .thumb-scroll::-webkit-scrollbar {
+                          height: 4px;
+                        }
+                        .thumb-scroll::-webkit-scrollbar-track {
+                          background: transparent;
+                        }
+                        .thumb-scroll::-webkit-scrollbar-thumb {
+                          background: #cbd5e1;
+                          border-radius: 2px;
+                        }
+                        .thumb-scroll::-webkit-scrollbar-thumb:hover {
+                          background: #94a3b8;
+                        }
+                      `}</style>
+                      <div className="flex gap-2 sm:gap-3 thumb-scroll">
+                        {uniqueImages.map((src, index) => (
+                          <button
+                            key={`${src}-${index}`}
+                            onClick={() => {
+                              setCurrentImageIndex(index)
+                              setZoomImageIndex(index)
+                            }}
+                            className={`relative flex-shrink-0 aspect-square overflow-hidden rounded-lg border-2 transition-all duration-200 cursor-pointer ${
+                              index === currentImageIndex
+                                ? 'border-gray-900 ring-2 ring-gray-300 opacity-100 scale-105' 
+                                : 'border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100'
+                            }`}
+                            style={{ 
+                              width: '108px', 
+                              height: '108px',
+                              marginBottom: '10px'
+                            }}
+                            role="group"
+                            aria-label={`${index + 1} / ${uniqueImages.length}`}
+                          >
+                            {/\.(mp4|webm|ogg)(\?|$)/i.test(src) ? (
+                              <video 
+                                src={src} 
+                                className="h-full w-full object-cover"
+                                muted
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                }}
+                              />
+                            ) : (
+                              <img 
+                                src={src} 
+                                alt={`${product.title} ${index + 1}`} 
+                                className="h-full w-full object-cover image-slider"
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  console.log('❌ Thumbnail image failed to load:', src)
+                                  e.currentTarget.style.display = 'none'
+                                }}
+                              />
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )
@@ -780,11 +824,28 @@ export default function ProductPage() {
             <div className="space-y-4 sm:space-y-6">
               <div>
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                  {csvProduct?.['Product Name'] || product.title}
+                  {csvProduct?.['Product Title'] || csvProduct?.['Product Name'] || product.title}
                 </h1>
-                <p className="text-base sm:text-lg text-gray-600 mb-4">
+                <p className="text-base sm:text-lg text-gray-600 mb-2">
                   {csvProduct?.['Subtitle / Tagline'] || 'Premium natural skincare for radiant skin'}
                 </p>
+                {/* Net Quantity in Header */}
+                {csvProduct?.['Net Quantity (Content)'] && (
+                  <div className="mb-4 text-sm text-gray-700">
+                    <span className="font-medium">Net Quantity:</span> {csvProduct['Net Quantity (Content)']}
+                  </div>
+                )}
+                {/* Bullet Highlights - Display prominently if available */}
+                {csvProduct?.['Bullet Highlights (Short Desc.)'] && (
+                  <div className="mb-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+                    <h3 className="font-semibold text-gray-900 mb-2 text-sm">Key Highlights:</h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                      {csvProduct['Bullet Highlights (Short Desc.)'].split('•').filter((item: string) => item.trim()).map((item: string, index: number) => (
+                        <li key={`bullet-${index}`}>{item.trim()}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 
                 {/* nefol-style Rating */}
                 <div className="flex items-center mb-4">
@@ -807,8 +868,30 @@ export default function ProductPage() {
                 </div>
               </div>
 
+              {/* Quantity Section */}
+              {(() => {
+                const quantity = csvProduct?.['Net Quantity (Content)'] || 
+                                 (product?.details && typeof product.details === 'object' ? product.details.netQuantity : null) ||
+                                 (product?.details && typeof product.details === 'string' ? JSON.parse(product.details)?.netQuantity : null)
+                
+                return quantity ? (
+                  <div className="space-y-1">
+                    <div className="text-sm text-gray-600">Quantity</div>
+                    <div className="text-base font-medium text-gray-900">
+                      {quantity}
+                    </div>
+                  </div>
+                ) : null
+              })()}
+
               {/* nefol-style Pricing */}
               <div className="space-y-2">
+                {/* Discount Badge */}
+                {csvProduct?.['discount'] && (
+                  <div className="inline-block px-3 py-1 bg-red-100 text-red-800 text-sm font-semibold rounded-md mb-2">
+                    {csvProduct['discount']}% OFF
+                  </div>
+                )}
                 <div className="text-sm text-gray-600">Discounted price</div>
                 <div className="flex items-center gap-3">
                   <span className="text-2xl font-bold text-gray-900">
@@ -877,13 +960,14 @@ export default function ProductPage() {
                         checkDeliveryAvailability()
                       }
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm flex-1"
+                    className="px-4 py-3 sm:px-3 sm:py-2 border border-gray-300 rounded-md text-base sm:text-sm flex-1 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     maxLength={6}
+                    inputMode="numeric"
                   />
                   <button 
                     onClick={checkDeliveryAvailability}
                     disabled={deliveryPincode.length !== 6 || checkingDelivery}
-                    className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-3 sm:px-4 sm:py-2 bg-gray-900 text-white text-base sm:text-sm font-medium rounded-md hover:bg-gray-800 active:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] transition-colors touch-manipulation"
                   >
                     {checkingDelivery ? 'CHECKING...' : 'CHECK'}
                   </button>
@@ -894,28 +978,16 @@ export default function ProductPage() {
                 {deliveryInfo && (
                   <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
                     {deliveryInfo.data?.available_courier_companies && deliveryInfo.data.available_courier_companies.length > 0 ? (
-                      <div className="space-y-1">
-                        <div className="text-sm font-semibold text-green-800">✓ Delivery Available</div>
-                        {(() => {
-                          // Get all delivery days and find min/max
-                          const deliveryDays = deliveryInfo.data.available_courier_companies
-                            .map((courier: any) => courier.estimated_delivery_days)
-                            .filter((days: number) => days && days > 0)
-                            .sort((a: number, b: number) => a - b)
-                          
-                          if (deliveryDays.length === 0) {
-                            return <div className="text-sm text-green-700">Delivery available</div>
-                          }
-                          
-                          const minDays = deliveryDays[0]
-                          const maxDays = deliveryDays[deliveryDays.length - 1]
-                          
-                          if (minDays === maxDays) {
-                            return <div className="text-sm text-green-700 font-medium">{minDays} {minDays === 1 ? 'day' : 'days'}</div>
-                          } else {
-                            return <div className="text-sm text-green-700 font-medium">{minDays}-{maxDays} days</div>
-                          }
-                        })()}
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-green-800">✓ Delivery Available to {deliveryPincode}</div>
+                        <div className="space-y-1">
+                          <div className="text-sm text-green-700 font-medium">
+                            Dispatch: Next working day
+                          </div>
+                          <div className="text-sm text-green-700 font-medium">
+                            Delivered in: 3-5 days
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <div className="text-sm text-orange-800">⚠️ Delivery may not be available to this pincode. Please contact support.</div>
@@ -930,14 +1002,16 @@ export default function ProductPage() {
                 <div className="flex items-center border border-gray-300 rounded-md">
                   <button 
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-3 py-2 text-gray-600 hover:text-gray-900"
+                    className="px-4 py-3 sm:px-3 sm:py-2 text-gray-600 hover:text-gray-900 active:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors"
+                    aria-label="Decrease quantity"
                   >
                     -
                   </button>
-                  <span className="px-4 py-2 text-gray-900 min-w-[3rem] text-center">{quantity}</span>
+                  <span className="px-4 py-2 text-gray-900 min-w-[3rem] text-center flex items-center justify-center min-h-[44px]">{quantity}</span>
                   <button 
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-3 py-2 text-gray-600 hover:text-gray-900"
+                    className="px-4 py-3 sm:px-3 sm:py-2 text-gray-600 hover:text-gray-900 active:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors"
+                    aria-label="Increase quantity"
                   >
                     +
                   </button>
@@ -976,7 +1050,8 @@ export default function ProductPage() {
                       }
                     }}
                     data-add-to-cart
-                    className="flex-1 rounded-md bg-gray-900 px-4 sm:px-6 py-3 font-semibold text-white hover:bg-gray-800 transition-colors min-h-[48px]"
+                    className="flex-1 rounded-md px-4 sm:px-6 py-3.5 sm:py-3 font-semibold text-white transition-colors min-h-[48px] touch-manipulation text-base sm:text-sm"
+                    style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
                   >
                 ADD TO CART
                   </button>
@@ -994,7 +1069,8 @@ export default function ProductPage() {
                         }
                       }
                     }}
-                    className="flex-1 rounded-md bg-blue-600 px-4 sm:px-6 py-3 font-semibold text-white hover:bg-blue-700 transition-colors min-h-[48px]"
+                    className="flex-1 rounded-md px-4 sm:px-6 py-3.5 sm:py-3 font-semibold text-white transition-colors min-h-[48px] touch-manipulation text-base sm:text-sm"
+                    style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
                   >
                     BUY NOW
                   </button>
@@ -1006,7 +1082,51 @@ export default function ProductPage() {
                   productSlug={product.slug}
                   productTitle={product.title}
                   productImage={product.listImage}
+                  productDescription={product.description}
                 />
+              </div>
+
+              {/* Key Specifications */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-3">KEY SPECIFICATIONS</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {csvProduct?.['Net Weight (Product Only)'] && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Net Weight:</span>
+                      <span className="font-medium">{csvProduct['Net Weight (Product Only)']}</span>
+                    </div>
+                  )}
+                  {csvProduct?.['Net Quantity (Content)'] && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Quantity:</span>
+                      <span className="font-medium">{csvProduct['Net Quantity (Content)']}</span>
+                    </div>
+                  )}
+                  {csvProduct?.['SKU'] && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">SKU:</span>
+                      <span className="font-medium">{csvProduct['SKU']}</span>
+                    </div>
+                  )}
+                  {csvProduct?.['Brand Name'] && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Brand:</span>
+                      <span className="font-medium">{csvProduct['Brand Name']}</span>
+                    </div>
+                  )}
+                  {csvProduct?.['Country of Origin'] && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Origin:</span>
+                      <span className="font-medium">{csvProduct['Country of Origin']}</span>
+                    </div>
+                  )}
+                  {csvProduct?.['GST %'] && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">GST:</span>
+                      <span className="font-medium">{csvProduct['GST %']}%</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Loyalty Points */}
@@ -1017,10 +1137,20 @@ export default function ProductPage() {
                 Earn upto 249 points on this purchase
                 </div>
 
-              {/* Shipping Info */}
-              <div className="text-sm text-yellow-600 bg-yellow-50 px-3 py-2 rounded-md">
-                Your order will be shipped out in 2-4 business days.
-              </div>
+              {/* Shipping Info - Dynamic based on delivery check */}
+              {deliveryInfo && deliveryInfo.data?.available_courier_companies && deliveryInfo.data.available_courier_companies.length > 0 ? (
+                <div className="text-sm text-green-700 bg-green-50 px-3 py-2 rounded-md border border-green-200">
+                  <div className="font-semibold mb-1">✓ Delivery Available</div>
+                  <div>
+                    <div className="font-medium">
+                      Dispatch: Next working day
+                    </div>
+                    <div className="font-medium">
+                      Delivered in: 3-5 days
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Reasons to Love */}
               <div>
@@ -1080,6 +1210,17 @@ export default function ProductPage() {
               </button>
                   {expandedSections.description && (
                     <div className="pb-4 text-sm text-gray-600">
+                      {/* Bullet Highlights */}
+                      {csvProduct?.['Bullet Highlights (Short Desc.)'] && (
+                        <div className="mb-4">
+                          <h4 className="font-semibold text-gray-900 mb-2">Key Highlights</h4>
+                          <ul className="list-disc list-inside space-y-1">
+                            {csvProduct['Bullet Highlights (Short Desc.)'].split('•').filter((item: string) => item.trim()).map((item: string, index: number) => (
+                              <li key={`highlight-${index}`}>{item.trim()}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       <p className="mb-4">
                         {csvProduct?.['Product Description (Long)'] || csvProduct?.['Long Description'] || product.description || 'Premium natural skincare product designed for optimal skin health and radiance.'}
                       </p>
@@ -1176,72 +1317,124 @@ export default function ProductPage() {
                   </button>
                   {expandedSections.specifications && (
                     <div className="pb-4 text-sm text-gray-600">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          {csvProduct?.['SKU'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">SKU:</span>
-                              <span className="font-medium">{csvProduct['SKU']}</span>
+                      {(() => {
+                        // Get database details as fallback
+                        const dbDetails = product?.details 
+                          ? (typeof product.details === 'string' ? JSON.parse(product.details) : product.details)
+                          : null
+                        
+                        // Check both CSV and database details
+                        const getValue = (csvKey: string, dbKey: string) => {
+                          return csvProduct?.[csvKey] || dbDetails?.[dbKey] || null
+                        }
+                        
+                        const hasData = csvProduct || dbDetails
+                        
+                        if (!hasData) {
+                          return (
+                            <div className="text-gray-500 italic">No specifications available for this product.</div>
+                          )
+                        }
+                        
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              {getValue('SKU', 'sku') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">SKU:</span>
+                                  <span className="font-medium">{getValue('SKU', 'sku')}</span>
+                                </div>
+                              )}
+                              {getValue('HSN Code', 'hsn') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">HSN Code:</span>
+                                  <span className="font-medium">{getValue('HSN Code', 'hsn')}</span>
+                                </div>
+                              )}
+                              {getValue('Brand Name', 'brand') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Brand:</span>
+                                  <span className="font-medium">{getValue('Brand Name', 'brand')}</span>
+                                </div>
+                              )}
+                              {getValue('Net Quantity (Content)', 'netQuantity') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Net Quantity:</span>
+                                  <span className="font-medium">{getValue('Net Quantity (Content)', 'netQuantity')}</span>
+                                </div>
+                              )}
+                              {getValue('Unit Count (Pack of)', 'unitCount') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Unit Count:</span>
+                                  <span className="font-medium">{getValue('Unit Count (Pack of)', 'unitCount')}</span>
+                                </div>
+                              )}
+                              {(csvProduct?.['Product Category'] || product?.category) && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Category:</span>
+                                  <span className="font-medium">{csvProduct?.['Product Category'] || product?.category}</span>
+                                </div>
+                              )}
+                              {getValue('Product Sub-Category', 'subCategory') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Sub-Category:</span>
+                                  <span className="font-medium">{getValue('Product Sub-Category', 'subCategory')}</span>
+                                </div>
+                              )}
+                              {getValue('Product Type', 'productType') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Product Type:</span>
+                                  <span className="font-medium">{getValue('Product Type', 'productType')}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {csvProduct?.['HSN Code'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">HSN Code:</span>
-                              <span className="font-medium">{csvProduct['HSN Code']}</span>
+                            <div className="space-y-2">
+                              {getValue('Net Weight (Product Only)', 'netWeight') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Net Weight:</span>
+                                  <span className="font-medium">{getValue('Net Weight (Product Only)', 'netWeight')}</span>
+                                </div>
+                              )}
+                              {getValue('Dead Weight (Packaging Only)', 'deadWeight') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Packaging Weight:</span>
+                                  <span className="font-medium">{getValue('Dead Weight (Packaging Only)', 'deadWeight')}</span>
+                                </div>
+                              )}
+                              {(getValue('GST %', 'gstPercent') || getValue('GST %', 'gst')) && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">GST:</span>
+                                  <span className="font-medium">{(getValue('GST %', 'gstPercent') || getValue('GST %', 'gst'))}%</span>
+                                </div>
+                              )}
+                              {getValue('Country of Origin', 'countryOfOrigin') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Country of Origin:</span>
+                                  <span className="font-medium">{getValue('Country of Origin', 'countryOfOrigin')}</span>
+                                </div>
+                              )}
+                              {getValue('Manufacturer / Packer / Importer', 'manufacturer') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Manufacturer:</span>
+                                  <span className="font-medium">{getValue('Manufacturer / Packer / Importer', 'manufacturer')}</span>
+                                </div>
+                              )}
+                              {(csvProduct?.['discount'] || dbDetails?.discount) && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Discount:</span>
+                                  <span className="font-medium text-green-600">{csvProduct?.['discount'] || dbDetails?.discount}% OFF</span>
+                                </div>
+                              )}
+                              {getValue('Platform Category Mapping', 'platformCategory') && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Platform Category:</span>
+                                  <span className="font-medium">{getValue('Platform Category Mapping', 'platformCategory')}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {csvProduct?.['Brand Name'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Brand:</span>
-                              <span className="font-medium">{csvProduct['Brand Name']}</span>
-                            </div>
-                          )}
-                          {csvProduct?.['Net Quantity (Content)'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Net Quantity:</span>
-                              <span className="font-medium">{csvProduct['Net Quantity (Content)']}</span>
-                            </div>
-                          )}
-                          {csvProduct?.['Unit Count (Pack of)'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Unit Count:</span>
-                              <span className="font-medium">{csvProduct['Unit Count (Pack of)']}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          {csvProduct?.['Net Weight (Product Only)'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Net Weight:</span>
-                              <span className="font-medium">{csvProduct['Net Weight (Product Only)']}</span>
-                            </div>
-                          )}
-                          {csvProduct?.['Dead Weight (Packaging Only)'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Packaging Weight:</span>
-                              <span className="font-medium">{csvProduct['Dead Weight (Packaging Only)']}</span>
-                            </div>
-                          )}
-                          {csvProduct?.['GST %'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">GST:</span>
-                              <span className="font-medium">{csvProduct['GST %']}%</span>
-                            </div>
-                          )}
-                          {csvProduct?.['Country of Origin'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Country of Origin:</span>
-                              <span className="font-medium">{csvProduct['Country of Origin']}</span>
-                            </div>
-                          )}
-                          {csvProduct?.['Manufacturer / Packer / Importer'] && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Manufacturer:</span>
-                              <span className="font-medium">{csvProduct['Manufacturer / Packer / Importer']}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1259,32 +1452,54 @@ export default function ProductPage() {
                   </button>
                   {expandedSections.packaging && (
                     <div className="pb-4 text-sm text-gray-600">
-                      <div className="space-y-2">
-                        {csvProduct?.['Package Content Details'] && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Package Content:</span>
-                            <span className="font-medium">{csvProduct['Package Content Details']}</span>
+                      {(() => {
+                        // Get database details as fallback
+                        const dbDetails = product?.details 
+                          ? (typeof product.details === 'string' ? JSON.parse(product.details) : product.details)
+                          : null
+                        
+                        // Check both CSV and database details
+                        const getValue = (csvKey: string, dbKey: string) => {
+                          return csvProduct?.[csvKey] || dbDetails?.[dbKey] || null
+                        }
+                        
+                        const hasData = csvProduct || dbDetails
+                        
+                        if (!hasData) {
+                          return (
+                            <div className="text-gray-500 italic">No packaging details available for this product.</div>
+                          )
+                        }
+                        
+                        return (
+                          <div className="space-y-2">
+                            {getValue('Package Content Details', 'packageContent') && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Package Content:</span>
+                                <span className="font-medium">{getValue('Package Content Details', 'packageContent')}</span>
+                              </div>
+                            )}
+                            {getValue('Inner Packaging Type', 'innerPackaging') && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Inner Packaging:</span>
+                                <span className="font-medium">{getValue('Inner Packaging Type', 'innerPackaging')}</span>
+                              </div>
+                            )}
+                            {getValue('Outer Packaging Type', 'outerPackaging') && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Outer Packaging:</span>
+                                <span className="font-medium">{getValue('Outer Packaging Type', 'outerPackaging')}</span>
+                              </div>
+                            )}
+                            {getValue('Hazardous / Fragile (Y/N)', 'hazardous') && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Hazardous/Fragile:</span>
+                                <span className="font-medium">{getValue('Hazardous / Fragile (Y/N)', 'hazardous')}</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {csvProduct?.['Inner Packaging Type'] && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Inner Packaging:</span>
-                            <span className="font-medium">{csvProduct['Inner Packaging Type']}</span>
-                          </div>
-                        )}
-                        {csvProduct?.['Outer Packaging Type'] && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Outer Packaging:</span>
-                            <span className="font-medium">{csvProduct['Outer Packaging Type']}</span>
-                          </div>
-                        )}
-                        {csvProduct?.['Hazardous / Fragile (Y/N)'] && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Hazardous/Fragile:</span>
-                            <span className="font-medium">{csvProduct['Hazardous / Fragile (Y/N)']}</span>
-                          </div>
-                        )}
-                      </div>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1326,49 +1541,6 @@ export default function ProductPage() {
                 )}
               </div>
                       
-              {/* Key Specifications */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-3">KEY SPECIFICATIONS</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  {csvProduct?.['Net Weight (Product Only)'] && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Net Weight:</span>
-                      <span className="font-medium">{csvProduct['Net Weight (Product Only)']}</span>
-                    </div>
-                  )}
-                  {csvProduct?.['Net Quantity (Content)'] && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Quantity:</span>
-                      <span className="font-medium">{csvProduct['Net Quantity (Content)']}</span>
-                    </div>
-                  )}
-                  {csvProduct?.['SKU'] && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">SKU:</span>
-                      <span className="font-medium">{csvProduct['SKU']}</span>
-                    </div>
-                  )}
-                  {csvProduct?.['Brand Name'] && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Brand:</span>
-                      <span className="font-medium">{csvProduct['Brand Name']}</span>
-                    </div>
-                  )}
-                  {csvProduct?.['Country of Origin'] && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Origin:</span>
-                      <span className="font-medium">{csvProduct['Country of Origin']}</span>
-                    </div>
-                  )}
-                  {csvProduct?.['GST %'] && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">GST:</span>
-                      <span className="font-medium">{csvProduct['GST %']}%</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Plant Powered Science Badge */}
               <div className="flex items-center justify-center mt-6">
                 <div className="flex items-center space-x-2 px-4 py-2 bg-green-100 rounded-full">
@@ -1377,7 +1549,7 @@ export default function ProductPage() {
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  <span className="text-sm font-semibold text-green-800">96.52% Plant Powered Science</span>
+                  <span className="text-sm font-semibold text-green-800">Nature's Finest, Blended with Care</span>
                 </div>
               </div>
 
@@ -1542,6 +1714,15 @@ export default function ProductPage() {
             }
             
             const ingredients = csvProduct['Key Ingredients'].split(',').map((ing: string) => ing.trim()).filter((ing: string) => ing)
+            const ingredientBenefits = csvProduct['Ingredient Benefits'] ? csvProduct['Ingredient Benefits'].split(',').map((benefit: string) => benefit.trim()).filter((benefit: string) => benefit) : []
+            
+            // Create a map of ingredient to benefit
+            const ingredientBenefitMap: { [key: string]: string } = {}
+            ingredients.forEach((ingredient: string, index: number) => {
+              if (ingredientBenefits[index]) {
+                ingredientBenefitMap[ingredient] = ingredientBenefits[index]
+              }
+            })
             
             return (
               <section className="py-16 bg-gray-50 w-full overflow-hidden">
@@ -1550,6 +1731,7 @@ export default function ProductPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6 w-full">
                     {ingredients.map((ingredient: string, index: number) => {
                       const imageUrl = getIngredientImage(ingredient)
+                      const benefit = ingredientBenefitMap[ingredient] || ''
                       return (
                         <div key={`ingredient-${index}-${ingredient.substring(0, 10)}`} className="text-center w-full">
                           <div className="w-20 sm:w-24 md:w-28 mx-auto mb-4 bg-white rounded-full shadow-md overflow-hidden relative" style={{ aspectRatio: '1 / 1', borderRadius: '50%', flexShrink: 0 }}>
@@ -1591,7 +1773,10 @@ export default function ProductPage() {
                               </div>
                             )}
                           </div>
-                          <h3 className="font-semibold text-gray-900 text-xs sm:text-sm md:text-base px-2 break-words">{ingredient.trim()}</h3>
+                          <h3 className="font-semibold text-gray-900 text-xs sm:text-sm md:text-base px-2 break-words mb-1">{ingredient.trim()}</h3>
+                          {benefit && (
+                            <p className="text-xs text-gray-600 px-2 break-words">{benefit}</p>
+                          )}
                         </div>
                       )
                     })}
@@ -1626,7 +1811,7 @@ export default function ProductPage() {
                 aria-label="Previous"
                 disabled={!canGoPreviousRelated}
               >
-                <ChevronLeft className="w-6 h-6" style={{color: '#1B4965'}} />
+                <ChevronLeft className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
               </button>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1691,7 +1876,7 @@ export default function ProductPage() {
                           {item.discount}% OFF
                         </span>
                       </div>
-                      <button className="w-full py-2 bg-gray-900 text-white font-medium rounded-md hover:bg-gray-800">
+                      <button className="w-full py-2 font-medium rounded-md" style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}>
                         ADD TO CART
                       </button>
                   </div>
@@ -1709,7 +1894,7 @@ export default function ProductPage() {
                 aria-label="Next"
                 disabled={!canGoNextRelated}
               >
-                <ChevronRight className="w-6 h-6" style={{color: '#1B4965'}} />
+                <ChevronRight className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
               </button>
             </div>
           </section>
@@ -1841,30 +2026,6 @@ export default function ProductPage() {
             )}
           </section>
 
-          {/* FAQ Section */}
-          <section className="border-t border-gray-200 pt-12 mb-16">
-            <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">NEED HELP? FREQUENTLY ASKED QUESTIONS</h2>
-            <div className="max-w-3xl mx-auto space-y-2">
-              {getFAQItems().map((faq, index) => (
-                <div key={`faq-${index}-${faq.question.substring(0, 10)}`} className="border-b border-gray-200">
-                  <button
-                    onClick={() => toggleSection(`faq-${index}`)}
-                    className="flex items-center justify-between w-full py-4 text-left font-semibold text-gray-900"
-                  >
-                    <span>{faq.question}</span>
-                    <svg className={`h-5 w-5 transition-transform ${expandedSections[`faq-${index}`] ? 'rotate-45' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  </button>
-                  {expandedSections[`faq-${index}`] && (
-                    <div className="pb-4 text-sm text-gray-600">
-                      {faq.answer}
-                    </div>
-                  )}
-              </div>
-            ))}
-          </div>
-          </section>
         </div>
       </main>
 
@@ -2296,10 +2457,3 @@ function getRelatedProducts(currentProduct: Product | null): Array<{
   return []
 }
 
-function getFAQItems(): Array<{
-  question: string
-  answer: string
-}> {
-  // Return empty array - FAQ items should be loaded via API in the component
-  return []
-}

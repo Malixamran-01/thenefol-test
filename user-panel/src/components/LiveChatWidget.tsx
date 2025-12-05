@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { MessageSquare, Send, X, HelpCircle, AlertCircle } from 'lucide-react'
+import { Send, X, HelpCircle, AlertCircle, MessageCircle } from 'lucide-react'
 import { api } from '../services/api'
 import { userSocketService } from '../services/socket'
 import { useAuth } from '../contexts/AuthContext'
@@ -215,37 +215,44 @@ export default function LiveChatWidget() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 p-4 rounded-full bg-blue-600 text-white shadow-lg"
+        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow text-white"
+        style={{ backgroundColor: 'rgb(75,151,201)' }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
         aria-label="Open live chat"
       >
-        <MessageSquare className="h-6 w-6" />
+        <MessageCircle className="h-6 w-6 md:h-7 md:w-7" />
       </button>
     )
   }
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 w-80 bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col overflow-hidden z-50">
-        <div className="px-4 py-3 bg-blue-600 text-white flex items-center justify-between">
+      <div className="fixed bottom-24 right-6 md:bottom-6 w-80 bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col overflow-hidden z-50">
+        <div className="px-4 py-3 text-white flex items-center justify-between" style={{ backgroundColor: 'rgb(75,151,201)' }}>
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
+            <MessageCircle className="h-5 w-5" />
             <span className="font-semibold">Support</span>
-            <span className="text-xs bg-blue-500 px-2 py-0.5 rounded">AI Assistant</span>
+            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'rgb(75,151,201)' }}>AI Assistant</span>
           </div>
-          <button onClick={() => setOpen(false)} aria-label="Close" className="p-1 hover:bg-blue-500 rounded">
+          <button onClick={() => setOpen(false)} aria-label="Close" className="p-1 rounded" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="p-3 h-64 overflow-y-auto space-y-2 bg-gray-50">
           {messages.length === 0 && (
             <div className="text-center text-gray-500 text-sm py-4">
-              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <img
+                src="/IMAGES/light%20theme%20logo.webp"
+                alt="Nefol"
+                className="h-10 w-10 mx-auto mb-2 rounded-full object-contain bg-white opacity-80"
+              />
               <p>Start a conversation!</p>
             </div>
           )}
           {messages.map((m) => (
             <div key={`${m.id}-${m.timestamp || ''}`} className={`flex ${m.sender === 'customer' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`${m.sender === 'customer' ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border border-gray-200'} px-3 py-2 rounded-lg max-w-[80%]`}>
+              <div className={`${m.sender === 'customer' ? 'text-white' : 'bg-white text-gray-800 border border-gray-200'} px-3 py-2 rounded-lg max-w-[80%]`} style={m.sender === 'customer' ? { backgroundColor: 'rgb(75,151,201)' } : {}}>
                 {m.sender === 'agent' && m.senderName === 'NEFOL bot' && (
                   <div className="text-xs text-blue-600 mb-1 font-semibold">NEFOL bot</div>
                 )}
@@ -286,7 +293,7 @@ export default function LiveChatWidget() {
               placeholder="Type your message..."
               className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <button onClick={sendMessage} className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors" aria-label="Send">
+            <button onClick={sendMessage} className="p-2 text-white rounded transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'} aria-label="Send">
               <Send className="h-4 w-4" />
             </button>
           </div>
@@ -354,7 +361,10 @@ export default function LiveChatWidget() {
               <button
                 onClick={handleCreateSupportRequest}
                 disabled={isSubmittingRequest || !requestForm.subject.trim() || !requestForm.description.trim()}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 {isSubmittingRequest ? 'Submitting...' : 'Submit Request'}
               </button>

@@ -51,10 +51,14 @@ export default function Discounts() {
   })
 
   const getApiBase = () => {
-    if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-    const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-    const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-    return `http://${host}:${port}`
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
   }
   const apiBase = getApiBase()
 
@@ -66,7 +70,7 @@ export default function Discounts() {
   const loadDiscounts = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/discounts`)
+      const res = await fetch(`${apiBase}/discounts`)
       if (res.ok) {
         const data = await res.json()
         setDiscounts(data)
@@ -84,7 +88,7 @@ export default function Discounts() {
 
   const loadUsage = async () => {
     try {
-      const res = await fetch(`${apiBase}/api/discounts/usage`)
+      const res = await fetch(`${apiBase}/discounts/usage`)
       if (res.ok) {
         const data = await res.json()
         setUsage(data)
@@ -117,8 +121,8 @@ export default function Discounts() {
 
       const method = editingDiscount ? 'PUT' : 'POST'
       const url = editingDiscount 
-        ? `${apiBase}/api/discounts/${editingDiscount.id}`
-        : `${apiBase}/api/discounts`
+        ? `${apiBase}/discounts/${editingDiscount.id}`
+        : `${apiBase}/discounts`
 
       const res = await fetch(url, {
         method,
@@ -177,7 +181,7 @@ export default function Discounts() {
     
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/discounts/${id}`, {
+      const res = await fetch(`${apiBase}/discounts/${id}`, {
         method: 'DELETE'
       })
 
@@ -198,7 +202,7 @@ export default function Discounts() {
   const handleToggleStatus = async (discount: Discount) => {
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/discounts/${discount.id}`, {
+      const res = await fetch(`${apiBase}/discounts/${discount.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !discount.is_active })

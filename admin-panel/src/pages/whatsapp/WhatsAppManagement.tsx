@@ -13,13 +13,30 @@ interface WhatsAppConfig {
   verifyToken: string
 }
 
+interface TemplateComponent {
+  type: string
+  format?: string
+  text?: string
+  example?: any
+  buttons?: Array<{
+    type: string
+    text: string
+    url?: string
+    phone_number?: string
+  }>
+}
+
 interface Template {
   id: string
   name: string
   content: string
   category: string
-  status: 'pending' | 'approved' | 'rejected'
+  status: string
   language: string
+  is_approved?: boolean
+  meta_template_id?: string
+  components?: TemplateComponent[]
+  updated_at?: string
 }
 
 interface Automation {
@@ -54,6 +71,8 @@ export default function WhatsAppManagement() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
+  const [syncingTemplates, setSyncingTemplates] = useState(false)
+  const [viewTemplate, setViewTemplate] = useState<Template | null>(null)
   
   // Modals
   const [showTestModal, setShowTestModal] = useState(false)
@@ -63,10 +82,35 @@ export default function WhatsAppManagement() {
   // Form states
   const [testPhone, setTestPhone] = useState('')
   const [testMessage, setTestMessage] = useState('')
-  const [newTemplate, setNewTemplate] = useState({ name: '', content: '', category: 'MARKETING', language: 'en_US' })
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    category: 'UTILITY',
+    language: 'en',
+    headerType: 'none',
+    headerText: '',
+    headerExample: '',
+    bodyText: '',
+    bodyExamples: [''],
+    footerText: '',
+    buttonType: 'none',
+    buttonText: '',
+    buttonUrl: '',
+    buttonPhone: '',
+    allowCategoryChange: false
+  })
   const [newAutomation, setNewAutomation] = useState({ name: '', trigger: '', action: '', template: '' })
 
-  const apiBase = (import.meta as any).env.VITE_API_URL || 'https://thenefol.com/api'
+  const getApiBase = () => {
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
+  }
+  const apiBase = getApiBase()
 
   useEffect(() => {
     loadAllData()
@@ -79,28 +123,32 @@ export default function WhatsAppManagement() {
       const configRes = await fetch(`${apiBase}/api/whatsapp/config`)
       if (configRes.ok) {
         const data = await configRes.json()
-        if (data.success) setConfig(data.data)
+        const configData = data?.data ?? data
+        if (configData) setConfig(configData)
       }
 
       // Load templates
       const templatesRes = await fetch(`${apiBase}/api/whatsapp-chat/templates`)
       if (templatesRes.ok) {
         const data = await templatesRes.json()
-        setTemplates(Array.isArray(data) ? data : [])
+        const templatesData = data?.data ?? data
+        setTemplates(Array.isArray(templatesData) ? templatesData : [])
       }
 
       // Load automations
       const automationsRes = await fetch(`${apiBase}/api/whatsapp-chat/automations`)
       if (automationsRes.ok) {
         const data = await automationsRes.json()
-        setAutomations(Array.isArray(data) ? data : [])
+        const automationsData = data?.data ?? data
+        setAutomations(Array.isArray(automationsData) ? automationsData : [])
       }
 
       // Load sessions
       const sessionsRes = await fetch(`${apiBase}/api/whatsapp-chat/sessions`)
       if (sessionsRes.ok) {
         const data = await sessionsRes.json()
-        setSessions(Array.isArray(data) ? data : [])
+        const sessionData = data?.data ?? data
+        setSessions(Array.isArray(sessionData) ? sessionData : [])
       }
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -132,6 +180,27 @@ export default function WhatsAppManagement() {
     setTimeout(() => setSaveStatus('idle'), 2000)
   }
 
+  const syncTemplates = async () => {
+    try {
+      setSyncingTemplates(true)
+      const response = await fetch(`${apiBase}/api/whatsapp/templates/sync`, {
+        method: 'POST'
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to sync templates')
+      }
+      const templatesData = data?.data ?? data
+      setTemplates(Array.isArray(templatesData) ? templatesData : [])
+      alert('✅ Templates synced from Meta successfully.')
+    } catch (error: any) {
+      console.error('Sync templates failed:', error)
+      alert(`❌ ${error?.message || 'Failed to sync templates.'}`)
+    } finally {
+      setSyncingTemplates(false)
+    }
+  }
+
   const sendTestMessage = async () => {
     if (!testPhone || !testMessage) {
       alert('Please enter phone number and message')
@@ -161,27 +230,67 @@ export default function WhatsAppManagement() {
   }
 
   const createTemplate = async () => {
-    if (!newTemplate.name || !newTemplate.content) {
-      alert('Please fill all fields')
+    if (!newTemplate.name || !newTemplate.bodyText.trim()) {
+      alert('Please provide template name and body text.')
+      return
+    }
+
+    const hasPlaceholders = newTemplate.bodyText.match(/{{\d+}}/g)
+    if (hasPlaceholders && newTemplate.bodyExamples.filter(Boolean).length === 0) {
+      alert('Please provide example values for all placeholders in the body.')
+      return
+    }
+
+    const components = buildTemplateComponents()
+    if (!components.length) {
+      alert('A template must contain at least a BODY component.')
       return
     }
 
     try {
+      const payload = {
+        name: newTemplate.name,
+        category: newTemplate.category,
+        language: newTemplate.language,
+        components,
+        allow_category_change: newTemplate.allowCategoryChange
+      }
+
       const response = await fetch(`${apiBase}/api/whatsapp/templates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTemplate)
+        body: JSON.stringify(payload)
       })
 
+      const data = await response.json()
       if (response.ok) {
-        alert('✅ Template created!')
+        alert('✅ Template submitted to Meta! It may take a few minutes to get approved.')
         setShowTemplateModal(false)
-        setNewTemplate({ name: '', content: '', category: 'MARKETING', language: 'en_US' })
-        loadAllData()
+        setNewTemplate({
+          name: '',
+          category: 'UTILITY',
+          language: 'en',
+          headerType: 'none',
+          headerText: '',
+          headerExample: '',
+          bodyText: '',
+          bodyExamples: [''],
+          footerText: '',
+          buttonType: 'none',
+          buttonText: '',
+          buttonUrl: '',
+          buttonPhone: '',
+          allowCategoryChange: false
+        })
+        const templatesData = data?.data ?? data
+        if (templatesData) {
+          loadAllData()
+        }
       } else {
-        alert('❌ Failed to create template')
+        alert(`❌ Failed: ${data?.error || 'Unable to create template'}`)
       }
     } catch (error) {
+      console.error('create template', error)
       alert('❌ Network error')
     }
   }
@@ -209,6 +318,101 @@ export default function WhatsAppManagement() {
       }
     } catch (error) {
       alert('❌ Network error')
+    }
+  }
+
+  const buildTemplateComponents = (): TemplateComponent[] => {
+    const components: TemplateComponent[] = []
+    if (newTemplate.headerType === 'text' && newTemplate.headerText.trim()) {
+      const headerComponent: TemplateComponent = {
+        type: 'HEADER',
+        format: 'TEXT',
+        text: newTemplate.headerText.trim()
+      }
+      if (newTemplate.headerExample.trim()) {
+        headerComponent.example = {
+          header_text: [[newTemplate.headerExample.trim()]]
+        }
+      }
+      components.push(headerComponent)
+    }
+
+    if (newTemplate.bodyText.trim()) {
+      const bodyComponent: TemplateComponent = {
+        type: 'BODY',
+        text: newTemplate.bodyText.trim()
+      }
+      const exampleValues = newTemplate.bodyExamples.map((item) => item.trim()).filter(Boolean)
+      if (exampleValues.length) {
+        bodyComponent.example = { body_text: [exampleValues] }
+      }
+      components.push(bodyComponent)
+    }
+
+    if (newTemplate.footerText.trim()) {
+      components.push({
+        type: 'FOOTER',
+        text: newTemplate.footerText.trim()
+      })
+    }
+
+    if (newTemplate.buttonType !== 'none' && newTemplate.buttonText.trim()) {
+      const buttons: any[] = []
+      if (newTemplate.buttonType === 'quick_reply') {
+        buttons.push({ type: 'QUICK_REPLY', text: newTemplate.buttonText.trim() })
+      } else if (newTemplate.buttonType === 'url' && newTemplate.buttonUrl.trim()) {
+        const urlValue = newTemplate.buttonUrl.trim().startsWith('http')
+          ? newTemplate.buttonUrl.trim()
+          : `https://${newTemplate.buttonUrl.trim()}`
+        buttons.push({ type: 'URL', text: newTemplate.buttonText.trim(), url: urlValue })
+      } else if (newTemplate.buttonType === 'phone' && newTemplate.buttonPhone.trim()) {
+        buttons.push({ type: 'PHONE_NUMBER', text: newTemplate.buttonText.trim(), phone_number: newTemplate.buttonPhone.trim() })
+      }
+      if (buttons.length) {
+        components.push({
+          type: 'BUTTONS',
+          buttons
+        })
+      }
+    }
+
+    return components
+  }
+
+  const updateBodyExample = (index: number, value: string) => {
+    setNewTemplate((prev) => {
+      const next = [...prev.bodyExamples]
+      next[index] = value
+      return { ...prev, bodyExamples: next }
+    })
+  }
+
+  const addBodyExample = () => {
+    setNewTemplate((prev) => ({ ...prev, bodyExamples: [...prev.bodyExamples, ''] }))
+  }
+
+  const removeBodyExample = (index: number) => {
+    setNewTemplate((prev) => {
+      const next = prev.bodyExamples.filter((_, i) => i !== index)
+      return { ...prev, bodyExamples: next.length ? next : [''] }
+    })
+  }
+
+  const deleteTemplate = async (template: Template) => {
+    if (!template.id) return
+    if (!confirm(`Delete template "${template.name}"? This will also delete it on Meta.`)) return
+    try {
+      const response = await fetch(`${apiBase}/api/whatsapp/templates/${template.id}`, {
+        method: 'DELETE'
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to delete template')
+      }
+      setTemplates((prev) => prev.filter((t) => t.id !== template.id))
+      alert('✅ Template deleted')
+    } catch (error: any) {
+      alert(`❌ ${error?.message || 'Failed to delete template'}`)
     }
   }
 
@@ -308,55 +512,131 @@ export default function WhatsAppManagement() {
 
   const renderTemplatesTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Message Templates</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Create reusable message templates</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            View Meta-approved templates or submit new ones for review.
+          </p>
         </div>
-        <button
-          onClick={() => setShowTemplateModal(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Create Template</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={syncTemplates}
+            disabled={syncingTemplates}
+            className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors flex items-center space-x-2 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncingTemplates ? 'animate-spin' : ''}`} />
+            <span>{syncingTemplates ? 'Syncing…' : 'Sync from Meta'}</span>
+          </button>
+          <button
+            onClick={() => setShowTemplateModal(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Create Template</span>
+          </button>
+        </div>
       </div>
 
       {templates.length === 0 ? (
         <div className="text-center py-12 bg-slate-50 dark:bg-slate-800 rounded-lg">
           <FileText className="h-12 w-12 text-slate-400 mx-auto mb-3" />
-          <p className="text-slate-600 dark:text-slate-400">No templates yet. Create your first template!</p>
+          <p className="text-slate-600 dark:text-slate-400">No templates yet. Sync or create your first template!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-4">
           {templates.map((template) => (
             <div key={template.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start mb-2">
-                <h4 className="font-semibold text-slate-900 dark:text-slate-100">{template.name}</h4>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  template.status === 'approved' ? 'bg-green-100 text-green-800' :
-                  template.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {template.status}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mb-2">{template.category} • {template.language}</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300 mb-3 line-clamp-3">{template.content}</p>
-              <div className="flex space-x-2">
-                <button className="flex-1 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
-                  <Eye className="inline h-3 w-3 mr-1" />
-                  View
-                </button>
-                <button className="px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
-                  <Edit className="inline h-3 w-3" />
-                </button>
-                <button className="px-3 py-1 text-sm border border-red-300 text-red-600 rounded hover:bg-red-50">
-                  <Trash2 className="inline h-3 w-3" />
-                </button>
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-3">
+                    <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{template.name}</h4>
+                    <span className={`px-2 py-1 text-xs rounded-full uppercase ${
+                      template.status?.toLowerCase() === 'approved'
+                        ? 'bg-green-100 text-green-800'
+                        : template.status?.toLowerCase() === 'rejected'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {template.status || 'PENDING'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {template.category} • {template.language?.replace('_', '-')}
+                    {template.meta_template_id && (
+                      <span className="ml-2 text-slate-400">ID: {template.meta_template_id}</span>
+                    )}
+                  </p>
+                  {template.updated_at && (
+                    <p className="text-xs text-slate-400">
+                      Updated {new Date(template.updated_at).toLocaleString()}
+                    </p>
+                  )}
+                  <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3">
+                    {template.content?.length > 120 ? `${template.content.slice(0, 120)}…` : template.content}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setViewTemplate(template)}
+                    className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Preview
+                  </button>
+                  <button
+                    onClick={() => deleteTemplate(template)}
+                    className="px-3 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Template Preview Modal */}
+      {viewTemplate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{viewTemplate.name}</h2>
+                <p className="text-xs text-slate-500">
+                  {viewTemplate.category} • {viewTemplate.language} • Status: {viewTemplate.status}
+                </p>
+              </div>
+              <button onClick={() => setViewTemplate(null)}>
+                <XCircle className="h-6 w-6 text-slate-500" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              {(viewTemplate.components || []).map((component, index) => (
+                <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4" />
+                    {component.type}
+                  </h4>
+                  {component.text && <p className="mt-2 text-slate-800 whitespace-pre-wrap">{component.text}</p>}
+                  {component.buttons && component.buttons.length > 0 && (
+                    <ul className="mt-2 text-sm list-disc list-inside text-slate-600">
+                      {component.buttons.map((btn, idx) => (
+                        <li key={idx}>
+                          {btn.type}: {btn.text} {btn.url || btn.phone_number || ''}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              <pre className="bg-slate-100 dark:bg-slate-900 text-xs p-3 rounded-lg overflow-auto">
+                {JSON.stringify(viewTemplate.components ?? viewTemplate.content, null, 2)}
+              </pre>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -615,52 +895,197 @@ export default function WhatsAppManagement() {
 
       {/* Template Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create Template</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create WhatsApp Template</h2>
+                <p className="text-sm text-slate-500">
+                  Name must be lowercase with underscores. Body supports placeholders like {'{{1}}'}.
+                </p>
+              </div>
               <button onClick={() => setShowTemplateModal(false)}>
                 <XCircle className="h-6 w-6 text-slate-500" />
               </button>
             </div>
-            <div className="space-y-4">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Template Name</label>
+                <label className="block text-sm font-medium mb-1">Template Name</label>
                 <input
                   type="text"
                   value={newTemplate.name}
-                  onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') })}
                   placeholder="welcome_message"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                  className="w-full px-3 py-2 border rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Content</label>
-                <textarea
-                  value={newTemplate.content}
-                  onChange={(e) => setNewTemplate({...newTemplate, content: e.target.value})}
-                  placeholder="Welcome to Nefol! ..."
-                  rows={4}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Category</label>
+                <label className="block text-sm font-medium mb-1">Language</label>
                 <select
-                  value={newTemplate.category}
-                  onChange={(e) => setNewTemplate({...newTemplate, category: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                  value={newTemplate.language}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, language: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
                 >
-                  <option value="MARKETING">Marketing</option>
-                  <option value="UTILITY">Utility</option>
-                  <option value="AUTHENTICATION">Authentication</option>
+                  <option value="en">English</option>
+                  <option value="en_US">English (US)</option>
+                  <option value="en_GB">English (UK)</option>
+                  <option value="hi">Hindi</option>
+                  <option value="mr">Marathi</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Category</label>
+                <select
+                  value={newTemplate.category}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                >
+                  <option value="UTILITY">Utility</option>
+                  <option value="AUTHENTICATION">Authentication</option>
+                  <option value="MARKETING">Marketing</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="allowCategoryChange"
+                  type="checkbox"
+                  checked={newTemplate.allowCategoryChange}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, allowCategoryChange: e.target.checked })}
+                />
+                <label htmlFor="allowCategoryChange" className="text-sm text-slate-600">Allow Meta to change category</label>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Header</label>
+                <select
+                  value={newTemplate.headerType}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, headerType: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg mb-2"
+                >
+                  <option value="none">No Header</option>
+                  <option value="text">Text Header</option>
+                </select>
+                {newTemplate.headerType === 'text' && (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={newTemplate.headerText}
+                      onChange={(e) => setNewTemplate({ ...newTemplate, headerText: e.target.value })}
+                      placeholder="Header text"
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                    <input
+                      type="text"
+                      value={newTemplate.headerExample}
+                      onChange={(e) => setNewTemplate({ ...newTemplate, headerExample: e.target.value })}
+                      placeholder="Example value (for {{1}})"
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Body (required)</label>
+                <textarea
+                  value={newTemplate.bodyText}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, bodyText: e.target.value })}
+                  rows={4}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  placeholder="Hello {{1}}, your order {{2}} has been packed."
+                />
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">Example values for placeholders</span>
+                    <button
+                      type="button"
+                      onClick={addBodyExample}
+                      className="text-xs text-blue-600 underline"
+                    >
+                      Add example
+                    </button>
+                  </div>
+                  {newTemplate.bodyExamples.map((value, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={value}
+                        onChange={(e) => updateBodyExample(index, e.target.value)}
+                        placeholder={`Value for {{${index + 1}}}`}
+                        className="flex-1 px-3 py-2 border rounded-lg"
+                      />
+                      {newTemplate.bodyExamples.length > 1 && (
+                        <button type="button" onClick={() => removeBodyExample(index)} className="text-red-500 text-xs">
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Footer (optional)</label>
+                <input
+                  type="text"
+                  value={newTemplate.footerText}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, footerText: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  placeholder="Powered by Nefol"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Button</label>
+                <select
+                  value={newTemplate.buttonType}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, buttonType: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg mb-2"
+                >
+                  <option value="none">No Button</option>
+                  <option value="quick_reply">Quick Reply</option>
+                  <option value="url">Website URL</option>
+                  <option value="phone">Call Phone Number</option>
+                </select>
+                {newTemplate.buttonType !== 'none' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={newTemplate.buttonText}
+                      onChange={(e) => setNewTemplate({ ...newTemplate, buttonText: e.target.value })}
+                      placeholder="Button text"
+                      className="px-3 py-2 border rounded-lg"
+                    />
+                    {newTemplate.buttonType === 'url' && (
+                      <input
+                        type="text"
+                        value={newTemplate.buttonUrl}
+                        onChange={(e) => setNewTemplate({ ...newTemplate, buttonUrl: e.target.value })}
+                        placeholder="https://example.com"
+                        className="px-3 py-2 border rounded-lg"
+                      />
+                    )}
+                    {newTemplate.buttonType === 'phone' && (
+                      <input
+                        type="text"
+                        value={newTemplate.buttonPhone}
+                        onChange={(e) => setNewTemplate({ ...newTemplate, buttonPhone: e.target.value })}
+                        placeholder="917355384939"
+                        className="px-3 py-2 border rounded-lg"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={createTemplate}
-                className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+                className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700"
               >
-                Create Template
+                Submit to Meta for approval
               </button>
             </div>
           </div>

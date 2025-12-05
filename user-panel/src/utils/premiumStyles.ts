@@ -9,9 +9,9 @@ export const premiumStyles = {
     tertiary: '#999',
     background: '#ffffff',
     arcticBlue: {
-      primary: '#7DD3D3',
-      hover: '#5EC4C4',
-      dark: '#4A9FAF',
+      primary: 'rgb(75,151,201)',
+      hover: 'rgb(60,120,160)',
+      dark: 'rgb(50,100,140)',
       light: '#E0F5F5',
       lighter: '#F0F9F9',
       background: '#F4F9F9'
@@ -21,7 +21,7 @@ export const premiumStyles = {
   // Typography
   typography: {
     heading: {
-      fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+    fontFamily: 'var(--font-heading-family)',
       fontWeight: 400,
       letterSpacing: '0.15em',
       textTransform: 'uppercase' as const
@@ -61,7 +61,7 @@ export const getHeadingStyle = (level: 1 | 2 | 3 | 4 = 1) => ({
 // Helper function to get premium button styles
 export const getButtonStyle = (variant: 'primary' | 'secondary' = 'primary') => ({
   ...premiumStyles.typography.button,
-  backgroundColor: variant === 'primary' ? premiumStyles.colors.arcticBlue.primary : 'transparent',
+  backgroundColor: variant === 'primary' ? 'rgb(75,151,201)' : 'transparent',
   color: variant === 'primary' ? '#fff' : premiumStyles.colors.primary,
   border: variant === 'secondary' ? `1px solid ${premiumStyles.colors.primary}` : 'none',
   padding: '0.75rem 1.5rem',

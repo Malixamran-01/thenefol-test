@@ -3,6 +3,7 @@ import { Package, CheckCircle, XCircle, Truck, MapPin, Calendar, CreditCard, Arr
 import { api } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { roundPrice } from '../contexts/CartContext'
 
 interface OrderDetails {
   id: string
@@ -180,6 +181,20 @@ export default function OrderDetails() {
     })
   }
 
+  const getPaymentMethodName = (method: string) => {
+    if (!method) return 'Not specified'
+    switch (method.toLowerCase()) {
+      case 'cod':
+        return 'Cash on Delivery'
+      case 'razorpay':
+        return 'Razorpay Secure (UPI, Cards, Int\'l Cards, Wallets)'
+      case 'coins':
+        return 'Coins Payment'
+      default:
+        return method
+    }
+  }
+
   const handleCancelOrder = async () => {
     if (!cancelReason.trim()) {
       alert('Please provide a reason for cancellation')
@@ -232,7 +247,7 @@ export default function OrderDetails() {
               className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]" 
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
             >
@@ -261,9 +276,9 @@ export default function OrderDetails() {
     <main className="min-h-screen bg-white overflow-x-hidden py-8 sm:py-12 md:py-16" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: #7DD3D3;
-          --arctic-blue-primary-hover: #5EC4C4;
-          --arctic-blue-primary-dark: #4A9FAF;
+          --arctic-blue-primary: rgb(75,151,201);
+          --arctic-blue-primary-hover: rgb(60,120,160);
+          --arctic-blue-primary-dark: rgb(50,100,140);
           --arctic-blue-light: #E0F5F5;
           --arctic-blue-lighter: #F0F9F9;
           --arctic-blue-background: #F4F9F9;
@@ -308,10 +323,10 @@ export default function OrderDetails() {
                                   getStatusColor(order.status) === 'blue' ? '#E0F5F5' :
                                   getStatusColor(order.status) === 'yellow' ? '#FEF3C7' :
                                   getStatusColor(order.status) === 'red' ? '#FEE2E2' : '#F0F9F9',
-                  borderColor: getStatusColor(order.status) === 'green' ? '#7DD3D3' : 
-                              getStatusColor(order.status) === 'blue' ? '#7DD3D3' :
+                  borderColor: getStatusColor(order.status) === 'green' ? 'rgb(75,151,201)' : 
+                              getStatusColor(order.status) === 'blue' ? 'rgb(75,151,201)' :
                               getStatusColor(order.status) === 'yellow' ? '#F59E0B' :
-                              getStatusColor(order.status) === 'red' ? '#EF4444' : '#7DD3D3',
+                              getStatusColor(order.status) === 'red' ? '#EF4444' : 'rgb(75,151,201)',
                   color: getStatusColor(order.status) === 'green' ? '#10b981' : 
                          getStatusColor(order.status) === 'blue' ? '#3B82F6' :
                          getStatusColor(order.status) === 'yellow' ? '#F59E0B' :
@@ -339,7 +354,7 @@ export default function OrderDetails() {
                 <div>
                   <p className="text-xs font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Payment</p>
                   <p className="font-light text-sm mt-1" style={{ color: '#1a1a1a' }}>
-                    {order.payment_method}
+                    {getPaymentMethodName(order.payment_method)}
                   </p>
                 </div>
               </div>
@@ -365,7 +380,7 @@ export default function OrderDetails() {
               className="text-xl sm:text-2xl md:text-3xl font-light mb-8 sm:mb-12 tracking-[0.15em] text-center" 
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
             >
@@ -379,9 +394,7 @@ export default function OrderDetails() {
                 ? imageUrl 
                 : imageUrl 
                   ? (() => {
-                      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || 'localhost'
-                      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                      const apiBase = (import.meta as any).env?.VITE_API_URL || `http://${apiHost}:${apiPort}`
+                      const apiBase = getApiBase()
                       return `${apiBase}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
                     })()
                   : null
@@ -452,7 +465,7 @@ export default function OrderDetails() {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="font-light text-lg" style={{ color: '#1a1a1a' }}>
-                      ₹{item.price ? parseFloat(item.price).toLocaleString() : '0'}
+                      ₹{item.price ? roundPrice(parseFloat(item.price)).toLocaleString() : '0'}
                     </p>
                     <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#666' }}>
                       {item.quantity || 1}x
@@ -474,7 +487,7 @@ export default function OrderDetails() {
                 className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                 style={{
                   color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
@@ -517,7 +530,7 @@ export default function OrderDetails() {
               className="text-xl sm:text-2xl font-light mb-6 tracking-[0.15em]" 
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
             >
@@ -526,16 +539,16 @@ export default function OrderDetails() {
             <div className="space-y-3">
               <div className="flex justify-between font-light tracking-wide" style={{ color: '#666' }}>
                 <span>Subtotal</span>
-                <span>₹{order.subtotal.toLocaleString()}</span>
+                <span>₹{roundPrice(order.subtotal).toLocaleString()}</span>
               </div>
               <div className="flex justify-between font-light tracking-wide" style={{ color: '#666' }}>
                 <span>Shipping</span>
-                <span>₹{order.shipping.toLocaleString()}</span>
+                <span>₹{roundPrice(order.shipping).toLocaleString()}</span>
               </div>
               {taxSettings && (
                 <div className="flex justify-between font-light tracking-wide" style={{ color: '#666' }}>
                   <span>Tax (GST {taxSettings.rate.toFixed(0)}%)</span>
-                  <span>₹{typeof order.tax === 'number' ? order.tax.toFixed(2) : Number(order.tax || 0).toFixed(2)}</span>
+                  <span>₹{roundPrice(typeof order.tax === 'number' ? order.tax : Number(order.tax || 0)).toLocaleString()}</span>
                 </div>
               )}
               <div className="border-t pt-4 mt-4" style={{ borderColor: '#E0F5F5' }}>
@@ -544,7 +557,7 @@ export default function OrderDetails() {
                     Total
                   </span>
                   <span className="text-lg font-light" style={{ color: 'var(--arctic-blue-primary-dark)' }}>
-                    ₹{order.total.toLocaleString()}
+                    ₹{roundPrice(order.total).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -562,7 +575,7 @@ export default function OrderDetails() {
                   className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                   style={{
                     color: '#1a1a1a',
-                    fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                    fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
@@ -679,7 +692,7 @@ export default function OrderDetails() {
                 className="text-xl sm:text-2xl font-light mb-4 tracking-[0.15em]" 
                 style={{
                   color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
@@ -753,7 +766,7 @@ export default function OrderDetails() {
                   className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                   style={{
                     color: '#1a1a1a',
-                    fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                    fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
@@ -780,7 +793,7 @@ export default function OrderDetails() {
                 className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 tracking-[0.15em]" 
                 style={{
                   color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                  fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
@@ -797,9 +810,7 @@ export default function OrderDetails() {
                   ? imageUrl 
                   : imageUrl 
                     ? (() => {
-                      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || 'localhost'
-                      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                      const apiBase = (import.meta as any).env?.VITE_API_URL || `http://${apiHost}:${apiPort}`
+                      const apiBase = getApiBase()
                       return `${apiBase}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
                     })()
                     : ''

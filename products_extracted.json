@@ -1,0 +1,496 @@
+[
+  {
+    "name": "Nefol Deep Clean Cobmo                                                            Facecleanser,Furbish scrub ,face mask",
+    "slug": "nefol-deep-clean-combo",
+    "category": "combo",
+    "type": "combo",
+    "ingredients": [
+      "Blue Tea"
+    ]
+  },
+  {
+    "name": "Anytime cream",
+    "slug": "nefol-anytime-cream",
+    "category": "face",
+    "type": "cream",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Yellow Dragon Fruit",
+      "Saffron",
+      "Kale Leaf"
+    ]
+  },
+  {
+    "name": "Face Serum",
+    "slug": "nefol-face-serum",
+    "category": "face",
+    "type": "serum",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Green Tea",
+      "White Tea",
+      "Brahmi"
+    ]
+  },
+  {
+    "name": "Furbish Scrub",
+    "slug": "nefol-furbish-scrub",
+    "category": "face",
+    "type": "scrub",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Papaya Extract",
+      "Rice Powder",
+      "Tapioca Starch"
+    ]
+  },
+  {
+    "name": "Hair Lather Shampoo",
+    "slug": "nefol-hair-lather-shampoo",
+    "category": "hair",
+    "type": "shampoo",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto"
+    ]
+  },
+  {
+    "name": "Hair Mask",
+    "slug": "nefol-hair-mask",
+    "category": "hair",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Shea Butter",
+      "Quinoa",
+      "Olive Squalane"
+    ]
+  },
+  {
+    "name": "Hair Oil",
+    "slug": "nefol-hair-oil",
+    "category": "hair",
+    "type": "oil",
+    "ingredients": [
+      "Sesame",
+      "Amla",
+      "Flaxseed",
+      "Coconut",
+      "Mustard"
+    ]
+  },
+  {
+    "name": "Hydrating moisturizer",
+    "slug": "nefol-hydrating-moisturizer",
+    "category": "body",
+    "type": "moisturizer",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Blueberry",
+      "Juniper Berry"
+    ]
+  },
+  {
+    "name": "Nefol Acne Control Duo                                                                       Face cleanser, Wine lotion",
+    "slug": "nefol-acne-control-duo",
+    "category": "combo",
+    "type": "acne",
+    "ingredients": [
+      "Blue Tea"
+    ]
+  },
+  {
+    "name": "Nefol Facewash/Cleanser",
+    "slug": "nefol-face-cleanser",
+    "category": "face",
+    "type": "cleanser",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Kakadu Plum",
+      "Yuja",
+      "Vitamin C & B5"
+    ]
+  },
+  {
+    "name": "Nefol Glow Care combo                                                                        Face cleanser/face wash ,anytime cream",
+    "slug": "nefol-glow-care-combo",
+    "category": "combo",
+    "type": "combo",
+    "ingredients": [
+      "Blue Tea"
+    ]
+  },
+  {
+    "name": "Nefol Hair Care                                                                                 Hair oil, Hair Lather Shampoo ,Hair Mask",
+    "slug": "nefol-hair-care-combo",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Blue Tea"
+    ]
+  },
+  {
+    "name": "Nefol Hydration Duo                                                                             Face cleanser or face wash, Hydrating Moisturizer",
+    "slug": "nefol-hydration-duo",
+    "category": "combo",
+    "type": "moisturizer",
+    "ingredients": [
+      "Blue Tea"
+    ]
+  },
+  {
+    "name": "Nefol Radiance Routine                                                              Face cleanser Furbish Scrub Face serum",
+    "slug": "nefol-radiance-routine",
+    "category": "combo",
+    "type": "scrub",
+    "ingredients": [
+      "Blue Tea"
+    ]
+  },
+  {
+    "name": "Revitalizing Face Mask",
+    "slug": "nefol-revitalizing-face-mask",
+    "category": "face",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Charcoal",
+      "Kaolin Clay",
+      "AHA & BHA"
+    ]
+  },
+  {
+    "name": "Wine Lotion",
+    "slug": "nefol-wine-lotion",
+    "category": "body",
+    "type": "lotion",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Mulberry",
+      "Grapeseed"
+    ]
+  },
+  {
+    "name": "Nefol face mask + Nefol furbish scrub-(The Deep Cleanse Duo)",
+    "slug": "nefol-face-mask-nefol-furbish-scrub-the-deep-cleanse-duo",
+    "category": "combo",
+    "type": "scrub",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Charcoal",
+      "Kaolin Clay",
+      "AHA & BHA & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol face serum + Nefol wine lotion-( The Radiance Restore Kit)",
+    "slug": "nefol-face-serum-nefol-wine-lotion-the-radiance-restore-kit",
+    "category": "combo",
+    "type": "serum",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Green Tea",
+      "White Tea",
+      "Brahmi & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol hydrating moisturizer + Nefol face serum -(The Hydration Boost Stack)",
+    "slug": "nefol-hydrating-moisturizer-nefol-face-serum-the-hydration-boost-stack",
+    "category": "combo",
+    "type": "serum",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Blueberry",
+      "Juniper Berry & Aprajita",
+      "Green Tea"
+    ]
+  },
+  {
+    "name": "Nefol Anytime cream + Nefol face serum -(The Daily Youth Set )",
+    "slug": "nefol-anytime-cream-nefol-face-serum-the-daily-youth-set",
+    "category": "combo",
+    "type": "serum",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Yellow Dragon Fruit",
+      "Saffron",
+      "Kale Leaf & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol Anytime cream + Nefol furbish scrub -(The Smooth Start Duo)",
+    "slug": "nefol-anytime-cream-nefol-furbish-scrub-the-smooth-start-duo",
+    "category": "combo",
+    "type": "scrub",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Yellow Dragon Fruit",
+      "Saffron",
+      "Kale Leaf & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol Anytime cream + Nefol face mask -(The Total Recharge System Conditioning and weekly deep treatment)",
+    "slug": "nefol-anytime-cream-nefol-face-mask-the-total-recharge-system-conditioning-and-weekly-deep-treatment",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Yellow Dragon Fruit",
+      "Saffron",
+      "Kale Leaf &Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)",
+    "slug": "nefol-face-cleanser-nefol-furbish-scrub-the-polish-refresh-combo-deep-cleaning-and-texture-refinement",
+    "category": "combo",
+    "type": "scrub",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Kakadu Plum",
+      "Yuja",
+      "Vitamin C & B5 & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol face cleanser + Nefol face mask -(The Detoxifying Duo)",
+    "slug": "nefol-face-cleanser-nefol-face-mask-the-detoxifying-duo",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Kakadu Plum",
+      "Yuja",
+      "Vitamin C & B5 & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol face cleanser+ face cleanser- (Monthly  pack)",
+    "slug": "nefol-face-cleanser-face-cleanser-monthly-pack",
+    "category": "combo",
+    "type": "cleanser",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Kakadu Plum",
+      "Yuja",
+      "Vitamin C & B5"
+    ]
+  },
+  {
+    "name": "Nefol hair oil + Nefol hydrating moisture-( Hair & Skin Nourishment Duo )",
+    "slug": "nefol-hair-oil-nefol-hydrating-moisture-hair-skin-nourishment-duo",
+    "category": "combo",
+    "type": "oil",
+    "ingredients": [
+      "Sesame",
+      "Amla",
+      "Flaxseed",
+      "Coconut",
+      "Mustard"
+    ]
+  },
+  {
+    "name": "Nefol hair shampoo + Nefol hair oil + Nefol wine lotion- (Hair & Skin Care) .",
+    "slug": "nefol-hair-shampoo-nefol-hair-oil-nefol-wine-lotion-hair-skin-care",
+    "category": "combo",
+    "type": "oil",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Sesame"
+    ]
+  },
+  {
+    "name": "Nefol shampoo + hair mask + cleanser (Head-to-Toe Cleanse & Mask )",
+    "slug": "nefol-shampoo-hair-mask-cleanser-head-to-toe-cleanse-mask",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol shampoo + hair mask + face serum (Complete Glow Bundle )",
+    "slug": "nefol-shampoo-hair-mask-face-serum-complete-glow-bundle",
+    "category": "combo",
+    "type": "serum",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol shampoo + hair mask + Nefol anytime cream- (Hair & Body revamp duo)",
+    "slug": "nefol-shampoo-hair-mask-nefol-anytime-cream-hair-body-revamp-duo",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol shampoo + Nefol hair mask + face scrub -(Hair & Deep Clean Combo)",
+    "slug": "nefol-shampoo-nefol-hair-mask-face-scrub-hair-deep-clean-combo",
+    "category": "combo",
+    "type": "scrub",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol shampoo + Nefol face mask -(Cleanse & Treat Duo).",
+    "slug": "nefol-shampoo-nefol-face-mask-cleanse-treat-duo",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol hair oil + furbish scrub-( Hair Oil & Furbish Duo )",
+    "slug": "nefol-hair-oil-furbish-scrub-hair-oil-furbish-duo",
+    "category": "combo",
+    "type": "scrub",
+    "ingredients": [
+      "Sesame",
+      "Amla",
+      "Flaxseed",
+      "Coconut",
+      "Mustard"
+    ]
+  },
+  {
+    "name": "Nefol hair oil + face mask (Hair & Skin Detox Duo)",
+    "slug": "nefol-hair-oil-face-mask-hair-skin-detox-duo",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Sesame",
+      "Amla",
+      "Flaxseed",
+      "Coconut",
+      "Mustard"
+    ]
+  },
+  {
+    "name": "Nefol hair oil + face serum -(Nourish & Treat Duo )",
+    "slug": "nefol-hair-oil-face-serum-nourish-treat-duo",
+    "category": "combo",
+    "type": "serum",
+    "ingredients": [
+      "Sesame",
+      "Amla",
+      "Flaxseed",
+      "Coconut",
+      "Mustard"
+    ]
+  },
+  {
+    "name": "Nefol hair oil + face cleanser-( Head Nourish & Cleansing Duo )",
+    "slug": "nefol-hair-oil-face-cleanser-head-nourish-cleansing-duo",
+    "category": "combo",
+    "type": "cleanser",
+    "ingredients": [
+      "Sesame",
+      "Amla",
+      "Flaxseed",
+      "Coconut",
+      "Mustard"
+    ]
+  },
+  {
+    "name": "Nefol hair oil + wine lotion -(Hair & Body Nourish Duo )",
+    "slug": "nefol-hair-oil-wine-lotion-hair-body-nourish-duo",
+    "category": "combo",
+    "type": "oil",
+    "ingredients": [
+      "Sesame",
+      "Amla",
+      "Flaxseed",
+      "Coconut",
+      "Mustard"
+    ]
+  },
+  {
+    "name": "Nefol hair lather shampoo+Hair mask +wine lotion ( hair Replenish trio)",
+    "slug": "nefol-hair-lather-shampoohair-mask-wine-lotion-hair-replenish-trio",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol hair lather shampoo+Hydrating moisturizer( Daily Care Duo)",
+    "slug": "nefol-hair-lather-shampoohydrating-moisturizer-daily-care-duo",
+    "category": "combo",
+    "type": "moisturizer",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Aprajita"
+    ]
+  },
+  {
+    "name": "Nefol Hair lather shampoo +hair mask + Furbish scurb (hair &deep Clean Combo)",
+    "slug": "nefol-hair-lather-shampoo-hair-mask-furbish-scurb-hair-deep-clean-combo",
+    "category": "combo",
+    "type": "mask",
+    "ingredients": [
+      "Aprajita",
+      "Blue Tea",
+      "Tea Tree",
+      "Biotin",
+      "Saw Palmetto & Aprajita"
+    ]
+  }
+]

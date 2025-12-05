@@ -40,16 +40,24 @@ export function PricingDisplay({
   const cleanMrp = parseFloat(mrp.toString().replace(/[₹,]/g, '')) || 0
   const cleanWebsitePrice = parseFloat(websitePrice.toString().replace(/[₹,]/g, '')) || 0
   
+  // Round prices: 415.40 -> 415, 415.70 -> 416
+  const roundPrice = (price: number): number => {
+    return Math.round(price)
+  }
+  
+  const roundedMrp = roundPrice(cleanMrp)
+  const roundedWebsitePrice = roundPrice(cleanWebsitePrice)
+  
   // Show discounted pricing if we have both MRP and website price and they're different
-  const hasDiscount = websitePrice && websitePrice !== mrp && cleanWebsitePrice < cleanMrp && cleanWebsitePrice > 0
+  const hasDiscount = websitePrice && websitePrice !== mrp && roundedWebsitePrice < roundedMrp && roundedWebsitePrice > 0
   
   if (hasDiscount && showDiscount) {
-    const discountPercent = Math.round(((cleanMrp - cleanWebsitePrice) / cleanMrp) * 100)
+    const discountPercent = Math.round(((roundedMrp - roundedWebsitePrice) / roundedMrp) * 100)
     
     return (
       <div className={`flex items-center gap-2 flex-wrap ${className}`}>
-        <span className="text-lg sm:text-xl font-bold" style={{color: '#1a1a1a'}}>₹{cleanWebsitePrice.toLocaleString()}</span>
-        <span className="text-sm text-gray-500 line-through">₹{cleanMrp.toLocaleString()}</span>
+        <span className="text-lg sm:text-xl font-bold" style={{color: '#1a1a1a'}}>₹{roundedWebsitePrice.toLocaleString()}</span>
+        <span className="text-sm text-gray-500 line-through">₹{roundedMrp.toLocaleString()}</span>
         {discountPercent > 0 && (
           <span className="text-xs sm:text-sm font-medium" style={{color: '#4B97C9'}}>
             {discountPercent}% OFF
@@ -62,7 +70,7 @@ export function PricingDisplay({
   // Fallback to regular pricing
   return (
     <span className={`text-lg font-medium ${className}`} style={{color: '#1B4965'}}>
-      ₹{cleanMrp.toLocaleString()}
+      ₹{roundedMrp.toLocaleString()}
     </span>
   )
 }

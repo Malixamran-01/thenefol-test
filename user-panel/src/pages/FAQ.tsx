@@ -68,47 +68,74 @@ export default function FAQ() {
   ]
 
   return (
-    <main className="py-10 min-h-screen" style={{backgroundColor: '#F4F9F9'}}>
-      <div className="mx-auto max-w-4xl px-4">
+    <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: rgb(75,151,201);
+          --arctic-blue-primary-hover: rgb(60,120,160);
+          --arctic-blue-primary-dark: rgb(50,100,140);
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-background: #F4F9F9;
+        }
+      `}</style>
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style={{backgroundColor: '#D0E8F2'}}>
-            <HelpCircle className="w-10 h-10" style={{color: '#4B97C9'}} />
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+            <HelpCircle className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: 'var(--arctic-blue-primary)' }} />
           </div>
-          <h1 className="text-5xl font-bold mb-6" style={{color: '#1B4965'}}>
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Frequently Asked Questions
           </h1>
-          <p className="text-xl max-w-3xl mx-auto" style={{color: '#9DB4C0'}}>
+          <p 
+            className="text-sm sm:text-base font-light max-w-3xl mx-auto tracking-wide"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
             Find answers to common questions about Nefol products, usage, and policies.
           </p>
         </div>
 
         {/* FAQ Items */}
-        <div className="space-y-4 mb-16">
+        <div className="space-y-3 sm:space-y-4 mb-12 sm:mb-16">
           {faqs.map((faq, index) => (
             <div 
               key={index}
-              className="bg-white rounded-xl shadow-lg overflow-hidden"
+              className="bg-white rounded-xl shadow-sm overflow-hidden border"
+              style={{ borderColor: openItems.includes(index) ? 'var(--arctic-blue-primary)' : 'transparent' }}
             >
               <button
                 onClick={() => toggleItem(index)}
-                className="w-full px-6 py-4 text-left flex items-center justify-between transition-colors"
-                style={{backgroundColor: openItems.includes(index) ? '#D0E8F2' : 'white'}}
+                className="w-full px-4 sm:px-6 py-3 sm:py-4 text-left flex items-center justify-between transition-colors"
+                style={{ backgroundColor: openItems.includes(index) ? 'var(--arctic-blue-lighter)' : 'white' }}
               >
-                <h3 className="text-lg font-semibold pr-4" style={{color: '#1B4965'}}>
+                <h3 
+                  className="text-sm sm:text-base font-light pr-2 sm:pr-4 tracking-wide"
+                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                >
                   {faq.question}
                 </h3>
                 {openItems.includes(index) ? (
-                  <ChevronUp className="w-5 h-5 flex-shrink-0" style={{color: '#4B97C9'}} />
+                  <ChevronUp className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--arctic-blue-primary)' }} />
                 ) : (
-                  <ChevronDown className="w-5 h-5 flex-shrink-0" style={{color: '#9DB4C0'}} />
+                  <ChevronDown className="w-5 h-5 flex-shrink-0" style={{ color: '#666' }} />
                 )}
               </button>
               
               {openItems.includes(index) && (
-                <div className="px-6 pb-4">
-                  <div className="border-t pt-4" style={{borderColor: '#D0E8F2'}}>
-                    <p className="leading-relaxed" style={{color: '#9DB4C0'}}>
+                <div className="px-4 sm:px-6 pb-3 sm:pb-4">
+                  <div className="border-t pt-3 sm:pt-4" style={{ borderColor: 'var(--arctic-blue-light)' }}>
+                    <p 
+                      className="text-sm sm:text-base leading-relaxed tracking-wide"
+                      style={{ color: '#666', letterSpacing: '0.05em' }}
+                    >
                       {faq.answer}
                     </p>
                   </div>
@@ -119,27 +146,55 @@ export default function FAQ() {
         </div>
 
         {/* Contact Support */}
-        <div className="rounded-2xl p-8 text-center" style={{background: 'linear-gradient(135deg, #D0E8F2 0%, #F4F9F9 100%)'}}>
-          <h2 className="text-2xl font-bold mb-4" style={{color: '#1B4965'}}>
+        <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 md:p-10 text-center">
+          <h2 
+            className="text-xl sm:text-2xl md:text-3xl font-light mb-3 sm:mb-4 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Still Have Questions?
           </h2>
-          <p className="mb-6" style={{color: '#9DB4C0'}}>
+          <p 
+            className="mb-4 sm:mb-6 text-sm sm:text-base tracking-wide"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
             Can't find the answer you're looking for? Our customer support team is here to help!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
               href="#/user/contact" 
-              className="inline-block text-white px-8 py-3 rounded-lg font-semibold transition-colors shadow-lg"
-              style={{backgroundColor: '#1B4965'}}
+              className="px-8 py-3 text-white font-light transition-all duration-300 text-xs tracking-[0.15em] uppercase rounded-xl hover:opacity-90 flex items-center justify-center"
+              style={{ 
+                backgroundColor: 'var(--arctic-blue-primary)',
+                letterSpacing: '0.15em'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+              }}
             >
-              Contact Support
+              CONTACT SUPPORT
             </a>
             <a 
               href="tel:+918887847213" 
-              className="inline-block px-8 py-3 rounded-lg font-semibold transition-colors"
-              style={{borderColor: '#4B97C9', borderWidth: '2px', color: '#4B97C9'}}
+              className="px-8 py-3 text-white font-light transition-all duration-300 text-xs tracking-[0.15em] uppercase rounded-xl hover:opacity-90 flex items-center justify-center"
+              style={{ 
+                backgroundColor: 'var(--arctic-blue-primary)',
+                letterSpacing: '0.15em'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+              }}
             >
-              Call Us: +91-8887-847213
+              CALL US: +91-8887-847213
             </a>
           </div>
         </div>

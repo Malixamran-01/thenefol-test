@@ -92,7 +92,7 @@ export default function ReviewForm({
         const formData = new FormData()
         formData.append('file', image)
         
-        const response = await fetch(`${getApiBase()}/api/upload`, {
+        const response = await fetch(`${getApiBase()}/upload`, {
           method: 'POST',
           body: formData
         })
@@ -284,7 +284,10 @@ export default function ReviewForm({
         <button
           type="submit"
           disabled={isSubmitting || rating === 0}
-          className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full rounded-lg py-3 font-semibold text-white disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+          style={{ backgroundColor: 'rgb(75,151,201)' }}
+          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
         >
           {isSubmitting ? (
             <div className="flex items-center justify-center gap-2">

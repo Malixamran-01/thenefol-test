@@ -4,7 +4,17 @@ import Can from '../../components/Can'
 type StaffUser = { id: number; name: string; email: string; roles: any[] }
 
 export default function Staff() {
-  const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
+  const getApiBase = () => {
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
+  }
+  const apiBase = getApiBase()
   const [users, setUsers] = useState<StaffUser[]>([])
   const [roles, setRoles] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -18,8 +28,8 @@ export default function Staff() {
       setLoading(true)
       setError('')
       const [uRes, rRes] = await Promise.all([
-        fetch(`${apiBase}/api/staff/users`),
-        fetch(`${apiBase}/api/staff/roles`),
+        fetch(`${apiBase}/staff/users`),
+        fetch(`${apiBase}/staff/roles`),
       ])
       const uData = await uRes.json()
       const rData = await rRes.json()
@@ -37,7 +47,7 @@ export default function Staff() {
   const createUser = async () => {
     if (!form.name || !form.email || !form.password) return alert('Fill all fields')
     try {
-      const res = await fetch(`${apiBase}/api/staff/users`, { method: 'POST', headers: authHeaders, body: JSON.stringify(form) })
+      const res = await fetch(`${apiBase}/staff/users`, { method: 'POST', headers: authHeaders, body: JSON.stringify(form) })
       if (!res.ok) throw new Error('Failed to create user')
       setForm({ name: '', email: '', password: '' })
       await load()
@@ -48,7 +58,7 @@ export default function Staff() {
 
   const assignRole = async (staffId: number, roleId: number) => {
     try {
-      const res = await fetch(`${apiBase}/api/staff/user-roles`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId, roleId }) })
+      const res = await fetch(`${apiBase}/staff/user-roles`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId, roleId }) })
       if (!res.ok) throw new Error('Failed to assign role')
       await load()
     } catch (e: any) {
@@ -59,7 +69,7 @@ export default function Staff() {
   const resetPassword = async (staffId: number) => {
     if (!newPassword) return alert('Enter new password')
     try {
-      const res = await fetch(`${apiBase}/api/staff/users/reset-password`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId, newPassword }) })
+      const res = await fetch(`${apiBase}/staff/users/reset-password`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId, newPassword }) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to reset password')
       setNewPassword('')
@@ -72,7 +82,7 @@ export default function Staff() {
   const disableUser = async (staffId: number) => {
     if (!confirm('Disable this account?')) return
     try {
-      const res = await fetch(`${apiBase}/api/staff/users/disable`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId }) })
+      const res = await fetch(`${apiBase}/staff/users/disable`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId }) })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to disable')
       await load()

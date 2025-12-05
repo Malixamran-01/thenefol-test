@@ -28,7 +28,8 @@ interface FormSubmission {
   created_at: string
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
+import { getApiBaseUrl } from '../utils/apiUrl'
+const API_BASE = getApiBaseUrl()
 
 export default function UsersPage() {
   const navigate = useNavigate()
@@ -47,7 +48,7 @@ export default function UsersPage() {
 
   const fetchFormSubmissions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/forms/submissions`)
+      const response = await fetch(`${API_BASE}/forms/submissions`)
       if (response.ok) {
         const data = await response.json()
         setFormSubmissions(data.submissions || data || [])
@@ -67,7 +68,7 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE}/api/users`)
+      const response = await fetch(`${API_BASE}/users`)
       if (response.ok) {
         const data = await response.json()
         setUsers(data)

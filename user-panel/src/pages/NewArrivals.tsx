@@ -173,32 +173,104 @@ export default function NewArrivals() {
               )) : null}
         </section>
 
-        <section className="mt-16 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="mt-16 rounded-3xl p-8" style={{ backgroundColor: 'var(--arctic-blue-lighter)' }}>
           <div className="grid gap-8 md:grid-cols-2">
             <div>
-              <h2 className="text-2xl font-semibold text-slate-900">Launch Alerts & Early Access</h2>
-              <p className="mt-3 text-slate-600">
+              <h2 
+                className="text-2xl font-semibold mb-3"
+                style={{ 
+                  color: '#1a1a1a',
+                  fontFamily: 'var(--font-heading-family)',
+                  letterSpacing: '0.05em'
+                }}
+              >
+                Launch Alerts & Early Access
+              </h2>
+              <p 
+                className="mt-3"
+                style={{ 
+                  color: '#666',
+                  fontFamily: 'var(--font-body-family, sans-serif)',
+                  lineHeight: '1.6',
+                  letterSpacing: '0.02em'
+                }}
+              >
                 Subscribe for early-bird drops, limited collaborations, and backstage launch events similar to Forest Essentials Ritual Drops and Kama Ayurveda Heritage Edits.
               </p>
               <form className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <input
                   type="email"
                   placeholder="Enter email for launch alerts"
-                  className="w-full rounded-full border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-full border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                  style={{ 
+                    borderColor: '#1a1a1a',
+                    backgroundColor: '#fff',
+                    color: '#1a1a1a',
+                    fontFamily: 'var(--font-body-family, sans-serif)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                    e.currentTarget.style.outline = '2px solid var(--arctic-blue-primary)'
+                    e.currentTarget.style.outlineOffset = '2px'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#1a1a1a'
+                    e.currentTarget.style.outline = 'none'
+                  }}
                 />
-                <button className="rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
+                <button 
+                  className="rounded-full px-6 py-3 text-sm font-semibold text-white transition-colors"
+                  style={{ 
+                    backgroundColor: 'var(--arctic-blue-primary)',
+                    letterSpacing: '0.05em'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                  }}
+                >
                   Notify Me
                 </button>
               </form>
             </div>
-            <div className="rounded-3xl bg-slate-900 p-6 text-white">
-              <h3 className="text-lg font-semibold">Pro Tip</h3>
-              <p className="mt-3 text-sm text-slate-200">
+            <div className="rounded-3xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.7)' }}>
+              <h3 
+                className="text-lg font-semibold"
+                style={{ 
+                  color: '#1a1a1a',
+                  fontFamily: 'var(--font-heading-family)',
+                  letterSpacing: '0.03em'
+                }}
+              >
+                Pro Tip
+              </h3>
+              <p 
+                className="mt-3 text-sm"
+                style={{ 
+                  color: '#666',
+                  fontFamily: 'var(--font-body-family, sans-serif)',
+                  lineHeight: '1.5',
+                  letterSpacing: '0.02em'
+                }}
+              >
                 Pair new arrivals with our hero staples for 360° rituals. Earn double Nefol Coins when you checkout with any launch bundles during the first 14 days.
               </p>
               <button
                 onClick={() => (window.location.hash = '#/user/loyalty-rewards')}
-                className="mt-5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                className="mt-5 rounded-full px-4 py-2 text-sm font-semibold transition-colors"
+                style={{ 
+                  backgroundColor: 'var(--arctic-blue-primary)', 
+                  color: '#fff',
+                  letterSpacing: '0.05em'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                }}
               >
                 See Loyalty Perks
               </button>

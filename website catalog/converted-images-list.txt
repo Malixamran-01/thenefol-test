@@ -1,0 +1,859 @@
+CONVERTED IMAGES TO WEBP
+============================================================
+Generated: 2/12/2025, 7:46:03 pm
+
+✅ SUCCESSFULLY CONVERTED:
+------------------------------------------------------------
+1. 1 curcruelty free template.jpg
+   → 1 curcruelty free template.webp
+   Size: 2.57 MB → 0.25 MB (90.3% smaller)
+
+2. 1 hair mask\1.jpg
+   → 1 hair mask\1.webp
+   Size: 7.25 MB → 0.46 MB (93.7% smaller)
+
+3. 1 hair mask\2.jpg
+   → 1 hair mask\2.webp
+   Size: 7.31 MB → 0.48 MB (93.5% smaller)
+
+4. 1 hair mask\3 (1)1.jpg
+   → 1 hair mask\3 (1)1.webp
+   Size: 4.76 MB → 0.46 MB (90.4% smaller)
+
+5. 1 hair mask\5 lifestyle.jpg
+   → 1 hair mask\5 lifestyle.webp
+   Size: 13.69 MB → 0.32 MB (97.7% smaller)
+
+6. 1 hair mask\6 white bg.jpg
+   → 1 hair mask\6 white bg.webp
+   Size: 2.32 MB → 0.15 MB (93.3% smaller)
+
+7. 1 hair mask\nefil hair mask.jpg
+   → 1 hair mask\nefil hair mask.webp
+   Size: 4.25 MB → 0.41 MB (90.4% smaller)
+
+8. 10 hydrating moisturizer\5.jpg
+   → 10 hydrating moisturizer\5.webp
+   Size: 3.97 MB → 0.20 MB (94.9% smaller)
+
+9. 10 hydrating moisturizer\shampoo (2).jpg
+   → 10 hydrating moisturizer\shampoo (2).webp
+   Size: 6.78 MB → 0.41 MB (93.9% smaller)
+
+10. 10 hydrating moisturizer\shampoo (3).jpg
+   → 10 hydrating moisturizer\shampoo (3).webp
+   Size: 7.49 MB → 0.49 MB (93.5% smaller)
+
+11. 10 hydrating moisturizer\shampoo (4).jpg
+   → 10 hydrating moisturizer\shampoo (4).webp
+   Size: 5.44 MB → 0.11 MB (97.9% smaller)
+
+12. 10 hydrating moisturizer\shampoo (5).jpg
+   → 10 hydrating moisturizer\shampoo (5).webp
+   Size: 0.81 MB → 0.09 MB (89.4% smaller)
+
+13. 10 hydrating moisturizer\shampoo.jpg
+   → 10 hydrating moisturizer\shampoo.webp
+   Size: 7.35 MB → 0.52 MB (92.9% smaller)
+
+14. 11 Anytime cream\4.jpg
+   → 11 Anytime cream\4.webp
+   Size: 4.01 MB → 0.22 MB (94.6% smaller)
+
+15. 11 Anytime cream\shampoo (2).jpg
+   → 11 Anytime cream\shampoo (2).webp
+   Size: 6.69 MB → 0.41 MB (93.9% smaller)
+
+16. 11 Anytime cream\shampoo (3).jpg
+   → 11 Anytime cream\shampoo (3).webp
+   Size: 7.56 MB → 0.52 MB (93.1% smaller)
+
+17. 11 Anytime cream\shampoo (4).jpg
+   → 11 Anytime cream\shampoo (4).webp
+   Size: 6.18 MB → 0.17 MB (97.3% smaller)
+
+18. 11 Anytime cream\shampoo (5).jpg
+   → 11 Anytime cream\shampoo (5).webp
+   Size: 0.63 MB → 0.07 MB (89.2% smaller)
+
+19. 11 Anytime cream\shampoo.jpg
+   → 11 Anytime cream\shampoo.webp
+   Size: 5.98 MB → 0.30 MB (95.0% smaller)
+
+20. 12 face cleanser\Nefol (2).jpg
+   → 12 face cleanser\Nefol (2).webp
+   Size: 3.91 MB → 0.20 MB (94.9% smaller)
+
+21. 12 face cleanser\Nefol (3).jpg
+   → 12 face cleanser\Nefol (3).webp
+   Size: 7.53 MB → 0.50 MB (93.3% smaller)
+
+22. 12 face cleanser\Nefol (4).jpg
+   → 12 face cleanser\Nefol (4).webp
+   Size: 0.92 MB → 0.07 MB (92.7% smaller)
+
+23. 12 face cleanser\Nefol (5).jpg
+   → 12 face cleanser\Nefol (5).webp
+   Size: 5.16 MB → 0.12 MB (97.7% smaller)
+
+24. 12 face cleanser\Nefol (6).jpg
+   → 12 face cleanser\Nefol (6).webp
+   Size: 4.42 MB → 0.35 MB (92.0% smaller)
+
+25. 12 face cleanser\Nefol.jpg
+   → 12 face cleanser\Nefol.webp
+   Size: 6.74 MB → 0.41 MB (93.9% smaller)
+
+26. 13 Face Mask\Nefol (2).jpg
+   → 13 Face Mask\Nefol (2).webp
+   Size: 1.06 MB → 0.08 MB (92.2% smaller)
+
+27. 13 Face Mask\Nefol (3).jpg
+   → 13 Face Mask\Nefol (3).webp
+   Size: 5.76 MB → 0.13 MB (97.8% smaller)
+
+28. 13 Face Mask\Nefol (4).jpg
+   → 13 Face Mask\Nefol (4).webp
+   Size: 4.00 MB → 0.22 MB (94.5% smaller)
+
+29. 13 Face Mask\Nefol (5).jpg
+   → 13 Face Mask\Nefol (5).webp
+   Size: 7.51 MB → 0.51 MB (93.2% smaller)
+
+30. 13 Face Mask\Nefol (6).jpg
+   → 13 Face Mask\Nefol (6).webp
+   Size: 6.77 MB → 0.42 MB (93.8% smaller)
+
+31. 13 Face Mask\Nefol.jpg
+   → 13 Face Mask\Nefol.webp
+   Size: 6.62 MB → 0.32 MB (95.1% smaller)
+
+32. 14 furbish scrub\Nefol (2).jpg
+   → 14 furbish scrub\Nefol (2).webp
+   Size: 0.88 MB → 0.06 MB (92.6% smaller)
+
+33. 14 furbish scrub\Nefol (3).jpg
+   → 14 furbish scrub\Nefol (3).webp
+   Size: 6.11 MB → 0.16 MB (97.3% smaller)
+
+34. 14 furbish scrub\Nefol (4).jpg
+   → 14 furbish scrub\Nefol (4).webp
+   Size: 3.99 MB → 0.23 MB (94.3% smaller)
+
+35. 14 furbish scrub\Nefol (5).jpg
+   → 14 furbish scrub\Nefol (5).webp
+   Size: 7.57 MB → 0.54 MB (92.9% smaller)
+
+36. 14 furbish scrub\Nefol (6).jpg
+   → 14 furbish scrub\Nefol (6).webp
+   Size: 6.61 MB → 0.40 MB (94.0% smaller)
+
+37. 14 furbish scrub\Nefol.jpg
+   → 14 furbish scrub\Nefol.webp
+   Size: 6.59 MB → 0.39 MB (94.1% smaller)
+
+38. 15 face serum\Nefol (1).jpg
+   → 15 face serum\Nefol (1).webp
+   Size: 3.80 MB → 0.18 MB (95.2% smaller)
+
+39. 15 face serum\Nefol (2).jpg
+   → 15 face serum\Nefol (2).webp
+   Size: 7.24 MB → 0.47 MB (93.5% smaller)
+
+40. 15 face serum\Nefol (3).jpg
+   → 15 face serum\Nefol (3).webp
+   Size: 6.51 MB → 0.38 MB (94.1% smaller)
+
+41. 15 face serum\Nefol (4).jpg
+   → 15 face serum\Nefol (4).webp
+   Size: 0.78 MB → 0.05 MB (93.7% smaller)
+
+42. 15 face serum\Nefol (5).jpg
+   → 15 face serum\Nefol (5).webp
+   Size: 6.14 MB → 0.13 MB (97.9% smaller)
+
+43. 15 face serum\Nefol (6).jpg
+   → 15 face serum\Nefol (6).webp
+   Size: 4.57 MB → 0.40 MB (91.3% smaller)
+
+44. 16 Scrub + Mask\Nefol (2).jpg
+   → 16 Scrub + Mask\Nefol (2).webp
+   Size: 1.14 MB → 0.09 MB (92.0% smaller)
+
+45. 16 Scrub + Mask\Nefol (3).jpg
+   → 16 Scrub + Mask\Nefol (3).webp
+   Size: 4.28 MB → 0.28 MB (93.5% smaller)
+
+46. 16 Scrub + Mask\Nefol (4).jpg
+   → 16 Scrub + Mask\Nefol (4).webp
+   Size: 7.71 MB → 0.57 MB (92.6% smaller)
+
+47. 16 Scrub + Mask\Nefol (5).jpg
+   → 16 Scrub + Mask\Nefol (5).webp
+   Size: 6.79 MB → 0.43 MB (93.7% smaller)
+
+48. 16 Scrub + Mask\Nefol copy.jpg
+   → 16 Scrub + Mask\Nefol copy.webp
+   Size: 3.32 MB → 0.20 MB (93.9% smaller)
+
+49. 16 Scrub + Mask\Nefol.jpg
+   → 16 Scrub + Mask\Nefol.webp
+   Size: 5.77 MB → 0.30 MB (94.8% smaller)
+
+50. 17 wine lotion and serum\2.png
+   → 17 wine lotion and serum\2.webp
+   Size: 0.97 MB → 0.03 MB (97.2% smaller)
+
+51. 17 wine lotion and serum\Nefol (2).jpg
+   → 17 wine lotion and serum\Nefol (2).webp
+   Size: 4.21 MB → 0.24 MB (94.2% smaller)
+
+52. 17 wine lotion and serum\Nefol (3).jpg
+   → 17 wine lotion and serum\Nefol (3).webp
+   Size: 7.55 MB → 0.51 MB (93.2% smaller)
+
+53. 17 wine lotion and serum\Nefol (4).jpg
+   → 17 wine lotion and serum\Nefol (4).webp
+   Size: 6.58 MB → 0.39 MB (94.0% smaller)
+
+54. 17 wine lotion and serum\Nefol.jpg
+   → 17 wine lotion and serum\Nefol.webp
+   Size: 1.29 MB → 0.08 MB (93.6% smaller)
+
+55. 18 Nefol hydrating moisturizer + Nefol face serum\2.png
+   → 18 Nefol hydrating moisturizer + Nefol face serum\2.webp
+   Size: 1.01 MB → 0.03 MB (97.2% smaller)
+
+56. 18 Nefol hydrating moisturizer + Nefol face serum\Nefol (2).jpg
+   → 18 Nefol hydrating moisturizer + Nefol face serum\Nefol (2).webp
+   Size: 4.35 MB → 0.27 MB (93.7% smaller)
+
+57. 18 Nefol hydrating moisturizer + Nefol face serum\Nefol (3).jpg
+   → 18 Nefol hydrating moisturizer + Nefol face serum\Nefol (3).webp
+   Size: 7.57 MB → 0.52 MB (93.1% smaller)
+
+58. 18 Nefol hydrating moisturizer + Nefol face serum\Nefol (4).jpg
+   → 18 Nefol hydrating moisturizer + Nefol face serum\Nefol (4).webp
+   Size: 6.63 MB → 0.41 MB (93.8% smaller)
+
+59. 18 Nefol hydrating moisturizer + Nefol face serum\Nefol.jpg
+   → 18 Nefol hydrating moisturizer + Nefol face serum\Nefol.webp
+   Size: 1.37 MB → 0.10 MB (92.9% smaller)
+
+60. 19  Nefol Anytime cream + Nefol face serum\2.png
+   → 19  Nefol Anytime cream + Nefol face serum\2.webp
+   Size: 1.00 MB → 0.03 MB (97.3% smaller)
+
+61. 19  Nefol Anytime cream + Nefol face serum\Nefol (2).jpg
+   → 19  Nefol Anytime cream + Nefol face serum\Nefol (2).webp
+   Size: 4.31 MB → 0.27 MB (93.8% smaller)
+
+62. 19  Nefol Anytime cream + Nefol face serum\Nefol (3).jpg
+   → 19  Nefol Anytime cream + Nefol face serum\Nefol (3).webp
+   Size: 7.59 MB → 0.53 MB (93.1% smaller)
+
+63. 19  Nefol Anytime cream + Nefol face serum\Nefol (4).jpg
+   → 19  Nefol Anytime cream + Nefol face serum\Nefol (4).webp
+   Size: 6.67 MB → 0.41 MB (93.9% smaller)
+
+64. 19  Nefol Anytime cream + Nefol face serum\Nefol.jpg
+   → 19  Nefol Anytime cream + Nefol face serum\Nefol.webp
+   Size: 1.42 MB → 0.10 MB (93.2% smaller)
+
+65. 2 hair leather shampoo\1.jpg
+   → 2 hair leather shampoo\1.webp
+   Size: 7.20 MB → 0.45 MB (93.7% smaller)
+
+66. 2 hair leather shampoo\2.jpg
+   → 2 hair leather shampoo\2.webp
+   Size: 7.21 MB → 0.46 MB (93.6% smaller)
+
+67. 2 hair leather shampoo\3.jpg
+   → 2 hair leather shampoo\3.webp
+   Size: 6.94 MB → 0.45 MB (93.5% smaller)
+
+68. 2 hair leather shampoo\4.jpg
+   → 2 hair leather shampoo\4.webp
+   Size: 1.43 MB → 0.09 MB (94.0% smaller)
+
+69. 2 hair leather shampoo\5.jpg
+   → 2 hair leather shampoo\5.webp
+   Size: 4.07 MB → 0.17 MB (95.9% smaller)
+
+70. 2 hair leather shampoo\6.jpg
+   → 2 hair leather shampoo\6.webp
+   Size: 5.11 MB → 0.51 MB (90.0% smaller)
+
+71. 20 Nefol Anytime cream + Nefol furbish scrub\Gemini_Generated_Image_yrxwskyrxwskyrxw.png
+   → 20 Nefol Anytime cream + Nefol furbish scrub\Gemini_Generated_Image_yrxwskyrxwskyrxw.webp
+   Size: 1.02 MB → 0.03 MB (97.0% smaller)
+
+72. 20 Nefol Anytime cream + Nefol furbish scrub\Nefol (2).jpg
+   → 20 Nefol Anytime cream + Nefol furbish scrub\Nefol (2).webp
+   Size: 4.39 MB → 0.28 MB (93.6% smaller)
+
+73. 20 Nefol Anytime cream + Nefol furbish scrub\Nefol (3).jpg
+   → 20 Nefol Anytime cream + Nefol furbish scrub\Nefol (3).webp
+   Size: 7.72 MB → 0.55 MB (92.9% smaller)
+
+74. 20 Nefol Anytime cream + Nefol furbish scrub\Nefol (4).jpg
+   → 20 Nefol Anytime cream + Nefol furbish scrub\Nefol (4).webp
+   Size: 6.71 MB → 0.42 MB (93.8% smaller)
+
+75. 20 Nefol Anytime cream + Nefol furbish scrub\Nefol.jpg
+   → 20 Nefol Anytime cream + Nefol furbish scrub\Nefol.webp
+   Size: 1.48 MB → 0.11 MB (92.6% smaller)
+
+76. 21. Nefol Anytime cream + Nefol face mask\2.png
+   → 21. Nefol Anytime cream + Nefol face mask\2.webp
+   Size: 1.02 MB → 0.03 MB (97.3% smaller)
+
+77. 21. Nefol Anytime cream + Nefol face mask\Nefol (2).jpg
+   → 21. Nefol Anytime cream + Nefol face mask\Nefol (2).webp
+   Size: 4.43 MB → 0.30 MB (93.3% smaller)
+
+78. 21. Nefol Anytime cream + Nefol face mask\Nefol (3).jpg
+   → 21. Nefol Anytime cream + Nefol face mask\Nefol (3).webp
+   Size: 7.71 MB → 0.55 MB (92.9% smaller)
+
+79. 21. Nefol Anytime cream + Nefol face mask\Nefol (4).jpg
+   → 21. Nefol Anytime cream + Nefol face mask\Nefol (4).webp
+   Size: 6.74 MB → 0.42 MB (93.8% smaller)
+
+80. 21. Nefol Anytime cream + Nefol face mask\Nefol.jpg
+   → 21. Nefol Anytime cream + Nefol face mask\Nefol.webp
+   Size: 1.57 MB → 0.11 MB (92.8% smaller)
+
+81. 22 Nefol face cleanser + Nefol furbish scrub\2.png
+   → 22 Nefol face cleanser + Nefol furbish scrub\2.webp
+   Size: 0.99 MB → 0.03 MB (97.3% smaller)
+
+82. 22 Nefol face cleanser + Nefol furbish scrub\Nefol (1).jpg
+   → 22 Nefol face cleanser + Nefol furbish scrub\Nefol (1).webp
+   Size: 7.69 MB → 0.56 MB (92.7% smaller)
+
+83. 22 Nefol face cleanser + Nefol furbish scrub\Nefol (2).jpg
+   → 22 Nefol face cleanser + Nefol furbish scrub\Nefol (2).webp
+   Size: 4.32 MB → 0.28 MB (93.5% smaller)
+
+84. 22 Nefol face cleanser + Nefol furbish scrub\Nefol (4) 2.jpg
+   → 22 Nefol face cleanser + Nefol furbish scrub\Nefol (4) 2.webp
+   Size: 6.71 MB → 0.43 MB (93.7% smaller)
+
+85. 22 Nefol face cleanser + Nefol furbish scrub\Nefol 2.jpg
+   → 22 Nefol face cleanser + Nefol furbish scrub\Nefol 2.webp
+   Size: 1.46 MB → 0.11 MB (92.2% smaller)
+
+86. 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\2.png
+   → 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\2.webp
+   Size: 1.00 MB → 0.03 MB (97.3% smaller)
+
+87. 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\Nefol (2).jpg
+   → 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\Nefol (2).webp
+   Size: 4.27 MB → 0.26 MB (93.9% smaller)
+
+88. 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\Nefol (3).jpg
+   → 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\Nefol (3).webp
+   Size: 7.64 MB → 0.55 MB (92.9% smaller)
+
+89. 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\Nefol (4).jpg
+   → 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\Nefol (4).webp
+   Size: 6.68 MB → 0.41 MB (93.8% smaller)
+
+90. 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\Nefol.jpg
+   → 23 Nefol face cleanser + Nefol furbish scrub -(The Polish & Refresh Combo Deep cleaning and texture refinement)\Nefol.webp
+   Size: 1.40 MB → 0.11 MB (92.3% smaller)
+
+91. 24 Nefol face cleanser+ face Serum\2.png
+   → 24 Nefol face cleanser+ face Serum\2.webp
+   Size: 0.96 MB → 0.02 MB (97.4% smaller)
+
+92. 24 Nefol face cleanser+ face Serum\Nefol (2).jpg
+   → 24 Nefol face cleanser+ face Serum\Nefol (2).webp
+   Size: 4.01 MB → 0.21 MB (94.8% smaller)
+
+93. 24 Nefol face cleanser+ face Serum\Nefol (3).jpg
+   → 24 Nefol face cleanser+ face Serum\Nefol (3).webp
+   Size: 7.43 MB → 0.49 MB (93.5% smaller)
+
+94. 24 Nefol face cleanser+ face Serum\Nefol (4).jpg
+   → 24 Nefol face cleanser+ face Serum\Nefol (4).webp
+   Size: 6.59 MB → 0.40 MB (93.9% smaller)
+
+95. 24 Nefol face cleanser+ face Serum\Nefol.jpg
+   → 24 Nefol face cleanser+ face Serum\Nefol.webp
+   Size: 1.27 MB → 0.09 MB (92.6% smaller)
+
+96. 25 Nefol hair oil + Nefol hydrating moisture\2.png
+   → 25 Nefol hair oil + Nefol hydrating moisture\2.webp
+   Size: 1.00 MB → 0.03 MB (96.9% smaller)
+
+97. 25 Nefol hair oil + Nefol hydrating moisture\Nefol (2).jpg
+   → 25 Nefol hair oil + Nefol hydrating moisture\Nefol (2).webp
+   Size: 4.21 MB → 0.25 MB (94.1% smaller)
+
+98. 25 Nefol hair oil + Nefol hydrating moisture\Nefol (3).jpg
+   → 25 Nefol hair oil + Nefol hydrating moisture\Nefol (3).webp
+   Size: 7.63 MB → 0.52 MB (93.2% smaller)
+
+99. 25 Nefol hair oil + Nefol hydrating moisture\Nefol (4).jpg
+   → 25 Nefol hair oil + Nefol hydrating moisture\Nefol (4).webp
+   Size: 6.82 MB → 0.44 MB (93.6% smaller)
+
+100. 25 Nefol hair oil + Nefol hydrating moisture\Nefol.jpg
+   → 25 Nefol hair oil + Nefol hydrating moisture\Nefol.webp
+   Size: 1.61 MB → 0.12 MB (92.6% smaller)
+
+101. 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\2.png
+   → 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\2.webp
+   Size: 1.09 MB → 0.04 MB (96.2% smaller)
+
+102. 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\Nefol (2).jpg
+   → 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\Nefol (2).webp
+   Size: 4.47 MB → 0.27 MB (93.9% smaller)
+
+103. 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\Nefol (3).jpg
+   → 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\Nefol (3).webp
+   Size: 7.68 MB → 0.52 MB (93.2% smaller)
+
+104. 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\Nefol (4).jpg
+   → 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\Nefol (4).webp
+   Size: 6.88 MB → 0.44 MB (93.6% smaller)
+
+105. 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\Nefol.jpg
+   → 26 Nefol hair shampoo + Nefol hair oil + Nefol wine lotion\Nefol.webp
+   Size: 2.35 MB → 0.15 MB (93.4% smaller)
+
+106. 27 Nefol shampoo + hair mask + cleanser\2.png
+   → 27 Nefol shampoo + hair mask + cleanser\2.webp
+   Size: 1.14 MB → 0.05 MB (95.8% smaller)
+
+107. 27 Nefol shampoo + hair mask + cleanser\Nefol (2).jpg
+   → 27 Nefol shampoo + hair mask + cleanser\Nefol (2).webp
+   Size: 4.33 MB → 0.24 MB (94.5% smaller)
+
+108. 27 Nefol shampoo + hair mask + cleanser\Nefol (3).jpg
+   → 27 Nefol shampoo + hair mask + cleanser\Nefol (3).webp
+   Size: 7.65 MB → 0.52 MB (93.2% smaller)
+
+109. 27 Nefol shampoo + hair mask + cleanser\Nefol (4).jpg
+   → 27 Nefol shampoo + hair mask + cleanser\Nefol (4).webp
+   Size: 6.83 MB → 0.44 MB (93.6% smaller)
+
+110. 27 Nefol shampoo + hair mask + cleanser\Nefol.jpg
+   → 27 Nefol shampoo + hair mask + cleanser\Nefol.webp
+   Size: 2.51 MB → 0.17 MB (93.4% smaller)
+
+111. 28 Nefol shampoo + hair mask + face serum\2.png
+   → 28 Nefol shampoo + hair mask + face serum\2.webp
+   Size: 1.12 MB → 0.04 MB (96.4% smaller)
+
+112. 28 Nefol shampoo + hair mask + face serum\Nefol (2).jpg
+   → 28 Nefol shampoo + hair mask + face serum\Nefol (2).webp
+   Size: 4.26 MB → 0.23 MB (94.6% smaller)
+
+113. 28 Nefol shampoo + hair mask + face serum\Nefol (3).jpg
+   → 28 Nefol shampoo + hair mask + face serum\Nefol (3).webp
+   Size: 7.60 MB → 0.51 MB (93.3% smaller)
+
+114. 28 Nefol shampoo + hair mask + face serum\Nefol (4).jpg
+   → 28 Nefol shampoo + hair mask + face serum\Nefol (4).webp
+   Size: 6.78 MB → 0.43 MB (93.7% smaller)
+
+115. 28 Nefol shampoo + hair mask + face serum\Nefol.jpg
+   → 28 Nefol shampoo + hair mask + face serum\Nefol.webp
+   Size: 2.32 MB → 0.15 MB (93.7% smaller)
+
+116. 29 Nefol shampoo + hair mask + Nefol anytime cream-\2.png
+   → 29 Nefol shampoo + hair mask + Nefol anytime cream-\2.webp
+   Size: 1.09 MB → 0.04 MB (96.4% smaller)
+
+117. 29 Nefol shampoo + hair mask + Nefol anytime cream-\Nefol (2).jpg
+   → 29 Nefol shampoo + hair mask + Nefol anytime cream-\Nefol (2).webp
+   Size: 4.45 MB → 0.28 MB (93.8% smaller)
+
+118. 29 Nefol shampoo + hair mask + Nefol anytime cream-\Nefol (3).jpg
+   → 29 Nefol shampoo + hair mask + Nefol anytime cream-\Nefol (3).webp
+   Size: 7.71 MB → 0.54 MB (93.0% smaller)
+
+119. 29 Nefol shampoo + hair mask + Nefol anytime cream-\Nefol (4).jpg
+   → 29 Nefol shampoo + hair mask + Nefol anytime cream-\Nefol (4).webp
+   Size: 6.85 MB → 0.43 MB (93.7% smaller)
+
+120. 29 Nefol shampoo + hair mask + Nefol anytime cream-\Nefol.jpg
+   → 29 Nefol shampoo + hair mask + Nefol anytime cream-\Nefol.webp
+   Size: 2.36 MB → 0.15 MB (93.5% smaller)
+
+121. 3 hairoil\shampoo (2).jpg
+   → 3 hairoil\shampoo (2).webp
+   Size: 5.23 MB → 0.48 MB (90.8% smaller)
+
+122. 3 hairoil\shampoo (3).jpg
+   → 3 hairoil\shampoo (3).webp
+   Size: 5.04 MB → 0.48 MB (90.6% smaller)
+
+123. 3 hairoil\shampoo (4).jpg
+   → 3 hairoil\shampoo (4).webp
+   Size: 3.78 MB → 0.15 MB (96.0% smaller)
+
+124. 3 hairoil\shampoo (5).jpg
+   → 3 hairoil\shampoo (5).webp
+   Size: 4.33 MB → 0.33 MB (92.3% smaller)
+
+125. 3 hairoil\shampoo (6).jpg
+   → 3 hairoil\shampoo (6).webp
+   Size: 0.87 MB → 0.09 MB (89.8% smaller)
+
+126. 3 hairoil\shampoo.jpg
+   → 3 hairoil\shampoo.webp
+   Size: 5.20 MB → 0.50 MB (90.4% smaller)
+
+127. 30 Nefol shampoo + Nefol hair mask + face scrub\2.png
+   → 30 Nefol shampoo + Nefol hair mask + face scrub\2.webp
+   Size: 1.03 MB → 0.03 MB (97.2% smaller)
+
+128. 30 Nefol shampoo + Nefol hair mask + face scrub\Nefol (2).jpg
+   → 30 Nefol shampoo + Nefol hair mask + face scrub\Nefol (2).webp
+   Size: 4.37 MB → 0.26 MB (94.0% smaller)
+
+129. 30 Nefol shampoo + Nefol hair mask + face scrub\Nefol (3).jpg
+   → 30 Nefol shampoo + Nefol hair mask + face scrub\Nefol (3).webp
+   Size: 7.67 MB → 0.55 MB (92.9% smaller)
+
+130. 30 Nefol shampoo + Nefol hair mask + face scrub\Nefol (4).jpg
+   → 30 Nefol shampoo + Nefol hair mask + face scrub\Nefol (4).webp
+   Size: 6.85 MB → 0.44 MB (93.6% smaller)
+
+131. 30 Nefol shampoo + Nefol hair mask + face scrub\Nefol.jpg
+   → 30 Nefol shampoo + Nefol hair mask + face scrub\Nefol.webp
+   Size: 2.27 MB → 0.15 MB (93.4% smaller)
+
+132. 31    _ Nefol hair oil + furbish scrub\2.png
+   → 31    _ Nefol hair oil + furbish scrub\2.webp
+   Size: 4.69 MB → 0.14 MB (97.0% smaller)
+
+133. 31    _ Nefol hair oil + furbish scrub\Nefol (2).jpg
+   → 31    _ Nefol hair oil + furbish scrub\Nefol (2).webp
+   Size: 4.28 MB → 0.25 MB (94.1% smaller)
+
+134. 31    _ Nefol hair oil + furbish scrub\Nefol (3).jpg
+   → 31    _ Nefol hair oil + furbish scrub\Nefol (3).webp
+   Size: 7.48 MB → 0.51 MB (93.2% smaller)
+
+135. 31    _ Nefol hair oil + furbish scrub\Nefol (4).jpg
+   → 31    _ Nefol hair oil + furbish scrub\Nefol (4).webp
+   Size: 6.69 MB → 0.41 MB (93.9% smaller)
+
+136. 31    _ Nefol hair oil + furbish scrub\Nefol.jpg
+   → 31    _ Nefol hair oil + furbish scrub\Nefol.webp
+   Size: 1.58 MB → 0.11 MB (93.1% smaller)
+
+137. 32 Nefol hair oil + face mask\2.png
+   → 32 Nefol hair oil + face mask\2.webp
+   Size: 4.80 MB → 0.16 MB (96.8% smaller)
+
+138. 32 Nefol hair oil + face mask\Nefol (2).jpg
+   → 32 Nefol hair oil + face mask\Nefol (2).webp
+   Size: 4.20 MB → 0.25 MB (94.0% smaller)
+
+139. 32 Nefol hair oil + face mask\Nefol (3).jpg
+   → 32 Nefol hair oil + face mask\Nefol (3).webp
+   Size: 7.55 MB → 0.52 MB (93.1% smaller)
+
+140. 32 Nefol hair oil + face mask\Nefol (4).jpg
+   → 32 Nefol hair oil + face mask\Nefol (4).webp
+   Size: 6.76 MB → 0.42 MB (93.8% smaller)
+
+141. 32 Nefol hair oil + face mask\Nefol.jpg
+   → 32 Nefol hair oil + face mask\Nefol.webp
+   Size: 1.48 MB → 0.11 MB (92.5% smaller)
+
+142. 33 Nefol hair oil + face serum\2.png
+   → 33 Nefol hair oil + face serum\2.webp
+   Size: 1.06 MB → 0.03 MB (97.0% smaller)
+
+143. 33 Nefol hair oil + face serum\Nefol (2).jpg
+   → 33 Nefol hair oil + face serum\Nefol (2).webp
+   Size: 4.13 MB → 0.23 MB (94.5% smaller)
+
+144. 33 Nefol hair oil + face serum\Nefol (3).jpg
+   → 33 Nefol hair oil + face serum\Nefol (3).webp
+   Size: 7.54 MB → 0.50 MB (93.3% smaller)
+
+145. 33 Nefol hair oil + face serum\Nefol (4).jpg
+   → 33 Nefol hair oil + face serum\Nefol (4).webp
+   Size: 6.63 MB → 0.40 MB (93.9% smaller)
+
+146. 33 Nefol hair oil + face serum\Nefol.jpg
+   → 33 Nefol hair oil + face serum\Nefol.webp
+   Size: 1.37 MB → 0.10 MB (93.0% smaller)
+
+147. 34 Nefol hair oil + face cleanser\Gemini_Generated_Image_ft1v3uft1v3uft1v.png
+   → 34 Nefol hair oil + face cleanser\Gemini_Generated_Image_ft1v3uft1v3uft1v.webp
+   Size: 1.06 MB → 0.04 MB (96.6% smaller)
+
+148. 34 Nefol hair oil + face cleanser\Nefol (2).jpg
+   → 34 Nefol hair oil + face cleanser\Nefol (2).webp
+   Size: 4.24 MB → 0.24 MB (94.3% smaller)
+
+149. 34 Nefol hair oil + face cleanser\Nefol (3).jpg
+   → 34 Nefol hair oil + face cleanser\Nefol (3).webp
+   Size: 7.64 MB → 0.52 MB (93.2% smaller)
+
+150. 34 Nefol hair oil + face cleanser\Nefol (4).jpg
+   → 34 Nefol hair oil + face cleanser\Nefol (4).webp
+   Size: 6.70 MB → 0.42 MB (93.8% smaller)
+
+151. 34 Nefol hair oil + face cleanser\Nefol.jpg
+   → 34 Nefol hair oil + face cleanser\Nefol.webp
+   Size: 1.55 MB → 0.12 MB (92.5% smaller)
+
+152. 35 Nefol hair oil + wine lotion\2.png
+   → 35 Nefol hair oil + wine lotion\2.webp
+   Size: 1.03 MB → 0.03 MB (97.4% smaller)
+
+153. 35 Nefol hair oil + wine lotion\Nefol (2).jpg
+   → 35 Nefol hair oil + wine lotion\Nefol (2).webp
+   Size: 4.39 MB → 0.28 MB (93.7% smaller)
+
+154. 35 Nefol hair oil + wine lotion\Nefol (3).jpg
+   → 35 Nefol hair oil + wine lotion\Nefol (3).webp
+   Size: 7.68 MB → 0.53 MB (93.1% smaller)
+
+155. 35 Nefol hair oil + wine lotion\Nefol (4).jpg
+   → 35 Nefol hair oil + wine lotion\Nefol (4).webp
+   Size: 6.72 MB → 0.42 MB (93.8% smaller)
+
+156. 35 Nefol hair oil + wine lotion\Nefol.jpg
+   → 35 Nefol hair oil + wine lotion\Nefol.webp
+   Size: 1.43 MB → 0.10 MB (93.1% smaller)
+
+157. 36 Nefol hair lather shampoo+Hair mask +wine lotion\Gemini_Generated_Image_jegadzjegadzjega.png
+   → 36 Nefol hair lather shampoo+Hair mask +wine lotion\Gemini_Generated_Image_jegadzjegadzjega.webp
+   Size: 1.06 MB → 0.04 MB (96.5% smaller)
+
+158. 36 Nefol hair lather shampoo+Hair mask +wine lotion\Nefol (2).jpg
+   → 36 Nefol hair lather shampoo+Hair mask +wine lotion\Nefol (2).webp
+   Size: 7.67 MB → 0.53 MB (93.1% smaller)
+
+159. 36 Nefol hair lather shampoo+Hair mask +wine lotion\Nefol (3).jpg
+   → 36 Nefol hair lather shampoo+Hair mask +wine lotion\Nefol (3).webp
+   Size: 6.88 MB → 0.44 MB (93.6% smaller)
+
+160. 36 Nefol hair lather shampoo+Hair mask +wine lotion\Nefol hair lather shampoo+Hair mask +wine lotion.jpg
+   → 36 Nefol hair lather shampoo+Hair mask +wine lotion\Nefol hair lather shampoo+Hair mask +wine lotion.webp
+   Size: 2.37 MB → 0.15 MB (93.7% smaller)
+
+161. 36 Nefol hair lather shampoo+Hair mask +wine lotion\Nefol.jpg
+   → 36 Nefol hair lather shampoo+Hair mask +wine lotion\Nefol.webp
+   Size: 4.51 MB → 0.28 MB (93.8% smaller)
+
+162. 37 Nefol hair lather shampoo+Hydrating moisturizer\Gemini_Generated_Image_p7shdkp7shdkp7sh.png
+   → 37 Nefol hair lather shampoo+Hydrating moisturizer\Gemini_Generated_Image_p7shdkp7shdkp7sh.webp
+   Size: 1.11 MB → 0.04 MB (96.3% smaller)
+
+163. 37 Nefol hair lather shampoo+Hydrating moisturizer\Nefol (2).jpg
+   → 37 Nefol hair lather shampoo+Hydrating moisturizer\Nefol (2).webp
+   Size: 7.71 MB → 0.54 MB (93.1% smaller)
+
+164. 37 Nefol hair lather shampoo+Hydrating moisturizer\Nefol (3).jpg
+   → 37 Nefol hair lather shampoo+Hydrating moisturizer\Nefol (3).webp
+   Size: 6.90 MB → 0.45 MB (93.5% smaller)
+
+165. 37 Nefol hair lather shampoo+Hydrating moisturizer\Nefol hair lather shampoo+Hair mask +wine lotion.jpg
+   → 37 Nefol hair lather shampoo+Hydrating moisturizer\Nefol hair lather shampoo+Hair mask +wine lotion.webp
+   Size: 2.44 MB → 0.16 MB (93.4% smaller)
+
+166. 37 Nefol hair lather shampoo+Hydrating moisturizer\Nefol.jpg
+   → 37 Nefol hair lather shampoo+Hydrating moisturizer\Nefol.webp
+   Size: 4.60 MB → 0.29 MB (93.7% smaller)
+
+167. 4 clenser + anytime Cream\shampoo (2).jpg
+   → 4 clenser + anytime Cream\shampoo (2).webp
+   Size: 7.14 MB → 0.46 MB (93.6% smaller)
+
+168. 4 clenser + anytime Cream\shampoo (3).jpg
+   → 4 clenser + anytime Cream\shampoo (3).webp
+   Size: 7.46 MB → 0.54 MB (92.7% smaller)
+
+169. 4 clenser + anytime Cream\shampoo (4).jpg
+   → 4 clenser + anytime Cream\shampoo (4).webp
+   Size: 6.75 MB → 0.32 MB (95.2% smaller)
+
+170. 4 clenser + anytime Cream\shampoo (5).jpg
+   → 4 clenser + anytime Cream\shampoo (5).webp
+   Size: 6.53 MB → 0.22 MB (96.6% smaller)
+
+171. 4 clenser + anytime Cream\shampoo (6).jpg
+   → 4 clenser + anytime Cream\shampoo (6).webp
+   Size: 0.90 MB → 0.10 MB (89.2% smaller)
+
+172. 4 clenser + anytime Cream\shampoo.jpg
+   → 4 clenser + anytime Cream\shampoo.webp
+   Size: 7.04 MB → 0.42 MB (94.0% smaller)
+
+173. 5 clenser + scrub + face mask\shampoo (2).jpg
+   → 5 clenser + scrub + face mask\shampoo (2).webp
+   Size: 7.50 MB → 0.54 MB (92.8% smaller)
+
+174. 5 clenser + scrub + face mask\shampoo (3).jpg
+   → 5 clenser + scrub + face mask\shampoo (3).webp
+   Size: 7.15 MB → 0.46 MB (93.6% smaller)
+
+175. 5 clenser + scrub + face mask\shampoo (4).jpg
+   → 5 clenser + scrub + face mask\shampoo (4).webp
+   Size: 6.19 MB → 0.39 MB (93.7% smaller)
+
+176. 5 clenser + scrub + face mask\shampoo (5).jpg
+   → 5 clenser + scrub + face mask\shampoo (5).webp
+   Size: 6.36 MB → 0.26 MB (95.9% smaller)
+
+177. 5 clenser + scrub + face mask\shampoo (6).jpg
+   → 5 clenser + scrub + face mask\shampoo (6).webp
+   Size: 1.15 MB → 0.13 MB (88.7% smaller)
+
+178. 5 clenser + scrub + face mask\shampoo.jpg
+   → 5 clenser + scrub + face mask\shampoo.webp
+   Size: 7.26 MB → 0.49 MB (93.3% smaller)
+
+179. 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (2).jpg
+   → 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (2).webp
+   Size: 7.49 MB → 0.54 MB (92.8% smaller)
+
+180. 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (3).jpg
+   → 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (3).webp
+   Size: 7.26 MB → 0.49 MB (93.3% smaller)
+
+181. 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (4).jpg
+   → 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (4).webp
+   Size: 5.48 MB → 0.29 MB (94.7% smaller)
+
+182. 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (5).jpg
+   → 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (5).webp
+   Size: 6.03 MB → 0.19 MB (96.9% smaller)
+
+183. 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (6).jpg
+   → 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo (6).webp
+   Size: 1.13 MB → 0.12 MB (88.9% smaller)
+
+184. 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo.jpg
+   → 6 Face Cleanser + Furbish Scrub + Face Serum\shampoo.webp
+   Size: 7.03 MB → 0.44 MB (93.7% smaller)
+
+185. 7 moisturiser and clenser\shampoo (2).jpg
+   → 7 moisturiser and clenser\shampoo (2).webp
+   Size: 7.50 MB → 0.52 MB (93.0% smaller)
+
+186. 7 moisturiser and clenser\shampoo (3).jpg
+   → 7 moisturiser and clenser\shampoo (3).webp
+   Size: 7.13 MB → 0.45 MB (93.6% smaller)
+
+187. 7 moisturiser and clenser\shampoo (4).jpg
+   → 7 moisturiser and clenser\shampoo (4).webp
+   Size: 6.85 MB → 0.42 MB (93.9% smaller)
+
+188. 7 moisturiser and clenser\shampoo (5).jpg
+   → 7 moisturiser and clenser\shampoo (5).webp
+   Size: 6.30 MB → 0.17 MB (97.4% smaller)
+
+189. 7 moisturiser and clenser\shampoo (6).jpg
+   → 7 moisturiser and clenser\shampoo (6).webp
+   Size: 1.14 MB → 0.12 MB (89.8% smaller)
+
+190. 7 moisturiser and clenser\shampoo.jpg
+   → 7 moisturiser and clenser\shampoo.webp
+   Size: 7.06 MB → 0.43 MB (94.0% smaller)
+
+191. 8 shampoo + oil + mask\shampoo (2).jpg
+   → 8 shampoo + oil + mask\shampoo (2).webp
+   Size: 5.03 MB → 0.45 MB (91.0% smaller)
+
+192. 8 shampoo + oil + mask\shampoo (3).jpg
+   → 8 shampoo + oil + mask\shampoo (3).webp
+   Size: 4.98 MB → 0.46 MB (90.8% smaller)
+
+193. 8 shampoo + oil + mask\shampoo (4).jpg
+   → 8 shampoo + oil + mask\shampoo (4).webp
+   Size: 4.38 MB → 0.27 MB (93.8% smaller)
+
+194. 8 shampoo + oil + mask\shampoo (5).jpg
+   → 8 shampoo + oil + mask\shampoo (5).webp
+   Size: 1.77 MB → 0.16 MB (91.1% smaller)
+
+195. 8 shampoo + oil + mask\shampoo copy.jpg
+   → 8 shampoo + oil + mask\shampoo copy.webp
+   Size: 7.33 MB → 0.51 MB (93.1% smaller)
+
+196. 8 shampoo + oil + mask\shampoo.jpg
+   → 8 shampoo + oil + mask\shampoo.webp
+   Size: 5.29 MB → 0.52 MB (90.1% smaller)
+
+197. 9 Wine lotion\1.jpg
+   → 9 Wine lotion\1.webp
+   Size: 3.88 MB → 0.19 MB (95.2% smaller)
+
+198. 9 Wine lotion\shampoo (2).jpg
+   → 9 Wine lotion\shampoo (2).webp
+   Size: 7.48 MB → 0.48 MB (93.6% smaller)
+
+199. 9 Wine lotion\shampoo (3).jpg
+   → 9 Wine lotion\shampoo (3).webp
+   Size: 6.21 MB → 0.33 MB (94.8% smaller)
+
+200. 9 Wine lotion\shampoo (4).jpg
+   → 9 Wine lotion\shampoo (4).webp
+   Size: 5.54 MB → 0.11 MB (97.9% smaller)
+
+201. 9 Wine lotion\shampoo (5).jpg
+   → 9 Wine lotion\shampoo (5).webp
+   Size: 0.49 MB → 0.05 MB (89.9% smaller)
+
+202. 9 Wine lotion\shampoo.jpg
+   → 9 Wine lotion\shampoo.webp
+   Size: 6.73 MB → 0.40 MB (94.0% smaller)
+
+203. Banners\1920X1080\2.jpg
+   → Banners\1920X1080\2.webp
+   Size: 7.50 MB → 0.39 MB (94.7% smaller)
+
+204. Banners\1920X1080\3.jpg
+   → Banners\1920X1080\3.webp
+   Size: 11.12 MB → 0.58 MB (94.8% smaller)
+
+205. Banners\1920X1080\4.jpg
+   → Banners\1920X1080\4.webp
+   Size: 11.42 MB → 0.66 MB (94.2% smaller)
+
+206. Banners\Normal Website sieze\2.jpg
+   → Banners\Normal Website sieze\2.webp
+   Size: 10.78 MB → 0.98 MB (90.9% smaller)
+
+207. Banners\Normal Website sieze\3.jpg
+   → Banners\Normal Website sieze\3.webp
+   Size: 19.50 MB → 1.50 MB (92.3% smaller)
+
+208. Banners\Normal Website sieze\4.jpg
+   → Banners\Normal Website sieze\4.webp
+   Size: 19.31 MB → 1.66 MB (91.4% smaller)
+
+
+❌ FAILED:
+------------------------------------------------------------
+1. 12 face cleanser\._Nefol (2).jpg
+   Error: Input file contains unsupported image format
+
+2. 12 face cleanser\._Nefol (3).jpg
+   Error: Input file contains unsupported image format
+
+3. 12 face cleanser\._Nefol (4).jpg
+   Error: Input file contains unsupported image format
+
+4. 12 face cleanser\._Nefol (5).jpg
+   Error: Input file contains unsupported image format
+
+5. 12 face cleanser\._Nefol (6).jpg
+   Error: Input file contains unsupported image format
+
+6. 12 face cleanser\._Nefol.jpg
+   Error: Input file contains unsupported image format
+

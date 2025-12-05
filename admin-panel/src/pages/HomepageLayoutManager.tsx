@@ -40,6 +40,47 @@ interface HomepageSection {
 
 const API_BASE = configService.getApiConfig().baseUrl
 
+const normalizeMediaUrl = (url: string): string => {
+  if (!url) return ''
+  if (/^https?:\/\//i.test(url)) return url
+  if (typeof window !== 'undefined' && url.startsWith('/')) {
+    return `${window.location.protocol}//${window.location.host}${url}`
+  }
+  if (typeof window !== 'undefined') {
+    return `${window.location.protocol}//${window.location.host}/${url.replace(/^\/+/, '')}`
+  }
+  return url
+}
+
+const padArray = (arr: string[], length: number): string[] => {
+  const copy = [...arr]
+  while (copy.length < length) {
+    copy.push('')
+  }
+  return copy.slice(0, length)
+}
+
+const SPLASH_DEVICE_CONFIGS = [
+  {
+    key: 'desktop',
+    label: 'Desktop (16:9)',
+    helper: 'Recommended 1920×1080 MP4/WebM for large screens.',
+    index: 0,
+  },
+  {
+    key: 'tablet',
+    label: 'Tablet (4:3)',
+    helper: 'Recommended 1536×1152 landscape video.',
+    index: 1,
+  },
+  {
+    key: 'mobile',
+    label: 'Mobile Portrait (9:16)',
+    helper: 'Recommended 1080×1920 portrait video for phones.',
+    index: 2,
+  },
+]
+
 export default function HomepageLayoutManager() {
   const { notify } = useToast()
   const [sections, setSections] = useState<HomepageSection[]>([])
@@ -110,6 +151,15 @@ export default function HomepageLayoutManager() {
         description: 'Continuous scrolling text line for offers and promotions (displays between navbar and top media carousel)',
         sectionType: 'scrolling_text_banner',
         imageCount: 0
+      },
+      {
+        id: 'splash_screen',
+        name: 'Splash Screen Videos',
+        type: 'banner',
+        images: ['', '', ''],
+        description: 'Upload device-specific splash screen videos (Desktop 16:9, Tablet 4:3, Mobile 9:16)',
+        sectionType: 'splash_screen',
+        imageCount: 3
       },
       {
         id: 'top_media_carousel',
@@ -252,7 +302,7 @@ export default function HomepageLayoutManager() {
 
     // Load existing images from CMS
     try {
-      const response = await fetch(`${API_BASE}/api/cms/sections/home`)
+      const response = await fetch(`${API_BASE}/cms/sections/home`)
       const cmsSections = await response.json()
 
       // Find custom sections (those not in default list)
@@ -277,6 +327,15 @@ export default function HomepageLayoutManager() {
         const cmsSection = cmsSections.find((s: any) => s.section_type === section.sectionType)
         
         if (cmsSection && cmsSection.content) {
+          if (section.sectionType === 'splash_screen') {
+            const desktopVideo = cmsSection.content.desktop?.video ? normalizeMediaUrl(cmsSection.content.desktop.video) : ''
+            const tabletVideo = cmsSection.content.tablet?.video ? normalizeMediaUrl(cmsSection.content.tablet.video) : ''
+            const mobileVideo = cmsSection.content.mobile?.video ? normalizeMediaUrl(cmsSection.content.mobile.video) : ''
+            return {
+              ...section,
+              images: padArray([desktopVideo, tabletVideo, mobileVideo], section.imageCount)
+            }
+          }
           if ((section.sectionType === 'hero_banner' || section.sectionType === 'top_media_carousel') && cmsSection.content.images) {
             // Support both images and videos in hero banner and top media carousel
             const images = Array.isArray(cmsSection.content.images) ? cmsSection.content.images : []
@@ -340,10 +399,14 @@ export default function HomepageLayoutManager() {
                 if (/^https?:\/\//i.test(url)) return url
                 // If it's a relative path, make it absolute for display
                 if (url.startsWith('/')) {
-                  const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-                  const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                  const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
-                  return `${apiBase}${url}`
+                  // In production, use current domain; in dev, use API URL or current domain
+                  const hostname = window.location.hostname
+                  if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+                    return `${window.location.protocol}//${window.location.host}${url}`
+                  }
+                  // Always use production URL - no environment variables
+                  // For any non-production domain, use current domain
+                  return `${window.location.protocol}//${window.location.host}${url}`
                 }
                 return url
               }
@@ -371,10 +434,14 @@ export default function HomepageLayoutManager() {
               if (/^https?:\/\//i.test(url)) return url
               // If it's a relative path, make it absolute for display
               if (url.startsWith('/')) {
-                const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-                const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
-                return `${apiBase}${url}`
+                // In production, use current domain; in dev, use API URL or current domain
+                const hostname = window.location.hostname
+                if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+                  return `${window.location.protocol}//${window.location.host}${url}`
+                }
+                // Always use production URL - no environment variables
+                // For any non-production domain, use current domain
+                return `${window.location.protocol}//${window.location.host}${url}`
               }
               return url
             }
@@ -386,10 +453,14 @@ export default function HomepageLayoutManager() {
               if (!url) return ''
               if (/^https?:\/\//i.test(url)) return url
               if (url.startsWith('/')) {
-                const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-                const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
-                return `${apiBase}${url}`
+                // In production, use current domain; in dev, use API URL or current domain
+                const hostname = window.location.hostname
+                if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+                  return `${window.location.protocol}//${window.location.host}${url}`
+                }
+                // Always use production URL - no environment variables
+                // For any non-production domain, use current domain
+                return `${window.location.protocol}//${window.location.host}${url}`
               }
               return url
             }
@@ -412,10 +483,14 @@ export default function HomepageLayoutManager() {
               if (/^https?:\/\//i.test(url)) return url
               // If it's a relative path, make it absolute for display
               if (url.startsWith('/')) {
-                const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-                const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
-                return `${apiBase}${url}`
+                // In production, use current domain; in dev, use API URL or current domain
+                const hostname = window.location.hostname
+                if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+                  return `${window.location.protocol}//${window.location.host}${url}`
+                }
+                // Always use production URL - no environment variables
+                // For any non-production domain, use current domain
+                return `${window.location.protocol}//${window.location.host}${url}`
               }
               return url
             }
@@ -429,10 +504,14 @@ export default function HomepageLayoutManager() {
               if (/^https?:\/\//i.test(url)) return url
               // If it's a relative path, make it absolute for display
               if (url.startsWith('/')) {
-                const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-                const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
-                return `${apiBase}${url}`
+                // In production, use current domain; in dev, use API URL or current domain
+                const hostname = window.location.hostname
+                if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+                  return `${window.location.protocol}//${window.location.host}${url}`
+                }
+                // Always use production URL - no environment variables
+                // For any non-production domain, use current domain
+                return `${window.location.protocol}//${window.location.host}${url}`
               }
               return url
             }
@@ -512,13 +591,32 @@ export default function HomepageLayoutManager() {
       const section = sections.find(s => s.id === sectionId)
       if (!section) return
       
-      const newImages = [...section.images]
-      if (imageIndex !== undefined && imageIndex < newImages.length) {
-        newImages[imageIndex] = url
+      let newImages = [...section.images]
+      if (section.sectionType === 'splash_screen') {
+        newImages = padArray(newImages, section.imageCount)
+        let targetIndex = imageIndex
+        if (targetIndex === undefined) {
+          targetIndex = newImages.findIndex((value) => !value)
+          if (targetIndex === -1) {
+            targetIndex = section.imageCount - 1
+          }
+        }
+        if (targetIndex >= 0) {
+          if (targetIndex >= newImages.length) {
+            newImages = padArray(newImages, targetIndex + 1)
+          }
+          newImages[targetIndex] = url
+        }
       } else {
-        newImages.push(url)
+        if (imageIndex !== undefined && imageIndex < newImages.length) {
+          newImages[imageIndex] = url
+        } else {
+          newImages.push(url)
+        }
       }
-      const finalImages = newImages.slice(0, section.imageCount)
+      const finalImages = section.sectionType === 'splash_screen'
+        ? padArray(newImages, section.imageCount)
+        : newImages.slice(0, section.imageCount)
       
       // For top_media_carousel, update mediaItems
       let updatedMediaItems: MediaItem[] | undefined = undefined
@@ -731,8 +829,26 @@ export default function HomepageLayoutManager() {
     if (!section) return
 
     try {
-      // Use provided images or get from section
-      const imagesToUse = updatedImages || section.images
+      // Helper to convert full URLs to relative paths for storage
+      const toRelativePath = (url: string): string => {
+        if (!url) return ''
+        // If it's already a relative path, return as is
+        if (url.startsWith('/')) return url
+        // If it's a full URL, extract the path
+        try {
+          const urlObj = new URL(url)
+          return urlObj.pathname
+        } catch {
+          return url
+        }
+      }
+      
+      // Use provided images or get from section, converting to relative paths
+      let imagesSource = updatedImages || section.images
+      if (section.sectionType === 'splash_screen') {
+        imagesSource = padArray(imagesSource, section.imageCount)
+      }
+      const imagesToUse = imagesSource.map(toRelativePath)
       
       let content: any = {}
       
@@ -751,10 +867,16 @@ export default function HomepageLayoutManager() {
       } else if (section.sectionType === 'top_media_carousel') {
         const topMediaSection = sections.find(s => s.id === 'top_media_carousel')
         // Use updatedMediaItems if provided, otherwise use existing mediaItems, or create from images
-        const mediaItems = updatedMediaItems || topMediaSection?.mediaItems || imagesToUse.map((url: string) => ({
+        // Convert mediaItems URLs to relative paths
+        const baseMediaItems = updatedMediaItems || topMediaSection?.mediaItems || imagesToUse.map((url: string) => ({
           url: url,
           type: /\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(url) ? 'video' : 'image' as const,
           timing: topMediaSettings.autoPlayDelay
+        }))
+        const mediaItems = baseMediaItems.map((item: MediaItem) => ({
+          ...item,
+          url: toRelativePath(item.url),
+          thumbnail: item.thumbnail ? toRelativePath(item.thumbnail) : undefined
         }))
         
         // Separate videos and images for better handling
@@ -765,7 +887,7 @@ export default function HomepageLayoutManager() {
           images: imagesToUse, // All media (images and videos) for backward compatibility
           videos: videoUrls, // Separate video array
           media: imagesToUse.map((url: string) => ({
-            url: url,
+            url: toRelativePath(url),
             type: /\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(url) ? 'video' : 'image'
           })), // Enhanced media array with type information
           mediaItems: mediaItems, // Save mediaItems with timing and metadata
@@ -777,7 +899,7 @@ export default function HomepageLayoutManager() {
         }
       } else if (section.sectionType === 'shop_categories') {
         // Need to fetch existing categories and update the specific one
-        const cmsResponse = await fetch(`${API_BASE}/api/cms/sections/home`)
+        const cmsResponse = await fetch(`${API_BASE}/cms/sections/home`)
         const cmsSections = await cmsResponse.json()
         const categorySection = cmsSections.find((s: any) => s.section_type === 'shop_categories')
         
@@ -846,7 +968,7 @@ export default function HomepageLayoutManager() {
         content = {
           title: 'THOUGHTFUL COMMITMENTS',
           description: 'We are committed to providing you with the safest and most effective natural skincare products.',
-          images: imagesToUse
+          images: imagesToUse // Already converted to relative paths above
         }
       } else if (section.sectionType === 'complete_kit') {
         content = {
@@ -854,12 +976,12 @@ export default function HomepageLayoutManager() {
           description: 'Get the full Nefol experience in one curated bundle',
           buttonText: 'View Kit',
           buttonLink: '/combos',
-          image: imageUrl
+          image: toRelativePath(imageUrl)
         }
       } else if (section.sectionType === 'marketplace_logos') {
         content = {
           title: 'AVAILABLE ON',
-          logos: imagesToUse
+          logos: imagesToUse // Already converted to relative paths above
         }
       } else if (section.sectionType === 'nefol_collection') {
         // Normalize image URL
@@ -880,7 +1002,7 @@ export default function HomepageLayoutManager() {
         const normalizedImageUrl = normalizeImageUrl(imageUrl)
         
         // Fetch existing content to preserve text fields and existing image if no new image uploaded
-        const cmsResponse = await fetch(`${API_BASE}/api/cms/sections/home`)
+        const cmsResponse = await fetch(`${API_BASE}/cms/sections/home`)
         const cmsSections = await cmsResponse.json()
         const existingSection = cmsSections.find((s: any) => s.section_type === 'nefol_collection')
         
@@ -893,7 +1015,7 @@ export default function HomepageLayoutManager() {
           description: existingSection?.content?.description || 'Our premium collection combines the best of nature and science to deliver exceptional results for your skin.',
           buttonText: existingSection?.content?.buttonText || 'SHOP NOW',
           buttonLink: existingSection?.content?.buttonLink || '/shop',
-          image: finalImage
+          image: toRelativePath(finalImage)
         }
       } else if (section.sectionType === 'forever_favorites') {
         // Normalize image URLs
@@ -913,7 +1035,7 @@ export default function HomepageLayoutManager() {
         }
         
         // Fetch existing content to preserve text fields and existing images
-        const cmsResponse = await fetch(`${API_BASE}/api/cms/sections/home`)
+        const cmsResponse = await fetch(`${API_BASE}/cms/sections/home`)
         const cmsSections = await cmsResponse.json()
         const existingSection = cmsSections.find((s: any) => s.section_type === 'forever_favorites')
         
@@ -938,12 +1060,12 @@ export default function HomepageLayoutManager() {
           luxurySkincare: {
             title: existingSection?.content?.luxurySkincare?.title || 'LUXURY SKINCARE',
             buttonText: existingSection?.content?.luxurySkincare?.buttonText || 'SHOP NOW',
-            image: finalImages[0] || existingSection?.content?.luxurySkincare?.image || ''
+            image: toRelativePath(finalImages[0] || existingSection?.content?.luxurySkincare?.image || '')
           },
           naturalBeauty: {
             title: existingSection?.content?.naturalBeauty?.title || 'NATURAL BEAUTY',
             buttonText: existingSection?.content?.naturalBeauty?.buttonText || 'SHOP NOW',
-            image: finalImages[1] || existingSection?.content?.naturalBeauty?.image || ''
+            image: toRelativePath(finalImages[1] || existingSection?.content?.naturalBeauty?.image || '')
           }
         }
       } else if (section.sectionType === 'natural_beauty') {
@@ -965,7 +1087,7 @@ export default function HomepageLayoutManager() {
         const normalizedImageUrl = normalizeImageUrl(imageUrl)
         
         // Fetch existing content to preserve text fields and existing image if no new image uploaded
-        const cmsResponse = await fetch(`${API_BASE}/api/cms/sections/home`)
+        const cmsResponse = await fetch(`${API_BASE}/cms/sections/home`)
         const cmsSections = await cmsResponse.json()
         const existingSection = cmsSections.find((s: any) => s.section_type === 'natural_beauty')
         
@@ -978,7 +1100,7 @@ export default function HomepageLayoutManager() {
           description: existingSection?.content?.description || 'infused with premium natural ingredients',
           buttonText: existingSection?.content?.buttonText || 'SHOP NOW',
           buttonLink: existingSection?.content?.buttonLink || '/shop',
-          image: finalImage
+          image: toRelativePath(finalImage)
         }
       } else if (section.sectionType === 'whatsappsubscription') {
         // Normalize image URL - convert absolute URLs to relative paths
@@ -1006,7 +1128,7 @@ export default function HomepageLayoutManager() {
         }
         
         // Fetch existing content to preserve fields
-        const cmsResponse = await fetch(`${API_BASE}/api/cms/sections/home`)
+        const cmsResponse = await fetch(`${API_BASE}/cms/sections/home`)
         const cmsSections = await cmsResponse.json()
         const existingSection = cmsSections.find((s: any) => s.section_type === 'whatsappsubscription')
         
@@ -1054,12 +1176,20 @@ export default function HomepageLayoutManager() {
         }
         
         content = {
-          image: finalImage,
-          logo: finalLogo,
+          image: toRelativePath(finalImage),
+          logo: toRelativePath(finalLogo),
           heading: whatsappSubscriptionText.heading,
           description: whatsappSubscriptionText.description,
           footer: whatsappSubscriptionText.footer,
           logoName: whatsappSubscriptionText.logoName
+        }
+      } else if (section.sectionType === 'splash_screen') {
+        const paddedVideos = padArray(imagesToUse, 3)
+        content = {
+          desktop: { video: paddedVideos[0] || '' },
+          tablet: { video: paddedVideos[1] || '' },
+          mobile: { video: paddedVideos[2] || '' },
+          updatedAt: new Date().toISOString()
         }
       } else if (section.sectionType.startsWith('custom_')) {
         // Custom section
@@ -1085,13 +1215,14 @@ export default function HomepageLayoutManager() {
         'nefol_collection': 'Nefol Collection',
         'forever_favorites': 'Forever Favorites',
         'natural_beauty': 'Natural Beauty',
-        'whatsappsubscription': 'WhatsApp Subscription'
+        'whatsappsubscription': 'WhatsApp Subscription',
+        'splash_screen': 'Splash Screen Videos'
       }
       
       // Use the correct section name from our map, or fall back to section.name
       const sectionTitle = sectionNameMap[section.sectionType] || section.name
       
-      const response = await fetch(`${API_BASE}/api/cms/sections`, {
+      const response = await fetch(`${API_BASE}/cms/sections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1138,7 +1269,15 @@ export default function HomepageLayoutManager() {
     const section = sections.find(s => s.id === sectionId)
     if (!section) return
 
-    const newImages = section.images.filter((_, i) => i !== imageIndex)
+    let newImages: string[]
+    if (section.sectionType === 'splash_screen') {
+      newImages = padArray(section.images, section.imageCount)
+      if (imageIndex !== undefined && imageIndex >= 0 && imageIndex < newImages.length) {
+        newImages[imageIndex] = ''
+      }
+    } else {
+      newImages = section.images.filter((_, i) => i !== imageIndex)
+    }
     
     // For top_media_carousel, also update mediaItems
     let updatedMediaItems: MediaItem[] | undefined = undefined
@@ -1149,14 +1288,15 @@ export default function HomepageLayoutManager() {
     setSections(prev => prev.map(s => 
       s.id === sectionId ? { 
         ...s, 
-        images: newImages,
+        images: section.sectionType === 'splash_screen' ? padArray(newImages, section.imageCount) : newImages,
         mediaItems: updatedMediaItems || s.mediaItems
       } : s
     ))
 
     // Update CMS
     try {
-      await saveSectionToCMS(sectionId, newImages[0] || '', undefined, newImages, updatedMediaItems)
+      const imagesForSave = section.sectionType === 'splash_screen' ? padArray(newImages, section.imageCount) : newImages
+      await saveSectionToCMS(sectionId, imagesForSave[0] || '', undefined, imagesForSave, updatedMediaItems)
       notify('success', 'Media removed')
     } catch (error) {
       notify('error', 'Failed to update CMS')
@@ -1506,12 +1646,12 @@ export default function HomepageLayoutManager() {
                       onClick={async () => {
                         if (confirm(`Are you sure you want to delete "${section.name}"?`)) {
                           try {
-                            const response = await fetch(`${API_BASE}/api/cms/sections/home`)
+                            const response = await fetch(`${API_BASE}/cms/sections/home`)
                             const cmsSections = await response.json()
                             const cmsSection = cmsSections.find((s: any) => s.section_type === section.sectionType)
                             
                             if (cmsSection) {
-                              const deleteResponse = await fetch(`${API_BASE}/api/cms/sections/${cmsSection.id}`, {
+                              const deleteResponse = await fetch(`${API_BASE}/cms/sections/${cmsSection.id}`, {
                                 method: 'DELETE'
                               })
                               
@@ -1536,13 +1676,13 @@ export default function HomepageLayoutManager() {
                   )}
                 </div>
                 <p className="text-sm text-gray-600">{section.description}</p>
-                {section.id !== 'scrolling_text_banner' && (
+                {section.id !== 'scrolling_text_banner' && section.id !== 'splash_screen' && (
                   <span className="inline-block mt-2 px-2 py-1 text-xs bg-gray-100 rounded">
                     Max {section.imageCount} image{section.imageCount > 1 ? 's' : ''}
                   </span>
                 )}
               </div>
-              {section.id !== 'scrolling_text_banner' && (
+              {section.id !== 'scrolling_text_banner' && section.id !== 'splash_screen' && (
                 <label className="cursor-pointer">
                   <input
                     type="file"
@@ -1739,6 +1879,100 @@ export default function HomepageLayoutManager() {
                     Save Content
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Splash Screen Manager */}
+            {section.id === 'splash_screen' && (
+              <div className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="text-base font-semibold text-purple-900">Splash Screen Videos</h4>
+                    <p className="text-sm text-slate-600">
+                      Upload device-specific videos (MP4/WebM) to personalize the opening animation for every visitor.
+                    </p>
+                  </div>
+                  <span className="text-xs text-slate-500">Auto-plays for desktop, tablet & mobile users.</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {SPLASH_DEVICE_CONFIGS.map(({ label, helper, index }) => {
+                    const videoUrl = section.images[index]
+                    return (
+                      <div key={label} className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">{label}</p>
+                          <p className="text-xs text-slate-500">{helper}</p>
+                        </div>
+                        {videoUrl ? (
+                          <div className="relative group border border-purple-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                            <video
+                              src={videoUrl}
+                              className="w-full h-48 object-cover bg-black"
+                              controls
+                              playsInline
+                              muted
+                              loop
+                            />
+                            {!previewMode && (
+                              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <label className="cursor-pointer">
+                                  <input
+                                    type="file"
+                                    accept="video/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0]
+                                      if (file) {
+                                        handleUpload(file, section.id, index, true)
+                                      }
+                                      e.currentTarget.value = ''
+                                    }}
+                                  />
+                                  <div className="px-3 py-1 text-xs bg-white/80 text-purple-700 rounded-full shadow">
+                                    Change
+                                  </div>
+                                </label>
+                                <button
+                                  onClick={() => removeImage(section.id, index)}
+                                  className="px-3 py-1 text-xs bg-red-500 text-white rounded-full shadow hover:bg-red-600"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <label className="cursor-pointer block">
+                            <input
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                  handleUpload(file, section.id, index, true)
+                                }
+                                e.currentTarget.value = ''
+                              }}
+                            />
+                            <div className="w-full h-48 border-2 border-dashed border-purple-200 rounded-xl flex flex-col items-center justify-center bg-white/70 hover:border-purple-400 hover:bg-purple-50 transition-colors">
+                              <Upload className="w-6 h-6 text-purple-400 mb-2" />
+                              <p className="text-sm text-purple-700 font-medium">Upload {label} Video</p>
+                              <p className="text-xs text-purple-500 mt-1 text-center px-4">
+                                MP4 / WebM • up to 30 MB
+                              </p>
+                            </div>
+                          </label>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <p className="text-xs text-purple-600 mt-4">
+                  Tip: Keep videos short (2-4s), muted, and optimized for fast autoplay. Splash screen automatically skips after 1.8 seconds if the video doesn&apos;t load.
+                </p>
               </div>
             )}
 
@@ -2082,17 +2316,18 @@ export default function HomepageLayoutManager() {
             )}
 
             {/* Drop Zone */}
-            {section.images.length === 0 ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 mb-2">
-                  Drag and drop {(section.id === 'hero_banner' || section.id === 'top_media_carousel') ? 'images or videos' : 'images'} here
-                </p>
-                <p className="text-xs text-gray-500">
-                  or click the upload button above
-                </p>
-              </div>
-            ) : (
+            {section.id !== 'splash_screen' && (
+              section.images.length === 0 ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 mb-2">
+                    Drag and drop {(section.id === 'hero_banner' || section.id === 'top_media_carousel') ? 'images or videos' : 'images'} here
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    or click the upload button above
+                  </p>
+                </div>
+              ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {section.images.map((mediaUrl, index) => {
                   // Improved video detection - check URL extension and also check if it's from uploads without extension
@@ -2256,6 +2491,7 @@ export default function HomepageLayoutManager() {
                   </label>
                 )}
               </div>
+              )
             )}
 
             {uploading[section.id] && (
@@ -2379,7 +2615,7 @@ export default function HomepageLayoutManager() {
 
                     try {
                       // Create section in CMS
-                      const response = await fetch(`${API_BASE}/api/cms/sections`, {
+                      const response = await fetch(`${API_BASE}/cms/sections`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

@@ -19,8 +19,10 @@ export async function trackProductView(pool: Pool, req: Request, res: Response) 
       [productId]
     )
 
+    // If product doesn't exist, silently return success (don't track, but don't error)
+    // This prevents 404 errors for deleted or non-existent products
     if (productCheck.rows.length === 0) {
-      return sendError(res, 404, 'Product not found')
+      return sendSuccess(res, { message: 'Product not found, view not tracked' })
     }
 
     // Get userId from token if authenticated, otherwise null

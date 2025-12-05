@@ -217,7 +217,10 @@ export default function SavedCards() {
               <div className="flex gap-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 text-white px-6 py-2 rounded-lg transition-colors"
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                 >
                   Save Card
                 </button>
@@ -245,7 +248,10 @@ export default function SavedCards() {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="inline-block text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               Add Your First Card
             </button>

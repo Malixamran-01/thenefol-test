@@ -128,7 +128,7 @@ export default function Community() {
                     <Heart className="w-5 h-5" />
                     <span>{post.likes || 0}</span>
                   </button>
-                  <button className="flex items-center space-x-2 text-slate-600 dark:text-slate-400 hover:text-blue-500 transition-colors">
+                  <button className="flex items-center space-x-2 text-slate-600 dark:text-slate-400 transition-colors" onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'} onMouseLeave={(e) => e.currentTarget.style.color = ''}>
                     <MessageCircle className="w-5 h-5" />
                     <span>{post.comments || 0}</span>
                   </button>
@@ -151,10 +151,10 @@ export default function Community() {
             Share your Nefol journey, get tips from experts, and connect with like-minded people.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+            <button className="text-white px-6 py-3 rounded-lg font-semibold transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>
               Share Your Story
             </button>
-            <button className="border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition-colors">
+            <button className="border-2 px-6 py-3 rounded-lg font-semibold transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'; e.currentTarget.style.color = 'white'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'rgb(75,151,201)'; }}>
               Ask Questions
             </button>
           </div>

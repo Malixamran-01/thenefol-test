@@ -62,7 +62,10 @@ export default function Wishlist() {
             </p>
             <a
               href="#/user/login"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-block px-6 py-3 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               Go to Login
             </a>
@@ -117,7 +120,10 @@ export default function Wishlist() {
             </p>
             <a
               href="#/user/shop"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-block px-6 py-3 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               Start Shopping
             </a>
@@ -163,7 +169,18 @@ export default function Wishlist() {
                     <button
                       onClick={() => handleAddToCart(item)}
                       disabled={movingToCart === item.id}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
+                      onMouseEnter={(e) => {
+                        if (!e.currentTarget.disabled) {
+                          e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!e.currentTarget.disabled) {
+                          e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+                        }
+                      }}
                     >
                       <ShoppingCart className="h-4 w-4" />
                       {movingToCart === item.id ? 'Adding...' : 'Add to Cart'}

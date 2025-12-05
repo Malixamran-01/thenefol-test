@@ -148,6 +148,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         await cartAPI.addToCart(p.id, quantity)
         await loadCart() // Refresh cart from backend
         console.log('✅ Successfully added to cart')
+        // Fire global event for UI notifications (e.g. toast)
+        try {
+          window.dispatchEvent(new CustomEvent('cart:item-added', { detail: { title: p.title } }))
+        } catch (e) {
+          console.error('Failed to dispatch cart:item-added event', e)
+        }
       } catch (err: any) {
         console.error('❌ Failed to add item to cart:', err)
         setError(err.message)
@@ -183,7 +189,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         next[idx] = { ...next[idx], quantity: next[idx].quantity + quantity }
         return next
       }
-      return [...prev, { 
+      const next = [...prev, { 
         product_id: p.id || 0,
         slug: p.slug, 
         title: p.title, 
@@ -192,6 +198,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         quantity, 
         category: p.category 
       }]
+      // Fire global event for UI notifications (e.g. toast)
+      try {
+        window.dispatchEvent(new CustomEvent('cart:item-added', { detail: { title: p.title } }))
+      } catch (e) {
+        console.error('Failed to dispatch cart:item-added event', e)
+      }
+      return next
     })
   }
 
@@ -294,12 +307,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items, isAuthenticated])
 
   // Calculate subtotal (MRP is tax-inclusive, so this includes tax)
-  const subtotal = useMemo(() => items.reduce((sum, i) => sum + parsePrice(i.price) * i.quantity, 0), [items])
+  const subtotal = useMemo(() => roundPrice(items.reduce((sum, i) => sum + parsePrice(i.price) * i.quantity, 0)), [items])
   
   // Extract tax from MRP (tax-inclusive pricing)
   // Formula: tax = price - (price / (1 + taxRate))
   const tax = useMemo(() => {
-    return items.reduce((totalTax, item) => {
+    return roundPrice(items.reduce((totalTax, item) => {
       const itemPrice = parsePrice(item.price) // This is MRP which includes tax
       const category = (item.category || '').toLowerCase()
       
@@ -312,11 +325,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const itemTax = itemPrice - basePrice
       
       return totalTax + (itemTax * item.quantity)
-    }, 0)
+    }, 0))
   }, [items])
   
   // Total remains the same as subtotal since MRP already includes tax
-  const total = useMemo(() => subtotal, [subtotal])
+  const total = useMemo(() => roundPrice(subtotal), [subtotal])
   
   const coinsEarned = useMemo(() => calculatePurchaseCoins(total), [total])
 
@@ -348,6 +361,11 @@ export function parsePrice(input: string): number {
   const m = (input || '').replace(/[^0-9.]/g, '')
   const n = Number(m)
   return Number.isFinite(n) ? n : 0
+}
+
+// Round price to nearest integer: 415.40 -> 415, 415.70 -> 416
+export function roundPrice(price: number): number {
+  return Math.round(price)
 }
 
 

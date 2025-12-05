@@ -9,6 +9,218 @@ function hashPassword(plain: string): string {
   return `${salt}:${hash}`
 }
 
+function verifyPassword(stored: string, plain: string): boolean {
+  try {
+    if (!stored?.includes(':')) return false
+    const [salt, originalHash] = stored.split(':')
+    const hashed = crypto.scryptSync(plain, salt, 64).toString('hex')
+    const originalBuffer = Buffer.from(originalHash, 'hex')
+    const hashedBuffer = Buffer.from(hashed, 'hex')
+    if (originalBuffer.length !== hashedBuffer.length) return false
+    return crypto.timingSafeEqual(originalBuffer, hashedBuffer)
+  } catch {
+    return false
+  }
+}
+
+function toStringArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string')
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === 'string')
+      }
+    } catch {
+      return value.split(',').map((item) => item.trim()).filter(Boolean)
+    }
+  }
+  return []
+}
+
+const SESSION_TTL_HOURS = Number(process.env.STAFF_SESSION_TTL_HOURS || 12)
+
+type StaffAggregatedRow = {
+  id: number
+  name: string
+  email: string
+  password: string
+  is_active: boolean
+  roles: string[] | string | null
+  permissions: string[] | string | null
+}
+
+export type StaffContext = {
+  staffId: number
+  sessionId: number
+  token: string
+  name: string
+  email: string
+  roles: string[]
+  permissions: string[]
+  primaryRole: string
+}
+
+async function fetchStaffWithAccess(pool: Pool, field: 'email' | 'id', value: string | number): Promise<StaffAggregatedRow | null> {
+  const whereClause = field === 'email' ? 'lower(su.email) = lower($1)' : 'su.id = $1'
+  const { rows } = await pool.query(
+    `
+      select
+        su.*,
+        coalesce(json_agg(distinct r.name) filter (where r.id is not null), '[]'::json) as roles,
+        coalesce(json_agg(distinct p.code) filter (where p.id is not null), '[]'::json) as permissions
+      from staff_users su
+      left join staff_roles sr on sr.staff_id = su.id
+      left join roles r on r.id = sr.role_id
+      left join role_permissions rp on rp.role_id = r.id
+      left join permissions p on p.id = rp.permission_id
+      where ${whereClause}
+      group by su.id
+    `,
+    [value]
+  )
+  return rows[0] || null
+}
+
+function toStaffResponse(row: StaffAggregatedRow) {
+  const roles = toStringArray(row.roles) || []
+  const permissions = toStringArray(row.permissions) || []
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: roles[0] || 'admin',
+    roles,
+    permissions
+  }
+}
+
+export async function getStaffContextByToken(pool: Pool, token: string): Promise<StaffContext | null> {
+  const { rows } = await pool.query(
+    `
+      select
+        ss.id as session_id,
+        ss.token,
+        ss.staff_id,
+        ss.expires_at,
+        ss.revoked_at,
+        su.name,
+        su.email,
+        su.is_active,
+        coalesce(json_agg(distinct r.name) filter (where r.id is not null), '[]'::json) as roles,
+        coalesce(json_agg(distinct p.code) filter (where p.id is not null), '[]'::json) as permissions
+      from staff_sessions ss
+      inner join staff_users su on su.id = ss.staff_id
+      left join staff_roles sr on sr.staff_id = su.id
+      left join roles r on r.id = sr.role_id
+      left join role_permissions rp on rp.role_id = r.id
+      left join permissions p on p.id = rp.permission_id
+      where ss.token = $1
+      group by ss.id, su.id
+    `,
+    [token]
+  )
+
+  const row = rows[0]
+  if (!row) return null
+  if (!row.is_active) return null
+  if (row.revoked_at) return null
+  if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) return null
+
+  const roles = toStringArray(row.roles)
+  const permissions = toStringArray(row.permissions)
+
+  return {
+    staffId: row.staff_id,
+    sessionId: row.session_id,
+    token: row.token,
+    name: row.name,
+    email: row.email,
+    roles,
+    permissions,
+    primaryRole: roles[0] || 'admin'
+  }
+}
+
+export function createStaffAuthMiddleware(pool: Pool) {
+  return async (req: Request, res: Response, next: Function) => {
+    try {
+      const token = (req.headers.authorization || '').replace('Bearer ', '').trim()
+      if (!token) {
+        return sendError(res, 401, 'Admin session token missing')
+      }
+      const context = await getStaffContextByToken(pool, token)
+      if (!context) {
+        return sendError(res, 401, 'Invalid or expired admin session')
+      }
+      ;(req as any).staffId = context.staffId
+      ;(req as any).staffSessionId = context.sessionId
+      ;(req as any).staffSessionToken = context.token
+      ;(req as any).userRole = context.primaryRole
+      ;(req as any).userPermissions = context.permissions
+      ;(req as any).staffContext = context
+      next()
+    } catch (err) {
+      console.error('Staff auth middleware error:', err)
+      sendError(res, 401, 'Failed to authenticate admin session')
+    }
+  }
+}
+
+export async function staffLogin(pool: Pool, req: Request, res: Response) {
+  try {
+    const { email, password } = req.body || {}
+    const validationError = validateRequired({ email, password }, ['email', 'password'])
+    if (validationError) return sendError(res, 400, validationError)
+
+    const staff = await fetchStaffWithAccess(pool, 'email', String(email))
+    if (!staff || !staff.is_active) {
+      return sendError(res, 401, 'Invalid credentials')
+    }
+
+    const passwordOk = verifyPassword(staff.password, String(password))
+    if (!passwordOk) {
+      await pool.query(
+        `update staff_users set failed_login_attempts = failed_login_attempts + 1, last_failed_login_at = now(), updated_at = now() where id = $1`,
+        [staff.id]
+      )
+      await logStaff(pool, staff.id, 'login_failed', { email })
+      return sendError(res, 401, 'Invalid credentials')
+    }
+
+    const sessionToken = `staff_${crypto.randomBytes(48).toString('hex')}`
+    const expiresAt = new Date(Date.now() + SESSION_TTL_HOURS * 60 * 60 * 1000)
+    const userAgent = req.headers['user-agent'] || null
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || null
+
+    await pool.query(
+      `insert into staff_sessions (staff_id, token, user_agent, ip_address, metadata, expires_at)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [staff.id, sessionToken, userAgent, ipAddress, JSON.stringify({ source: 'admin-panel' }), expiresAt]
+    )
+
+    await pool.query(
+      `update staff_users
+       set last_login_at = now(), failed_login_attempts = 0, updated_at = now(),
+           password_changed_at = coalesce(password_changed_at, now())
+       where id = $1`,
+      [staff.id]
+    )
+
+    await logStaff(pool, staff.id, 'login', { ipAddress })
+
+    sendSuccess(res, {
+      token: sessionToken,
+      user: toStaffResponse(staff)
+    })
+  } catch (err) {
+    console.error('Failed to login staff:', err)
+    sendError(res, 500, 'Failed to login', err)
+  }
+}
+
 async function logStaff(pool: Pool, staffId: number | null, action: string, details?: any) {
   try {
     await pool.query(
@@ -178,6 +390,93 @@ export async function listStaffActivity(pool: Pool, req: Request, res: Response)
     sendSuccess(res, rows)
   } catch (err) {
     sendError(res, 500, 'Failed to fetch staff activity logs', err)
+  }
+}
+
+export async function staffLogout(pool: Pool, req: Request, res: Response) {
+  try {
+    const staffId = (req as any).staffId
+    const sessionId = (req as any).staffSessionId
+    if (!staffId || !sessionId) {
+      return sendError(res, 401, 'Invalid admin session')
+    }
+
+    await pool.query('update staff_sessions set revoked_at = now() where id = $1 and revoked_at is null', [sessionId])
+    await pool.query('update staff_users set last_logout_at = now(), updated_at = now() where id = $1', [staffId])
+    await logStaff(pool, staffId, 'logout')
+    sendSuccess(res, { success: true })
+  } catch (err) {
+    sendError(res, 500, 'Failed to logout', err)
+  }
+}
+
+export async function staffMe(pool: Pool, req: Request, res: Response) {
+  try {
+    const staffId = (req as any).staffId
+    if (!staffId) {
+      return sendError(res, 401, 'Invalid admin session')
+    }
+    const staff = await fetchStaffWithAccess(pool, 'id', Number(staffId))
+    if (!staff) {
+      return sendError(res, 404, 'Staff account not found')
+    }
+    sendSuccess(res, { user: toStaffResponse(staff) })
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch admin profile', err)
+  }
+}
+
+export async function staffChangePassword(pool: Pool, req: Request, res: Response) {
+  try {
+    const staffId = (req as any).staffId
+    const sessionId = (req as any).staffSessionId
+    if (!staffId || !sessionId) {
+      return sendError(res, 401, 'Invalid admin session')
+    }
+
+    const { currentPassword, newPassword, confirmNewPassword } = req.body || {}
+    const validationError = validateRequired(
+      { currentPassword, newPassword, confirmNewPassword },
+      ['currentPassword', 'newPassword', 'confirmNewPassword']
+    )
+    if (validationError) return sendError(res, 400, validationError)
+    if (String(newPassword).length < 8) {
+      return sendError(res, 400, 'New password must be at least 8 characters long')
+    }
+    if (newPassword !== confirmNewPassword) {
+      return sendError(res, 400, 'New password and confirmation do not match')
+    }
+
+    const staff = await fetchStaffWithAccess(pool, 'id', Number(staffId))
+    if (!staff) {
+      return sendError(res, 404, 'Staff account not found')
+    }
+
+    const validOldPassword = verifyPassword(staff.password, String(currentPassword))
+    if (!validOldPassword) {
+      await logStaff(pool, staffId, 'password_change_failed')
+      return sendError(res, 400, 'Current password is incorrect')
+    }
+
+    const hashed = hashPassword(String(newPassword))
+    await pool.query(
+      `update staff_users
+         set password = $2, password_changed_at = now(), updated_at = now()
+       where id = $1`,
+      [staffId, hashed]
+    )
+
+    await pool.query(
+      `update staff_sessions
+         set revoked_at = now()
+       where staff_id = $1 and id <> $2 and revoked_at is null`,
+      [staffId, sessionId]
+    )
+
+    await logStaff(pool, staffId, 'password_changed')
+    sendSuccess(res, { success: true })
+  } catch (err) {
+    sendError(res, 500, 'Failed to update password', err)
   }
 }
 

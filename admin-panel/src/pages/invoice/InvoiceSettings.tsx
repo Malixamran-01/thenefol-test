@@ -78,15 +78,19 @@ const InvoiceSettingsPage: React.FC = () => {
   const loadSettings = async () => {
     try {
       const getApiBase = () => {
-        if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-        const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-        const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-        return `http://${host}:${port}`
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+          // Always use production URL - no environment variables
+        }
+        return 'https://thenefol.com/api'
       }
       const apiBase = getApiBase()
       
       // Load company details
-      const detailsResponse = await fetch(`${apiBase}/api/invoice-settings/company-details`)
+      const detailsResponse = await fetch(`${apiBase}/invoice-settings/company-details`)
       if (detailsResponse.ok) {
         const data = await detailsResponse.json()
         if (data && Object.keys(data).length > 0) {
@@ -108,7 +112,7 @@ const InvoiceSettingsPage: React.FC = () => {
       }
 
       // Load other settings
-      const settingsResponse = await fetch(`${apiBase}/api/invoice-settings/all`)
+      const settingsResponse = await fetch(`${apiBase}/invoice-settings/all`)
       if (settingsResponse.ok) {
         const data = await settingsResponse.json()
         if (data) {
@@ -157,22 +161,26 @@ const InvoiceSettingsPage: React.FC = () => {
 
     try {
       const getApiBase = () => {
-        if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-        const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-        const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-        return `http://${host}:${port}`
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname
+          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+            return `${window.location.protocol}//${window.location.host}/api`
+          }
+          // Always use production URL - no environment variables
+        }
+        return 'https://thenefol.com/api'
       }
       const apiBase = getApiBase()
       
       // Save company details
-      await fetch(`${apiBase}/api/invoice-settings/company-details`, {
+      await fetch(`${apiBase}/invoice-settings/company-details`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings.companyDetails)
       })
 
       // Save all settings (including images)
-      await fetch(`${apiBase}/api/invoice-settings/all`, {
+      await fetch(`${apiBase}/invoice-settings/all`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -229,10 +237,14 @@ const InvoiceSettingsPage: React.FC = () => {
   }
 
   const getApiBase = () => {
-    if ((import.meta as any).env.VITE_API_URL) return (import.meta as any).env.VITE_API_URL
-    const host = (import.meta as any).env.VITE_BACKEND_HOST || (import.meta as any).env.VITE_API_HOST || 'localhost'
-    const port = (import.meta as any).env.VITE_BACKEND_PORT || (import.meta as any).env.VITE_API_PORT || '4000'
-    return `http://${host}:${port}`
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
   }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

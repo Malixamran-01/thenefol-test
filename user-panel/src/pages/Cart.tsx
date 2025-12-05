@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { ShoppingCart, Package, Trash2, Lock } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
-import { parsePrice } from '../contexts/CartContext'
+import { parsePrice, roundPrice } from '../contexts/CartContext'
 import PricingDisplay from '../components/PricingDisplay'
 import AuthGuard from '../components/AuthGuard'
 import { pixelEvents, formatCartData } from '../utils/metaPixel'
@@ -52,7 +52,8 @@ export default function Cart() {
 
   const formatPrice = (price: string) => {
     const numericPrice = parsePrice(price)
-    return `₹${numericPrice.toLocaleString()}`
+    const rounded = roundPrice(numericPrice)
+    return `₹${rounded.toLocaleString()}`
   }
 
   const calculateItemTax = (price: string, quantity: number, category?: string) => {
@@ -65,8 +66,9 @@ export default function Cart() {
     // tax = taxInclusivePrice - basePrice
     const basePrice = itemPrice / (1 + taxRate)
     const itemTax = itemPrice - basePrice
+    const roundedTax = roundPrice(itemTax * quantity)
     
-    return `₹${(itemTax * quantity).toLocaleString()}`
+    return `₹${roundedTax.toLocaleString()}`
   }
 
   const getTaxRateText = (category?: string) => {
@@ -76,12 +78,13 @@ export default function Cart() {
 
   const calculateItemTotal = (price: string, quantity: number) => {
     const numericPrice = parsePrice(price)
-    return `₹${(numericPrice * quantity).toLocaleString()}`
+    const rounded = roundPrice(numericPrice * quantity)
+    return `₹${rounded.toLocaleString()}`
   }
 
   return (
     <AuthGuard>
-    <div className="min-h-screen py-12 sm:py-16 md:py-20 bg-white">
+    <div className="min-h-screen py-12 sm:py-16 md:py-20 bg-white overflow-x-hidden">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-12 sm:mb-16">
@@ -89,7 +92,7 @@ export default function Cart() {
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]" 
             style={{
               color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
@@ -103,7 +106,7 @@ export default function Cart() {
           <div className="text-center py-16">
             <div className="mb-6">
               <img 
-                src="/IMAGES/BANNER (2).jpg" 
+                src="/IMAGES/BANNER (2).webp" 
                 alt="Empty Cart" 
                 className="w-32 h-32 mx-auto rounded-lg object-cover shadow-lg"
                 onError={(e) => {
@@ -120,7 +123,7 @@ export default function Cart() {
               className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.1em]" 
               style={{
                 color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.1em'
               }}
             >
@@ -181,7 +184,7 @@ export default function Cart() {
                       <div className="flex-shrink-0">
                         <div className="relative">
                           <img
-                            src={item.image || '/IMAGES/BANNER (1).jpg'}
+                            src={item.image || '/IMAGES/BANNER (1).webp'}
                             alt={item.title}
                             className="w-24 h-24 object-cover rounded-lg border shadow-sm hover:shadow-md transition-shadow"
                             style={{borderColor: '#D0E8F2'}}
@@ -192,11 +195,11 @@ export default function Cart() {
                               // Prevent infinite loop by checking if we've already tried fallbacks
                               if (!target.dataset.fallbackAttempted) {
                                 target.dataset.fallbackAttempted = 'true'
-                                // Try fallback images in order
-                                if (target.src.includes('/IMAGES/BANNER (1).jpg')) {
-                                  target.src = '/IMAGES/face.jpg'
-                                } else if (target.src.includes('/IMAGES/face.jpg')) {
-                                  target.src = '/IMAGES/body.jpg'
+                                // Try fallback images in order (convert to webp)
+                                if (target.src.includes('/IMAGES/BANNER (1).')) {
+                                  target.src = '/IMAGES/face.webp'
+                                } else if (target.src.includes('/IMAGES/face.')) {
+                                  target.src = '/IMAGES/body.webp'
                                 } else {
                                   // If all fallbacks fail, show placeholder
                                   target.style.display = 'none'
@@ -305,7 +308,8 @@ export default function Cart() {
                         itemMrp = item.price // Last resort fallback
                       }
                       
-                      return sum + (parsePrice(itemMrp || '0') * item.quantity)
+                      const mrp = parsePrice(itemMrp || '0')
+                      return sum + roundPrice(mrp * item.quantity)
                     }, 0)
                     
                     const productDiscount = items.reduce((sum, item) => {
@@ -331,7 +335,7 @@ export default function Cart() {
                       const mrp = parsePrice(itemMrp || '0')
                       const currentPrice = parsePrice(item.price)
                       const discount = (mrp - currentPrice) * item.quantity
-                      return sum + Math.max(0, discount)
+                      return sum + Math.max(0, roundPrice(discount))
                     }, 0)
                     
                     const shipping = 0
@@ -341,7 +345,7 @@ export default function Cart() {
                       const taxRate = category.includes('hair') ? 0.05 : 0.18
                       const basePrice = itemPrice / (1 + taxRate)
                       const itemTax = itemPrice - basePrice
-                      return totalTax + (itemTax * item.quantity)
+                      return totalTax + roundPrice(itemTax * item.quantity)
                     }, 0)
                     
                     return (
@@ -349,28 +353,28 @@ export default function Cart() {
                         {/* MRP Total */}
                         <div className="flex justify-between text-slate-600">
                           <span>MRP</span>
-                          <span>₹{mrpTotal.toLocaleString()}</span>
+                          <span>₹{roundPrice(mrpTotal).toLocaleString()}</span>
                         </div>
                         
                         {/* Product Discount */}
                         {productDiscount > 0 && (
                           <div className="flex justify-between text-green-600">
                             <span>Product Discount</span>
-                            <span>-₹{productDiscount.toLocaleString()}</span>
+                            <span>-₹{roundPrice(productDiscount).toLocaleString()}</span>
                           </div>
                         )}
                         
                         {/* Subtotal */}
                         <div className="flex justify-between font-medium text-slate-700">
                           <span>Subtotal ({items.length} items)</span>
-                          <span>₹{subtotal.toLocaleString()}</span>
+                          <span>₹{roundPrice(subtotal).toLocaleString()}</span>
                         </div>
                         
                         {/* Shipping */}
                         <div className="flex justify-between text-slate-600">
                           <span>Shipping Charges</span>
                           <span className={shipping > 0 ? '' : 'text-green-600'}>
-                            {shipping > 0 ? `₹${shipping.toFixed(2)}` : 'Free'}
+                            {shipping > 0 ? `₹${roundPrice(shipping).toLocaleString()}` : 'Free'}
                           </span>
                         </div>
                         
@@ -378,7 +382,7 @@ export default function Cart() {
                         {items.some(item => (item.category || '').toLowerCase().includes('hair')) && (
                           <div className="flex justify-between text-slate-600">
                             <span>GST (5% - Hair Products, Inclusive)</span>
-                            <span>₹{items.reduce((sum, item) => {
+                            <span>₹{roundPrice(items.reduce((sum, item) => {
                               const category = (item.category || '').toLowerCase()
                               if (category.includes('hair')) {
                                 const itemPrice = parsePrice(item.price)
@@ -387,13 +391,13 @@ export default function Cart() {
                                 return sum + (itemTax * item.quantity)
                               }
                               return sum
-                            }, 0).toLocaleString()}</span>
+                            }, 0)).toLocaleString()}</span>
                           </div>
                         )}
                         {items.some(item => !(item.category || '').toLowerCase().includes('hair')) && (
                           <div className="flex justify-between text-slate-600">
                             <span>GST (18% - Other Products, Inclusive)</span>
-                            <span>₹{items.reduce((sum, item) => {
+                            <span>₹{roundPrice(items.reduce((sum, item) => {
                               const category = (item.category || '').toLowerCase()
                               if (!category.includes('hair')) {
                                 const itemPrice = parsePrice(item.price)
@@ -402,7 +406,7 @@ export default function Cart() {
                                 return sum + (itemTax * item.quantity)
                               }
                               return sum
-                            }, 0).toLocaleString()}</span>
+                            }, 0)).toLocaleString()}</span>
                           </div>
                         )}
                         
@@ -410,7 +414,7 @@ export default function Cart() {
                         <hr className="border-slate-200" />
                         <div className="flex justify-between text-lg font-bold" style={{color: '#1B4965'}}>
                           <span>Grand Total</span>
-                          <span>₹{total.toLocaleString()}</span>
+                          <span>₹{roundPrice(total).toLocaleString()}</span>
                         </div>
                         <div className="text-xs text-slate-500 mt-1">* MRP includes GST</div>
                       </>
@@ -422,14 +426,18 @@ export default function Cart() {
                   <a
                     href="#/user/checkout"
                     className="block w-full text-white py-3 px-4 rounded-lg font-semibold text-center hover:shadow-lg transition-all duration-300 hover:scale-105"
-                    style={{backgroundColor: '#1B4965'}}
+                    style={{backgroundColor: 'rgb(75,151,201)'}}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                   >
                     Proceed to Checkout
                   </a>
                   <a
                     href="#/user/shop"
                     className="block w-full py-3 px-4 rounded-lg font-semibold text-center transition-colors"
-                    style={{borderColor: '#9DB4C0', borderWidth: '1px', color: '#1B4965'}}
+                    style={{borderColor: 'rgb(75,151,201)', borderWidth: '1px', color: 'rgb(75,151,201)'}}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'; e.currentTarget.style.color = 'white'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'rgb(75,151,201)'; }}
                   >
                     Continue Shopping
                   </a>

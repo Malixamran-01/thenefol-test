@@ -3,7 +3,17 @@ import React, { useEffect, useState } from 'react'
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<{ ordersToday: number; revenue: number; newCustomers: number }>({ ordersToday: 0, revenue: 0, newCustomers: 0 })
   const [trend, setTrend] = useState<Array<{ date: string; orders: number; revenue: number }>>([])
-  const apiBase = (import.meta as any).env.VITE_API_URL || `https://thenefol.com/api`
+  const getApiBase = () => {
+    // Always use production URL - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        return `${window.location.protocol}//${window.location.host}/api`
+      }
+    }
+    return 'https://thenefol.com/api'
+  }
+  const apiBase = getApiBase()
 
   useEffect(() => {
     const load = async () => {

@@ -1,28 +1,73 @@
 // API Service for connecting frontend with backend
 const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL
+  // Always use production URL - no environment variables
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    // If on production domain, use current domain
+    if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+      return `${window.location.protocol}//${window.location.host}/api`
+    }
+    // For any other domain, always use production URL
+    // This ensures we never use local IPs or development URLs in production builds
+    return 'https://thenefol.com/api'
   }
-  const host = (import.meta.env.VITE_BACKEND_HOST as string) || (import.meta.env.VITE_API_HOST as string) || 'localhost'
-  const port = (import.meta.env.VITE_BACKEND_PORT as string) || (import.meta.env.VITE_API_PORT as string) || '4000'
-  return `http://${host}:${port}`
+  // Default to production API URL
+  return 'https://thenefol.com/api'
 }
-const API_BASE_URL = getApiBaseUrl()
+// Call at runtime, not module level, to ensure fresh detection
+const getApiBaseUrlRuntime = () => getApiBaseUrl()
 
 class ApiService {
   private baseURL: string
 
   constructor() {
-    this.baseURL = API_BASE_URL
+    // Get API base URL at runtime, not build time
+    this.baseURL = getApiBaseUrlRuntime()
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`
+    // Normalize endpoint - if baseURL already ends with /api and endpoint starts with /api, remove the /api prefix
+    let normalizedEndpoint = endpoint
+    const baseEndsWithApi = this.baseURL.endsWith('/api')
+    
+    if (baseEndsWithApi && endpoint.startsWith('/api')) {
+      // Remove '/api' prefix from endpoint since baseURL already includes it
+      // Handle both '/api/' and '/api' (without trailing slash)
+      if (endpoint.startsWith('/api/')) {
+        normalizedEndpoint = endpoint.substring(5) // Remove '/api/' (5 chars)
+      } else if (endpoint === '/api') {
+        normalizedEndpoint = '/'
+      } else {
+        normalizedEndpoint = endpoint.substring(4) // Remove '/api' (4 chars)
+      }
+    }
+    
+    // Ensure endpoint starts with /
+    if (!normalizedEndpoint.startsWith('/')) {
+      normalizedEndpoint = '/' + normalizedEndpoint
+    }
+    
+    const url = `${this.baseURL}${normalizedEndpoint}`
     
     // Get auth token from localStorage
     const token = localStorage.getItem('auth_token')
-    const role = localStorage.getItem('role') || 'admin'
-    const permissions = localStorage.getItem('permissions') || 'orders:read,orders:update,shipping:read,shipping:update,invoices:read,products:update'
+    let role = 'admin'
+    let permissions = 'orders:read,orders:update,shipping:read,shipping:update,invoices:read,products:update'
+
+    try {
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        const user = JSON.parse(userStr)
+        if (user?.role) {
+          role = user.role
+        }
+        if (Array.isArray(user?.permissions) && user.permissions.length > 0) {
+          permissions = user.permissions.join(',')
+        }
+      }
+    } catch {
+      // ignore parsing errors and fallback to defaults
+    }
     
     const config: RequestInit = {
       headers: {

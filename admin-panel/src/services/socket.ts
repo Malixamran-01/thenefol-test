@@ -11,9 +11,33 @@ class SocketService {
     if (this.socket?.connected || this.isConnecting) return
 
     this.isConnecting = true
-    const socketHost = (import.meta.env.VITE_BACKEND_HOST as string) || (import.meta.env.VITE_API_HOST as string) || 'localhost'
-    const socketPort = (import.meta.env.VITE_BACKEND_PORT as string) || (import.meta.env.VITE_API_PORT as string) || '2000'
-    const socketUrl = import.meta.env.VITE_API_URL || `http://${socketHost}:${socketPort}`
+    // Determine socket URL based on environment
+    let socketUrl: string
+    
+    // Always use production domain - no environment variables
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      const protocol = window.location.protocol
+      
+      // CRITICAL: Production check FIRST - always use production domain
+      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+        // Production: use current domain with WSS (Socket.IO will append /socket.io/)
+        socketUrl = `https://${window.location.host}`
+        console.log('🔌 [Socket] Production detected, using:', socketUrl)
+      } else if (protocol === 'https:') {
+        // If on HTTPS (any domain), use WSS with current hostname
+        socketUrl = `https://${window.location.host}`
+        console.log('🔌 [Socket] HTTPS detected, using WSS:', socketUrl)
+      } else {
+        // For HTTP (development only), always use production WSS
+        // This ensures we never use local IPs in production builds
+        socketUrl = 'https://thenefol.com'
+        console.log('🔌 [Socket] Non-production HTTP detected, using production WSS:', socketUrl)
+      }
+    } else {
+      // Server-side or fallback
+      socketUrl = 'https://thenefol.com'
+    }
     
     // If socket exists but not connected, clean it up first
     if (this.socket && !this.socket.connected) {

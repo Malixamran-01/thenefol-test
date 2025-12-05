@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 1: Welcome / Account Created
+    Subject ideas:
+    1) Welcome to {{company}}, {{name}} — your account is ready
+    2) You’re in, {{name}}! Let’s get started with {{company}}
+    3) Your new {{company}} account is live
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Welcome -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                Welcome to {{company}}, {{name}}
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Your account is now active and ready to use. We’re happy to have you with us.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                With your new account, you can:
+              </p>
+              <ul style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 16px 20px;padding:0;">
+                <li>Save your details for faster checkout</li>
+                <li>Track orders and delivery status in one place</li>
+                <li>Access offers and early product alerts</li>
+              </ul>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 24px 0;">
+                Start exploring our latest collections and offers now.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Visit your account
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                If you did not create this account, you can ignore this email or contact support so we can help.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 2: Cart – Item Added Reminder
+    Subject ideas:
+    1) Still thinking it over, {{name}}?
+    2) Your picks are waiting in your cart at {{company}}
+    3) Don’t lose your selection — complete your cart
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Cart Item Added -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                You left something in your cart, {{name}}
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                You recently added items to your cart at {{company}}, but did not complete your order.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Your selection is still reserved for a short time. You can review your cart and finish checkout in just a few steps.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 24px 0;">
+                When you are ready, click the button below to continue.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Go to my cart
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                If you have already completed this order, you can ignore this email.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 3: Checkout – Order Placed
+    Subject ideas:
+    1) Thank you for your order, {{name}}
+    2) Your {{company}} order is confirmed
+    3) We’ve received your order — here are the details
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Order Placed -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                Your order is confirmed, {{name}}
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Thank you for shopping with {{company}}. Your order has been received and is now being processed.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                You can view your order details and follow the status at any time from your account.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:16px 0 24px 0;border-collapse:collapse;">
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;padding:4px 8px;">
+                    Order:
+                  </td>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;padding:4px 8px;">
+                    {{order_id}}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;padding:4px 8px;">
+                    Total:
+                  </td>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;padding:4px 8px;">
+                    {{order_total}}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;padding:4px 8px;">
+                    Payment status:
+                  </td>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;padding:4px 8px;">
+                    {{payment_status}}
+                  </td>
+                </tr>
+              </table>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      View my order
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                This is a confirmation that we received your order. You will receive another email when your items are shipped.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 4: Payment Failed
+    Subject ideas:
+    1) Payment could not be completed for your order
+    2) Action needed: please retry your payment
+    3) Your {{company}} order is waiting for payment
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Payment Failed -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                Your payment did not go through
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                We tried to process your payment for order {{order_id}}, but it was not successful.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                This can happen due to network issues, card limits, or bank verification. You can try again using the button below.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#c0392b" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Retry payment
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                If the amount has been deducted from your account but is not showing here, your bank may reverse it automatically.
+                You can also contact our support with the payment reference for quick help.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 5: Order Shipped
+    Subject ideas:
+    1) Good news — your order is on the way
+    2) Your {{company}} order has been shipped
+    3) Track your shipment for order {{order_id}}
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Order Shipped -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                Your order is on the way, {{name}}
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Your {{company}} order {{order_id}} has been shipped. You can use the link below to follow your package.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:16px 0 24px 0;border-collapse:collapse;">
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;padding:4px 8px;">
+                    Tracking link:
+                  </td>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#0066cc;padding:4px 8px;">
+                    <a href="{{tracking_url}}" style="color:#0066cc;text-decoration:none;">Track shipment</a>
+                  </td>
+                </tr>
+              </table>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      View order status
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                Please allow some time for the tracking link to show the latest information from the shipping partner.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 6: Order Delivered
+    Subject ideas:
+    1) Your order has been delivered
+    2) How was your experience with {{company}}?
+    3) Your package has arrived — tell us what you think
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Order Delivered -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                Your order has been delivered
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Your order {{order_id}} from {{company}} has been marked as delivered. We hope you are happy with your purchase.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Your feedback helps us improve. It only takes a minute to share your experience.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Rate your order
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                If you did not receive your order or there is an issue with the items, please reach out to our support team so we can assist you quickly.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 7: Cart Abandonment (After 1+ Hour)
+    Subject ideas:
+    1) Complete your order before your items sell out
+    2) A quick reminder about your cart at {{company}}
+    3) {{name}}, your items are almost yours
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Cart Abandonment -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                Your cart is still waiting, {{name}}
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                We noticed you added items to your cart at {{company}} but did not finish your order.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Popular items can sell out quickly. If you still want them, it’s a good time to complete your checkout.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 24px 0;">
+                Your cart is just one click away:
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Return to my cart
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                If you do not want these items anymore, you can safely ignore this message.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 8: Password Reset Request
+    Subject ideas:
+    1) Reset your {{company}} password
+    2) Password reset requested for your account
+    3) Here is your secure password reset link
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Password Reset -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                Reset your password
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                We received a request to reset the password for your {{company}} account.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                If you made this request, click the secure link below to set a new password. This link is valid for a limited time.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Reset my password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0 0 8px 0;">
+                If you did not request a password reset, you can safely ignore this email. Your password will not change.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                For your security, never share your password or login link with anyone.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 9: Password Reset Success
+    Subject ideas:
+    1) Your {{company}} password has been changed
+    2) Password updated successfully
+    3) Security update: your password was reset
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Password Reset Success -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                Your password was changed
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                This is a confirmation that the password for your {{company}} account has been updated.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                If this was you, no further action is needed. You can now sign in with your new password.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 24px 0;">
+                If you did not change your password, please secure your account immediately.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#c0392b" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Secure my account
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                For best security, use a strong, unique password and avoid reusing passwords across different sites.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 10: Login Alert (New Device / Location)
+    Subject ideas:
+    1) New login to your {{company}} account
+    2) Security alert: sign-in detected
+    3) Was this you? New login on your account
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Login Alert -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                New login to your account
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                A new login to your {{company}} account was detected.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:16px 0 24px 0;border-collapse:collapse;">
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;padding:4px 8px;">
+                    Device:
+                  </td>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;padding:4px 8px;">
+                    {{device_info}}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;padding:4px 8px;">
+                    Time:
+                  </td>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;padding:4px 8px;">
+                    {{login_time}}
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                If this was you, you can ignore this message.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 24px 0;">
+                If you do not recognize this activity, we recommend you secure your account now.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#c0392b" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Review my account
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                For extra safety, enable additional security options in your account where available.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 11: Post-Purchase Review Request
+    Subject ideas:
+    1) How did we do? Rate your recent order
+    2) Tell us what you think about your purchase
+    3) Share a quick review of your {{company}} order
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Review Request -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                We would love your feedback, {{name}}
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Thank you for your recent order from {{company}}. Your experience matters to us.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                Please take a moment to leave a short review. It helps other customers and allows us to keep improving.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Leave a review
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                Your review can be as short as a few lines. Thank you for helping us serve you better.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+<!DOCTYPE html>
+<html>
+  <!--
+    Template 12: Winback / Re‑engagement Offer
+    Subject ideas:
+    1) We miss you at {{company}} — here is something special
+    2) It has been a while, {{name}} — come back and explore
+    3) Your exclusive {{offer}} is waiting
+  -->
+  <body style="margin:0; padding:0; background:#f6f6f6;">
+    <table align="center" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding:40px 0;">
+          <img src="{{logo_url}}" alt="Company Logo" width="150" style="display:block;margin-bottom:20px;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:30px;border-radius:8px;">
+            <tr><td>
+
+              <!-- Email Content: Winback -->
+              <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#222;margin:0 0 16px 0;text-align:left;">
+                We would love to see you again, {{name}}
+              </h1>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                It has been some time since your last visit to {{company}}. We hope everything is going well.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 12px 0;">
+                To welcome you back, we have prepared a special {{offer}} just for you.
+              </p>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#555;line-height:1.6;margin:0 0 24px 0;">
+                Use it on your next order by clicking the button below.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" bgcolor="#222222" style="border-radius:4px;">
+                    <a href="{{cta_link}}" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#ffffff;text-decoration:none;border-radius:4px;">
+                      Redeem my offer
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#999;line-height:1.6;margin:0;">
+                This offer is available for a limited time. If you do not wish to receive such reminders, you can update your email preferences in your account.
+              </p>
+
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:20px;color:#999;font-size:12px;">
+          © {{year}} {{company}} — All Rights Reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle, XCircle, Trash2, Clock, User, Calendar, Eye, EyeOff, Star, Filter, Search } from 'lucide-react'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface BlogRequest {
   id: string
@@ -26,13 +27,13 @@ export default function BlogRequestManagement() {
   const [selectedRequest, setSelectedRequest] = useState<BlogRequest | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
+  const API_BASE = getApiBaseUrl()
 
   // Fetch blog requests
   const fetchBlogRequests = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE}/api/blog/admin/requests`)
+      const response = await fetch(`${API_BASE}/blog/admin/requests`)
       const data = await response.json()
       setBlogRequests(data)
     } catch (error) {
@@ -46,7 +47,7 @@ export default function BlogRequestManagement() {
   const fetchBlogPosts = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE}/api/blog/admin/posts`)
+      const response = await fetch(`${API_BASE}/blog/admin/posts`)
       const data = await response.json()
       setBlogPosts(data)
     } catch (error) {
@@ -67,7 +68,7 @@ export default function BlogRequestManagement() {
   // Approve blog request
   const approveBlogRequest = async (requestId: string, featured = false) => {
     try {
-      const response = await fetch(`${API_BASE}/api/blog/admin/approve/${requestId}`, {
+      const response = await fetch(`${API_BASE}/blog/admin/approve/${requestId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ featured })
@@ -85,7 +86,7 @@ export default function BlogRequestManagement() {
   // Reject blog request
   const rejectBlogRequest = async (requestId: string, reason: string) => {
     try {
-      const response = await fetch(`${API_BASE}/api/blog/admin/reject/${requestId}`, {
+      const response = await fetch(`${API_BASE}/blog/admin/reject/${requestId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason })
@@ -104,7 +105,7 @@ export default function BlogRequestManagement() {
     if (!confirm('Are you sure you want to delete this blog post?')) return
     
     try {
-      const response = await fetch(`${API_BASE}/api/blog/admin/posts/${postId}`, {
+      const response = await fetch(`${API_BASE}/blog/admin/posts/${postId}`, {
         method: 'DELETE'
       })
       
@@ -433,7 +434,7 @@ function BlogDetailsModal({
   blog: BlogRequest
   onClose: () => void
 }) {
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://thenefol.com/api'
+  const API_BASE = getApiBaseUrl()
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">

@@ -14,11 +14,11 @@ export default function Logo({ className = "font-semibold text-xl hover:text-blu
     : '/IMAGES/dark theme logo.png'
 
   return (
-    <a href={href} className={className}>
+    <a href={href} className={`${className} block max-w-full overflow-hidden`}>
       <img 
         src={logoSrc} 
         alt="Nefol" 
-        className="h-12 w-auto"
+        className="h-8 sm:h-10 md:h-12 w-auto max-w-[100px] sm:max-w-[120px] md:max-w-[140px] object-contain transition-all duration-300"
         onError={(e) => {
           // Fallback to text if image fails to load
           const target = e.target as HTMLImageElement

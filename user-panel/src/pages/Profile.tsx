@@ -5,6 +5,7 @@ import ProfileAvatar from '../components/ProfileAvatar'
 import PhoneInput from '../components/PhoneInput'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
+import { getApiBase } from '../utils/apiBase'
 
 interface UserProfile {
   name: string
@@ -271,9 +272,7 @@ export default function Profile() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-      const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+      const apiBase = getApiBase()
       const response = await fetch(`${apiBase}/api/upload`, {
         method: 'POST',
         body: formData
@@ -378,9 +377,7 @@ export default function Profile() {
         phone: newAddress.phone || profile!.phone
       }
 
-      const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-      const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-      const apiBase = (import.meta as any).env?.VITE_API_URL || `${window.location.protocol}//${apiHost}:${apiPort}`
+      const apiBase = getApiBase()
       const response = await fetch(`${apiBase}/api/users/profile`, {
         method: 'PUT',
         headers: {
@@ -428,7 +425,7 @@ export default function Profile() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Please Login</h1>
           <p className="text-slate-600 dark:text-slate-400 mb-6">You need to be logged in to view your profile.</p>
-          <a href="#/user/login" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Go to Login</a>
+          <a href="#/user/login" className="inline-block px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>Go to Login</a>
         </div>
       </main>
     )
@@ -465,7 +462,7 @@ export default function Profile() {
             className="text-3xl sm:text-4xl md:text-5xl font-light tracking-[0.15em] mb-6"
             style={{
               color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
@@ -614,7 +611,7 @@ export default function Profile() {
                       className="text-2xl sm:text-3xl font-light tracking-[0.1em]"
                       style={{
                         color: '#1a1a1a',
-                        fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+                        fontFamily: 'var(--font-heading-family)',
                         letterSpacing: '0.1em'
                       }}
                     >
@@ -855,7 +852,7 @@ export default function Profile() {
                     <h3 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">{formatCoins(0)}</h3>
                     <p className="text-slate-600 dark:text-slate-400 mb-6">Your Nefol Coins Balance</p>
                     <div className="space-y-4 max-w-md mx-auto">
-                      <button className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <button className="w-full px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>
                         Earn Coins
                       </button>
                       <button className="w-full px-6 py-3 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
@@ -876,7 +873,7 @@ export default function Profile() {
                       <Package className="h-16 w-16 text-slate-400 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold dark:text-slate-100 mb-2">No Orders Yet</h3>
                       <p className="text-slate-600 dark:text-slate-400 mb-6">Start shopping to see your orders here</p>
-                      <a href="#/user/shop" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <a href="#/user/shop" className="inline-block px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>
                         Start Shopping
                       </a>
                     </div>
@@ -924,7 +921,10 @@ export default function Profile() {
                     {isAuthenticated && (
                       <button 
                         onClick={() => setShowAddCard(true)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="px-4 py-2 text-white rounded-lg transition-colors"
+                        style={{ backgroundColor: 'rgb(75,151,201)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                       >
                         Add New Card
                       </button>
@@ -939,7 +939,10 @@ export default function Profile() {
                       {isAuthenticated && (
                         <button 
                           onClick={() => setShowAddCard(true)}
-                          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="px-6 py-3 text-white rounded-lg transition-colors"
+                          style={{ backgroundColor: 'rgb(75,151,201)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                         >
                           Add Card
                         </button>
@@ -983,7 +986,10 @@ export default function Profile() {
                     {isAuthenticated && (
                       <button 
                         onClick={() => setShowAddAddress(true)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="px-4 py-2 text-white rounded-lg transition-colors"
+                        style={{ backgroundColor: 'rgb(75,151,201)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                       >
                         Add New Address
                       </button>
@@ -1008,7 +1014,7 @@ export default function Profile() {
                       </div>
                       {isAuthenticated && (
                         <div className="flex gap-2">
-                          <button className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700">Edit</button>
+                          <button className="px-3 py-1 text-sm" style={{ color: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}>Edit</button>
                           <button className="px-3 py-1 text-sm text-red-600 hover:text-red-700">Delete</button>
                         </div>
                       )}
@@ -1074,7 +1080,10 @@ export default function Profile() {
                         </div>
                         <button
                           type="submit"
-                          className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="w-full px-6 py-3 text-white rounded-lg transition-colors"
+                          style={{ backgroundColor: 'rgb(75,151,201)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                         >
                           Send Message
                         </button>
@@ -1163,7 +1172,10 @@ export default function Profile() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 text-white rounded-lg"
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                 >
                   Add Card
                 </button>
@@ -1247,7 +1259,10 @@ export default function Profile() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 text-white rounded-lg"
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                 >
                   Add Address
                 </button>
