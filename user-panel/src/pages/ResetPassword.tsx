@@ -1,265 +1,260 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { authAPI } from '../services/api'
-import PhoneInput from '../components/PhoneInput'
-
-type RequestMethod = 'phone' | 'email'
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function ResetPassword() {
-  const [requestMethod, setRequestMethod] = useState<RequestMethod>('phone')
-  const [countryCode, setCountryCode] = useState('+91')
-  const [phone, setPhone] = useState('')
-  const [requestEmail, setRequestEmail] = useState('')
-  const [requestMessage, setRequestMessage] = useState('')
-  const [requestError, setRequestError] = useState('')
-  const [loadingRequest, setLoadingRequest] = useState(false)
-
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetToken, setResetToken] = useState('')
+  const [email, setEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [resetMessage, setResetMessage] = useState('')
-  const [resetError, setResetError] = useState('')
-  const [loadingReset, setLoadingReset] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [isFromEmailLink, setIsFromEmailLink] = useState(false)
 
-  const normalizePhone = () => {
-    const cc = countryCode.replace(/[^0-9]/g, '')
-    const digits = phone.replace(/\D/g, '')
-    return `${cc}${digits}`
-  }
+  // Check if user came from email link (has token and email in URL)
+  useEffect(() => {
+    // For hash routing, we need to parse from hash instead of search
+    const hash = window.location.hash
+    let urlParams: URLSearchParams
+    
+    // Check if query params are in hash (hash routing) or in search (direct URL)
+    if (hash.includes('?')) {
+      // Hash routing: #/user/reset-password?token=...&email=...
+      const hashParts = hash.split('?')
+      urlParams = new URLSearchParams(hashParts[1] || '')
+    } else {
+      // Direct URL: /reset-password?token=...&email=...
+      urlParams = new URLSearchParams(window.location.search)
+    }
+    
+    const token = urlParams.get('token')
+    const emailParam = urlParams.get('email')
+
+    if (token && emailParam) {
+      setIsFromEmailLink(true)
+      setEmail(decodeURIComponent(emailParam))
+      // Store token in state (we'll use it when submitting)
+      ;(window as any).resetToken = token
+    }
+  }, [])
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault()
-    setRequestMessage('')
-    setRequestError('')
+    setMessage('')
+    setError('')
 
-    if (requestMethod === 'phone' && phone.trim().length < 6) {
-      setRequestError('Please enter a valid phone number')
-      return
-    }
-    if (requestMethod === 'email' && !requestEmail.trim()) {
-      setRequestError('Please enter a valid email address')
+    if (!email.trim()) {
+      setError('Please enter a valid email address')
       return
     }
 
-    setLoadingRequest(true)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address')
+      return
+    }
+
+    setLoading(true)
     try {
-      if (requestMethod === 'phone') {
-        await authAPI.requestPasswordReset({ phone: normalizePhone() })
-      } else {
-        await authAPI.requestPasswordReset({ email: requestEmail.trim() })
-      }
-      setRequestMessage('If an account exists, reset instructions have been sent.')
+      await authAPI.requestPasswordReset({ email: email.trim() })
+      // Mask email for privacy (show first 3 chars and domain)
+      const emailParts = email.trim().split('@')
+      const maskedEmail = emailParts[0].length > 3 
+        ? `${emailParts[0].substring(0, 3)}***@${emailParts[1]}`
+        : `${emailParts[0].substring(0, 1)}***@${emailParts[1]}`
+      setMessage(`Link Sent to your Registered email id ${maskedEmail}`)
+      // Don't clear email so user can see what they entered
     } catch (err: any) {
-      setRequestError(err?.message || 'Failed to request reset. Please try again.')
+      setError(err?.message || 'Failed to request reset. Please try again.')
     } finally {
-      setLoadingRequest(false)
+      setLoading(false)
     }
   }
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    setResetMessage('')
-    setResetError('')
+    setMessage('')
+    setError('')
 
-    if (!resetEmail.trim() || !resetToken.trim()) {
-      setResetError('Email and token are required')
+    // Get token from URL (support both hash routing and direct URL)
+    const hash = window.location.hash
+    let urlParams: URLSearchParams
+    
+    if (hash.includes('?')) {
+      // Hash routing: #/user/reset-password?token=...&email=...
+      const hashParts = hash.split('?')
+      urlParams = new URLSearchParams(hashParts[1] || '')
+    } else {
+      // Direct URL: /reset-password?token=...&email=...
+      urlParams = new URLSearchParams(window.location.search)
+    }
+    
+    const token = urlParams.get('token') || (window as any).resetToken
+
+    if (!token) {
+      setError('Invalid reset link. Please request a new password reset.')
       return
     }
+
     if (newPassword.length < 8) {
-      setResetError('Password must be at least 8 characters')
+      setError('Password must be at least 8 characters')
       return
     }
     if (newPassword !== confirmPassword) {
-      setResetError('Passwords do not match')
+      setError('Passwords do not match')
       return
     }
 
-    setLoadingReset(true)
+    setLoading(true)
     try {
       await authAPI.resetPassword({
-        email: resetEmail.trim(),
-        token: resetToken.trim(),
+        email: email.trim(),
+        token: token,
         newPassword
       })
-      setResetMessage('Password reset successful! You can now sign in with your new password.')
+      setMessage('Password reset successful! Redirecting to login...')
       setNewPassword('')
       setConfirmPassword('')
-      setResetToken('')
+      
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        window.location.hash = '#/user/login'
+      }, 2000)
     } catch (err: any) {
-      setResetError(err?.message || 'Failed to reset password. Please check your token and try again.')
+      setError(err?.message || 'Failed to reset password. The link may have expired. Please request a new one.')
     } finally {
-      setLoadingReset(false)
+      setLoading(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-white py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto space-y-10">
-        <div className="text-center">
+      <div className="max-w-md mx-auto">
+        <div className="text-center mb-8">
           <h1
-            className="text-3xl sm:text-4xl font-light tracking-[0.15em]"
+            className="text-3xl sm:text-4xl font-light tracking-[0.15em] mb-3"
             style={{ fontFamily: 'var(--font-heading-family)' }}
           >
             Reset Password
           </h1>
-          <p className="mt-3 text-sm text-slate-600 tracking-wide">
-            Choose how you’d like to receive your password reset instructions and create a new password.
+          <p className="text-sm text-slate-600 tracking-wide">
+            {isFromEmailLink 
+              ? 'Enter your new password below.'
+              : 'Enter your email address and we\'ll send you a reset link.'}
           </p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 p-6 bg-white shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900 mb-1">Request Reset Code</h2>
-            <p className="text-sm text-slate-500 mb-4">
-              Get a 6-digit code on WhatsApp or a reset link on your email.
-            </p>
-
-            <div className="flex rounded-lg bg-slate-100 p-1 mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setRequestMethod('phone')
-                  setRequestError('')
-                  setRequestMessage('')
-                }}
-                className={`flex-1 py-2 px-4 rounded-md text-xs font-light uppercase tracking-[0.1em] ${
-                  requestMethod === 'phone' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                WhatsApp
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRequestMethod('email')
-                  setRequestError('')
-                  setRequestMessage('')
-                }}
-                className={`flex-1 py-2 px-4 rounded-md text-xs font-light uppercase tracking-[0.1em] ${
-                  requestMethod === 'email' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Email
-              </button>
-            </div>
-
-            <form onSubmit={handleRequestReset} className="space-y-4">
-              {requestMethod === 'phone' ? (
-                <PhoneInput
-                  value={phone}
-                  onChange={setPhone}
-                  onCountryCodeChange={setCountryCode}
-                  defaultCountry={countryCode}
-                  placeholder="Enter your WhatsApp number"
-                  showLabel
-                  label="WhatsApp Number"
-                />
-              ) : (
-                <div>
-                  <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={requestEmail}
-                    onChange={(e) => setRequestEmail(e.target.value)}
-                    className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-900"
-                    placeholder="you@example.com"
-                  />
-                </div>
-              )}
-
-              {requestError && <div className="text-sm text-red-600">{requestError}</div>}
-              {requestMessage && <div className="text-sm text-green-600">{requestMessage}</div>}
-
-              <button
-                type="submit"
-                disabled={loadingRequest}
-                className="w-full rounded-md bg-slate-900 text-white py-3 text-xs font-light uppercase tracking-[0.15em] disabled:opacity-50"
-              >
-                {loadingRequest ? 'Sending...' : 'Send Reset Instructions'}
-              </button>
-            </form>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 p-6 bg-white shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900 mb-1">Set New Password</h2>
-            <p className="text-sm text-slate-500 mb-4">
-              Paste the token you received and choose a new password.
-            </p>
-
+        <div className="rounded-2xl border border-slate-200 p-6 bg-white shadow-sm">
+          {isFromEmailLink ? (
+            // Password reset form (when user comes from email link)
             <form onSubmit={handleResetPassword} className="space-y-4">
-              <div>
-                <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  placeholder="you@example.com"
-                  required
-                />
+              {/* Email is pre-filled from URL, no need to show it */}
+              <div className="text-sm text-slate-600 mb-4">
+                <p>Reset password for: <strong>{email}</strong></p>
               </div>
 
               <div>
-                <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">
-                  Reset Token
-                </label>
-                <input
-                  type="text"
-                  value={resetToken}
-                  onChange={(e) => setResetToken(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 font-mono"
-                  placeholder="Paste the 64-character token"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">
+                <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]">
                   New Password
                 </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  placeholder="Enter new password"
-                  required
-                />
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full rounded-md border border-slate-200 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ paddingLeft: '3rem', paddingRight: '3rem' }}
+                    placeholder="Enter new password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">
+                <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]">
                   Confirm Password
                 </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  placeholder="Re-enter new password"
-                  required
-                />
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full rounded-md border border-slate-200 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ paddingLeft: '3rem', paddingRight: '3rem' }}
+                    placeholder="Re-enter new password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
-              {resetError && <div className="text-sm text-red-600">{resetError}</div>}
-              {resetMessage && <div className="text-sm text-green-600">{resetMessage}</div>}
+              {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
+              {message && <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">{message}</div>}
 
               <button
                 type="submit"
-                disabled={loadingReset}
-                className="w-full rounded-md text-white py-3 text-xs font-light uppercase tracking-[0.15em] disabled:opacity-50"
+                disabled={loading}
+                className="w-full rounded-md text-white py-3 text-xs font-light uppercase tracking-[0.15em] disabled:opacity-50 transition-colors"
                 style={{ backgroundColor: 'rgb(75,151,201)' }}
                 onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
                 onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
-                {loadingReset ? 'Updating...' : 'Update Password'}
+                {loading ? 'Updating...' : 'Update Password'}
               </button>
             </form>
-          </div>
+          ) : (
+            // Email request form
+            <form onSubmit={handleRequestReset} className="space-y-4">
+              <div>
+                <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full rounded-md border border-slate-200 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ paddingLeft: '3rem', paddingRight: '1rem' }}
+                    placeholder="Enter your email address"
+                    required
+                  />
+                </div>
+              </div>
+
+              {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
+              {message && <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">{message}</div>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-md text-white py-3 text-xs font-light uppercase tracking-[0.15em] disabled:opacity-50 transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+              >
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,7 @@
 // Email Service - All 6 Email Automation Events
 import { transporter, getAdminEmail } from '../utils/email'
+import { Pool } from 'pg'
+import { generateInvoicePDF } from '../utils/pdfGenerator'
 
 // 1. Welcome Email - User Signup
 export async function sendWelcomeEmail(userEmail: string, userName: string): Promise<void> {
@@ -10,32 +12,32 @@ export async function sendWelcomeEmail(userEmail: string, userName: string): Pro
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to Thenefol</title>
+        <title>Welcome to NEFOL®</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="color: #fff; margin: 0;">Welcome to Thenefol!</h1>
+          <h1 style="color: #fff; margin: 0;">Welcome to NEFOL®!</h1>
         </div>
         <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="font-size: 16px; margin-bottom: 20px;">Hi ${userName},</p>
-          <p style="font-size: 16px; margin-bottom: 20px;">Your account is ready! We're thrilled to have you join the Thenefol family.</p>
+          <p style="font-size: 16px; margin-bottom: 20px;">Your account is ready! We're thrilled to have you join the NEFOL® family.</p>
           <p style="font-size: 16px; margin-bottom: 20px;">Start exploring our premium skincare and beauty products crafted with care.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="https://thenefol.com" style="background: #667eea; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Start Shopping</a>
           </div>
-          <p style="font-size: 14px; color: #666; margin-top: 30px;">Thank you for choosing Thenefol!</p>
+          <p style="font-size: 14px; color: #666; margin-top: 30px;">Thank you for choosing NEFOL®!</p>
         </div>
       </body>
       </html>
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: 'Welcome to Thenefol — your account is ready.',
+      subject: 'Welcome to NEFOL® — your account is ready.',
       html
     })
 
@@ -64,7 +66,7 @@ export async function sendCartAddedEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #667eea; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h2 style="color: #fff; margin: 0;">Item Added to Your Cart</h2>
@@ -86,7 +88,7 @@ export async function sendCartAddedEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
       subject: `${productName} added to your cart`,
       html
@@ -142,7 +144,7 @@ export async function sendOrderConfirmationEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #667eea; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">Order Confirmed!</h1>
@@ -201,7 +203,7 @@ export async function sendOrderConfirmationEmail(
             </table>
           </div>
 
-          <p style="font-size: 14px; color: #666; margin-top: 30px;">We'll send you another email once your order ships. Thank you for shopping with Thenefol!</p>
+          <p style="font-size: 14px; color: #666; margin-top: 30px;">We'll send you another email once your order ships. Thank you for shopping with NEFOL®!</p>
         </div>
       </body>
       </html>
@@ -213,7 +215,7 @@ export async function sendOrderConfirmationEmail(
       : `Order Confirmation - ${order.order_number}`
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: recipient,
       subject,
       html
@@ -244,7 +246,7 @@ export async function sendPaymentFailedEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #dc3545; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">Payment Failed</h1>
@@ -264,7 +266,7 @@ export async function sendPaymentFailedEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
       subject: `Payment Failed - Order ${orderNumber}`,
       html
@@ -323,7 +325,7 @@ export async function sendOrderStatusUpdateEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: ${statusInfo.color}; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">${statusInfo.title}</h1>
@@ -343,14 +345,14 @@ export async function sendOrderStatusUpdateEmail(
             <a href="https://thenefol.com/#/user/orders" style="background: ${statusInfo.color}; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order Details</a>
           </div>
 
-          <p style="font-size: 14px; color: #666; margin-top: 30px;">Thank you for shopping with Thenefol!</p>
+          <p style="font-size: 14px; color: #666; margin-top: 30px;">Thank you for shopping with NEFOL®!</p>
         </div>
       </body>
       </html>
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: order.customer_email,
       subject: `${statusInfo.title} - Order ${order.order_number}`,
       html
@@ -392,7 +394,7 @@ export async function sendCartAbandonmentEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #ffc107; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #333; margin: 0;">Don't Miss Out!</h1>
@@ -434,7 +436,7 @@ export async function sendCartAbandonmentEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
       subject: 'Complete Your Purchase - Items Waiting in Your Cart',
       html
@@ -464,14 +466,14 @@ export async function sendPasswordResetEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #667eea; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">Password Reset Request</h1>
         </div>
         <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="font-size: 16px; margin-bottom: 20px;">Hi ${userName},</p>
-          <p style="font-size: 16px; margin-bottom: 20px;">We received a request to reset your password for your Thenefol account.</p>
+          <p style="font-size: 16px; margin-bottom: 20px;">We received a request to reset your password for your NEFOL® account.</p>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="${resetLink}" style="background: #667eea; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-size: 16px;">Reset Your Password</a>
@@ -488,16 +490,16 @@ export async function sendPasswordResetEmail(
           
           <p style="font-size: 14px; color: #666; margin-top: 30px;">If you continue to have problems, please contact our support team.</p>
           
-          <p style="font-size: 14px; color: #666; margin-top: 30px;">Thank you,<br>The Thenefol Team</p>
+          <p style="font-size: 14px; color: #666; margin-top: 30px;">Thank you,<br>The NEFOL® Team</p>
         </div>
       </body>
       </html>
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: 'Reset Your Password - Thenefol',
+      subject: 'Reset Your Password - NEFOL®',
       html
     })
 
@@ -523,14 +525,14 @@ export async function sendPasswordResetConfirmationEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #7DD3D3; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">Your password has been changed</h1>
         </div>
         <div style="background: #F4F9F9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="font-size: 16px; margin-bottom: 20px;">
-            This is a confirmation that the password for your Thenefol account was just updated.
+            This is a confirmation that the password for your NEFOL® account was just updated.
           </p>
           <p style="font-size: 14px; color: #555; margin-bottom: 20px;">
             If this was you, no further action is needed. You can now sign in with your new password.
@@ -552,9 +554,9 @@ export async function sendPasswordResetConfirmationEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: 'Your Thenefol password has been changed',
+      subject: 'Your NEFOL® password has been changed',
       html
     })
 
@@ -581,14 +583,14 @@ export async function sendVerificationEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #7DD3D3; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">Verify your email</h1>
         </div>
         <div style="background: #F4F9F9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="font-size: 16px; margin-bottom: 20px;">
-            Please use the one-time code below to verify your email address for your Thenefol account.
+            Please use the one-time code below to verify your email address for your NEFOL® account.
           </p>
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #E0EAEA; text-align: center; margin: 20px 0;">
             <span style="display: inline-block; font-size: 26px; letter-spacing: 8px; font-weight: bold; color: #333;">
@@ -607,9 +609,9 @@ export async function sendVerificationEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: 'Verify your email address - Thenefol',
+      subject: 'Verify your email address - NEFOL®',
       html
     })
 
@@ -640,14 +642,14 @@ export async function sendLoginAlertEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #7DD3D3; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">New login to your account</h1>
         </div>
         <div style="background: #F4F9F9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="font-size: 16px; margin-bottom: 20px;">
-            A new login to your Thenefol account was just detected.
+            A new login to your NEFOL® account was just detected.
           </p>
           <div style="background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #E0EAEA; margin: 20px 0;">
             <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Device:</strong> ${safeDevice}</p>
@@ -671,9 +673,9 @@ export async function sendLoginAlertEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: 'New login detected on your Thenefol account',
+      subject: 'New login detected on your NEFOL® account',
       html
     })
 
@@ -701,7 +703,7 @@ export async function sendAccountSecurityAlertEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #dc3545; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">Account security alert</h1>
@@ -727,9 +729,9 @@ export async function sendAccountSecurityAlertEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: 'Security alert on your Thenefol account',
+      subject: 'Security alert on your NEFOL® account',
       html
     })
 
@@ -780,14 +782,14 @@ export async function sendSubscriptionActivatedEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #7DD3D3; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">Your subscription is active</h1>
         </div>
         <div style="background: #F4F9F9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="font-size: 16px; margin-bottom: 20px;">
-            Thank you for subscribing to ${planName} at Thenefol.
+            Thank you for subscribing to ${planName} at NEFOL®.
           </p>
           ${priceText ? `
           <p style="font-size: 14px; color: #555; margin-bottom: 20px;">
@@ -807,9 +809,9 @@ export async function sendSubscriptionActivatedEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: 'Your Thenefol subscription is active',
+      subject: 'Your NEFOL® subscription is active',
       html
     })
 
@@ -832,8 +834,8 @@ export async function sendSubscriptionReminderOrCancelledEmail(
     const isExpiring = normalizedType === 'expiring'
     const title = isExpiring ? 'Your subscription is ending soon' : 'Your subscription has been cancelled'
     const subject = isExpiring
-      ? 'Your Thenefol subscription is ending soon'
-      : 'Your Thenefol subscription has been cancelled'
+      ? 'Your NEFOL® subscription is ending soon'
+      : 'Your NEFOL® subscription has been cancelled'
 
     const mainMessage = isExpiring
       ? `Your plan for ${planName} will end soon. If you want to keep your benefits, you can renew your subscription before it expires.`
@@ -852,7 +854,7 @@ export async function sendSubscriptionReminderOrCancelledEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: #7DD3D3; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">${title}</h1>
@@ -875,7 +877,7 @@ export async function sendSubscriptionReminderOrCancelledEmail(
     `
 
     await transporter.sendMail({
-      from: `"Thenefol" <${getAdminEmail()}>`,
+      from: `"NEFOL®" <${getAdminEmail()}>`,
       to: userEmail,
       subject,
       html
@@ -904,7 +906,7 @@ export async function sendAffiliateCodeEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">🎉 Congratulations!</h1>
@@ -912,7 +914,7 @@ export async function sendAffiliateCodeEmail(
         </div>
         <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="font-size: 16px; margin-bottom: 20px;">Hi ${userName},</p>
-          <p style="font-size: 16px; margin-bottom: 20px;">We're thrilled to inform you that your affiliate application has been approved! Welcome to the Nefol Affiliate Program.</p>
+          <p style="font-size: 16px; margin-bottom: 20px;">We're thrilled to inform you that your affiliate application has been approved! Welcome to the NEFOL® Affiliate Program.</p>
           <div style="background: #fff; padding: 25px; border-radius: 8px; margin: 25px 0; border: 2px solid #667eea; text-align: center;">
             <p style="margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 1px;">Your Affiliate Verification Code</p>
             <p style="margin: 0; font-size: 28px; font-weight: bold; color: #667eea; letter-spacing: 2px; font-family: 'Courier New', monospace;">${verificationCode}</p>
@@ -931,15 +933,15 @@ export async function sendAffiliateCodeEmail(
             <p style="margin: 0; font-size: 14px; color: #555;"><strong>Important:</strong> Keep this verification code secure. You'll need it to verify your affiliate account and access your dashboard.</p>
           </div>
           <p style="font-size: 14px; color: #666; margin-top: 30px;">If you have any questions, feel free to reach out to us at <a href="mailto:support@thenefol.com" style="color: #667eea;">support@thenefol.com</a></p>
-          <p style="font-size: 14px; color: #666; margin-top: 20px;">Welcome aboard! We're excited to have you as part of the Nefol family.</p>
-          <p style="font-size: 14px; color: #666; margin-top: 20px;">Best regards,<br><strong>The Nefol Team</strong></p>
+          <p style="font-size: 14px; color: #666; margin-top: 20px;">Welcome aboard! We're excited to have you as part of the NEFOL® family.</p>
+          <p style="font-size: 14px; color: #666; margin-top: 20px;">Best regards,<br><strong>The NEFOL® Team</strong></p>
         </div>
       </body>
       </html>
     `
 
     await transporter.sendMail({
-      from: `"Thenefol Affiliate Program" <${getAdminEmail()}>`,
+      from: `"NEFOL® Affiliate Program" <${getAdminEmail()}>`,
       to: userEmail,
       subject: '🎉 Your Affiliate Application Has Been Approved - Verification Code',
       html
@@ -968,7 +970,7 @@ export async function sendAffiliateApplicationSubmittedEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 10px;">
-          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="Thenefol Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
         </div>
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
           <h1 style="color: #fff; margin: 0;">Application Received!</h1>
@@ -976,7 +978,7 @@ export async function sendAffiliateApplicationSubmittedEmail(
         </div>
         <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="font-size: 16px; margin-bottom: 20px;">Hi ${userName},</p>
-          <p style="font-size: 16px; margin-bottom: 20px;">Thank you for applying to join the Nefol Affiliate Program! We've received your application and our team is reviewing it.</p>
+          <p style="font-size: 16px; margin-bottom: 20px;">Thank you for applying to join the NEFOL® Affiliate Program! We've received your application and our team is reviewing it.</p>
           <div style="background: #fff; padding: 25px; border-radius: 8px; margin: 25px 0; border: 2px solid #667eea;">
             <p style="margin: 0 0 15px 0; font-size: 16px; font-weight: bold; color: #667eea;">What Happens Next?</p>
             <ul style="font-size: 16px; margin: 0; padding-left: 20px; color: #555;">
@@ -990,15 +992,15 @@ export async function sendAffiliateApplicationSubmittedEmail(
             <p style="margin: 0; font-size: 14px; color: #555;"><strong>Note:</strong> Please check your email regularly for updates on your application status. Make sure to check your spam folder as well.</p>
           </div>
           <p style="font-size: 14px; color: #666; margin-top: 30px;">If you have any questions about your application, feel free to reach out to us at <a href="mailto:support@thenefol.com" style="color: #667eea;">support@thenefol.com</a></p>
-          <p style="font-size: 14px; color: #666; margin-top: 20px;">We appreciate your interest in partnering with Nefol!</p>
-          <p style="font-size: 14px; color: #666; margin-top: 20px;">Best regards,<br><strong>The Nefol Team</strong></p>
+          <p style="font-size: 14px; color: #666; margin-top: 20px;">We appreciate your interest in partnering with NEFOL®!</p>
+          <p style="font-size: 14px; color: #666; margin-top: 20px;">Best regards,<br><strong>The NEFOL® Team</strong></p>
         </div>
       </body>
       </html>
     `
 
     await transporter.sendMail({
-      from: `"Thenefol Affiliate Program" <${getAdminEmail()}>`,
+      from: `"NEFOL® Affiliate Program" <${getAdminEmail()}>`,
       to: userEmail,
       subject: '✅ Your Affiliate Application Has Been Received',
       html
@@ -1008,6 +1010,88 @@ export async function sendAffiliateApplicationSubmittedEmail(
   } catch (error) {
     console.error('❌ Error sending affiliate application confirmation email:', error)
     // Don't throw - email failures shouldn't break the application submission
+  }
+}
+
+// 17. Send Invoice PDF Email - Automatically send invoice PDF when order is created
+export async function sendInvoicePDFEmail(
+  pool: Pool,
+  order: any,
+  baseUrl: string = 'https://thenefol.com'
+): Promise<void> {
+  try {
+    // Generate PDF invoice
+    const pdfBuffer = await generateInvoicePDF(pool, order, baseUrl)
+    
+    const invoiceFileName = `Invoice-${order.invoice_number || order.order_number || order.id}.pdf`
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Your Invoice - ${order.order_number}</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 10px;">
+          <img src="https://thenefol.com//IMAGES/light%20theme%20logo.webp" alt="NEFOL® Logo" width="150" style="display: block; margin: 0 auto 20px auto;" />
+        </div>
+        <div style="background: #667eea; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: #fff; margin: 0;">Your Invoice</h1>
+        </div>
+        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+          <p style="font-size: 16px; margin-bottom: 20px;">Hi ${order.customer_name},</p>
+          <p style="font-size: 16px; margin-bottom: 20px;">Thank you for your order! Please find your invoice attached to this email.</p>
+          
+          <div style="background: #fff; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #667eea;">Order Details</h3>
+            <p><strong>Order Number:</strong> ${order.order_number}</p>
+            ${order.invoice_number ? `<p><strong>Invoice Number:</strong> ${order.invoice_number}</p>` : ''}
+            <p><strong>Order Date:</strong> ${new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p><strong>Total Amount:</strong> ₹${parseFloat(order.total || 0).toFixed(2)}</p>
+          </div>
+
+          <p style="font-size: 14px; color: #666; margin-top: 30px;">The invoice PDF is attached to this email for your records.</p>
+          <p style="font-size: 14px; color: #666; margin-top: 20px;">If you have any questions about your order, please contact us at ${getAdminEmail()}</p>
+          <p style="font-size: 14px; color: #666; margin-top: 20px;">Thank you for shopping with NEFOL®!</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    await transporter.sendMail({
+      from: `"NEFOL®" <${getAdminEmail()}>`,
+      to: order.customer_email,
+      subject: `Invoice - Order ${order.order_number}`,
+      html,
+      attachments: [
+        {
+          filename: invoiceFileName,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
+    })
+
+    console.log(`✅ Invoice PDF email sent to: ${order.customer_email} for order: ${order.order_number}`)
+  } catch (error: any) {
+    // Log detailed error for debugging
+    const errorMessage = error?.message || String(error)
+    console.error('❌ Error sending invoice PDF email:', errorMessage)
+    
+    // Check if it's a Puppeteer browser launch error
+    if (errorMessage.includes('Failed to launch the browser process') || 
+        errorMessage.includes('libatk-1.0.so.0') ||
+        errorMessage.includes('shared libraries')) {
+      console.error('⚠️ Puppeteer browser dependencies missing. PDF generation skipped.')
+      console.error('💡 To fix: Install required system libraries on the server:')
+      console.error('   Ubuntu/Debian: sudo apt-get install -y libatk-bridge2.0-0 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2')
+      console.error('   Or set PUPPETEER_EXECUTABLE_PATH environment variable to use system Chrome')
+    }
+    
+    // Don't throw - email failures shouldn't break order creation
+    // Order confirmation email will still be sent without PDF attachment
   }
 }
 

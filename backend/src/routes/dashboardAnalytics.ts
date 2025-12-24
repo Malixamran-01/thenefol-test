@@ -1,10 +1,10 @@
 import express from 'express'
 import { Pool } from 'pg'
-import { sendError, sendSuccess } from '../utils/apiHelpers'
+import { sendError, sendSuccess, authenticateToken } from '../utils/apiHelpers'
 
 export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Pool) {
   // Dashboard metrics
-  app.get('/api/dashboard/metrics', async (_req, res) => {
+  app.get('/api/dashboard/metrics', authenticateToken, async (_req, res) => {
     try {
       const currentPeriodStart = new Date(); currentPeriodStart.setDate(currentPeriodStart.getDate() - 30)
       const previousPeriodStart = new Date(); previousPeriodStart.setDate(previousPeriodStart.getDate() - 60)
@@ -96,22 +96,129 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
     }
   })
 
-  // Dashboard action items
-  app.get('/api/dashboard/action-items', async (_req, res) => {
+  // Dashboard action items - dynamic based on actual data
+  app.get('/api/dashboard/action-items', authenticateToken, async (_req, res) => {
     try {
-      const { rows } = await pool.query(`
-        SELECT * FROM dashboard_action_items
-        ORDER BY priority DESC, created_at DESC
-        LIMIT 10
-      `).catch(() => ({ rows: [] as any[] }))
-      sendSuccess(res, { items: rows.map((row: any) => ({ title: row.title || row.name || 'Action item', icon: row.icon || '📋', color: row.color || 'text-gray-600' })) })
+      const actionItems: any[] = []
+      
+      // Check for low stock products
+      try {
+        const lowStockResult = await pool.query(`
+          SELECT COUNT(*) as count
+          FROM inventory i
+          JOIN product_variants pv ON i.variant_id = pv.id
+          WHERE (i.quantity - COALESCE(i.reserved, 0)) <= COALESCE(i.low_stock_threshold, 0)
+          AND i.quantity > 0
+        `)
+        const lowStockCount = parseInt(lowStockResult.rows[0]?.count || 0)
+        if (lowStockCount > 0) {
+          actionItems.push({
+            title: `${lowStockCount} product${lowStockCount > 1 ? 's' : ''} running low on stock`,
+            icon: '⚠️',
+            color: 'text-orange-600',
+            href: '/admin/inventory'
+          })
+        }
+      } catch {}
+
+      // Check for pending orders
+      try {
+        const pendingOrdersResult = await pool.query(`
+          SELECT COUNT(*) as count
+          FROM orders
+          WHERE status IN ('pending', 'processing', 'confirmed')
+        `)
+        const pendingCount = parseInt(pendingOrdersResult.rows[0]?.count || 0)
+        if (pendingCount > 0) {
+          actionItems.push({
+            title: `${pendingCount} order${pendingCount > 1 ? 's' : ''} pending processing`,
+            icon: '📦',
+            color: 'text-blue-600',
+            href: '/admin/orders'
+          })
+        }
+      } catch {}
+
+      // Check for pending affiliate requests
+      try {
+        const affiliateRequestsResult = await pool.query(`
+          SELECT COUNT(*) as count
+          FROM affiliate_partners
+          WHERE status = 'pending'
+        `)
+        const affiliateCount = parseInt(affiliateRequestsResult.rows[0]?.count || 0)
+        if (affiliateCount > 0) {
+          actionItems.push({
+            title: `${affiliateCount} affiliate request${affiliateCount > 1 ? 's' : ''} pending approval`,
+            icon: '🤝',
+            color: 'text-purple-600',
+            href: '/admin/affiliate-requests'
+          })
+        }
+      } catch {}
+
+      // Check for products without images
+      try {
+        const noImageResult = await pool.query(`
+          SELECT COUNT(*) as count
+          FROM products
+          WHERE list_image IS NULL OR list_image = ''
+        `)
+        const noImageCount = parseInt(noImageResult.rows[0]?.count || 0)
+        if (noImageCount > 0) {
+          actionItems.push({
+            title: `${noImageCount} product${noImageCount > 1 ? 's' : ''} missing images`,
+            icon: '🖼️',
+            color: 'text-yellow-600',
+            href: '/admin/products'
+          })
+        }
+      } catch {}
+
+      // Check for unread contact messages
+      try {
+        const messagesResult = await pool.query(`
+          SELECT COUNT(*) as count
+          FROM contact_messages
+          WHERE status = 'new' OR status IS NULL
+        `)
+        const messagesCount = parseInt(messagesResult.rows[0]?.count || 0)
+        if (messagesCount > 0) {
+          actionItems.push({
+            title: `${messagesCount} unread contact message${messagesCount > 1 ? 's' : ''}`,
+            icon: '📧',
+            color: 'text-green-600',
+            href: '/admin/contact-messages'
+          })
+        }
+      } catch {}
+
+      // Fallback to database table if exists
+      if (actionItems.length === 0) {
+        try {
+          const { rows } = await pool.query(`
+            SELECT * FROM dashboard_action_items
+            ORDER BY priority DESC, created_at DESC
+            LIMIT 10
+          `).catch(() => ({ rows: [] as any[] }))
+          const dbItems = rows.map((row: any) => ({
+            title: row.title || row.name || 'Action item',
+            icon: row.icon || '📋',
+            color: row.color || 'text-gray-600',
+            href: row.href || null
+          }))
+          actionItems.push(...dbItems)
+        } catch {}
+      }
+
+      sendSuccess(res, { items: actionItems })
     } catch {
       sendSuccess(res, { items: [] })
     }
   })
 
   // Dashboard live visitors
-  app.get('/api/dashboard/live-visitors', async (_req, res) => {
+  app.get('/api/dashboard/live-visitors', authenticateToken, async (_req, res) => {
     try {
       const { rows } = await pool.query(`
         SELECT COUNT(DISTINCT session_id) as count 
@@ -129,8 +236,85 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
     }
   })
 
+  // Dashboard session chart data
+  app.get('/api/dashboard/sessions-chart', authenticateToken, async (_req, res) => {
+    try {
+      const days = 30
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - days)
+      
+      // Get sessions per day for current period
+      const currentSessionsQuery = await pool.query(`
+        SELECT 
+          DATE(started_at) as date,
+          COUNT(DISTINCT session_id) as sessions
+        FROM user_sessions
+        WHERE started_at >= $1 AND is_active = true
+        GROUP BY DATE(started_at)
+        ORDER BY date ASC
+      `, [startDate]).catch(() => ({ rows: [] }))
+
+      // Get sessions per day for previous period
+      const previousStartDate = new Date()
+      previousStartDate.setDate(previousStartDate.getDate() - (days * 2))
+      const previousEndDate = new Date(startDate)
+      
+      const previousSessionsQuery = await pool.query(`
+        SELECT 
+          DATE(started_at) as date,
+          COUNT(DISTINCT session_id) as sessions
+        FROM user_sessions
+        WHERE started_at >= $1 AND started_at < $2 AND is_active = true
+        GROUP BY DATE(started_at)
+        ORDER BY date ASC
+      `, [previousStartDate, previousEndDate]).catch(() => ({ rows: [] }))
+
+      // Create date range for last 30 days
+      const dates: string[] = []
+      const currentData: number[] = []
+      const previousData: number[] = []
+      
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toISOString().split('T')[0]
+        dates.push(dateStr)
+        
+        // Find matching data
+        const currentMatch = currentSessionsQuery.rows.find((r: any) => r.date === dateStr)
+        currentData.push(parseInt(currentMatch?.sessions || 0))
+        
+        // For previous period, find date that's 30 days before
+        const prevDate = new Date(date)
+        prevDate.setDate(prevDate.getDate() - days)
+        const prevDateStr = prevDate.toISOString().split('T')[0]
+        const previousMatch = previousSessionsQuery.rows.find((r: any) => r.date === prevDateStr)
+        previousData.push(parseInt(previousMatch?.sessions || 0))
+      }
+
+      sendSuccess(res, {
+        dates,
+        current: currentData,
+        previous: previousData
+      })
+    } catch (err) {
+      // Return empty data on error
+      const dates: string[] = []
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        dates.push(date.toISOString().split('T')[0])
+      }
+      sendSuccess(res, {
+        dates,
+        current: new Array(30).fill(0),
+        previous: new Array(30).fill(0)
+      })
+    }
+  })
+
   // Analytics (rich)
-  app.get('/api/analytics', async (req, res) => {
+  app.get('/api/analytics', authenticateToken, async (req, res) => {
     try {
       const range = req.query.range || '30d'
       const days = parseInt(range.toString().replace('d', '')) || 30

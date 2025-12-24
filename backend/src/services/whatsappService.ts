@@ -618,15 +618,17 @@ export class WhatsAppService {
 
   /**
    * Send affiliate verification code via WhatsApp
-   * First tries to use nefol_affiliate_approved template (AUTHENTICATION category), falls back to plain text if template not available
+   * First tries to use nefol_affiliate template (AUTHENTICATION category), falls back to plain text if template not available
    * 
-   * Template: nefol_affiliate_approved (AUTHENTICATION category - when approved in Meta Business Manager)
-   * Variables: [name, verificationCode] - Requires 2 parameters: {{1}} = Name, {{2}} = Verification Code
-   * Category: AUTHENTICATION (required for verification codes)
+   * Template: nefol_affiliate (AUTHENTICATION category - when approved in Meta Business Manager)
+   * Template structure: "This OTP code is for {{1}} your {{2}} account and linking it to {{3}}. OTP: {{4}}. Do not share it with anyone, even to {{5}}, or they'll be able to access your account."
+   * Variables: [creating, NEFOL, affiliate, verificationCode (number), NEFOL]
+   * Category: AUTHENTICATION (required for OTP codes)
+   * Language: English (US) - en_US
    * 
    * @param {string} phone - Recipient phone number
-   * @param {string} name - Affiliate partner name
-   * @param {string} verificationCode - 20-digit affiliate verification code
+   * @param {string} name - Affiliate partner name (not used in template but kept for backward compatibility)
+   * @param {string} verificationCode - 20-digit OTP code
    * @returns {Promise<{ok: boolean, providerId?: string, fallbackUsed?: boolean, error?: any}>}
    */
   async sendAffiliateCodeWhatsApp(phone: string, name: string, verificationCode: string): Promise<{ ok: boolean; providerId?: string; fallbackUsed?: boolean; error?: any }> {
@@ -637,13 +639,17 @@ export class WhatsAppService {
 
       // Try to use template first (if approved in Meta Business Manager)
       // Note: This template should be in AUTHENTICATION category
+      // Template structure: "This OTP code is for {{1}} your {{2}} account and linking it to {{3}}. OTP: {{4}}. Do not share it with anyone, even to {{5}}, or they'll be able to access your account."
       try {
         const variables: TemplateVariable[] = [
-          { type: 'text', text: name },
-          { type: 'text', text: verificationCode }
+          { type: 'text', text: 'creating' },        // {{1}} - "creating"
+          { type: 'text', text: 'NEFOL' },          // {{2}} - "NEFOL"
+          { type: 'text', text: 'affiliate' },      // {{3}} - "affiliate"
+          { type: 'text', text: verificationCode },  // {{4}} - OTP code (as text since WhatsApp API expects text for all params in template helper, but defined as NUMBER in Meta)
+          { type: 'text', text: 'NEFOL' }           // {{5}} - "NEFOL"
         ]
         
-        const templateResult = await sendWhatsAppTemplate(phone, 'nefol_affiliate_approved', variables, 'en')
+        const templateResult = await sendWhatsAppTemplate(phone, 'nefol_affiliate', variables, 'en')
         
         if (templateResult.ok) {
           console.log(`✅ Affiliate code WhatsApp sent via template (AUTHENTICATION) to: ${phone}`)
@@ -651,7 +657,7 @@ export class WhatsAppService {
         }
         
         // If template fails (not approved yet), fall back to plain text
-        console.warn('⚠️ Template nefol_affiliate_approved not available, using plain text fallback')
+        console.warn('⚠️ Template nefol_affiliate not available, using plain text fallback')
       } catch (templateError: any) {
         console.warn('⚠️ Template error, using plain text fallback:', templateError.message)
       }

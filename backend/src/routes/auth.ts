@@ -167,7 +167,7 @@ export async function forgotPassword(pool: Pool, req: Request, res: Response) {
               )
               
               const frontendUrl = process.env.FRONTEND_URL || process.env.USER_PANEL_URL || 'https://thenefol.com'
-              const resetLink = `${frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(userResult.rows[0].email)}`
+              const resetLink = `${frontendUrl}/#/user/reset-password?token=${rawToken}&email=${encodeURIComponent(userResult.rows[0].email)}`
               
               await sendPasswordResetEmail(userResult.rows[0].email, user.name || 'User', resetLink)
               console.log(`✅ Password reset email sent (WhatsApp fallback)`)
@@ -209,9 +209,9 @@ export async function forgotPassword(pool: Pool, req: Request, res: Response) {
             [hashedToken, expiresAt, user.id]
           )
 
-          // Build reset link
+          // Build reset link - use hash routing for frontend
           const frontendUrl = process.env.FRONTEND_URL || process.env.USER_PANEL_URL || 'https://thenefol.com'
-          const resetLink = `${frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`
+          const resetLink = `${frontendUrl}/#/user/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`
 
           // Send password reset email
           await sendPasswordResetEmail(email, user.name || 'User', resetLink)

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Mail, MessageCircle } from 'lucide-react'
+import { Mail, MessageCircle, ArrowLeft } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import PhoneInput from '../components/PhoneInput'
 
@@ -66,6 +66,18 @@ export default function Contact() {
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => window.location.hash = '#/user/profile'}
+            className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back to Profile</span>
+          </button>
+        </div>
+        
         <div className="mb-8 sm:mb-12 text-center">
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
@@ -129,9 +141,10 @@ export default function Contact() {
                 </label>
                 <input 
                   id="name" 
-                  className="h-12 w-full rounded-lg border px-4 focus:outline-none focus:ring-2 transition-all duration-200" 
+                  className="h-12 w-full rounded-lg border px-4 bg-white text-gray-900 focus:outline-none focus:ring-2 transition-all duration-200" 
                   style={{ 
-                    borderColor: '#E5E7EB'
+                    borderColor: '#E5E7EB',
+                    color: '#111827'
                   }}
                   required
                   value={formData.name}
@@ -168,9 +181,10 @@ export default function Contact() {
                 <input 
                   id="email" 
                   type="email" 
-                  className="h-12 w-full rounded-lg border px-4 focus:outline-none focus:ring-2 transition-all duration-200" 
+                  className="h-12 w-full rounded-lg border px-4 bg-white text-gray-900 focus:outline-none focus:ring-2 transition-all duration-200" 
                   style={{ 
-                    borderColor: '#E5E7EB'
+                    borderColor: '#E5E7EB',
+                    color: '#111827'
                   }}
                   required
                   value={formData.email}
@@ -196,9 +210,10 @@ export default function Contact() {
                 <textarea 
                   id="message" 
                   rows={6} 
-                  className="w-full rounded-lg border p-4 focus:outline-none focus:ring-2 transition-all duration-200" 
+                  className="w-full rounded-lg border p-4 bg-white text-gray-900 focus:outline-none focus:ring-2 transition-all duration-200" 
                   style={{ 
-                    borderColor: '#E5E7EB'
+                    borderColor: '#E5E7EB',
+                    color: '#111827'
                   }}
                   required
                   value={formData.message}

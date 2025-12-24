@@ -88,20 +88,15 @@
 57. **Forms** (`/admin/forms`)
 58. **Form Builder** (`/admin/form-builder`)
 59. **Form Submissions** (`/admin/form-submissions`)
-60. **Workflow Automation** (`/admin/workflow-automation`)
 
-#### 14. AI & Personalization (4 pages)
-61. **AI Box** (`/admin/ai-box`)
-62. **AI Personalization** (`/admin/ai-personalization`)
-63. **Customer Segmentation** (`/admin/customer-segmentation`)
-64. **Custom Audience** (`/admin/custom-audience`)
+#### 14. AI & Personalization (2 pages)
+60. **Customer Segmentation** (`/admin/customer-segmentation`)
+61. **Custom Audience** (`/admin/custom-audience`)
 
-#### 15. Integrations & Channels (5 pages)
-65. **Omni Channel** (`/admin/omni-channel`)
-66. **API Manager** (`/admin/api-manager`)
-67. **Marketplace Integrations** (`/admin/marketplaces`) - Admin only
-68. **Google/YouTube** (`/admin/google`)
-69. **Facebook Shop Integration** (`/admin/fb-shop`)
+#### 15. Integrations & Channels (3 pages)
+62. **Marketplace Integrations** (`/admin/marketplaces`) - Admin only
+63. **Google/YouTube** (`/admin/google`)
+64. **Facebook Shop Integration** (`/admin/fb-shop`)
 
 #### 16. POS & Live Features (2 pages)
 70. **POS System** (`/admin/pos`) - Requires pos:read or pos:update permission
@@ -117,9 +112,6 @@
 ---
 
 ## Notes:
-
-### Pages Not in Routes (but exist in codebase):
-- **CMS.tsx** - Exists in `/admin-panel/src/pages/CMS.tsx` but not currently routed (CMSManagement is used instead)
 
 ### Dynamic Routes:
 - `/admin/orders/:orderNumber` - Order details page

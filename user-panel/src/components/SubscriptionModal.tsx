@@ -19,10 +19,10 @@ export default function SubscriptionModal({
   onClose, 
   image = '/IMAGES/BANNER (1).webp',
   logo = '',
-  logoName = 'NEFÖL',
-  heading = 'Join The Nefol Circle',
+  logoName = 'NEFOL®',
+  heading = 'Join The NEFOL® Circle',
   description = 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-  footer = 'By subscribing, you agree to receive WhatsApp messages from Nefol.'
+  footer = 'By subscribing, you agree to receive WhatsApp messages from NEFOL®.'
 }: SubscriptionModalProps) {
   const [countryCode, setCountryCode] = useState('+91')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -147,7 +147,7 @@ export default function SubscriptionModal({
                   <div className="relative mb-4 lg:mb-8">
                     <img 
                       src={image} 
-                      alt="Nefol Product"
+                      alt="NEFOL® Product"
                       className="w-full max-w-md h-auto object-contain mx-auto"
                     />
                   </div>

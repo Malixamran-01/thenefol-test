@@ -1,1 +1,0 @@
-function t(){let t=localStorage.getItem("session_id");return t||(t=`session_${Date.now()}_${Math.random().toString(36).substr(2,9)}`,localStorage.setItem("session_id",t)),t}function s(){const s={"Content-Type":"application/json"},n=t();return n&&(s["x-session-id"]=n),s}export{s as a,t as g};

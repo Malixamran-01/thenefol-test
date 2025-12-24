@@ -194,31 +194,24 @@ export async function generateOrderNumber(pool: any, items: any[]): Promise<stri
 }
 
 // Generate new format invoice number
-// Format: N09LKO3011251001
-// N + GST Code (09) + District Code (LKO) + Date (DDMMYY) + Invoice Number (4 digits)
+// Format: 14 digits total (no prefix, no district code)
+// Date (DDMMYY = 6 digits) + Sequence Number (8 digits) = 14 digits total
 export async function generateNewInvoiceNumber(pool: any, shippingAddress: any): Promise<string> {
-  const prefix = 'N'
-  const gstCode = '09'
-  
-  // Get district code from shipping address
-  const city = shippingAddress?.city || shippingAddress?.district || 'Lucknow'
-  const districtCode = getDistrictCode(city)
-  
-  // Get current date in DDMMYY format
+  // Get current date in DDMMYY format (6 digits)
   const now = new Date()
   const day = now.getDate().toString().padStart(2, '0')
   const month = (now.getMonth() + 1).toString().padStart(2, '0')
   const year = now.getFullYear().toString().slice(-2)
   const dateStr = `${day}${month}${year}`
   
-  // Get next invoice number (starting from 1001)
-  const invoiceNum = await getNextInvoiceSequenceNumber(pool)
+  // Get next invoice sequence number (8 digits to make total 14 digits)
+  const invoiceNum = await getNextInvoiceSequenceNumber14Digits(pool)
   
-  // Format: N09LKO3011251001
-  return `${prefix}${gstCode}${districtCode}${dateStr}${invoiceNum}`
+  // Format: 14 digits total (DDMMYY + 8 digit sequence)
+  return `${dateStr}${invoiceNum}`
 }
 
-// Get next invoice sequence number (starting from 1001)
+// Get next invoice sequence number (starting from 1001) - 4 digits for old format
 export async function getNextInvoiceSequenceNumber(pool: any): Promise<string> {
   try {
     // Check if invoice_sequence table exists, create if not
@@ -249,6 +242,40 @@ export async function getNextInvoiceSequenceNumber(pool: any): Promise<string> {
     console.error('Error getting invoice sequence number:', err)
     // Fallback: use timestamp-based number if table fails
     return Date.now().toString().slice(-4)
+  }
+}
+
+// Get next invoice sequence number for 14-digit format (8 digits)
+export async function getNextInvoiceSequenceNumber14Digits(pool: any): Promise<string> {
+  try {
+    // Check if invoice_sequence_14digits table exists, create if not
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS invoice_sequence_14digits (
+        id SERIAL PRIMARY KEY,
+        current_number BIGINT NOT NULL DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    
+    // Initialize if empty
+    const checkResult = await pool.query('SELECT current_number FROM invoice_sequence_14digits LIMIT 1')
+    if (checkResult.rows.length === 0) {
+      await pool.query('INSERT INTO invoice_sequence_14digits (current_number) VALUES (0)')
+    }
+    
+    // Get and increment the sequence number
+    const result = await pool.query(`
+      UPDATE invoice_sequence_14digits 
+      SET current_number = current_number + 1, updated_at = CURRENT_TIMESTAMP
+      RETURNING current_number
+    `)
+    
+    const nextNumber = result.rows[0].current_number
+    return nextNumber.toString().padStart(8, '0') // Ensure 8 digits (00000001, 00000002, etc.)
+  } catch (err: any) {
+    console.error('Error getting 14-digit invoice sequence number:', err)
+    // Fallback: use timestamp-based number if table fails
+    return Date.now().toString().slice(-8).padStart(8, '0')
   }
 }
 

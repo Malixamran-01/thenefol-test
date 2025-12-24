@@ -17,7 +17,7 @@ export default function Logo({ className = "font-semibold text-xl hover:text-blu
     <a href={href} className={`${className} block max-w-full overflow-hidden`}>
       <img 
         src={logoSrc} 
-        alt="Nefol" 
+        alt="NEFOL®" 
         className="h-8 sm:h-10 md:h-12 w-auto max-w-[100px] sm:max-w-[120px] md:max-w-[140px] object-contain transition-all duration-300"
         onError={(e) => {
           // Fallback to text if image fails to load
@@ -25,7 +25,7 @@ export default function Logo({ className = "font-semibold text-xl hover:text-blu
           target.style.display = 'none'
           const parent = target.parentElement
           if (parent) {
-            parent.textContent = 'Nefol'
+            parent.textContent = 'NEFOL®'
           }
         }}
       />

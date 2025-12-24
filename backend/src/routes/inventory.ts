@@ -91,4 +91,104 @@ export async function listLowStock(pool: Pool, req: Request, res: Response) {
   }
 }
 
+export async function getAllProductsWithInventory(pool: Pool, req: Request, res: Response) {
+  try {
+    const { search, lowStockOnly } = req.query as any
+    
+    let whereClause = ''
+    const params: any[] = []
+    
+    if (search) {
+      whereClause += ` AND (p.title ILIKE $${params.length + 1} OR p.slug ILIKE $${params.length + 1})`
+      params.push(`%${search}%`)
+    }
+    
+    if (lowStockOnly === 'true') {
+      whereClause += ` AND (i.quantity - COALESCE(i.reserved, 0)) <= COALESCE(i.low_stock_threshold, 0)`
+    }
+    
+    const { rows } = await pool.query(`
+      SELECT 
+        p.id as product_id,
+        p.title,
+        p.slug,
+        p.price,
+        p.list_image,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pv.id,
+              'sku', pv.sku,
+              'attributes', pv.attributes,
+              'price', pv.price,
+              'mrp', pv.mrp,
+              'is_active', pv.is_active,
+              'quantity', COALESCE(i.quantity, 0),
+              'reserved', COALESCE(i.reserved, 0),
+              'available', COALESCE(i.quantity, 0) - COALESCE(i.reserved, 0),
+              'low_stock_threshold', COALESCE(i.low_stock_threshold, 0),
+              'is_low_stock', (COALESCE(i.quantity, 0) - COALESCE(i.reserved, 0)) <= COALESCE(i.low_stock_threshold, 0)
+            ) ORDER BY pv.id
+          ) FILTER (WHERE pv.id IS NOT NULL),
+          '[]'::json
+        ) as variants,
+        COALESCE(SUM(i.quantity), 0) as total_stock,
+        COALESCE(SUM(i.quantity - COALESCE(i.reserved, 0)), 0) as total_available,
+        COUNT(*) FILTER (WHERE (i.quantity - COALESCE(i.reserved, 0)) <= COALESCE(i.low_stock_threshold, 0)) as low_stock_variants_count
+      FROM products p
+      LEFT JOIN product_variants pv ON pv.product_id = p.id
+      LEFT JOIN inventory i ON i.variant_id = pv.id AND i.product_id = p.id
+      WHERE 1=1 ${whereClause}
+      GROUP BY p.id, p.title, p.slug, p.price, p.list_image
+      ORDER BY p.title ASC
+    `, params)
+    
+    sendSuccess(res, rows)
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch products with inventory', err)
+  }
+}
+
+export async function setStockQuantity(pool: Pool, req: Request, res: Response) {
+  try {
+    const { productId, variantId } = req.params as any
+    const { quantity, reason = 'manual_update', metadata } = req.body || {}
+    const validationError = validateRequired({ quantity }, ['quantity'])
+    if (validationError) return sendError(res, 400, validationError)
+
+    // Ensure row exists
+    await pool.query(
+      `insert into inventory (product_id, variant_id, quantity, reserved, low_stock_threshold)
+       values ($1, $2, 0, 0, 0)
+       on conflict (product_id, variant_id) do nothing`,
+      [productId, variantId]
+    )
+
+    // Get current quantity to calculate delta
+    const { rows: currentRows } = await pool.query(
+      `SELECT quantity FROM inventory WHERE product_id = $1 AND variant_id = $2`,
+      [productId, variantId]
+    )
+    const currentQuantity = currentRows[0]?.quantity || 0
+    const delta = Number(quantity) - currentQuantity
+
+    const { rows } = await pool.query(
+      `update inventory set quantity = $3, updated_at = now()
+       where product_id = $1 and variant_id = $2
+       returning *`,
+      [productId, variantId, Number(quantity)]
+    )
+
+    await pool.query(
+      `insert into inventory_logs (product_id, variant_id, change, reason, metadata)
+       values ($1, $2, $3, $4, $5)`,
+      [productId, variantId, delta, reason, metadata ? JSON.stringify(metadata) : null]
+    )
+
+    sendSuccess(res, rows[0])
+  } catch (err) {
+    sendError(res, 500, 'Failed to set stock quantity', err)
+  }
+}
+
 

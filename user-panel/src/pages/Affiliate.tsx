@@ -40,6 +40,22 @@ export default function Affiliate() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate required fields
+    if (!formData.name || !formData.email || !formData.phone) {
+      alert('Please fill all required fields')
+      return
+    }
+
+    // Validate email format - must be a proper email (contains @) and not just a phone number
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const isValidEmail = emailRegex.test(formData.email)
+    const isPhoneNumberAsEmail = /^\d+$/.test(formData.email.replace(/[\s+\-()]/g, ''))
+    
+    if (!isValidEmail || isPhoneNumberAsEmail) {
+      alert('Please provide a valid email address. A valid email address is required to apply for affiliate marketing.')
+      return
+    }
+    
     // Check if at least one social media handle is provided
     const hasSocialMedia = formData.instagram.trim() || 
                           formData.youtube.trim() || 
@@ -680,9 +696,10 @@ export default function Affiliate() {
                   checked={formData.agreeTerms}
                   onChange={handleInputChange}
                   required
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200"
+                  className="mt-1 h-5 w-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  style={{ accentColor: '#4b97c9' }}
                 />
-                <label htmlFor="agreeTerms" className="text-sm text-slate-600">
+                <label htmlFor="agreeTerms" className="text-sm text-slate-600 cursor-pointer">
                   I agree to the <a href="#" className="text-blue-600 hover:underline">Affiliate Program Terms</a> and 
                   <a href="#" className="text-blue-600 hover:underline"> Privacy Policy</a>. I understand that I must comply with 
                   FTC guidelines and disclose my affiliate relationship with Nefol. *

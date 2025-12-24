@@ -186,7 +186,7 @@ export default function BestSellers() {
         <section className="mt-16 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <h2 className="text-2xl font-semibold text-slate-900">Routine Builders</h2>
           <p className="mt-2 text-slate-600">
-            Inspired by Forest Essentials rituals & Minimalist regimens, curate a complete routine with our best sellers.
+            Inspired by Forest Essentials rituals, curate a complete routine with our best sellers.
           </p>
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">

@@ -153,9 +153,11 @@ export default function CategoryPage() {
                     </div>
                   </div>
                   <div className="flex flex-col flex-grow px-2">
-                    <h3 className="text-sm sm:text-base font-light tracking-wide mb-3 line-clamp-2 min-h-[3rem] flex items-start" style={{color: '#1a1a1a', letterSpacing: '0.05em'}}>
-                      {product.title}
-                    </h3>
+                    <a href={`#/user/product/${product.slug}`} className="block">
+                      <h3 className="text-sm sm:text-base font-light tracking-wide mb-3 line-clamp-2 min-h-[3rem] flex items-start hover:opacity-70 transition-opacity cursor-pointer" style={{color: '#1a1a1a', letterSpacing: '0.05em'}}>
+                        {product.title}
+                      </h3>
+                    </a>
                     {rating > 0 && (
                       <div className="flex items-center mb-4">
                         <div className="flex text-yellow-400">
@@ -182,10 +184,19 @@ export default function CategoryPage() {
                       </div>
                       <div className="flex gap-3">
                         <button 
-                          onClick={() => {
+                          onClick={(e) => {
                             if (addItem) {
                               try {
                                 addItem(product)
+                                // Show success feedback
+                                const button = e.currentTarget
+                                const originalText = button.textContent
+                                button.textContent = '✓ Added to Cart'
+                                button.style.backgroundColor = 'rgb(75,151,201)'
+                                setTimeout(() => {
+                                  button.textContent = originalText
+                                  button.style.backgroundColor = 'rgb(75,151,201)'
+                                }, 4000) // Increased to 4 seconds for better visibility
                               } catch (error) {
                                 console.log('Authentication required for cart operation')
                               }

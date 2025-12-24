@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Coins, Gift, ShoppingBag, TrendingUp, Clock, Wallet, ArrowRight } from 'lucide-react'
+import { Coins, Gift, ShoppingBag, TrendingUp, Clock, Wallet, ArrowRight, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 
@@ -253,6 +253,18 @@ export default function NefolCoins() {
       `}</style>
       
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => window.location.hash = '#/user/profile'}
+            className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back to Profile</span>
+          </button>
+        </div>
+        
         {/* Page Header */}
         <div className="mb-12 sm:mb-16">
           <h1 

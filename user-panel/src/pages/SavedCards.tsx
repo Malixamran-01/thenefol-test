@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { CreditCard, Plus, Trash2, Check } from 'lucide-react'
+import { CreditCard, Plus, Trash2, Check, ArrowLeft } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
 interface Card {
@@ -86,6 +86,8 @@ export default function SavedCards() {
         return 'MC'
       case 'amex':
         return 'AX'
+      case 'rupay':
+        return 'RP'
       default:
         return 'CC'
     }
@@ -99,6 +101,8 @@ export default function SavedCards() {
         return 'from-orange-500 to-red-600'
       case 'amex':
         return 'from-green-500 to-green-700'
+      case 'rupay':
+        return 'from-indigo-500 to-purple-600'
       default:
         return 'from-gray-500 to-gray-700'
     }
@@ -106,10 +110,10 @@ export default function SavedCards() {
 
   if (loading) {
     return (
-      <main className="py-10 dark:bg-slate-900 min-h-screen">
-        <div className="mx-auto max-w-4xl px-4">
+      <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <p className="text-slate-600 dark:text-slate-400">Loading your cards...</p>
+            <p className="font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Loading your cards...</p>
           </div>
         </div>
       </main>
@@ -117,17 +121,39 @@ export default function SavedCards() {
   }
 
   return (
-    <main className="py-10 dark:bg-slate-900 min-h-screen">
-      <div className="mx-auto max-w-4xl px-4">
+    <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => window.location.hash = '#/user/profile'}
+            className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back to Profile</span>
+          </button>
+        </div>
+        
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 mb-4">
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{ backgroundColor: 'rgb(75,151,201)' }}>
             <CreditCard className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Saved Cards
           </h1>
-          <p className="text-xl text-slate-600 dark:text-slate-400">
+          <p 
+            className="text-sm sm:text-base font-light tracking-wide"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
             Manage your payment methods
           </p>
         </div>
@@ -136,7 +162,10 @@ export default function SavedCards() {
         <div className="mb-8">
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 text-white px-6 py-3 rounded-lg font-light tracking-[0.15em] uppercase transition-colors text-xs"
+            style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
           >
             <Plus className="w-5 h-5" />
             Add New Card
@@ -145,80 +174,113 @@ export default function SavedCards() {
 
         {/* Add Card Form */}
         {showAddForm && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-8">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-slate-100">
+            <h3 
+              className="text-xl sm:text-2xl font-light mb-4 tracking-[0.1em]"
+              style={{
+                color: '#1a1a1a',
+                fontFamily: 'var(--font-heading-family)',
+                letterSpacing: '0.1em'
+              }}
+            >
               Add New Card
             </h3>
             <form onSubmit={handleAddCard} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                   Card Number
                 </label>
                 <input
                   type="text"
                   value={newCard.card_number}
-                  onChange={(e) => setNewCard({ ...newCard, card_number: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700"
+                  onChange={(e) => {
+                    let value = e.target.value.replace(/\D/g, '')
+                    // Format with spaces every 4 digits
+                    value = value.match(/.{1,4}/g)?.join(' ') || value
+                    setNewCard({ ...newCard, card_number: value })
+                  }}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   placeholder="1234 5678 9012 3456"
+                  inputMode="numeric"
+                  maxLength={19}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                     Expiry Date
                   </label>
                   <input
                     type="text"
                     value={newCard.expiry}
-                    onChange={(e) => setNewCard({ ...newCard, expiry: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700"
+                    onChange={(e) => {
+                      let value = e.target.value.replace(/\D/g, '') // Remove non-digits
+                      if (value.length >= 2) {
+                        value = value.slice(0, 2) + '/' + value.slice(2, 4)
+                      }
+                      setNewCard({ ...newCard, expiry: value })
+                    }}
+                    maxLength={5}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                    style={{ letterSpacing: '0.02em' }}
                     placeholder="MM/YY"
+                    inputMode="numeric"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                     CVV
                   </label>
                   <input
                     type="text"
                     value={newCard.cvv}
-                    onChange={(e) => setNewCard({ ...newCard, cvv: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700"
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                      setNewCard({ ...newCard, cvv: value })
+                    }}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                    style={{ letterSpacing: '0.02em' }}
                     placeholder="123"
+                    inputMode="numeric"
+                    maxLength={4}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                   Cardholder Name
                 </label>
                 <input
                   type="text"
                   value={newCard.name}
                   onChange={(e) => setNewCard({ ...newCard, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   placeholder="John Doe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                   Card Type
                 </label>
                 <select
                   value={newCard.type}
                   onChange={(e) => setNewCard({ ...newCard, type: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                 >
                   <option value="Visa">Visa</option>
                   <option value="MasterCard">MasterCard</option>
                   <option value="Amex">American Express</option>
+                  <option value="RuPay">RuPay</option>
                 </select>
               </div>
               <div className="flex gap-4">
                 <button
                   type="submit"
-                  className="flex-1 text-white px-6 py-2 rounded-lg transition-colors"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  className="flex-1 text-white px-6 py-2.5 rounded-lg transition-colors text-xs font-light tracking-[0.15em] uppercase"
+                  style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                 >
@@ -227,7 +289,8 @@ export default function SavedCards() {
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-6 py-2 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                  className="flex-1 border border-slate-900 text-slate-900 px-6 py-2.5 rounded-lg hover:bg-slate-900 hover:text-white transition-colors text-xs font-light tracking-[0.15em] uppercase"
+                  style={{ letterSpacing: '0.15em' }}
                 >
                   Cancel
                 </button>
@@ -239,17 +302,27 @@ export default function SavedCards() {
         {/* Cards List */}
         {cards.length === 0 ? (
           <div className="text-center py-16">
-            <CreditCard className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+            <CreditCard className="w-16 h-16 mx-auto mb-4" style={{ color: '#ccc' }} />
+            <h3 
+              className="text-xl sm:text-2xl font-light mb-2 tracking-[0.1em]"
+              style={{
+                color: '#1a1a1a',
+                fontFamily: 'var(--font-heading-family)',
+                letterSpacing: '0.1em'
+              }}
+            >
               No Cards Saved
             </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
+            <p 
+              className="mb-6 font-light tracking-wide"
+              style={{ color: '#666', letterSpacing: '0.05em' }}
+            >
               Add a card to make checkout faster
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="inline-block text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              className="inline-block text-white px-6 py-3 rounded-lg transition-colors text-xs font-light tracking-[0.15em] uppercase"
+              style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >

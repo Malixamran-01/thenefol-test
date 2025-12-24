@@ -11,6 +11,7 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
   const { isAuthenticated } = useAuth()
   const [orderNumber, setOrderNumber] = useState(propOrderNumber || '')
   const [reason, setReason] = useState('')
+  const [otherReason, setOtherReason] = useState('')
   const [cancellationType, setCancellationType] = useState<'full' | 'partial'>('full')
   const [selectedItems, setSelectedItems] = useState<number[]>([])
   const [order, setOrder] = useState<any>(null)
@@ -83,6 +84,11 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
       return
     }
 
+    if (reason === 'Other' && !otherReason.trim()) {
+      setError('Please provide details for your cancellation reason')
+      return
+    }
+
     if (cancellationType === 'partial' && selectedItems.length === 0) {
       setError('Please select at least one item to cancel')
       return
@@ -96,9 +102,12 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
         ? selectedItems.map(index => order.items[index])
         : undefined
 
+      // Use otherReason text if reason is "Other", otherwise use reason
+      const finalReason = reason === 'Other' ? otherReason.trim() : reason.trim()
+
       await api.cancellations.requestCancellation({
         order_number: orderNumber,
-        reason: reason.trim(),
+        reason: finalReason,
         cancellation_type: cancellationType,
         items_to_cancel: itemsToCancel
       })
@@ -249,7 +258,8 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
                           type="checkbox"
                           checked={selectedItems.includes(index)}
                           onChange={() => handleItemToggle(index)}
-                          className="w-4 h-4 text-blue-600 rounded"
+                          className="w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        style={{ accentColor: '#4b97c9' }}
                         />
                         <div className="flex-1">
                           <div className="font-medium text-slate-900 dark:text-slate-100">
@@ -274,23 +284,21 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100 mb-3"
-                  required
                 >
                   <option value="">Select a reason</option>
                   {cancellationReasons.map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
-                {reason === 'Other' && (
-                  <textarea
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Please provide more details..."
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
-                    rows={3}
-                    required
-                  />
-                )}
+                {/* Always keep textarea mounted to avoid focus jumping issues */}
+                <textarea
+                  value={otherReason}
+                  onChange={(e) => setOtherReason(e.target.value)}
+                  placeholder="Please provide more details..."
+                  className={`w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100 transition-all ${reason === 'Other' ? 'block' : 'hidden'}`}
+                  rows={3}
+                  // We already validate this in handleSubmit when reason === 'Other'
+                />
               </div>
 
               {/* Refund Info */}
@@ -314,7 +322,7 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || !reason.trim()}
+                  disabled={submitting || !reason.trim() || (reason === 'Other' && !otherReason.trim())}
                   className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {submitting ? 'Submitting...' : 'Submit Cancellation Request'}

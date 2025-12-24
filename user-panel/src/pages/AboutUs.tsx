@@ -54,9 +54,9 @@ export default function AboutUs() {
                   className="font-light leading-relaxed mb-6 tracking-wide"
                   style={{ color: '#666', letterSpacing: '0.05em' }}
                 >
-                  Nefol has a series of beauty products that don't have harmful components in them. 
-                  Nefol products are based on the concept of combination with science and herbs. 
-                  Nefol Aesthetics Private Limited extends social and financial help to causes such as 
+                  NEFOL® has a series of beauty products that don't have harmful components in them. 
+                  NEFOL® products are based on the concept of combination with science and herbs. 
+                  NEFOL® Aesthetics Private Limited extends social and financial help to causes such as 
                   education, health, women's rights and empowerment, rural development.
                 </p>
                 <p 
@@ -64,13 +64,13 @@ export default function AboutUs() {
                   style={{ color: '#666', letterSpacing: '0.05em' }}
                 >
                   The concept of providing quality products to society took a long time for research. 
-                  Nefol fulfilled all the global norms and set its standard accordingly.
+                  NEFOL® fulfilled all the global norms and set its standard accordingly.
                 </p>
               </div>
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <img 
                   src="/IMAGES/about-us-story.jpg" 
-                  alt="Nefol Story" 
+                  alt="NEFOL® Story" 
                   className="w-full h-64 object-cover rounded-lg"
                 />
               </div>
@@ -418,7 +418,7 @@ export default function AboutUs() {
               className="text-sm sm:text-base font-light mb-6 sm:mb-8 max-w-2xl mx-auto tracking-wide"
               style={{ color: '#666', letterSpacing: '0.05em' }}
             >
-              Experience the power of natural beauty with Nefol. Discover our range of products 
+              Experience the power of natural beauty with NEFOL®. Discover our range of products 
               and become part of our community committed to natural, effective skincare.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

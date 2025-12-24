@@ -36,7 +36,7 @@ interface InvoiceSettings {
 const InvoiceSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<InvoiceSettings>({
     companyDetails: {
-      companyName: 'Nefol',
+      companyName: 'NEFOL®',
       companyAddress: '',
       companyPhone: '7355384939',
       companyEmail: 'info@nefol.com',

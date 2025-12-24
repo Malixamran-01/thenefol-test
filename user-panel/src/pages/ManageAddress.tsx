@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapPin, Plus, Trash2, Edit, Check } from 'lucide-react'
+import { MapPin, Plus, Trash2, Edit, Check, ArrowLeft } from 'lucide-react'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import PhoneInput from '../components/PhoneInput'
@@ -126,6 +126,9 @@ export default function ManageAddress() {
     const selectedCountry = countries.find(c => c.name === addressForm.country)
     if (selectedCountry) {
       setCountryCode(selectedCountry.code)
+    } else {
+      // Default to +91 if country not found
+      setCountryCode('+91')
     }
   }, [addressForm.country])
 
@@ -157,11 +160,14 @@ export default function ManageAddress() {
         name: addressForm.name,
         phone: `${countryCode}${addressForm.phone.replace(/\D/g, '')}`,
         street: addressForm.street,
+        address: addressForm.street, // Shiprocket compatibility - also save as 'address'
         area: addressForm.area,
+        apartment: addressForm.area, // Shiprocket compatibility - also save as 'apartment'
         landmark: addressForm.landmark,
         city: addressForm.city,
         state: addressForm.state,
         zip: addressForm.zip,
+        pincode: addressForm.zip, // Shiprocket compatibility - also save as 'pincode'
         country: addressForm.country,
         address_type: addressForm.address_type,
         address_label: addressForm.address_type === 'other' ? addressForm.address_label : undefined,
@@ -215,11 +221,14 @@ export default function ManageAddress() {
         name: addressForm.name,
         phone: `${countryCode}${addressForm.phone.replace(/\D/g, '')}`,
         street: addressForm.street,
+        address: addressForm.street, // Shiprocket compatibility - also save as 'address'
         area: addressForm.area,
+        apartment: addressForm.area, // Shiprocket compatibility - also save as 'apartment'
         landmark: addressForm.landmark,
         city: addressForm.city,
         state: addressForm.state,
         zip: addressForm.zip,
+        pincode: addressForm.zip, // Shiprocket compatibility - also save as 'pincode'
         country: addressForm.country,
         address_type: addressForm.address_type,
         address_label: addressForm.address_type === 'other' ? addressForm.address_label : undefined,
@@ -232,6 +241,7 @@ export default function ManageAddress() {
       await fetchAddresses()
       setEditAddress(null)
       setShowAddForm(false)
+      setCountryCode('+91') // Reset to +91
       setAddressForm({
         name: '',
         phone: '',
@@ -285,10 +295,10 @@ export default function ManageAddress() {
 
   if (loading) {
     return (
-      <main className="py-10 dark:bg-slate-900 min-h-screen">
-        <div className="mx-auto max-w-4xl px-4">
+      <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <p className="text-slate-600 dark:text-slate-400">Loading your addresses...</p>
+            <p className="font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Loading your addresses...</p>
           </div>
         </div>
       </main>
@@ -296,17 +306,39 @@ export default function ManageAddress() {
   }
 
   return (
-    <main className="py-10 dark:bg-slate-900 min-h-screen">
-      <div className="mx-auto max-w-4xl px-4">
+    <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => window.location.hash = '#/user/profile'}
+            className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back to Profile</span>
+          </button>
+        </div>
+        
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-4">
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{ backgroundColor: 'rgb(75,151,201)' }}>
             <MapPin className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Manage Address
           </h1>
-          <p className="text-xl text-slate-600 dark:text-slate-400">
+          <p 
+            className="text-sm sm:text-base font-light tracking-wide"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
             Manage your delivery addresses
           </p>
         </div>
@@ -317,6 +349,7 @@ export default function ManageAddress() {
             onClick={() => {
               setShowAddForm(!showAddForm)
               setEditAddress(null)
+              setCountryCode('+91') // Reset to +91
               setAddressForm({
                 name: '',
                 phone: '',
@@ -339,8 +372,8 @@ export default function ManageAddress() {
               })
             }}
             disabled={addresses.length >= 5}
-            className="flex items-center gap-2 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed"
-            style={{ backgroundColor: 'rgb(75,151,201)' }}
+            className="flex items-center gap-2 text-white px-6 py-3 rounded-lg font-light tracking-[0.15em] uppercase transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed text-xs"
+            style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
             onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
             onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
           >
@@ -348,7 +381,7 @@ export default function ManageAddress() {
             Add New Address
           </button>
           {addresses.length >= 5 && (
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
               Maximum 5 addresses reached. Delete an address to add a new one.
             </p>
           )}
@@ -356,30 +389,38 @@ export default function ManageAddress() {
 
         {/* Add/Edit Address Form */}
         {(showAddForm || editAddress) && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-slate-100">
             <div className="mb-6">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+              <h3 
+                className="text-xl sm:text-2xl font-light mb-2 tracking-[0.1em]"
+                style={{
+                  color: '#1a1a1a',
+                  fontFamily: 'var(--font-heading-family)',
+                  letterSpacing: '0.1em'
+                }}
+              >
                 {editAddress ? 'Edit Address' : 'Add New Address'}
               </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
                 Fields marked with <span className="text-red-500 font-semibold">*</span> are required
               </p>
             </div>
             <form onSubmit={editAddress ? handleEditAddress : handleAddAddress} className="space-y-6">
               {/* Country/Region */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                   Country/Region <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={addressForm.country}
                   onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   required
                 >
                   {countries.map((country) => (
                     <option key={country.name} value={country.name}>
-                      {country.name} ({country.code})
+                      {country.name}
                     </option>
                   ))}
                 </select>
@@ -387,14 +428,15 @@ export default function ManageAddress() {
 
               {/* Full Name */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                   Full name (First and Last name) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={addressForm.name}
                   onChange={(e) => setAddressForm({ ...addressForm, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   placeholder="Enter full name"
                   required
                 />
@@ -405,8 +447,8 @@ export default function ManageAddress() {
                 <PhoneInput
                   value={addressForm.phone}
                   onChange={(value) => setAddressForm({ ...addressForm, phone: value })}
-                  onCountryCodeChange={setCountryCode}
-                  defaultCountry={countryCode}
+                  onCountryCodeChange={(code) => setCountryCode(code || '+91')}
+                  defaultCountry={countryCode || '+91'}
                   placeholder="Enter phone number"
                   required
                   showLabel
@@ -416,32 +458,34 @@ export default function ManageAddress() {
 
               {/* Pincode */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700  mb-2">
                   Pincode <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={addressForm.zip}
                   onChange={(e) => setAddressForm({ ...addressForm, zip: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   placeholder="123456"
                   pattern="[0-9]{6}"
                   maxLength={6}
                   required
                 />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">6 digits [0-9] PIN code</p>
+                <p className="text-xs font-light mt-1" style={{ color: '#999', letterSpacing: '0.02em' }}>6 digits [0-9] PIN code</p>
               </div>
 
               {/* Flat, House no., Building, Company, Apartment */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700 mb-2" style={{ letterSpacing: '0.1em' }}>
                   Flat, House no., Building, Company, Apartment <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={addressForm.street}
                   onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   placeholder="House/Flat No., Building Name"
                   required
                 />
@@ -449,42 +493,45 @@ export default function ManageAddress() {
 
               {/* Area, Street, Sector, Village */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700 mb-2" style={{ letterSpacing: '0.1em' }}>
                   Area, Street, Sector, Village
                 </label>
                 <input
                   type="text"
                   value={addressForm.area}
                   onChange={(e) => setAddressForm({ ...addressForm, area: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   placeholder="Area, Street, Sector, Village"
                 />
               </div>
 
               {/* Landmark */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700 mb-2" style={{ letterSpacing: '0.1em' }}>
                   Landmark
                 </label>
                 <input
                   type="text"
                   value={addressForm.landmark}
                   onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   placeholder="E.g. near apollo hospital"
                 />
               </div>
 
               {/* Town/City */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700 mb-2" style={{ letterSpacing: '0.1em' }}>
                   Town/City <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={addressForm.city}
                   onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   placeholder="City"
                   required
                 />
@@ -492,13 +539,14 @@ export default function ManageAddress() {
 
               {/* State */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700 mb-2" style={{ letterSpacing: '0.1em' }}>
                   State <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={addressForm.state}
                   onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   required
                 >
                   <option value="">Choose a state</option>
@@ -509,39 +557,41 @@ export default function ManageAddress() {
               </div>
 
               {/* Make this my default address */}
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-200 ">
                 <input
                   type="checkbox"
                   id="is_default"
                   checked={addressForm.is_default}
                   onChange={(e) => setAddressForm({ ...addressForm, is_default: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  className="w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  style={{ accentColor: '#4b97c9' }}
                 />
-                <label htmlFor="is_default" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                <label htmlFor="is_default" className="text-xs font-light uppercase tracking-[0.1em] text-slate-700  cursor-pointer">
                   Make this my default address
                 </label>
               </div>
 
               {/* Delivery instructions */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700  mb-2">
                   Delivery instructions (optional)
                 </label>
                 <textarea
                   value={addressForm.delivery_instructions}
                   onChange={(e) => setAddressForm({ ...addressForm, delivery_instructions: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                  style={{ letterSpacing: '0.02em' }}
                   rows={3}
                   placeholder="Add preferences, notes, access codes and more"
                 />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs font-light mt-1" style={{ color: '#999', letterSpacing: '0.02em' }}>
                   Your instructions help us deliver your packages to your expectations and will be used when possible.
                 </p>
               </div>
 
               {/* Address Type */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+              <div className="pt-2 border-t border-slate-100">
+                <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700 mb-3" style={{ letterSpacing: '0.1em' }}>
                   Address Type
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -558,15 +608,16 @@ export default function ManageAddress() {
                         value={type.value}
                         checked={addressForm.address_type === type.value}
                         onChange={(e) => setAddressForm({ ...addressForm, address_type: e.target.value as 'house' | 'apartment' | 'business' | 'other', address_label: '' })}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                        className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        style={{ accentColor: '#4b97c9' }}
                       />
-                      <span className="text-sm text-slate-700 dark:text-slate-300">{type.label}</span>
+                      <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{type.label}</span>
                     </label>
                   ))}
                 </div>
                 {addressForm.address_type === 'house' && (
-                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
                       Independent house, villa, or builder floor (6 AM - 11 PM delivery)
                     </p>
                     <div className="mt-2 flex items-center gap-2">
@@ -575,9 +626,10 @@ export default function ManageAddress() {
                         id="is_house_type"
                         checked={addressForm.is_house_type}
                         onChange={(e) => setAddressForm({ ...addressForm, is_house_type: e.target.checked })}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        className="w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        style={{ accentColor: '#4b97c9' }}
                       />
-                      <label htmlFor="is_house_type" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <label htmlFor="is_house_type" className="text-xs font-light tracking-wide cursor-pointer" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>
                         Confirm this is an independent house, villa, or builder floor
                       </label>
                     </div>
@@ -585,18 +637,19 @@ export default function ManageAddress() {
                 )}
                 {addressForm.address_type === 'other' && (
                   <div className="mt-3">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    <label className="block text-xs font-light uppercase tracking-[0.1em] text-slate-700 mb-2" style={{ letterSpacing: '0.1em' }}>
                       Address Name/Label <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={addressForm.address_label}
                       onChange={(e) => setAddressForm({ ...addressForm, address_label: e.target.value })}
-                      className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-light"
+                      style={{ letterSpacing: '0.02em' }}
                       placeholder="E.g. Friend's House, Relative's Place, etc."
                       required={addressForm.address_type === 'other'}
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs font-light mt-1" style={{ color: '#999', letterSpacing: '0.02em' }}>
                       Please mention a name for this address to help identify it
                     </p>
                   </div>
@@ -604,13 +657,13 @@ export default function ManageAddress() {
               </div>
 
               {/* Weekend Delivery */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-xs font-light uppercase tracking-[0.1em] text-slate-700 mb-3" style={{ letterSpacing: '0.1em' }}>
                   Can you receive deliveries at this address on weekends?
                 </p>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm text-slate-700 dark:text-slate-300">Saturdays</label>
+                    <label className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>Saturdays</label>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -621,9 +674,10 @@ export default function ManageAddress() {
                             ...addressForm, 
                             weekend_delivery: { ...addressForm.weekend_delivery, saturday: false } 
                           })}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                          className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                          style={{ accentColor: '#4b97c9' }}
                         />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">No</span>
+                        <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>No</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -634,14 +688,15 @@ export default function ManageAddress() {
                             ...addressForm, 
                             weekend_delivery: { ...addressForm.weekend_delivery, saturday: true } 
                           })}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                          className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                          style={{ accentColor: '#4b97c9' }}
                         />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">Yes</span>
+                        <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>Yes</span>
                       </label>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <label className="text-sm text-slate-700 dark:text-slate-300">Sundays</label>
+                    <label className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>Sundays</label>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -652,9 +707,10 @@ export default function ManageAddress() {
                             ...addressForm, 
                             weekend_delivery: { ...addressForm.weekend_delivery, sunday: false } 
                           })}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                          className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                          style={{ accentColor: '#4b97c9' }}
                         />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">No</span>
+                        <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>No</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -665,9 +721,10 @@ export default function ManageAddress() {
                             ...addressForm, 
                             weekend_delivery: { ...addressForm.weekend_delivery, sunday: true } 
                           })}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                          className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                          style={{ accentColor: '#4b97c9' }}
                         />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">Yes</span>
+                        <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>Yes</span>
                       </label>
                     </div>
                   </div>
@@ -675,11 +732,11 @@ export default function ManageAddress() {
               </div>
 
               {/* Additional Instructions */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <div className="pt-2 border-t border-slate-200 ">
+                <p className="text-xs font-light uppercase tracking-[0.1em] text-slate-700  mb-2">
                   Do we need additional instructions to deliver to this address?
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                <p className="text-xs text-slate-500  mb-2">
                   Your instructions help us deliver your packages to your expectations and will be used when possible.
                 </p>
               </div>
@@ -688,8 +745,8 @@ export default function ManageAddress() {
               <div className="flex gap-4 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 text-white px-6 py-3 rounded-lg transition-colors font-medium"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  className="flex-1 text-white px-6 py-3 rounded-lg transition-colors font-light tracking-[0.15em] uppercase text-xs"
+                  style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                 >
@@ -700,8 +757,10 @@ export default function ManageAddress() {
                   onClick={() => {
                     setShowAddForm(false)
                     setEditAddress(null)
+                    setCountryCode('+91') // Reset to +91
                   }}
-                  className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-6 py-3 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-medium"
+                  className="flex-1 border border-slate-900 text-slate-900 px-6 py-3 rounded-lg hover:bg-slate-900 hover:text-white transition-colors font-light tracking-[0.15em] uppercase text-xs"
+                  style={{ letterSpacing: '0.15em' }}
                 >
                   Cancel
                 </button>
@@ -713,17 +772,27 @@ export default function ManageAddress() {
         {/* Addresses List */}
         {addresses.length === 0 ? (
           <div className="text-center py-16">
-            <MapPin className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+            <MapPin className="w-16 h-16 mx-auto mb-4" style={{ color: '#ccc' }} />
+            <h3 
+              className="text-xl sm:text-2xl font-light mb-2 tracking-[0.1em]"
+              style={{
+                color: '#1a1a1a',
+                fontFamily: 'var(--font-heading-family)',
+                letterSpacing: '0.1em'
+              }}
+            >
               No Addresses Saved
             </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
+            <p 
+              className="mb-6 font-light tracking-wide"
+              style={{ color: '#666', letterSpacing: '0.05em' }}
+            >
               Add an address to make checkout faster
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="inline-block text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              className="inline-block text-white px-6 py-3 rounded-lg transition-colors font-light tracking-[0.15em] uppercase text-xs"
+              style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
@@ -735,52 +804,56 @@ export default function ManageAddress() {
             {addresses.map((address) => (
               <div
                 key={address.id}
-                className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6"
+                className="bg-white rounded-xl shadow-lg p-6 border border-slate-100"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     {address.is_default && (
-                      <div className="inline-flex items-center gap-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full mb-3">
+                      <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full mb-3">
                         <Check className="w-4 h-4" />
-                        <span className="text-sm font-medium">Default</span>
+                        <span className="text-xs font-light uppercase tracking-[0.1em]">Default</span>
                       </div>
                     )}
                     <div className="space-y-2">
                       {address.name && (
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                        <h3 className="text-lg font-bold text-slate-900 ">
                           {address.name}
                         </h3>
                       )}
                       <div className="flex items-center gap-2 mb-2">
                         {address.address_type && (
-                          <span className="inline-block px-2 py-1 text-xs font-medium rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 capitalize">
+                          <span className="inline-block px-2 py-1 text-xs font-medium rounded-md bg-slate-100  text-slate-700  capitalize">
                             {address.address_type === 'other' && address.address_label ? address.address_label : address.address_type}
                           </span>
                         )}
                         {!address.is_default && (
                           <button
                             onClick={() => handleSetDefault(address.id)}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                            className="text-xs text-blue-600 hover:underline font-light tracking-wide"
+                            style={{ letterSpacing: '0.05em' }}
                           >
                             Set as Default
                           </button>
                         )}
                       </div>
-                      <div className="text-slate-600 dark:text-slate-400 space-y-1">
-                        <p className="font-medium text-slate-900 dark:text-slate-100">
+                      <div className="text-slate-600  space-y-1">
+                        <p className="font-medium text-slate-900 ">
                           {address.street}
                         </p>
                         {address.area && (
-                          <p>{address.area}</p>
+                          <p className="text-slate-600 ">{address.area}</p>
                         )}
                         {address.landmark && (
-                          <p className="text-sm italic">Near {address.landmark}</p>
+                          <p className="text-sm italic text-slate-600 ">Near {address.landmark}</p>
                         )}
-                        <p>{address.city}, {address.state} - {address.zip}</p>
+                        <p className="text-slate-600 ">{address.city}, {address.state} - {address.zip}</p>
+                        {address.country && (
+                          <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>{address.country}</p>
+                        )}
                       </div>
                       {address.phone && (
-                        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <div className="mt-3 pt-3 border-t border-slate-200 ">
+                          <p className="text-sm text-slate-600 ">
                             <span className="font-medium">Phone:</span> {address.phone}
                           </p>
                         </div>
@@ -791,44 +864,46 @@ export default function ManageAddress() {
                     <button
                       onClick={() => {
                         setEditAddress(address)
-                        // Extract country code from phone if present
-                        let phoneNumber = address.phone || ''
-                        let extractedCountryCode = '+91' // default
-                        for (const country of countries) {
-                          if (phoneNumber.startsWith(country.code)) {
-                            extractedCountryCode = country.code
-                            phoneNumber = phoneNumber.replace(country.code, '').trim().replace(/\D/g, '')
-                            break
-                          }
-                        }
-                        setCountryCode(extractedCountryCode)
+                        setShowAddForm(true)
                         setAddressForm({
                           name: address.name || '',
-                          phone: phoneNumber,
+                          phone: address.phone.replace(/^\+\d+/, '') || '',
                           country: address.country || 'India',
-                          zip: address.zip,
-                          street: address.street,
+                          zip: address.zip || '',
+                          street: address.street || '',
                           area: address.area || '',
                           landmark: address.landmark || '',
-                          city: address.city,
-                          state: address.state,
+                          city: address.city || '',
+                          state: address.state || '',
                           address_type: address.address_type || 'house',
                           address_label: address.address_label || '',
-                          is_default: address.is_default,
+                          is_default: address.is_default || false,
                           delivery_instructions: address.delivery_instructions || '',
                           weekend_delivery: address.weekend_delivery || { saturday: false, sunday: false },
                           is_house_type: address.is_house_type || false
                         })
-                        setShowAddForm(true)
+                        // Set country code from phone, default to +91 if not found
+                        const phoneMatch = address.phone.match(/^\+(\d+)/)
+                        if (phoneMatch) {
+                          const extractedCode = `+${phoneMatch[1]}`
+                          // Only set if it's a valid country code, otherwise default to +91
+                          const validCountry = countries.find(c => c.code === extractedCode)
+                          setCountryCode(validCountry ? extractedCode : '+91')
+                        } else {
+                          // If no country code found, default to +91
+                          setCountryCode('+91')
+                        }
                       }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-lg transition-colors"
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Edit address"
                     >
                       <Edit className="w-5 h-5" />
                     </button>
                     {!address.is_default && (
                       <button
                         onClick={() => handleDelete(address.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg transition-colors"
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete address"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Logo from '../components/Logo'
 import { getOptimizedImage } from '../utils/imageOptimizer'
+import { X } from 'lucide-react'
 
 // Text Overlay Component with Sky Rocket Animation and Ingredient Name Display
 interface TextOverlayProps {
@@ -11,16 +12,24 @@ interface TextOverlayProps {
 }
 
 function TextOverlay({ text, isVisible, onAnimationEnd, onClose }: TextOverlayProps) {
+  const [showScrollHint, setShowScrollHint] = useState(true)
+  const contentRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    if (isVisible) {
-      // Auto close after 10 seconds
-      const autoCloseTimer = setTimeout(() => {
-        onClose()
-      }, 10000)
-      
-      return () => clearTimeout(autoCloseTimer)
+    // Hide scroll hint after user starts scrolling
+    const handleScroll = () => {
+      setShowScrollHint(false)
     }
-  }, [isVisible, onClose])
+    
+    if (isVisible && contentRef.current) {
+      contentRef.current.addEventListener('scroll', handleScroll)
+      return () => {
+        if (contentRef.current) {
+          contentRef.current.removeEventListener('scroll', handleScroll)
+        }
+      }
+    }
+  }, [isVisible])
 
   if (!isVisible) return null
 
@@ -41,29 +50,34 @@ function TextOverlay({ text, isVisible, onAnimationEnd, onClose }: TextOverlayPr
             marginTop: '2rem',
             marginBottom: '2rem'
           }}
+          ref={contentRef}
         >
+          {/* Scroll Indicator - Shows at top when content is scrollable */}
+          {showScrollHint && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-blue-500 text-white px-4 py-2 rounded-full text-xs font-medium shadow-lg animate-bounce">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                <span>Scroll to read more</span>
+              </div>
+            </div>
+          )}
+
           <div 
-            className="text-sm leading-relaxed whitespace-pre-line font-bold pr-12"
+            className="text-sm leading-relaxed whitespace-pre-line font-bold pr-12 pb-16"
             dangerouslySetInnerHTML={{
               __html: text.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #000000; font-size: 1.2em; font-weight: bold;">$1</strong>')
             }}
           />
           
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-2xl font-bold transition-colors duration-200 z-20 cursor-pointer"
-            style={{ pointerEvents: 'auto' }}
-          >
-            ×
-          </button>
         </div>
       </div>
     </div>
   )
 }
 
-const ingredients = [
+export const ingredients = [
   {
     id: 'blue-tea',
     name: 'Blue Tea (Aprajita)',
@@ -4636,32 +4650,16 @@ Yellow Dragon stands as a vibrant, nutrient-rich ingredient for skincare, offeri
 
 export default function Ingredients() {
   const [selectedIngredient, setSelectedIngredient] = useState(ingredients[0])
-  const [overlayText, setOverlayText] = useState('')
-  const [showOverlay, setShowOverlay] = useState(false)
 
   const handleImageClick = (ingredientName: string) => {
     const ingredient = ingredients.find(ing => ing.name === ingredientName)
-    setOverlayText(ingredient?.detailedInfo || ingredient?.description || ingredientName)
-    setShowOverlay(true)
-  }
-
-  const handleOverlayAnimationEnd = () => {
-    // Animation ended, but don't close yet - ingredient name will show
-  }
-
-  const handleOverlayClose = () => {
-    setShowOverlay(false)
-    setOverlayText('')
+    if (ingredient) {
+      window.location.hash = `#/user/ingredients/${ingredient.id}`
+    }
   }
 
   return (
     <>
-      <TextOverlay 
-        text={overlayText} 
-        isVisible={showOverlay} 
-        onAnimationEnd={handleOverlayAnimationEnd}
-        onClose={handleOverlayClose}
-      />
       <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {

@@ -44,6 +44,28 @@ export async function submitAffiliateApplication(pool: Pool, req: Request, res: 
       return sendError(res, 400, 'Missing required fields')
     }
 
+    // Validate email format - must be a proper email (contains @) and not just a phone number
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const isValidEmail = emailRegex.test(email)
+    const isPhoneNumberAsEmail = /^\d+$/.test(email.replace(/[\s+\-()]/g, '')) // Check if email is just digits
+    
+    if (!isValidEmail || isPhoneNumberAsEmail) {
+      return sendError(res, 400, 'Please provide a valid email address. A valid email address is required to apply for affiliate marketing.')
+    }
+
+    // If user is authenticated, also check their current profile email
+    if (userId) {
+      const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId])
+      if (userResult.rows.length > 0) {
+        const userEmail = userResult.rows[0].email
+        // Check if user's profile email is valid (not just phone number)
+        const userEmailIsValid = emailRegex.test(userEmail) && !/^\d+$/.test(userEmail.replace(/[\s+\-()]/g, ''))
+        if (!userEmailIsValid) {
+          return sendError(res, 400, 'Please update your profile with a valid email address before applying for affiliate marketing. Your current email is not valid.')
+        }
+      }
+    }
+
     // Check if at least one social media handle is provided
     const hasSocialMedia = instagram?.trim() || youtube?.trim() || snapchat?.trim() || facebook?.trim()
     if (!hasSocialMedia) {
@@ -196,6 +218,25 @@ export async function approveAffiliateApplication(pool: Pool, req: Request, res:
     // Generate verification code
     const verificationCode = generateVerificationCode()
 
+    // Generate unique Affiliate Partner ID (Membership ID)
+    // Format: AP + 8-digit number (e.g., AP00000001)
+    let nextPartnerId = 1
+    try {
+      // Check if partner_id column exists and get max ID
+      const partnerIdResult = await pool.query(`
+        SELECT COALESCE(MAX(CAST(SUBSTRING(partner_id FROM 3) AS INTEGER)), 0) + 1 as next_id
+        FROM affiliate_partners
+        WHERE partner_id IS NOT NULL AND partner_id ~ '^AP[0-9]+$'
+      `)
+      nextPartnerId = partnerIdResult.rows[0]?.next_id || 1
+    } catch (err: any) {
+      // If column doesn't exist yet, start from 1
+      // This handles the case where the schema migration hasn't run
+      console.warn('⚠️ partner_id column may not exist, starting from ID 1:', err.message)
+      nextPartnerId = 1
+    }
+    const partnerId = `AP${nextPartnerId.toString().padStart(8, '0')}`
+
     // Update application status
     const { rows } = await pool.query(`
       UPDATE affiliate_applications 
@@ -204,14 +245,14 @@ export async function approveAffiliateApplication(pool: Pool, req: Request, res:
       RETURNING *
     `, [verificationCode, adminNotes || null, new Date(), id])
 
-    // Create affiliate partner record
+    // Create affiliate partner record with Partner ID
     await pool.query(`
       INSERT INTO affiliate_partners (
-        application_id, name, email, phone, verification_code, status, commission_rate,
+        application_id, name, email, phone, verification_code, partner_id, status, commission_rate,
         total_earnings, total_referrals, pending_earnings, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     `, [
-      id, application.name, application.email, application.phone, verificationCode,
+      id, application.name, application.email, application.phone, verificationCode, partnerId,
       'unverified', 10.0, 0, 0, 0, new Date()
     ])
 
@@ -487,8 +528,18 @@ export async function getAffiliateReferrals(pool: Pool, req: Request, res: Respo
       [userId]
     )
 
+    // If the user doesn't have an affiliate account yet, return an empty,
+    // successful response instead of a 404 so the frontend doesn't log errors
     if (affiliateResult.rows.length === 0) {
-      return sendError(res, 404, 'Affiliate account not found')
+      return sendSuccess(res, {
+        referrals: [],
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total: 0,
+          pages: 0
+        }
+      })
     }
 
     const affiliateId = affiliateResult.rows[0].id

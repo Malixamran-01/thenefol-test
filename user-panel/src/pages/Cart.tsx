@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { ShoppingCart, Package, Trash2, Lock } from 'lucide-react'
+import { ShoppingCart, Trash2, Lock } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { parsePrice, roundPrice } from '../contexts/CartContext'
 import PricingDisplay from '../components/PricingDisplay'
@@ -52,8 +52,8 @@ export default function Cart() {
 
   const formatPrice = (price: string) => {
     const numericPrice = parsePrice(price)
-    const rounded = roundPrice(numericPrice)
-    return `₹${rounded.toLocaleString()}`
+    const rounded = parseFloat(numericPrice.toFixed(2))
+    return `₹${rounded.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const calculateItemTax = (price: string, quantity: number, category?: string) => {
@@ -66,9 +66,9 @@ export default function Cart() {
     // tax = taxInclusivePrice - basePrice
     const basePrice = itemPrice / (1 + taxRate)
     const itemTax = itemPrice - basePrice
-    const roundedTax = roundPrice(itemTax * quantity)
+    const roundedTax = parseFloat((itemTax * quantity).toFixed(2))
     
-    return `₹${roundedTax.toLocaleString()}`
+    return `₹${roundedTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const getTaxRateText = (category?: string) => {
@@ -78,8 +78,8 @@ export default function Cart() {
 
   const calculateItemTotal = (price: string, quantity: number) => {
     const numericPrice = parsePrice(price)
-    const rounded = roundPrice(numericPrice * quantity)
-    return `₹${rounded.toLocaleString()}`
+    const rounded = parseFloat((numericPrice * quantity).toFixed(2))
+    return `₹${rounded.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   return (
@@ -182,7 +182,6 @@ export default function Cart() {
                     <div key={item.id || `${item.slug}-${item.product_id}`} className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 p-3 sm:p-4 border border-slate-200 rounded-lg hover:shadow-md transition-shadow">
                       {/* Product Image */}
                       <div className="flex-shrink-0">
-                        <div className="relative">
                           <img
                             src={item.image || '/IMAGES/BANNER (1).webp'}
                             alt={item.title}
@@ -190,35 +189,20 @@ export default function Cart() {
                             style={{borderColor: '#D0E8F2'}}
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
-                              console.log('Image failed to load:', target.src)
-                              
-                              // Prevent infinite loop by checking if we've already tried fallbacks
+                            // Try fallback images if main image fails
                               if (!target.dataset.fallbackAttempted) {
                                 target.dataset.fallbackAttempted = 'true'
-                                // Try fallback images in order (convert to webp)
                                 if (target.src.includes('/IMAGES/BANNER (1).')) {
                                   target.src = '/IMAGES/face.webp'
                                 } else if (target.src.includes('/IMAGES/face.')) {
                                   target.src = '/IMAGES/body.webp'
                                 } else {
-                                  // If all fallbacks fail, show placeholder
-                                  target.style.display = 'none'
-                                  const placeholder = target.nextElementSibling as HTMLElement
-                                  if (placeholder) placeholder.classList.remove('hidden')
-                                }
-                              } else {
-                                // If fallback also failed, show placeholder
-                                target.style.display = 'none'
-                                const placeholder = target.nextElementSibling as HTMLElement
-                                if (placeholder) placeholder.classList.remove('hidden')
+                                // Last resort fallback
+                                target.src = '/IMAGES/BANNER (1).webp'
+                              }
                               }
                             }}
                           />
-                          {/* Placeholder for when image fails to load */}
-                          <div className="hidden w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg border border-slate-200 flex items-center justify-center shadow-sm">
-                            <Package className="h-8 w-8 text-slate-400" />
-                          </div>
-                        </div>
                       </div>
 
                       {/* Product Details */}
@@ -316,6 +300,7 @@ export default function Cart() {
                       const itemAny = item as any
                       let itemMrp = null
                       
+                      // Priority order for MRP lookup
                       if (itemAny.mrp) {
                         itemMrp = itemAny.mrp
                       } else if (itemAny.details?.mrp) {
@@ -328,14 +313,22 @@ export default function Cart() {
                                   csvProduct['mrp'] || csvProduct['MRP(₹)'] || csvProduct['MRP(₹) ']
                       }
                       
+                      // If no MRP found, skip discount calculation for this item (don't use price as fallback)
                       if (!itemMrp) {
-                        itemMrp = item.price
+                        console.warn(`⚠️ MRP not found for item: ${item.title || item.slug}, skipping discount calculation`)
+                        return sum
                       }
                       
                       const mrp = parsePrice(itemMrp || '0')
                       const currentPrice = parsePrice(item.price)
+                      
+                      // Only calculate discount if MRP is greater than current price and MRP is valid
+                      if (mrp > 0 && mrp > currentPrice) {
                       const discount = (mrp - currentPrice) * item.quantity
-                      return sum + Math.max(0, roundPrice(discount))
+                        return sum + roundPrice(discount)
+                      }
+                      
+                      return sum
                     }, 0)
                     
                     const shipping = 0
@@ -353,28 +346,28 @@ export default function Cart() {
                         {/* MRP Total */}
                         <div className="flex justify-between text-slate-600">
                           <span>MRP</span>
-                          <span>₹{roundPrice(mrpTotal).toLocaleString()}</span>
+                          <span>₹{parseFloat(mrpTotal.toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         
                         {/* Product Discount */}
                         {productDiscount > 0 && (
                           <div className="flex justify-between text-green-600">
                             <span>Product Discount</span>
-                            <span>-₹{roundPrice(productDiscount).toLocaleString()}</span>
+                            <span>-₹{parseFloat(productDiscount.toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         )}
                         
                         {/* Subtotal */}
                         <div className="flex justify-between font-medium text-slate-700">
                           <span>Subtotal ({items.length} items)</span>
-                          <span>₹{roundPrice(subtotal).toLocaleString()}</span>
+                          <span>₹{parseFloat(subtotal.toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         
                         {/* Shipping */}
                         <div className="flex justify-between text-slate-600">
                           <span>Shipping Charges</span>
                           <span className={shipping > 0 ? '' : 'text-green-600'}>
-                            {shipping > 0 ? `₹${roundPrice(shipping).toLocaleString()}` : 'Free'}
+                            {shipping > 0 ? `₹${parseFloat(shipping.toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Free'}
                           </span>
                         </div>
                         
@@ -382,7 +375,7 @@ export default function Cart() {
                         {items.some(item => (item.category || '').toLowerCase().includes('hair')) && (
                           <div className="flex justify-between text-slate-600">
                             <span>GST (5% - Hair Products, Inclusive)</span>
-                            <span>₹{roundPrice(items.reduce((sum, item) => {
+                            <span>₹{parseFloat((items.reduce((sum, item) => {
                               const category = (item.category || '').toLowerCase()
                               if (category.includes('hair')) {
                                 const itemPrice = parsePrice(item.price)
@@ -391,13 +384,13 @@ export default function Cart() {
                                 return sum + (itemTax * item.quantity)
                               }
                               return sum
-                            }, 0)).toLocaleString()}</span>
+                            }, 0)).toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         )}
                         {items.some(item => !(item.category || '').toLowerCase().includes('hair')) && (
                           <div className="flex justify-between text-slate-600">
                             <span>GST (18% - Other Products, Inclusive)</span>
-                            <span>₹{roundPrice(items.reduce((sum, item) => {
+                            <span>₹{parseFloat((items.reduce((sum, item) => {
                               const category = (item.category || '').toLowerCase()
                               if (!category.includes('hair')) {
                                 const itemPrice = parsePrice(item.price)
@@ -406,7 +399,7 @@ export default function Cart() {
                                 return sum + (itemTax * item.quantity)
                               }
                               return sum
-                            }, 0)).toLocaleString()}</span>
+                            }, 0)).toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         )}
                         
@@ -414,7 +407,7 @@ export default function Cart() {
                         <hr className="border-slate-200" />
                         <div className="flex justify-between text-lg font-bold" style={{color: '#1B4965'}}>
                           <span>Grand Total</span>
-                          <span>₹{roundPrice(total).toLocaleString()}</span>
+                          <span>₹{parseFloat(total.toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="text-xs text-slate-500 mt-1">* MRP includes GST</div>
                       </>

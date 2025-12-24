@@ -59,7 +59,7 @@ export default function Orders() {
       if (to) params.set('to', to)
       if (paymentStatus) params.set('payment_status', paymentStatus)
       if (cod) params.set('cod', cod)
-      const res = await fetch(`${apiBase}/api/orders?${params.toString()}`, { headers: authHeaders })
+      const res = await fetch(`${apiBase}/orders?${params.toString()}`, { headers: authHeaders })
       
       if (!res.ok) {
         if (res.status === 403) {
@@ -130,7 +130,7 @@ export default function Orders() {
 
   const updateStatus = async (id: number, status: Order['status']) => {
     try {
-      const res = await fetch(`${apiBase}/api/orders/${id}`, {
+      const res = await fetch(`${apiBase}/orders/${id}`, {
         method: 'PUT',
         headers: authHeaders,
         body: JSON.stringify({ status })
@@ -155,7 +155,7 @@ export default function Orders() {
 
   const bulkStatus = async (newStatus: Order['status']) => {
     if (selected.length === 0) return alert('Select orders first')
-    const res = await fetch(`${apiBase}/api/bulk/orders/status`, {
+    const res = await fetch(`${apiBase}/bulk/orders/status`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({ orderIds: selected, status: newStatus })
@@ -167,7 +167,7 @@ export default function Orders() {
 
   const bulkLabels = async () => {
     if (selected.length === 0) return alert('Select orders first')
-    const res = await fetch(`${apiBase}/api/bulk/shipping/labels`, {
+    const res = await fetch(`${apiBase}/bulk/shipping/labels`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({ orderIds: selected })
@@ -178,7 +178,7 @@ export default function Orders() {
 
   const bulkInvoices = async () => {
     if (selected.length === 0) return alert('Select orders first')
-    const res = await fetch(`${apiBase}/api/bulk/invoices/download`, {
+    const res = await fetch(`${apiBase}/bulk/invoices/download`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({ orderIds: selected })
@@ -191,15 +191,39 @@ export default function Orders() {
 
   const createAwb = async (orderId: number) => {
     try {
-      const res = await fetch(`${apiBase}/api/shiprocket/orders/${orderId}/awb`, {
+      setLoading(true)
+      const res = await fetch(`${apiBase}/shiprocket/orders/${orderId}/awb`, {
         method: 'POST',
         headers: authHeaders,
       })
-      const data = await res.json()
-      if (!res.ok || !data?.success) throw new Error(data?.error || 'Failed to create AWB')
-      alert('AWB created successfully')
+      
+      let data: any = {}
+      const contentType = res.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json()
+      }
+      
+      if (!res.ok) {
+        const errorMsg = data?.error || data?.message || data?.details || `Failed to create AWB (${res.status})`
+        throw new Error(errorMsg)
+      }
+      
+      // Success - check if AWB was generated
+      const awbCode = data?.awb_code || data?.data?.awb_code
+      if (awbCode) {
+        notify('success', `AWB generated successfully: ${awbCode}`)
+      } else {
+        notify('success', 'AWB generation request submitted')
+      }
+      
+      // Reload orders to show updated AWB info
+      await load()
     } catch (e: any) {
-      alert(e?.message || 'Failed to create AWB')
+      const errorMessage = e?.message || 'Failed to create AWB'
+      notify('error', errorMessage)
+      console.error('Create AWB error:', e)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -235,15 +259,51 @@ export default function Orders() {
           <div className="flex items-center gap-3">
             <button onClick={load} className="btn-secondary">Refresh</button>
             <button
-              onClick={() => {
-                const params = new URLSearchParams()
-                if (status) params.set('status', status)
-                if (q) params.set('q', q)
-                if (from) params.set('from', from)
-                if (to) params.set('to', to)
-                window.open(`${apiBase}/api/orders/export?${params.toString()}`,'_blank')
+              onClick={async () => {
+                try {
+                  setLoading(true)
+                  const params = new URLSearchParams()
+                  if (status) params.set('status', status)
+                  if (q) params.set('q', q)
+                  if (from) params.set('from', from)
+                  if (to) params.set('to', to)
+                  
+                  const res = await fetch(`${apiBase}/orders/export?${params.toString()}`, {
+                    headers: authHeaders
+                  })
+                  
+                  if (!res.ok) {
+                    if (res.status === 401) {
+                      throw new Error('Authentication required. Please login again.')
+                    }
+                    const errorData = await res.json().catch(() => ({}))
+                    throw new Error(errorData?.error || `Export failed (${res.status})`)
+                  }
+                  
+                  // Get CSV content
+                  const csvContent = await res.text()
+                  
+                  // Create blob and download
+                  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+                  const url = window.URL.createObjectURL(blob)
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.download = `orders-${new Date().toISOString().split('T')[0]}.csv`
+                  document.body.appendChild(link)
+                  link.click()
+                  document.body.removeChild(link)
+                  window.URL.revokeObjectURL(url)
+                  
+                  notify('success', 'Orders exported successfully')
+                } catch (e: any) {
+                  notify('error', e?.message || 'Failed to export orders')
+                  console.error('Export error:', e)
+                } finally {
+                  setLoading(false)
+                }
               }}
               className="btn-secondary"
+              disabled={loading}
             >
               Export CSV
             </button>

@@ -9,6 +9,7 @@ interface User {
   name: string
   role: string
   permissions: string[]
+  pagePermissions?: string[]
 }
 
 type AuthContextValue = {
@@ -21,6 +22,7 @@ type AuthContextValue = {
   logout: () => Promise<void>
   hasPermission: (permission: string) => boolean
   hasRole: (role: string) => boolean
+  hasPageAccess: (pagePath: string) => boolean
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -54,6 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return authService.hasRole(role)
   }, [])
 
+  const hasPageAccess = useCallback((pagePath: string): boolean => {
+    return authService.hasPageAccess(pagePath)
+  }, [])
+
   // Memoize the user string to avoid unnecessary re-renders when user object reference changes
   const userId = authState.user?.id
   const userEmail = authState.user?.email
@@ -77,8 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     hasPermission,
-    hasRole
-  }), [authState.isAuthenticated, authState.isLoading, authState.error, userKey, login, logout, hasPermission, hasRole])
+    hasRole,
+    hasPageAccess
+  }), [authState.isAuthenticated, authState.isLoading, authState.error, userKey, login, logout, hasPermission, hasRole, hasPageAccess])
 
   return (
     <AuthContext.Provider value={contextValue}>

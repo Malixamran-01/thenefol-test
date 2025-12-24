@@ -95,15 +95,28 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   if (submitStatus === 'success') {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 text-center">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 text-center relative">
+          <button 
+            onClick={onClose} 
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Request Submitted!</h2>
           <p className="text-gray-600 mb-4">
             Your blog post request has been submitted successfully. Our team will review it and notify you once it's approved.
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 mb-6">
             You'll receive an email confirmation shortly.
           </p>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Go Back
+          </button>
         </div>
       </div>
     )

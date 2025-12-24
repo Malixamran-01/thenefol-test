@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
-import { Menu, X, Instagram, Facebook, Twitter, Youtube, Linkedin } from 'lucide-react'
+import { Menu, X, Instagram, Facebook, Youtube, Linkedin } from 'lucide-react'
 import SplashScreen from './components/SplashScreen'
-import ThemeToggle from './components/ThemeToggle'
 import CartIcon from './components/CartIcon'
 import ProfileAvatar from './components/ProfileAvatar'
 import { useCart } from './contexts/CartContext'
-import { useTheme, ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { WishlistProvider, useWishlist } from './contexts/WishlistContext'
 import { CartProvider } from './contexts/CartContext'
@@ -52,7 +50,6 @@ const SearchPage = lazy(() => import('./pages/SearchPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'))
 
 function AppContent() {
-  const { theme } = useTheme()
   const { items: cartItems } = useCart()
   const { items: wishlistItems } = useWishlist()
   const { user, isAuthenticated, logout } = useAuth()
@@ -166,10 +163,10 @@ function AppContent() {
         message: title ? `“${title}” added to cart` : 'Item added to cart',
         id,
       })
-      // Auto-hide after 2 seconds (only if still showing same toast)
+      // Auto-hide after 4 seconds (only if still showing same toast) - increased for better visibility
       setTimeout(() => {
         setCartToast((prev) => (prev && prev.id === id ? null : prev))
-      }, 2000)
+      }, 4000)
     }
 
     window.addEventListener('cart:item-added', handleCartAdded)
@@ -358,7 +355,7 @@ function AppContent() {
                       <div 
                         className="w-64 shadow-2xl transition-all duration-300"
                         style={{
-                          backgroundColor: 'var(--color-card-bg)',
+                          backgroundColor: 'var(--color-nav-bg)',
                           boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.06)',
                           border: '1px solid rgba(220, 229, 231, 0.9)',
                         }}
@@ -366,45 +363,45 @@ function AppContent() {
                       <div className="py-6">
                         <a 
                           href="#/user/face" 
-                          className="block px-8 py-3 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
+                          className="block px-8 py-3 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent hover:bg-opacity-10 hover:bg-white"
                           onClick={(e) => {
                             setShowDesktopCollections(false)
                             e.stopPropagation()
                           }}
-                          style={{ letterSpacing: '0.1em' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--color-text-on-nav)' }}
                         >
                           Face Care
                         </a>
                         <a 
                           href="#/user/hair" 
-                          className="block px-8 py-3 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
+                          className="block px-8 py-3 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent hover:bg-opacity-10 hover:bg-white"
                           onClick={(e) => {
                             setShowDesktopCollections(false)
                             e.stopPropagation()
                           }}
-                          style={{ letterSpacing: '0.1em' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--color-text-on-nav)' }}
                         >
                           Hair Care
                         </a>
                         <a 
                           href="#/user/body" 
-                          className="block px-8 py-3 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
+                          className="block px-8 py-3 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent hover:bg-opacity-10 hover:bg-white"
                           onClick={(e) => {
                             setShowDesktopCollections(false)
                             e.stopPropagation()
                           }}
-                          style={{ letterSpacing: '0.1em' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--color-text-on-nav)' }}
                         >
                           Body Care
                         </a>
                         <a 
                           href="#/user/combos" 
-                          className="block px-8 py-3 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
+                          className="block px-8 py-3 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent hover:bg-opacity-10 hover:bg-white"
                           onClick={(e) => {
                             setShowDesktopCollections(false)
                             e.stopPropagation()
                           }}
-                          style={{ letterSpacing: '0.1em' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--color-text-on-nav)' }}
                         >
                           Combos
                         </a>
@@ -485,18 +482,19 @@ function AppContent() {
                 {/* Account Icon - Visible on all screens */}
                 <button 
                   onClick={() => window.location.hash = isAuthenticated ? '#/user/profile' : '#/user/login'}
-                  className="w-8 h-8 flex items-center justify-center transition-colors duration-300 relative group"
+                  className="w-[50px] h-[50px] flex items-center justify-center transition-colors duration-300 relative group"
                   aria-label="Account"
+                  style={{ touchAction: 'manipulation' }}
                 >
                   {isAuthenticated && user ? (
                     <ProfileAvatar 
                       profilePhoto={user.profile_photo}
                       name={user.name}
-                      size="sm"
-                      className="w-6 h-6 rounded-full border border-slate-200"
+                      size="50px"
+                      className="border border-slate-200"
                     />
                   ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   )}
@@ -536,11 +534,11 @@ function AppContent() {
                 className="fixed top-20 left-0 right-0 bottom-0 shadow-2xl overflow-y-auto"
                 style={{ maxHeight: 'calc(100vh - 80px)', backgroundColor: 'var(--color-card-bg)' }}
               >
-                <nav className="flex flex-col px-6 py-12">
+                <nav className="flex flex-col px-6 py-12" style={{ backgroundColor: 'var(--color-card-bg)' }}>
                   <a 
                     href="#/user/" 
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Home
@@ -548,7 +546,7 @@ function AppContent() {
                   <div>
                     <button
                       className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 w-full flex items-center justify-between transition-colors duration-300"
-                      style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                      style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
@@ -561,6 +559,7 @@ function AppContent() {
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
+                        style={{ color: '#1a1a1a' }}
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
                       </svg>
@@ -570,7 +569,7 @@ function AppContent() {
                         <a 
                           href="#/user/face" 
                           className="block py-3 px-8 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
-                          style={{ letterSpacing: '0.1em' }}
+                          style={{ letterSpacing: '0.1em', color: '#1a1a1a' }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowMobileMenu(false)
@@ -582,7 +581,7 @@ function AppContent() {
                         <a 
                           href="#/user/hair" 
                           className="block py-3 px-8 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
-                          style={{ letterSpacing: '0.1em' }}
+                          style={{ letterSpacing: '0.1em', color: '#1a1a1a' }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowMobileMenu(false)
@@ -594,7 +593,7 @@ function AppContent() {
                         <a 
                           href="#/user/body" 
                           className="block py-3 px-8 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
-                          style={{ letterSpacing: '0.1em' }}
+                          style={{ letterSpacing: '0.1em', color: '#1a1a1a' }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowMobileMenu(false)
@@ -606,7 +605,7 @@ function AppContent() {
                         <a 
                           href="#/user/combos" 
                           className="block py-3 px-8 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent border-b border-slate-100"
-                          style={{ letterSpacing: '0.1em' }}
+                          style={{ letterSpacing: '0.1em', color: '#1a1a1a' }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowMobileMenu(false)
@@ -621,7 +620,7 @@ function AppContent() {
                   <a 
                     href="#/user/shop"
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Shop
@@ -629,7 +628,7 @@ function AppContent() {
                   <a 
                     href="#/user/ingredients"
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Ingredients
@@ -637,7 +636,7 @@ function AppContent() {
                   <a 
                     href="#/user/blog"
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Blogs
@@ -645,7 +644,7 @@ function AppContent() {
                   <a 
                     href="#/user/contact"
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Contact Us
@@ -667,119 +666,152 @@ function AppContent() {
         className="py-8 sm:py-12 md:py-16 text-sm w-full overflow-x-hidden"
         style={{ backgroundColor: 'var(--color-nav-bg)', color: 'var(--color-text-secondary-on-teal)', borderTop: '1px solid rgba(232, 245, 247, 0.16)' }}
       >
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 w-full grid grid-cols-1 sm:grid-cols-2 gap-8">
-          <div>
-            <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-light tracking-wide" style={{ color: 'var(--color-text-on-nav)', fontFamily: 'var(--font-heading-family)' }}>Nefol</h3>
-            <p className="text-xs sm:text-sm font-light leading-relaxed" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Natural and safe skincare for every skin type. Made with love and care.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-6">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 w-full">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
+            {/* Brand Section */}
+            <div className="md:col-span-1">
+              <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-light tracking-wide" style={{ color: 'var(--color-text-on-nav)', fontFamily: 'var(--font-heading-family)' }}>NEFOL®</h3>
+              <p className="text-xs sm:text-sm font-light leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Natural and safe skincare for every skin type. Made with love and care.</p>
+            </div>
+
+            {/* Categories Section */}
             <div>
-              <h4 className="mb-3 sm:mb-4 text-xs sm:text-sm font-medium tracking-wide uppercase" style={{ color: 'var(--color-text-on-nav)' }}>Categories</h4>
+              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--color-text-on-nav)' }}>Categories</h4>
               <ul className="space-y-2">
-                <li><a href="#/user/" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Home</a></li>
-                <li><a href="#/user/offers" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Offers</a></li>
-                <li><a href="#/user/new-arrivals" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>New Arrivals</a></li>
-                <li><a href="#/user/face" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Face</a></li>
-                <li><a href="#/user/body" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Body</a></li>
-                <li><a href="#/user/hair" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Hair</a></li>
-                <li><a href="#/user/combos" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Combos</a></li>
-                <li><a href="#/user/best-sellers" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Best Sellers</a></li>
-              </ul>
-              <h4 className="mt-6 mb-3 sm:mb-4 text-xs sm:text-sm font-medium tracking-wide uppercase" style={{ color: 'var(--color-text-on-nav)' }}>Further Info.</h4>
-              <ul className="space-y-2">
-                <li><a href="#/user/account" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Account</a></li>
-                <li><a href="#/user/shop" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Shop</a></li>
-                <li><a href="#/user/orders" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Order</a></li>
-                <li><a href="#/user/cart" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Cart</a></li>
-                <li><a href="#/user/forms" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Forms</a></li>
-                <li><a href="#/user/blog" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Blogs</a></li>
+                <li><a href="#/user/" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Home</a></li>
+                <li><a href="#/user/offers" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Offers</a></li>
+                <li><a href="#/user/new-arrivals" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>New Arrivals</a></li>
+                <li><a href="#/user/face" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Face</a></li>
+                <li><a href="#/user/body" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Body</a></li>
+                <li><a href="#/user/hair" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Hair</a></li>
+                <li><a href="#/user/combos" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Combos</a></li>
+                <li><a href="#/user/best-sellers" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Best Seller</a></li>
               </ul>
             </div>
+
+            {/* Company Section */}
             <div>
-              <h4 className="mb-3 sm:mb-4 text-xs sm:text-sm font-medium tracking-wide uppercase" style={{ color: 'var(--color-text-on-nav)' }}>Company Info</h4>
+              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--color-text-on-nav)' }}>Company</h4>
               <ul className="space-y-2">
-                <li><a href="#/user/about" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>About Us</a></li>
-                <li><a href="#/user/faq" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>FAQ</a></li>
-                <li><a href="#/user/usp" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Why Choose Nefol</a></li>
-                <li><a href="#/user/blue-tea-benefits" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Blue Tea Ingredient</a></li>
-              </ul>
-              <h4 className="mt-6 mb-3 sm:mb-4 text-xs sm:text-sm font-medium tracking-wide uppercase" style={{ color: 'var(--color-text-on-nav)' }}>Customer Service</h4>
-              <ul className="space-y-2">
-                <li><a href="#/user/privacy-policy" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Privacy Policy</a></li>
-                <li><a href="#/user/refund-policy" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Refund Policy</a></li>
-                <li><a href="#/user/shipping-policy" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Shipping Policy</a></li>
-                <li><a href="#/user/terms-of-service" className="text-xs sm:text-sm font-light transition-colors" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Terms of Service</a></li>
+                <li><a href="#/user/about" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>About us</a></li>
+                <li><a href="#/user/faq" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>FAQ</a></li>
+                <li><a href="#/user/blog" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Blogs</a></li>
+                <li><a href="#/user/affiliate-partner" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Affiliate Program</a></li>
+                <li><a href="#/user/contact" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Contact Us</a></li>
               </ul>
             </div>
+
+            {/* Legal & Social Section */}
+            <div>
+              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--color-text-on-nav)' }}>Legal</h4>
+              <ul className="space-y-2 mb-6">
+                <li><a href="#/user/privacy-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Privacy Policy</a></li>
+                <li><a href="#/user/refund-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Refund Policy</a></li>
+                <li><a href="#/user/shipping-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Shipping Policy</a></li>
+                <li><a href="#/user/terms-of-service" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Terms of Service</a></li>
+              </ul>
+              
+              {/* Social Media Icons */}
+              <div className="mt-6">
+                <h4 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--color-text-on-nav)' }}>SOCIALLY CONNECT WITH US</h4>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a
+                    href="https://www.instagram.com/nefol_official?igsh=d2NkaXk2NW92emhq&utm_source=qr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="NEFOL® on Instagram"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
+                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  >
+                    <Instagram className="w-4 h-4" style={{ stroke: 'currentColor', fill: 'none' }} />
+                  </a>
+                  <a
+                    href="https://www.facebook.com/share/1H3dWrPgcY/?mibextid=wwXIfr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="NEFOL® on Facebook"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
+                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  >
+                    <Facebook className="w-4 h-4" style={{ stroke: 'currentColor', fill: 'none' }} />
+                  </a>
+                  <a
+                    href="https://x.com/nefol_official?s=21"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="NEFOL® on X"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
+                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--color-text-secondary-on-teal)' }}>
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                  </a>
+                  <a
+                    href="https://youtube.com/@nefol.official?si=4kDfx02DoJ8Lpx9F"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="NEFOL® on YouTube"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
+                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  >
+                    <Youtube className="w-4 h-4" style={{ stroke: 'currentColor', fill: 'none' }} />
+                  </a>
+                  <a
+                    href="https://www.linkedin.com/company/nefol-aesthetics-pvt-ltd/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="NEFOL® on LinkedIn"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
+                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  >
+                    <Linkedin className="w-4 h-4" style={{ stroke: 'currentColor', fill: 'none' }} />
+                  </a>
+                  <a
+                    href="https://vk.com/nefolclub"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="NEFOL® club on VK"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors text-[11px] font-semibold"
+                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  >
+                    VK
+                  </a>
+                  <a
+                    href="https://pin.it/hfoLEqFgB"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="NEFOL® on Pinterest"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
+                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--color-text-secondary-on-teal)' }}>
+                      <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.619 11.174-.105-.949-.2-2.405.042-3.441.219-.937 1.407-5.965 1.407-5.965s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.487.535 6.624 0 12-5.373 12-12S18.627.001 12 .001z"/>
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="sm:col-span-2 mt-4">
-            <small className="block font-light mb-4" style={{ color: 'var(--color-text-secondary-on-teal)' }}>©2024-{new Date().getFullYear()} NEFOL™ • Website powered by URBANMOVE SERVICE PRIVATE LIMITED</small>
-            {/* Footer Social Media Icons - Right aligned */}
-            <div className="flex justify-end items-center gap-2" style={{ color: 'var(--color-text-secondary-on-teal)' }}>
-              <span className="text-[11px] uppercase tracking-[0.18em] mr-1 opacity-80">Connect with us</span>
-              <a
-                href="https://www.instagram.com/nefol_official?igsh=d2NkaXk2NW92emhq&utm_source=qr"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Nefol on Instagram"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
+
+          {/* Copyright Section */}
+          <div className="border-t border-white/10 pt-6 mt-6">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <small 
+                className="text-[10px] xs:text-[11px] sm:text-xs font-light text-center sm:text-left leading-relaxed block w-full" 
+                style={{ 
+                  color: 'var(--color-text-secondary-on-teal)',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                  hyphens: 'auto'
+                }}
               >
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a
-                href="https://www.facebook.com/share/1H3dWrPgcY/?mibextid=wwXIfr"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Nefol on Facebook"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-              >
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a
-                href="https://x.com/nefol_official?s=21"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Nefol on X"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-              >
-                <Twitter className="w-4 h-4" />
-              </a>
-              <a
-                href="https://youtube.com/@nefol.official?si=4kDfx02DoJ8Lpx9F"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Nefol on YouTube"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-              >
-                <Youtube className="w-4 h-4" />
-              </a>
-              <a
-                href="https://www.linkedin.com/company/nefol-aesthetics-pvt-ltd/"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Nefol on LinkedIn"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-              >
-                <Linkedin className="w-4 h-4" />
-              </a>
-              <a
-                href="https://vk.com/nefolclub"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Nefol club on VK"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors text-[11px] font-semibold"
-              >
-                VK
-              </a>
-              <a
-                href="https://pin.it/hfoLEqFgB"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Nefol on Pinterest"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-              >
-                <span className="text-[11px] font-semibold">P</span>
-              </a>
+                <span className="inline-block max-w-full">
+                  ©2024-{new Date().getFullYear()} NEFOL® • powered by{' '}
+                  <span className="inline-block">Divyan Technologies</span>{' '}
+                  <span className="inline-block">Private Limited</span>
+                </span>
+              </small>
             </div>
           </div>
         </div>
@@ -787,7 +819,9 @@ function AppContent() {
 
       {/* Global cart toast notification */}
       {cartToast && (
-        <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900/90 px-4 py-2 text-sm text-white shadow-lg flex items-center gap-2">
+        <div 
+          className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm text-white shadow-lg flex items-center gap-2 transition-all duration-300 cart-toast-mobile sm:bg-slate-900/90"
+        >
           <span>✅</span>
           <span>{cartToast.message}</span>
         </div>
@@ -856,6 +890,7 @@ const Home = lazy(() => import('./pages/Home'))
 const Shop = lazy(() => import('./pages/Shop'))
 const Skincare = lazy(() => import('./pages/Skincare'))
 const Ingredients = lazy(() => import('./pages/Ingredients'))
+const IngredientDetail = lazy(() => import('./pages/IngredientDetail'))
 const Blog = lazy(() => import('./pages/Blog'))
 const BlogDetail = lazy(() => import('./pages/BlogDetail'))
 const Contact = lazy(() => import('./pages/Contact'))
@@ -925,6 +960,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
   if (lower.startsWith('/user/product/')) return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
   if (lower.startsWith('/user/blog/') && lower !== '/user/blog') return <BlogDetail />
+  if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />
   if (lower.startsWith('/user/confirmation')) return <Confirmation />
   if (lower.startsWith('/user/order/')) return <OrderDetails />
   if (lower.startsWith('/user/cancel-order/')) return <CancelOrder />
@@ -992,15 +1028,13 @@ function RouterView({ affiliateId }: RouterViewProps) {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <AppContent />
-          </WishlistProvider>
-        </CartProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <AppContent />
+        </WishlistProvider>
+      </CartProvider>
+    </AuthProvider>
   )
 }
 

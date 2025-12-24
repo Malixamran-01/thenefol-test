@@ -26,6 +26,7 @@ interface User {
   name: string
   role: string
   permissions: string[]
+  pagePermissions?: string[]
 }
 
 interface LoginCredentials {
@@ -73,12 +74,18 @@ class AuthService {
       : typeof raw.roles === 'string'
         ? raw.roles.split(',').map((r: string) => r.trim()).filter(Boolean)
         : []
+    const pagePermissions = Array.isArray(raw.pagePermissions)
+      ? raw.pagePermissions
+      : typeof raw.pagePermissions === 'string'
+        ? raw.pagePermissions.split(',').map((p: string) => p.trim()).filter(Boolean)
+        : []
     return {
       id: raw.id,
       email: raw.email,
       name: raw.name || raw.email,
       role: raw.role || rolesArray[0] || 'admin',
-      permissions
+      permissions,
+      pagePermissions
     }
   }
 
@@ -174,6 +181,21 @@ class AuthService {
     return { ...this.authState }
   }
 
+  // Check if user has access to a specific page
+  hasPageAccess(pagePath: string): boolean {
+    const user = this.authState.user
+    if (!user) return false
+    
+    // If user has pagePermissions assigned, check those permissions
+    const pagePermissions = user.pagePermissions || []
+    
+    // If no pagePermissions exist, treat as super admin (full access)
+    if (pagePermissions.length === 0) return true
+    
+    // Check if page is in the assigned permissions
+    return pagePermissions.includes(pagePath)
+  }
+
   // Login user
   async login(credentials: LoginCredentials): Promise<boolean> {
     try {
@@ -193,6 +215,10 @@ class AuthService {
         const data = await response.json()
         const { user: rawUser, token } = data
         const user = this.normalizeUser(rawUser)
+
+        // Debug: Log page permissions
+        console.log('Login - User pagePermissions:', user.pagePermissions)
+        console.log('Login - User role:', user.role)
 
         // Store token in localStorage
         localStorage.setItem('auth_token', token)

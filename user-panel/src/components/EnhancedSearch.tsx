@@ -139,7 +139,7 @@ export default function EnhancedSearch({ onClose, className = '' }: EnhancedSear
       >
         {/* Search Input */}
         <div className="flex items-center gap-2 p-4 border-b border-gray-200">
-          <Search className="w-5 h-5 text-gray-400" />
+          <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -148,6 +148,7 @@ export default function EnhancedSearch({ onClose, className = '' }: EnhancedSear
             onFocus={() => setShowSuggestions(true)}
             placeholder="Search products, ingredients, categories..."
             className="flex-1 outline-none text-lg"
+            style={{ paddingLeft: '0.5rem', paddingRight: '0.5rem' }}
           />
           {query && (
             <button

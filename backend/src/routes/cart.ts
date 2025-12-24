@@ -4,7 +4,7 @@ import { Pool } from 'pg'
 import bcrypt from 'bcrypt'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import { logUserActivity } from '../utils/userActivitySchema'
-import { sendWelcomeEmail, sendCartAddedEmail, sendVerificationEmail, sendLoginAlertEmail } from '../services/emailService'
+import { sendWelcomeEmail, sendCartAddedEmail, sendVerificationEmail } from '../services/emailService'
 import { WhatsAppService } from '../services/whatsappService'
 import { verifyOtp } from '../services/otpService'
 import { sendWhatsAppTemplate, TemplateVariable } from '../utils/whatsappTemplateHelper'
@@ -121,19 +121,44 @@ export async function addToCart(pool: Pool, req: Request, res: Response) {
         ip_address: req.ip || req.connection.remoteAddress
       })
 
-      // Send cart reminder email (async, don't wait)
-      // Only send if this is a new item (not an update to existing)
+      // Schedule cart reminder email to be sent after 6 hours (instead of instant)
+      // Only schedule if this is a new item (not an update to existing)
       if (existingItem.rows.length === 0) {
         const userData = await pool.query('SELECT email, name FROM users WHERE id = $1', [userId])
         if (userData.rows.length > 0 && userData.rows[0].email) {
-          sendCartAddedEmail(
+          // Create table if it doesn't exist
+          await pool.query(`
+            CREATE TABLE IF NOT EXISTS pending_cart_emails (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              user_email TEXT NOT NULL,
+              user_name TEXT NOT NULL,
+              product_name TEXT NOT NULL,
+              product_price NUMERIC(10,2) NOT NULL,
+              scheduled_send_at TIMESTAMPTZ NOT NULL,
+              sent BOOLEAN DEFAULT FALSE,
+              sent_at TIMESTAMPTZ,
+              created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_pending_cart_emails_scheduled ON pending_cart_emails(scheduled_send_at, sent);
+            CREATE INDEX IF NOT EXISTS idx_pending_cart_emails_user ON pending_cart_emails(user_id);
+          `)
+          
+          // Schedule email to be sent after 6 hours
+          const scheduledSendAt = new Date(Date.now() + 6 * 60 * 60 * 1000) // 6 hours from now
+          await pool.query(`
+            INSERT INTO pending_cart_emails (user_id, user_email, user_name, product_name, product_price, scheduled_send_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `, [
+            userId,
             userData.rows[0].email,
             userData.rows[0].name || 'Customer',
             productData.rows[0].title,
-            parseFloat(productData.rows[0].price)
-          ).catch(err => {
-            console.error('Failed to send cart reminder email:', err)
-          })
+            parseFloat(productData.rows[0].price),
+            scheduledSendAt
+          ])
+          
+          console.log(`📧 Cart reminder email scheduled for user ${userId} to be sent at ${scheduledSendAt.toISOString()}`)
         }
       }
     }
@@ -326,12 +351,7 @@ export async function login(pool: Pool, req: Request, res: Response) {
       ip_address: ipAddress
     })
 
-    // Send login alert email (async, do not block response)
-    if (user.email) {
-      sendLoginAlertEmail(user.email, ipAddress, userAgent).catch(err => {
-        console.error('Failed to send login alert email:', err)
-      })
-    }
+    // Login alert email removed as per requirements
   } catch (err) {
     sendError(res, 500, 'Login failed', err)
   }
@@ -660,24 +680,34 @@ export async function verifyOTPSignup(pool: Pool, req: Request, res: Response) {
       ? normalizePhoneNumber(phoneDigits) 
       : phoneDigits.toLowerCase().trim()
     
-    // Check if user already exists
-    const existingUser = await pool.query(
-      'SELECT id FROM users WHERE phone = $1 OR email = $2',
-      [normalizedPhone, email || '']
-    )
+    // Check if user already exists (only check by phone if email not provided)
+    let existingUser
+    if (email) {
+      existingUser = await pool.query(
+        'SELECT id FROM users WHERE phone = $1 OR email = $2',
+        [normalizedPhone, email]
+      )
+    } else {
+      existingUser = await pool.query(
+        'SELECT id FROM users WHERE phone = $1',
+        [normalizedPhone]
+      )
+    }
     
     if (existingUser.rows.length > 0) {
       return sendError(res, 409, 'User already exists')
     }
     
-    // Generate placeholder email if not provided (email is required in users table)
-    // Format: phone_918081013175@thenefol.com
-    const userEmail = email || `phone_${normalizedPhone}@thenefol.com`
+    // If email is not provided, set it to NULL (email field should be nullable)
+    // User can edit email and phone only once (first time)
+    const userEmail = email && email.trim() ? email.trim() : null
     
     // Create new user (no password required for OTP signup)
+    // Set is_verified = false - user will remain unverified until both email and phone are properly updated
+    // email_edited and phone_edited default to false, allowing first-time edit
     const { rows: userRows } = await pool.query(`
-      INSERT INTO users (name, email, phone, address, password, is_verified)
-      VALUES ($1, $2, $3, $4, $5, true)
+      INSERT INTO users (name, email, phone, address, password, is_verified, email_edited, phone_edited)
+      VALUES ($1, $2, $3, $4, $5, false, false, false)
       RETURNING id, name, email, phone, created_at
     `, [name, userEmail, normalizedPhone, address ? JSON.stringify(address) : null, 'otp_signup_' + Date.now()])
     
@@ -1036,7 +1066,9 @@ export async function getUserProfile(pool: Pool, req: Request, res: Response) {
           0
         ) as total_orders,
         COALESCE(u.member_since, u.created_at) as member_since,
-        u.is_verified
+        u.is_verified,
+        COALESCE(u.email_edited, false) as email_edited,
+        COALESCE(u.phone_edited, false) as phone_edited
       FROM users u
       WHERE u.id = $1
     `, [userId])
@@ -1059,11 +1091,62 @@ export async function getUserProfile(pool: Pool, req: Request, res: Response) {
 export async function updateUserProfile(pool: Pool, req: Request, res: Response) {
   try {
     const userId = req.userId
-    const { name, phone, address, profile_photo } = req.body
+    const { name, email, phone, address, profile_photo } = req.body
+    
+    // First, get current user data to check if email/phone have been edited before
+    const currentUserResult = await pool.query(`
+      SELECT email, phone, email_edited, phone_edited 
+      FROM users 
+      WHERE id = $1
+    `, [userId])
+    
+    if (currentUserResult.rows.length === 0) {
+      return sendError(res, 404, 'User not found')
+    }
+    
+    const currentUser = currentUserResult.rows[0]
+    
+    // Check if trying to edit email/phone after first edit
+    if (email !== undefined) {
+      if (currentUser.email_edited === true) {
+        return sendError(res, 403, 'Email can only be edited once. It has already been edited.')
+      }
+    }
+    
+    if (phone !== undefined) {
+      if (currentUser.phone_edited === true) {
+        return sendError(res, 403, 'Phone number can only be edited once. It has already been edited.')
+      }
+    }
     
     const updates: Record<string, any> = {}
+    const flagsToSet: Record<string, any> = {}
+    
     if (name !== undefined) updates.name = name
-    if (phone !== undefined) updates.phone = phone
+    if (email !== undefined) {
+      // Validate email format if provided
+      const trimmedEmail = email ? email.trim() : null
+      if (trimmedEmail && !trimmedEmail.includes('@')) {
+        return sendError(res, 400, 'Invalid email format')
+      }
+      // Only update email if it hasn't been edited before
+      updates.email = trimmedEmail
+      // Mark email as edited if it's being changed (including first-time setting from NULL)
+      const currentEmail = currentUser.email || null
+      if (trimmedEmail !== currentEmail) {
+        flagsToSet.email_edited = true
+      }
+    }
+    if (phone !== undefined) {
+      // Only update phone if it hasn't been edited before
+      const trimmedPhone = phone ? phone.trim() : null
+      updates.phone = trimmedPhone
+      // Mark phone as edited if it's being changed
+      const currentPhone = currentUser.phone || null
+      if (trimmedPhone !== currentPhone) {
+        flagsToSet.phone_edited = true
+      }
+    }
     if (address !== undefined) updates.address = JSON.stringify(address)
     if (profile_photo !== undefined) updates.profile_photo = profile_photo
     
@@ -1072,22 +1155,80 @@ export async function updateUserProfile(pool: Pool, req: Request, res: Response)
       return sendError(res, 400, 'No fields to update')
     }
     
-    const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(', ')
-    const values = [userId, ...fields.map(field => updates[field])]
+    // Add flags to set clause if needed
+    const setClauseFields = [...fields]
+    const setClauseValues: any[] = []
     
-    const { rows } = await pool.query(`
+    fields.forEach((field, i) => {
+      setClauseValues.push(updates[field])
+    })
+    
+    // Add email_edited and phone_edited flags if needed
+    if (flagsToSet.email_edited) {
+      setClauseFields.push('email_edited')
+      setClauseValues.push(true)
+    }
+    if (flagsToSet.phone_edited) {
+      setClauseFields.push('phone_edited')
+      setClauseValues.push(true)
+    }
+    
+    const setClause = setClauseFields.map((field, i) => `${field} = $${i + 2}`).join(', ')
+    const values = [userId, ...setClauseValues]
+    
+    // Update user data
+    await pool.query(`
       UPDATE users 
       SET ${setClause}, updated_at = NOW()
       WHERE id = $1
-      RETURNING id, name, email, phone, address, profile_photo, 
-                loyalty_points, total_orders, member_since, is_verified
     `, values)
+    
+    // Fetch complete updated user data (similar to getUserProfile)
+    const { rows } = await pool.query(`
+      SELECT 
+        u.id, 
+        u.name, 
+        u.email, 
+        u.phone, 
+        u.address, 
+        u.profile_photo, 
+        COALESCE(u.loyalty_points, 0) as loyalty_points,
+        COALESCE(
+          (SELECT COUNT(*) FROM orders WHERE customer_email = u.email),
+          0
+        ) as total_orders,
+        COALESCE(u.member_since, u.created_at) as member_since,
+        u.is_verified,
+        COALESCE(u.email_edited, false) as email_edited,
+        COALESCE(u.phone_edited, false) as phone_edited
+      FROM users u
+      WHERE u.id = $1
+    `, [userId])
     
     if (rows.length === 0) {
       return sendError(res, 404, 'User not found')
     }
     
-    sendSuccess(res, rows[0])
+    const updatedUser = rows[0]
+    
+    // Check if both email and phone are properly set (not placeholder values)
+    // Email should be a valid email format (contains @) and phone should be a valid phone number
+    const hasValidEmail = updatedUser.email && updatedUser.email.includes('@') && !/^\d+$/.test(updatedUser.email)
+    const hasValidPhone = updatedUser.phone && /^\d{10,15}$/.test(updatedUser.phone.replace(/[\s+\-()]/g, ''))
+    
+    // Update is_verified status: only true if both email and phone are properly set
+    const shouldBeVerified = hasValidEmail && hasValidPhone
+    
+    if (updatedUser.is_verified !== shouldBeVerified) {
+      await pool.query(`
+        UPDATE users 
+        SET is_verified = $1, updated_at = NOW()
+        WHERE id = $2
+      `, [shouldBeVerified, userId])
+      updatedUser.is_verified = shouldBeVerified
+    }
+    
+    sendSuccess(res, updatedUser)
   } catch (err) {
     sendError(res, 500, 'Failed to update user profile', err)
   }

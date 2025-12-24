@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSignup, setIsSignup] = useState(false)
   const [useOTP, setUseOTP] = useState(false)
   const [useWhatsAppLogin, setUseWhatsAppLogin] = useState(false)
@@ -251,7 +252,7 @@ export default function LoginPage() {
             className="mt-2 text-center text-sm font-light tracking-wide"
             style={{ color: '#666', letterSpacing: '0.05em' }}
           >
-            {isSignup ? 'Join Nefol and start your beauty journey' : 'Welcome back to Nefol'}
+            {isSignup ? 'Join NEFOL® and start your beauty journey' : 'Welcome back to NEFOL®'}
           </p>
         </div>
 
@@ -338,14 +339,14 @@ export default function LoginPage() {
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
+                  <User className="absolute left-3 sm:left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
                   <input
                     type="text"
                     required
                     value={signupData.name}
                     onChange={(e) => setSignupData(prev => ({ ...prev, name: e.target.value }))}
-                    className="pl-11 w-full rounded-md border border-slate-200 bg-white pr-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                    style={{ letterSpacing: '0.02em' }}
+                    className="w-full rounded-md border border-slate-200 bg-white py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                    style={{ letterSpacing: '0.02em', paddingLeft: '3rem', paddingRight: '1rem' }}
                     placeholder="Enter your full name"
                   />
                 </div>
@@ -357,14 +358,14 @@ export default function LoginPage() {
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
+                    <Mail className="absolute left-3 sm:left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
                     <input
                       type="email"
                       required
                       value={signupData.email}
                       onChange={(e) => setSignupData(prev => ({ ...prev, email: e.target.value }))}
-                      className="pl-11 w-full rounded-md border border-slate-200 bg-white pr-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                      style={{ letterSpacing: '0.02em' }}
+                      className="w-full rounded-md border border-slate-200 bg-white py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                      style={{ letterSpacing: '0.02em', paddingLeft: '3rem', paddingRight: '3rem' }}
                       placeholder="Enter your email"
                     />
                   </div>
@@ -437,42 +438,49 @@ export default function LoginPage() {
                     <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                       Password
                     </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={signupData.password}
-                    onChange={(e) => setSignupData(prev => ({ ...prev, password: e.target.value }))}
-                    className="pl-11 pr-11 w-full rounded-md border border-slate-200 bg-white py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                    style={{ letterSpacing: '0.02em' }}
-                    placeholder="Create a password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors z-10"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={signupData.password}
+                        onChange={(e) => setSignupData(prev => ({ ...prev, password: e.target.value }))}
+                        className="w-full rounded-md border border-slate-200 bg-white py-4 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                        style={{ letterSpacing: '0.02em', paddingLeft: '3rem', paddingRight: '3rem', paddingTop: '1rem', paddingBottom: '1rem' }}
+                        placeholder="Create a password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors z-10"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
 
               <div>
                 <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={signupData.confirmPassword}
                     onChange={(e) => setSignupData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="pl-11 w-full rounded-md border border-slate-200 bg-white pr-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                    style={{ letterSpacing: '0.02em' }}
+                    className="w-full rounded-md border border-slate-200 bg-white py-4 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                    style={{ letterSpacing: '0.02em', paddingLeft: '3rem', paddingRight: '3rem', paddingTop: '1rem', paddingBottom: '1rem' }}
                     placeholder="Confirm your password"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors z-10"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
                 </>
@@ -591,7 +599,7 @@ export default function LoginPage() {
                               setOtp(value)
                               setError('')
                             }}
-                            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all text-center text-2xl tracking-widest"
+                            className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all text-center text-2xl tracking-widest"
                             style={{ letterSpacing: '0.1em' }}
                             placeholder="000000"
                           />
@@ -626,14 +634,14 @@ export default function LoginPage() {
                       Email Address
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-11 w-full rounded-md border border-slate-200 bg-white pr-3 py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                        style={{ letterSpacing: '0.02em' }}
+                        className="w-full rounded-md border border-slate-200 bg-white py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                        style={{ letterSpacing: '0.02em', paddingLeft: '3rem', paddingRight: '3rem' }}
                         placeholder="Enter your email"
                       />
                     </div>
@@ -644,22 +652,22 @@ export default function LoginPage() {
                       Password
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 z-10 pointer-events-none" />
+                      <Lock className="absolute left-3 sm:left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-11 pr-11 w-full rounded-md border border-slate-200 bg-white py-2.5 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
-                        style={{ letterSpacing: '0.02em' }}
+                        className="w-full rounded-md border border-slate-200 bg-white py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-all"
+                        style={{ letterSpacing: '0.02em', paddingLeft: '3rem', paddingRight: '3rem' }}
                         placeholder="Enter your password"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors z-10"
+                        className="absolute right-3 sm:right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors z-10"
                       >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                     <div className="mt-3 flex justify-end">

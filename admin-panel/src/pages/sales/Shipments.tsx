@@ -45,7 +45,7 @@ export default function Shipments() {
     try {
       setLoading(true)
       setError('')
-      const res = await fetch(`${apiBase}/api/shiprocket/shipments`)
+      const res = await fetch(`${apiBase}/shiprocket/shipments`)
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`)
       }
@@ -85,7 +85,7 @@ export default function Shipments() {
 
   const createShiprocketShipment = async (orderId: string) => {
     try {
-      const res = await fetch(`${apiBase}/api/shiprocket/orders/${orderId}/shipment`, {
+      const res = await fetch(`${apiBase}/shiprocket/orders/${orderId}/shipment`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ export default function Shipments() {
 
   const updateShipmentStatus = async (id: number, status: string) => {
     try {
-      const res = await fetch(`${apiBase}/api/shiprocket/shipments/${id}`, {
+      const res = await fetch(`${apiBase}/shiprocket/shipments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -233,7 +233,7 @@ export default function Shipments() {
                   weight,
                   cod: isCOD ? '1' : '0',
                 })
-                const res = await fetch(`${apiBase}/api/shiprocket/serviceability?${params.toString()}`, {
+                const res = await fetch(`${apiBase}/shiprocket/serviceability?${params.toString()}`, {
                   headers: { 'x-user-role': 'admin', 'x-user-permissions': 'shipping:read' }
                 })
                 const data = await res.json()
@@ -358,7 +358,7 @@ export default function Shipments() {
             onClick={async () => {
               try {
                 const orderIds = shipments.map(s => Number(s.order_id)).filter(Boolean)
-                const res = await fetch(`${apiBase}/api/shiprocket/manifest`, {
+                const res = await fetch(`${apiBase}/shiprocket/manifest`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'x-user-role': 'admin', 'x-user-permissions': 'shipping:update' },
                   body: JSON.stringify({ orderIds })
@@ -383,7 +383,7 @@ export default function Shipments() {
               if (!pickupDate) return alert('Choose pickup date')
               try {
                 const orderIds = shipments.map(s => Number(s.order_id)).filter(Boolean)
-                const res = await fetch(`${apiBase}/api/shiprocket/pickup`, {
+                const res = await fetch(`${apiBase}/shiprocket/pickup`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'x-user-role': 'admin', 'x-user-permissions': 'shipping:update' },
                   body: JSON.stringify({ pickup_date: pickupDate, orderIds })
@@ -409,7 +409,7 @@ export default function Shipments() {
           <button
             onClick={async () => {
               try {
-                const res = await fetch(`${apiBase}/api/shiprocket/ndr`, { headers: { 'x-user-role': 'admin', 'x-user-permissions': 'shipping:read' } })
+                const res = await fetch(`${apiBase}/shiprocket/ndr`, { headers: { 'x-user-role': 'admin', 'x-user-permissions': 'shipping:read' } })
                 const data = await res.json()
                 setNdr(data)
               } catch (_) {
@@ -529,7 +529,7 @@ export default function Shipments() {
                       <button
                         onClick={async () => {
                           try {
-                            const res = await fetch(`${apiBase}/api/shiprocket/rto/${shipment.id}`, {
+                            const res = await fetch(`${apiBase}/shiprocket/rto/${shipment.id}`, {
                               method: 'POST',
                               headers: { 'x-user-role': 'admin', 'x-user-permissions': 'shipping:update' }
                             })

@@ -21,6 +21,8 @@ interface UserProfile {
   total_orders: number
   member_since: string
   profile_photo?: string
+  email_edited?: boolean
+  phone_edited?: boolean
 }
 
 interface Order {
@@ -62,7 +64,7 @@ interface Address {
 }
 
 export default function Profile() {
-  const { refreshUser, isAuthenticated } = useAuth()
+  const { refreshUser, isAuthenticated, logout } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [savedCards, setSavedCards] = useState<SavedCard[]>([])
@@ -89,6 +91,7 @@ export default function Profile() {
   })
   const [editForm, setEditForm] = useState({
     name: '',
+    email: '',
     phone: '',
     country_code: '+91',
     address: {
@@ -98,6 +101,8 @@ export default function Profile() {
       zip: ''
     }
   })
+  const [emailEdited, setEmailEdited] = useState(false)
+  const [phoneEdited, setPhoneEdited] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -152,10 +157,14 @@ export default function Profile() {
       
       setEditForm({
         name: userData.name,
+        email: userData.email || '',
         phone: phoneNumber,
         country_code: countryCode,
         address: userData.address || { street: '', city: '', state: '', zip: '' }
       })
+      // Check if email/phone have been edited
+      setEmailEdited(userData.email_edited || false)
+      setPhoneEdited(userData.phone_edited || false)
     } catch (error: any) {
       console.error('Failed to fetch profile:', error)
       if (error.message.includes('401') || error.message.includes('Unauthorized')) {
@@ -224,13 +233,27 @@ export default function Profile() {
       // Combine country code with phone number
       const fullPhone = `${editForm.country_code}${editForm.phone.replace(/\D/g, '')}`
       
-      const updatedProfile = await api.user.updateProfile({
+      const updateData: any = {
         name: editForm.name,
-        phone: fullPhone,
         address: editForm.address
-      })
+      }
+      
+      // Only include email/phone if they haven't been edited before
+      if (!emailEdited && editForm.email) {
+        updateData.email = editForm.email.trim()
+      }
+      if (!phoneEdited) {
+        updateData.phone = fullPhone
+      }
+      
+      const updatedProfile = await api.user.updateProfile(updateData)
       setProfile(updatedProfile)
       setEditing(false)
+      
+      // Update edited flags
+      setEmailEdited(updatedProfile.email_edited || false)
+      setPhoneEdited(updatedProfile.phone_edited || false)
+      
       alert('Profile updated successfully!')
     } catch (error: any) {
       console.error('Failed to save profile:', error)
@@ -239,15 +262,14 @@ export default function Profile() {
         localStorage.removeItem('user')
         window.location.hash = '#/user/login'
       } else {
-        alert('Failed to update profile')
+        const errorMessage = error.message || 'Failed to update profile'
+        alert(errorMessage)
       }
     }
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    window.location.hash = '#/user/login'
+    logout() // Use logout from AuthContext which handles redirect and reload
   }
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -454,7 +476,7 @@ export default function Profile() {
   ]
 
   return (
-    <main className="py-12 sm:py-16 md:py-20 bg-white min-h-screen">
+    <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-12 sm:mb-16">
@@ -485,7 +507,7 @@ export default function Profile() {
                   <ProfileAvatar 
                     profilePhoto={profile.profile_photo}
                     name={profile.name}
-                    size="xl"
+                    size="50px"
                     className="mx-auto"
                     clickable={isAuthenticated}
                     onClick={() => isAuthenticated && fileInputRef.current?.click()}
@@ -524,9 +546,9 @@ export default function Profile() {
                     </div>
                   )}
                 </div>
-                <h3 className="text-base font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{profile.name}</h3>
-                <p className="text-sm font-light" style={{ color: '#666' }}>{profile.email}</p>
-                <p className="text-xs font-light" style={{ color: '#999' }}>{profile.phone}</p>
+                <h3 className="text-sm sm:text-base font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{profile.name || 'User'}</h3>
+                <p className="text-xs sm:text-sm font-light" style={{ color: '#1a1a1a' }}>{profile.email || 'No email'}</p>
+                <p className="text-xs font-light" style={{ color: '#1a1a1a' }}>{profile.phone || 'No phone'}</p>
               </div>
 
               <nav className="space-y-2">
@@ -651,17 +673,37 @@ export default function Profile() {
                           />
                         </div>
                         <div>
-                          <PhoneInput
-                            value={editForm.phone}
-                            onChange={(value) => setEditForm({ ...editForm, phone: value })}
-                            onCountryCodeChange={(code) => setEditForm({ ...editForm, country_code: code })}
-                            defaultCountry={editForm.country_code}
-                            placeholder="Enter phone number"
-                            required
-                            showLabel
-                            label="Phone"
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Email {emailEdited && <span className="text-xs text-slate-500">(Already edited)</span>}
+                          </label>
+                          <input
+                            type="email"
+                            value={editForm.email}
+                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                            className={`w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100 ${emailEdited ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : ''}`}
+                            disabled={emailEdited}
+                            required={!emailEdited}
                           />
+                          {emailEdited && (
+                            <p className="text-xs text-slate-500 mt-1">Email can only be edited once</p>
+                          )}
                         </div>
+                      </div>
+                      <div>
+                        <PhoneInput
+                          value={editForm.phone}
+                          onChange={(value) => setEditForm({ ...editForm, phone: value })}
+                          onCountryCodeChange={(code) => setEditForm({ ...editForm, country_code: code })}
+                          defaultCountry={editForm.country_code}
+                          placeholder="Enter phone number"
+                          required={!phoneEdited}
+                          disabled={phoneEdited}
+                          showLabel
+                          label={`Phone ${phoneEdited ? '(Already edited)' : ''}`}
+                        />
+                        {phoneEdited && (
+                          <p className="text-xs text-slate-500 mt-1">Phone number can only be edited once</p>
+                        )}
                       </div>
                       
                       <div>
@@ -736,62 +778,62 @@ export default function Profile() {
                   ) : (
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="flex items-center gap-3">
-                          <User className="h-5 w-5 text-slate-500" />
+                        <div className="flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-lg">
+                          <User className="h-5 w-5 text-gray-900" />
                           <div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Name</p>
-                            <p className="font-medium dark:text-slate-100">{profile.name}</p>
+                            <p className="text-sm text-gray-900 font-medium">Name</p>
+                            <p className="font-medium text-gray-900">{profile.name}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Phone className="h-5 w-5 text-slate-500" />
+                        <div className="flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-lg">
+                          <Phone className="h-5 w-5 text-gray-900" />
                           <div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Phone</p>
-                            <p className="font-medium dark:text-slate-100">{profile.phone}</p>
+                            <p className="text-sm text-gray-900 font-medium">Phone</p>
+                            <p className="font-medium text-gray-900">{profile.phone}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Mail className="h-5 w-5 text-slate-500" />
+                        <div className="flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-lg">
+                          <Mail className="h-5 w-5 text-gray-900" />
                           <div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Email</p>
-                            <p className="font-medium dark:text-slate-100">{profile.email}</p>
+                            <p className="text-sm text-gray-900 font-medium">Email</p>
+                            <p className="font-medium text-gray-900">{profile.email}</p>
                           </div>
                         </div>
                       </div>
 
                       {/* Default Addresses Section */}
                       {addresses.filter(addr => addr.is_default).length > 0 && (
-                        <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                          <h3 className="text-lg font-semibold dark:text-slate-100 mb-4">Default Addresses</h3>
+                        <div className="border-t border-slate-200 pt-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Default Addresses</h3>
                           <div className="space-y-4">
                             {addresses.filter(addr => addr.is_default).map((address) => (
-                              <div key={address.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-700/50">
+                              <div key={address.id} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
                                     {address.name && (
-                                      <p className="font-semibold dark:text-slate-100 mb-1">{address.name}</p>
+                                      <p className="font-semibold text-gray-900 mb-1">{address.name}</p>
                                     )}
-                                    <p className="text-slate-700 dark:text-slate-300 mb-1">
+                                    <p className="text-gray-900 mb-1">
                                       {address.street}
                                       {address.area && `, ${address.area}`}
                                       {address.landmark && `, ${address.landmark}`}
                                     </p>
-                                    <p className="text-slate-600 dark:text-slate-400">
+                                    <p className="text-gray-900">
                                       {address.city}, {address.state} {address.zip}
                                     </p>
                                     {address.country && (
-                                      <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">{address.country}</p>
+                                      <p className="text-sm text-gray-900 mt-1">{address.country}</p>
                                     )}
                                     {address.phone && (
-                                      <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Phone: {address.phone}</p>
+                                      <p className="text-sm text-gray-900 mt-1">Phone: {address.phone}</p>
                                     )}
                                     {address.address_label && (
-                                      <span className="inline-block mt-2 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded">
+                                      <span className="inline-block mt-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
                                         {address.address_label}
                                       </span>
                                     )}
                                   </div>
-                                  <span className="ml-4 px-2 py-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded font-medium">
+                                  <span className="ml-4 px-2 py-1 text-xs bg-green-100 text-green-800 rounded font-medium">
                                     Default
                                   </span>
                                 </div>
@@ -817,22 +859,22 @@ export default function Profile() {
                         </div>
                       )}
 
-                      <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                        <h3 className="text-lg font-semibold dark:text-slate-100 mb-4">Account Statistics</h3>
+                      <div className="border-t border-slate-200 pt-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Statistics</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{profile.loyalty_points ?? 0}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">Loyalty Points</p>
+                          <div className="text-center p-4 bg-blue-50 rounded-lg">
+                            <p className="text-2xl font-bold text-blue-600">{profile.loyalty_points ?? 0}</p>
+                            <p className="text-sm text-gray-900 font-medium">Loyalty Points</p>
                           </div>
-                          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{profile.total_orders ?? 0}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">Total Orders</p>
+                          <div className="text-center p-4 bg-green-50 rounded-lg">
+                            <p className="text-2xl font-bold text-green-600">{profile.total_orders ?? 0}</p>
+                            <p className="text-sm text-gray-900 font-medium">Total Orders</p>
                           </div>
-                          <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                          <div className="text-center p-4 bg-purple-50 rounded-lg">
+                            <p className="text-2xl font-bold text-purple-600">
                               {profile.member_since ? new Date(profile.member_since).toLocaleDateString() : 'N/A'}
                             </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">Member Since</p>
+                            <p className="text-sm text-gray-900 font-medium">Member Since</p>
                           </div>
                         </div>
                       </div>
@@ -887,7 +929,7 @@ export default function Profile() {
                               <p className="text-sm text-slate-600 dark:text-slate-400">{order.date}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-semibold dark:text-slate-100">₹{order.total}</p>
+                              <p className="font-semibold dark:text-slate-100">₹{parseFloat(order.total?.toString() || '0').toFixed(2)}</p>
                               <span className={`px-2 py-1 text-xs rounded-full ${
                                 order.status === 'delivered' ? 'bg-green-100 text-green-800' :
                                 order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
@@ -1122,7 +1164,15 @@ export default function Profile() {
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                     placeholder="MM/YY"
                     value={newCard.expiry}
-                    onChange={(e) => setNewCard({...newCard, expiry: e.target.value})}
+                    onChange={(e) => {
+                      let value = e.target.value.replace(/\D/g, '') // Remove non-digits
+                      if (value.length >= 2) {
+                        value = value.slice(0, 2) + '/' + value.slice(2, 4)
+                      }
+                      setNewCard({...newCard, expiry: value})
+                    }}
+                    maxLength={5}
+                    inputMode="numeric"
                     required
                   />
                 </div>
@@ -1133,7 +1183,12 @@ export default function Profile() {
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                     placeholder="123"
                     value={newCard.cvv}
-                    onChange={(e) => setNewCard({...newCard, cvv: e.target.value})}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                      setNewCard({...newCard, cvv: value})
+                    }}
+                    inputMode="numeric"
+                    maxLength={4}
                     required
                   />
                 </div>
@@ -1160,6 +1215,7 @@ export default function Profile() {
                   <option value="Mastercard">Mastercard</option>
                   <option value="American Express">American Express</option>
                   <option value="Discover">Discover</option>
+                  <option value="RuPay">RuPay</option>
                 </select>
               </div>
               <div className="flex gap-3 pt-4">

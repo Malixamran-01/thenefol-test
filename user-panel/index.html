@@ -14,19 +14,24 @@
     <meta name="application-name" content="Nefol" />
     <meta name="msapplication-TileColor" content="#7DD3D3" />
     
+    <!-- Force Light Mode - Prevent Dark Mode on iOS/Android -->
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    
     <!-- iOS Specific Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Nefol" />
-    <link rel="apple-touch-icon" href="/IMAGES/light theme logo.webp" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/IMAGES/light theme logo.webp" />
-    <link rel="apple-touch-startup-image" href="/IMAGES/light theme logo.webp" />
+    <link rel="apple-touch-icon" href="/IMAGES/NEFOL icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/IMAGES/NEFOL icon.png" />
+    <link rel="apple-touch-startup-image" href="/IMAGES/NEFOL icon.png" />
     
     <!-- Manifest -->
     <link rel="manifest" href="/manifest.json" />
     
-    <title>Nefol — Futuristic Care</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>NEFOL®</title>
+    <link rel="icon" type="image/png" href="/IMAGES/NEFOL icon.png" />
+    <link rel="shortcut icon" type="image/png" href="/IMAGES/NEFOL icon.png" />
     <!-- Fonts: Montserrat & Cormorant Garamond with Constantia fallback -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,6 +53,18 @@
     fbq('track', 'PageView');
     </script>
     <!-- End Meta Pixel Code -->
+    
+    <!-- Force Light Mode Script - Prevents Dark Mode on iOS/Android -->
+    <script>
+      // Prevent dark mode before React loads
+      (function() {
+        if (typeof document !== 'undefined') {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.style.colorScheme = 'light';
+          document.documentElement.setAttribute('data-color-scheme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <noscript><img height="1" width="1" style="display:none"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
-import { Search, X, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react'
+import { Search, X, ArrowRight } from 'lucide-react'
 import NotificationBell from '../components/NotificationBell'
 import Can from '../components/Can'
 import { useAuth } from '../contexts/AuthContext'
@@ -30,11 +30,8 @@ const Layout = () => {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  const { user, logout } = useAuth()
+  const { user, logout, hasPageAccess } = useAuth()
   
-  // State for managing open/closed sections
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set())
-
   const userInitials = user?.name
     ? user.name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase()
     : 'NA'
@@ -66,6 +63,33 @@ const Layout = () => {
       ]
     },
 
+    // ========== PRODUCTS & CATALOG ==========
+    {
+      title: 'Products & Catalog',
+      icon: '📦',
+      defaultOpen: true,
+      items: [
+        { name: 'Products', href: '/admin/products', icon: '📦', current: location.pathname === '/admin/products' },
+        { name: 'Categories', href: '/admin/categories', icon: '📁', current: location.pathname === '/admin/categories' },
+        { name: 'Product Variants', href: '/admin/product-variants', icon: '🔄', current: location.pathname === '/admin/product-variants' },
+        { name: 'Inventory', href: '/admin/inventory', icon: '📊', current: location.pathname === '/admin/inventory' },
+        { name: 'Warehouses', href: '/admin/warehouses', icon: '🏭', current: location.pathname === '/admin/warehouses' },
+      ]
+    },
+
+    // ========== SALES & ORDERS ==========
+    {
+      title: 'Sales & Orders',
+      icon: '🛒',
+      defaultOpen: false,
+      items: [
+        { name: 'Orders', href: '/admin/orders', icon: '📋', current: location.pathname === '/admin/orders' },
+        { name: 'Shipments', href: '/admin/shipments', icon: '🚚', current: location.pathname === '/admin/shipments' },
+        { name: 'Returns', href: '/admin/returns', icon: '↩️', current: location.pathname === '/admin/returns' },
+        { name: 'POS System', href: '/admin/pos', icon: '💳', current: location.pathname === '/admin/pos' },
+      ]
+    },
+
     // ========== CONTENT & CMS ==========
     {
       title: 'Content & CMS',
@@ -75,6 +99,8 @@ const Layout = () => {
         { name: 'CMS', href: '/admin/cms', icon: '📄', current: location.pathname === '/admin/cms' },
         { name: 'Blog Requests', href: '/admin/blog-requests', icon: '📝', current: location.pathname === '/admin/blog-requests' },
         { name: 'Video Manager', href: '/admin/video-manager', icon: '🎬', current: location.pathname === '/admin/video-manager' },
+        { name: 'Static Pages', href: '/admin/static-pages', icon: '📃', current: location.pathname === '/admin/static-pages' },
+        { name: 'Community Management', href: '/admin/community-management', icon: '👥', current: location.pathname === '/admin/community-management' },
       ]
     },
     
@@ -85,16 +111,46 @@ const Layout = () => {
       defaultOpen: true,
       items: [
         { name: 'Customers', href: '/admin/customers', icon: '👥', current: location.pathname === '/admin/customers' },
+        { name: 'Users', href: '/admin/users', icon: '👤', current: location.pathname === '/admin/users' },
+        { name: 'User Profiles', href: '/admin/user-profiles', icon: '👤', current: location.pathname === '/admin/user-profiles' },
+        { name: 'User Notifications', href: '/admin/user-notifications', icon: '🔔', current: location.pathname === '/admin/user-notifications' },
         { name: 'Customer Segmentation', href: '/admin/customer-segmentation', icon: '🎯', current: location.pathname === '/admin/customer-segmentation' },
         { name: 'Custom Audience', href: '/admin/custom-audience', icon: '👥', current: location.pathname === '/admin/custom-audience' },
         { name: 'WhatsApp Subscriptions', href: '/admin/whatsapp-subscriptions', icon: '📱', current: location.pathname === '/admin/whatsapp-subscriptions' },
         { name: 'WhatsApp Chat', href: '/admin/whatsapp-chat', icon: '💬', current: location.pathname === '/admin/whatsapp-chat' },
+        { name: 'WhatsApp Management', href: '/admin/whatsapp-management', icon: '📱', current: location.pathname === '/admin/whatsapp-management' },
+        { name: 'WhatsApp Notifications', href: '/admin/whatsapp-notifications', icon: '📲', current: location.pathname === '/admin/whatsapp-notifications' },
         { name: 'Journey Funnel', href: '/admin/journey-funnel', icon: '🔄', current: location.pathname === '/admin/journey-funnel' },
         { name: 'Journey Tracking', href: '/admin/journey-tracking', icon: '🗺️', current: location.pathname === '/admin/journey-tracking' },
         { name: 'Live Chat', href: '/admin/live-chat', icon: '🎧', current: location.pathname === '/admin/live-chat' },
       ]
     },
     
+    // ========== FINANCE & PAYMENTS ==========
+    {
+      title: 'Finance & Payments',
+      icon: '💳',
+      defaultOpen: false,
+      items: [
+        { name: 'Invoices', href: '/admin/invoices', icon: '📄', current: location.pathname === '/admin/invoices' },
+        { name: 'Invoice Settings', href: '/admin/invoice-settings', icon: '⚙️', current: location.pathname === '/admin/invoice-settings' },
+        { name: 'Payment', href: '/admin/payment', icon: '💳', current: location.pathname === '/admin/payment' },
+        { name: 'Payment Options', href: '/admin/payment-options', icon: '💳', current: location.pathname === '/admin/payment-options' },
+        { name: 'Tax', href: '/admin/tax', icon: '💰', current: location.pathname === '/admin/tax' },
+      ]
+    },
+
+    // ========== MARKETING ==========
+    {
+      title: 'Marketing',
+      icon: '📢',
+      defaultOpen: false,
+      items: [
+        { name: 'Marketing', href: '/admin/marketing', icon: '📢', current: location.pathname === '/admin/marketing' },
+        { name: 'Discounts', href: '/admin/discounts', icon: '🏷️', current: location.pathname === '/admin/discounts' },
+      ]
+    },
+
     // ========== AFFILIATE & MONETIZATION ==========
     {
       title: 'Affiliate & Monetization',
@@ -104,7 +160,7 @@ const Layout = () => {
         { name: 'Affiliate Program', href: '/admin/affiliate-program', icon: '🤝', current: location.pathname === '/admin/affiliate-program' },
         { name: 'Affiliate Requests', href: '/admin/affiliate-requests', icon: '📋', badge: '3', current: location.pathname === '/admin/affiliate-requests' },
         { name: 'Coin Withdrawals', href: '/admin/coin-withdrawals', icon: '💸', current: location.pathname === '/admin/coin-withdrawals' },
-        { name: 'Tax', href: '/admin/tax', icon: '💰', current: location.pathname === '/admin/tax' },
+        { name: 'Loyalty Program Management', href: '/admin/loyalty-program-management', icon: '⭐', current: location.pathname === '/admin/loyalty-program-management' },
       ]
     },
     
@@ -114,39 +170,30 @@ const Layout = () => {
       icon: '📈',
       defaultOpen: false,
       items: [
+        { name: 'Analytics', href: '/admin/analytics', icon: '📊', current: location.pathname === '/admin/analytics' },
+        { name: 'Advanced Analytics', href: '/admin/advanced-analytics', icon: '📈', current: location.pathname === '/admin/advanced-analytics' },
         { name: 'Actionable Analytics', href: '/admin/actionable-analytics', icon: '📈', current: location.pathname === '/admin/actionable-analytics' },
         { name: 'Audit Logs', href: '/admin/system/audit-logs', icon: '📜', current: location.pathname === '/admin/system/audit-logs' },
       ]
     },
     
-    // ========== AI TOOLS ==========
+    // ========== E-COMMERCE ==========
     {
-      title: 'AI Tools',
-      icon: '🤖',
+      title: 'E-Commerce',
+      icon: '🛍️',
       defaultOpen: false,
       items: [
-        { name: 'AI Box', href: '/admin/ai-box', icon: '🤖', current: location.pathname === '/admin/ai-box' },
-        { name: 'AI Personalization', href: '/admin/ai-personalization', icon: '🎨', current: location.pathname === '/admin/ai-personalization' },
+        { name: 'Cart & Checkout', href: '/admin/cart-checkout', icon: '🛒', current: location.pathname === '/admin/cart-checkout' },
       ]
     },
-    
-    // ========== AUTOMATION & WORKFLOWS ==========
-    {
-      title: 'Automation & Workflows',
-      icon: '⚙️',
-      defaultOpen: false,
-      items: [
-        { name: 'Workflow Automation', href: '/admin/workflow-automation', icon: '⚙️', current: location.pathname === '/admin/workflow-automation' },
-        { name: 'API Manager', href: '/admin/api-manager', icon: '🔧', current: location.pathname === '/admin/api-manager' },
-      ]
-    },
-    
+
     // ========== FORMS & COMMUNICATION ==========
     {
       title: 'Forms & Communication',
       icon: '📋',
       defaultOpen: false,
       items: [
+        { name: 'Forms', href: '/admin/forms', icon: '📋', current: location.pathname === '/admin/forms' },
         { name: 'Form Builder', href: '/admin/form-builder', icon: '📋', current: location.pathname === '/admin/form-builder' },
         { name: 'Form Submissions', href: '/admin/form-submissions', icon: '📝', current: location.pathname === '/admin/form-submissions' },
         { name: 'Contact Messages', href: '/admin/contact-messages', icon: '📧', current: location.pathname === '/admin/contact-messages' },
@@ -161,43 +208,32 @@ const Layout = () => {
       defaultOpen: false,
       items: [
         { name: 'Staff Accounts', href: '/admin/system/staff', icon: '🧑‍💼', current: location.pathname === '/admin/system/staff' },
+        { name: 'Admin Management', href: '/admin/system/admin-management', icon: '👨‍💼', current: location.pathname === '/admin/system/admin-management' },
         { name: 'Roles & Permissions', href: '/admin/system/roles', icon: '🗂️', current: location.pathname === '/admin/system/roles' },
         { name: 'Account Security', href: '/admin/account-security', icon: '🔐', current: location.pathname === '/admin/account-security' },
       ]
     },
   ]
 
-  // Initialize open sections based on defaultOpen
-  useEffect(() => {
-    const initiallyOpen = new Set<string>()
-    navigationSections.forEach(section => {
-      if (section.defaultOpen) {
-        initiallyOpen.add(section.title)
-      }
-    })
-    setOpenSections(initiallyOpen)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Toggle section open/closed
-  const toggleSection = (sectionTitle: string) => {
-    setOpenSections(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(sectionTitle)) {
-        newSet.delete(sectionTitle)
-      } else {
-        newSet.add(sectionTitle)
-      }
-      return newSet
-    })
-  }
+  // Navigation sections used for sidebar and search.
+  // Page-level permission checks are handled by the <Can> component when rendering links,
+  // so we keep all items here to ensure they appear in the dropdown.
+  const filteredNavigationSections = navigationSections
 
   // Flatten all options for search
-  const allOptions = navigationSections.flatMap(section => 
+  const allOptions = filteredNavigationSections.flatMap(section =>
     section.items.map(item => ({
       ...item,
       category: section.title,
       description: `${section.title} - ${item.name}`
+    }))
+  )
+
+  // Flat list of navigation items for non-dropdown sidebar
+  const flatNavigationItems = filteredNavigationSections.flatMap(section =>
+    section.items.map(item => ({
+      ...item,
+      section: section.title,
     }))
   )
 
@@ -208,22 +244,30 @@ const Layout = () => {
     '/admin/returns': { permission: 'returns:read' },
     '/admin/products': { permission: 'products:read' },
     '/admin/categories': { permission: 'products:read' },
+    '/admin/product-variants': { permission: 'products:read' },
     '/admin/inventory': { permission: 'inventory:read' },
+    '/admin/warehouses': { permission: 'inventory:read' },
     '/admin/analytics': { permission: 'analytics:read' },
+    '/admin/advanced-analytics': { permission: 'analytics:read' },
     '/admin/marketing': { permission: 'marketing:read' },
     '/admin/discounts': { permission: 'discounts:read' },
     '/admin/users': { permission: 'users:read' },
+    '/admin/customers': { permission: 'users:read' },
     '/admin/settings': { role: 'admin' },
-    '/admin/warehouses': { permission: 'inventory:read' },
     '/admin/pos': { anyOf: ['pos:read','pos:update'] },
     '/admin/marketplaces': { role: 'admin' },
     '/admin/fb-shop': { role: 'admin' },
     '/admin/payment-options': { permission: 'payments:read' },
+    '/admin/payment': { permission: 'payments:read' },
+    '/admin/invoices': { permission: 'payments:read' },
     '/admin/cms': { permission: 'cms:read' },
     '/admin/blog-requests': { permission: 'cms:read' },
     '/admin/video-manager': { permission: 'cms:read' },
+    '/admin/static-pages': { permission: 'cms:read' },
     '/admin/whatsapp-management': { permission: 'notifications:read' },
     '/admin/whatsapp-notifications': { permission: 'notifications:read' },
+    '/admin/whatsapp-subscriptions': { permission: 'notifications:read' },
+    '/admin/whatsapp-chat': { permission: 'notifications:read' },
   }
 
 
@@ -237,11 +281,20 @@ const Layout = () => {
       return
     }
 
-    const filtered = allOptions.filter(option => 
-      option.name.toLowerCase().includes(query.toLowerCase()) ||
-      option.description.toLowerCase().includes(query.toLowerCase()) ||
-      option.category.toLowerCase().includes(query.toLowerCase())
-    )
+    const queryLower = query.toLowerCase()
+    const filtered = allOptions.filter(option => {
+      const nameMatch = option.name.toLowerCase().includes(queryLower)
+      const descriptionMatch = option.description.toLowerCase().includes(queryLower)
+      const categoryMatch = option.category.toLowerCase().includes(queryLower)
+      const hrefMatch = option.href.toLowerCase().includes(queryLower)
+      // Also search by removing common words and checking individual words
+      const nameWords = option.name.toLowerCase().split(/\s+/)
+      const categoryWords = option.category.toLowerCase().split(/\s+/)
+      const wordMatch = nameWords.some(word => word.includes(queryLower)) || 
+                       categoryWords.some(word => word.includes(queryLower))
+      
+      return nameMatch || descriptionMatch || categoryMatch || hrefMatch || wordMatch
+    })
 
     setSearchResults(filtered)
     setShowSearchResults(true)
@@ -323,7 +376,7 @@ const Layout = () => {
               <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">N</span>
               </div>
-              <span className="text-xl font-bold text-[var(--text-primary)]">Nefol Admin</span>
+              <span className="text-xl font-bold text-[var(--text-primary)]">NEFOL® Admin</span>
             </div>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -335,69 +388,35 @@ const Layout = () => {
             </button>
           </div>
 
-          {/* Navigation with Collapsible Sections */}
-          <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-            {navigationSections.map((section) => {
-              const isOpen = openSections.has(section.title)
-              const hasActiveItem = section.items.some(item => item.current)
-              
+          {/* Flat Navigation (no dropdown sections) */}
+          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+            {flatNavigationItems.map((item) => {
+              const gate = permissionByHref[item.href] || {}
               return (
-                <div key={section.title} className="space-y-1">
-                  {/* Section Header */}
-                  <button
-                    onClick={() => toggleSection(section.title)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
-                      hasActiveItem 
-                        ? 'bg-[var(--brand-highlight)] text-[var(--text-primary)]' 
-                        : 'text-[var(--text-muted)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
+                <Can key={item.href} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
+                  <Link
+                    to={item.href}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      item.current
+                        ? 'bg-[var(--brand-accent-soft)] text-[var(--brand-accent)] font-medium'
+                        : 'text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
                     }`}
+                    onClick={() => {
+                      // Close mobile menu when item is clicked
+                      if (window.innerWidth < 1024) {
+                        setIsSidebarOpen(false)
+                      }
+                    }}
                   >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-base">{section.icon}</span>
-                      <span className="text-sm font-semibold uppercase tracking-wide">{section.title}</span>
-                    </div>
-                    {isOpen ? (
-                      <ChevronDown className="w-4 h-4" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4" />
+                    <span className="text-base flex-shrink-0">{item.icon}</span>
+                    <span className="flex-1 truncate">{item.name}</span>
+                    {item.badge && (
+                      <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold bg-[var(--brand-accent)] text-white rounded-full">
+                        {item.badge}
+                      </span>
                     )}
-                  </button>
-
-                  {/* Section Items */}
-                  {isOpen && (
-                    <div className="ml-4 space-y-1 border-l-2 border-[var(--brand-border)] pl-3">
-                      {section.items.map((item) => {
-                        const gate = permissionByHref[item.href] || {}
-                        return (
-                          <Can key={item.name} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
-                            <Link
-                              to={item.href}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                                item.current
-                                  ? 'bg-[var(--brand-accent-soft)] text-[var(--brand-accent)] font-medium'
-                                  : 'text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
-                              }`}
-                              onClick={() => {
-                                // Close mobile menu when item is clicked
-                                if (window.innerWidth < 1024) {
-                                  setIsSidebarOpen(false)
-                                }
-                              }}
-                            >
-                              <span className="text-base flex-shrink-0">{item.icon}</span>
-                              <span className="flex-1 truncate">{item.name}</span>
-                              {item.badge && (
-                                <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold bg-[var(--brand-accent)] text-white rounded-full">
-                                  {item.badge}
-                                </span>
-                              )}
-                            </Link>
-                          </Can>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
+                  </Link>
+                </Can>
               )
             })}
           </nav>
@@ -433,7 +452,7 @@ const Layout = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Search admin options... (e.g., CMS, Blog, Products)"
+                    placeholder="Search admin options... (e.g., Products, Orders, Analytics, Marketing)"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                     className="search-input w-96 pl-10 pr-20 py-2 border border-[var(--brand-border)] bg-[var(--brand-surface)] text-[var(--text-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]"
@@ -482,7 +501,7 @@ const Layout = () => {
                       <p>No options found for "{searchQuery}"</p>
                       <p className="text-sm mt-1">Try searching for:</p>
                       <div className="flex flex-wrap gap-2 mt-2 justify-center">
-                        {['products', 'orders', 'analytics', 'marketing', 'customers', 'cms', 'blog'].map((term) => (
+                        {['products', 'orders', 'analytics', 'marketing', 'customers', 'cms', 'blog', 'inventory', 'finance', 'payments', 'affiliate', 'forms', 'whatsapp', 'users', 'categories'].map((term) => (
                           <button
                             key={term}
                             onClick={() => handleSearch(term)}

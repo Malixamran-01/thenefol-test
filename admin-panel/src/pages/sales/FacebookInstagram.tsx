@@ -135,7 +135,7 @@ export default function FacebookInstagram() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">Facebook Page</h3>
-                  <p className="text-sm text-gray-600">Nefol Skincare</p>
+                  <p className="text-sm text-gray-600">NEFOL® Skincare</p>
                 </div>
               </div>
               <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">Connected</span>

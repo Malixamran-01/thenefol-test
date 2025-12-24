@@ -49,7 +49,7 @@ export default function CMSPageTemplate({
   return (
     <main className={`min-h-screen overflow-x-hidden ${className}`} style={{backgroundColor: '#F4F9F9'}}>
       {/* SEO Meta Tags - You can add react-helmet here */}
-      <title>{content.page.page_title || 'Nefol'}</title>
+      <title>{content.page.page_title || 'NEFOL®'}</title>
       
       {/* Real-time connection indicator (optional, can be hidden) */}
       {import.meta.env.DEV && (

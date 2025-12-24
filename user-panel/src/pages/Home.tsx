@@ -365,10 +365,18 @@ const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<
                   {isCenter && videoId && (
                     <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white z-20 pointer-events-none">
                       <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1 bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (video.redirect_url) {
+                              window.open(video.redirect_url, '_blank')
+                            }
+                          }}
+                          className="flex items-center gap-1 bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm transition-all pointer-events-auto hover:bg-black/70 cursor-pointer"
+                        >
                           <Eye className="h-4 w-4 text-white" />
                           <span className="text-sm font-semibold text-white">{stats?.views || video.views || 0}</span>
-                        </div>
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -481,9 +489,9 @@ export default function Home() {
   const [whatsappSubscription, setWhatsappSubscription] = useState({
     image: '/IMAGES/BANNER (1).webp',
     logo: '',
-    heading: 'Join The Nefol Circle',
+    heading: 'Join The NEFOL® Circle',
     description: 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-    footer: 'By subscribing, you agree to receive WhatsApp messages from Nefol.',
+    footer: 'By subscribing, you agree to receive WhatsApp messages from NEFOL®.',
     logoName: 'NEFÖL'
   })
   const [foreverFavorites, setForeverFavorites] = useState<any>({
@@ -711,10 +719,10 @@ export default function Home() {
           setWhatsappSubscription({
             image: whatsappSection.content.image ? normalizeUrl(whatsappSection.content.image) : '/IMAGES/BANNER (1).webp',
             logo: whatsappSection.content.logo ? normalizeUrl(whatsappSection.content.logo) : '',
-            heading: whatsappSection.content.heading || 'Join The Nefol Circle',
+            heading: whatsappSection.content.heading || 'Join The NEFOL® Circle',
             description: whatsappSection.content.description || 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-            footer: whatsappSection.content.footer || 'By subscribing, you agree to receive WhatsApp messages from Nefol.',
-            logoName: whatsappSection.content.logoName || 'NEFÖL'
+            footer: whatsappSection.content.footer || 'By subscribing, you agree to receive WhatsApp messages from NEFOL®.',
+            logoName: whatsappSection.content.logoName || 'NEFOL®'
           })
         }
       }
@@ -955,17 +963,7 @@ export default function Home() {
         <section className="py-8 sm:py-12 md:py-16 bg-white">
           <div className="w-full max-w-full">
             <div className="text-center mb-8 sm:mb-12 px-4">
-              <h2 
-                className="text-xl sm:text-2xl md:text-3xl font-light mb-4 tracking-[0.15em]" 
-                style={{
-                  color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family)',
-                  letterSpacing: '0.15em'
-                }}
-              >
-                Social Media
-              </h2>
-              <p className="text-xs sm:text-sm font-light tracking-wide" style={{color: '#666', letterSpacing: '0.05em'}}>Watch our latest posts and reels</p>
+              <h1 className="script-text" style={{ visibility: 'visible', opacity: 1 }}>Aesthetics Lover's Choice!</h1>
             </div>
             <div className="w-full">
               <SocialMediaVideos videos={videos} scrollerRef={videoScrollerRef} />
@@ -1156,7 +1154,7 @@ export default function Home() {
                                          (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
                                          (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
                         return subtitle ? (
-                          <p className="text-sm text-gray-600 mb-1 line-clamp-1" style={{color: '#666'}}>
+                          <p className="text-sm text-gray-600 mb-1 line-clamp-2" style={{color: '#666', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
                             {subtitle}
                           </p>
                         ) : null
@@ -1190,50 +1188,31 @@ export default function Home() {
                         <PricingDisplay product={product} />
                       </div>
                       
-                      {/* Add to Cart Button - Outside link */}
+                      {/* View Button */}
                       {!isSoldOut && (
-                        <button
+                        <a
+                          href={`#/user/product/${product.slug}`}
                           onClick={(e) => {
-                            e.preventDefault()
                             e.stopPropagation()
-                            if (addItem) {
-                              try {
-                                addItem(product)
-                                // Show success feedback
-                                const button = e.currentTarget
-                                const originalText = button.innerHTML
-                                button.innerHTML = '<span>✓ Added</span>'
-                                button.style.backgroundColor = 'var(--arctic-blue-primary-dark)'
-                                setTimeout(() => {
-                                  button.innerHTML = originalText
-                                  button.style.backgroundColor = 'var(--arctic-blue-primary)'
-                                }, 2000)
-                              } catch (error) {
-                                console.error('Error adding to cart:', error)
-                                alert('Please login to add items to cart')
-                              }
-                            } else {
-                              console.error('addItem function is not available')
-                            }
                           }}
-                          className="w-full mt-4 py-3 px-4 text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase flex items-center justify-center gap-2 rounded-xl"
+                          className="w-full mt-4 py-3 px-4 text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase flex items-center justify-center gap-2 rounded-xl whitespace-nowrap"
                           style={{ 
                             backgroundColor: 'rgb(75,151,201)',
                             color: '#FFFFFF',
-                            letterSpacing: '0.15em'
+                            letterSpacing: '0.15em',
+                            minHeight: '44px',
+                            textDecoration: 'none'
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
                           }}
                           onMouseLeave={(e) => {
-                            if (!e.currentTarget.innerHTML.includes('Added')) {
-                              e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
-                            }
+                            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                           }}
                         >
-                          <ShoppingCart className="w-4 h-4" />
-                          Add to cart
-                        </button>
+                          <Eye className="w-4 h-4 flex-shrink-0" />
+                          <span>View</span>
+                        </a>
                       )}
                     </div>
                   </div>
@@ -1388,7 +1367,8 @@ export default function Home() {
       {completeKitImage && (
         <section className="py-8 sm:py-12 md:py-16 lg:py-20 bg-white">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="relative overflow-hidden complete-kit-container rounded-xl">
+            {/* Desktop Layout - Text Overlay on Image */}
+            <div className="hidden md:block relative overflow-hidden complete-kit-container rounded-xl">
               <img 
                 src={completeKitImage} 
                 alt="Complete Kit" 
@@ -1408,7 +1388,7 @@ export default function Home() {
                   >
                     THE COMPLETE KIT
                   </h2>
-                  <p className="complete-kit-description text-white/90 mb-6 sm:mb-8 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full Nefol experience in one curated bundle</p>
+                  <p className="complete-kit-description text-white/90 mb-6 sm:mb-8 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full NEFOL® experience in one curated bundle</p>
                   <button
                     onClick={() => window.location.hash = '#/user/combos'}
                     className="complete-kit-button px-4 sm:px-6 md:px-8 py-2 sm:py-3 text-white font-medium tracking-wide uppercase transition-colors duration-200 rounded-xl"
@@ -1423,6 +1403,45 @@ export default function Home() {
                     View Kit
                   </button>
                 </div>
+              </div>
+            </div>
+            
+            {/* Mobile Layout - Image First, Then Text and Button Below */}
+            <div className="md:hidden">
+              <div className="relative overflow-hidden rounded-xl mb-4" style={{ height: '250px' }}>
+                <img 
+                  src={completeKitImage} 
+                  alt="Complete Kit" 
+                  className="w-full h-full object-cover rounded-xl"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              </div>
+              <div className="text-center px-4">
+                <h2 
+                  className="text-xl font-light mb-3 text-slate-900 tracking-[0.15em]" 
+                  style={{
+                    fontFamily: 'var(--font-heading-family)',
+                    letterSpacing: '0.15em'
+                  }}
+                >
+                  THE COMPLETE KIT
+                </h2>
+                <p className="text-sm text-slate-600 mb-6 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full NEFOL® experience in one curated bundle</p>
+                <button
+                  onClick={() => window.location.hash = '#/user/combos'}
+                  className="px-6 py-3 text-white font-medium tracking-wide uppercase transition-colors duration-200 rounded-xl"
+                  style={{ backgroundColor: 'var(--arctic-blue-primary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                  }}
+                >
+                  View Kit
+                </button>
               </div>
             </div>
           </div>
@@ -1517,7 +1536,7 @@ export default function Home() {
           />
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-center">
-              <div className="relative rounded-xl" style={{ width: '200%' }}>
+              <div className="relative rounded-xl overflow-hidden w-full">
                 <img 
                   src={nefolCollection.image}
                   alt="Nefol Collection"
@@ -1525,7 +1544,9 @@ export default function Home() {
                   style={{ 
                     display: 'block',
                     objectFit: 'contain',
-                    objectPosition: 'left center'
+                    objectPosition: 'center',
+                    maxWidth: '100%',
+                    height: 'auto'
                   }}
                   onError={(e) => {
                     e.currentTarget.style.display = 'none'
@@ -1684,20 +1705,22 @@ export default function Home() {
                   {naturalBeauty.buttonText}
                 </button>
               </div>
-              <div className="relative lg:order-2 rounded-xl ml-auto" style={{ width: '200%' }}>
-                <img 
-                  src={naturalBeauty.image}
-                  alt="Natural Beauty"
-                  className="w-full h-auto rounded-xl"
-                  style={{ 
-                    display: 'block',
-                    objectFit: 'contain',
-                    objectPosition: 'right center'
-                  }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
+              <div className="relative lg:order-2 rounded-xl overflow-hidden" style={{ width: '100%', maxWidth: '100%' }}>
+                <div className="relative w-full overflow-hidden">
+                  <img 
+                    src={naturalBeauty.image}
+                    alt="Natural Beauty"
+                    className="rounded-xl w-full h-auto"
+                    style={{ 
+                      display: 'block',
+                      objectFit: 'contain',
+                      objectPosition: 'center'
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1791,7 +1814,7 @@ export default function Home() {
                         letterSpacing: '0.1em'
                       }}
                     >
-                      Blue Pea
+                      Blue Pea (Tag as Aprajita, Butterfly Pea Flower, Blue Pea Flower)
                     </h3>
                     <p className="text-xs sm:text-sm italic mb-6 font-light tracking-wide" style={{color: '#999', letterSpacing: '0.05em'}}>
                       Aprajita • Shankhpushpi
@@ -1857,18 +1880,20 @@ export default function Home() {
                 Also Available On
               </h2>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 md:gap-16">
-              {marketplaceLogos.map((logo, idx) => (
-                <img 
-                  key={idx} 
-                  src={logo} 
-                  alt={`Marketplace ${idx + 1}`}
-                  className="h-10 sm:h-12 md:h-14 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-200"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              ))}
+            <div className="relative overflow-hidden w-full">
+              <div className="flex items-center justify-center gap-8 sm:gap-12 md:gap-16 flex-wrap">
+                {marketplaceLogos.map((logo, idx) => (
+                  <img 
+                    key={`logo-${idx}`}
+                    src={logo} 
+                    alt={`Marketplace ${idx + 1}`}
+                    className="h-10 sm:h-12 md:h-14 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </section>

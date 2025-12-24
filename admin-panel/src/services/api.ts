@@ -389,23 +389,9 @@ class ApiService {
     return this.request('/api/actionable_insights')
   }
 
-  // AI Box APIs
-  async getAIFeatures() {
-    return this.request('/api/ai/features')
-  }
-
-  async getAITasks() {
-    return this.request('/api/ai/tasks')
-  }
-
   // Journey Funnel APIs
   async getJourneyFunnels() {
     return this.request('/api/journey_funnels')
-  }
-
-  // AI Personalization APIs
-  async getPersonalizationRules() {
-    return this.request('/api/personalization_rules')
   }
 
   // Customer Segmentation APIs
@@ -449,10 +435,6 @@ class ApiService {
     })
   }
 
-  // Workflow Automation APIs
-  async getWorkflows() {
-    return this.request('/api/workflows')
-  }
 
   async createWorkflow(data: any) {
     return this.request('/api/workflows', {
@@ -474,15 +456,6 @@ class ApiService {
     })
   }
 
-  // Omni Channel APIs
-  async getOmniChannelCampaigns() {
-    return this.request('/api/omni_channel_campaigns')
-  }
-
-  // API Manager APIs
-  async getAPIConfigurations() {
-    return this.request('/api/api-manager')
-  }
 
   async getAPIConfiguration(id: string) {
     return this.request(`/api/api-manager/${id}`)

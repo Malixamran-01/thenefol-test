@@ -177,7 +177,7 @@ export default function Combos() {
                                      (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
                                      (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
                     return subtitle ? (
-                      <p className="text-sm text-gray-600 mb-1 line-clamp-1" style={{color: '#666'}}>
+                      <p className="text-sm text-gray-600 mb-1 line-clamp-2" style={{color: '#666', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
                         {subtitle}
                       </p>
                     ) : null

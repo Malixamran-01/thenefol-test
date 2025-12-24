@@ -34,7 +34,7 @@ export default function TermsOfService() {
             className="text-sm sm:text-base font-light max-w-3xl mx-auto tracking-wide"
             style={{ color: '#666', letterSpacing: '0.05em' }}
           >
-            Welcome to Nefol. By accessing or using our website and services, you agree to comply with 
+            Welcome to NEFOL®. By accessing or using our website and services, you agree to comply with 
             and be bound by the following Terms of Use.
           </p>
         </div>
@@ -56,8 +56,8 @@ export default function TermsOfService() {
               className="font-light leading-relaxed mb-4 tracking-wide"
               style={{ color: '#666', letterSpacing: '0.05em' }}
             >
-              This website is operated by Nefol Aesthetics Private Limited. Throughout the site, the terms 
-              "we", "us" and "our" refer to Nefol. Nefol offers this website, including all information, 
+              This website is operated by NEFOL® Aesthetics Private Limited. Throughout the site, the terms 
+              "we", "us" and "our" refer to NEFOL®. NEFOL® offers this website, including all information, 
               tools and Services available from this site to you, the user, conditioned upon your acceptance 
               of all terms, conditions, policies and notices stated here.
             </p>
@@ -388,7 +388,7 @@ export default function TermsOfService() {
                 className="text-xl font-light mb-4 tracking-wide"
                 style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
               >
-                Nefol Aesthetics Private Limited
+                NEFOL® Aesthetics Private Limited
               </h3>
               <p 
                 className="font-light mb-4 tracking-wide"

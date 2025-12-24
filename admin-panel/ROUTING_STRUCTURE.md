@@ -92,8 +92,6 @@ All routes below require authentication via `ProtectedRoute` component.
 ---
 
 ### AI & Personalization
-- `/admin/ai-box` - AI Box
-- `/admin/ai-personalization` - AI personalization
 - `/admin/custom-audience` - Custom audience management
 
 ---
@@ -113,13 +111,10 @@ All routes below require authentication via `ProtectedRoute` component.
 - `/admin/forms` - Forms list
 - `/admin/form-builder` - Form builder
 - `/admin/form-submissions` - Form submissions
-- `/admin/workflow-automation` - Workflow automation
 
 ---
 
 ### Integrations & Channels
-- `/admin/omni-channel` - Omni-channel management
-- `/admin/api-manager` - API manager
 - `/admin/marketplaces` - Marketplace integrations (Admin only)
 - `/admin/facebook` - Facebook/Instagram integration
 - `/admin/fb-shop` - Facebook Shop integration
@@ -188,8 +183,6 @@ Routes are organized in `admin-panel/src/App.tsx` with clear section comments:
 
 ## Notes
 
-- **CMS.tsx**: Exists in codebase but not routed (CMSManagement is used instead)
-- **System/Login.tsx**: Exists but not used (Login.tsx is the active login page)
 - All routes use kebab-case for consistency
 - Dynamic routes use colon notation (`:paramName`)
 

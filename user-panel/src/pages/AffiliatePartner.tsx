@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { ArrowLeft, BarChart3, Copy, CheckCircle, Clock, AlertCircle, UserPlus, Key, Percent, IndianRupee, Users, TrendingUp, Award, Coins, Smartphone, FileText, Mail, Video, X, Folder, Search, Download, Image as ImageIcon, FileDown, ChevronDown, ChevronUp, Info, ExternalLink, Package, Sparkles } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import PhoneInput from '../components/PhoneInput'
 
 interface AffiliateData {
   id: string
   user_id: string
+  partner_id?: string
   referral_code: string
   referral_link: string
   commission_rate: number
@@ -15,6 +17,8 @@ interface AffiliateData {
   is_verified: boolean
   created_at: string
   last_payment: string
+  email?: string
+  phone?: string
 }
 
 interface Referral {
@@ -62,6 +66,8 @@ const AffiliatePartner: React.FC = () => {
   const [activeMaterialTab, setActiveMaterialTab] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
+  const [selectedCurrency, setSelectedCurrency] = useState<'INR' | 'USD' | 'EUR' | 'RUB'>('INR')
+  const [countryCode, setCountryCode] = useState('+91')
   const [applicationForm, setApplicationForm] = useState({
     name: '',
     email: '',
@@ -70,6 +76,19 @@ const AffiliatePartner: React.FC = () => {
     snapchat: '',
     youtube: '',
     facebook: '',
+    twitter: '',
+    vk: '',
+    linkedin: '',
+    tiktok: '',
+    whatsapp: '',
+    threads: '',
+    sharechat: '',
+    moj: '',
+    josh: '',
+    mxtakatak: '',
+    chingari: '',
+    koo: '',
+    roposo: '',
     followers: '',
     platform: '',
     experience: '',
@@ -461,9 +480,9 @@ const AffiliatePartner: React.FC = () => {
 
       if (response.ok) {
         if (data.message === 'Account already verified') {
-          setVerificationMessage('Code already verified! Loading dashboard...')
+          setVerificationMessage('Approved and Verified')
         } else {
-          setVerificationMessage('Verification successful! Loading dashboard...')
+          setVerificationMessage('Approved and Verified')
         }
         
         // Fetch updated affiliate data to show dashboard
@@ -498,6 +517,22 @@ const AffiliatePartner: React.FC = () => {
   const handleApplicationSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate required fields
+    if (!applicationForm.name || !applicationForm.email || !applicationForm.phone) {
+      alert('Please fill all required fields')
+      return
+    }
+
+    // Validate email format - must be a proper email (contains @) and not just a phone number
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const isValidEmail = emailRegex.test(applicationForm.email)
+    const isPhoneNumberAsEmail = /^\d+$/.test(applicationForm.email.replace(/[\s+\-()]/g, ''))
+    
+    if (!isValidEmail || isPhoneNumberAsEmail) {
+      alert('Please provide a valid email address. A valid email address is required to apply for affiliate marketing.')
+      return
+    }
+
     try {
       const token = localStorage.getItem('token')
       if (!token) {
@@ -517,11 +552,12 @@ const AffiliatePartner: React.FC = () => {
       const data = await response.json()
 
       if (response.ok) {
-        alert('Application submitted successfully! You will receive your verification code via email.')
         setHasSubmittedApplication(true)
         setApplicationStatus('pending')
         setShowApplicationForm(false)
         localStorage.setItem('affiliateApplicationStatus', 'pending')
+        // Show status message
+        setVerificationMessage('Your Application is pending for Approval')
       } else if (response.status === 409) {
         // Handle duplicate application - check if user already has an application
         const errorMessage = data.message || 'You have already submitted an application'
@@ -537,7 +573,12 @@ const AffiliatePartner: React.FC = () => {
           checkApplicationStatus()
         }, 1000)
       } else {
-        alert(data.message || 'Failed to submit application. Please try again or contact support.')
+        // Check if it's a validation error
+        if (data.message && (data.message.toLowerCase().includes('required') || data.message.toLowerCase().includes('fill'))) {
+          alert('Fill required fields')
+        } else {
+          alert(data.message || 'Failed to submit application. Please try again or contact support.')
+        }
       }
     } catch (error) {
       console.error('Application submission error:', error)
@@ -759,16 +800,68 @@ const AffiliatePartner: React.FC = () => {
 
           {/* Dashboard Content */}
           <div id="dashboard-content">
+            {/* Currency Selector */}
+            <div className="mb-6 flex items-center gap-3">
+              <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Currency:</p>
+              <div className="flex gap-2">
+                {[
+                  { code: 'INR', symbol: '₹', flag: '🇮🇳', name: 'Indian Rupee' },
+                  { code: 'USD', symbol: '$', flag: '🇺🇸', name: 'US Dollar' },
+                  { code: 'EUR', symbol: '€', flag: '🇪🇺', name: 'Euro' },
+                  { code: 'RUB', symbol: '₽', flag: '🇷🇺', name: 'Russian Ruble' }
+                ].map((currency) => (
+                  <button
+                    key={currency.code}
+                    onClick={() => setSelectedCurrency(currency.code as 'INR' | 'USD' | 'EUR' | 'RUB')}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all duration-300 flex items-center gap-2 text-sm font-light tracking-wide ${
+                      selectedCurrency === currency.code
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                    style={{
+                      color: selectedCurrency === currency.code ? 'rgb(75,151,201)' : '#666'
+                    }}
+                  >
+                    <span className="text-lg">{currency.flag}</span>
+                    <span>{currency.symbol}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8 sm:mb-12">
               <div className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-light tracking-wide mb-2" style={{ color: 'var(--arctic-blue-primary-dark)', letterSpacing: '0.05em' }}>Total Earnings</p>
-                    <p className="text-2xl sm:text-3xl font-light" style={{ color: '#1a1a1a' }}>₹{(affiliateData?.total_earnings || 0).toFixed(2)}</p>
+                    <p className="text-2xl sm:text-3xl font-light" style={{ color: '#1a1a1a' }}>
+                      {selectedCurrency === 'INR' && '₹'}
+                      {selectedCurrency === 'USD' && '$'}
+                      {selectedCurrency === 'EUR' && '€'}
+                      {selectedCurrency === 'RUB' && '₽'}
+                      {(() => {
+                        const earnings = affiliateData?.total_earnings || 0
+                        // Simple conversion rates (you can update these with real-time rates)
+                        const rates: Record<string, number> = {
+                          INR: 1,
+                          USD: 0.012,
+                          EUR: 0.011,
+                          RUB: 1.1
+                        }
+                        return (earnings * (rates[selectedCurrency] || 1)).toFixed(2)
+                      })()}
+                    </p>
                   </div>
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
-                    <IndianRupee className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+                    {selectedCurrency === 'INR' && <IndianRupee className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary-dark)' }} />}
+                    {selectedCurrency !== 'INR' && (
+                      <span className="text-2xl">
+                        {selectedCurrency === 'USD' && '🇺🇸'}
+                        {selectedCurrency === 'EUR' && '🇪🇺'}
+                        {selectedCurrency === 'RUB' && '🇷🇺'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -829,6 +922,57 @@ const AffiliatePartner: React.FC = () => {
               </div>
 
             </div>
+
+            {/* Membership ID / Affiliate ID Section */}
+            {affiliateData?.partner_id && (
+              <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm mb-8 sm:mb-12">
+                <h2 
+                  className="text-xl sm:text-2xl font-light mb-4 tracking-[0.15em]" 
+                  style={{
+                    color: '#1a1a1a',
+                    fontFamily: 'var(--font-heading-family)',
+                    letterSpacing: '0.15em'
+                  }}
+                >
+                  Membership ID
+                </h2>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <code className="text-lg sm:text-xl text-gray-900 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                      {affiliateData.partner_id}
+                    </code>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(affiliateData.partner_id || '')
+                          .then(() => {
+                            setCopySuccess(true)
+                            setTimeout(() => setCopySuccess(false), 2000)
+                          })
+                      }
+                    }}
+                    className="px-4 sm:px-6 py-3 rounded-xl transition-all duration-300 font-light tracking-wide uppercase flex items-center justify-center gap-2 text-xs sm:text-sm text-white"
+                    style={{ 
+                      backgroundColor: 'var(--arctic-blue-primary)',
+                      letterSpacing: '0.1em'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                  Your unique Affiliate Partner ID for tracking and support
+                </p>
+              </div>
+            )}
 
             {/* Referral Link Section */}
             <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm mb-8 sm:mb-12">
@@ -950,10 +1094,26 @@ const AffiliatePartner: React.FC = () => {
                           </div>
                           <div className="text-right flex-shrink-0 ml-4">
                             <p className="font-light text-green-600 text-base sm:text-lg tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                              ₹{typeof commissionAmount === 'number' ? commissionAmount.toFixed(2) : parseFloat(String(commissionAmount)).toFixed(2)}
+                              {selectedCurrency === 'INR' && '₹'}
+                              {selectedCurrency === 'USD' && '$'}
+                              {selectedCurrency === 'EUR' && '€'}
+                              {selectedCurrency === 'RUB' && '₽'}
+                              {(() => {
+                                const amount = typeof commissionAmount === 'number' ? commissionAmount : parseFloat(String(commissionAmount))
+                                const rates: Record<string, number> = { INR: 1, USD: 0.012, EUR: 0.011, RUB: 1.1 }
+                                return (amount * (rates[selectedCurrency] || 1)).toFixed(2)
+                              })()}
                             </p>
                             <p className="text-xs text-gray-500 font-light tracking-wide mt-1" style={{ letterSpacing: '0.05em' }}>
-                              Order: ₹{typeof orderTotal === 'number' ? orderTotal.toFixed(2) : parseFloat(String(orderTotal)).toFixed(2)}
+                              Order: {selectedCurrency === 'INR' && '₹'}
+                              {selectedCurrency === 'USD' && '$'}
+                              {selectedCurrency === 'EUR' && '€'}
+                              {selectedCurrency === 'RUB' && '₽'}
+                              {(() => {
+                                const total = typeof orderTotal === 'number' ? orderTotal : parseFloat(String(orderTotal))
+                                const rates: Record<string, number> = { INR: 1, USD: 0.012, EUR: 0.011, RUB: 1.1 }
+                                return (total * (rates[selectedCurrency] || 1)).toFixed(2)
+                              })()}
                             </p>
                             <p className="text-xs text-gray-600 font-light capitalize mt-1 tracking-wide" style={{ letterSpacing: '0.05em' }}>
                               {referral.status}
@@ -1076,8 +1236,9 @@ const AffiliatePartner: React.FC = () => {
                     placeholder="Search materials..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300 text-sm"
+                    className="w-full pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300 text-sm"
                     style={{ 
+                      paddingLeft: '3rem',
                       letterSpacing: '0.05em',
                     }}
                     onFocus={(e) => {
@@ -1694,21 +1855,29 @@ const AffiliatePartner: React.FC = () => {
               }`} style={{ letterSpacing: '0.05em' }}>
                 {applicationStatus === 'approved' 
                   ? (isAlreadyVerified 
-                      ? 'Your application has been approved and your account is verified! You can access your affiliate dashboard.'
+                      ? 'Approved and Verified'
                       : 'Your application has been approved! You can now verify your account with the code sent to your email.'
                     )
                   : applicationStatus === 'pending'
-                  ? 'Your application is being reviewed. You will receive an email with your verification code once approved. If you haven\'t received an email, please check your spam folder or contact support.'
+                  ? (verificationMessage || 'Your Application is pending for Approval')
                   : 'Your application was not approved. Please contact support for more information.'
                 }
               </p>
               
               {applicationStatus === 'pending' && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                  <p className="text-sm text-blue-700 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    <strong className="font-medium">Need help?</strong> If you're having trouble finding your verification code or have questions about your application, please contact our support team.
-                  </p>
-                </div>
+                <>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-yellow-700" />
+                    <span className="text-xs font-light tracking-wide text-yellow-700" style={{ letterSpacing: '0.05em' }}>
+                      Verification Pending
+                    </span>
+                  </div>
+                  <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                    <p className="text-sm text-blue-700 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                      <strong className="font-medium">Need help?</strong> If you're having trouble finding your verification code or have questions about your application, please contact our support team.
+                    </p>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -1716,142 +1885,18 @@ const AffiliatePartner: React.FC = () => {
 
         {/* Main Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
-          {/* Code Verification Option */}
-          <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
-                {isAlreadyVerified ? (
-                  <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 text-green-600" />
-                ) : (
-                  <Key className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
-                )}
-              </div>
-              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
-                {isAlreadyVerified ? 'Account Already Verified' : 'Verify Your Account'}
-              </h3>
-              <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                {isAlreadyVerified 
-                  ? 'Your account is already verified! Click below to access your affiliate dashboard.'
-                  : 'Enter your 20-digit verification code to access your affiliate dashboard'
-                }
-              </p>
-            </div>
-
-            {!showCodeForm ? (
-              <button
-                onClick={() => {
-                  if (isAlreadyVerified) {
-                    // If already verified, redirect to dashboard
-                    window.location.reload()
-                  } else {
-                    setShowCodeForm(true)
-                  }
-                }}
-                className={`w-full px-4 sm:px-6 py-3 sm:py-4 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm ${
-                  isAlreadyVerified 
-                    ? 'bg-green-500 hover:bg-green-600' 
-                    : ''
-                }`}
-                style={isAlreadyVerified ? {} : { 
-                  backgroundColor: 'var(--arctic-blue-primary)',
-                  letterSpacing: '0.1em'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isAlreadyVerified) {
-                    e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isAlreadyVerified) {
-                    e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
-                  }
-                }}
-              >
-                {isAlreadyVerified ? 'Already Verified - View Dashboard' : 'Enter Verification Code'}
-              </button>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Verification Code
-                  </label>
-                  <input
-                    type="text"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    placeholder="Enter your 20-digit code"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                    style={{ 
-                      letterSpacing: '0.05em',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#d1d5db'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
-                    maxLength={20}
-                  />
-                </div>
-                
-                {verificationMessage && (
-                  <div className={`p-4 rounded-xl text-sm font-light tracking-wide ${
-                    verificationMessage.includes('successful') 
-                      ? 'bg-green-50 text-green-700 border border-green-200'
-                      : 'bg-red-50 text-red-700 border border-red-200'
-                  }`} style={{ letterSpacing: '0.05em' }}>
-                    {verificationMessage}
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleCodeVerification}
-                    disabled={isVerifying || !verificationCode.trim()}
-                    className="flex-1 px-4 sm:px-6 py-3 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ 
-                      backgroundColor: 'var(--arctic-blue-primary)',
-                      letterSpacing: '0.1em'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!e.currentTarget.disabled) {
-                        e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!e.currentTarget.disabled) {
-                        e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
-                      }
-                    }}
-                  >
-                    {isVerifying ? 'Verifying...' : 'Verify Code'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowCodeForm(false)
-                      setVerificationCode('')
-                      setVerificationMessage('')
-                    }}
-                    className="px-4 sm:px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300 font-light tracking-wide text-xs sm:text-sm"
-                    style={{ letterSpacing: '0.05em' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Application Form Option */}
           <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
             <div className="text-center mb-6">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                 <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
               </div>
-              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>Apply for Partnership</h3>
-              <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Submit your application to become an affiliate partner</p>
+              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
+                Apply for Partnership
+              </h3>
+              <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                Submit your application to become an affiliate partner
+              </p>
             </div>
 
             {!showApplicationForm ? (
@@ -1896,9 +1941,9 @@ const AffiliatePartner: React.FC = () => {
                   <input
                     type="email"
                     value={applicationForm.email}
-                    onChange={(e) => setApplicationForm({...applicationForm, email: e.target.value})}
+                    readOnly
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-gray-100 text-gray-600 font-light tracking-wide transition-all duration-300 cursor-not-allowed"
                     style={{ 
                       letterSpacing: '0.05em',
                     }}
@@ -1911,78 +1956,388 @@ const AffiliatePartner: React.FC = () => {
                       e.currentTarget.style.boxShadow = 'none'
                     }}
                   />
+                  <p className="text-xs text-gray-500 mt-1 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                    Email cannot be changed
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
                     Phone Number *
                   </label>
-                  <input
-                    type="tel"
+                  <PhoneInput
                     value={applicationForm.phone}
-                    onChange={(e) => setApplicationForm({...applicationForm, phone: e.target.value})}
+                    onChange={(value) => setApplicationForm({...applicationForm, phone: value})}
+                    onCountryCodeChange={setCountryCode}
+                    defaultCountry={countryCode}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                    style={{ 
-                      letterSpacing: '0.05em',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#d1d5db'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
+                    className="w-full"
+                    inputClassName="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                      Instagram
-                    </label>
-                    <input
-                      type="text"
-                      value={applicationForm.instagram}
-                      onChange={(e) => setApplicationForm({...applicationForm, instagram: e.target.value})}
-                      placeholder="@username"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                      style={{ 
-                        letterSpacing: '0.05em',
-                      }}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = '#d1d5db'
-                        e.currentTarget.style.boxShadow = 'none'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                      YouTube
-                    </label>
-                    <input
-                      type="text"
-                      value={applicationForm.youtube}
-                      onChange={(e) => setApplicationForm({...applicationForm, youtube: e.target.value})}
-                      placeholder="Channel name"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                      style={{ 
-                        letterSpacing: '0.05em',
-                      }}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = '#d1d5db'
-                        e.currentTarget.style.boxShadow = 'none'
-                      }}
-                    />
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-3 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                    Social Media Profiles
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Instagram
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.instagram}
+                        onChange={(e) => setApplicationForm({...applicationForm, instagram: e.target.value})}
+                        placeholder="@username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        YouTube
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.youtube}
+                        onChange={(e) => setApplicationForm({...applicationForm, youtube: e.target.value})}
+                        placeholder="Channel name or URL"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Facebook
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.facebook}
+                        onChange={(e) => setApplicationForm({...applicationForm, facebook: e.target.value})}
+                        placeholder="Profile name or URL"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Twitter/X
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.twitter}
+                        onChange={(e) => setApplicationForm({...applicationForm, twitter: e.target.value})}
+                        placeholder="@username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        VK
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.vk}
+                        onChange={(e) => setApplicationForm({...applicationForm, vk: e.target.value})}
+                        placeholder="Profile URL or username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        TikTok
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.tiktok}
+                        onChange={(e) => setApplicationForm({...applicationForm, tiktok: e.target.value})}
+                        placeholder="@username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        LinkedIn
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.linkedin}
+                        onChange={(e) => setApplicationForm({...applicationForm, linkedin: e.target.value})}
+                        placeholder="Profile URL or name"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        WhatsApp
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.whatsapp}
+                        onChange={(e) => setApplicationForm({...applicationForm, whatsapp: e.target.value})}
+                        placeholder="Phone number or business link"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        ShareChat
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.sharechat}
+                        onChange={(e) => setApplicationForm({...applicationForm, sharechat: e.target.value})}
+                        placeholder="Username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Moj
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.moj}
+                        onChange={(e) => setApplicationForm({...applicationForm, moj: e.target.value})}
+                        placeholder="Username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Snapchat
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.snapchat}
+                        onChange={(e) => setApplicationForm({...applicationForm, snapchat: e.target.value})}
+                        placeholder="@username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Threads
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.threads}
+                        onChange={(e) => setApplicationForm({...applicationForm, threads: e.target.value})}
+                        placeholder="@username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Josh
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.josh}
+                        onChange={(e) => setApplicationForm({...applicationForm, josh: e.target.value})}
+                        placeholder="Username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        MX TakaTak
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.mxtakatak}
+                        onChange={(e) => setApplicationForm({...applicationForm, mxtakatak: e.target.value})}
+                        placeholder="Username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Chingari
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.chingari}
+                        onChange={(e) => setApplicationForm({...applicationForm, chingari: e.target.value})}
+                        placeholder="Username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Koo
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.koo}
+                        onChange={(e) => setApplicationForm({...applicationForm, koo: e.target.value})}
+                        placeholder="@username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Roposo
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.roposo}
+                        onChange={(e) => setApplicationForm({...applicationForm, roposo: e.target.value})}
+                        placeholder="Username"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -2007,11 +2362,13 @@ const AffiliatePartner: React.FC = () => {
                     }}
                   >
                     <option value="">Select follower count</option>
-                    <option value="1000-5000">1,000 - 5,000</option>
-                    <option value="5000-10000">5,000 - 10,000</option>
-                    <option value="10000-50000">10,000 - 50,000</option>
-                    <option value="50000-100000">50,000 - 100,000</option>
-                    <option value="100000+">100,000+</option>
+                    <option value="0-1k">0 - 1,000</option>
+                    <option value="1k-10k">1,000 - 10,000</option>
+                    <option value="10k-50k">10,000 - 50,000</option>
+                    <option value="50k-100k">50,000 - 100,000</option>
+                    <option value="100k-500k">100,000 - 500,000</option>
+                    <option value="500k-1m">500,000 - 1,000,000</option>
+                    <option value="1m+">1,000,000+</option>
                   </select>
                 </div>
 
@@ -2022,9 +2379,9 @@ const AffiliatePartner: React.FC = () => {
                   <textarea
                     value={applicationForm.whyJoin}
                     onChange={(e) => setApplicationForm({...applicationForm, whyJoin: e.target.value})}
-                    rows={3}
                     placeholder="Tell us why you want to become an affiliate partner..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300 resize-none"
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
                     style={{ 
                       letterSpacing: '0.05em',
                     }}
@@ -2039,19 +2396,16 @@ const AffiliatePartner: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex items-center">
+                <div className="flex items-start">
                   <input
                     type="checkbox"
-                    id="agreeTerms"
                     checked={applicationForm.agreeTerms}
                     onChange={(e) => setApplicationForm({...applicationForm, agreeTerms: e.target.checked})}
                     required
-                    className="h-4 w-4 rounded border-gray-300 focus:ring-2 focus:ring-opacity-50"
-                    style={{ 
-                      accentColor: 'var(--arctic-blue-primary)',
-                    }}
+                    className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    style={{ accentColor: '#4b97c9' }}
                   />
-                  <label htmlFor="agreeTerms" className="ml-2 block text-sm text-gray-700 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                  <label className="text-sm font-light text-gray-700 tracking-wide cursor-pointer" style={{ letterSpacing: '0.05em' }}>
                     I agree to the terms and conditions *
                   </label>
                 </div>
@@ -2059,14 +2413,121 @@ const AffiliatePartner: React.FC = () => {
                 <div className="flex gap-3">
                   <button
                     type="submit"
-                    className="flex-1 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm"
-                    style={{ letterSpacing: '0.1em' }}
+                    disabled={!applicationForm.agreeTerms}
+                    className="flex-1 px-4 sm:px-6 py-3 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ 
+                      backgroundColor: 'var(--arctic-blue-primary)',
+                      letterSpacing: '0.1em'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                      }
+                    }}
                   >
                     Submit Application
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowApplicationForm(false)}
+                    className="px-4 sm:px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300 font-light tracking-wide text-xs sm:text-sm"
+                    style={{ letterSpacing: '0.05em' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* Code Verification Option */}
+          <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+                <Key className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>Verification Code</h3>
+              <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Enter your 20-character verification code</p>
+            </div>
+
+            {!showCodeForm ? (
+              <button
+                onClick={() => {
+                  if (isAlreadyVerified) {
+                    // If already verified, redirect to dashboard
+                    window.location.reload()
+                  } else {
+                    setShowCodeForm(true)
+                  }
+                }}
+                className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ letterSpacing: '0.1em' }}
+              >
+                Enter Verification Code
+              </button>
+            ) : (
+              <form onSubmit={(e) => { e.preventDefault(); handleCodeVerification(); }} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                    Verification Code (20 characters) *
+                  </label>
+                  <input
+                    type="text"
+                    value={verificationCode}
+                    onChange={(e) => {
+                      // Allow only alphanumeric characters and limit to 20 characters
+                      const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20)
+                      setVerificationCode(value)
+                    }}
+                    placeholder="Enter 20-character verification code"
+                    maxLength={20}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300 text-center text-lg"
+                    style={{ 
+                      letterSpacing: '0.2em',
+                      fontFamily: 'monospace'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#d1d5db'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 mt-2 font-light tracking-wide text-center" style={{ letterSpacing: '0.05em' }}>
+                    Enter the 20-digit code you received via email
+                  </p>
+                </div>
+
+                {verificationMessage && (
+                  <div className={`p-3 rounded-lg text-sm font-light tracking-wide ${verificationMessage.includes('Approved') || verificationMessage.includes('Verified') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`} style={{ letterSpacing: '0.05em' }}>
+                    {verificationMessage}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={isVerifying || !verificationCode.trim() || verificationCode.length !== 20}
+                    className="flex-1 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ letterSpacing: '0.1em' }}
+                  >
+                    {isVerifying ? 'Verifying...' : 'Verify Code'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCodeForm(false)
+                      setVerificationCode('')
+                      setVerificationMessage('')
+                    }}
                     className="px-4 sm:px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300 font-light tracking-wide text-xs sm:text-sm"
                     style={{ letterSpacing: '0.05em' }}
                   >
@@ -2092,21 +2553,21 @@ const AffiliatePartner: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             <div className="text-center">
               <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
-                <IndianRupee className="h-6 w-6 sm:h-8 sm:w-8" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+                <IndianRupee className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" style={{ color: 'var(--arctic-blue-primary-dark)' }} aria-hidden="true" />
               </div>
               <h4 className="font-light text-gray-900 mb-3 text-base sm:text-lg tracking-wide" style={{ letterSpacing: '0.1em' }}>High Commissions</h4>
               <p className="text-sm text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Earn up to 30% commission on every sale you refer</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
-                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" style={{ color: 'var(--arctic-blue-primary-dark)' }} aria-hidden="true" />
               </div>
               <h4 className="font-light text-gray-900 mb-3 text-base sm:text-lg tracking-wide" style={{ letterSpacing: '0.1em' }}>Real-time Tracking</h4>
               <p className="text-sm text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Track your referrals and earnings in real-time</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
-                <Award className="h-6 w-6 sm:h-8 sm:w-8" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+                <Award className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0" style={{ color: 'var(--arctic-blue-primary-dark)' }} aria-hidden="true" />
               </div>
               <h4 className="font-light text-gray-900 mb-3 text-base sm:text-lg tracking-wide" style={{ letterSpacing: '0.1em' }}>Marketing Support</h4>
               <p className="text-sm text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Get access to marketing materials and support</p>

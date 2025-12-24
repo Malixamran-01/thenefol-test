@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle, Package, Truck, Clock, FileText, MapPin, CreditCard, Calendar, RefreshCw } from 'lucide-react'
+import { CheckCircle, Package, Truck, Clock, FileText, MapPin, CreditCard, Calendar, RefreshCw, X } from 'lucide-react'
 import { api } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
 
@@ -32,6 +32,9 @@ interface OrderDetails {
   payment_type: string
   created_at: string
   estimated_delivery: string
+  discount_amount?: number
+  discount_code?: string
+  coins_used?: number
 }
 
 interface TrackingData {
@@ -423,8 +426,84 @@ export default function Confirmation() {
 
         {/* Main Content Grid - Amazon Style */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Right Column - Order Summary - Show first on mobile */}
+          <div className="lg:col-span-1 order-2 lg:order-2">
+            <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 lg:sticky lg:top-4">
+              <h2 className="text-lg font-medium dark:text-slate-100 mb-4 pb-3 border-b border-gray-200 dark:border-slate-700">
+                Order Summary
+              </h2>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-900 font-medium">Items:</span>
+                  <span className="font-medium text-gray-900">₹{Number(orderDetails.subtotal || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-900 font-medium">Shipping:</span>
+                  <span className="font-medium text-gray-900">₹{Number(orderDetails.shipping || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-900 font-medium">GST:</span>
+                  <span className="font-medium text-gray-900">₹{Number(orderDetails.tax || 0).toFixed(2)}</span>
+                </div>
+                <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+                  <div className="flex justify-between">
+                    <span className="text-base font-medium text-gray-900">Grand Total:</span>
+                    <span className="text-base font-medium text-gray-900">₹{(() => {
+                      // Grand Total = Subtotal + Shipping (GST already included in subtotal)
+                      const grandTotal = Number(orderDetails.subtotal || 0) + Number(orderDetails.shipping || 0)
+                      return grandTotal.toFixed(2)
+                    })()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 space-y-3">
+                <a 
+                  href="#/user/shop" 
+                  className="block w-full text-center rounded-md bg-yellow-400 hover:bg-yellow-500 px-4 py-2 text-sm font-medium text-gray-900 transition-colors"
+                >
+                  Continue Shopping
+                </a>
+                <button 
+                  onClick={() => {
+                    const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
+                    const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
+                    const apiBase = getApiBase()
+                    window.open(`${apiBase}/api/invoices/${orderDetails.order_number}/download`, '_blank')
+                  }}
+                  className="w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Print Invoice
+                </button>
+                {/* Cancel Order Button - Only show if order can be cancelled */}
+                {orderDetails.status?.toLowerCase() !== 'cancelled' && 
+                 orderDetails.status?.toLowerCase() !== 'delivered' && 
+                 orderDetails.status?.toLowerCase() !== 'completed' && 
+                 orderDetails.status?.toLowerCase() !== 'shipped' && (
+                  <button 
+                    onClick={() => window.location.hash = `#/user/cancel-order/${orderDetails.order_number}`}
+                    className="w-full rounded-md border border-red-300 dark:border-red-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancel Order
+                  </button>
+                )}
+              </div>
+
+              {/* Status Info */}
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+                <div className="flex items-center gap-2 mb-3">
+                  {getStatusIcon(orderDetails.status)}
+                  <span className="text-sm font-medium dark:text-slate-100">{getStatusText(orderDetails.status)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Left Column - Order Items */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-4 order-1 lg:order-1">
             {/* Order Items Section */}
             <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6">
               <h2 className="text-lg font-medium dark:text-slate-100 mb-4 pb-3 border-b border-gray-200 dark:border-slate-700">
@@ -595,65 +674,6 @@ export default function Confirmation() {
                       })}
                     </p>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 sticky top-4">
-              <h2 className="text-lg font-medium dark:text-slate-100 mb-4 pb-3 border-b border-gray-200 dark:border-slate-700">
-                Order Summary
-              </h2>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">Items:</span>
-                  <span className="dark:text-slate-100">₹{Number(orderDetails.subtotal || 0).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">Shipping:</span>
-                  <span className="dark:text-slate-100">₹{Number(orderDetails.shipping || 0).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600 dark:text-slate-400">GST:</span>
-                  <span className="dark:text-slate-100">₹{Number(orderDetails.tax || 0).toFixed(2)}</span>
-                </div>
-                <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
-                  <div className="flex justify-between">
-                    <span className="text-base font-medium dark:text-slate-100">Order Total:</span>
-                    <span className="text-base font-medium dark:text-slate-100">₹{Number(orderDetails.total || 0).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-6 space-y-3">
-                <a 
-                  href="#/user/shop" 
-                  className="block w-full text-center rounded-md bg-yellow-400 hover:bg-yellow-500 px-4 py-2 text-sm font-medium text-gray-900 transition-colors"
-                >
-                  Continue Shopping
-                </a>
-                <button 
-                  onClick={() => {
-                    const apiHost = (import.meta as any).env?.VITE_BACKEND_HOST || (import.meta as any).env?.VITE_API_HOST || window.location.hostname
-                    const apiPort = (import.meta as any).env?.VITE_BACKEND_PORT || (import.meta as any).env?.VITE_API_PORT || '4000'
-                    const apiBase = getApiBase()
-                    window.open(`${apiBase}/api/invoices/${orderDetails.order_number}/download`, '_blank')
-                  }}
-                  className="w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
-                >
-                  <FileText className="h-4 w-4" />
-                  Print Invoice
-                </button>
-              </div>
-
-              {/* Status Info */}
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
-                <div className="flex items-center gap-2 mb-3">
-                  {getStatusIcon(orderDetails.status)}
-                  <span className="text-sm font-medium dark:text-slate-100">{getStatusText(orderDetails.status)}</span>
                 </div>
               </div>
             </div>

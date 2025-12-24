@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
+import PageAccessGuard from './components/PageAccessGuard'
 import Can from './components/Can'
 import Layout from './layouts/Layout'
 import { AuthProvider } from './contexts/AuthContext'
@@ -11,13 +12,13 @@ import {
   Analytics, Marketing, MetaAds, WhatsAppSubscriptions, Discounts, FacebookInstagram, OnlineStore, GoogleYouTube, Forms,
   Invoice, InvoiceSettings, Tax, Returns, Payment, UserProfiles, UserNotifications, LoyaltyProgramManagement,
   StaticPagesManagement, CommunityManagement, CartCheckoutManagement, AffiliateManagement, AffiliateRequests,
-  Staff, RolesPermissions, AuditLogs, AlertSettings, HomepageLayoutManager, ProductCollections, AccountSecurity
+  Staff, RolesPermissions, AuditLogs, AlertSettings, HomepageLayoutManager, ProductCollections, AccountSecurity,
+  AdminManagement
 } from './pages'
 import UserDetail from './pages/users/UserDetail'
 import Shipments from './pages/sales/Shipments'
 import OrderDetails from './pages/sales/OrderDetails'
 import LoginPage from './pages/Login'
-import CMS from './pages/CMS'
 import CMSManagement from './pages/cms/CMSManagement'
 import BlogRequestManagement from './pages/blog/BlogRequestManagement'
 
@@ -32,16 +33,11 @@ import LiveChat from './components/LiveChat'
 import AdvancedAnalytics from './components/AdvancedAnalytics'
 import FormBuilder from './components/FormBuilder'
 import FormSubmissions from './pages/FormSubmissions'
-import WorkflowAutomation from './components/WorkflowAutomation'
 import CustomerSegmentation from './components/CustomerSegmentation'
 import CustomerJourneyTracking from './components/CustomerJourneyTracking'
 import ActionableAnalytics from './components/ActionableAnalytics'
-import AIBox from './components/AIBox'
 import JourneyFunnel from './components/JourneyFunnel'
-import AIPersonalization from './components/AIPersonalization'
 import CustomAudience from './components/CustomAudience'
-import OmniChannel from './components/OmniChannel'
-import APICodeManager from './components/APICodeManager'
 import PaymentOptions from './components/PaymentOptions'
 import VideoManager from './components/VideoManager'
 import ContactMessages from './pages/ContactMessages'
@@ -179,7 +175,7 @@ export default function App() {
         
         {/* Protected Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
+          <Route element={<PageAccessGuard><Layout /></PageAccessGuard>}>
             {/* Default redirect */}
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             
@@ -244,8 +240,6 @@ export default function App() {
             <Route path="customer-segmentation" element={<CustomerSegmentation />} />
             
             {/* ========== AI & PERSONALIZATION ========== */}
-            <Route path="ai-box" element={<AIBox />} />
-            <Route path="ai-personalization" element={<AIPersonalization />} />
             <Route path="custom-audience" element={<CustomAudience />} />
             
             {/* ========== CONTENT MANAGEMENT ========== */}
@@ -261,11 +255,8 @@ export default function App() {
             <Route path="forms" element={<Forms />} />
             <Route path="form-builder" element={<FormBuilder />} />
             <Route path="form-submissions" element={<FormSubmissions />} />
-            <Route path="workflow-automation" element={<WorkflowAutomation />} />
             
             {/* ========== INTEGRATIONS & CHANNELS ========== */}
-            <Route path="omni-channel" element={<OmniChannel />} />
-            <Route path="api-manager" element={<APICodeManager />} />
             <Route path="marketplaces" element={<Can role="admin"><MarketplaceIntegrations /></Can>} />
             <Route path="facebook" element={<FacebookInstagram />} />
             <Route path="fb-shop" element={<FBShopIntegration />} />
@@ -279,6 +270,7 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="system/alerts" element={<Can role="admin"><AlertSettings /></Can>} />
             <Route path="system/staff" element={<Can role="admin"><Staff /></Can>} />
+            <Route path="system/admin-management" element={<Can role="admin"><AdminManagement /></Can>} />
             <Route path="system/roles" element={<Can role="admin"><RolesPermissions /></Can>} />
             <Route path="system/audit-logs" element={<Can role="admin"><AuditLogs /></Can>} />
             <Route path="account-security" element={<AccountSecurity />} />

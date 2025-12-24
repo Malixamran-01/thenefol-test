@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { Package, Clock, CheckCircle, XCircle, Truck, Eye, Search, ShoppingCart, Star, RotateCcw, Download, ChevronDown } from 'lucide-react'
+import { Package, Clock, CheckCircle, XCircle, Truck, Eye, Search, ShoppingCart, Star, RotateCcw, Download, ChevronDown, ArrowLeft } from 'lucide-react'
 import { api } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { useCart } from '../contexts/CartContext'
 
 interface OrderItem {
   id: number
@@ -31,12 +32,26 @@ interface Order {
 
 export default function UserOrders() {
   const { isAuthenticated } = useAuth()
+  const cartContext = useCart()
   const [orders, setOrders] = useState<Order[]>([])
+  const [archivedOrders, setArchivedOrders] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'buy-again' | 'not-shipped' | 'cancelled' | 'pending-payment'>('all')
   const [timeFilter, setTimeFilter] = useState<string>('3months')
   const [showTimeFilter, setShowTimeFilter] = useState(false)
+  
+  // Load archived orders from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('archived_orders')
+    if (saved) {
+      try {
+        setArchivedOrders(new Set(JSON.parse(saved)))
+      } catch (e) {
+        console.error('Failed to load archived orders:', e)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -108,19 +123,19 @@ export default function UserOrders() {
     switch (status.toLowerCase()) {
       case 'completed':
       case 'delivered':
-        return 'text-green-700 dark:text-green-400'
+        return 'text-green-800'
       case 'shipped':
-        return 'text-blue-700 dark:text-blue-400'
+        return 'text-black'
       case 'processing':
       case 'pending':
-        return 'text-yellow-700 dark:text-yellow-400'
+        return 'text-yellow-800'
       case 'pending_payment':
       case 'pending-payment':
-        return 'text-orange-700 dark:text-orange-400'
+        return 'text-black'
       case 'cancelled':
-        return 'text-red-700 dark:text-red-400'
+        return 'text-red-800'
       default:
-        return 'text-gray-700 dark:text-gray-400'
+        return 'text-gray-800'
     }
   }
 
@@ -148,6 +163,9 @@ export default function UserOrders() {
   }
 
   const filteredOrders = orders.filter((order) => {
+    // Exclude archived orders
+    if (archivedOrders.has(order.id)) return false
+    
     // Time filter (only apply if not 'all')
     if (timeFilter !== 'all') {
       const filterDate = getTimeFilterDate(timeFilter)
@@ -174,6 +192,11 @@ export default function UserOrders() {
       return order.status.toLowerCase() === 'pending_payment' || order.status.toLowerCase() === 'pending-payment'
     }
     
+    // For 'all' tab, exclude cancelled orders
+    if (activeTab === 'all') {
+      if (order.status.toLowerCase() === 'cancelled') return false
+    }
+    
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -185,13 +208,99 @@ export default function UserOrders() {
     
     return true
   })
+  
+  const handleArchiveOrder = (orderId: string) => {
+    const newArchived = new Set(archivedOrders)
+    newArchived.add(orderId)
+    setArchivedOrders(newArchived)
+    localStorage.setItem('archived_orders', JSON.stringify(Array.from(newArchived)))
+  }
+  
+  const handleOrderAgain = async (order: Order) => {
+    if (!cartContext?.addItem) {
+      alert('Cart service unavailable. Please try again.')
+      return
+    }
+    
+    let successCount = 0
+    let failCount = 0
+    
+    try {
+      for (const item of order.items) {
+        try {
+          let product: any = null
+          
+          // Try to get product details by slug first
+          if (item.slug) {
+            try {
+              product = await api.products.getBySlug(item.slug)
+            } catch (err) {
+              console.log(`Could not fetch product by slug ${item.slug}, trying by ID`)
+            }
+          }
+          
+          // If slug fetch failed, try by ID
+          if (!product && item.id) {
+            try {
+              product = await api.products.getById(item.id)
+            } catch (err) {
+              console.log(`Could not fetch product by ID ${item.id}`)
+            }
+          }
+          
+          // Use product data if available, otherwise use item data
+          const productData = product ? {
+            id: product.id,
+            slug: product.slug || item.slug || '',
+            title: product.title || item.name || item.title || 'Product',
+            price: product.price || product.details?.websitePrice || product.details?.mrp || item.price || '0',
+            listImage: product.list_image || product.listImage || item.list_image || item.image || item.product_image || '',
+            pdpImages: product.pdp_images || [],
+            description: product.description || ''
+          } : {
+            id: item.id,
+            slug: item.slug || '',
+            title: item.name || item.title || 'Product',
+            price: item.price || '0',
+            listImage: item.list_image || item.image || item.product_image || '',
+            pdpImages: [],
+            description: ''
+          }
+          
+          if (productData.id) {
+            await cartContext.addItem(productData, item.quantity || 1)
+            successCount++
+          } else {
+            failCount++
+          }
+        } catch (err) {
+          console.error(`Failed to add item to cart:`, err)
+          failCount++
+        }
+      }
+      
+      if (successCount > 0) {
+        if (failCount > 0) {
+          alert(`${successCount} item(s) added to cart. ${failCount} item(s) could not be added.`)
+        } else {
+          alert('Items added to cart successfully!')
+        }
+        window.location.hash = '#/user/cart'
+      } else {
+        alert('Failed to add items to cart. Please try again.')
+      }
+    } catch (error) {
+      console.error('Failed to add items to cart:', error)
+      alert('Failed to add items to cart. Please try again.')
+    }
+  }
 
   if (loading) {
     return (
-      <main className="py-10 dark:bg-slate-900 min-h-screen">
-        <div className="mx-auto max-w-4xl px-4">
+      <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <p className="text-slate-600 dark:text-slate-400">Loading your orders...</p>
+            <p className="font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Loading your orders...</p>
           </div>
         </div>
       </main>
@@ -206,11 +315,30 @@ export default function UserOrders() {
   ]
 
   return (
-    <main className="bg-gray-50 dark:bg-slate-900 min-h-screen py-6">
-      <div className="mx-auto max-w-6xl px-4">
-        {/* Header */}
+    <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+          <button
+            onClick={() => window.location.hash = '#/user/profile'}
+            className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back to Profile</span>
+          </button>
+        </div>
+        
+        {/* Header */}
+        <div className="mb-8 sm:mb-12">
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl font-light mb-2 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Your Orders
           </h1>
         </div>
@@ -224,70 +352,80 @@ export default function UserOrders() {
               placeholder="Search all orders"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              className="w-full pr-4 py-2 border border-slate-200 rounded-md bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-light"
+              style={{ letterSpacing: '0.02em', paddingLeft: '3rem' }}
             />
           </div>
         </div>
 
         {/* Tabs and Filters */}
-        <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 mb-4">
-          <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-1 flex-wrap">
+        <div className="bg-white rounded-md shadow-sm border border-slate-100 mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b border-slate-100 gap-4">
+            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide w-full sm:w-auto">
               <button
                 onClick={() => setActiveTab('all')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-light rounded-md transition-colors whitespace-nowrap tracking-wide ${
                   activeTab === 'all'
-                    ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-b-2 border-orange-500'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                style={{ letterSpacing: '0.05em' }}
               >
                 Orders
               </button>
               <button
                 onClick={() => setActiveTab('buy-again')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-light rounded-md transition-colors whitespace-nowrap tracking-wide ${
                   activeTab === 'buy-again'
-                    ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-b-2 border-orange-500'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                style={{ letterSpacing: '0.05em' }}
               >
                 Buy Again
               </button>
               <button
                 onClick={() => setActiveTab('not-shipped')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-light rounded-md transition-colors whitespace-nowrap tracking-wide ${
                   activeTab === 'not-shipped'
-                    ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-b-2 border-orange-500'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                style={{ letterSpacing: '0.05em' }}
               >
                 Not Yet Shipped
               </button>
               <button
                 onClick={() => setActiveTab('cancelled')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-light rounded-md transition-colors whitespace-nowrap tracking-wide ${
                   activeTab === 'cancelled'
-                    ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-b-2 border-orange-500'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                style={{ letterSpacing: '0.05em' }}
               >
                 Cancelled Orders
               </button>
               <button
                 onClick={() => setActiveTab('pending-payment')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-light rounded-md transition-colors whitespace-nowrap tracking-wide ${
                   activeTab === 'pending-payment'
-                    ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-b-2 border-orange-500'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
+                style={{ letterSpacing: '0.05em' }}
               >
                 Pending Payment
               </button>
             </div>
-            <div className="relative">
+            <div className="relative flex items-center">
+              <span className="text-sm font-light tracking-wide mr-2 whitespace-nowrap" style={{ color: '#666', letterSpacing: '0.05em' }}>Period of orders:</span>
               <button
                 onClick={() => setShowTimeFilter(!showTimeFilter)}
-                className="flex items-center gap-1 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border border-slate-300 dark:border-slate-600 rounded-md hover:border-orange-500 dark:hover:border-orange-500"
+                className="flex items-center gap-1 px-3 py-2 text-sm font-light tracking-wide border border-slate-200 rounded-md transition-colors hover:border-blue-500"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#1a1a1a'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
               >
                 <span>{timeFilterOptions.find(opt => opt.value === timeFilter)?.label || 'past 3 months'}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${showTimeFilter ? 'rotate-180' : ''}`} />
@@ -298,7 +436,7 @@ export default function UserOrders() {
                     className="fixed inset-0 z-0" 
                     onClick={() => setShowTimeFilter(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 z-20">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-slate-100 z-20">
                     {timeFilterOptions.map((option) => (
                       <button
                         key={option.value}
@@ -306,9 +444,10 @@ export default function UserOrders() {
                           setTimeFilter(option.value)
                           setShowTimeFilter(false)
                         }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 first:rounded-t-md last:rounded-b-md ${
-                          timeFilter === option.value ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400' : 'text-slate-700 dark:text-slate-300'
+                        className={`w-full text-left px-4 py-2 text-sm font-light tracking-wide hover:bg-slate-50 first:rounded-t-md last:rounded-b-md transition-colors ${
+                          timeFilter === option.value ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
                         }`}
+                        style={{ letterSpacing: '0.05em' }}
                       >
                         {option.label}
                       </button>
@@ -322,10 +461,17 @@ export default function UserOrders() {
 
         {/* Orders List */}
         {filteredOrders.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 p-8">
+          <div className="bg-white rounded-md shadow-sm border border-slate-100 p-8">
             <div className="text-center">
-              <Package className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+              <Package className="w-16 h-16 mx-auto mb-4" style={{ color: '#ccc' }} />
+              <h3 
+                className="text-lg sm:text-xl font-light mb-2 tracking-[0.1em]"
+                style={{
+                  color: '#1a1a1a',
+                  fontFamily: 'var(--font-heading-family)',
+                  letterSpacing: '0.1em'
+                }}
+              >
                 {orders.length === 0 ? (
                   <>
                     0 orders placed in {timeFilterOptions.find(opt => opt.value === timeFilter)?.label || 'past 3 months'}
@@ -340,14 +486,18 @@ export default function UserOrders() {
                   </>
                 )}
               </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              <p 
+                className="text-sm font-light tracking-wide mb-4"
+                style={{ color: '#666', letterSpacing: '0.05em' }}
+              >
                 {orders.length === 0 ? (
                   <>
                     Looks like you haven't placed an order in the last 3 months. 
                     {timeFilter !== 'year' && (
                       <button 
                         onClick={() => setTimeFilter('year')}
-                        className="text-orange-600 dark:text-orange-400 hover:underline ml-1"
+                        className="hover:underline ml-1 font-light"
+                        style={{ color: 'rgb(75,151,201)' }}
                       >
                         View orders in 2025
                       </button>
@@ -361,17 +511,26 @@ export default function UserOrders() {
                 <div className="mt-6">
                   <a 
                     href="#/user/shop" 
-                    className="inline-block bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-md font-medium transition-colors"
+                    className="inline-block text-white px-6 py-2 rounded-md font-light tracking-[0.15em] uppercase transition-colors text-xs"
+                    style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                   >
                     Start Shopping
                   </a>
                 </div>
               )}
-              <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+              <div className="mt-8 pt-6 border-t border-slate-100">
+                <p 
+                  className="text-sm font-light tracking-wide"
+                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                >
                   › View or edit your browsing history
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                <p 
+                  className="text-xs font-light mt-1"
+                  style={{ color: '#999', letterSpacing: '0.02em' }}
+                >
                   After viewing product detail pages, look here to find an easy way to navigate back to pages you are interested in.
                 </p>
               </div>
@@ -380,20 +539,20 @@ export default function UserOrders() {
         ) : (
           <div className="space-y-4">
             {filteredOrders.map((order) => (
-              <div key={order.id} className="bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700">
+              <div key={order.id} className="bg-white rounded-md shadow-sm border border-slate-100">
                 {/* Order Header */}
-                <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+                <div className="p-4 border-b border-slate-100">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-2">
-                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                        <div className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
                           Order placed <span className="font-medium">{order.date}</span>
                         </div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                        <div className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
                           Order #{order.order_number}
                         </div>
                         {order.tracking_number && (
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                          <div className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
                             Tracking: <span className="font-medium">{order.tracking_number}</span>
                           </div>
                         )}
@@ -406,22 +565,16 @@ export default function UserOrders() {
                         {(order.status === 'pending_payment' || order.status === 'pending-payment') && 'Pending Payment'}
                         {order.status === 'cancelled' && 'Cancelled'}
                         {order.estimated_delivery && order.status === 'shipped' && (
-                          <span className="text-slate-600 dark:text-slate-400 ml-2">
+                          <span className="text-slate-600 ml-2">
                             Expected delivery: {new Date(order.estimated_delivery).toLocaleDateString()}
                           </span>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                        ₹{order.total.toLocaleString('en-IN')}
+                      <div className="text-lg font-light" style={{ color: '#1a1a1a' }}>
+                        ₹{order.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
-                      <button
-                        onClick={() => window.location.hash = `#/user/order/${order.order_number}`}
-                        className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline mt-1"
-                      >
-                        Order Details
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -442,13 +595,13 @@ export default function UserOrders() {
                     
                     const productName = item.name || item.title || 'Product'
                     const productSlug = item.slug || ''
-                    const productUrl = productSlug ? `#/product/${productSlug}` : `#/user/order/${order.order_number}`
+                    const productUrl = productSlug ? `#/user/product/${productSlug}` : `#/user/order/${order.order_number}`
                     
                     return (
-                    <div key={index} className="flex gap-4 mb-4 last:mb-0 pb-4 border-b border-slate-200 dark:border-slate-700 last:border-0">
+                    <div key={index} className="flex gap-4 mb-4 last:mb-0 pb-4 border-b border-slate-100 last:border-0">
                       <a 
                         href={productUrl}
-                        className="w-24 h-24 bg-slate-100 dark:bg-slate-700 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden hover:opacity-90 transition-opacity cursor-pointer"
+                        className="w-24 h-24 bg-slate-100 slate-700 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden hover:opacity-90 transition-opacity cursor-pointer"
                       >
                         {fullImageUrl ? (
                           <img 
@@ -469,28 +622,44 @@ export default function UserOrders() {
                           href={productUrl}
                           className="block"
                         >
-                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors cursor-pointer">
+                          <h4 className="text-sm font-medium text-slate-900 mb-1 hover:text-orange-600 text-orange-400 transition-colors cursor-pointer">
                             {productName}
                           </h4>
                         </a>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                        <p className="text-xs text-slate-600 mb-2">
                           Quantity: {item.quantity || 1}
                         </p>
                         <div className="flex items-center gap-4 flex-wrap">
                           {order.status === 'delivered' && (
                             <>
-                              <button className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline flex items-center gap-1">
+                              <button 
+                                className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
+                                style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                              >
                                 <Star className="w-4 h-4" />
                                 Write a product review
                               </button>
-                              <button className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline flex items-center gap-1">
+                              <button 
+                                onClick={() => handleOrderAgain(order)}
+                                className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
+                                style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                              >
                                 <ShoppingCart className="w-4 h-4" />
                                 Buy it again
                               </button>
                             </>
                           )}
                           {order.status === 'shipped' && (
-                            <button className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline flex items-center gap-1">
+                            <button 
+                              className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
+                              style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                            >
                               <Truck className="w-4 h-4" />
                               Track package
                             </button>
@@ -498,19 +667,22 @@ export default function UserOrders() {
                           {(order.status === 'pending_payment' || order.status === 'pending-payment') && (
                             <button 
                               onClick={() => window.location.hash = `#/user/checkout?order=${order.order_number}`}
-                              className="text-sm bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                              className="text-sm text-white px-4 py-2 rounded-md font-light tracking-[0.15em] uppercase transition-colors"
+                              style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                             >
                               Pay Now
                             </button>
                           )}
-                          {order.status !== 'delivered' && order.status !== 'shipped' && order.status !== 'cancelled' && 
-                           order.status !== 'pending_payment' && order.status !== 'pending-payment' && (
-                            <button className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline">
-                              View order details
-                            </button>
-                          )}
                           {order.status === 'cancelled' && (
-                            <button className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline flex items-center gap-1">
+                            <button 
+                              onClick={() => handleOrderAgain(order)}
+                              className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
+                              style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                            >
                               <RotateCcw className="w-4 h-4" />
                               Order again
                             </button>
@@ -518,8 +690,8 @@ export default function UserOrders() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                          ₹{parseFloat(item.price || 0).toLocaleString('en-IN')}
+                        <div className="text-sm font-light" style={{ color: '#1a1a1a' }}>
+                          ₹{parseFloat(item.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
@@ -528,19 +700,35 @@ export default function UserOrders() {
                 </div>
 
                 {/* Order Actions */}
-                <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700">
+                <div className="px-4 py-3 bg-slate-50 border-t border-slate-100">
                   <div className="flex items-center gap-4 flex-wrap">
                     {order.status === 'shipped' && (
-                      <button className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline">
+                      <button 
+                        className="text-sm font-light tracking-wide hover:underline transition-colors"
+                        style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                      >
                         Track package
                       </button>
                     )}
                     {order.status === 'delivered' && (
                       <>
-                        <button className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline">
+                        <button 
+                          className="text-sm font-light tracking-wide hover:underline transition-colors"
+                          style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                        >
                           Get invoice
                         </button>
-                        <button className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline flex items-center gap-1">
+                        <button 
+                          onClick={() => handleOrderAgain(order)}
+                          className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
+                          style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                        >
                           <ShoppingCart className="w-4 h-4" />
                           Buy it again
                         </button>
@@ -549,7 +737,10 @@ export default function UserOrders() {
                     {(order.status === 'pending_payment' || order.status === 'pending-payment') && (
                       <button
                         onClick={() => window.location.hash = `#/user/checkout?order=${order.order_number}`}
-                        className="text-sm bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                        className="text-sm text-white px-4 py-2 rounded-md font-light tracking-[0.15em] uppercase transition-colors"
+                        style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                       >
                         Pay Now
                       </button>
@@ -557,12 +748,21 @@ export default function UserOrders() {
                     {order.status !== 'cancelled' && order.status !== 'pending_payment' && order.status !== 'pending-payment' && (
                       <button
                         onClick={() => window.location.hash = `#/user/order/${order.order_number}`}
-                        className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:underline"
+                        className="text-sm font-light tracking-wide hover:underline transition-colors"
+                        style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
                       >
                         View order details
                       </button>
                     )}
-                    <button className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:underline">
+                    <button 
+                      onClick={() => handleArchiveOrder(order.id)}
+                      className="text-sm font-light tracking-wide hover:underline transition-colors"
+                      style={{ color: '#666', letterSpacing: '0.05em' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#1a1a1a'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
+                    >
                       Archive order
                     </button>
                   </div>

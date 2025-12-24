@@ -20,10 +20,26 @@ export default function ImageZoom({
   const [isZooming, setIsZooming] = useState(false)
   const imageRef = useRef<HTMLImageElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [thumbnailScrollIndex, setThumbnailScrollIndex] = useState(0)
+  const thumbnailContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setActiveIndex(currentIndex)
-  }, [currentIndex])
+    // Update thumbnail scroll to show current image
+    if (images.length > 3) {
+      const imagesToShow = 3
+      const maxScrollIndex = Math.max(0, images.length - imagesToShow)
+      let newScrollIndex = currentIndex
+      if (currentIndex > maxScrollIndex) {
+        newScrollIndex = maxScrollIndex
+      } else if (currentIndex < thumbnailScrollIndex) {
+        newScrollIndex = Math.max(0, currentIndex)
+      } else if (currentIndex >= thumbnailScrollIndex + imagesToShow) {
+        newScrollIndex = currentIndex - imagesToShow + 1
+      }
+      setThumbnailScrollIndex(newScrollIndex)
+    }
+  }, [currentIndex, images.length])
 
   useEffect(() => {
     if (onIndexChange) {
@@ -190,32 +206,128 @@ export default function ImageZoom({
           </button>
         )}
 
-        {/* Thumbnails */}
-        {images.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 max-w-full overflow-x-auto px-4">
-            {images.map((img, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setActiveIndex(index)
-                  setZoomLevel(1)
-                  setPosition({ x: 0, y: 0 })
-                }}
-                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                  activeIndex === index 
-                    ? 'border-white scale-110' 
-                    : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                <img
-                  src={img}
-                  alt={`Thumbnail ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Thumbnails - 1x3 Carousel Style */}
+        {images.length > 1 && (() => {
+          const imagesToShow = 3
+          const thumbnailSize = 100
+          const thumbnailGap = 12
+          const containerWidth = (thumbnailSize * imagesToShow) + (thumbnailGap * (imagesToShow - 1))
+          const maxScrollIndex = Math.max(0, images.length - imagesToShow)
+          const canScrollLeft = thumbnailScrollIndex > 0
+          const canScrollRight = thumbnailScrollIndex < maxScrollIndex
+
+          const handleThumbnailScroll = (direction: 'left' | 'right') => {
+            if (direction === 'left' && canScrollLeft) {
+              const newIndex = Math.max(0, thumbnailScrollIndex - 1)
+              setThumbnailScrollIndex(newIndex)
+              if (thumbnailContainerRef.current) {
+                const container = thumbnailContainerRef.current
+                const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
+                container.scrollTo({
+                  left: scrollPosition,
+                  behavior: 'smooth'
+                })
+              }
+            } else if (direction === 'right' && canScrollRight) {
+              const newIndex = Math.min(maxScrollIndex, thumbnailScrollIndex + 1)
+              setThumbnailScrollIndex(newIndex)
+              if (thumbnailContainerRef.current) {
+                const container = thumbnailContainerRef.current
+                const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
+                container.scrollTo({
+                  left: scrollPosition,
+                  behavior: 'smooth'
+                })
+              }
+            }
+          }
+
+          return (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4">
+              <div className="relative">
+                {/* Left Arrow */}
+                {images.length > imagesToShow && canScrollLeft && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleThumbnailScroll('left')
+                    }}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-lg transition-all"
+                    aria-label="Previous thumbnails"
+                  >
+                    <ChevronLeft className="w-4 h-4" style={{color: 'rgb(75,151,201)'}} />
+                  </button>
+                )}
+
+                {/* Thumbnail Container */}
+                <div
+                  ref={thumbnailContainerRef}
+                  className="overflow-hidden mx-auto"
+                  style={{ 
+                    width: `${containerWidth}px`,
+                    maxWidth: '100%'
+                  }}
+                >
+                  <div
+                    className="flex gap-3 transition-transform duration-300"
+                    style={{
+                      transform: `translateX(-${thumbnailScrollIndex * (thumbnailSize + thumbnailGap)}px)`,
+                      width: `${images.length * (thumbnailSize + thumbnailGap) - thumbnailGap}px`
+                    }}
+                  >
+                    {images.map((img, index) => (
+                      <button
+                        key={index}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setActiveIndex(index)
+                          setZoomLevel(1)
+                          setPosition({ x: 0, y: 0 })
+                          if (onIndexChange) {
+                            onIndexChange(index)
+                          }
+                        }}
+                        className={`flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                          activeIndex === index 
+                            ? 'border-white scale-110 shadow-lg' 
+                            : 'border-white/30 opacity-70 hover:opacity-100 hover:border-white/60'
+                        }`}
+                        style={{
+                          width: `${thumbnailSize}px`,
+                          height: `${thumbnailSize}px`
+                        }}
+                      >
+                        <img
+                          src={img}
+                          alt={`Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Arrow */}
+                {images.length > imagesToShow && canScrollRight && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleThumbnailScroll('right')
+                    }}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-lg transition-all"
+                    aria-label="Next thumbnails"
+                  >
+                    <ChevronRight className="w-4 h-4" style={{color: 'rgb(75,151,201)'}} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Image Counter */}
         {images.length > 1 && (

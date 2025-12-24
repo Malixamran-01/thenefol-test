@@ -52,8 +52,73 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         setLoading(true)
         setError(null)
+        
+        // Get guest cart from localStorage before loading user cart
+        const guestCart = localStorage.getItem(CART_STORAGE_KEY)
+        let guestItems: CartItem[] = []
+        if (guestCart) {
+          try {
+            const parsed = JSON.parse(guestCart)
+            if (Array.isArray(parsed)) {
+              guestItems = parsed
+            }
+          } catch (e) {
+            console.error('Failed to parse guest cart:', e)
+          }
+        }
+        
+        // Load user cart from backend
         const cartItems = await cartAPI.getCart()
-        setItems(cartItems)
+        
+        // Merge guest cart with user cart
+        if (guestItems.length > 0) {
+          console.log('🛒 Merging guest cart with user cart:', { guestItems: guestItems.length, userItems: cartItems.length })
+          
+          // Create a map of user cart items by product_id for quick lookup
+          const userCartMap = new Map<number, CartItem>()
+          cartItems.forEach((item: CartItem) => {
+            if (item.product_id) {
+              userCartMap.set(item.product_id, item)
+            }
+          })
+          
+          // Merge guest items into user cart
+          const mergedItems = [...cartItems]
+          for (const guestItem of guestItems) {
+            if (guestItem.product_id) {
+              const existingItem = userCartMap.get(guestItem.product_id)
+              if (existingItem) {
+                // Product already in user cart, update quantity
+                const newQuantity = existingItem.quantity + guestItem.quantity
+                await cartAPI.updateCartItem(existingItem.id!, newQuantity)
+                // Update in merged items
+                const index = mergedItems.findIndex(item => item.id === existingItem.id)
+                if (index !== -1) {
+                  mergedItems[index] = { ...existingItem, quantity: newQuantity }
+                }
+              } else {
+                // New product, add to backend cart
+                try {
+                  await cartAPI.addToCart(guestItem.product_id, guestItem.quantity)
+                  // Add to merged items
+                  mergedItems.push(guestItem)
+                } catch (err) {
+                  console.error('Failed to add guest item to user cart:', err)
+                }
+              }
+            }
+          }
+          
+          // Reload cart from backend to get updated state
+          const updatedCart = await cartAPI.getCart()
+          setItems(updatedCart)
+          
+          // Clear guest cart from localStorage after successful merge
+          localStorage.removeItem(CART_STORAGE_KEY)
+          console.log('✅ Guest cart merged successfully')
+        } else {
+          setItems(cartItems)
+        }
       } catch (err: any) {
         console.error('Failed to load cart from backend:', err)
         setError(err.message)
@@ -366,6 +431,14 @@ export function parsePrice(input: string): number {
 // Round price to nearest integer: 415.40 -> 415, 415.70 -> 416
 export function roundPrice(price: number): number {
   return Math.round(price)
+}
+
+// Format price to always show 2 decimal places: 415 -> "415.00", 415.5 -> "415.50"
+export function formatPrice(price: number): string {
+  return parseFloat(price.toFixed(2)).toLocaleString('en-IN', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  })
 }
 
 

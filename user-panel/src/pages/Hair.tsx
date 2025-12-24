@@ -172,9 +172,11 @@ export default function Hair() {
                     </div>
                   </div>
                   <div className="flex flex-col flex-grow px-2">
-                    <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-1 line-clamp-2 overflow-hidden" style={{color: '#1a1a1a', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
-                      {product.title}
-                    </h3>
+                    <a href={`#/user/product/${product.slug}`} className="block">
+                      <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-1 line-clamp-2 overflow-hidden hover:opacity-70 transition-opacity cursor-pointer" style={{color: '#1a1a1a', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
+                        {product.title}
+                      </h3>
+                    </a>
                     {/* Subtitle */}
                     {(() => {
                       const csvMatch = csvProducts.find((csv: any) => {
@@ -185,7 +187,7 @@ export default function Hair() {
                                        (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
                                        (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
                       return subtitle ? (
-                        <p className="text-sm text-gray-600 mb-1 line-clamp-1" style={{color: '#666'}}>
+                        <p className="text-sm text-gray-600 mb-1 line-clamp-2" style={{color: '#666', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
                           {subtitle}
                         </p>
                       ) : null

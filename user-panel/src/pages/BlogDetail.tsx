@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, User, ArrowLeft } from 'lucide-react'
+import { Calendar, User, ArrowLeft, X } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
 interface BlogPost {
@@ -92,6 +92,10 @@ export default function BlogDetail() {
     window.location.hash = '#/user/blog'
   }
 
+  const handleClose = () => {
+    window.location.hash = '#/user/blog'
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
@@ -141,26 +145,271 @@ export default function BlogDetail() {
 
         {/* Blog Post Content */}
         <article className="bg-white rounded-lg shadow-sm overflow-hidden">
-          {/* Featured Image */}
-          {post.images && post.images.length > 0 && (
-            <div className="relative w-full h-96">
-              <img 
-                src={post.images[0]} 
-                alt={post.title}
-                className="w-full h-full object-cover"
-              />
-              {post.featured && (
-                <div className="absolute top-4 left-4">
-                  <span className="text-white px-3 py-1 text-xs font-medium tracking-wide uppercase rounded-full" style={{backgroundColor: '#4B97C9'}}>
-                    FEATURED
-                  </span>
+          {/* Desktop Layout: Image on Left, Text on Right */}
+          {post.images && post.images.length > 0 ? (
+            <div className="hidden md:flex md:flex-row gap-0">
+              {/* Image on Left */}
+              <div className="relative w-1/2 min-h-[600px] flex-shrink-0">
+                <img 
+                  src={post.images[0]} 
+                  alt={post.title}
+                  className="w-full h-full object-cover"
+                />
+                {post.featured && (
+                  <div className="absolute top-4 left-4">
+                    <span className="text-white px-3 py-1 text-xs font-medium tracking-wide uppercase rounded-full" style={{backgroundColor: '#4B97C9'}}>
+                      FEATURED
+                    </span>
+                  </div>
+                )}
+              </div>
+              {/* Text Content on Right */}
+              <div className="w-1/2 p-8 lg:p-12 overflow-y-auto">
+                {/* Meta Information */}
+                <div className="mb-6 flex items-center gap-4 text-sm" style={{color: '#9DB4C0'}}>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    {formatDate(post.created_at)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <User className="w-4 h-4" />
+                    {post.author_name}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h1 className="text-3xl lg:text-4xl font-serif mb-6" style={{
+                  color: '#1B4965', 
+                  fontWeight: 600, 
+                  letterSpacing: '-0.01em',
+                  lineHeight: '1.3',
+                  fontFamily: 'Georgia, "Times New Roman", serif'
+                }}>
+                  {post.title}
+                </h1>
+
+                {/* Excerpt */}
+                {post.excerpt && (
+                  <p className="text-lg lg:text-xl font-light mb-8 leading-relaxed" style={{
+                    color: '#4B97C9', 
+                    fontSize: '1.125rem',
+                    lineHeight: '1.7',
+                    letterSpacing: '0.01em',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}>
+                    {post.excerpt}
+                  </p>
+                )}
+
+                {/* Content */}
+                <div 
+                  className="prose prose-lg max-w-none mb-8"
+                  style={{
+                    color: '#1a1a1a',
+                    lineHeight: '1.8',
+                    fontSize: '1.0625rem',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
+                    fontWeight: 400,
+                    letterSpacing: '0.01em'
+                  }}
+                >
+                  {post.content ? (
+                    post.content.includes('<') && post.content.includes('>') ? (
+                      <div 
+                        dangerouslySetInnerHTML={{ __html: post.content }}
+                        style={{
+                          color: '#1a1a1a',
+                          lineHeight: '1.8',
+                          fontSize: '1.0625rem',
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+                          letterSpacing: '0.01em'
+                        }}
+                      />
+                    ) : (
+                      <div 
+                        style={{ 
+                          whiteSpace: 'pre-wrap',
+                          color: '#1a1a1a',
+                          lineHeight: '1.8',
+                          fontSize: '1.0625rem',
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+                          letterSpacing: '0.01em'
+                        }}
+                      >
+                        {post.content.split('\n').map((paragraph, index) => (
+                          paragraph.trim() ? (
+                            <p key={index} style={{ 
+                              marginBottom: '1.25rem', 
+                              marginTop: index === 0 ? 0 : '1.25rem',
+                              color: '#1a1a1a',
+                              lineHeight: '1.8'
+                            }}>
+                              {paragraph}
+                            </p>
+                          ) : null
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    <p style={{ color: '#9DB4C0' }}>No content available.</p>
+                  )}
+                </div>
+
+                {/* Additional Images */}
+                {post.images && post.images.length > 1 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                    {post.images.slice(1).map((image, index) => (
+                      <img 
+                        key={index}
+                        src={image} 
+                        alt={`${post.title} - Image ${index + 2}`}
+                        className="w-full h-64 object-cover rounded-lg"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Author Info */}
+                <div className="mt-12 pt-8 border-t border-gray-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center" style={{backgroundColor: '#9DB4C0'}}>
+                      <User className="w-8 h-8" style={{color: '#1B4965'}} />
+                    </div>
+                    <div>
+                      <p className="font-semibold" style={{color: '#1B4965'}}>{post.author_name}</p>
+                      {post.author_email && (
+                        <p className="text-sm" style={{color: '#9DB4C0'}}>{post.author_email}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* No image - show content in single column */
+            <div className="p-8">
+              {/* Meta Information */}
+              <div className="mb-6 flex items-center gap-4 text-sm" style={{color: '#9DB4C0'}}>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  {formatDate(post.created_at)}
+                </div>
+                <div className="flex items-center gap-1">
+                  <User className="w-4 h-4" />
+                  {post.author_name}
+                </div>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-4xl font-serif mb-6" style={{color: '#1B4965', fontWeight: 600, letterSpacing: '-0.02em'}}>
+                {post.title}
+              </h1>
+
+              {/* Excerpt */}
+              {post.excerpt && (
+                <p className="text-xl font-light mb-8 leading-relaxed" style={{color: '#4B97C9', fontSize: '1.25rem', lineHeight: '1.75'}}>
+                  {post.excerpt}
+                </p>
+              )}
+
+              {/* Content */}
+              <div 
+                className="prose prose-lg max-w-none mb-8"
+                style={{
+                  color: '#2d3748',
+                  lineHeight: '1.85',
+                  fontSize: '1.125rem',
+                  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                  fontWeight: 400
+                }}
+              >
+                {post.content ? (
+                  post.content.includes('<') && post.content.includes('>') ? (
+                    <div 
+                      dangerouslySetInnerHTML={{ __html: post.content }}
+                      style={{
+                        color: '#2d3748',
+                        lineHeight: '1.85',
+                        fontSize: '1.125rem'
+                      }}
+                    />
+                  ) : (
+                    <div 
+                      style={{ 
+                        whiteSpace: 'pre-wrap',
+                        color: '#2d3748',
+                        lineHeight: '1.85',
+                        fontSize: '1.125rem',
+                        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                      }}
+                    >
+                      {post.content.split('\n').map((paragraph, index) => (
+                        paragraph.trim() ? (
+                          <p key={index} style={{ marginBottom: '1.5rem', marginTop: index === 0 ? 0 : '1.5rem' }}>
+                            {paragraph}
+                          </p>
+                        ) : null
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  <p style={{ color: '#9DB4C0' }}>No content available.</p>
+                )}
+              </div>
+
+              {/* Additional Images */}
+              {post.images && post.images.length > 1 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                  {post.images.slice(1).map((image, index) => (
+                    <img 
+                      key={index}
+                      src={image} 
+                      alt={`${post.title} - Image ${index + 2}`}
+                      className="w-full h-64 object-cover rounded-lg"
+                    />
+                  ))}
                 </div>
               )}
+
+              {/* Author Info */}
+              <div className="mt-12 pt-8 border-t border-gray-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center" style={{backgroundColor: '#9DB4C0'}}>
+                    <User className="w-8 h-8" style={{color: '#1B4965'}} />
+                  </div>
+                  <div>
+                    <p className="font-semibold" style={{color: '#1B4965'}}>{post.author_name}</p>
+                    {post.author_email && (
+                      <p className="text-sm" style={{color: '#9DB4C0'}}>{post.author_email}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Post Content */}
-          <div className="p-8">
+          {/* Mobile Layout: Image Above, Content Below */}
+          {post.images && post.images.length > 0 && (
+            <div className="md:hidden">
+              <div className="relative w-full h-96">
+                <img 
+                  src={post.images[0]} 
+                  alt={post.title}
+                  className="w-full h-full object-cover"
+                />
+                {post.featured && (
+                  <div className="absolute top-4 left-4">
+                    <span className="text-white px-3 py-1 text-xs font-medium tracking-wide uppercase rounded-full" style={{backgroundColor: '#4B97C9'}}>
+                      FEATURED
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Post Content - Mobile or when no image */}
+          <div className={`p-8 ${post.images && post.images.length > 0 ? 'md:hidden' : ''}`}>
             {/* Meta Information */}
             <div className="mb-6 flex items-center gap-4 text-sm" style={{color: '#9DB4C0'}}>
               <div className="flex items-center gap-1">
@@ -174,13 +423,13 @@ export default function BlogDetail() {
             </div>
 
             {/* Title */}
-            <h1 className="text-4xl font-serif mb-6" style={{color: '#1B4965'}}>
+            <h1 className="text-4xl font-serif mb-6" style={{color: '#1B4965', fontWeight: 600, letterSpacing: '-0.02em'}}>
               {post.title}
             </h1>
 
             {/* Excerpt */}
             {post.excerpt && (
-              <p className="text-xl font-light mb-8 leading-relaxed" style={{color: '#9DB4C0'}}>
+              <p className="text-xl font-light mb-8 leading-relaxed" style={{color: '#4B97C9', fontSize: '1.25rem', lineHeight: '1.75'}}>
                 {post.excerpt}
               </p>
             )}
@@ -189,16 +438,50 @@ export default function BlogDetail() {
             <div 
               className="prose prose-lg max-w-none mb-8"
               style={{
-                color: '#1B4965',
+                color: '#1a1a1a',
                 lineHeight: '1.8',
-                whiteSpace: 'pre-wrap'
+                fontSize: '1.0625rem',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
+                fontWeight: 400,
+                letterSpacing: '0.01em'
               }}
             >
               {post.content ? (
                 post.content.includes('<') && post.content.includes('>') ? (
-                  <div dangerouslySetInnerHTML={{ __html: post.content }} />
+                  <div 
+                    dangerouslySetInnerHTML={{ __html: post.content }}
+                    style={{
+                      color: '#1a1a1a',
+                      lineHeight: '1.8',
+                      fontSize: '1.0625rem',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+                      letterSpacing: '0.01em'
+                    }}
+                  />
                 ) : (
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{post.content}</p>
+                  <div 
+                    style={{ 
+                      whiteSpace: 'pre-wrap',
+                      color: '#1a1a1a',
+                      lineHeight: '1.8',
+                      fontSize: '1.0625rem',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+                      letterSpacing: '0.01em'
+                    }}
+                  >
+                    {post.content.split('\n').map((paragraph, index) => (
+                      paragraph.trim() ? (
+                        <p key={index} style={{ 
+                          marginBottom: '1.25rem', 
+                          marginTop: index === 0 ? 0 : '1.25rem',
+                          color: '#1a1a1a',
+                          lineHeight: '1.8'
+                        }}>
+                          {paragraph}
+                        </p>
+                      ) : null
+                    ))}
+                  </div>
                 )
               ) : (
                 <p style={{ color: '#9DB4C0' }}>No content available.</p>
@@ -236,15 +519,23 @@ export default function BlogDetail() {
           </div>
         </article>
 
-        {/* Back to Blog Button */}
-        <div className="mt-8 text-center">
+        {/* Back and Close Buttons */}
+        <div className="mt-8 flex items-center justify-center gap-4">
           <button
             onClick={handleBack}
-            className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg"
+            className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90"
             style={{backgroundColor: '#1B4965'}}
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to All Posts
+            Back
+          </button>
+          <button
+            onClick={handleClose}
+            className="inline-flex items-center gap-2 px-6 py-3 text-gray-700 font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90 border-2"
+            style={{borderColor: '#1B4965', backgroundColor: 'transparent', color: '#1B4965'}}
+          >
+            <X className="w-4 h-4" />
+            Close
           </button>
         </div>
       </div>

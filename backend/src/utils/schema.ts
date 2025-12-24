@@ -109,6 +109,54 @@ export async function ensureSchema(pool: Pool) {
       ) then
         alter table users add column reset_password_expires timestamptz;
       end if;
+      
+      -- Add email_edited and phone_edited columns to track if user has edited these fields
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'users' and column_name = 'email_edited'
+      ) then
+        alter table users add column email_edited boolean default false;
+      end if;
+      
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'users' and column_name = 'phone_edited'
+      ) then
+        alter table users add column phone_edited boolean default false;
+      end if;
+      
+      -- Make email nullable (remove NOT NULL constraint if exists) to allow NULL emails for WhatsApp signup
+      -- This needs to be done carefully - drop unique constraint first, then alter column, then add unique back
+      if exists (
+        select 1 from information_schema.columns 
+        where table_name = 'users' and column_name = 'email' and is_nullable = 'NO'
+      ) then
+        -- Try to drop common unique constraint names (PostgreSQL may name them differently)
+        -- Using IF EXISTS so it won't error if the constraint doesn't exist or has a different name
+        begin
+          -- Drop unique constraint if it exists (try common names)
+          alter table users drop constraint if exists users_email_key;
+          alter table users drop constraint if exists users_email_unique;
+          -- Also try dropping as index
+          drop index if exists users_email_key;
+          drop index if exists users_email_unique;
+        exception when others then
+          -- If dropping fails, continue (constraint might not exist or have different name)
+          null;
+        end;
+        
+        -- Make column nullable
+        alter table users alter column email drop not null;
+        
+        -- Re-add unique constraint (only for non-null values) using a partial unique index
+        -- This allows multiple NULL emails but ensures uniqueness for non-null values
+        if not exists (
+          select 1 from pg_indexes 
+          where tablename = 'users' and indexname = 'users_email_unique'
+        ) then
+          create unique index users_email_unique on users(email) where email is not null;
+        end if;
+      end if;
     end $$;
     
     -- Add indexes for password reset fields
@@ -453,6 +501,7 @@ export async function ensureSchema(pool: Pool) {
       email text not null,
       phone text not null,
       verification_code text unique not null,
+      partner_id text unique, -- Unique Affiliate Partner ID (Membership ID)
       status text not null default 'unverified' check (status in ('unverified', 'active', 'suspended', 'terminated')),
       commission_rate numeric(5,2) default 15.0,
       total_earnings numeric(12,2) default 0,
@@ -523,6 +572,17 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_affiliate_payouts_status on affiliate_payouts(status);
     
     create index if not exists idx_orders_affiliate_id on orders(affiliate_id);
+    
+    -- Ensure partner_id column exists in affiliate_partners table (migration)
+    do $$
+    begin
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'affiliate_partners' and column_name = 'partner_id'
+      ) then
+        alter table affiliate_partners add column partner_id text unique;
+      end if;
+    end $$;
     
     -- Marketing Tables
     -- Cashback System
@@ -1540,6 +1600,34 @@ export async function ensureSchema(pool: Pool) {
       metadata jsonb,
       created_at timestamptz default now()
     );
+
+    -- Staff Layout Permissions (for assigning layout page access)
+    create table if not exists staff_layout_permissions (
+      id serial primary key,
+      staff_id integer not null references staff_users(id) on delete cascade,
+      layout_page_slug text not null,
+      can_edit boolean default true,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now(),
+      unique(staff_id, layout_page_slug)
+    );
+
+    create index if not exists idx_staff_layout_permissions_staff on staff_layout_permissions(staff_id);
+    create index if not exists idx_staff_layout_permissions_layout on staff_layout_permissions(layout_page_slug);
+
+    -- Staff Admin Panel Page Permissions (for assigning admin panel page access)
+    create table if not exists staff_page_permissions (
+      id serial primary key,
+      staff_id integer not null references staff_users(id) on delete cascade,
+      page_path text not null,
+      can_access boolean default true,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now(),
+      unique(staff_id, page_path)
+    );
+
+    create index if not exists idx_staff_page_permissions_staff on staff_page_permissions(staff_id);
+    create index if not exists idx_staff_page_permissions_page on staff_page_permissions(page_path);
 
     -- Coin Withdrawal System
     create table if not exists coin_withdrawals (

@@ -21,18 +21,18 @@ type Product = {
 export default function Products() {
   return (
     <>
-    <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
-      <style>{`
-        :root {
-          --arctic-blue-primary: #7DD3D3;
-          --arctic-blue-primary-hover: #5EC4C4;
-          --arctic-blue-primary-dark: #4A9FAF;
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
-        }
-      `}</style>
-      <div className="flex items-center justify-between">
+      <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+        <style>{`
+          :root {
+            --arctic-blue-primary: #7DD3D3;
+            --arctic-blue-primary-hover: #5EC4C4;
+            --arctic-blue-primary-dark: #4A9FAF;
+            --arctic-blue-light: #E0F5F5;
+            --arctic-blue-lighter: #F0F9F9;
+            --arctic-blue-background: #F4F9F9;
+          }
+        `}</style>
+        <div className="flex items-center justify-between">
         <div>
           <h1 
             className="text-3xl font-light mb-2 tracking-[0.15em]" 
@@ -53,7 +53,7 @@ export default function Products() {
         </button>
       </div>
       <ProductsManager />
-    </div>
+      </div>
     </>
   )
 }

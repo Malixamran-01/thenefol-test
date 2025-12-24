@@ -6,7 +6,7 @@ export default function FBShopIntegration() {
   const [errors, setErrors] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [jobId, setJobId] = useState<string | null>(null)
-  const [mapping, setMapping] = useState<{ [k: string]: string }>({ brand: 'Nefol', condition: 'new', availability: 'in stock' })
+  const [mapping, setMapping] = useState<{ [k: string]: string }>({ brand: 'NEFOL®', condition: 'new', availability: 'in stock' })
   const [lastRun, setLastRun] = useState<any>(null)
   const getApiBase = () => {
     // Always use production URL - no environment variables

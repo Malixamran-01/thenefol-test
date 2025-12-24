@@ -34,7 +34,7 @@ export default function ShippingPolicy() {
             className="text-sm sm:text-base font-light max-w-3xl mx-auto tracking-wide"
             style={{ color: '#666', letterSpacing: '0.05em' }}
           >
-            At Nefol, we are committed to ensuring that your experience with our premium cosmetic products 
+            At NEFOL®, we are committed to ensuring that your experience with our premium cosmetic products 
             is seamless and enjoyable from the moment you place an order to when it arrives at your doorstep.
           </p>
         </div>
@@ -314,7 +314,7 @@ export default function ShippingPolicy() {
                     className="font-light tracking-wide"
                     style={{ color: '#666', letterSpacing: '0.05em' }}
                   >
-                    While we strive to meet all estimated delivery times, Nefol is not responsible for delays 
+                    While we strive to meet all estimated delivery times, NEFOL® is not responsible for delays 
                     caused by external factors such as customs clearance, severe weather conditions, or carrier issues.
                   </p>
                 </div>
@@ -452,7 +452,7 @@ export default function ShippingPolicy() {
               className="mt-6 text-sm sm:text-base font-light tracking-wide"
               style={{ color: '#666', letterSpacing: '0.05em' }}
             >
-              Thank you for choosing Nefol. We look forward to serving you and helping you achieve 
+              Thank you for choosing NEFOL®. We look forward to serving you and helping you achieve 
               radiant beauty with our high-quality cosmetic products!
             </p>
           </div>

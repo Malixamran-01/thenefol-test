@@ -425,7 +425,8 @@ export default function SearchPage() {
                   onChange={handleSearchInput}
                   onFocus={() => setShowSuggestions(searchQuery.length >= 2)}
                   placeholder="Search products, ingredients, or categories..."
-                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg"
+                  className="w-full pr-4 py-4 rounded-xl border border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg"
+                  style={{ paddingLeft: '3.5rem' }}
                 />
                 
                 {/* Search Suggestions */}
@@ -660,9 +661,11 @@ export default function SearchPage() {
                 </div>
                 
                 <div className="p-6">
-                  <h3 className="font-semibold text-slate-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                    {product.title}
-                  </h3>
+                  <a href={`#/user/product/${product.slug}`} className="block">
+                    <h3 className="font-semibold text-slate-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors hover:opacity-70 cursor-pointer">
+                      {product.title}
+                    </h3>
+                  </a>
                   <p className="text-slate-600 text-sm mb-4 line-clamp-3">
                     {product.description}
                   </p>
@@ -678,7 +681,7 @@ export default function SearchPage() {
                         </div>
                       ) : (
                         <div className="text-2xl font-bold text-gradient-primary">
-                          ₹{product.price}
+                          ₹{parseFloat(product.price?.toString().replace(/[₹,]/g, '') || '0').toFixed(2)}
                         </div>
                       )}
                     </div>

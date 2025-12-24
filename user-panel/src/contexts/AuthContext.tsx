@@ -17,6 +17,8 @@ interface User {
   total_orders: number
   member_since: string
   is_verified: boolean
+  email_edited?: boolean
+  phone_edited?: boolean
 }
 
 interface AuthContextValue {
@@ -37,11 +39,11 @@ interface SignupData {
   email: string
   password: string
   phone: string
-  address: {
-    street: string
-    city: string
-    state: string
-    zip: string
+  address?: {
+    street?: string
+    city?: string
+    state?: string
+    zip?: string
   }
 }
 
@@ -208,6 +210,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
     setIsAuthenticated(false)
     setError(null)
+    // Redirect to login page after logout
+    window.location.hash = '#/user/login'
+    // Force page reload to clear any cached state
+    window.location.reload()
   }
 
   const updateProfile = async (data: Partial<User>): Promise<boolean> => {

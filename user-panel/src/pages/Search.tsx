@@ -385,7 +385,8 @@ export default function Search({ addToWishlist }: SearchProps) {
                   onChange={handleInputChange}
                   onFocus={() => setShowSuggestions(searchQuery.length >= 3)}
                   placeholder="Type at least 3 characters for suggestions... (e.g., vitamin c, face serum, hyaluronic acid)"
-                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg"
+                  className="w-full pr-4 py-4 rounded-xl border border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg"
+                  style={{ paddingLeft: '3.5rem' }}
                 />
                 
                 {/* Search Suggestions Dropdown */}

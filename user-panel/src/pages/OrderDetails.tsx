@@ -3,7 +3,8 @@ import { Package, CheckCircle, XCircle, Truck, MapPin, Calendar, CreditCard, Arr
 import { api } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import { roundPrice } from '../contexts/CartContext'
+import { roundPrice, parsePrice, formatPrice } from '../contexts/CartContext'
+import PricingDisplay from '../components/PricingDisplay'
 
 interface OrderDetails {
   id: string
@@ -23,6 +24,9 @@ interface OrderDetails {
   created_at: string
   tracking_number?: string
   estimated_delivery?: string
+  discount_amount?: number
+  discount_code?: string
+  coins_used?: number
 }
 
 export default function OrderDetails() {
@@ -81,16 +85,20 @@ export default function OrderDetails() {
         shipping_address: orderData.shipping_address,
         billing_address: (orderData as any).billing_address,
         items: orderData.items || [],
-        subtotal: orderData.subtotal || 0,
-        shipping: orderData.shipping || 0,
-        tax: orderData.tax || 0,
-        total: orderData.total || 0,
+        // Coerce possible string values from backend into safe numbers
+        subtotal: parseFloat(String(orderData.subtotal ?? '0')) || 0,
+        shipping: parseFloat(String(orderData.shipping ?? '0')) || 0,
+        tax: parseFloat(String(orderData.tax ?? '0')) || 0,
+        total: parseFloat(String(orderData.total ?? '0')) || 0,
         status: orderData.status,
         payment_method: orderData.payment_method,
         payment_type: orderData.payment_type,
         created_at: orderData.created_at,
         tracking_number: orderData.tracking_number,
-        estimated_delivery: orderData.estimated_delivery
+        estimated_delivery: orderData.estimated_delivery,
+        discount_amount: parseFloat(String((orderData as any).discount_amount ?? '0')) || 0,
+        discount_code: (orderData as any).discount_code || null,
+        coins_used: parseFloat(String((orderData as any).coins_used ?? '0')) || 0
       })
       
       // Check if order can be cancelled
@@ -524,42 +532,158 @@ export default function OrderDetails() {
             </div>
           </div>
 
-          {/* Order Summary */}
+          {/* Bill Summary */}
           <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 transition-all duration-300 hover:shadow-md">
-            <h2 
-              className="text-xl sm:text-2xl font-light mb-6 tracking-[0.15em]" 
-              style={{
-                color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family)',
-                letterSpacing: '0.15em'
-              }}
-            >
-              Order Summary
-            </h2>
+            <h2 className="text-xl font-semibold mb-3 text-black">Bill Summary</h2>
             <div className="space-y-3">
-              <div className="flex justify-between font-light tracking-wide" style={{ color: '#666' }}>
-                <span>Subtotal</span>
-                <span>₹{roundPrice(order.subtotal).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between font-light tracking-wide" style={{ color: '#666' }}>
-                <span>Shipping</span>
-                <span>₹{roundPrice(order.shipping).toLocaleString()}</span>
-              </div>
-              {taxSettings && (
-                <div className="flex justify-between font-light tracking-wide" style={{ color: '#666' }}>
-                  <span>Tax (GST {taxSettings.rate.toFixed(0)}%)</span>
-                  <span>₹{roundPrice(typeof order.tax === 'number' ? order.tax : Number(order.tax || 0)).toLocaleString()}</span>
-                </div>
-              )}
-              <div className="border-t pt-4 mt-4" style={{ borderColor: '#E0F5F5' }}>
-                <div className="flex justify-between">
-                  <span className="text-lg font-light tracking-wide" style={{ color: '#1a1a1a' }}>
-                    Total
-                  </span>
-                  <span className="text-lg font-light" style={{ color: 'var(--arctic-blue-primary-dark)' }}>
-                    ₹{roundPrice(order.total).toLocaleString()}
-                  </span>
-                </div>
+              <div className="border-b border-gray-300 pb-3 text-sm space-y-2">
+                {/* Calculate MRP Total and Product Discount from order items */}
+                {(() => {
+                  const mrpTotal = order.items.reduce((sum: number, item: any) => {
+                    let itemMrp = item.mrp || item.unit_mrp || item.price
+                    if (!itemMrp) {
+                      itemMrp = item.price
+                    }
+                    const mrp = parsePrice(itemMrp || '0')
+                    const quantity = item.quantity || item.qty || 1
+                    return sum + roundPrice(mrp * quantity)
+                  }, 0)
+                  
+                  const productDiscount = order.items.reduce((sum: number, item: any) => {
+                    let itemMrp = item.mrp || item.unit_mrp || item.price
+                    if (!itemMrp) {
+                      itemMrp = item.price
+                    }
+                    const mrp = parsePrice(itemMrp || '0')
+                    const currentPrice = parsePrice(item.price || item.unit_price || '0')
+                    const quantity = item.quantity || item.qty || 1
+                    if (mrp > currentPrice && mrp > 0) {
+                      const discount = (mrp - currentPrice) * quantity
+                      return sum + roundPrice(discount)
+                    }
+                    return sum
+                  }, 0)
+                  
+                  // Calculate GST breakdown
+                  const gstBreakdown: { rate: number; amount: number }[] = []
+                  order.items.forEach((item: any) => {
+                    const itemPrice = parsePrice(item.price || item.unit_price || '0')
+                    const category = (item.category || '').toLowerCase()
+                    const taxRate = category.includes('hair') ? 0.05 : 0.18
+                    const basePrice = itemPrice / (1 + taxRate)
+                    const itemTax = itemPrice - basePrice
+                    const quantity = item.quantity || item.qty || 1
+                    const totalItemTax = roundPrice(itemTax * quantity)
+                    
+                    const existingGst = gstBreakdown.find(g => g.rate === taxRate)
+                    if (existingGst) {
+                      existingGst.amount += totalItemTax
+                    } else {
+                      gstBreakdown.push({ rate: taxRate, amount: totalItemTax })
+                    }
+                  })
+                  
+                  const discountAmount = order.discount_amount || 0
+                  const coinsDiscount = order.coins_used ? roundPrice(order.coins_used / 10) : 0
+                  const grandTotal = roundPrice(order.subtotal + order.shipping)
+                  
+                  return (
+                    <>
+                      {/* 1. Product */}
+                      <div className="space-y-2">
+                        {order.items.map((item: any, idx: number) => {
+                          const quantity = item.quantity || item.qty || 1
+                          const itemPrice = parsePrice(item.price || item.unit_price || '0')
+                          return (
+                            <div key={idx} className="flex justify-between text-sm">
+                              <div>
+                                <span className="text-gray-900">{item.name || item.title || 'Product'} × {quantity}</span>
+                              </div>
+                              <span className="text-black">₹{formatPrice(roundPrice(itemPrice * quantity))}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      
+                      {/* 2. Total MRP */}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total MRP</span>
+                        <span className="text-black">₹{formatPrice(roundPrice(mrpTotal))}</span>
+                      </div>
+                      
+                      {/* 3. Total Discount */}
+                      {productDiscount > 0 && (
+                        <div className="flex justify-between text-green-700">
+                          <span>Total Discount</span>
+                          <span>-₹{formatPrice(roundPrice(productDiscount))}</span>
+                        </div>
+                      )}
+                      
+                      {/* 4. Sub Total */}
+                      <div className="flex justify-between font-medium">
+                        <span className="text-gray-900">Sub Total</span>
+                        <span className="text-black">₹{formatPrice(roundPrice(order.subtotal))}</span>
+                      </div>
+                      
+                      {/* 5. Shipping Charges */}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Shipping Charges</span>
+                        <span className={order.shipping > 0 ? 'text-black' : 'text-green-600'}>
+                          {order.shipping > 0 ? `₹${formatPrice(roundPrice(order.shipping))}` : 'Free'}
+                        </span>
+                      </div>
+                      
+                      {/* 6. GST (Included in MRP - shown for transparency) */}
+                      {gstBreakdown.length > 0 && (
+                        <div className="space-y-1">
+                          {gstBreakdown.map((gst, idx) => (
+                            <div key={idx} className="flex justify-between">
+                              <span className="text-gray-600">
+                                GST ({Math.round(gst.rate * 100)}%) 
+                                <span className="text-xs ml-1">(Inclusive)</span>
+                              </span>
+                              <span className="text-black">₹{formatPrice(roundPrice(gst.amount))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* 7. Grand Total (before coupon and coins) - GST already included in subtotal */}
+                      <div className="border-t border-gray-300 pt-2 mt-2">
+                        <div className="flex justify-between text-lg font-bold">
+                          <span className="text-black">Grand Total</span>
+                          <span className="text-black">₹{formatPrice(roundPrice(grandTotal))}</span>
+                        </div>
+                      </div>
+                      
+                      {/* 8. Coupon Code (-) */}
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between text-green-700">
+                          <span>Coupon Code (-)</span>
+                          <span>-₹{formatPrice(roundPrice(discountAmount))}</span>
+                        </div>
+                      )}
+                      
+                      {/* 9. Nefol Coin (-) */}
+                      {coinsDiscount > 0 && (
+                        <div className="flex justify-between text-yellow-600">
+                          <span>Nefol Coin (-)</span>
+                          <span>-₹{formatPrice(roundPrice(coinsDiscount))}</span>
+                        </div>
+                      )}
+                      
+                      {/* 10. Amount Paid (final amount after all discounts) */}
+                      <div className="border-t-2 border-gray-400 pt-2 mt-2">
+                        <div className="flex justify-between text-xl font-bold">
+                          <span className="text-black">Amount Paid</span>
+                          <span className="text-black">₹{formatPrice(roundPrice(order.total))}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs text-gray-600 mt-1">* MRP includes GST</div>
+                    </>
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -844,14 +968,12 @@ export default function OrderDetails() {
                       )}
                       <div className="flex items-center justify-between mt-3">
                         <div>
-                          <p className="text-lg sm:text-xl font-light" style={{ color: 'var(--arctic-blue-primary-dark)' }}>
-                            ₹{product.price ? parseFloat(product.price).toLocaleString() : '999'}
-                          </p>
-                          {product.mrp && parseFloat(product.mrp) > parseFloat(product.price || '0') && (
-                            <p className="text-xs font-light line-through" style={{ color: '#999' }}>
-                              ₹{parseFloat(product.mrp).toLocaleString()}
-                            </p>
-                          )}
+                          <PricingDisplay 
+                            product={{ 
+                              price: product.price, 
+                              details: product.details 
+                            }} 
+                          />
                         </div>
                         <button 
                           className="px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm font-light tracking-[0.15em] uppercase text-white"

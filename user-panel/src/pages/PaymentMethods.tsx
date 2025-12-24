@@ -219,9 +219,17 @@ export default function PaymentMethods() {
                     <input
                       type="text"
                       value={newPaymentMethod.expiry}
-                      onChange={(e) => setNewPaymentMethod({...newPaymentMethod, expiry: e.target.value})}
+                      onChange={(e) => {
+                        let value = e.target.value.replace(/\D/g, '') // Remove non-digits
+                        if (value.length >= 2) {
+                          value = value.slice(0, 2) + '/' + value.slice(2, 4)
+                        }
+                        setNewPaymentMethod({...newPaymentMethod, expiry: value})
+                      }}
+                      maxLength={5}
                       className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       placeholder="MM/YY"
+                      inputMode="numeric"
                       required
                     />
                   </div>
@@ -232,9 +240,14 @@ export default function PaymentMethods() {
                     <input
                       type="text"
                       value={newPaymentMethod.cvv}
-                      onChange={(e) => setNewPaymentMethod({...newPaymentMethod, cvv: e.target.value})}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                        setNewPaymentMethod({...newPaymentMethod, cvv: value})
+                      }}
                       className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       placeholder="123"
+                      inputMode="numeric"
+                      maxLength={4}
                       required
                     />
                   </div>

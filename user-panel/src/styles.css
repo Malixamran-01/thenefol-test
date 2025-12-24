@@ -12,8 +12,52 @@
   font-family: 'Great Vibes', cursive;
   font-size: 70px;
   font-weight: 400;
-  color: #ffffff;
+  color: rgb(75,151,201);
   letter-spacing: 1px;
+}
+
+/* Mobile responsive script text */
+@media (max-width: 640px) {
+  .script-text {
+    font-size: 36px;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Cart toast notification - mobile color */
+  .cart-toast-mobile {
+    background-color: rgb(75,151,201) !important;
+  }
+  
+  /* Footer copyright text - ensure it displays correctly on small screens */
+  footer small {
+    font-size: 9px !important;
+    line-height: 1.4 !important;
+    padding: 0 8px;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* Extra small screens - ensure text doesn't get cut off */
+@media (max-width: 375px) {
+  footer small {
+    font-size: 8px !important;
+    line-height: 1.5 !important;
+    padding: 0 4px;
+  }
+  
+  footer small span {
+    display: inline-block;
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .script-text {
+    font-size: 50px;
+    letter-spacing: 0.75px;
+  }
 }
 
 /* Sky Rocket Animation for Ingredients Page */
@@ -99,6 +143,14 @@
 
   html {
     scroll-behavior: smooth;
+    color-scheme: light !important;
+  }
+  
+  /* Force light mode - prevent dark mode on iOS/Android */
+  html.dark,
+  html[data-theme="dark"],
+  body.dark {
+    color-scheme: light !important;
   }
 
   body {
@@ -1064,133 +1116,15 @@ h1, h2, h3, h4, h5, h6, p, span, div {
   .btn-primary {
     padding: 12px 20px;
     font-size: 0.875rem;
-    min-height: 44px; /* Touch-friendly */
   }
   
   .btn {
     padding: 12px 20px;
     font-size: 0.875rem;
-    min-height: 44px; /* Touch-friendly */
   }
   
   .product-card {
     padding: 0.75rem;
-  }
-  
-  /* Touch-friendly buttons - Enhanced for better mobile UX */
-  button, a[role="button"], .btn, .btn-primary, .btn-secondary {
-    min-height: 44px;
-    min-width: 44px;
-    touch-action: manipulation; /* Prevents double-tap zoom */
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); /* Subtle tap feedback */
-    user-select: none; /* Prevents text selection on tap */
-  }
-  
-  /* Active states for better touch feedback */
-  button:active, a[role="button"]:active, .btn:active {
-    transform: scale(0.98);
-    opacity: 0.9;
-  }
-  
-  /* Improved color contrast for mobile readability */
-  body {
-    color: #1a1a1a; /* Darker text for better contrast */
-    background: #ffffff;
-  }
-  
-  p, span, div {
-    color: #2d2d2d; /* Slightly darker for better readability */
-  }
-  
-  /* Better spacing for mobile */
-  .space-y-2 > * + * {
-    margin-top: 0.75rem;
-  }
-  
-  .space-y-4 > * + * {
-    margin-top: 1.25rem;
-  }
-  
-  .space-y-6 > * + * {
-    margin-top: 1.75rem;
-  }
-  
-  /* Safe area for notched devices (iPhone X and later) */
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-  
-  /* Prevent text size adjustment on iOS */
-  html {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-  
-  /* Improve touch targets - prevent zoom on focus */
-  input, textarea, select, button {
-    font-size: 16px; /* Prevents zoom on iOS */
-    -webkit-appearance: none; /* Remove iOS styling */
-    border-radius: 8px; /* Consistent rounded corners */
-  }
-  
-  /* Better form input styling for mobile */
-  input[type="text"],
-  input[type="email"],
-  input[type="tel"],
-  input[type="number"],
-  input[type="password"],
-  textarea,
-  select {
-    padding: 12px 16px;
-    min-height: 44px;
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    color: #1a1a1a;
-    font-size: 16px;
-    line-height: 1.5;
-  }
-  
-  input:focus,
-  textarea:focus,
-  select:focus {
-    outline: none;
-    border-color: #7DD3D3;
-    box-shadow: 0 0 0 3px rgba(125, 211, 211, 0.1);
-  }
-  
-  /* Improved link contrast */
-  a {
-    color: #2563eb;
-    text-decoration: none;
-  }
-  
-  a:hover, a:active {
-    color: #1d4ed8;
-    text-decoration: underline;
-  }
-  
-  /* Better button contrast */
-  button.bg-gray-900,
-  .btn-primary {
-    background-color: #1a1a1a;
-    color: #ffffff;
-  }
-  
-  button.bg-gray-900:active,
-  .btn-primary:active {
-    background-color: #2d2d2d;
-  }
-  
-  button.bg-blue-600 {
-    background-color: #2563eb;
-    color: #ffffff;
-  }
-  
-  button.bg-blue-600:active {
-    background-color: #1d4ed8;
   }
 }
 
@@ -1218,9 +1152,6 @@ h1, h2, h3, h4, h5, h6, p, span, div {
     font-size: 0.9375rem;
   }
   
-  button, a[role="button"] {
-    min-height: 48px;
-  }
   
   /* Add padding for bottom navigation on tablet */
   .main-content-wrapper {
@@ -1238,6 +1169,7 @@ h1, h2, h3, h4, h5, h6, p, span, div {
   footer {
     margin-bottom: calc(80px + env(safe-area-inset-bottom));
   }
+  
 }
 
 @media (min-width: 1024px) {
@@ -1257,21 +1189,6 @@ h1, h2, h3, h4, h5, h6, p, span, div {
   }
 }
 
-/* ===== REVOLUTIONARY DARK MODE ===== */
-[data-theme="dark"] {
-  .glass-card {
-    background: rgba(0, 0, 0, 0.2);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .neu-card {
-    background: #2d3748;
-    box-shadow: 
-      20px 20px 60px #1a202c,
-      -20px -20px 60px #2d3748;
-  }
-}
-
 /* ===== REVOLUTIONARY ACCESSIBILITY ===== */
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -1285,11 +1202,6 @@ h1, h2, h3, h4, h5, h6, p, span, div {
   .glass-card {
     background: rgba(255, 255, 255, 0.9);
     border: 2px solid #000;
-  }
-  
-  [data-theme="dark"] .glass-card {
-    background: rgba(0, 0, 0, 0.9);
-    border: 2px solid #fff;
   }
 }
 

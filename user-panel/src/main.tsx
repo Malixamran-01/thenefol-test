@@ -6,6 +6,34 @@ import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { initMetaPixel } from './utils/metaPixel'
 
+// Force Light Mode - Prevent Dark Mode on iOS/Android
+// Remove any dark class that might be applied
+if (typeof document !== 'undefined') {
+  document.documentElement.classList.remove('dark')
+  document.documentElement.style.colorScheme = 'light'
+  
+  // Prevent system dark mode from applying
+  const observer = new MutationObserver(() => {
+    if (document.documentElement.classList.contains('dark')) {
+      document.documentElement.classList.remove('dark')
+    }
+    if (document.documentElement.style.colorScheme !== 'light') {
+      document.documentElement.style.colorScheme = 'light'
+    }
+  })
+  
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'style']
+  })
+  
+  // Also check on load and periodically
+  window.addEventListener('load', () => {
+    document.documentElement.classList.remove('dark')
+    document.documentElement.style.colorScheme = 'light'
+  })
+}
+
 // Initialize AOS
 AOS.init({
   duration: 800,

@@ -67,7 +67,7 @@ export default function OrderDetails() {
     try {
       setLoading(true)
       setError('')
-      const res = await fetch(`${apiBase}/api/orders/${encodeURIComponent(orderNumber)}`, { headers: authHeaders })
+      const res = await fetch(`${apiBase}/orders/${encodeURIComponent(orderNumber)}`, { headers: authHeaders })
       if (!res.ok) throw new Error('Failed to fetch order')
       const data = await res.json()
       setOrder(data)
@@ -77,7 +77,7 @@ export default function OrderDetails() {
       if (data.id) {
         try {
           // Check shipments table directly using the generic CRUD endpoint
-          const shipmentsRes = await fetch(`${apiBase}/api/shiprocket_shipments?order_id=${data.id}`, { 
+          const shipmentsRes = await fetch(`${apiBase}/shiprocket_shipments?order_id=${data.id}`, { 
             headers: authHeaders 
           })
           if (shipmentsRes.ok) {
@@ -120,7 +120,7 @@ export default function OrderDetails() {
     if (!order) return
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/orders/${order.id}`, {
+      const res = await fetch(`${apiBase}/orders/${order.id}`, {
         method: 'PUT',
         headers: authHeaders,
         body: JSON.stringify({ status: newStatus, note })
@@ -139,7 +139,7 @@ export default function OrderDetails() {
   const updateTags = async () => {
     if (!order) return
     const tags = tagsInput.split(',').map(s=>s.trim()).filter(Boolean)
-    const res = await fetch(`${apiBase}/api/orders/${order.id}/tags`, {
+    const res = await fetch(`${apiBase}/orders/${order.id}/tags`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({ tags })
@@ -153,7 +153,7 @@ export default function OrderDetails() {
     if (!order) return
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/shiprocket/orders/${order.id}/shipment`, {
+      const res = await fetch(`${apiBase}/shiprocket/orders/${order.id}/shipment`, {
         method: 'POST',
         headers: authHeaders,
       })
@@ -196,10 +196,11 @@ export default function OrderDetails() {
       // Check if shipment exists and has shipment_id before attempting to create AWB
       if (!hasShipment || !shipmentInfo?.shipment_id) {
         notify('error', 'Please create a shipment first. A shipment must be created in Shiprocket before generating an AWB.')
+        setLoading(false)
         return
       }
       
-      const res = await fetch(`${apiBase}/api/shiprocket/orders/${order.id}/awb`, {
+      const res = await fetch(`${apiBase}/shiprocket/orders/${order.id}/awb`, {
         method: 'POST',
         headers: authHeaders,
       })
@@ -217,8 +218,14 @@ export default function OrderDetails() {
         throw new Error(errorMsg)
       }
       
-      // Success
-      notify('success','AWB created successfully')
+      // Success - check if AWB was generated
+      const awbCode = data?.awb_code || data?.data?.awb_code
+      if (awbCode) {
+        notify('success', `AWB generated successfully: ${awbCode}`)
+      } else {
+        notify('success', 'AWB generation request submitted')
+      }
+      
       setHasShipment(true)
       setShipmentInfo(data)
       await load() // Reload order to see updated AWB info
@@ -235,7 +242,7 @@ export default function OrderDetails() {
     if (!order) return
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/shiprocket/orders/${order.id}/track`, { headers: authHeaders })
+      const res = await fetch(`${apiBase}/shiprocket/orders/${order.id}/track`, { headers: authHeaders })
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error('Tracking information not available. Please create a shipment first.')
@@ -263,7 +270,7 @@ export default function OrderDetails() {
     }
     try {
       setLoading(true)
-      const res = await fetch(`${apiBase}/api/orders/${order.id}/split`, {
+      const res = await fetch(`${apiBase}/orders/${order.id}/split`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ itemIndexes: indexes })
@@ -300,10 +307,10 @@ export default function OrderDetails() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -312,11 +319,11 @@ export default function OrderDetails() {
           >
             Order #{order.order_number}
           </h1>
-          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+          <p className="text-xs sm:text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
             Placed on {new Date(order.created_at).toLocaleString()}
           </p>
         </div>
-        <button onClick={() => navigate(-1)} className="btn-secondary">Back</button>
+        <button onClick={() => navigate(-1)} className="btn-secondary w-full sm:w-auto min-h-[44px]">Back</button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

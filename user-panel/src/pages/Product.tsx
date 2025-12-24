@@ -16,6 +16,7 @@ const RecentlyViewed = lazy(() => import('../components/RecentlyViewed'))
 import { productReviews, getProductReviews, getProductRating, getProductReviewCount, hasVerifiedReviews } from '../utils/product_reviews'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import { pixelEvents, formatProductData } from '../utils/metaPixel'
+import { calculatePurchaseCoins } from '../utils/points'
 
 // CSV data cache - shared across all product page instances
 let csvDataCache: any[] | null = null
@@ -43,6 +44,10 @@ export default function ProductPage() {
   const hasLoaded = useRef(false)
   const [hoverZoom, setHoverZoom] = useState({ show: false, x: 0, y: 0 })
   const mainImageRef = useRef<HTMLDivElement>(null)
+  const [thumbnailScrollIndex, setThumbnailScrollIndex] = useState(0)
+  const thumbnailContainerRef = useRef<HTMLDivElement>(null)
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
   
   // Delivery availability state
   const [deliveryPincode, setDeliveryPincode] = useState('')
@@ -119,6 +124,43 @@ export default function ProductPage() {
       }
     }
   }, [product?.id, viewStartTime])
+
+  // Keyboard navigation for image carousel (Mamaearth style)
+  useEffect(() => {
+    if (!product) return
+    
+    const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
+    const uniqueImages = [...new Map(allImages.map((img, idx) => [img, idx])).keys()]
+    
+    if (uniqueImages.length <= 1) return
+    
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only handle arrow keys when not typing in an input/textarea
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        setCurrentImageIndex(prev => {
+          const newIndex = Math.max(0, prev - 1)
+          setZoomImageIndex(newIndex)
+          return newIndex
+        })
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        setCurrentImageIndex(prev => {
+          const newIndex = Math.min(uniqueImages.length - 1, prev + 1)
+          setZoomImageIndex(newIndex)
+          return newIndex
+        })
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [product])
 
   // Helper function to get or fetch CSV data (with caching)
   const getCsvData = useCallback(async (apiBase: string): Promise<any[]> => {
@@ -240,6 +282,7 @@ export default function ProductPage() {
             // Reset image index when product changes
             setCurrentImageIndex(0)
             setZoomImageIndex(0)
+            setThumbnailScrollIndex(0)
             
             // Track product view (non-blocking)
             if (item.id) {
@@ -679,11 +722,42 @@ export default function ProductPage() {
           <div className="grid grid-cols-1 gap-6 sm:gap-8 md:gap-12 lg:grid-cols-2 mb-8 sm:mb-12 md:mb-16 w-full">
             {/* Product Media */}
             <div className="space-y-2 sm:space-y-4 relative">
-              {/* Main Product Image - Carousel style with click to zoom */}
+              {/* Main Product Image - Carousel style with click to zoom - Mamaearth style */}
               {(() => {
                 const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
                 const uniqueImages = [...new Map(allImages.map((img, idx) => [img, idx])).keys()]
                 const currentImage = uniqueImages[currentImageIndex] || ''
+                
+                const handlePreviousImage = () => {
+                  setCurrentImageIndex(prev => Math.max(0, prev - 1))
+                }
+                
+                const handleNextImage = () => {
+                  setCurrentImageIndex(prev => Math.min(uniqueImages.length - 1, prev + 1))
+                }
+                
+                // Swipe handlers for mobile
+                const handleTouchStart = (e: React.TouchEvent) => {
+                  setTouchStart(e.targetTouches[0].clientX)
+                }
+                
+                const handleTouchMove = (e: React.TouchEvent) => {
+                  setTouchEnd(e.targetTouches[0].clientX)
+                }
+                
+                const handleTouchEnd = () => {
+                  if (!touchStart || !touchEnd) return
+                  const distance = touchStart - touchEnd
+                  const isLeftSwipe = distance > 50
+                  const isRightSwipe = distance < -50
+                  
+                  if (isLeftSwipe && currentImageIndex < uniqueImages.length - 1) {
+                    handleNextImage()
+                  }
+                  if (isRightSwipe && currentImageIndex > 0) {
+                    handlePreviousImage()
+                  }
+                }
                 
                 return currentImage ? (
                   <div 
@@ -697,7 +771,24 @@ export default function ProductPage() {
                       setHoverZoom({ show: true, x, y })
                     }}
                     onMouseLeave={() => setHoverZoom({ show: false, x: 0, y: 0 })}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
                   >
+                    {/* Left Navigation Arrow - Desktop Only (Mamaearth style) */}
+                    {uniqueImages.length > 1 && currentImageIndex > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handlePreviousImage()
+                        }}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft className="w-5 h-5" style={{color: 'rgb(75,151,201)'}} />
+                      </button>
+                    )}
+                    
                     <img
                       src={currentImage}
                       alt={product.title}
@@ -715,6 +806,21 @@ export default function ProductPage() {
                       }}
                       draggable={false}
                     />
+                    
+                    {/* Right Navigation Arrow - Desktop Only (Mamaearth style) */}
+                    {uniqueImages.length > 1 && currentImageIndex < uniqueImages.length - 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleNextImage()
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight className="w-5 h-5" style={{color: 'rgb(75,151,201)'}} />
+                      </button>
+                    )}
+                    
                     {/* Amazon-style hover zoom lens effect */}
                     {hoverZoom.show && (
                       <div 
@@ -738,37 +844,115 @@ export default function ProductPage() {
                 ) : null
               })()}
 
-              {/* Thumbnail Gallery - Carousel style like reference site */}
+              {/* Thumbnail Gallery - Carousel style 1x3 (3 images per row) */}
               {(() => {
                 const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
                 const uniqueImages = [...new Map(allImages.map((img, idx) => [img, idx])).keys()]
                 
+                const imagesToShow = 3 // Show exactly 3 images at a time
+                const thumbnailSize = 130 // Increased size: 130px × 130px
+                const thumbnailGap = 12 // Gap between thumbnails
+                const containerWidth = (thumbnailSize * imagesToShow) + (thumbnailGap * (imagesToShow - 1)) // Width for 3 images
+                
+                const maxScrollIndex = Math.max(0, uniqueImages.length - imagesToShow)
+                const canScrollLeft = thumbnailScrollIndex > 0
+                const canScrollRight = thumbnailScrollIndex < maxScrollIndex
+                
+                const handleThumbnailScroll = (direction: 'left' | 'right') => {
+                  if (direction === 'left' && canScrollLeft) {
+                    const newIndex = Math.max(0, thumbnailScrollIndex - 1)
+                    setThumbnailScrollIndex(newIndex)
+                    // Scroll container
+                    if (thumbnailContainerRef.current) {
+                      const container = thumbnailContainerRef.current
+                      const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
+                      container.scrollTo({
+                        left: scrollPosition,
+                        behavior: 'smooth'
+                      })
+                    }
+                  } else if (direction === 'right' && canScrollRight) {
+                    const newIndex = Math.min(maxScrollIndex, thumbnailScrollIndex + 1)
+                    setThumbnailScrollIndex(newIndex)
+                    // Scroll container
+                    if (thumbnailContainerRef.current) {
+                      const container = thumbnailContainerRef.current
+                      const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
+                      container.scrollTo({
+                        left: scrollPosition,
+                        behavior: 'smooth'
+                      })
+                    }
+                  }
+                }
+                
                 return uniqueImages.length > 1 && (
-                  <div className="w-full">
+                  <div className="w-full relative">
+                    {/* Left Navigation Button - Mobile Only */}
+                    {uniqueImages.length > imagesToShow && (
+                      <button
+                        onClick={() => handleThumbnailScroll('left')}
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 sm:hidden ${
+                          canScrollLeft ? 'opacity-100 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
+                        }`}
+                        aria-label="Previous thumbnails"
+                        disabled={!canScrollLeft}
+                      >
+                        <ChevronLeft className="w-5 h-5" style={{color: 'rgb(75,151,201)'}} />
+                      </button>
+                    )}
+                    
+                    {/* Container with fixed width to show exactly 3 images */}
                     <div 
-                      className="flex gap-2 sm:gap-3 overflow-x-auto pb-2"
+                      ref={thumbnailContainerRef}
+                      className="overflow-hidden pb-2 sm:overflow-x-visible relative"
                       style={{ 
-                        scrollbarWidth: 'thin',
-                        scrollbarColor: '#cbd5e1 transparent',
-                        msOverflowStyle: 'none'
+                        width: '100%',
+                        maxWidth: '100%',
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none',
+                        scrollBehavior: 'smooth'
                       }}
                     >
                       <style>{`
-                        .thumb-scroll::-webkit-scrollbar {
-                          height: 4px;
+                        .thumb-scroll-container {
+                          display: flex;
+                          gap: ${thumbnailGap}px;
+                          overflow-x: auto;
+                          scrollbar-width: none;
+                          -ms-overflow-style: none;
+                          scroll-behavior: smooth;
                         }
-                        .thumb-scroll::-webkit-scrollbar-track {
-                          background: transparent;
+                        .thumb-scroll-container::-webkit-scrollbar {
+                          display: none;
                         }
-                        .thumb-scroll::-webkit-scrollbar-thumb {
-                          background: #cbd5e1;
-                          border-radius: 2px;
+                        @media (max-width: 640px) {
+                          .thumb-scroll-container {
+                            scroll-snap-type: x mandatory;
+                            -webkit-overflow-scrolling: touch;
+                            width: 100%;
+                            overflow-x: auto;
+                            padding: 0;
+                          }
+                          .thumb-scroll-container > button {
+                            scroll-snap-align: start;
+                            flex-shrink: 0;
+                          }
                         }
-                        .thumb-scroll::-webkit-scrollbar-thumb:hover {
-                          background: #94a3b8;
+                        @media (min-width: 641px) {
+                          .thumb-scroll-container {
+                            overflow-x: visible;
+                            flex-wrap: wrap;
+                          }
                         }
                       `}</style>
-                      <div className="flex gap-2 sm:gap-3 thumb-scroll">
+                      <div 
+                        className="thumb-scroll-container" 
+                        style={{ 
+                          width: '100%',
+                          maxWidth: '100%'
+                        }}
+                      >
                         {uniqueImages.map((src, index) => (
                           <button
                             key={`${src}-${index}`}
@@ -782,8 +966,9 @@ export default function ProductPage() {
                                 : 'border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100'
                             }`}
                             style={{ 
-                              width: '108px', 
-                              height: '108px',
+                              width: `${thumbnailSize}px`, 
+                              height: `${thumbnailSize}px`,
+                              minWidth: `${thumbnailSize}px`,
                               marginBottom: '10px'
                             }}
                             role="group"
@@ -815,6 +1000,41 @@ export default function ProductPage() {
                         ))}
                       </div>
                     </div>
+                    
+                    {/* Right Navigation Button - Mobile Only */}
+                    {uniqueImages.length > imagesToShow && (
+                      <button
+                        onClick={() => handleThumbnailScroll('right')}
+                        className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 sm:hidden ${
+                          canScrollRight ? 'opacity-100 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
+                        }`}
+                        aria-label="Next thumbnails"
+                        disabled={!canScrollRight}
+                      >
+                        <ChevronRight className="w-5 h-5" style={{color: 'rgb(75,151,201)'}} />
+                      </button>
+                    )}
+                    
+                    {/* Dot Indicators - Mamaearth Style */}
+                    {uniqueImages.length > 1 && (
+                      <div className="flex justify-center gap-2 mt-3 sm:mt-4">
+                        {uniqueImages.map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setCurrentImageIndex(idx)
+                              setZoomImageIndex(idx)
+                            }}
+                            className={`transition-all duration-300 rounded-full touch-manipulation ${
+                              idx === currentImageIndex 
+                                ? 'w-8 h-2 bg-gray-900' 
+                                : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+                            }`}
+                            aria-label={`Go to image ${idx + 1}`}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })()}
@@ -826,9 +1046,30 @@ export default function ProductPage() {
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                   {csvProduct?.['Product Title'] || csvProduct?.['Product Name'] || product.title}
                 </h1>
-                <p className="text-base sm:text-lg text-gray-600 mb-2">
+                <p className="text-base sm:text-lg text-gray-600 mb-2 line-clamp-2" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
                   {csvProduct?.['Subtitle / Tagline'] || 'Premium natural skincare for radiant skin'}
                 </p>
+                {/* Tags for Blue Tea products */}
+                {(() => {
+                  const productSlug = product?.slug || ''
+                  const productTitle = (product?.title || '').toLowerCase()
+                  const isBlueTea = productSlug.includes('blue-tea') || 
+                                    productSlug.includes('blue-tea') ||
+                                    productTitle.includes('blue tea') ||
+                                    productTitle.includes('aprajita') ||
+                                    productTitle.includes('butterfly pea')
+                  
+                  if (isBlueTea) {
+                    return (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <span className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Aprajita</span>
+                        <span className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Butterfly pea Flower</span>
+                        <span className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Blue Pea Flower</span>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
                 {/* Net Quantity in Header */}
                 {csvProduct?.['Net Quantity (Content)'] && (
                   <div className="mb-4 text-sm text-gray-700">
@@ -895,17 +1136,20 @@ export default function ProductPage() {
                 <div className="text-sm text-gray-600">Discounted price</div>
                 <div className="flex items-center gap-3">
                   <span className="text-2xl font-bold text-gray-900">
-                    {(() => {
+                    ₹{(() => {
                       // Priority: Admin panel data > CSV data > fallback
                       const adminMrp = product?.details?.mrp
                       const adminWebsitePrice = product?.details?.websitePrice
                       const csvMrp = csvProduct?.['MRP (₹)'] || csvProduct?.['MRP']
                       const csvWebsitePrice = csvProduct?.['website price'] || csvProduct?.['Website Price']
                       
-                      const mrp = adminMrp || csvMrp || product.price || '₹599'
+                      const mrp = adminMrp || csvMrp || product.price || '599'
                       const websitePrice = adminWebsitePrice || csvWebsitePrice || ''
                       
-                      return websitePrice && websitePrice !== mrp ? websitePrice : mrp
+                      const displayPrice = websitePrice && websitePrice !== mrp ? websitePrice : mrp
+                      // Remove ₹ if already present to avoid duplication
+                      const cleanPrice = parseFloat(displayPrice.toString().replace(/[₹,]/g, '')) || 0
+                      return parseFloat(cleanPrice.toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     })()}
                   </span>
                   {(() => {
@@ -920,11 +1164,11 @@ export default function ProductPage() {
                     
                     return websitePrice && websitePrice !== mrp ? (
                       <>
-                        <div className="text-sm text-gray-600">Regular price</div>
+                        <div className="text-sm text-gray-600">MRP</div>
                         <span className="text-lg font-medium line-through opacity-60 text-gray-500">
-                          ₹{mrp}
+                          ₹{parseFloat(parseFloat(mrp.toString().replace(/[₹,]/g, '')).toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        <span className="px-2 py-1 bg-green-100 text-green-800 text-sm font-medium rounded">
+                        <span className="px-3 py-2 bg-green-100 text-green-800 text-base font-bold rounded">
                           Save {Math.round(((parseFloat(mrp.toString().replace(/[₹,]/g, '')) - parseFloat(websitePrice.toString().replace(/[₹,]/g, ''))) / parseFloat(mrp.toString().replace(/[₹,]/g, '')) * 100))}%
                         </span>
                       </>
@@ -998,7 +1242,7 @@ export default function ProductPage() {
 
               {/* Quantity Selector */}
               <div className="flex items-center space-x-4">
-                <span className="text-sm font-medium text-gray-900">Quantity:</span>
+                <span className="text-sm font-medium text-gray-900">Unit:</span>
                 <div className="flex items-center border border-gray-300 rounded-md">
                   <button 
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -1035,13 +1279,13 @@ export default function ProductPage() {
                           if (button) {
                             const originalText = button.textContent
                             button.textContent = 'Added to Cart!'
-                            button.classList.add('bg-green-600', 'hover:bg-green-700')
-                        button.classList.remove('bg-gray-900', 'hover:bg-gray-800')
+                            button.style.backgroundColor = 'rgb(75,151,201)'
+                            button.style.color = '#FFFFFF'
                             setTimeout(() => {
                               button.textContent = originalText
-                              button.classList.remove('bg-green-600', 'hover:bg-green-700')
-                          button.classList.add('bg-gray-900', 'hover:bg-gray-800')
-                            }, 2000)
+                              button.style.backgroundColor = 'rgb(75,151,201)'
+                              button.style.color = '#FFFFFF'
+                            }, 4000) // Increased to 4 seconds for better visibility
                           }
                         } catch (error) {
                           // AuthGuard will handle the authentication requirement
@@ -1081,7 +1325,12 @@ export default function ProductPage() {
                 <ShareProduct 
                   productSlug={product.slug}
                   productTitle={product.title}
-                  productImage={product.listImage}
+                  productImage={
+                    // Use first PDP image if available (better quality), otherwise use listImage
+                    (product.pdpImages && product.pdpImages.length > 0 && product.pdpImages[0])
+                      ? product.pdpImages[0]
+                      : product.listImage
+                  }
                   productDescription={product.description}
                 />
               </div>
@@ -1098,7 +1347,7 @@ export default function ProductPage() {
                   )}
                   {csvProduct?.['Net Quantity (Content)'] && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Quantity:</span>
+                      <span className="text-gray-600">Unit:</span>
                       <span className="font-medium">{csvProduct['Net Quantity (Content)']}</span>
                     </div>
                   )}
@@ -1130,27 +1379,33 @@ export default function ProductPage() {
               </div>
 
               {/* Loyalty Points */}
-              <div className="flex items-center text-sm text-gray-600">
-                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Earn upto 249 points on this purchase
-                </div>
-
-              {/* Shipping Info - Dynamic based on delivery check */}
-              {deliveryInfo && deliveryInfo.data?.available_courier_companies && deliveryInfo.data.available_courier_companies.length > 0 ? (
-                <div className="text-sm text-green-700 bg-green-50 px-3 py-2 rounded-md border border-green-200">
-                  <div className="font-semibold mb-1">✓ Delivery Available</div>
-                  <div>
-                    <div className="font-medium">
-                      Dispatch: Next working day
-                    </div>
-                    <div className="font-medium">
-                      Delivered in: 3-5 days
-                    </div>
+              {(() => {
+                // Get product price for coins calculation
+                const adminMrp = product?.details?.mrp
+                const adminWebsitePrice = product?.details?.websitePrice
+                const csvMrp = csvProduct?.['MRP (₹)'] || csvProduct?.['MRP']
+                const csvWebsitePrice = csvProduct?.['website price'] || csvProduct?.['Website Price']
+                
+                const mrp = adminMrp || csvMrp || product.price || '599'
+                const websitePrice = adminWebsitePrice || csvWebsitePrice || ''
+                
+                // Use websitePrice if available, otherwise use MRP
+                const purchasePrice = websitePrice && websitePrice !== mrp ? websitePrice : mrp
+                
+                // Calculate coins: 10 coins per ₹1
+                const priceNumber = parseFloat(purchasePrice.toString().replace(/[₹,]/g, '')) || 0
+                const coins = calculatePurchaseCoins(priceNumber)
+                
+                return coins > 0 ? (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Earn upto {coins} points on this purchase
                   </div>
-                </div>
-              ) : null}
+                ) : null
+              })()}
+
 
               {/* Reasons to Love */}
               <div>
@@ -1171,10 +1426,6 @@ export default function ProductPage() {
                   <li className="flex items-start">
                     <span className="text-gray-400 mr-2">•</span>
                     <span>Suitable for All Skin Types</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-gray-400 mr-2">•</span>
-                    <span>Dermatologically Tested</span>
                   </li>
                 </ul>
               </div>
@@ -1552,22 +1803,206 @@ export default function ProductPage() {
                   <span className="text-sm font-semibold text-green-800">Nature's Finest, Blended with Care</span>
                 </div>
               </div>
-
-              {/* Country of Origin */}
-              <div className="flex items-center text-sm text-gray-600">
-                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Country Of Origin: {csvProduct?.['Country of Origin'] || 'India'}
-              </div>
-
-              {/* Welcome Offer */}
-              <div className="bg-gray-100 px-4 py-3 rounded-md">
-                <div className="text-sm font-semibold text-gray-900 mb-1">WELCOME OFFER</div>
-                <div className="text-sm text-gray-600">Use Code HELLO10 and enjoy flat 10% off on your first purchase.</div>
-              </div>
             </div>
           </div>
+
+          {/* Key Ingredients Section with Images - Prominent Display */}
+          {(() => {
+            // Get ingredients from CSV or database details
+            const keyIngredients = csvProduct?.['Key Ingredients'] || 
+              (product?.details && typeof product.details === 'object' ? product.details.keyIngredients : null) ||
+              (product?.details && typeof product.details === 'string' ? JSON.parse(product.details)?.keyIngredients : null)
+            
+            const ingredientBenefits = csvProduct?.['Ingredient Benefits'] || 
+              (product?.details && typeof product.details === 'object' ? product.details.ingredientBenefits : null) ||
+              (product?.details && typeof product.details === 'string' ? JSON.parse(product.details)?.ingredientBenefits : null)
+            
+            if (!keyIngredients) return null
+            
+            const ingredients = (typeof keyIngredients === 'string' ? keyIngredients.split(',').map((ing: string) => ing.trim()).filter((ing: string) => ing) : [])
+            const benefits = ingredientBenefits ? (typeof ingredientBenefits === 'string' ? ingredientBenefits.split(',').map((benefit: string) => benefit.trim()).filter((benefit: string) => benefit) : []) : []
+            
+            const ingredientBenefitMap: { [key: string]: string } = {}
+            ingredients.forEach((ingredient: string, index: number) => {
+              if (benefits[index]) {
+                ingredientBenefitMap[ingredient] = benefits[index]
+              }
+            })
+            
+            if (ingredients.length === 0) return null
+            
+            // Helper function to get ingredient image
+            const apiBase = getApiBase()
+            const base = apiBase.replace('/api', '')
+            const toAbs = (u: string) => {
+              if (!u) return ''
+              if (u.startsWith('http://') || u.startsWith('https://')) return u
+              const path = u.startsWith('/') ? u : `/${u}`
+              return `${base}${path}`
+            }
+            
+            const getIngredientImage = (ingredientName: string): string | null => {
+              let normalized = ingredientName.trim().toLowerCase()
+              normalized = normalized.replace(/\([^)]*\)/g, '').trim()
+              
+              const ingredientMap: { [key: string]: string } = {
+                'blue tea': '/IMAGES/blue pea.webp',
+                'aprajita': '/IMAGES/blue pea.webp',
+                'blue pea': '/IMAGES/blue pea.webp',
+                'charcoal': '/IMAGES/charcoal.webp',
+                'activated charcoal': '/IMAGES/charcoal.webp',
+                'yuja': '/IMAGES/yuja.webp',
+                'citron': '/IMAGES/yuja.webp',
+                'papaya': '/IMAGES/papaya.webp',
+                'shea butter': '/IMAGES/shea butter.webp',
+                'coconut oil': '/IMAGES/coconut-oil.webp',
+                'coconut': '/IMAGES/coconut-oil.webp',
+                'mulberry': '/IMAGES/mulberry.webp',
+                'grapeseed': '/IMAGES/grapseed.webp',
+                'grape seed': '/IMAGES/grapseed.webp',
+                'aha & bha': '/IMAGES/AHA & BHA.webp',
+                'aha': '/IMAGES/AHA & BHA.webp',
+                'bha': '/IMAGES/AHA & BHA.webp',
+                'alpha hydroxy acid': '/IMAGES/AHA & BHA.webp',
+                'beta hydroxy acid': '/IMAGES/AHA & BHA.webp',
+                'amla': '/IMAGES/Amla.webp',
+                'indian gooseberry': '/IMAGES/Amla.webp',
+                'argan oil': '/IMAGES/Argan Oils.webp',
+                'argan oils': '/IMAGES/Argan Oils.webp',
+                'biotin': '/IMAGES/Biotin.webp',
+                'blueberry': '/IMAGES/Blueberry.webp',
+                'brahmi': '/IMAGES/Brahmi.webp',
+                'flaxseed': '/IMAGES/Flaxseed.webp',
+                'flax seed': '/IMAGES/Flaxseed.webp',
+                'green tea': '/IMAGES/Green Tea.webp',
+                'juniper berry': '/IMAGES/Juniper Berry.webp',
+                'kakadu plum': '/IMAGES/Kakadu Plum.webp',
+                'kale leaf': '/IMAGES/Kale Leaf.webp',
+                'kale': '/IMAGES/Kale Leaf.webp',
+                'kaolin clay': '/IMAGES/Kaolin Clay.webp',
+                'kaolin': '/IMAGES/Kaolin Clay.webp',
+                'mustard': '/IMAGES/Mustard.webp',
+                'olive squalane': '/IMAGES/Olive Squalane.webp',
+                'squalane': '/IMAGES/Olive Squalane.webp',
+                'palmetto': '/IMAGES/Palmetto.webp',
+                'saw palmetto': '/IMAGES/Palmetto.webp',
+                'quinoa': '/IMAGES/Quinoa.webp',
+                'rice powder': '/IMAGES/Rice Powder.webp',
+                'saffron': '/IMAGES/Saffron.webp',
+                'sesame': '/IMAGES/Sesame.webp',
+                'sesame seed': '/IMAGES/Sesame.webp',
+                'tapioca starch': '/IMAGES/Tapioca Starch.webp',
+                'tapioca': '/IMAGES/Tapioca Starch.webp',
+                'tea tree': '/IMAGES/Tea Tree.webp',
+                'tea tree oil': '/IMAGES/Tea Tree.webp',
+                'vitamin c & b5': '/IMAGES/Vitamin C & B5.webp',
+                'vitamin c': '/IMAGES/Vitamin C & B5.webp',
+                'vitamin b5': '/IMAGES/Vitamin C & B5.webp',
+                'pantothenic acid': '/IMAGES/Vitamin C & B5.webp',
+                'white tea': '/IMAGES/white tea.webp',
+                'yellow dragon': '/IMAGES/Yellow Dragon.webp'
+              }
+              
+              if (ingredientMap[normalized]) {
+                return toAbs(ingredientMap[normalized])
+              }
+              
+              for (const [key, image] of Object.entries(ingredientMap)) {
+                if (normalized.includes(key) || key.includes(normalized)) {
+                  return toAbs(image)
+                }
+              }
+              
+              return null
+            }
+            
+            return (
+              <section className="py-6 sm:py-8 md:py-12 lg:py-16 bg-white w-full overflow-x-visible border-t border-gray-200 mt-8">
+                <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 w-full">
+                  <div className="text-center mb-4 sm:mb-6 md:mb-8 lg:mb-12">
+                    <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4 px-1">KEY INGREDIENTS</h2>
+                    <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-600 max-w-3xl mx-auto px-2">Our carefully curated ingredients work together to provide effective, natural skincare solutions that deliver real results for all skin types.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4 lg:gap-6 xl:gap-8 w-full">
+                    {ingredients.map((ingredient: string, index: number) => {
+                      const imagePath = getIngredientImage(ingredient)
+                      const benefit = ingredientBenefitMap[ingredient] || ''
+                      
+                      return (
+                        <div 
+                          key={`ingredient-img-${index}`} 
+                          className="flex flex-col items-center text-center space-y-1 sm:space-y-2 md:space-y-3 group cursor-pointer w-full"
+                          onClick={() => {
+                            window.location.hash = '#/user/ingredients'
+                          }}
+                        >
+                          {imagePath ? (
+                            <div className="relative w-full aspect-square rounded-md sm:rounded-lg overflow-hidden bg-gray-50 border border-gray-200 sm:border-2 group-hover:border-blue-400 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                              <img 
+                                src={imagePath} 
+                                alt={ingredient}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                  const parent = e.currentTarget.parentElement
+                                  if (parent) {
+                                    parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-gray-400 text-[10px] sm:text-xs md:text-sm px-1 text-center">${ingredient}</div>`
+                                  }
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full aspect-square rounded-md sm:rounded-lg bg-gray-100 border border-gray-200 sm:border-2 flex items-center justify-center group-hover:border-blue-400 transition-all duration-300">
+                              <span className="text-gray-500 text-[10px] sm:text-xs md:text-sm font-medium px-1 text-center break-words leading-tight">{ingredient}</span>
+                            </div>
+                          )}
+                          <div className="space-y-0.5 sm:space-y-1 w-full px-0.5 sm:px-1">
+                            <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-semibold text-gray-900 break-words leading-tight">{ingredient}</h3>
+                            {benefit && (
+                              <p className="text-[9px] sm:text-xs md:text-sm text-gray-600 line-clamp-2 break-words leading-tight">{benefit}</p>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </section>
+            )
+          })()}
+
+
+          {/* Key Ingredients Text List (Keep existing for reference) */}
+          {csvProduct?.['Key Ingredients'] && (() => {
+            const ingredients = csvProduct['Key Ingredients'].split(',').map((ing: string) => ing.trim()).filter((ing: string) => ing)
+            const ingredientBenefits = csvProduct['Ingredient Benefits'] ? csvProduct['Ingredient Benefits'].split(',').map((benefit: string) => benefit.trim()).filter((benefit: string) => benefit) : []
+            const ingredientBenefitMap: { [key: string]: string } = {}
+            ingredients.forEach((ingredient: string, index: number) => {
+              if (ingredientBenefits[index]) {
+                ingredientBenefitMap[ingredient] = ingredientBenefits[index]
+              }
+            })
+            
+            return (
+              <div className="bg-gray-50 px-4 py-3 rounded-md border border-gray-200">
+                <div className="text-sm font-semibold text-gray-900 mb-2">KEY INGREDIENTS</div>
+                <div className="space-y-2">
+                  {ingredients.map((ingredient: string, index: number) => {
+                    const benefit = ingredientBenefitMap[ingredient] || ''
+                    return (
+                      <div key={`ingredient-${index}`} className="text-sm">
+                        <span className="font-medium text-gray-900">{ingredient.trim()}</span>
+                        {benefit && <span className="text-gray-600">: {benefit}</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Mid-Page Promotional Banner - Full Width like Navigation - All Banners Displayed */}
           {product.bannerImages && product.bannerImages.length > 0 && (
@@ -1725,16 +2160,16 @@ export default function ProductPage() {
             })
             
             return (
-              <section className="py-16 bg-gray-50 w-full overflow-hidden">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-8 sm:mb-12 px-4">INGREDIENTS</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6 w-full">
+              <section className="py-6 sm:py-8 md:py-12 lg:py-16 bg-gray-50 w-full overflow-x-visible">
+                <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 w-full">
+                  <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 text-center mb-4 sm:mb-6 md:mb-8 lg:mb-12 px-2">INGREDIENTS</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6 w-full">
                     {ingredients.map((ingredient: string, index: number) => {
                       const imageUrl = getIngredientImage(ingredient)
                       const benefit = ingredientBenefitMap[ingredient] || ''
                       return (
                         <div key={`ingredient-${index}-${ingredient.substring(0, 10)}`} className="text-center w-full">
-                          <div className="w-20 sm:w-24 md:w-28 mx-auto mb-4 bg-white rounded-full shadow-md overflow-hidden relative" style={{ aspectRatio: '1 / 1', borderRadius: '50%', flexShrink: 0 }}>
+                          <div className="w-16 sm:w-20 md:w-24 lg:w-28 mx-auto mb-2 sm:mb-3 md:mb-4 bg-white rounded-full shadow-md overflow-hidden relative" style={{ aspectRatio: '1 / 1', borderRadius: '50%', flexShrink: 0 }}>
                             {imageUrl ? (
                               <img 
                                 src={imageUrl} 
@@ -1756,8 +2191,8 @@ export default function ProductPage() {
                                   const parent = target.parentElement
                                   if (parent) {
                                     parent.innerHTML = `
-                                      <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                      <div class="w-full h-full bg-green-100 rounded-full flex items-center justify-center">
+                                        <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                                           <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
                                         </svg>
                                       </div>
@@ -1766,16 +2201,16 @@ export default function ProductPage() {
                                 }}
                               />
                             ) : (
-                              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <div className="w-full h-full bg-green-100 rounded-full flex items-center justify-center">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                                 </svg>
                               </div>
                             )}
                           </div>
-                          <h3 className="font-semibold text-gray-900 text-xs sm:text-sm md:text-base px-2 break-words mb-1">{ingredient.trim()}</h3>
+                          <h3 className="font-semibold text-gray-900 text-[10px] sm:text-xs md:text-sm lg:text-base px-1 sm:px-2 break-words mb-0.5 sm:mb-1 leading-tight">{ingredient.trim()}</h3>
                           {benefit && (
-                            <p className="text-xs text-gray-600 px-2 break-words">{benefit}</p>
+                            <p className="text-[9px] sm:text-xs text-gray-600 px-1 sm:px-2 break-words leading-tight">{benefit}</p>
                           )}
                         </div>
                       )

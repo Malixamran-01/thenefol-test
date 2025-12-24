@@ -208,9 +208,10 @@ export default function Forms() {
               checked={!!value}
               onChange={(e) => handleFieldChange(field.id, e.target.checked)}
               required={field.required}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              style={{ accentColor: '#4b97c9' }}
             />
-            <label htmlFor={field.id} className="text-sm text-gray-700 dark:text-gray-300">
+            <label htmlFor={field.id} className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               {field.label}
             </label>
           </div>
@@ -220,7 +221,7 @@ export default function Forms() {
         return (
           <div className="space-y-2">
             {field.options?.map((option, index) => (
-              <div key={index} className="flex items-center space-x-2">
+              <div key={index} className="flex items-center space-x-2 sm:space-x-3">
                 <input
                   type="radio"
                   id={`${field.id}-${index}`}
@@ -229,9 +230,10 @@ export default function Forms() {
                   checked={value === option}
                   onChange={(e) => handleFieldChange(field.id, e.target.value)}
                   required={field.required}
-                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  className="w-5 h-5 sm:w-4 sm:h-4 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                  style={{ accentColor: '#4b97c9', minWidth: '20px', minHeight: '20px' }}
                 />
-                <label htmlFor={`${field.id}-${index}`} className="text-sm text-gray-700 dark:text-gray-300">
+                <label htmlFor={`${field.id}-${index}`} className="text-sm sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer flex-1">
                   {option}
                 </label>
               </div>

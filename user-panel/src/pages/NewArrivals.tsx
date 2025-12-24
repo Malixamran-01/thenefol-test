@@ -150,7 +150,9 @@ export default function NewArrivals() {
                     <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">
                       {product.category || 'New in Skincare'}
                     </p>
-                    <h2 className="mt-2 text-xl font-semibold text-slate-900">{product.title}</h2>
+                    <a href={`#/user/product/${product.slug}`} className="block">
+                      <h2 className="mt-2 text-xl font-semibold text-slate-900 hover:opacity-70 transition-opacity cursor-pointer">{product.title}</h2>
+                    </a>
                     <div className="mt-3 text-sm text-slate-500">
                       <PricingDisplay product={{ price: product.price, details: product.details }} csvProduct={product.csvProduct} />
                     </div>

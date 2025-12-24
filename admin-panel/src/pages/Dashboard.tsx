@@ -18,6 +18,7 @@ interface ActionItem {
   title: string
   icon: string
   color: string
+  href?: string
 }
 
 const Dashboard = () => {
@@ -28,6 +29,7 @@ const Dashboard = () => {
   const [liveVisitors, setLiveVisitors] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [chartData, setChartData] = useState<{ dates: string[], current: number[], previous: number[] } | null>(null)
   const getApiBase = () => {
     // Always use production URL - no environment variables
     if (typeof window !== 'undefined') {
@@ -65,10 +67,17 @@ const Dashboard = () => {
       setLoading(true)
       setError('')
       
-      const [metricsRes, actionItemsRes, visitorsRes] = await Promise.all([
-        fetch(`${apiBase}/dashboard/metrics`),
-        fetch(`${apiBase}/dashboard/action-items`),
-        fetch(`${apiBase}/dashboard/live-visitors`)
+      const token = localStorage.getItem('auth_token')
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` })
+      }
+
+      const [metricsRes, actionItemsRes, visitorsRes, chartRes] = await Promise.all([
+        fetch(`${apiBase}/dashboard/metrics`, { headers }),
+        fetch(`${apiBase}/dashboard/action-items`, { headers }),
+        fetch(`${apiBase}/dashboard/live-visitors`, { headers }),
+        fetch(`${apiBase}/dashboard/sessions-chart`, { headers })
       ])
 
       if (metricsRes.ok) {
@@ -100,6 +109,12 @@ const Dashboard = () => {
         const visitorsData = await visitorsRes.json()
         const count = visitorsData.data?.count || visitorsData.count || 0
         setLiveVisitors(count)
+      }
+
+      if (chartRes.ok) {
+        const chartDataResponse = await chartRes.json()
+        const data = chartDataResponse.data || chartDataResponse
+        setChartData(data)
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
@@ -328,26 +343,136 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Simple Chart Placeholder */}
-        <div className="h-64 rounded-xl flex items-center justify-center border-2 border-dashed" style={{ backgroundColor: 'var(--arctic-blue-lighter)', borderColor: 'var(--arctic-blue-light)' }}>
-          <div className="text-center">
-            <svg className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--arctic-blue-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        {/* Working Chart */}
+        {chartData && chartData.dates.length > 0 ? (
+          <div className="h-64 rounded-xl relative" style={{ backgroundColor: 'var(--arctic-blue-lighter)', padding: '1rem' }}>
+            <svg width="100%" height="240" viewBox="0 0 800 240" preserveAspectRatio="xMidYMid meet" style={{ display: 'block' }}>
+              {/* Grid lines */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line
+                  key={i}
+                  x1="40"
+                  y1={40 + i * 40}
+                  x2="760"
+                  y2={40 + i * 40}
+                  stroke="var(--arctic-blue-light)"
+                  strokeWidth="1"
+                  opacity="0.3"
+                />
+              ))}
+              
+              {/* Calculate max value for scaling */}
+              {(() => {
+                const maxVal = Math.max(...chartData.current, ...chartData.previous, 1)
+                const chartHeight = 160
+                const chartWidth = 720
+                const startX = 40
+                const startY = 200
+                
+                // Previous period line
+                const prevPoints = chartData.previous.map((val, idx) => {
+                  const x = startX + (idx / Math.max(chartData.previous.length - 1, 1)) * chartWidth
+                  const y = startY - (val / maxVal) * chartHeight
+                  return `${x},${y}`
+                }).join(' ')
+                
+                // Current period line
+                const currPoints = chartData.current.map((val, idx) => {
+                  const x = startX + (idx / Math.max(chartData.current.length - 1, 1)) * chartWidth
+                  const y = startY - (val / maxVal) * chartHeight
+                  return `${x},${y}`
+                }).join(' ')
+                
+                // Current period area fill
+                const areaPoints = `${startX},${startY} ${currPoints} ${startX + chartWidth},${startY}`
+                
+                return (
+                  <>
+                    {/* Previous period line */}
+                    <polyline
+                      points={prevPoints}
+                      fill="none"
+                      stroke="var(--arctic-blue-light)"
+                      strokeWidth="2"
+                      opacity="0.6"
+                    />
+                    
+                    {/* Current period area fill */}
+                    <polygon
+                      points={areaPoints}
+                      fill="var(--arctic-blue-primary)"
+                      opacity="0.2"
+                    />
+                    
+                    {/* Current period line */}
+                    <polyline
+                      points={currPoints}
+                      fill="none"
+                      stroke="var(--arctic-blue-primary)"
+                      strokeWidth="3"
+                    />
+                    
+                    {/* Data points for current period */}
+                    {chartData.current.map((val, idx) => {
+                      const x = startX + (idx / Math.max(chartData.current.length - 1, 1)) * chartWidth
+                      const y = startY - (val / maxVal) * chartHeight
+                      return (
+                        <circle
+                          key={idx}
+                          cx={x}
+                          cy={y}
+                          r="3"
+                          fill="var(--arctic-blue-primary)"
+                        />
+                      )
+                    })}
+                  </>
+                )
+              })()}
             </svg>
-            <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Performance chart will be displayed here</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Chart integration coming soon</p>
+            {/* X-axis labels */}
+            <div className="flex justify-between mt-2 text-xs px-10" style={{ color: 'var(--text-muted)' }}>
+              {chartData.dates.filter((_, i) => i % 5 === 0).map((date, idx) => {
+                const dateObj = new Date(date)
+                return (
+                  <span key={idx}>
+                    {dateObj.getDate()}/{dateObj.getMonth() + 1}
+                  </span>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="h-64 rounded-xl flex items-center justify-center border-2 border-dashed" style={{ backgroundColor: 'var(--arctic-blue-lighter)', borderColor: 'var(--arctic-blue-light)' }}>
+            <div className="text-center">
+              <svg className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--arctic-blue-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Loading chart data...</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action Items */}
       {!loading && !error && actionItems.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {actionItems.map((item, index) => (
-            <div key={index} className="metric-card">
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{item.icon}</span>
-                <span className={`font-medium ${item.color}`}>{item.title}</span>
+            <div 
+              key={index} 
+              className={`metric-card ${item.href ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+              onClick={item.href ? () => navigate(item.href!) : undefined}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className={`font-medium ${item.color}`}>{item.title}</span>
+                </div>
+                {item.href && (
+                  <svg className="w-5 h-5" style={{ color: 'var(--text-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
               </div>
             </div>
           ))}

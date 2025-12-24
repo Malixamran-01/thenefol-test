@@ -51,8 +51,9 @@ import * as subscriptionRoutes from './routes/subscriptions'
 import * as productCollectionRoutes from './routes/productCollections'
 import { createAPIManagerRouter } from './routes/apiManager'
 import { processScheduledWhatsAppMessages } from './utils/whatsappScheduler'
-import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail, sendOrderShippedEmail, sendOrderDeliveredEmail } from './services/emailService'
+import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail, sendOrderShippedEmail, sendOrderDeliveredEmail, sendInvoicePDFEmail } from './services/emailService'
 import { startCartAbandonmentCron } from './cron/cartAbandonment'
+import { startCartEmailSchedulerCron } from './cron/cartEmailScheduler'
 import rateLimit from 'express-rate-limit'
 
 // Extend Request interface to include userId
@@ -770,6 +771,16 @@ app.put('/api/admin/affiliate-commission-settings', (req: any, res) => {
 app.get('/api/affiliate/commission-settings', affiliateRoutes.getAffiliateCommissionForUsers.bind(null, pool))
 app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarketingMaterials.bind(null, pool))
 
+// ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
+// Frontend expects these endpoints; return empty lists for now so UI works without errors
+app.get('/api/admin/community/posts', authenticateToken, (_req, res) => {
+  sendSuccess(res, [])
+})
+
+app.get('/api/admin/community/comments', authenticateToken, (_req, res) => {
+  sendSuccess(res, [])
+})
+
 // ==================== OPTIMIZED PRODUCTS API ====================
 app.get('/api/products', (req, res) => productRoutes.getProducts(pool, res))
 // Specific routes must come before generic :id route
@@ -811,6 +822,8 @@ app.get('/api/inventory/:productId/summary', (req, res) => inventoryRoutes.getIn
 app.post('/api/inventory/:productId/:variantId/adjust', (req, res) => inventoryRoutes.adjustStock(pool, req, res))
 app.post('/api/inventory/:productId/:variantId/low-threshold', (req, res) => inventoryRoutes.setLowStockThreshold(pool, req, res))
 app.get('/api/inventory/low-stock', (req, res) => inventoryRoutes.listLowStock(pool, req, res))
+app.get('/api/inventory/all', (req, res) => inventoryRoutes.getAllProductsWithInventory(pool, req, res))
+app.put('/api/inventory/:productId/:variantId/quantity', (req, res) => inventoryRoutes.setStockQuantity(pool, req, res))
 
 // ==================== SHIPROCKET ====================
 app.get('/api/shiprocket/config', authenticateAndAttach as any, requireRole(['admin']), (req, res) => shiprocketRoutes.getShiprocketConfig(pool, req, res))
@@ -950,6 +963,14 @@ app.post('/api/staff/auth/change-password', staffAuthMiddleware as any, (req, re
 app.post('/api/staff/users/reset-password', (req, res) => staffRoutes.resetPassword(pool, req, res))
 app.post('/api/staff/users/disable', (req, res) => staffRoutes.disableStaff(pool, req, res))
 app.post('/api/staff/seed-standard', (req, res) => staffRoutes.seedStandardRolesAndPermissions(pool, req, res))
+app.post('/api/staff/users/bulk-create', (req, res) => staffRoutes.bulkCreateStaff(pool, req, res))
+app.get('/api/staff/layout-pages', (req, res) => staffRoutes.listLayoutPages(pool, req, res))
+app.post('/api/staff/layout-permissions', (req, res) => staffRoutes.assignLayoutPermissions(pool, req, res))
+app.get('/api/staff/:staffId/layout-permissions', (req, res) => staffRoutes.getStaffLayoutPermissions(pool, req, res))
+app.get('/api/staff/users/with-layouts', (req, res) => staffRoutes.listStaffWithLayoutPermissions(pool, req, res))
+app.get('/api/staff/admin-pages', (req, res) => staffRoutes.listAdminPanelPages(pool, req, res))
+app.post('/api/staff/page-permissions', (req, res) => staffRoutes.assignPagePermissions(pool, req, res))
+app.get('/api/staff/:staffId/page-permissions', (req, res) => staffRoutes.getStaffPagePermissions(pool, req, res))
 
 // ==================== WAREHOUSES ====================
 app.post('/api/warehouses', (req, res) => warehouseRoutes.createWarehouse(pool, req, res))
@@ -2773,8 +2794,14 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       coins_used = 0 // Coins used for payment
     } = req.body || {}
     
-    if (!customer_name || !customer_email || !shipping_address || !items || !total) {
+    // Validate required fields - allow total to be 0 when coins cover full amount
+    if (!customer_name || !customer_email || !shipping_address || !items || total === undefined || total === null) {
       return sendError(res, 400, 'Missing required fields')
+    }
+    
+    // Validate total is a valid number (can be 0 if fully paid with coins)
+    if (typeof total !== 'number' || total < 0 || isNaN(total)) {
+      return sendError(res, 400, 'Invalid total amount')
     }
     
     // Ensure columns exist
@@ -3174,6 +3201,11 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     // Also send copy to admin
     sendOrderConfirmationEmail(order, true).catch(err => {
       console.error('Failed to send order confirmation email to admin:', err)
+    })
+    
+    // Send invoice PDF email automatically (async, don't wait)
+    sendInvoicePDFEmail(pool, order, req.protocol && req.get('host') ? `${req.protocol}://${req.get('host')}` : 'https://thenefol.com').catch(err => {
+      console.error('Failed to send invoice PDF email:', err)
     })
     
     sendSuccess(res, order, 201)
@@ -3918,7 +3950,7 @@ function generateInvoiceHTML(order: any, companyDetails: any, colors: any, taxSe
       <div class="invoice-container">
         <div class="header-section">
           <div class="logo-box">LOGO</div>
-          <div class="company-name">${companyDetails.companyName || 'Nefol'}</div>
+          <div class="company-name">${companyDetails.companyName || 'NEFOL®'}</div>
           <div class="phone-bar">📞 ${companyDetails.companyPhone || '7355384939'}</div>
           <div class="invoice-title">Tax Invoice</div>
           <div class="invoice-details">
@@ -3935,7 +3967,7 @@ function generateInvoiceHTML(order: any, companyDetails: any, colors: any, taxSe
           <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px solid ${colors.primaryStart};">
             <h3 style="color: ${colors.primaryStart}; font-size: 16px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;">Seller Details</h3>
             <div style="color: #4a5568; font-size: 14px;">
-              <div style="margin-bottom: 5px;"><strong>Company:</strong> ${companyDetails.companyName || 'Nefol'}</div>
+              <div style="margin-bottom: 5px;"><strong>Company:</strong> ${companyDetails.companyName || 'NEFOL®'}</div>
               ${companyDetails.companyAddress ? `<div style="margin-bottom: 5px;"><strong>Address:</strong><br/>${companyDetails.companyAddress.replace(/\n/g, '<br/>')}</div>` : ''}
               <div style="margin-bottom: 5px;"><strong>Phone:</strong> ${companyDetails.companyPhone || '7355384939'}</div>
               <div style="margin-bottom: 5px;"><strong>Email:</strong> ${companyDetails.companyEmail || 'info@nefol.com'}</div>
@@ -4027,7 +4059,7 @@ function generateInvoiceHTML(order: any, companyDetails: any, colors: any, taxSe
               <div>${terms}</div>
             </div>
             <div class="signature">
-              <div style="margin-bottom: 30px;">For: ${companyDetails.companyName || 'Nefol'}</div>
+              <div style="margin-bottom: 30px;">For: ${companyDetails.companyName || 'NEFOL®'}</div>
               <div>${signature}</div>
             </div>
           </div>
@@ -4185,6 +4217,187 @@ app.get('/api/ai/tasks', async (req, res) => {
     res.json(tasks)
   } catch (err) {
     sendError(res, 500, 'Failed to fetch AI tasks', err)
+  }
+})
+
+// --- Cart & Checkout admin endpoints for CartCheckoutManagement page ---
+
+// Helper to safely parse price text (e.g., "₹1,234.00") to number
+function parsePriceText(value: any): number {
+  if (value === null || value === undefined) return 0
+  const cleaned = String(value).replace(/[^0-9.]/g, '')
+  const num = parseFloat(cleaned)
+  return Number.isFinite(num) ? num : 0
+}
+
+// Admin: Get all cart items with user & product details
+app.get('/api/admin/cart/items', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        c.id,
+        c.user_id,
+        u.name AS user_name,
+        u.email AS user_email,
+        c.product_id,
+        p.title AS product_name,
+        p.list_image AS product_image,
+        c.quantity,
+        COALESCE(p.price, '0') AS price_text,
+        c.created_at AS added_at,
+        c.updated_at
+      FROM cart c
+      LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN products p ON c.product_id = p.id
+      ORDER BY c.created_at DESC
+    `)
+
+    const items = rows.map((row) => {
+      const unitPrice = parsePriceText(row.price_text)
+      const quantity = row.quantity || 1
+      const totalPrice = unitPrice * quantity
+
+      return {
+        id: row.id,
+        user_id: row.user_id,
+        user_name: row.user_name || 'Guest',
+        user_email: row.user_email || '',
+        product_id: row.product_id,
+        product_name: row.product_name || 'Product',
+        product_image: row.product_image || '',
+        quantity,
+        price: unitPrice,
+        total_price: totalPrice,
+        added_at: row.added_at,
+        updated_at: row.updated_at,
+      }
+    })
+
+    sendSuccess(res, { items })
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch cart items', err)
+  }
+})
+
+// Admin: Update cart item quantity
+app.put('/api/admin/cart/items/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { quantity } = req.body || {}
+
+    const qty = Math.max(1, parseInt(quantity, 10) || 1)
+
+    const result = await pool.query(
+      'UPDATE cart SET quantity = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [qty, id]
+    )
+
+    if (result.rowCount === 0) {
+      return sendError(res, 404, 'Cart item not found')
+    }
+
+    sendSuccess(res, result.rows[0])
+  } catch (err) {
+    sendError(res, 500, 'Failed to update cart item', err)
+  }
+})
+
+// Admin: Remove cart item
+app.delete('/api/admin/cart/items/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const result = await pool.query('DELETE FROM cart WHERE id = $1', [id])
+
+    if (result.rowCount === 0) {
+      return sendError(res, 404, 'Cart item not found')
+    }
+
+    sendSuccess(res, { success: true })
+  } catch (err) {
+    sendError(res, 500, 'Failed to remove cart item', err)
+  }
+})
+
+// Map order.status to CheckoutSession status
+function mapOrderStatusToSessionStatus(status: string | null | undefined): 'pending' | 'completed' | 'abandoned' | 'expired' {
+  const s = (status || '').toLowerCase()
+  if (s === 'delivered' || s === 'completed') return 'completed'
+  if (s === 'cancelled' || s === 'failed') return 'abandoned'
+  if (s === 'expired') return 'expired'
+  return 'pending'
+}
+
+// Admin: Get checkout sessions (derived from orders table)
+app.get('/api/admin/checkout/sessions', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        o.id,
+        o.user_id,
+        u.name AS user_name,
+        u.email AS user_email,
+        o.order_number,
+        o.total,
+        o.items,
+        o.status,
+        o.created_at,
+        o.updated_at,
+        o.payment_method,
+        o.shipping_address
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      ORDER BY o.created_at DESC
+    `)
+
+    const sessions = rows.map((row) => {
+      const itemsArray = Array.isArray(row.items) ? row.items : []
+      const totalAmount = parsePriceText(row.total)
+
+      return {
+        id: row.id,
+        user_id: row.user_id,
+        user_name: row.user_name || 'Guest',
+        user_email: row.user_email || '',
+        session_id: row.order_number,
+        status: mapOrderStatusToSessionStatus(row.status),
+        total_amount: totalAmount,
+        items_count: itemsArray.length,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        payment_method: row.payment_method || '',
+        shipping_address: row.shipping_address ? JSON.stringify(row.shipping_address) : '',
+      }
+    })
+
+    sendSuccess(res, { sessions })
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch checkout sessions', err)
+  }
+})
+
+// Admin: Update checkout session status (writes back to orders.status)
+app.put('/api/admin/checkout/sessions/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body || {}
+
+    if (!status) {
+      return sendError(res, 400, 'Status is required')
+    }
+
+    // Write status directly to orders.status; front-end maps this back
+    const result = await pool.query(
+      'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [status, id]
+    )
+
+    if (result.rowCount === 0) {
+      return sendError(res, 404, 'Checkout session / order not found')
+    }
+
+    sendSuccess(res, result.rows[0])
+  } catch (err) {
+    sendError(res, 500, 'Failed to update checkout session status', err)
   }
 })
 
@@ -4654,6 +4867,7 @@ ensureSchema(pool)
     const host = process.env.HOST || '0.0.0.0' // Listen on all network interfaces
     // Start cart abandonment cron job
     startCartAbandonmentCron(pool)
+    startCartEmailSchedulerCron(pool)
 
     server.listen(port, host, () => {
       console.log(`🚀 Nefol API running on http://${host}:${port}`)

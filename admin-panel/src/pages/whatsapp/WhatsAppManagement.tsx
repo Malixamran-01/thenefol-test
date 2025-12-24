@@ -1034,7 +1034,7 @@ export default function WhatsAppManagement() {
                   value={newTemplate.footerText}
                   onChange={(e) => setNewTemplate({ ...newTemplate, footerText: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="Powered by Nefol"
+                  placeholder="Powered by NEFOL®"
                 />
               </div>
 

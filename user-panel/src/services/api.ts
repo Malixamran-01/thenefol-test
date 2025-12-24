@@ -26,6 +26,8 @@ export interface User {
   total_orders: number
   member_since: string
   is_verified: boolean
+  email_edited?: boolean
+  phone_edited?: boolean
 }
 
 export interface Product {
