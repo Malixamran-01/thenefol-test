@@ -2978,6 +2978,43 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
         const currentCoins = userResult.rows[0]?.loyalty_points || 0
         
         if (userId && currentCoins >= coins_used) {
+          // EXPLOIT PREVENTION: Track which source orders generated the coins being used (FIFO - First In First Out)
+          // This prevents the exploit where:
+          // 1. User places Order A → gets coins
+          // 2. User places Order B → gets coins
+          // 3. User uses coins to place Order C
+          // 4. User cancels Order A & B → coins deducted, but Order C was already paid with those coins
+          // Solution: Track source orders in metadata, so when Order A/B is cancelled, we can deduct coins from Order C
+          const sourceOrdersResult = await pool.query(`
+            SELECT ct.id, ct.order_id, ct.amount, o.order_number
+            FROM coin_transactions ct
+            LEFT JOIN orders o ON ct.order_id = o.id
+            WHERE ct.user_id = $1
+              AND ct.amount > 0
+              AND ct.type IN ('earned', 'referral_commission')
+              AND ct.status = 'completed'
+              AND (o.status IS NULL OR o.status NOT IN ('cancelled'))
+            ORDER BY ct.created_at ASC
+            LIMIT $2
+          `, [userId, Math.ceil(coins_used / 10) * 10]) // Get enough transactions to cover coins_used
+          
+          // Track source orders in metadata
+          const sourceOrders: Array<{ transaction_id: number, order_id: number | null, order_number: string | null, amount: number }> = []
+          let remainingCoins = coins_used
+          
+          for (const sourceTx of sourceOrdersResult.rows) {
+            if (remainingCoins <= 0) break
+            
+            const availableFromThisSource = Math.min(sourceTx.amount, remainingCoins)
+            sourceOrders.push({
+              transaction_id: sourceTx.id,
+              order_id: sourceTx.order_id,
+              order_number: sourceTx.order_number,
+              amount: availableFromThisSource
+            })
+            remainingCoins -= availableFromThisSource
+          }
+          
           // Deduct coins from user's loyalty_points
           await pool.query(`
             UPDATE users 
@@ -2985,11 +3022,11 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
             WHERE id = $2
           `, [coins_used, userId])
           
-          // Record coin transaction
+          // Record coin transaction with source order tracking
           // 1 rupee = 10 coins, so coins value = coins_used / 10 (in rupees)
           await pool.query(`
-            INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, metadata, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           `, [
             userId,
             -coins_used, // Negative amount for deduction
@@ -2997,10 +3034,15 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
             `Used ${coins_used} coins (₹${(coins_used / 10).toFixed(2)}) for order ${order_number}`,
             'completed',
             order.id,
+            JSON.stringify({
+              source_orders: sourceOrders,
+              coins_used: coins_used,
+              order_number: order_number
+            }),
             new Date()
           ])
           
-          console.log(`✅ Deducted ${coins_used} coins from user ${customer_email} for order ${order_number}`)
+          console.log(`✅ Deducted ${coins_used} coins from user ${customer_email} for order ${order_number}. Source orders tracked: ${sourceOrders.length}`)
         } else if (userId) {
           console.error(`❌ Insufficient coins for user ${customer_email}. Has ${currentCoins}, tried to use ${coins_used}`)
           // Note: Order already created, but coins weren't deducted. This should be handled by validation on frontend.
@@ -3040,7 +3082,7 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
               WHERE id = $2
             `, [coinsToAdd, userId])
             
-            // Record coin transaction
+            // Record coin transaction with type 'earned' (not 'cashback' - for consistency)
             await pool.query(`
               INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, created_at)
               VALUES ($1, $2, $3, $4, $5, $6, $7)

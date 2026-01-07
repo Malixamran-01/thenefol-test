@@ -238,4 +238,3 @@ export default function Wishlist() {
     </main>
   )
 }
-

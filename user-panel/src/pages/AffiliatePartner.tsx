@@ -45,6 +45,13 @@ const AffiliatePartner: React.FC = () => {
   // Force refresh - timestamp: 1761382000000
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [affiliateSource, setAffiliateSource] = useState<'profile' | 'home' | null>(null)
+
+useEffect(() => {
+  const source = sessionStorage.getItem('affiliate_referrer') as 'profile' | 'home' | null
+  setAffiliateSource(source)
+}, [])
+
   const [affiliateData, setAffiliateData] = useState<AffiliateData | null>(null)
   const [referrals, setReferrals] = useState<Referral[]>([])
   const [referralsPage, setReferralsPage] = useState(1)
@@ -745,14 +752,26 @@ const AffiliatePartner: React.FC = () => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           {/* Header with Back Button */}
           <div className="mb-8 sm:mb-12">
-            <button 
-              onClick={() => window.location.hash = '#/user/profile'}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 font-light tracking-wide"
-              style={{ letterSpacing: '0.05em' }}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Profile</span>
-            </button>
+            {affiliateSource === 'profile' && (
+  <button
+    onClick={() => window.location.hash = '#/user/profile'}
+    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 font-light tracking-wide"
+  >
+    <ArrowLeft className="h-4 w-4" />
+    <span>Back to Profile</span>
+  </button>
+)}
+
+{affiliateSource === 'home' && (
+  <button
+    onClick={() => window.location.hash = '#/'}
+    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 font-light tracking-wide"
+  >
+    <ArrowLeft className="h-4 w-4" />
+    <span>Back to Home</span>
+  </button>
+)}
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h1 

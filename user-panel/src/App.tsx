@@ -696,7 +696,19 @@ function AppContent() {
                 <li><a href="#/user/about" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>About us</a></li>
                 <li><a href="#/user/faq" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>FAQ</a></li>
                 <li><a href="#/user/blog" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Blogs</a></li>
-                <li><a href="#/user/affiliate-partner" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Affiliate Program</a></li>
+                <li>
+  <a
+    href="#/user/affiliate-partner"
+    onClick={() => {
+      sessionStorage.setItem('affiliate_referrer', 'home')
+    }}
+    className="text-xs sm:text-sm font-light transition-colors hover:opacity-80"
+    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+  >
+    Affiliate Program
+  </a>
+</li>
+
                 <li><a href="#/user/contact" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Contact Us</a></li>
               </ul>
             </div>
@@ -922,7 +934,20 @@ interface RouterViewProps {
 }
 
 function RouterView({ affiliateId }: RouterViewProps) {
+  const { isAuthenticated } = useAuth()
+  const RequiredAuth = (component: JSX.Element): JSX.Element | null => {
+  if (!isAuthenticated) {
+    if (!window.location.hash.startsWith('#/user/login')) {
+      sessionStorage.setItem('post_login_redirect', window.location.hash)
+      window.location.hash = '#/user/login'
+    }
+    return null
+  }
+  return component
+}
+
   const [hash, setHash] = useState(window.location.hash || '#/user/')
+  
   
   React.useEffect(() => {
     const onHashChange = () => setHash(window.location.hash || '#/user/')
@@ -953,6 +978,15 @@ function RouterView({ affiliateId }: RouterViewProps) {
   
   const path = hash.replace('#', '')
   const lower = path.toLowerCase()
+    const requireAuth = (component: JSX.Element) => {
+    if (!isAuthenticated) {
+      // redirect to login
+      window.location.hash = '#/user/login'
+      return null
+    }
+    return component
+  }
+
   
   // Extract path without query parameters
   const pathWithoutQuery = lower.split('?')[0]
@@ -976,9 +1010,15 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/blog': return <Blog />
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
-    case '/user/affiliate': return <Affiliate />
-    case '/user/affiliate-partner': return <AffiliatePartner />
-    case '/user/referral-history': return <ReferralHistory />
+    case '/user/affiliate':
+  return RequiredAuth(<Affiliate />)
+
+case '/user/affiliate-partner':
+  return RequiredAuth(<AffiliatePartner />)
+
+case '/user/referral-history':
+  return RequiredAuth(<ReferralHistory />)
+
     case '/user/reports': return <Reports />
     case '/user/profile': return <Profile />
     case '/user/nefol-coins': return <NefolCoins />
@@ -1037,4 +1077,3 @@ export default function App() {
     </AuthProvider>
   )
 }
-

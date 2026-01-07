@@ -584,46 +584,142 @@ export async function cancelOrderImmediate(pool: Pool, req: Request, res: Respon
     }
 
     // Reverse cashback coins (5% of order total) if they were added
+    // EXPLOIT PREVENTION: Also check if coins from this cancelled order were used in other orders
+    // If yes, deduct those coins from user's balance to prevent the exploit
     try {
       // Find cashback coins transaction for this order
       const cashbackResult = await pool.query(`
         SELECT amount, id FROM coin_transactions
         WHERE user_id = (SELECT id FROM users WHERE email = $1)
-          AND type = 'cashback'
+          AND type = 'earned'
           AND order_id = $2
           AND amount > 0
+          AND description LIKE '%cashback%'
         ORDER BY created_at DESC
         LIMIT 1
       `, [order.customer_email, order.id])
       
       if (cashbackResult.rows.length > 0) {
         const cashbackCoins = cashbackResult.rows[0].amount
-        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [order.customer_email])
+        const userResult = await pool.query('SELECT id, loyalty_points FROM users WHERE email = $1', [order.customer_email])
         const userId = userResult.rows[0]?.id
+        const currentBalance = userResult.rows[0]?.loyalty_points || 0
         
         if (userId) {
-          // Deduct cashback coins
+          // Check if coins from this cancelled order were used in other orders
+          // This prevents exploit where user uses coins from Order A to pay for Order B, then cancels Order A
+          const coinsUsedFromThisOrder = await pool.query(`
+            SELECT 
+              ct.id,
+              ct.order_id,
+              ct.amount,
+              o.order_number,
+              ct.metadata
+            FROM coin_transactions ct
+            LEFT JOIN orders o ON ct.order_id = o.id
+            WHERE ct.user_id = $1
+              AND ct.type = 'redeemed'
+              AND ct.amount < 0
+              AND ct.metadata IS NOT NULL
+              AND ct.metadata::text LIKE '%' || $2::text || '%'
+              AND (o.status IS NULL OR o.status NOT IN ('cancelled'))
+            ORDER BY ct.created_at DESC
+          `, [userId, order.id.toString()])
+          
+          let totalCoinsToDeduct = cashbackCoins
+          const affectedOrders: Array<{ order_id: number, order_number: string, coins_used: number }> = []
+          
+          // Calculate how many coins from this cancelled order were used in other orders
+          for (const usedTx of coinsUsedFromThisOrder.rows) {
+            try {
+              const metadata = typeof usedTx.metadata === 'string' ? JSON.parse(usedTx.metadata) : usedTx.metadata
+              if (metadata && metadata.source_orders && Array.isArray(metadata.source_orders)) {
+                for (const sourceOrder of metadata.source_orders) {
+                  if (sourceOrder.order_id === order.id) {
+                    const coinsFromThisOrder = Math.abs(sourceOrder.amount)
+                    totalCoinsToDeduct += coinsFromThisOrder
+                    affectedOrders.push({
+                      order_id: usedTx.order_id,
+                      order_number: usedTx.order_number || 'Unknown',
+                      coins_used: coinsFromThisOrder
+                    })
+                  }
+                }
+              }
+            } catch (parseErr) {
+              console.error('Error parsing metadata for transaction:', usedTx.id, parseErr)
+            }
+          }
+          
+          // Deduct all coins (original cashback + coins used from this order in other orders)
+          // This can result in negative balance, which is acceptable - user owes coins
           await pool.query(`
             UPDATE users 
             SET loyalty_points = loyalty_points - $1
             WHERE id = $2
-          `, [cashbackCoins, userId])
+          `, [totalCoinsToDeduct, userId])
+          
+          const finalBalance = currentBalance - totalCoinsToDeduct
           
           // Record reversal transaction
           await pool.query(`
-            INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, metadata, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           `, [
             userId,
-            -cashbackCoins, // Negative amount for reversal
+            -totalCoinsToDeduct, // Negative amount for reversal
             'cashback_reversed',
-            `Reversed ${cashbackCoins} cashback coins (₹${(cashbackCoins / 10).toFixed(2)}) due to cancelled order ${order_number}`,
+            `Reversed ${cashbackCoins} cashback coins + ${totalCoinsToDeduct - cashbackCoins} coins used in other orders (₹${(totalCoinsToDeduct / 10).toFixed(2)}) due to cancelled order ${order_number}`,
             'completed',
             order.id,
+            JSON.stringify({
+              original_cashback: cashbackCoins,
+              coins_used_in_other_orders: totalCoinsToDeduct - cashbackCoins,
+              affected_orders: affectedOrders,
+              final_balance: finalBalance
+            }),
             new Date()
           ])
           
-          console.log(`✅ Reversed ${cashbackCoins} cashback coins from user ${order.customer_email} for cancelled order ${order_number}`)
+          if (affectedOrders.length > 0) {
+            console.log(`✅ Reversed ${cashbackCoins} cashback coins + ${totalCoinsToDeduct - cashbackCoins} coins used in ${affectedOrders.length} other order(s) from user ${order.customer_email} for cancelled order ${order_number}`)
+            console.log(`   Affected orders: ${affectedOrders.map(o => o.order_number).join(', ')}`)
+            console.log(`   User balance after reversal: ${finalBalance} coins`)
+            
+            // Notify admin about coins deducted from other orders (potential exploit attempt)
+            try {
+              if (io) {
+                await pool.query(`
+                  INSERT INTO admin_notifications (user_id, notification_type, title, message, link, icon, priority, metadata)
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `, [
+                  userId,
+                  'coin_exploit_prevention',
+                  'Coins Deducted from Other Orders',
+                  `Order ${order_number} cancelled. ${totalCoinsToDeduct - cashbackCoins} coins that were used in ${affectedOrders.length} other order(s) have been deducted. Affected orders: ${affectedOrders.map(o => o.order_number).join(', ')}`,
+                  `/admin/orders/${order.id}`,
+                  'alert-triangle',
+                  'high',
+                  JSON.stringify({
+                    cancelled_order: order_number,
+                    cancelled_order_id: order.id,
+                    coins_deducted: totalCoinsToDeduct - cashbackCoins,
+                    affected_orders: affectedOrders,
+                    user_balance: finalBalance
+                  })
+                ])
+                io.to('admin-panel').emit('new-notification', {
+                  type: 'coin_exploit_prevention',
+                  title: 'Coins Deducted from Other Orders',
+                  message: `Order ${order_number} cancelled. Coins deducted from ${affectedOrders.length} other order(s).`
+                })
+              }
+            } catch (notifErr) {
+              console.error('Error creating admin notification:', notifErr)
+            }
+          } else {
+            console.log(`✅ Reversed ${cashbackCoins} cashback coins from user ${order.customer_email} for cancelled order ${order_number}`)
+          }
         }
       }
     } catch (cashbackErr) {

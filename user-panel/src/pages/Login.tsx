@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { authAPI } from '../services/api'
-import { Mail, Lock, User, Phone, Eye, EyeOff, MessageCircle } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, MessageCircle } from 'lucide-react'
 import PhoneInput from '../components/PhoneInput'
 
 export default function LoginPage() {
@@ -16,34 +16,63 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('')
   const [otpCountdown, setOtpCountdown] = useState(0)
   const [loginPhone, setLoginPhone] = useState('')
+  const [countryCode, setCountryCode] = useState('+91')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const otpTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   const [signupData, setSignupData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
     phone: '',
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      zip: ''
-    }
+    address: { street: '', city: '', state: '', zip: '' }
   })
-  const [countryCode, setCountryCode] = useState('+91')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
   const { login, loginWithWhatsApp, signup, error: authError } = useAuth()
 
+  // ✅ SINGLE SOURCE OF REDIRECT TRUTH
+  const redirectAfterLogin = () => {
+    const redirect = sessionStorage.getItem('post_login_redirect')
+    if (redirect) {
+      sessionStorage.removeItem('post_login_redirect')
+      window.location.hash = redirect
+    } else {
+      window.location.hash = '#/user/'
+    }
+  }
+
+  const startOtpTimer = () => {
+    if (otpTimerRef.current) clearInterval(otpTimerRef.current)
+    setOtpCountdown(600)
+
+    otpTimerRef.current = setInterval(() => {
+      setOtpCountdown(prev => {
+        if (prev <= 1) {
+          if (otpTimerRef.current) clearInterval(otpTimerRef.current)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const formatPhone = (phone: string) => {
+    const cc = countryCode.replace(/[^0-9]/g, '')
+    const num = phone.replace(/\D/g, '')
+    return `${cc}${num}`
+  }
+
+  // ---------------- LOGIN ----------------
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     if (useWhatsAppLogin) {
-      // WhatsApp login flow
       if (!otpSent) {
-        // Send OTP
         if (!loginPhone) {
           setError('Please enter your phone number')
           setLoading(false)
@@ -51,32 +80,16 @@ export default function LoginPage() {
         }
 
         try {
-          // Format phone: remove + from country code and combine with phone number
-          const countryCodeDigits = countryCode.replace(/[^0-9]/g, '')
-          const phoneDigits = loginPhone.replace(/\D/g, '')
-          const formattedPhone = `${countryCodeDigits}${phoneDigits}`
-          console.log('📱 Sending login OTP to:', formattedPhone)
+          const formattedPhone = formatPhone(loginPhone)
           await authAPI.sendOTPLogin(formattedPhone)
           setOtpSent(true)
-          setOtpCountdown(600) // 10 minutes
-          
-          // Start countdown timer
-          const timer = setInterval(() => {
-            setOtpCountdown((prev) => {
-              if (prev <= 1) {
-                clearInterval(timer)
-                return 0
-              }
-              return prev - 1
-            })
-          }, 1000)
+          startOtpTimer()
         } catch (err: any) {
-          setError(err?.message || 'Failed to send OTP. Please try again.')
+          setError(err?.message || 'Failed to send OTP.')
         } finally {
           setLoading(false)
         }
       } else {
-        // Verify OTP and login
         if (!otp || otp.length !== 6) {
           setError('Please enter a valid 6-digit OTP')
           setLoading(false)
@@ -84,31 +97,29 @@ export default function LoginPage() {
         }
 
         try {
-          const formattedPhone = `${countryCode}${loginPhone.replace(/\D/g, '')}`
+          const formattedPhone = formatPhone(loginPhone)
           const success = await loginWithWhatsApp(formattedPhone, otp)
+
           if (!success) {
             setError(authError || 'Login failed')
           } else {
-            // Redirect to home page
-            window.location.hash = '#/user/'
+            redirectAfterLogin()
           }
         } catch (err: any) {
-          setError(err?.message || 'Invalid OTP or login failed. Please try again.')
+          setError(err?.message || 'Invalid OTP or login failed.')
         } finally {
           setLoading(false)
         }
       }
     } else {
-      // Regular email/password login
       try {
         const success = await login(email, password)
         if (!success) {
           setError(authError || 'Login failed')
         } else {
-          // Redirect to home page
-          window.location.hash = '#/user/'
+          redirectAfterLogin()
         }
-      } catch (err) {
+      } catch {
         setError('Login failed. Please try again.')
       } finally {
         setLoading(false)
@@ -116,14 +127,13 @@ export default function LoginPage() {
     }
   }
 
+  // ---------------- SIGNUP ----------------
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
     if (useOTP) {
-      // OTP signup flow
       if (!otpSent) {
-        // Send OTP
         if (!signupData.phone) {
           setError('Please enter your phone number')
           return
@@ -131,32 +141,16 @@ export default function LoginPage() {
 
         setLoading(true)
         try {
-          // Format phone: remove + from country code and combine with phone number
-          const countryCodeDigits = countryCode.replace(/[^0-9]/g, '')
-          const phoneDigits = signupData.phone.replace(/\D/g, '')
-          const formattedPhone = `${countryCodeDigits}${phoneDigits}`
-          console.log('📱 Sending signup OTP to:', formattedPhone)
+          const formattedPhone = formatPhone(signupData.phone)
           await authAPI.sendOTP(formattedPhone)
           setOtpSent(true)
-          setOtpCountdown(600) // 10 minutes
-          
-          // Start countdown timer
-          const timer = setInterval(() => {
-            setOtpCountdown((prev) => {
-              if (prev <= 1) {
-                clearInterval(timer)
-                return 0
-              }
-              return prev - 1
-            })
-          }, 1000)
+          startOtpTimer()
         } catch (err: any) {
-          setError(err?.message || 'Failed to send OTP. Please try again.')
+          setError(err?.message || 'Failed to send OTP.')
         } finally {
           setLoading(false)
         }
       } else {
-        // Verify OTP and create account
         if (!otp || otp.length !== 6) {
           setError('Please enter a valid 6-digit OTP')
           return
@@ -169,10 +163,11 @@ export default function LoginPage() {
 
         setLoading(true)
         try {
-          const formattedPhone = `${countryCode}${signupData.phone.replace(/\D/g, '')}`
+          const formattedPhone = formatPhone(signupData.phone)
+
           const result = await authAPI.verifyOTPSignup({
             phone: formattedPhone,
-            otp: otp,
+            otp,
             name: signupData.name,
             email: undefined,
             address: {
@@ -183,50 +178,41 @@ export default function LoginPage() {
             }
           })
 
-          if (result.token && result.user) {
+          if (result?.token && result?.user) {
             localStorage.setItem('token', result.token)
             localStorage.setItem('user', JSON.stringify(result.user))
-            // Redirect to home page
-            window.location.hash = '#/user/'
+            redirectAfterLogin()
           } else {
             setError('Signup failed. Please try again.')
           }
         } catch (err: any) {
-          setError(err?.message || 'Invalid OTP or signup failed. Please try again.')
+          setError(err?.message || 'Invalid OTP or signup failed.')
         } finally {
           setLoading(false)
         }
       }
     } else {
-      // Regular signup flow
       if (signupData.password !== signupData.confirmPassword) {
         setError('Passwords do not match')
         return
       }
 
       setLoading(true)
-
       try {
         const success = await signup({
           name: signupData.name,
           email: signupData.email,
           password: signupData.password,
           phone: '',
-          address: {
-            street: '',
-            city: '',
-            state: '',
-            zip: ''
-          }
+          address: { street: '', city: '', state: '', zip: '' }
         })
 
         if (!success) {
           setError(authError || 'Signup failed')
         } else {
-          // Redirect to home page
-          window.location.hash = '#/user/'
+          redirectAfterLogin()
         }
-      } catch (err) {
+      } catch {
         setError('Signup failed. Please try again.')
       } finally {
         setLoading(false)
@@ -733,7 +719,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
-
-
-

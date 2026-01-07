@@ -6,6 +6,7 @@ import PricingDisplay from '../components/PricingDisplay'
 import { getProductRating, getProductReviewCount, hasVerifiedReviews } from '../utils/product_reviews'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import VerifiedBadge from '../components/VerifiedBadge'
+import WishlistButton from '../components/WishlistButton'
 
 interface Product {
   id?: number
@@ -160,15 +161,11 @@ export default function Hair() {
                       )}
                     </a>
                     <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                      <button 
-                        className="w-9 h-9 bg-white/95 backdrop-blur-sm hover:bg-white rounded-full flex items-center justify-center transition-all duration-300"
-                        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <svg className="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                      </button>
+                     <WishlistButton
+  productId={product.id!}
+  className="absolute top-4 right-4 z-50 opacity-0 group-hover:opacity-100"
+/>
+
                     </div>
                   </div>
                   <div className="flex flex-col flex-grow px-2">
@@ -326,15 +323,11 @@ export default function Hair() {
                       </span>
                     </div>
                     <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                      <button 
-                        className="w-9 h-9 bg-white/95 backdrop-blur-sm hover:bg-white rounded-full flex items-center justify-center transition-all duration-300"
-                        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <svg className="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                      </button>
+                      <WishlistButton
+  productId={combo.id!}
+  className="absolute top-4 right-4 z-50 opacity-0 group-hover:opacity-100"
+/>
+
                     </div>
                   </div>
                   <div className="flex flex-col flex-grow px-2">

@@ -11,6 +11,7 @@ import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import VerifiedBadge from '../components/VerifiedBadge'
 import { getSessionId } from '../utils/session'
 import { getApiBase } from '../utils/apiBase'
+import WishlistButton from '../components/WishlistButton'
 
 // Social Media Videos Component with auto-slide in horizontal line
 const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<HTMLDivElement> }> = ({ videos, scrollerRef }) => {
@@ -1134,6 +1135,13 @@ export default function Home() {
                         )}
                       </div>
                     </a>
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                                         <WishlistButton
+                      productId={product.id!}
+                      className="absolute top-4 right-4 z-50 opacity-0 group-hover:opacity-100"
+                    />
+                    
+                                        </div>
                     
                     {/* Product Info */}
                     <div className="space-y-2">
