@@ -7,11 +7,25 @@ testsprite_tests/
 coverage/
 *.lcov
 
-# Environment variables
+# Environment variables - ALL .env files (including test, production, local, etc.)
+.env
+.env.*
+*.env
 .env.local
 .env.*.local
 .env.test
-backend/.env.test
+.env.production
+.env.development
+.env.backup
+.env.old
+backend/.env
+backend/.env.*
+backend/*.env
+backend/supabase-connection-string.txt
+backend/supabase-connection-string.txt
+**/.env
+**/.env.*
+**/*.env
 supabase-connection-string.txt
 
 # IDE
