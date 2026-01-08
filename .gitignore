@@ -10,6 +10,9 @@ coverage/
 # Environment variables
 .env.local
 .env.*.local
+.env.test
+backend/.env.test
+supabase-connection-string.txt
 
 # IDE
 .vscode/settings.json

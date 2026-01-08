@@ -5,11 +5,16 @@
   "private": true,
   "scripts": {
     "dev": "ts-node-dev --transpile-only --respawn src/index.ts",
+    "dev:test": "node switch-env.js test && ts-node-dev --transpile-only --respawn src/index.ts",
+    "dev:prod": "node switch-env.js prod && ts-node-dev --transpile-only --respawn src/index.ts",
     "build": "tsc -b",
     "start": "node dist/index.js",
     "migrate": "node migrate.js",
     "reset-db": "node reset-database.js",
-    "reset-admin": "node reset-admin-credentials.js"
+    "reset-admin": "node reset-admin-credentials.js",
+    "test:coin-exploit": "node test-coin-exploit.js",
+    "env:test": "node switch-env.js test",
+    "env:prod": "node switch-env.js prod"
   },
   "dependencies": {
     "@types/uuid": "^11.0.0",
@@ -26,6 +31,7 @@
     "puppeteer": "^21.6.1",
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.1",
+    "supabase": "^2.71.2",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

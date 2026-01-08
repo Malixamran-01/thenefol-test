@@ -3,7 +3,17 @@ require('dotenv/config');
 const { Pool } = require('pg');
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/nefol';
-const pool = new Pool({ connectionString });
+
+// Check if this is a Supabase connection (requires SSL)
+const isSupabase = connectionString.includes('supabase.co');
+const poolConfig = isSupabase 
+  ? { 
+      connectionString,
+      ssl: { rejectUnauthorized: false } // Supabase requires SSL
+    }
+  : { connectionString };
+
+const pool = new Pool(poolConfig);
 
 async function runMigration() {
   console.log('🔄 Running database migration...');

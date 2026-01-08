@@ -311,7 +311,17 @@ const io = new SocketIOServer(server, {
 })
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/nefol'
-const pool = new Pool({ connectionString })
+
+// Check if this is a Supabase connection (requires SSL)
+const isSupabase = connectionString.includes('supabase.co') || connectionString.includes('pooler.supabase.com')
+const poolConfig = isSupabase 
+  ? { 
+      connectionString,
+      ssl: { rejectUnauthorized: false } // Supabase requires SSL
+    }
+  : { connectionString }
+
+const pool = new Pool(poolConfig)
 const staffAuthMiddleware = staffRoutes.createStaffAuthMiddleware(pool)
 
 // Register POST webhook route after pool is defined (must use raw body, not express.json())

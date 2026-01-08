@@ -1,0 +1,15 @@
+# Test Environment Files (add to main .gitignore)
+.env.test
+.env.local
+.env.development
+.env.production.local
+
+# Test database dumps
+*.sql.test
+test-db-*.sql
+
+# Test logs
+test-*.log
+*.test.log
+
+
