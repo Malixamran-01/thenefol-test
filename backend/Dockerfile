@@ -1,4 +1,4 @@
-# Multi-stage build for faster deployments
+# Multi-stage build for monorepo backend only
 FROM node:20-slim AS base
 
 # Install only essential Puppeteer dependencies (minimal set)
@@ -27,34 +27,41 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy root package files (for workspace support)
+COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Copy backend package files
+COPY backend/package.json backend/package-lock.json* ./backend/
+COPY backend/tsconfig.json ./backend/
+
+# Install only backend workspace dependencies (skip other workspaces)
+# Use --workspace flag to only install backend, not all workspaces
+RUN npm ci --workspace=@nefol/backend --include=dev || \
+    (cd backend && npm ci --include=dev) && npm cache clean --force
 
 # Build stage
 FROM base AS build
 
-# Install dev dependencies for build
-RUN npm install --include=dev
+# Copy backend source
+COPY backend/src ./backend/src
 
-# Copy source
-COPY src ./src
-
-# Build TypeScript
+# Build TypeScript (only backend)
+WORKDIR /app/backend
 RUN npm run build
 
 # Production stage
 FROM base AS production
 
-# Copy built files
-COPY --from=build /app/dist ./dist
+# Copy built files and production dependencies
+COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/backend/node_modules ./backend/node_modules
 
 # Create uploads directory
-RUN mkdir -p uploads
+RUN mkdir -p backend/uploads
+
+# Set working directory to backend
+WORKDIR /app/backend
 
 # Expose port
 EXPOSE 2000

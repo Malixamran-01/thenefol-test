@@ -1,0 +1,12 @@
+# Ignore frontend workspaces to speed up build
+admin-panel/
+user-panel/
+common/
+scripts/
+node_modules/
+*.md
+!README.md
+.git/
+.vscode/
+.idea/
+
