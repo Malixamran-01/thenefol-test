@@ -1,4 +1,5 @@
-# Multi-stage build for backend only (skip monorepo workspaces)
+# Standalone backend build (no monorepo dependencies)
+# Use this if the main Dockerfile still has issues
 FROM node:20-slim AS base
 
 # Install only essential Puppeteer dependencies (minimal set)
@@ -27,21 +28,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy backend files only (treat as standalone, not monorepo)
-COPY backend/package.json backend/package-lock.json* ./
-COPY backend/tsconfig.json ./
+# Copy package files
+COPY package.json package-lock.json* ./
+COPY tsconfig.json ./
 
-# Install dependencies directly (skip workspace resolution)
-# This avoids installing all monorepo workspaces
-# Use npm install with faster flags (no package-lock.json in backend)
-RUN npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit --no-fund
-RUN npm cache clean --force
+# Install dependencies with timeout and retry
+RUN npm ci --include=dev --legacy-peer-deps --prefer-offline --no-audit || \
+    (npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit && npm cache clean --force)
 
 # Build stage
 FROM base AS build
 
-# Copy backend source
-COPY backend/src ./src
+# Copy source
+COPY src ./src
 
 # Build TypeScript
 RUN npm run build
@@ -50,9 +49,10 @@ RUN npm run build
 FROM base AS production
 
 # Install only production dependencies
-RUN npm install --only=production --legacy-peer-deps --prefer-offline --no-audit --no-fund
+RUN npm ci --only=production --legacy-peer-deps --prefer-offline --no-audit || \
+    npm install --only=production --legacy-peer-deps --prefer-offline --no-audit
 
-# Copy built files from build stage
+# Copy built files
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 
