@@ -38,8 +38,9 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_CACHE_DIR=/tmp
 # Use --ignore-scripts to skip Puppeteer postinstall script
-RUN npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit --no-fund --ignore-scripts || \
-    (npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit --no-fund && npm cache clean --force)
+# Install all dependencies including dev (needed for TypeScript build)
+RUN npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit --no-fund --ignore-scripts
+RUN npm cache clean --force
 
 # Build stage
 FROM base AS build
