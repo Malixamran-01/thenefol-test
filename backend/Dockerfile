@@ -32,10 +32,14 @@ COPY backend/package.json backend/package-lock.json* ./
 COPY backend/tsconfig.json ./
 
 # Install dependencies directly (skip workspace resolution)
+# Skip Puppeteer Chromium download to speed up build significantly
 # This avoids installing all monorepo workspaces
-# Use npm install with faster flags (no package-lock.json in backend)
-RUN npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit --no-fund
-RUN npm cache clean --force
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_CACHE_DIR=/tmp
+# Use --ignore-scripts to skip Puppeteer postinstall script
+RUN npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit --no-fund --ignore-scripts || \
+    (npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit --no-fund && npm cache clean --force)
 
 # Build stage
 FROM base AS build

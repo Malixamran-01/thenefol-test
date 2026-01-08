@@ -1,0 +1,44 @@
+# Fast build - Skip Puppeteer entirely (PDF generation will be disabled)
+FROM node:20-slim AS base
+
+WORKDIR /app
+
+# Copy backend files only (treat as standalone, not monorepo)
+COPY backend/package.json backend/package-lock.json* ./
+COPY backend/tsconfig.json ./
+
+# Remove Puppeteer from dependencies before install (faster build)
+RUN sed -i '/"puppeteer"/d' package.json || true
+
+# Install dependencies (no Puppeteer = much faster)
+RUN npm install --include=dev --legacy-peer-deps --prefer-offline --no-audit --no-fund
+RUN npm cache clean --force
+
+# Build stage
+FROM base AS build
+
+# Copy backend source
+COPY backend/src ./src
+
+# Build TypeScript
+RUN npm run build
+
+# Production stage
+FROM base AS production
+
+# Install only production dependencies
+RUN npm install --only=production --legacy-peer-deps --prefer-offline --no-audit --no-fund
+
+# Copy built files
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+
+# Create uploads directory
+RUN mkdir -p uploads
+
+# Expose port
+EXPOSE 2000
+
+# Start server
+CMD ["npm", "start"]
+
