@@ -58,12 +58,21 @@ RUN npm run build
 # Production stage
 FROM base AS production
 
-# Install only production dependencies
+# Install build tools needed for native modules (bcrypt, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install only production dependencies (WITH scripts to compile native modules)
 RUN npm install --only=production --legacy-peer-deps --prefer-offline --no-audit --no-fund
 
 # Copy built files from build stage
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
+
+# Rebuild native modules to ensure they're compiled for this platform
+RUN npm rebuild bcrypt --build-from-source || true
 
 # Create uploads directory
 RUN mkdir -p uploads
