@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Tester - Nefol Deployment</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #1a1a1a;
+            color: #fff;
+            font-size: 14px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background: #1a1a1a;
+        }
+        .success {
+            color: #4CAF50;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            color: #f44336;
+            border-left: 4px solid #f44336;
+        }
+        .info {
+            color: #2196F3;
+            border-left: 4px solid #2196F3;
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+        code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Nefol Deployment Connection Tester</h1>
+        <p>Test connections between Frontend, Backend, and Database</p>
+        
+        <div class="input-group">
+            <label for="backendUrl">Backend URL (Railway):</label>
+            <input type="text" id="backendUrl" placeholder="https://your-backend.railway.app" value="">
+        </div>
+        
+        <div class="input-group">
+            <label for="frontendUrl">Frontend URL (Vercel):</label>
+            <input type="text" id="frontendUrl" placeholder="https://your-frontend.vercel.app" value="">
+        </div>
+        
+        <button onclick="testAll()">🧪 Test All Connections</button>
+        <button onclick="testBackend()">🔌 Test Backend API</button>
+        <button onclick="testWebSocket()">📡 Test WebSocket</button>
+        <button onclick="testCORS()">🌐 Test CORS</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testBackend() {
+            clearResults();
+            const backendUrl = document.getElementById('backendUrl').value || 'https://your-backend.railway.app';
+            
+            addResult('🔌 Testing Backend API Connection...', 'info');
+            
+            try {
+                const response = await fetch(`${backendUrl}/api/products`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(`✅ <strong>Backend API: SUCCESS</strong><br>Status: ${response.status}<br>Products: ${data.length || 0} found`, 'success');
+                } else {
+                    addResult(`⚠️ <strong>Backend API: Response Error</strong><br>Status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ <strong>Backend API: FAILED</strong><br>Error: ${error.message}<br><br>Check:<br>- Backend URL is correct<br>- Backend is running<br>- CORS is configured`, 'error');
+            }
+        }
+
+        function testWebSocket() {
+            clearResults();
+            const backendUrl = document.getElementById('backendUrl').value || 'https://your-backend.railway.app';
+            
+            addResult('📡 Testing WebSocket Connection...', 'info');
+            
+            try {
+                const socket = io(backendUrl, {
+                    transports: ['websocket', 'polling']
+                });
+                
+                let connected = false;
+                
+                socket.on('connect', () => {
+                    connected = true;
+                    addResult(`✅ <strong>WebSocket: CONNECTED</strong><br>Socket ID: ${socket.id}`, 'success');
+                    socket.disconnect();
+                });
+                
+                socket.on('connect_error', (error) => {
+                    if (!connected) {
+                        addResult(`❌ <strong>WebSocket: FAILED</strong><br>Error: ${error.message}<br><br>Check:<br>- Backend URL is correct<br>- Socket.IO is enabled<br>- Railway supports WebSockets`, 'error');
+                    }
+                });
+                
+                socket.on('disconnect', () => {
+                    if (connected) {
+                        addResult('🔌 WebSocket disconnected (test complete)', 'info');
+                    }
+                });
+                
+                setTimeout(() => {
+                    if (!connected) {
+                        addResult('⏱️ WebSocket connection timeout', 'error');
+                        socket.disconnect();
+                    }
+                }, 5000);
+            } catch (error) {
+                addResult(`❌ <strong>WebSocket: ERROR</strong><br>${error.message}`, 'error');
+            }
+        }
+
+        async function testCORS() {
+            clearResults();
+            const backendUrl = document.getElementById('backendUrl').value || 'https://your-backend.railway.app';
+            const frontendUrl = document.getElementById('frontendUrl').value || window.location.origin;
+            
+            addResult('🌐 Testing CORS Configuration...', 'info');
+            
+            try {
+                const response = await fetch(`${backendUrl}/api/products`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': frontendUrl,
+                        'Access-Control-Request-Method': 'GET'
+                    }
+                });
+                
+                const corsHeaders = {
+                    'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+                    'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
+                    'access-control-allow-credentials': response.headers.get('access-control-allow-credentials')
+                };
+                
+                if (corsHeaders['access-control-allow-origin']) {
+                    addResult(`✅ <strong>CORS: CONFIGURED</strong><br>Allow-Origin: ${corsHeaders['access-control-allow-origin']}<br>Allow-Methods: ${corsHeaders['access-control-allow-methods'] || 'Not specified'}`, 'success');
+                } else {
+                    addResult(`⚠️ <strong>CORS: Headers not found</strong><br>This might be normal if CORS is handled differently`, 'info');
+                }
+            } catch (error) {
+                addResult(`❌ <strong>CORS Test: FAILED</strong><br>Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAll() {
+            clearResults();
+            addResult('🧪 <strong>Running All Tests...</strong>', 'info');
+            
+            await testBackend();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            testWebSocket();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testCORS();
+            
+            addResult('<br>✅ <strong>All tests completed!</strong> Check results above.', 'info');
+        }
+
+        // Auto-detect current URL if on deployed frontend
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            document.getElementById('frontendUrl').value = window.location.origin;
+        }
+    </script>
+</body>
+</html>
+

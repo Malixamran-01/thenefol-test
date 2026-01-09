@@ -64,7 +64,11 @@ export function useRealtimeCMS(pageName: string) {
 
   // Setup WebSocket connection for real-time updates
   useEffect(() => {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://thenefol.com/api'
+    // Use VITE_API_URL (with /api) or fallback to production
+    const apiBase = import.meta.env.VITE_API_URL 
+      ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL}/api`)
+      : 'https://thenefol.com/api'
+    const API_BASE = apiBase
     
     const socketConnection = io(API_BASE, {
       transports: ['websocket', 'polling'],
@@ -180,7 +184,11 @@ export function useRealtimeSettings() {
   }, [loadSettings])
 
   useEffect(() => {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://thenefol.com/api'
+    // Use VITE_API_URL (with /api) or fallback to production
+    const apiBase = import.meta.env.VITE_API_URL 
+      ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL}/api`)
+      : 'https://thenefol.com/api'
+    const API_BASE = apiBase
     
     const socketConnection = io(API_BASE, {
       transports: ['websocket', 'polling']

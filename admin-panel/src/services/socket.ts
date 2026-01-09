@@ -14,25 +14,29 @@ class SocketService {
     // Determine socket URL based on environment
     let socketUrl: string
     
-    // Always use production domain - no environment variables
-    if (typeof window !== 'undefined') {
+    // Priority 1: Use VITE_API_URL if set (for deployment flexibility)
+    if (import.meta.env.VITE_API_URL) {
+      const apiUrl = import.meta.env.VITE_API_URL
+      // Convert HTTP/HTTPS to WS/WSS for Socket.IO (remove /api suffix if present)
+      socketUrl = apiUrl.replace(/^https?:\/\//, 'https://').replace(/\/api$/, '')
+      console.log('🔌 [Socket] Using VITE_API_URL for socket:', socketUrl)
+    } else if (typeof window !== 'undefined') {
       const hostname = window.location.hostname
       const protocol = window.location.protocol
       
-      // CRITICAL: Production check FIRST - always use production domain
+      // If on production domain, use current domain
       if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        // Production: use current domain with WSS (Socket.IO will append /socket.io/)
+        // Production: use current domain with HTTPS (Socket.IO will append /socket.io/)
         socketUrl = `https://${window.location.host}`
         console.log('🔌 [Socket] Production detected, using:', socketUrl)
       } else if (protocol === 'https:') {
-        // If on HTTPS (any domain), use WSS with current hostname
+        // If on HTTPS (any domain), use HTTPS with current hostname
         socketUrl = `https://${window.location.host}`
-        console.log('🔌 [Socket] HTTPS detected, using WSS:', socketUrl)
+        console.log('🔌 [Socket] HTTPS detected, using HTTPS:', socketUrl)
       } else {
-        // For HTTP (development only), always use production WSS
-        // This ensures we never use local IPs in production builds
+        // For HTTP (development only), fall back to production HTTPS
         socketUrl = 'https://thenefol.com'
-        console.log('🔌 [Socket] Non-production HTTP detected, using production WSS:', socketUrl)
+        console.log('🔌 [Socket] Non-production HTTP detected, using production HTTPS:', socketUrl)
       }
     } else {
       // Server-side or fallback

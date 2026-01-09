@@ -1,10 +1,16 @@
 export const getApiBase = () => {
-  // Runtime production detection - always use production URL
+  // Priority 1: Use VITE_API_URL if set (for deployment flexibility)
+  if (import.meta.env.VITE_API_URL) {
+    const apiUrl = import.meta.env.VITE_API_URL
+    console.log('🌐 [API] Using VITE_API_URL:', apiUrl)
+    return apiUrl.replace(/\/api$/, '') // Remove /api suffix if present
+  }
+  
+  // Runtime production detection
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
     const protocol = window.location.protocol
     
-    // CRITICAL: Production check - always use production domain
     // If on production domain, use current protocol and hostname
     if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
       const baseUrl = `${protocol}//${hostname}`
@@ -12,9 +18,8 @@ export const getApiBase = () => {
       return baseUrl
     }
     
-    // For any other domain (including localhost), use production URL
-    // This ensures we never use local IPs or development URLs in production builds
-    console.log('🌐 [API] Non-production domain detected, using production URL')
+    // For test/staging deployments, fall back to production if no VITE_API_URL
+    console.log('🌐 [API] Non-production domain detected, falling back to production URL')
     return 'https://thenefol.com'
   }
   

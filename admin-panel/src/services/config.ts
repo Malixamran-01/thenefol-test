@@ -49,7 +49,14 @@ interface AppConfig {
 }
 
 const getDynamicApiBase = () => {
-  // Always use production URL - no environment variables
+  // Priority 1: Use VITE_API_URL if set (for deployment flexibility)
+  if (import.meta.env.VITE_API_URL) {
+    const apiUrl = import.meta.env.VITE_API_URL
+    console.log('🌐 [API] Using VITE_API_URL:', apiUrl)
+    return apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`
+  }
+  
+  // Fallback: Production domain detection or production URL
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
     // If on production domain, use current domain

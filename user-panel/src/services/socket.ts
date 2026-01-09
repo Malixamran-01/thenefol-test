@@ -14,11 +14,17 @@ class UserSocketService {
     // Determine socket URL based on runtime environment
     let socketUrl: string
     
-    if (typeof window !== 'undefined') {
+    // Priority 1: Use VITE_API_URL if set (for deployment flexibility)
+    if (import.meta.env.VITE_API_URL) {
+      const apiUrl = import.meta.env.VITE_API_URL
+      // Convert HTTP/HTTPS to WS/WSS for Socket.IO
+      socketUrl = apiUrl.replace(/^https?:\/\//, 'wss://').replace(/\/api$/, '')
+      console.log('🔌 [Socket] Using VITE_API_URL for socket:', socketUrl)
+    } else if (typeof window !== 'undefined') {
       const hostname = window.location.hostname
       const protocol = window.location.protocol
       
-      // CRITICAL: Production check FIRST - always use production domain
+      // If on production domain, use current domain
       if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
         // Production domain - always use WSS
         socketUrl = `wss://${hostname}/socket.io`
@@ -28,8 +34,7 @@ class UserSocketService {
         socketUrl = `wss://${hostname}/socket.io`
         console.log('🔌 [Socket] HTTPS detected, using WSS:', socketUrl)
       } else {
-        // For HTTP (development only), use production WSS
-        // This ensures we never use local IPs in production builds
+        // For HTTP (development only), fall back to production WSS
         socketUrl = 'wss://thenefol.com/socket.io'
         console.log('🔌 [Socket] Non-production HTTP detected, using production WSS:', socketUrl)
       }
