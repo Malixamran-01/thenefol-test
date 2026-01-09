@@ -12,6 +12,9 @@
     "migrate": "node migrate.js",
     "reset-db": "node reset-database.js",
     "reset-admin": "node reset-admin-credentials.js",
+    "setup-db": "node setup-supabase-db.js",
+    "create-db": "node create-nefol-database.js",
+    "test-login": "node test-login.js",
     "test:coin-exploit": "node test-coin-exploit.js",
     "env:test": "node switch-env.js test",
     "env:prod": "node switch-env.js prod"
