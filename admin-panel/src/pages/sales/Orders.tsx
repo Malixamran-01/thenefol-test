@@ -4,6 +4,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import { useToast } from '../../components/ToastProvider'
 import Can from '../../components/Can'
 import { socketService } from '../../services/socket'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 type Order = {
   id: number
@@ -26,17 +27,8 @@ export default function Orders() {
   const [paymentStatus, setPaymentStatus] = useState('')
   const [cod, setCod] = useState('')
   const [selected, setSelected] = useState<number[]>([])
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
 
   const authHeaders = useMemo(() => {
     const token = localStorage.getItem('auth_token')

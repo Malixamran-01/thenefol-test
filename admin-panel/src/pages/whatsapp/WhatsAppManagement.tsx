@@ -4,6 +4,7 @@ import {
   CheckCircle, XCircle, Save, RefreshCw, Eye, Edit, Trash2, Plus,
   Phone, Clock, TrendingUp, AlertCircle, Key, Smartphone
 } from 'lucide-react'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface WhatsAppConfig {
   accessToken: string
@@ -100,17 +101,8 @@ export default function WhatsAppManagement() {
   })
   const [newAutomation, setNewAutomation] = useState({ name: '', trigger: '', action: '', template: '' })
 
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
 
   useEffect(() => {
     loadAllData()

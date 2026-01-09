@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { UserPlus, Download, Copy, Check, X, Trash2, Edit2, Save, Plus } from 'lucide-react'
 import { useToast } from '../../components/ToastProvider'
 import Can from '../../components/Can'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface AdminUser {
   id: number
@@ -45,17 +46,8 @@ export default function AdminManagement() {
   const [editingAdmin, setEditingAdmin] = useState<number | null>(null)
   const [editingPages, setEditingPages] = useState<string[]>([])
 
-  const getApiBase = () => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
   const authHeaders = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`

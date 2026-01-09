@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useToast } from '../../components/ToastProvider'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface Invoice {
   id: string
@@ -45,17 +46,8 @@ const Invoice = () => {
   const loadInvoices = async () => {
     try {
       setLoading(true);
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase();
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}/invoices`);
       if (response.ok) {
         const data = await response.json();
@@ -151,17 +143,8 @@ const Invoice = () => {
     if (!invoiceId) return
     setLoading(true)
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase();
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}/invoices/${invoiceId}`, {
         method: 'DELETE'
       })
@@ -181,17 +164,8 @@ const Invoice = () => {
   const handleSendInvoice = async (invoiceId: string) => {
     setLoading(true)
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase();
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}/invoices/${invoiceId}/send`, {
         method: 'POST'
       })

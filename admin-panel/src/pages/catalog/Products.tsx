@@ -5,6 +5,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import { parseCSV, slugify } from '../../utils/csv'
 import { uploadFile } from '../../utils/upload'
 import { socketService } from '../../services/socket'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 
 type Product = {
@@ -88,19 +89,8 @@ function ProductsManager() {
   const [formMainImage, setFormMainImage] = useState<File | null>(null)
   const [formPdpImages, setFormPdpImages] = useState<File[]>([])
 
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-      // For any other domain, always use production URL
-      return 'https://thenefol.com/api'
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
   
   // Function to save image order to backend
   const saveImageOrder = async (images: Array<{ id: number; url: string; type?: string; display_order?: number }>, type: 'pdp' | 'banner') => {

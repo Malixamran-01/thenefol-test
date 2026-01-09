@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useToast } from '../components/ToastProvider'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface Variant {
   id: number
@@ -39,16 +40,8 @@ export default function InventoryManagement() {
   const [editingThreshold, setEditingThreshold] = useState<{ productId: number; variantId: number; threshold: number } | null>(null)
   const [confirmUpdate, setConfirmUpdate] = useState(false)
 
-  const getApiBase = () => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
 
   const authHeaders = useMemo(() => {
     const token = localStorage.getItem('auth_token')

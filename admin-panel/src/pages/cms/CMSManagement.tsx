@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, Save, X, Eye, EyeOff, ChevronUp, ChevronDown, Wifi
 import { socketService } from '../../services/socket'
 import { useToast } from '../../components/ToastProvider'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface CMSPage {
   id: number
@@ -41,19 +42,8 @@ export default function CMSManagement() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [activeTab, setActiveTab] = useState<'pages' | 'sections' | 'settings'>('pages')
 
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-      // For any other domain, always use production URL
-      return 'https://thenefol.com/api'
-    }
-    return 'https://thenefol.com/api'
-  }
-  const API_BASE = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const API_BASE = getApiBaseUrl()
 
   // Fetch all pages
   const fetchPages = async () => {

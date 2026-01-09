@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { MessageCircle, Users, Send, BarChart3, Calendar, Target, Eye, MousePointer, Clock, TrendingUp, Filter, Plus, Phone, Video, FileText, Image, Smile, CheckCircle, XCircle } from 'lucide-react'
 import apiService from '../services/api'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface ChatMessage {
   id: string
@@ -153,17 +154,8 @@ export default function WhatsAppChat() {
     setSendResult(null)
 
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase()
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl()
       
       const response = await fetch(`${apiBase}/api/whatsapp-chat/send`, {
         method: 'POST',
@@ -202,17 +194,8 @@ export default function WhatsAppChat() {
     }
 
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase()
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl()
       
       const requestBody: any = {
         name: newTemplateName,
@@ -262,17 +245,8 @@ export default function WhatsAppChat() {
     }
 
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase()
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl()
       
       const requestBody: any = {
         name: newAutoName,

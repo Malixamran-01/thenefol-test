@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LiveMonitoring from '../components/LiveMonitoring'
 import { socketService } from '../services/socket'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface DashboardMetrics {
   sessions: number
@@ -30,20 +31,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [chartData, setChartData] = useState<{ dates: string[], current: number[], previous: number[] } | null>(null)
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-      // For any other domain, always use production URL
-      return 'https://thenefol.com/api'
-    }
-    // Default to production API URL
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
 
   useEffect(() => {
     // Ensure socket connection for live monitoring

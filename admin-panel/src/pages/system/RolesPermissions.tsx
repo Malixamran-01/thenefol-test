@@ -1,20 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 type Role = { id: number; name: string }
 type Permission = { id: number; code: string; description?: string }
 
 export default function RolesPermissions() {
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
   const [roles, setRoles] = useState<Role[]>([])
   const [perms, setPerms] = useState<Permission[]>([])
   const [matrix, setMatrix] = useState<Record<string, boolean>>({})

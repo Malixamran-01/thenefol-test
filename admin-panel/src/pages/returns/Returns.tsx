@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useToast } from '../../components/ToastProvider'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface Return {
   id: string
@@ -47,17 +48,8 @@ const Returns = () => {
   const loadReturns = async () => {
     try {
       setLoading(true);
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase();
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}/api/returns`, { headers: { 'x-user-role': 'admin', 'x-user-permissions': 'returns:read' } });
       if (response.ok) {
         const data = await response.json();
@@ -93,17 +85,8 @@ const Returns = () => {
   const handleCreateReturn = async (returnData: Partial<Return>) => {
     setLoading(true)
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase();
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl();
       const payload = {
         order_id: returnData.orderId,
         items: returnData.items || [],
@@ -159,17 +142,8 @@ const Returns = () => {
     if (!returnId) return
     setLoading(true)
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase();
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}/api/returns/${returnId}`, {
         method: 'DELETE'
       })
@@ -189,17 +163,8 @@ const Returns = () => {
   const handleStatusUpdate = async (returnId: string, newStatus: Return['status']) => {
     setLoading(true)
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase();
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}/api/returns/${returnId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-user-role': 'admin', 'x-user-permissions': 'returns:update' },
@@ -220,17 +185,8 @@ const Returns = () => {
 
   const handleGenerateLabel = async (returnId: string) => {
     try {
-      const getApiBase = () => {
-        // Always use production URL - no environment variables
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase();
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/returns/${returnId}/label`, {
         method: 'POST',
         headers: { 'x-user-role': 'admin', 'x-user-permissions': 'returns:update' }

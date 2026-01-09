@@ -2,18 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useToast } from '../../components/ToastProvider'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { uploadFile } from '../../utils/upload'
-
-const getApiBase = () => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-    if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-      return `${window.location.protocol}//${window.location.host}/api`
-    }
-    // For any other domain, always use production URL
-    // Removed env var check to ensure we never use local IPs
-  }
-  return 'https://thenefol.com/api'
-}
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 type CollectionType = 'offers' | 'new_arrivals' | 'best_sellers' | 'recommendations'
 
@@ -79,7 +68,7 @@ export default function ProductCollections() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; type: 'collection' | 'post' } | null>(null)
   const [showForm, setShowForm] = useState(false)
 
-  const apiBase = getApiBase()
+  const apiBase = getApiBaseUrl()
 
   useEffect(() => {
     loadProducts()
@@ -452,17 +441,8 @@ function CollectionsTable({
   onDelete: (id: number) => void
   onTogglePublish: (id: number, isPublished: boolean) => void
 }) {
-  const getApiBase = () => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-      // Always use production URL - no environment variables
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
   
   const toAbs = (u?: string) => {
     if (!u) return ''
@@ -682,17 +662,8 @@ function CollectionForm({
   const [uploading, setUploading] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
 
-  const getApiBase = () => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-      // Always use production URL - no environment variables
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
 
   const toAbs = (u?: string) => {
     if (!u) return ''

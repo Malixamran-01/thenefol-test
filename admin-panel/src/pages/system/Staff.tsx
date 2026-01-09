@@ -1,20 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Can from '../../components/Can'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 type StaffUser = { id: number; name: string; email: string; roles: any[] }
 
 export default function Staff() {
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
   const [users, setUsers] = useState<StaffUser[]>([])
   const [roles, setRoles] = useState<any[]>([])
   const [loading, setLoading] = useState(false)

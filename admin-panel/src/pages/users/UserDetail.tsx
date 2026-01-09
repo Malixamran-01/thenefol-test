@@ -5,6 +5,7 @@ import {
   ShoppingCart, CreditCard, Eye, Clock, Tag, MessageSquare, 
   TrendingUp, Activity, FileText, DollarSign, Users, Hash
 } from 'lucide-react'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface UserData {
   user: {
@@ -149,21 +150,11 @@ export default function UserDetail() {
     fetchUserData()
   }, [id])
 
-  const getApiBase = () => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-      // Always use production URL - no environment variables
-    }
-    return 'https://thenefol.com/api'
-  }
-
+  // Use centralized API URL utility that respects VITE_API_URL
   const fetchUserData = async () => {
     try {
       setLoading(true)
-      const apiBase = getApiBase()
+      const apiBase = getApiBaseUrl()
       const response = await fetch(`${apiBase}/users/${id}`)
       if (response.ok) {
         const data = await response.json()
@@ -181,7 +172,7 @@ export default function UserDetail() {
   const addNote = async () => {
     if (!newNote.trim()) return
     try {
-      const apiBase = getApiBase()
+      const apiBase = getApiBaseUrl()
       const response = await fetch(`${apiBase}/users/${id}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -199,7 +190,7 @@ export default function UserDetail() {
   const addTag = async () => {
     if (!newTag.trim()) return
     try {
-      const apiBase = getApiBase()
+      const apiBase = getApiBaseUrl()
       const response = await fetch(`${apiBase}/users/${id}/tags`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -216,7 +207,7 @@ export default function UserDetail() {
 
   const removeTag = async (tag: string) => {
     try {
-      const apiBase = getApiBase()
+      const apiBase = getApiBaseUrl()
       await fetch(`${apiBase}/users/${id}/tags`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },

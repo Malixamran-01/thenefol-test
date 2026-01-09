@@ -15,6 +15,7 @@
     "setup-db": "node setup-supabase-db.js",
     "create-db": "node create-nefol-database.js",
     "test-login": "node test-login.js",
+    "check-users": "node check-users.js",
     "test:coin-exploit": "node test-coin-exploit.js",
     "env:test": "node switch-env.js test",
     "env:prod": "node switch-env.js prod"

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { cmsService, CMSPageData } from '../services/cms'
+import { getApiBase } from '../utils/apiBase'
 
 interface CMSUpdateEvent {
   event: string
@@ -64,11 +65,9 @@ export function useRealtimeCMS(pageName: string) {
 
   // Setup WebSocket connection for real-time updates
   useEffect(() => {
-    // Use VITE_API_URL (with /api) or fallback to production
-    const apiBase = import.meta.env.VITE_API_URL 
-      ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL}/api`)
-      : 'https://thenefol.com/api'
-    const API_BASE = apiBase
+    // Use centralized API URL utility that respects VITE_API_URL
+    const apiBase = getApiBase()
+    const API_BASE = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`
     
     const socketConnection = io(API_BASE, {
       transports: ['websocket', 'polling'],
@@ -184,11 +183,9 @@ export function useRealtimeSettings() {
   }, [loadSettings])
 
   useEffect(() => {
-    // Use VITE_API_URL (with /api) or fallback to production
-    const apiBase = import.meta.env.VITE_API_URL 
-      ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL}/api`)
-      : 'https://thenefol.com/api'
-    const API_BASE = apiBase
+    // Use centralized API URL utility that respects VITE_API_URL
+    const apiBase = getApiBase()
+    const API_BASE = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`
     
     const socketConnection = io(API_BASE, {
       transports: ['websocket', 'polling']

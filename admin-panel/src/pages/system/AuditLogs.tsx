@@ -1,19 +1,11 @@
 import React, { useEffect, useState } from 'react'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 type Log = { id: number; staff_id?: number; action?: string; details?: any; created_at: string }
 
 export default function AuditLogs() {
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
   const [logs, setLogs] = useState<Log[]>([])
   const [staffId, setStaffId] = useState('')
   const [action, setAction] = useState('')

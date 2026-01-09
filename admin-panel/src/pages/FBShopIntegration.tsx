@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 export default function FBShopIntegration() {
   const [config, setConfig] = useState({ page_id: '', access_token: '' })
@@ -8,17 +9,8 @@ export default function FBShopIntegration() {
   const [jobId, setJobId] = useState<string | null>(null)
   const [mapping, setMapping] = useState<{ [k: string]: string }>({ brand: 'NEFOL®', condition: 'new', availability: 'in stock' })
   const [lastRun, setLastRun] = useState<any>(null)
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
   const headers = useMemo(()=>({ 'Content-Type': 'application/json' }), [])
 
   const saveConfig = async () => {

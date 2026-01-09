@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Settings, Save, Eye, Palette, FileText, Building2, Users, Receipt, Upload, X, Image as ImageIcon } from 'lucide-react'
 import { uploadFile } from '../../utils/upload'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface CompanyDetails {
   companyName: string
@@ -77,17 +78,8 @@ const InvoiceSettingsPage: React.FC = () => {
 
   const loadSettings = async () => {
     try {
-      const getApiBase = () => {
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-          // Always use production URL - no environment variables
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase()
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl()
       
       // Load company details
       const detailsResponse = await fetch(`${apiBase}/invoice-settings/company-details`)
@@ -160,17 +152,8 @@ const InvoiceSettingsPage: React.FC = () => {
     setSaveStatus('idle')
 
     try {
-      const getApiBase = () => {
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname
-          if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-            return `${window.location.protocol}//${window.location.host}/api`
-          }
-          // Always use production URL - no environment variables
-        }
-        return 'https://thenefol.com/api'
-      }
-      const apiBase = getApiBase()
+      // Use centralized API URL utility that respects VITE_API_URL
+      const apiBase = getApiBaseUrl()
       
       // Save company details
       await fetch(`${apiBase}/invoice-settings/company-details`, {
@@ -236,17 +219,7 @@ const InvoiceSettingsPage: React.FC = () => {
     }
   }
 
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-
+  // Use centralized API URL utility that respects VITE_API_URL
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -263,7 +236,7 @@ const InvoiceSettingsPage: React.FC = () => {
 
     try {
       setUploadingLogo(true)
-      const apiBase = getApiBase()
+      const apiBase = getApiBaseUrl()
       const absoluteUrl = await uploadFile(file, apiBase)
       const relativePath = absoluteUrl.replace(/^https?:\/\/[^/]+/, '')
       
@@ -293,7 +266,7 @@ const InvoiceSettingsPage: React.FC = () => {
 
     try {
       setUploadingSignatory(true)
-      const apiBase = getApiBase()
+      const apiBase = getApiBaseUrl()
       const absoluteUrl = await uploadFile(file, apiBase)
       const relativePath = absoluteUrl.replace(/^https?:\/\/[^/]+/, '')
       

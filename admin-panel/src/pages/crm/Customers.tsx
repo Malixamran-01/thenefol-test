@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Mail, Phone, MapPin, Calendar, Star, Package, DollarSign, Search, TrendingUp, Filter } from 'lucide-react'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface Customer {
   id: number
@@ -26,17 +27,8 @@ export default function Customers() {
   const [sortBy, setSortBy] = useState<'total_spent' | 'total_orders' | 'member_since'>('total_spent')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
 
   useEffect(() => {
     fetchCustomers()

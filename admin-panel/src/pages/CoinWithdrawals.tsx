@@ -13,6 +13,7 @@ import {
   Eye
 } from 'lucide-react'
 import api from '../services/api'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface Withdrawal {
   id: number
@@ -56,21 +57,12 @@ export default function CoinWithdrawals() {
     fetchWithdrawals()
   }, [filterStatus])
 
-  const getApiBase = () => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-      // Always use production URL - no environment variables
-    }
-    return 'https://thenefol.com/api'
-  }
+  // Use centralized API URL utility that respects VITE_API_URL
 
   const fetchWithdrawals = async () => {
     try {
       setLoading(true)
-      const apiBase = getApiBase()
+      const apiBase = getApiBaseUrl()
       const response = await fetch(`${apiBase}/admin/coin-withdrawals${filterStatus !== 'all' ? `?status=${filterStatus}` : ''}`, {
         headers: {
           'Content-Type': 'application/json'
@@ -117,7 +109,7 @@ export default function CoinWithdrawals() {
         headers['x-user-permissions'] = permissions
       }
       
-      const apiBase = getApiBase()
+      const apiBase = getApiBaseUrl()
       const response = await fetch(`${apiBase}/admin/coin-withdrawals/${selectedWithdrawal.id}/process`, {
         method: 'PUT',
         headers,

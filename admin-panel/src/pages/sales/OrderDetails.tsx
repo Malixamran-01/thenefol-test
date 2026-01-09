@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useToast } from '../../components/ToastProvider'
+import { getApiBaseUrl } from '../../utils/apiUrl'
 
 type OrderItem = {
   product_id?: number
@@ -40,17 +41,8 @@ export default function OrderDetails() {
   const [splitIndexes, setSplitIndexes] = useState<string>('')
   const [hasShipment, setHasShipment] = useState(false)
   const [shipmentInfo, setShipmentInfo] = useState<any>(null)
-  const getApiBase = () => {
-    // Always use production URL - no environment variables
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        return `${window.location.protocol}//${window.location.host}/api`
-      }
-    }
-    return 'https://thenefol.com/api'
-  }
-  const apiBase = getApiBase()
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
 
   const authHeaders = useMemo(() => {
     const token = localStorage.getItem('auth_token')
