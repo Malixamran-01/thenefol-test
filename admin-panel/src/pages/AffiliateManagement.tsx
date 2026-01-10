@@ -64,6 +64,12 @@ interface AffiliateApplication {
   application_date: string
   approved_at?: string
   rejected_at?: string
+  birth_day?: number
+  birth_month?: number
+  birth_year?: number
+  education_level?: string
+  profession?: string
+  skills?: string
 }
 
 export default function AffiliateManagement() {
@@ -359,6 +365,106 @@ export default function AffiliateManagement() {
     setExpandedAffiliate(expandedAffiliate === affiliateId ? null : affiliateId)
   }
 
+  const handleExportCSV = async () => {
+    try {
+      // Fetch all affiliate partners data
+      const response = await fetch('/api/admin/affiliate-referral-analytics')
+      const data = await response.json()
+      
+      if (!response.ok || !data.analytics) {
+        alert('Failed to fetch affiliate data: ' + (data.error || 'Unknown error'))
+        return
+      }
+
+      const affiliates = data.analytics
+
+      // Define CSV headers
+      const headers = [
+        'ID',
+        'Name',
+        'Email',
+        'Phone',
+        'Status',
+        'Partner ID',
+        'Platform',
+        'Followers',
+        'Commission Rate (%)',
+        'Date of Birth (Day/Month/Year)',
+        'Education Level',
+        'Profession',
+        'Skills',
+        'Total Referrals',
+        'Confirmed Referrals',
+        'Unique Customers',
+        'Total Revenue (₹)',
+        'Total Earnings (₹)',
+        'Created At'
+      ]
+
+      // Convert data to CSV rows
+      const rows = affiliates.map((affiliate: any) => {
+        const dob = affiliate.birth_day && affiliate.birth_month 
+          ? `${affiliate.birth_day}/${affiliate.birth_month}${affiliate.birth_year ? `/${affiliate.birth_year}` : ''}`
+          : ''
+        
+        return [
+          affiliate.id || '',
+          affiliate.name || '',
+          affiliate.email || '',
+          affiliate.phone || '',
+          affiliate.status || '',
+          affiliate.partner_id || '',
+          affiliate.platform || '',
+          affiliate.followers || '',
+          affiliate.commission_rate || 0,
+          dob,
+          affiliate.education_level ? affiliate.education_level.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : '',
+          affiliate.profession || '',
+          affiliate.skills || '',
+          affiliate.stats?.total_referrals || 0,
+          affiliate.stats?.confirmed_referrals || 0,
+          affiliate.stats?.unique_customers || 0,
+          affiliate.stats?.total_revenue?.toFixed(2) || '0.00',
+          affiliate.stats?.total_earnings?.toFixed(2) || '0.00',
+          affiliate.created_at ? formatDate(affiliate.created_at) : ''
+        ]
+      })
+
+      // Escape CSV values (handle commas, quotes, newlines)
+      const escapeCSV = (value: any): string => {
+        if (value === null || value === undefined) return ''
+        const stringValue = String(value)
+        // Escape commas, quotes, and newlines
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return `"${stringValue.replace(/"/g, '""')}"`
+        }
+        return stringValue
+      }
+
+      // Create CSV content
+      const csvContent = [
+        headers.map(escapeCSV).join(','),
+        ...rows.map(row => row.map(escapeCSV).join(','))
+      ].join('\n')
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `affiliate_members_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      alert(`Exported ${affiliates.length} affiliate member(s) to CSV`)
+    } catch (error) {
+      console.error('Error exporting CSV:', error)
+      alert('Error exporting CSV: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+  }
+
   return (
     <div className="min-h-screen" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)', backgroundColor: 'var(--arctic-blue-background)' }}>
       <style>{`
@@ -482,7 +588,10 @@ export default function AffiliateManagement() {
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                   Refresh
                 </button>
-                <button className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <button 
+                  onClick={handleExportCSV}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
                   <Download className="h-4 w-4" />
                   Export
                 </button>
@@ -577,6 +686,14 @@ export default function AffiliateManagement() {
                                 {affiliate.platform}
                               </span>
                             )}
+                            {(affiliate.birth_day || affiliate.birth_month || affiliate.birth_year) && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                DOB: {affiliate.birth_day && `${affiliate.birth_day}/`}
+                                {affiliate.birth_month && `${affiliate.birth_month}`}
+                                {affiliate.birth_year && `/${affiliate.birth_year}`}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
@@ -617,6 +734,66 @@ export default function AffiliateManagement() {
                     {/* Expanded Details */}
                     {expandedAffiliate === affiliate.id && (
                       <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-900/50">
+                        {/* Personal Details */}
+                        <div className="mb-6">
+                          <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <User className="h-5 w-5" />
+                            Personal Information
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                            <div>
+                              <span className="text-sm text-gray-600 dark:text-gray-400">Email:</span>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{affiliate.email}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm text-gray-600 dark:text-gray-400">Phone:</span>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{affiliate.phone}</p>
+                            </div>
+                            {affiliate.platform && (
+                              <div>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Platform:</span>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">{affiliate.platform}</p>
+                              </div>
+                            )}
+                            {affiliate.followers && (
+                              <div>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Followers:</span>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">{affiliate.followers}</p>
+                              </div>
+                            )}
+                            {(affiliate.birth_day || affiliate.birth_month || affiliate.birth_year) && (
+                              <div>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Date of Birth:</span>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {affiliate.birth_day && `${affiliate.birth_day}/`}
+                                  {affiliate.birth_month && `${affiliate.birth_month}`}
+                                  {affiliate.birth_year && `/${affiliate.birth_year}`}
+                                </p>
+                              </div>
+                            )}
+                            {affiliate.education_level && (
+                              <div>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Education Level:</span>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {affiliate.education_level.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </p>
+                              </div>
+                            )}
+                            {affiliate.profession && (
+                              <div>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Profession:</span>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">{affiliate.profession}</p>
+                              </div>
+                            )}
+                            {affiliate.skills && (
+                              <div className="md:col-span-2">
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Skills:</span>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">{affiliate.skills}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
                         {/* Referrals List */}
                         <div className="mb-6">
                           <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -1155,6 +1332,58 @@ export default function AffiliateManagement() {
                   </span>
                 </div>
               </div>
+
+              {/* Date of Birth Section */}
+              {(selectedApplication.birth_day || selectedApplication.birth_month || selectedApplication.birth_year) && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                    Date of Birth
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm text-slate-900 dark:text-slate-100">
+                      {selectedApplication.birth_day && `${selectedApplication.birth_day}/`}
+                      {selectedApplication.birth_month && `${selectedApplication.birth_month}`}
+                      {selectedApplication.birth_year && `/${selectedApplication.birth_year}`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Qualifications Section */}
+              {(selectedApplication.education_level || selectedApplication.profession || selectedApplication.skills) && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                    Qualifications
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedApplication.education_level && (
+                      <div>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Education Level:</span>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
+                          {selectedApplication.education_level.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </p>
+                      </div>
+                    )}
+                    {selectedApplication.profession && (
+                      <div>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Profession:</span>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
+                          {selectedApplication.profession}
+                        </p>
+                      </div>
+                    )}
+                    {selectedApplication.skills && (
+                      <div>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Skills:</span>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
+                          {selectedApplication.skills}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Experience and Motivation */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

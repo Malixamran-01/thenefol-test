@@ -493,6 +493,54 @@ export async function ensureSchema(pool: Pool) {
       updated_at timestamptz default now()
     );
     
+    -- Migration: Add Date of Birth and Qualifications columns to affiliate_applications
+    do $$ 
+    begin
+      -- Add Date of Birth fields (day and month required, year optional)
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'affiliate_applications' and column_name = 'birth_day'
+      ) then
+        alter table affiliate_applications add column birth_day integer;
+      end if;
+      
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'affiliate_applications' and column_name = 'birth_month'
+      ) then
+        alter table affiliate_applications add column birth_month integer;
+      end if;
+      
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'affiliate_applications' and column_name = 'birth_year'
+      ) then
+        alter table affiliate_applications add column birth_year integer;
+      end if;
+      
+      -- Add Qualifications fields
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'affiliate_applications' and column_name = 'education_level'
+      ) then
+        alter table affiliate_applications add column education_level text;
+      end if;
+      
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'affiliate_applications' and column_name = 'profession'
+      ) then
+        alter table affiliate_applications add column profession text;
+      end if;
+      
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'affiliate_applications' and column_name = 'skills'
+      ) then
+        alter table affiliate_applications add column skills text;
+      end if;
+    end $$;
+    
     create table if not exists affiliate_partners (
       id serial primary key,
       application_id integer references affiliate_applications(id) on delete cascade,

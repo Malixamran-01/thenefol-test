@@ -34,7 +34,13 @@ export async function submitAffiliateApplication(pool: Pool, req: Request, res: 
       city,
       pincode,
       state,
-      agreeTerms
+      agreeTerms,
+      birthDay,
+      birthMonth,
+      birthYear,
+      educationLevel,
+      profession,
+      skills
     } = req.body
 
     const userId = req.userId // Get authenticated user ID
@@ -115,14 +121,18 @@ export async function submitAffiliateApplication(pool: Pool, req: Request, res: 
         name, email, phone, instagram, snapchat, youtube, facebook,
         followers, platform, experience, why_join, expected_sales,
         house_number, street, building, apartment, road, city, pincode, state,
-        agree_terms, status, application_date
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        agree_terms, status, application_date,
+        birth_day, birth_month, birth_year,
+        education_level, profession, skills
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
       RETURNING *
     `, [
       name, email, phone, instagram || null, snapchat || null, youtube || null, facebook || null,
       followers, platform, experience, whyJoin, expectedSales,
       houseNumber, street, building || null, apartment || null, road, city, pincode, state,
-      agreeTerms, 'pending', new Date()
+      agreeTerms, 'pending', new Date(),
+      birthDay || null, birthMonth || null, birthYear || null,
+      educationLevel || null, profession || null, skills || null
     ])
 
     // Send confirmation email to applicant
@@ -622,7 +632,13 @@ export async function getAffiliateReferralAnalytics(pool: Pool, req: Request, re
         ap.total_earnings,
         ap.created_at,
         aa.platform,
-        aa.followers
+        aa.followers,
+        aa.birth_day,
+        aa.birth_month,
+        aa.birth_year,
+        aa.education_level,
+        aa.profession,
+        aa.skills
       FROM affiliate_partners ap
       LEFT JOIN affiliate_applications aa ON ap.application_id = aa.id
       ORDER BY ap.created_at DESC

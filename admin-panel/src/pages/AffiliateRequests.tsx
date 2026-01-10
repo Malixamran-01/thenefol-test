@@ -60,6 +60,12 @@ interface AffiliateApplication {
   application_date: string
   approved_at?: string
   rejected_at?: string
+  birth_day?: number
+  birth_month?: number
+  birth_year?: number
+  education_level?: string
+  profession?: string
+  skills?: string
 }
 
 export default function AffiliateRequests() {
@@ -843,6 +849,42 @@ export default function AffiliateRequests() {
                             {application.house_number}, {application.street}{application.building && `, ${application.building}`}{application.apartment && `, ${application.apartment}`}, {application.road}, {application.city}, {application.state} - {application.pincode}
                           </p>
                         </div>
+
+                        {/* Date of Birth Section */}
+                        {(application.birth_day || application.birth_month || application.birth_year) && (
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Date of Birth</h4>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              {application.birth_day && `${application.birth_day}/`}
+                              {application.birth_month && `${application.birth_month}`}
+                              {application.birth_year && `/${application.birth_year}`}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Qualifications Section */}
+                        {(application.education_level || application.profession || application.skills) && (
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Qualifications</h4>
+                            <div className="space-y-2">
+                              {application.education_level && (
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  <span className="font-medium">Education:</span> {application.education_level.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </p>
+                              )}
+                              {application.profession && (
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  <span className="font-medium">Profession:</span> {application.profession}
+                                </p>
+                              )}
+                              {application.skills && (
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  <span className="font-medium">Skills:</span> {application.skills}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
                         
                         {/* Experience & Motivation */}
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
@@ -948,8 +990,53 @@ export default function AffiliateRequests() {
                         {selectedApplication.house_number}, {selectedApplication.street}, {selectedApplication.road}, {selectedApplication.city}, {selectedApplication.state} - {selectedApplication.pincode}
                       </span>
                     </div>
+                    {(selectedApplication.birth_day || selectedApplication.birth_month || selectedApplication.birth_year) && (
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Date of Birth:</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {selectedApplication.birth_day && `${selectedApplication.birth_day}/`}
+                          {selectedApplication.birth_month && `${selectedApplication.birth_month}`}
+                          {selectedApplication.birth_year && `/${selectedApplication.birth_year}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {(selectedApplication.education_level || selectedApplication.profession || selectedApplication.skills) && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      Qualifications
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedApplication.education_level && (
+                        <div>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Education Level:</span>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                            {selectedApplication.education_level.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </p>
+                        </div>
+                      )}
+                      {selectedApplication.profession && (
+                        <div>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Profession:</span>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                            {selectedApplication.profession}
+                          </p>
+                        </div>
+                      )}
+                      {selectedApplication.skills && (
+                        <div>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Skills:</span>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                            {selectedApplication.skills}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -997,6 +1084,21 @@ export default function AffiliateRequests() {
                         {selectedApplication.platform}
                       </span>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Address
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Full Address:</span>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                      {selectedApplication.house_number}, {selectedApplication.street}{selectedApplication.building && `, ${selectedApplication.building}`}{selectedApplication.apartment && `, ${selectedApplication.apartment}`}, {selectedApplication.road}, {selectedApplication.city}, {selectedApplication.state} - {selectedApplication.pincode}
+                    </p>
                   </div>
                 </div>
               </div>
