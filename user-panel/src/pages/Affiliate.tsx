@@ -25,6 +25,14 @@ export default function Affiliate() {
     city: '',
     pincode: '',
     state: '',
+    // Date of Birth fields
+    birthDay: '',
+    birthMonth: '',
+    birthYear: '',
+    // Qualifications fields
+    educationLevel: '',
+    profession: '',
+    skills: '',
     agreeTerms: false
   })
 
@@ -43,6 +51,12 @@ export default function Affiliate() {
     // Validate required fields
     if (!formData.name || !formData.email || !formData.phone) {
       alert('Please fill all required fields')
+      return
+    }
+
+    // Validate Date of Birth (day and month are required)
+    if (!formData.birthDay || !formData.birthMonth) {
+      alert('Please provide your Date of Birth (Day and Month are required)')
       return
     }
 
@@ -107,6 +121,14 @@ export default function Affiliate() {
           city: '',
           pincode: '',
           state: '',
+          // Date of Birth fields
+          birthDay: '',
+          birthMonth: '',
+          birthYear: '',
+          // Qualifications fields
+          educationLevel: '',
+          profession: '',
+          skills: '',
           agreeTerms: false
         })
       } else {
@@ -683,6 +705,130 @@ export default function Affiliate() {
                       <option value="Delhi">Delhi</option>
                       <option value="Other">Other</option>
                     </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Date of Birth Section */}
+              <div>
+                <h3 className="mb-4 text-lg font-semibold text-slate-900">Date of Birth</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="birthDay">
+                      Day *
+                    </label>
+                    <select
+                      id="birthDay"
+                      name="birthDay"
+                      value={formData.birthDay}
+                      onChange={handleInputChange}
+                      required
+                      className="h-12 w-full rounded-lg border border-slate-300 px-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      <option value="">Day</option>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                        <option key={day} value={day}>{day}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="birthMonth">
+                      Month *
+                    </label>
+                    <select
+                      id="birthMonth"
+                      name="birthMonth"
+                      value={formData.birthMonth}
+                      onChange={handleInputChange}
+                      required
+                      className="h-12 w-full rounded-lg border border-slate-300 px-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      <option value="">Month</option>
+                      <option value="1">January</option>
+                      <option value="2">February</option>
+                      <option value="3">March</option>
+                      <option value="4">April</option>
+                      <option value="5">May</option>
+                      <option value="6">June</option>
+                      <option value="7">July</option>
+                      <option value="8">August</option>
+                      <option value="9">September</option>
+                      <option value="10">October</option>
+                      <option value="11">November</option>
+                      <option value="12">December</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="birthYear">
+                      Year (Optional)
+                    </label>
+                    <select
+                      id="birthYear"
+                      name="birthYear"
+                      value={formData.birthYear}
+                      onChange={handleInputChange}
+                      className="h-12 w-full rounded-lg border border-slate-300 px-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      <option value="">Year</option>
+                      {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Qualifications Section */}
+              <div>
+                <h3 className="mb-4 text-lg font-semibold text-slate-900">Qualifications (Optional)</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="educationLevel">
+                      Education Level
+                    </label>
+                    <select
+                      id="educationLevel"
+                      name="educationLevel"
+                      value={formData.educationLevel}
+                      onChange={handleInputChange}
+                      className="h-12 w-full rounded-lg border border-slate-300 px-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      <option value="">Select education level</option>
+                      <option value="high_school">High School</option>
+                      <option value="diploma">Diploma</option>
+                      <option value="bachelor">Bachelor's Degree</option>
+                      <option value="master">Master's Degree</option>
+                      <option value="phd">PhD</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="profession">
+                      Profession
+                    </label>
+                    <input
+                      type="text"
+                      id="profession"
+                      name="profession"
+                      value={formData.profession}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Marketing Professional, Content Creator, Student"
+                      className="h-12 w-full rounded-lg border border-slate-300 px-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700" htmlFor="skills">
+                      Skills (Optional)
+                    </label>
+                    <textarea
+                      id="skills"
+                      name="skills"
+                      value={formData.skills}
+                      onChange={handleInputChange}
+                      rows={3}
+                      placeholder="List your relevant skills (e.g., Content Creation, Social Media Management, Photography, Video Editing, etc.)"
+                      className="w-full rounded-lg border border-slate-300 p-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
                   </div>
                 </div>
               </div>
