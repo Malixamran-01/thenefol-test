@@ -109,6 +109,14 @@ useEffect(() => {
     city: '',
     pincode: '',
     state: '',
+    // Date of Birth fields
+    birthDay: '',
+    birthMonth: '',
+    birthYear: '',
+    // Qualifications fields
+    educationLevel: '',
+    profession: '',
+    skills: '',
     agreeTerms: false
   })
 
@@ -527,6 +535,12 @@ useEffect(() => {
     // Validate required fields
     if (!applicationForm.name || !applicationForm.email || !applicationForm.phone) {
       alert('Please fill all required fields')
+      return
+    }
+
+    // Validate Date of Birth (day and month are required)
+    if (!applicationForm.birthDay || !applicationForm.birthMonth) {
+      alert('Please provide your Date of Birth (Day and Month are required)')
       return
     }
 
@@ -2413,6 +2427,176 @@ useEffect(() => {
                       e.currentTarget.style.boxShadow = 'none'
                     }}
                   />
+                </div>
+
+                {/* Date of Birth Section */}
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-3 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                    Date of Birth
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Day *
+                      </label>
+                      <select
+                        value={applicationForm.birthDay}
+                        onChange={(e) => setApplicationForm({...applicationForm, birthDay: e.target.value})}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      >
+                        <option value="">Day</option>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                          <option key={day} value={day}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Month *
+                      </label>
+                      <select
+                        value={applicationForm.birthMonth}
+                        onChange={(e) => setApplicationForm({...applicationForm, birthMonth: e.target.value})}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      >
+                        <option value="">Month</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Year (Optional)
+                      </label>
+                      <select
+                        value={applicationForm.birthYear}
+                        onChange={(e) => setApplicationForm({...applicationForm, birthYear: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      >
+                        <option value="">Year</option>
+                        {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Qualifications Section */}
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-3 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                    Qualifications (Optional)
+                  </label>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Education Level
+                      </label>
+                      <select
+                        value={applicationForm.educationLevel}
+                        onChange={(e) => setApplicationForm({...applicationForm, educationLevel: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      >
+                        <option value="">Select education level</option>
+                        <option value="high_school">High School</option>
+                        <option value="diploma">Diploma</option>
+                        <option value="bachelor">Bachelor's Degree</option>
+                        <option value="master">Master's Degree</option>
+                        <option value="phd">PhD</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Profession
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationForm.profession}
+                        onChange={(e) => setApplicationForm({...applicationForm, profession: e.target.value})}
+                        placeholder="e.g., Marketing Professional, Content Creator, Student"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                        Skills (Optional)
+                      </label>
+                      <textarea
+                        value={applicationForm.skills}
+                        onChange={(e) => setApplicationForm({...applicationForm, skills: e.target.value})}
+                        rows={3}
+                        placeholder="List your relevant skills (e.g., Content Creation, Social Media Management, Photography, Video Editing, etc.)"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
+                        style={{ letterSpacing: '0.05em' }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
+                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#d1d5db'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex items-start">

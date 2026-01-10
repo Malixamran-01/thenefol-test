@@ -116,6 +116,14 @@ export async function submitAffiliateApplication(pool: Pool, req: Request, res: 
     }
 
     // Create application
+    // Handle address fields - make them optional but provide defaults if missing
+    const addressHouseNumber = houseNumber || ''
+    const addressStreet = street || ''
+    const addressRoad = road || ''
+    const addressCity = city || ''
+    const addressPincode = pincode || ''
+    const addressState = state || ''
+
     const { rows } = await pool.query(`
       INSERT INTO affiliate_applications (
         name, email, phone, instagram, snapchat, youtube, facebook,
@@ -129,7 +137,7 @@ export async function submitAffiliateApplication(pool: Pool, req: Request, res: 
     `, [
       name, email, phone, instagram || null, snapchat || null, youtube || null, facebook || null,
       followers, platform, experience, whyJoin, expectedSales,
-      houseNumber, street, building || null, apartment || null, road, city, pincode, state,
+      addressHouseNumber, addressStreet, building || null, apartment || null, addressRoad, addressCity, addressPincode, addressState,
       agreeTerms, 'pending', new Date(),
       birthDay || null, birthMonth || null, birthYear || null,
       educationLevel || null, profession || null, skills || null
