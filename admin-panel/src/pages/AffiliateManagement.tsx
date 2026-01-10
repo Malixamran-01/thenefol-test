@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { 
   Users, 
   CheckCircle, 
@@ -33,6 +33,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface AffiliateApplication {
   id: number
@@ -108,6 +109,19 @@ export default function AffiliateManagement() {
   const [expandedAffiliate, setExpandedAffiliate] = useState<number | null>(null)
   const [analyticsSearchQuery, setAnalyticsSearchQuery] = useState('')
 
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
+  
+  const authHeaders = useMemo(() => {
+    const token = localStorage.getItem('auth_token')
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'x-user-permissions': 'orders:read,orders:update',
+      'x-user-role': 'admin'
+    } as Record<string, string>
+  }, [])
+
   useEffect(() => {
     fetchApplications()
     fetchCommissionSettings()
@@ -148,7 +162,16 @@ export default function AffiliateManagement() {
         params.append('search', searchQuery.trim())
       }
 
-      const response = await fetch(`/api/admin/affiliate-applications?${params}`)
+      const response = await fetch(`${apiBase}/admin/affiliate-applications?${params}`, {
+        headers: authHeaders
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Failed to fetch applications:', response.status, errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+      
       const data = await response.json()
       
       if (response.ok && data.applications) {
@@ -184,10 +207,18 @@ export default function AffiliateManagement() {
 
   const fetchCommissionSettings = async () => {
     try {
-      const response = await fetch('/api/admin/affiliate-commission-settings')
+      const response = await fetch(`${apiBase}/admin/affiliate-commission-settings`, {
+        headers: authHeaders
+      })
+      
+      if (!response.ok) {
+        console.error('Failed to fetch commission settings:', response.status)
+        return
+      }
+      
       const data = await response.json()
       
-      if (response.ok && data.commission_percentage !== undefined) {
+      if (data.commission_percentage !== undefined) {
         setCommissionSettings(data)
       }
     } catch (error) {
@@ -198,11 +229,9 @@ export default function AffiliateManagement() {
   const handleCommissionUpdate = async () => {
     try {
       setCommissionLoading(true)
-      const response = await fetch('/api/admin/affiliate-commission-settings', {
+      const response = await fetch(`${apiBase}/admin/affiliate-commission-settings`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: authHeaders,
         body: JSON.stringify(commissionSettings)
       })
 
@@ -231,11 +260,9 @@ export default function AffiliateManagement() {
     if (!selectedApplication) return
 
     try {
-      const response = await fetch(`/api/admin/affiliate-applications/${selectedApplication.id}/approve`, {
+      const response = await fetch(`${apiBase}/admin/affiliate-applications/${selectedApplication.id}/approve`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           adminNotes: adminNotes
         })
@@ -264,11 +291,9 @@ export default function AffiliateManagement() {
     }
 
     try {
-      const response = await fetch(`/api/admin/affiliate-applications/${selectedApplication.id}/reject`, {
+      const response = await fetch(`${apiBase}/admin/affiliate-applications/${selectedApplication.id}/reject`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           rejectionReason: rejectionReason
         })
@@ -333,7 +358,16 @@ export default function AffiliateManagement() {
   const fetchReferralAnalytics = async () => {
     try {
       setAnalyticsLoading(true)
-      const response = await fetch('/api/admin/affiliate-referral-analytics')
+      const response = await fetch(`${apiBase}/admin/affiliate-referral-analytics`, {
+        headers: authHeaders
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Failed to fetch referral analytics:', response.status, errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+      
       const data = await response.json()
       
       if (response.ok && data.analytics) {
@@ -368,11 +402,20 @@ export default function AffiliateManagement() {
   const handleExportCSV = async () => {
     try {
       // Fetch all affiliate partners data
-      const response = await fetch('/api/admin/affiliate-referral-analytics')
+      const response = await fetch(`${apiBase}/admin/affiliate-referral-analytics`, {
+        headers: authHeaders
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        alert(`Failed to fetch affiliate data: HTTP ${response.status} - ${errorText}`)
+        return
+      }
+      
       const data = await response.json()
       
-      if (!response.ok || !data.analytics) {
-        alert('Failed to fetch affiliate data: ' + (data.error || 'Unknown error'))
+      if (!data.analytics) {
+        alert('Failed to fetch affiliate data: No analytics data in response')
         return
       }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { 
   Users, 
   CheckCircle, 
@@ -29,6 +29,7 @@ import {
   CheckSquare,
   XSquare
 } from 'lucide-react'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface AffiliateApplication {
   id: number
@@ -92,6 +93,19 @@ export default function AffiliateRequests() {
     rejected: 0
   })
 
+  // Use centralized API URL utility that respects VITE_API_URL
+  const apiBase = getApiBaseUrl()
+  
+  const authHeaders = useMemo(() => {
+    const token = localStorage.getItem('auth_token')
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'x-user-permissions': 'orders:read,orders:update',
+      'x-user-role': 'admin'
+    } as Record<string, string>
+  }, [])
+
   useEffect(() => {
     fetchApplications()
   }, [statusFilter, currentPage, sortBy, sortOrder])
@@ -125,7 +139,16 @@ export default function AffiliateRequests() {
         params.append('search', searchQuery.trim())
       }
 
-      const response = await fetch(`/api/admin/affiliate-applications?${params}`)
+      const response = await fetch(`${apiBase}/admin/affiliate-applications?${params}`, {
+        headers: authHeaders
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Failed to fetch applications:', response.status, errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+      
       const data = await response.json()
       
       if (response.ok && data.applications) {
@@ -163,11 +186,9 @@ export default function AffiliateRequests() {
     if (!selectedApplication) return
 
     try {
-      const response = await fetch(`/api/admin/affiliate-applications/${selectedApplication.id}/approve`, {
+      const response = await fetch(`${apiBase}/admin/affiliate-applications/${selectedApplication.id}/approve`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           adminNotes: adminNotes
         })
@@ -196,11 +217,9 @@ export default function AffiliateRequests() {
     }
 
     try {
-      const response = await fetch(`/api/admin/affiliate-applications/${selectedApplication.id}/reject`, {
+      const response = await fetch(`${apiBase}/admin/affiliate-applications/${selectedApplication.id}/reject`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           rejectionReason: rejectionReason
         })
@@ -231,19 +250,32 @@ export default function AffiliateRequests() {
       setRegeneratingCode(applicationId)
       
       // First, we need to get the affiliate partner ID from the application
-      const response = await fetch(`/api/admin/affiliate-applications/${applicationId}`)
-      const appData = await response.json()
+      const response = await fetch(`${apiBase}/admin/affiliate-applications/${applicationId}`, {
+        headers: authHeaders
+      })
       
       if (!response.ok) {
-        alert(appData.error || 'Failed to get application details')
+        const errorText = await response.text()
+        alert(`Failed to get application details: ${errorText}`)
         return
       }
+      
+      const appData = await response.json()
 
       // Find the affiliate partner record
-      const partnerResponse = await fetch(`/api/admin/affiliate-partners?applicationId=${applicationId}`)
+      const partnerResponse = await fetch(`${apiBase}/admin/affiliate-partners?applicationId=${applicationId}`, {
+        headers: authHeaders
+      })
+      
+      if (!partnerResponse.ok) {
+        const errorText = await partnerResponse.text()
+        alert(`Failed to get affiliate partner: ${errorText}`)
+        return
+      }
+      
       const partnerData = await partnerResponse.json()
       
-      if (!partnerResponse.ok || !partnerData.partners || partnerData.partners.length === 0) {
+      if (!partnerData.partners || partnerData.partners.length === 0) {
         alert('Affiliate partner record not found')
         return
       }
@@ -251,11 +283,9 @@ export default function AffiliateRequests() {
       const partnerId = partnerData.partners[0].id
 
       // Regenerate the verification code
-      const regenerateResponse = await fetch(`/api/admin/affiliate-partners/${partnerId}/regenerate-code`, {
+      const regenerateResponse = await fetch(`${apiBase}/admin/affiliate-partners/${partnerId}/regenerate-code`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        headers: authHeaders
       })
 
       const regenerateData = await regenerateResponse.json()
