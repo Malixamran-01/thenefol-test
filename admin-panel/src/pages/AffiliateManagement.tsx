@@ -444,7 +444,7 @@ export default function AffiliateManagement() {
       // Create CSV content
       const csvContent = [
         headers.map(escapeCSV).join(','),
-        ...rows.map(row => row.map(escapeCSV).join(','))
+        ...rows.map((row: (string | number)[]) => row.map(escapeCSV).join(','))
       ].join('\n')
 
       // Create blob and download
@@ -775,7 +775,7 @@ export default function AffiliateManagement() {
                               <div>
                                 <span className="text-sm text-gray-600 dark:text-gray-400">Education Level:</span>
                                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {affiliate.education_level.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  {affiliate.education_level.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                                 </p>
                               </div>
                             )}
@@ -1361,7 +1361,7 @@ export default function AffiliateManagement() {
                       <div>
                         <span className="text-sm text-slate-600 dark:text-slate-400">Education Level:</span>
                         <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
-                          {selectedApplication.education_level.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          {selectedApplication.education_level.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                         </p>
                       </div>
                     )}

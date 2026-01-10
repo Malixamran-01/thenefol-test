@@ -163,6 +163,14 @@ export default function Affiliate() {
         city: '',
         pincode: '',
         state: '',
+        // Date of Birth fields
+        birthDay: '',
+        birthMonth: '',
+        birthYear: '',
+        // Qualifications fields
+        educationLevel: '',
+        profession: '',
+        skills: '',
         agreeTerms: false
       })
     }

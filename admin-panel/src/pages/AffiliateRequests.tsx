@@ -869,7 +869,7 @@ export default function AffiliateRequests() {
                             <div className="space-y-2">
                               {application.education_level && (
                                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                                  <span className="font-medium">Education:</span> {application.education_level.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  <span className="font-medium">Education:</span> {application.education_level.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                                 </p>
                               )}
                               {application.profession && (
@@ -1014,7 +1014,7 @@ export default function AffiliateRequests() {
                         <div>
                           <span className="text-sm text-gray-600 dark:text-gray-400">Education Level:</span>
                           <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
-                            {selectedApplication.education_level.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {selectedApplication.education_level.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                           </p>
                         </div>
                       )}
