@@ -40,25 +40,37 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
   const fetchOrderDetails = async () => {
     try {
       setLoading(true)
+      setError('')
       const orderData = await api.orders.getById(orderNumber)
       setOrder(orderData)
       
-      // Check if order can be cancelled
-      if (orderData.status !== 'delivered' && orderData.status !== 'completed') {
-        setError('Only delivered orders can be cancelled')
+      // Check if order is already cancelled
+      if (orderData.status === 'cancelled') {
+        setError('This order has already been cancelled')
+        return
       }
       
-      // Check if within 5 days
-      const deliveredAt = (orderData as any).delivered_at || (orderData as any).updated_at
-      if (deliveredAt) {
-        const deliveryDate = new Date(deliveredAt)
-        const now = new Date()
-        const daysSinceDelivery = Math.floor((now.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24))
-        
-        if (daysSinceDelivery > 5) {
-          setError('Cancellation can only be requested within 5 days of delivery')
+      // Check if order can be cancelled
+      // Orders that are delivered/completed need special cancellation request (within 5 days)
+      // Orders that are not delivered can be cancelled immediately
+      const isDelivered = orderData.status === 'delivered' || orderData.status === 'completed'
+      
+      if (isDelivered) {
+        // For delivered orders, check if within 5 days
+        const deliveredAt = (orderData as any).delivered_at || (orderData as any).updated_at
+        if (deliveredAt) {
+          const deliveryDate = new Date(deliveredAt)
+          const now = new Date()
+          const daysSinceDelivery = Math.floor((now.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24))
+          
+          if (daysSinceDelivery > 5) {
+            setError('Cancellation can only be requested within 5 days of delivery')
+          }
+        } else {
+          setError('Order delivery date not found')
         }
       }
+      // For non-delivered orders, cancellation is allowed (no error)
     } catch (err: any) {
       setError(err.message || 'Failed to fetch order details')
     } finally {
@@ -105,12 +117,27 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
       // Use otherReason text if reason is "Other", otherwise use reason
       const finalReason = reason === 'Other' ? otherReason.trim() : reason.trim()
 
-      await api.cancellations.requestCancellation({
-        order_number: orderNumber,
-        reason: finalReason,
-        cancellation_type: cancellationType,
-        items_to_cancel: itemsToCancel
-      })
+      // Check if order is delivered/completed - use requestCancellation
+      // Otherwise use immediate cancellation
+      const isDelivered = order?.status === 'delivered' || order?.status === 'completed'
+      
+      if (isDelivered) {
+        // For delivered orders, use request cancellation (requires admin approval)
+        await api.cancellations.requestCancellation({
+          order_number: orderNumber,
+          reason: finalReason,
+          cancellation_type: cancellationType,
+          items_to_cancel: itemsToCancel
+        })
+      } else {
+        // For non-delivered orders, use immediate cancellation
+        await api.cancellations.cancelOrder({
+          order_number: orderNumber,
+          reason: finalReason,
+          cancellation_type: cancellationType,
+          items_to_cancel: itemsToCancel
+        })
+      }
 
       setSuccess(true)
       setTimeout(() => {

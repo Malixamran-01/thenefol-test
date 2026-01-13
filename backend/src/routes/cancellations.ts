@@ -372,10 +372,15 @@ export async function rejectCancellation(pool: Pool, req: Request, res: Response
 export async function cancelOrderImmediate(pool: Pool, req: Request, res: Response, io?: any) {
   try {
     const userId = req.userId
-    const { order_number, reason } = req.body
+    const { order_number, reason, cancellation_type = 'full', items_to_cancel } = req.body
 
     const validationError = validateRequired({ order_number, reason }, ['order_number', 'reason'])
     if (validationError) return sendError(res, 400, validationError)
+    
+    // Validate partial cancellation
+    if (cancellation_type === 'partial' && (!items_to_cancel || !Array.isArray(items_to_cancel) || items_to_cancel.length === 0)) {
+      return sendError(res, 400, 'Items to cancel are required for partial cancellation')
+    }
 
     // Get order details
     const { rows: orderRows } = await pool.query(
@@ -454,21 +459,24 @@ export async function cancelOrderImmediate(pool: Pool, req: Request, res: Respon
       // Continue with cancellation even if Shiprocket fails
     }
 
-    // Calculate refund amount
-    const refundAmount = parseFloat(order.total)
+    // Calculate refund amount (full or partial)
+    const refundAmount = cancellation_type === 'partial' && items_to_cancel
+      ? calculatePartialRefund(order.items, items_to_cancel)
+      : parseFloat(order.total)
 
     // Create cancellation record
     const { rows: cancellationRows } = await pool.query(
       `INSERT INTO order_cancellations 
-      (order_id, order_number, user_id, cancellation_reason, cancellation_type, refund_amount, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (order_id, order_number, user_id, cancellation_reason, cancellation_type, items_to_cancel, refund_amount, status)
+      VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
       RETURNING *`,
       [
         order.id,
         order_number,
         userId || null,
         reason,
-        'full',
+        cancellation_type,
+        items_to_cancel ? JSON.stringify(items_to_cancel) : null,
         refundAmount,
         'approved' // Auto-approve immediate cancellations
       ]

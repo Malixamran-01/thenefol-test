@@ -91,7 +91,15 @@ export function generateAmazonInvoiceHTML(
       totalTaxAmount += shippingTax
     }
     
-    const finalTotal = totalAmount + shippingCharges
+    // Get order-level discounts (coupon codes and coins)
+    const orderDiscountAmount = parseFloat(order.discount_amount || 0)
+    const orderDiscountCode = order.discount_code || null
+    const coinsUsed = parseFloat(order.coins_used || 0)
+    const coinsDiscount = coinsUsed / 10 // 1 rupee = 10 coins
+    
+    // Calculate final total after order-level discounts
+    const subtotalBeforeDiscounts = totalAmount + shippingCharges
+    const finalTotal = Math.max(0, subtotalBeforeDiscounts - orderDiscountAmount - coinsDiscount)
     const amountInWords = numberToWords(Math.round(finalTotal))
     
     // Format dates
@@ -340,12 +348,12 @@ export function generateAmazonInvoiceHTML(
       </tbody>
       <tfoot>
         <tr style="background: #f0f0f0; font-weight: bold;">
-          <td colspan="4" class="text-right" style="padding: 10px;">TOTAL</td>
+          <td colspan="4" class="text-right" style="padding: 10px;">SUBTOTAL</td>
           <td class="text-right" style="padding: 10px;">${currency}${totalNetAmount.toFixed(2)}</td>
           <td></td>
           <td></td>
           <td class="text-right" style="padding: 10px;">${currency}${totalTaxAmount.toFixed(2)}</td>
-          <td class="text-right" style="padding: 10px;">${currency}${finalTotal.toFixed(2)}</td>
+          <td class="text-right" style="padding: 10px;">${currency}${(totalAmount + shippingCharges).toFixed(2)}</td>
         </tr>
       </tfoot>
     </table>
@@ -353,6 +361,26 @@ export function generateAmazonInvoiceHTML(
     <!-- Summary -->
     <div class="summary-section">
       <div class="summary-row">
+        <div class="summary-label">Subtotal (Items + Shipping):</div>
+        <div class="summary-value">${currency}${(totalAmount + shippingCharges).toFixed(2)}</div>
+      </div>
+      ${orderDiscountCode && orderDiscountAmount > 0 ? `
+      <div class="summary-row" style="color: #dc2626;">
+        <div class="summary-label">Coupon Discount (${orderDiscountCode}):</div>
+        <div class="summary-value" style="color: #dc2626;">-${currency}${orderDiscountAmount.toFixed(2)}</div>
+      </div>
+      ` : ''}
+      ${coinsUsed > 0 ? `
+      <div class="summary-row" style="color: #dc2626;">
+        <div class="summary-label">Nefol Coins Discount (${coinsUsed} coins):</div>
+        <div class="summary-value" style="color: #dc2626;">-${currency}${coinsDiscount.toFixed(2)}</div>
+      </div>
+      ` : ''}
+      <div class="summary-row" style="border-top: 2px solid #333; margin-top: 8px; padding-top: 8px; font-weight: bold; font-size: 12px;">
+        <div class="summary-label">Grand Total:</div>
+        <div class="summary-value">${currency}${finalTotal.toFixed(2)}</div>
+      </div>
+      <div class="summary-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
         <div class="summary-label">Amount in Words:</div>
         <div class="summary-value">${amountInWords}</div>
       </div>

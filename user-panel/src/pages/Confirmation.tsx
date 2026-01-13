@@ -445,13 +445,31 @@ export default function Confirmation() {
                   <span className="text-gray-900 font-medium">GST:</span>
                   <span className="font-medium text-gray-900">₹{Number(orderDetails.tax || 0).toFixed(2)}</span>
                 </div>
+                {/* Discount Code */}
+                {orderDetails.discount_code && orderDetails.discount_amount && orderDetails.discount_amount > 0 && (
+                  <div className="flex justify-between text-green-700 dark:text-green-400">
+                    <span className="font-medium">Coupon ({orderDetails.discount_code}):</span>
+                    <span className="font-medium">-₹{Number(orderDetails.discount_amount || 0).toFixed(2)}</span>
+                  </div>
+                )}
+                {/* Coins Used */}
+                {orderDetails.coins_used && orderDetails.coins_used > 0 && (
+                  <div className="flex justify-between text-green-700 dark:text-green-400">
+                    <span className="font-medium">Nefol Coins ({orderDetails.coins_used} coins):</span>
+                    <span className="font-medium">-₹{Number(orderDetails.coins_used / 10 || 0).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
                   <div className="flex justify-between">
                     <span className="text-base font-medium text-gray-900">Grand Total:</span>
                     <span className="text-base font-medium text-gray-900">₹{(() => {
-                      // Grand Total = Subtotal + Shipping (GST already included in subtotal)
-                      const grandTotal = Number(orderDetails.subtotal || 0) + Number(orderDetails.shipping || 0)
-                      return grandTotal.toFixed(2)
+                      // Grand Total = Subtotal + Shipping - Discount - Coins (GST already included in subtotal)
+                      const subtotal = Number(orderDetails.subtotal || 0)
+                      const shipping = Number(orderDetails.shipping || 0)
+                      const discountAmount = Number(orderDetails.discount_amount || 0)
+                      const coinsDiscount = Number(orderDetails.coins_used || 0) / 10
+                      const grandTotal = subtotal + shipping - discountAmount - coinsDiscount
+                      return Math.max(0, grandTotal).toFixed(2)
                     })()}</span>
                   </div>
                 </div>

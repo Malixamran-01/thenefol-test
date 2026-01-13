@@ -1,6 +1,7 @@
 # Setup Admin User on Railway Backend
 
 ## Problem
+
 `DATABASE_URL` is set correctly in Railway, but admin login still doesn't work. The admin user was created locally, but Railway backend might need to create it in its own database connection.
 
 ## Solution: Run Setup Script on Railway
@@ -10,22 +11,27 @@ Since `DATABASE_URL` is already set in Railway, we can run the setup script dire
 ### Option 1: Via Railway CLI (Recommended)
 
 1. **Install Railway CLI** (if not installed):
+
    ```bash
    npm install -g @railway/cli
    ```
 
 2. **Login to Railway**:
+
    ```bash
    railway login
    ```
 
 3. **Link to your project**:
+
    ```bash
    railway link
    ```
+
    (Select your backend service)
 
 4. **Run the setup script on Railway**:
+
    ```bash
    cd backend
    railway run npm run setup-db
@@ -62,6 +68,7 @@ This will restart the backend with the current `DATABASE_URL`.
 After running the setup script, verify the admin user was created:
 
 ### Via Railway CLI:
+
 ```bash
 railway run psql $DATABASE_URL -c "SELECT id, email, name FROM staff_users;"
 ```

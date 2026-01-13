@@ -615,6 +615,8 @@ export const cancellationsAPI = {
   async cancelOrder(data: {
     order_number: string
     reason: string
+    cancellation_type?: 'full' | 'partial'
+    items_to_cancel?: any[]
   }) {
     const response = await fetch(`${getApiBaseUrl()}/api/cancellations/cancel`, {
       method: 'POST',

@@ -6,7 +6,19 @@
  * VITE_API_URL must be set in Vercel environment variables for test deployments.
  */
 export const getApiBaseUrl = (): string => {
-  // Priority 1: Use VITE_API_URL if set (for deployment flexibility)
+  // Priority 1: Check if we're on production domain (SAFETY FIRST)
+  // If on production domain, ALWAYS use production API regardless of VITE_API_URL
+  // This prevents accidental test backend usage in production
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
+      const prodUrl = `${window.location.protocol}//${window.location.host}/api`
+      console.log('🌐 [API] Production domain detected, using:', prodUrl)
+      return prodUrl
+    }
+  }
+  
+  // Priority 2: Use VITE_API_URL if set (for test/staging deployments)
   // This is replaced at BUILD TIME by Vite, so it must be set in Vercel build settings
   const viteApiUrl = import.meta.env.VITE_API_URL
   
@@ -18,16 +30,9 @@ export const getApiBaseUrl = (): string => {
     return finalUrl
   }
   
-  // Priority 2: Check if we're on production domain
+  // Priority 3: Fallback for non-production domains without VITE_API_URL
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
-    // If on production domain, use current domain
-    if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-      const prodUrl = `${window.location.protocol}//${window.location.host}/api`
-      console.log('🌐 [API] Production domain detected, using:', prodUrl)
-      return prodUrl
-    }
-    // For any other domain (test/staging), warn and fall back to production
     console.warn('⚠️ [API] VITE_API_URL not set! Test deployment should have VITE_API_URL set in Vercel.')
     console.warn('⚠️ [API] Falling back to production URL. This may cause test actions to affect production!')
     console.warn('⚠️ [API] Current hostname:', hostname)
