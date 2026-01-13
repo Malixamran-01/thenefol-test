@@ -151,15 +151,17 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
   }
 
   const cancellationReasons = [
-    'Changed my mind',
-    'Product not as described',
-    'Damaged product',
-    'Wrong product received',
-    'Delivery delay',
-    'Better price available',
-    'No longer needed',
-    'Other'
-  ]
+    "Order placed by mistake",
+    "Expected delivery time is too long",
+    "Ordered the wrong item",
+    "Order no longer needed",
+    "Change in budget",
+    "Applied the wrong address",
+    "Payment issue / want to reorder",
+    "Want to change quantity (will reorder)",
+    "Other"
+  ];
+  
 
   if (success) {
     return (
