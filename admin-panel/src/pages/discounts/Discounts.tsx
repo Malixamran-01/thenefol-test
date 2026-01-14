@@ -5,15 +5,18 @@ type Discount = {
   id: number
   code: string
   name: string
-  type: 'percentage' | 'fixed' | 'free_shipping'
+  type: 'percentage' | 'fixed' | 'free_shipping' | 'fixed_price'
   value: number
   min_purchase?: number
   max_discount?: number
   usage_limit?: number
+  usage_limit_per_user?: number
   usage_count: number
   is_active: boolean
   valid_from?: string
   valid_until?: string
+  product_id?: number
+  is_one_time_use?: boolean
   created_at: string
   updated_at: string
 }
@@ -41,15 +44,28 @@ export default function Discounts() {
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    type: 'percentage' as 'percentage' | 'fixed' | 'free_shipping',
+    type: 'percentage' as 'percentage' | 'fixed' | 'free_shipping' | 'fixed_price',
     value: '',
     min_purchase: '',
     max_discount: '',
     usage_limit: '',
+    usage_limit_per_user: '',
     valid_from: '',
     valid_until: '',
-    is_active: true
+    is_active: true,
+    product_id: '',
+    fixed_price: ''
   })
+  
+  // Fixed-price coupon state
+  const [fixedPriceCoupon, setFixedPriceCoupon] = useState({
+    productId: '',
+    fixedPrice: '',
+    generatedCode: '',
+    isGenerating: false
+  })
+  
+  const [products, setProducts] = useState<Array<{id: number, title: string, price: string}>>([])
 
   // Use centralized API URL utility that respects VITE_API_URL
   const apiBase = getApiBaseUrl()
@@ -57,7 +73,20 @@ export default function Discounts() {
   useEffect(() => {
     loadDiscounts()
     loadUsage()
+    loadProducts()
   }, [])
+  
+  const loadProducts = async () => {
+    try {
+      const res = await fetch(`${apiBase}/products`)
+      if (res.ok) {
+        const data = await res.json()
+        setProducts(data.map((p: any) => ({ id: p.id, title: p.title, price: p.price })))
+      }
+    } catch (error) {
+      console.error('Failed to load products:', error)
+    }
+  }
 
   const loadDiscounts = async () => {
     try {
@@ -102,13 +131,16 @@ export default function Discounts() {
         code: formData.code.toUpperCase(),
         name: formData.name,
         type: formData.type,
-        value: parseFloat(formData.value),
+        value: formData.type === 'fixed_price' ? parseFloat(formData.fixed_price) : parseFloat(formData.value),
         min_purchase: formData.min_purchase ? parseFloat(formData.min_purchase) : null,
         max_discount: formData.max_discount ? parseFloat(formData.max_discount) : null,
         usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : null,
+        usage_limit_per_user: formData.usage_limit_per_user ? parseInt(formData.usage_limit_per_user) : null,
         valid_from: formData.valid_from || null,
         valid_until: formData.valid_until || null,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        product_id: formData.type === 'fixed_price' && formData.product_id ? parseInt(formData.product_id) : null,
+        is_one_time_use: formData.type === 'fixed_price' ? true : false
       }
 
       const method = editingDiscount ? 'PUT' : 'POST'
@@ -132,9 +164,12 @@ export default function Discounts() {
           min_purchase: '',
           max_discount: '',
           usage_limit: '',
+          usage_limit_per_user: '',
           valid_from: '',
           valid_until: '',
-          is_active: true
+          is_active: true,
+          product_id: '',
+          fixed_price: ''
         })
         setEditingDiscount(null)
         setActiveTab('discounts')
@@ -156,16 +191,88 @@ export default function Discounts() {
     setFormData({
       code: discount.code,
       name: discount.name,
-      type: discount.type,
+      type: discount.type as any,
       value: discount.value.toString(),
       min_purchase: discount.min_purchase?.toString() || '',
       max_discount: discount.max_discount?.toString() || '',
       usage_limit: discount.usage_limit?.toString() || '',
+      usage_limit_per_user: (discount as any).usage_limit_per_user?.toString() || '',
       valid_from: discount.valid_from ? discount.valid_from.split('T')[0] : '',
       valid_until: discount.valid_until ? discount.valid_until.split('T')[0] : '',
-      is_active: discount.is_active
+      is_active: discount.is_active,
+      product_id: (discount as any).product_id?.toString() || '',
+      fixed_price: discount.type === 'fixed_price' ? discount.value.toString() : ''
     })
     setActiveTab('create')
+  }
+  
+  const generateFixedPriceCode = async () => {
+    if (!fixedPriceCoupon.productId || !fixedPriceCoupon.fixedPrice) {
+      alert('Please select a product and enter a fixed price')
+      return
+    }
+    
+    try {
+      setFixedPriceCoupon({ ...fixedPriceCoupon, isGenerating: true })
+      
+      // Generate a unique random code
+      const randomCode = 'FIXED' + Math.random().toString(36).substring(2, 10).toUpperCase()
+      const selectedProduct = products.find(p => p.id === parseInt(fixedPriceCoupon.productId))
+      
+      const payload = {
+        code: randomCode,
+        name: `Fixed Price - ${selectedProduct?.title || 'Product'}`,
+        type: 'fixed_price',
+        value: parseFloat(fixedPriceCoupon.fixedPrice),
+        product_id: parseInt(fixedPriceCoupon.productId),
+        usage_limit: 1, // One-time use
+        usage_limit_per_user: 1,
+        is_active: true,
+        is_one_time_use: true
+      }
+      
+      const res = await fetch(`${apiBase}/discounts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setFixedPriceCoupon({ ...fixedPriceCoupon, generatedCode: randomCode })
+        await loadDiscounts()
+        alert(`Fixed-price coupon created! Code: ${randomCode}`)
+      } else {
+        const error = await res.json()
+        alert(error.message || 'Failed to create fixed-price coupon')
+      }
+    } catch (error) {
+      console.error('Error generating fixed-price code:', error)
+      alert('Failed to generate fixed-price coupon')
+    } finally {
+      setFixedPriceCoupon({ ...fixedPriceCoupon, isGenerating: false })
+    }
+  }
+  
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text)
+        alert('Code copied to clipboard!')
+      } else {
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+        alert(`Code copied: ${text}`)
+      }
+    } catch (err) {
+      alert(`Code: ${text}`)
+    }
   }
 
   const handleDeleteDiscount = async (id: number) => {
@@ -271,7 +378,25 @@ export default function Discounts() {
           </p>
         </div>
         <button 
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setActiveTab('create')
+            setEditingDiscount(null)
+            setFormData({
+              code: '',
+              name: '',
+              type: 'percentage',
+              value: '',
+              min_purchase: '',
+              max_discount: '',
+              usage_limit: '',
+              usage_limit_per_user: '',
+              valid_from: '',
+              valid_until: '',
+              is_active: true,
+              product_id: '',
+              fixed_price: ''
+            })
+          }}
           className="btn-primary"
         >
           Create Discount
@@ -585,6 +710,18 @@ export default function Discounts() {
                   <p className="text-xs text-gray-500 mt-1">Leave empty for unlimited</p>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Usage Limit Per User</label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-primary focus:outline-none"
+                    placeholder="1"
+                    value={formData.usage_limit_per_user}
+                    onChange={(e) => setFormData({ ...formData, usage_limit_per_user: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Max times a single user can use this code</p>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <label className="flex items-center space-x-2 mt-2">
                     <input 
@@ -631,9 +768,12 @@ export default function Discounts() {
                       min_purchase: '',
                       max_discount: '',
                       usage_limit: '',
+                      usage_limit_per_user: '',
                       valid_from: '',
                       valid_until: '',
-                      is_active: true
+                      is_active: true,
+                      product_id: '',
+                      fixed_price: ''
                     })
                     setEditingDiscount(null)
                     setActiveTab('discounts')
@@ -647,6 +787,86 @@ export default function Discounts() {
                 </button>
               </div>
             </form>
+            
+            {/* Fixed-Price Coupon Generator */}
+            <div className="metric-card mt-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Generate Fixed-Price Coupon (One-Time Use)
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Create a special coupon that sets a fixed price for a specific product. Perfect for loyal customers or influencers.
+              </p>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Product/Combo *</label>
+                    <select
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-primary focus:outline-none"
+                      value={fixedPriceCoupon.productId}
+                      onChange={(e) => setFixedPriceCoupon({ ...fixedPriceCoupon, productId: e.target.value })}
+                    >
+                      <option value="">-- Select Product --</option>
+                      {products.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.title} - ₹{product.price}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fixed Price (₹) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-primary focus:outline-none"
+                      placeholder="80"
+                      value={fixedPriceCoupon.fixedPrice}
+                      onChange={(e) => setFixedPriceCoupon({ ...fixedPriceCoupon, fixedPrice: e.target.value })}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">The item will be charged at this price when code is applied</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  <button
+                    type="button"
+                    onClick={generateFixedPriceCode}
+                    disabled={fixedPriceCoupon.isGenerating || !fixedPriceCoupon.productId || !fixedPriceCoupon.fixedPrice}
+                    className="btn-primary"
+                  >
+                    {fixedPriceCoupon.isGenerating ? 'Generating...' : 'Generate Code'}
+                  </button>
+                  
+                  {fixedPriceCoupon.generatedCode && (
+                    <div className="flex items-center space-x-2">
+                      <code className="bg-gray-100 px-3 py-2 rounded text-sm font-mono">
+                        {fixedPriceCoupon.generatedCode}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(fixedPriceCoupon.generatedCode)}
+                        className="btn-secondary text-sm"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {fixedPriceCoupon.generatedCode && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <p className="text-sm text-green-800">
+                      ✅ Fixed-price coupon created! Code: <strong>{fixedPriceCoupon.generatedCode}</strong>
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      This code is one-time use only. Copy and share it with your customer.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

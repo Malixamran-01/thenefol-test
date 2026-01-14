@@ -1903,7 +1903,7 @@ app.get('/api/discounts/usage', async (req, res) => {
 // Apply discount code endpoint
 app.post('/api/discounts/apply', async (req, res) => {
   try {
-    const { code, amount } = req.body || {}
+    const { code, amount, customer_email, product_id } = req.body || {}
     
     // Validate input
     if (!code || typeof code !== 'string' || code.trim() === '') {
@@ -1923,7 +1923,7 @@ app.post('/api/discounts/apply', async (req, res) => {
     }
 
     const codeUpper = code.trim().toUpperCase()
-    console.log('Applying discount code:', { code: codeUpper, amount: orderAmount })
+    console.log('Applying discount code:', { code: codeUpper, amount: orderAmount, customer_email, product_id })
 
     // Find the discount by code
     const discountResult = await pool.query(
@@ -1950,6 +1950,16 @@ app.post('/api/discounts/apply', async (req, res) => {
       return sendError(res, 400, `Discount code has expired. Expired on ${new Date(discount.valid_until).toLocaleDateString()}`)
     }
 
+    // Check if discount is product-specific and product matches
+    if (discount.product_id) {
+      const discountProductId = parseInt(String(discount.product_id))
+      const requestedProductId = product_id ? parseInt(String(product_id)) : null
+      if (requestedProductId !== discountProductId) {
+        console.log('Discount is product-specific and product does not match:', { code: codeUpper, discountProductId, requestedProductId })
+        return sendError(res, 400, 'This discount code is only valid for a specific product')
+      }
+    }
+
     // Check minimum purchase amount
     if (discount.min_purchase) {
       const minPurchase = parseFloat(String(discount.min_purchase))
@@ -1966,6 +1976,35 @@ app.post('/api/discounts/apply', async (req, res) => {
       if (usageCount >= usageLimit) {
         console.log('Discount usage limit reached:', { code: codeUpper, usageCount, usageLimit })
         return sendError(res, 400, `Discount code usage limit reached (${usageCount}/${usageLimit} uses)`)
+      }
+    }
+
+    // Check per-user usage limit
+    if (discount.usage_limit_per_user && customer_email) {
+      const userUsageResult = await pool.query(
+        `SELECT COUNT(*) as usage_count FROM discount_usage 
+         WHERE discount_id = $1 AND customer_email = $2`,
+        [discount.id, customer_email]
+      )
+      const userUsageCount = parseInt(String(userUsageResult.rows[0]?.usage_count || 0))
+      const userUsageLimit = parseInt(String(discount.usage_limit_per_user))
+      if (userUsageCount >= userUsageLimit) {
+        console.log('Per-user usage limit reached:', { code: codeUpper, customer_email, userUsageCount, userUsageLimit })
+        return sendError(res, 400, `You have reached the maximum usage limit for this discount code (${userUsageCount}/${userUsageLimit} uses)`)
+      }
+    }
+
+    // Check if one-time use and already used by this customer
+    if (discount.is_one_time_use && customer_email) {
+      const existingUsage = await pool.query(
+        `SELECT COUNT(*) as usage_count FROM discount_usage 
+         WHERE discount_id = $1 AND customer_email = $2`,
+        [discount.id, customer_email]
+      )
+      const hasUsed = parseInt(String(existingUsage.rows[0]?.usage_count || 0)) > 0
+      if (hasUsed) {
+        console.log('One-time use discount already used:', { code: codeUpper, customer_email })
+        return sendError(res, 400, 'This discount code can only be used once and has already been used')
       }
     }
 
@@ -1988,6 +2027,10 @@ app.post('/api/discounts/apply', async (req, res) => {
       if (discountAmount > orderAmount) {
         discountAmount = orderAmount
       }
+    } else if (discount.type === 'fixed_price') {
+      // For fixed_price, the discount is the difference between order amount and fixed price
+      discountAmount = Math.max(0, orderAmount - discountValue)
+      // The final price will be the fixed price
     } else {
       console.error('Invalid discount type:', { code: codeUpper, type: discount.type })
       return sendError(res, 400, `Invalid discount type: ${discount.type}`)
@@ -2000,7 +2043,8 @@ app.post('/api/discounts/apply', async (req, res) => {
       type: discount.type,
       value: parseFloat(discount.value),
       discountAmount: Math.round(discountAmount * 100) / 100,
-      maxDiscount: discount.max_discount ? parseFloat(discount.max_discount) : null
+      maxDiscount: discount.max_discount ? parseFloat(discount.max_discount) : null,
+      finalPrice: discount.type === 'fixed_price' ? discountValue : (orderAmount - Math.round(discountAmount * 100) / 100)
     }
 
     console.log('✅ Discount applied successfully:', { code: codeUpper, discountAmount: response.discountAmount })
