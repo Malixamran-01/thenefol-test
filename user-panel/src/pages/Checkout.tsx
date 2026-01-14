@@ -431,13 +431,42 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         return
       }
 
+      // Get product IDs from cart items
+      const productIds = orderItems
+        .map((item: any) => {
+          // Try product_id first, then id, then check if item itself is a number
+          const pid = item.product_id || item.id || (typeof item === 'number' ? item : null)
+          return pid != null ? parseInt(String(pid)) : null
+        })
+        .filter((id: number | null): id is number => id != null && !isNaN(id))
+      
+      console.log('Cart product IDs for discount validation:', { 
+        orderItemsCount: orderItems.length,
+        productIds,
+        items: orderItems.map((item: any) => ({ 
+          title: item.title || item.name, 
+          product_id: item.product_id, 
+          id: item.id 
+        }))
+      })
+
       const apiBase = getApiBase()
-      console.log('Applying discount code:', { code: discountCode, amount: calcSubtotal })
+      console.log('Applying discount code:', { 
+        code: discountCode, 
+        amount: calcSubtotal,
+        productIds,
+        customer_email: email || user?.email
+      })
       
       const response = await fetch(`${apiBase}/api/discounts/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: discountCode.trim(), amount: calcSubtotal })
+        body: JSON.stringify({ 
+          code: discountCode.trim(), 
+          amount: calcSubtotal,
+          product_ids: productIds, // Send array of product IDs from cart
+          customer_email: email || user?.email || null
+        })
       })
       
       if (response.ok) {

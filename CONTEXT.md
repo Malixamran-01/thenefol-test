@@ -69,6 +69,31 @@ When features are ready:
 - Order cancellation logic
 - Admin notifications
 - Real-time updates
+- **Discount Features Update** (Latest)
+  - Fixed "Create Discount" button
+  - Added usage limit per user
+  - Added fixed-price coupon feature
+
+## Recent File Changes
+
+### Discount Features Update (Latest Changes)
+
+**Frontend Files:**
+- `admin-panel/src/pages/discounts/Discounts.tsx` - Updated discount management page with new features
+
+**Backend Files:**
+- `backend/src/utils/schema.ts` - Added database schema migrations for new discount columns
+- `backend/src/index.ts` - Enhanced discount apply endpoint with per-user limits and fixed-price support
+
+**Migration & Documentation:**
+- `backend/migrate-discount-features.js` - Standalone migration script for database changes
+- `DISCOUNT_FEATURES_CHANGES.md` - Complete documentation of all changes
+
+**Database Changes Applied:**
+- Added `usage_limit_per_user` column to `discounts` table
+- Added `product_id` column to `discounts` table
+- Added `is_one_time_use` column to `discounts` table
+- Updated discount type constraint to include `'fixed_price'`
 
 ## Notes
 - Production credentials remain in `.env` (for reference only)

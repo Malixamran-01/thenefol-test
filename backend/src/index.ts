@@ -1903,7 +1903,7 @@ app.get('/api/discounts/usage', async (req, res) => {
 // Apply discount code endpoint
 app.post('/api/discounts/apply', async (req, res) => {
   try {
-    const { code, amount, customer_email, product_id } = req.body || {}
+    const { code, amount, customer_email, product_id, product_ids } = req.body || {}
     
     // Validate input
     if (!code || typeof code !== 'string' || code.trim() === '') {
@@ -1923,7 +1923,14 @@ app.post('/api/discounts/apply', async (req, res) => {
     }
 
     const codeUpper = code.trim().toUpperCase()
-    console.log('Applying discount code:', { code: codeUpper, amount: orderAmount, customer_email, product_id })
+    console.log('Applying discount code:', { 
+      code: codeUpper, 
+      amount: orderAmount, 
+      customer_email, 
+      product_id,
+      product_ids,
+      hasProductIds: Array.isArray(product_ids) && product_ids.length > 0
+    })
 
     // Find the discount by code
     const discountResult = await pool.query(
@@ -1953,11 +1960,27 @@ app.post('/api/discounts/apply', async (req, res) => {
     // Check if discount is product-specific and product matches
     if (discount.product_id) {
       const discountProductId = parseInt(String(discount.product_id))
-      const requestedProductId = product_id ? parseInt(String(product_id)) : null
-      if (requestedProductId !== discountProductId) {
-        console.log('Discount is product-specific and product does not match:', { code: codeUpper, discountProductId, requestedProductId })
+      
+      // Get product IDs from request (support both single product_id and array product_ids)
+      const cartProductIds: number[] = []
+      if (product_ids && Array.isArray(product_ids)) {
+        cartProductIds.push(...product_ids.map((id: any) => parseInt(String(id))).filter((id: number) => !isNaN(id)))
+      } else if (product_id) {
+        cartProductIds.push(parseInt(String(product_id)))
+      }
+      
+      // Check if discount's product_id is in the cart
+      if (cartProductIds.length === 0 || !cartProductIds.includes(discountProductId)) {
+        console.log('Discount is product-specific and product does not match:', { 
+          code: codeUpper, 
+          discountProductId, 
+          cartProductIds,
+          hasMatchingProduct: cartProductIds.includes(discountProductId)
+        })
         return sendError(res, 400, 'This discount code is only valid for a specific product')
       }
+      
+      console.log('✅ Product-specific discount validated:', { code: codeUpper, discountProductId, cartProductIds })
     }
 
     // Check minimum purchase amount

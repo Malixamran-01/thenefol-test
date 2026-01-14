@@ -256,4 +256,63 @@ vercel --prod
 5. **Test thoroughly**
 6. **Copy working code to production** (when ready)
 
+---
+
+## Test Environment Changes Tracking
+
+### Latest Changes: Discount Features Update
+
+**Date:** Latest Update  
+**Feature:** Enhanced Discount Management System
+
+#### Files Modified:
+
+**Frontend:**
+- `admin-panel/src/pages/discounts/Discounts.tsx`
+  - Fixed "Create Discount" button functionality
+  - Added usage limit per user field
+  - Added fixed-price coupon generator with product selection
+
+**Backend:**
+- `backend/src/utils/schema.ts`
+  - Added database migrations for new discount columns
+  - Updated discount type constraints
+
+- `backend/src/index.ts`
+  - Enhanced `/api/discounts/apply` endpoint
+  - Added per-user usage limit checking
+  - Added fixed-price discount support
+
+**Migration Scripts:**
+- `backend/migrate-discount-features.js` - Database migration script
+
+**Documentation:**
+- `DISCOUNT_FEATURES_CHANGES.md` - Complete change documentation
+
+#### Database Changes:
+- ✅ `usage_limit_per_user` column added
+- ✅ `product_id` column added  
+- ✅ `is_one_time_use` column added
+- ✅ Discount type constraint updated
+
+#### Migration Status:
+- ✅ Migration script executed successfully
+- ✅ All database changes applied
+
+---
+
+## Previous Changes
+
+### Coin Exploit Prevention
+- Backend validation updates
+- Order processing security enhancements
+
+### Order Cancellation Logic
+- Cancellation deadline tracking
+- Status management updates
+
+### Admin Notifications
+- Real-time notification system
+- Notification tracking tables
+
 
