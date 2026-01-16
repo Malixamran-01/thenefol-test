@@ -4888,7 +4888,7 @@ export default function Ingredients() {
           </div>
         </div>
 
-        <div ref={scrollyRef} className="hidden md:block relative">
+        <section ref={scrollyRef} className="hidden md:block relative py-8 md:py-12">
           <div className="grid md:grid-cols-12 gap-8 items-start">
             {/* LEFT COLUMN – DETAILS */}
             <div className="md:col-span-6">
@@ -4969,69 +4969,63 @@ export default function Ingredients() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN – FIXED IMAGE (always on screen) */}
+            {/* RIGHT COLUMN – STICKY IMAGE (contained in section) */}
             <div className="md:col-span-6 relative">
-              <div className="hidden md:block">
+              <div className="sticky top-24 flex items-center justify-center">
                 <div
-                  className="fixed right-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))] top-[max(7rem,12vh)] w-[40vw] max-w-[480px] h-[70vh] z-10"
-                  style={{ pointerEvents: 'none' }}
+                  className="relative w-[90%] max-w-[480px] h-[70vh] overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
+                  style={{ borderRadius: '50% / 30%' }}
                 >
-                  <div
-                    className="relative w-full h-full overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
-                    style={{ borderRadius: '50% / 30%' }}
-                  >
-                    {ingredients.map((ingredient, index) => {
-                      let translateY = 100
-                      let opacity = 0
-                      let scale = 0.96
-                      let zIndex = index
-                      const isActive = index === currentIndex
+                  {ingredients.map((ingredient, index) => {
+                    let translateY = 100
+                    let opacity = 0
+                    let scale = 0.96
+                    let zIndex = index
+                    const isActive = index === currentIndex
 
-                      if (index <= currentIndex) {
-                        if (isActive) {
-                          opacity = 1
-                          translateY = 0
-                          scale = 1
-                        } else {
-                          opacity = Math.max(0.3, 1 - (currentIndex - index) * 0.15)
-                          scale = Math.max(0.9, 1 - (currentIndex - index) * 0.02)
-                          translateY = Math.min(20, (currentIndex - index) * 8)
-                        }
-                      } else if (index === currentIndex + 1) {
-                        translateY = (1 - offset) * 100
-                        opacity = 0.35 + offset * 0.65
-                        scale = 0.96 + offset * 0.04
+                    if (index <= currentIndex) {
+                      if (isActive) {
+                        opacity = 1
+                        translateY = 0
+                        scale = 1
+                      } else {
+                        opacity = Math.max(0.3, 1 - (currentIndex - index) * 0.15)
+                        scale = Math.max(0.9, 1 - (currentIndex - index) * 0.02)
+                        translateY = Math.min(20, (currentIndex - index) * 8)
                       }
+                    } else if (index === currentIndex + 1) {
+                      translateY = (1 - offset) * 100
+                      opacity = 0.35 + offset * 0.65
+                      scale = 0.96 + offset * 0.04
+                    }
 
-                      return (
-                        <div
-                          key={ingredient.id}
-                          className="absolute inset-0"
-                          style={{
-                            transform: `translateY(${translateY}%) scale(${scale})`,
-                            opacity,
-                            zIndex: 10 + zIndex,
-                            transition: 'transform 0.45s ease, opacity 0.45s ease'
-                          }}
-                        >
-                          <div className="w-full h-full">
-                            <img
-                              src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
-                              alt={ingredient.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
-                          </div>
+                    return (
+                      <div
+                        key={ingredient.id}
+                        className="absolute inset-0"
+                        style={{
+                          transform: `translateY(${translateY}%) scale(${scale})`,
+                          opacity,
+                          zIndex: 10 + zIndex,
+                          transition: 'transform 0.45s ease, opacity 0.45s ease'
+                        }}
+                      >
+                        <div className="w-full h-full">
+                          <img
+                            src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
+                            alt={ingredient.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
                         </div>
-                      )
-                    })}
-                  </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
-              <div className="md:hidden" />
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Benefits Section */}
         <div className="mt-16">
