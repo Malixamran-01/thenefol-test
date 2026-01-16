@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { getOptimizedImage } from '../utils/imageOptimizer'
 
-type Ingredient = {
+type IngredientBase = {
   id: string
   name: string
   image: string
@@ -9,17 +9,17 @@ type Ingredient = {
   detailedInfo?: string
 }
 
-type IngredientsScrollytellingProps = {
-  ingredients: Ingredient[]
-  onNavigate: (ingredient: Ingredient) => void
+type IngredientsScrollytellingProps<T extends IngredientBase> = {
+  ingredients: T[]
+  onNavigate: (ingredient: T) => void
   useMockImages?: boolean
 }
 
-export default function IngredientsScrollytelling({
+export default function IngredientsScrollytelling<T extends IngredientBase>({
   ingredients,
   onNavigate,
   useMockImages = false
-}: IngredientsScrollytellingProps) {
+}: IngredientsScrollytellingProps<T>) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [offset, setOffset] = useState(0)
   const scrollyRef = useRef<HTMLDivElement | null>(null)
