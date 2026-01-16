@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import Logo from '../components/Logo'
 import { getOptimizedImage } from '../utils/imageOptimizer'
-import { X } from 'lucide-react'
 
 // Text Overlay Component with Sky Rocket Animation and Ingredient Name Display
 interface TextOverlayProps {
@@ -4650,17 +4648,63 @@ Yellow Dragon stands as a vibrant, nutrient-rich ingredient for skincare, offeri
 
 export default function Ingredients() {
   const [selectedIngredient, setSelectedIngredient] = useState(ingredients[0])
+  const [progress, setProgress] = useState(0)
+  const scrollyRef = useRef<HTMLDivElement | null>(null)
 
-  const handleImageClick = (ingredientName: string) => {
-    const ingredient = ingredients.find(ing => ing.name === ingredientName)
-    if (ingredient) {
-      window.location.hash = `#/user/ingredients/${ingredient.id}`
-    }
+  const navigateToIngredient = (ingredient: typeof ingredients[number]) => {
+    window.location.hash = `#/user/ingredients/${ingredient.id}`
   }
+
+  const handleImageClick = (ingredientId: string) => {
+    const ingredient = ingredients.find(ing => ing.id === ingredientId)
+    if (ingredient) navigateToIngredient(ingredient)
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!window.matchMedia('(min-width: 768px)').matches) return
+
+    let ticking = false
+    const handleScroll = () => {
+      if (!scrollyRef.current) return
+      if (ticking) return
+      ticking = true
+
+      window.requestAnimationFrame(() => {
+        const rect = scrollyRef.current?.getBoundingClientRect()
+        if (!rect) return
+
+        const windowH = window.innerHeight
+        const totalScroll = rect.height - windowH
+        const raw = totalScroll <= 0 ? 0 : (windowH - rect.top) / totalScroll
+        const clamped = Math.max(0, Math.min(1, raw))
+
+        setProgress(clamped)
+        ticking = false
+      })
+    }
+
+    const handleResize = () => handleScroll()
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', handleResize)
+    handleScroll()
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  const totalSteps = ingredients.length
+  const stepFloat = progress * (totalSteps - 1)
+  const currentIndex = Math.max(0, Math.min(totalSteps - 1, Math.floor(stepFloat)))
+  const offset = stepFloat - currentIndex
+  const activeIngredient = ingredients[currentIndex] ?? ingredients[0]
 
   return (
     <>
-      <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20 scroll-smooth" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
             --arctic-blue-primary: rgb(75,151,201);
@@ -4691,7 +4735,7 @@ export default function Ingredients() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="md:hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Ingredients List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -4739,7 +4783,7 @@ export default function Ingredients() {
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleImageClick(ingredient.name)
+                        handleImageClick(ingredient.id)
                       }}
                     />
                   </button>
@@ -4754,7 +4798,7 @@ export default function Ingredients() {
               {/* Full-size Image */}
               <div className="w-full rounded-full relative" style={{ aspectRatio: '1 / 1', overflow: 'hidden', borderRadius: '50%' }}>
                 <img 
-                  src={selectedIngredient.image} 
+                  src={getOptimizedImage(selectedIngredient.image)} 
                   alt={selectedIngredient.name}
                   className="absolute inset-0 object-cover rounded-full cursor-pointer hover:scale-110 transition-transform duration-200"
                   style={{
@@ -4764,7 +4808,7 @@ export default function Ingredients() {
                     objectPosition: 'center',
                     borderRadius: '50%'
                   }}
-                  onClick={() => handleImageClick(selectedIngredient.name)}
+                  onClick={() => handleImageClick(selectedIngredient.id)}
                 />
               </div>
               
@@ -4791,6 +4835,148 @@ export default function Ingredients() {
                       __html: selectedIngredient.description.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1a1a1a;">$1</strong>')
                     }}
                   />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div ref={scrollyRef} className="hidden md:block">
+          <div className="grid md:grid-cols-12 gap-8 items-stretch">
+            {/* LEFT COLUMN – DETAILS */}
+            <div className="md:col-span-6">
+              <div className="relative">
+                <div className="absolute left-6 top-0 bottom-0 w-px bg-[#bfa45a]/20" />
+
+                {ingredients.map((ingredient, index) => {
+                  let opacity = 0.25
+                  let scale = 0.96
+                  let isActive = false
+
+                  if (index === currentIndex) {
+                    opacity = 1
+                    scale = 1
+                    isActive = true
+                  } else if (index === currentIndex + 1) {
+                    opacity = 0.25 + offset * 0.75
+                    scale = 0.96 + offset * 0.04
+                  } else if (index === currentIndex - 1) {
+                    opacity = 1 - (1 - offset) * 0.75
+                    scale = 1 - (1 - offset) * 0.04
+                  }
+
+                  return (
+                    <div
+                      key={ingredient.id}
+                      className="relative min-h-[80vh] flex items-center py-16"
+                      style={{
+                        opacity,
+                        transform: `scale(${scale})`,
+                        transition: 'opacity 0.12s linear, transform 0.12s linear'
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => navigateToIngredient(ingredient)}
+                        className="text-left w-full"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="ml-12">
+                          <div className="text-[#2a0d0f] text-sm font-medium mb-2 tracking-wide">
+                            {String(index + 1).padStart(2, '0')}/{String(totalSteps).padStart(2, '0')}
+                          </div>
+
+                          <h3
+                            className={`text-4xl md:text-5xl font-bold mb-4 transition-colors duration-300 ${
+                              isActive ? 'text-[#bfa45a]' : 'text-[#1a1a1a]'
+                            }`}
+                          >
+                            {ingredient.name}
+                          </h3>
+
+                          <div
+                            className="text-[#666] text-lg leading-relaxed max-w-xl"
+                            dangerouslySetInnerHTML={{
+                              __html: ingredient.description.replace(
+                                /\*\*(.*?)\*\*/g,
+                                '<strong style="color: #1a1a1a;">$1</strong>'
+                              )
+                            }}
+                          />
+                        </div>
+                      </button>
+
+                      <div
+                        className={`absolute left-5 w-3 h-3 rounded-full transition-all duration-300 ${
+                          isActive
+                            ? 'bg-[#bfa45a] ring-4 ring-white scale-125'
+                            : 'bg-[#bfa45a]/30 scale-100'
+                        }`}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN – STICKY IMAGE */}
+            <div className="md:col-span-6">
+              <div className="sticky top-0 h-screen flex items-center justify-center">
+                <div
+                  className="relative w-[90%] max-w-[480px] h-[80vh] overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
+                  style={{ borderRadius: '50% / 30%' }}
+                >
+                  {ingredients.map((ingredient, index) => {
+                    let translateY = 100
+                    let opacity = 0
+                    let scale = 0.96
+                    let zIndex = index
+                    const isActive = index === currentIndex
+
+                    if (index <= currentIndex) {
+                      if (isActive) {
+                        opacity = 1
+                        translateY = 0
+                        scale = 1
+                      } else {
+                        opacity = Math.max(0.3, 1 - (currentIndex - index) * 0.15)
+                        scale = Math.max(0.9, 1 - (currentIndex - index) * 0.02)
+                        translateY = Math.min(20, (currentIndex - index) * 8)
+                      }
+                    } else if (index === currentIndex + 1) {
+                      translateY = (1 - offset) * 100
+                      opacity = 0.35 + offset * 0.65
+                      scale = 0.96 + offset * 0.04
+                    }
+
+                    return (
+                      <div
+                        key={ingredient.id}
+                        className="absolute inset-0 transition-none"
+                        style={{
+                          transform: `translateY(${translateY}%) scale(${scale})`,
+                          opacity,
+                          zIndex: 10 + zIndex
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => navigateToIngredient(ingredient)}
+                          className={`w-full h-full border-0 bg-transparent p-0 ${
+                            isActive ? 'cursor-pointer' : 'pointer-events-none'
+                          }`}
+                          aria-label={`View ${ingredient.name}`}
+                        >
+                          <img
+                            src={getOptimizedImage(ingredient.image)}
+                            alt={ingredient.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
