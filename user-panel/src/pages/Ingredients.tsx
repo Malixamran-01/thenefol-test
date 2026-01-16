@@ -4889,7 +4889,7 @@ export default function Ingredients() {
         </div>
 
         <div ref={scrollyRef} className="hidden md:block relative">
-          <div className="grid md:grid-cols-12 gap-8 items-stretch">
+          <div className="grid md:grid-cols-12 gap-8 items-start">
             {/* LEFT COLUMN – DETAILS */}
             <div className="md:col-span-6">
               <div className="relative">
@@ -4969,66 +4969,65 @@ export default function Ingredients() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN – STICKY IMAGE */}
-            <div className="md:col-span-6 relative h-full">
-              <div className="sticky top-16 h-[calc(100vh-4rem)] flex items-center justify-center">
+            {/* RIGHT COLUMN – FIXED IMAGE (always on screen) */}
+            <div className="md:col-span-6 relative">
+              <div className="hidden md:block">
                 <div
-                  className="relative w-[90%] max-w-[480px] h-[80vh] overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
-                  style={{ borderRadius: '50% / 30%' }}
+                  className="fixed right-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))] top-1/2 -translate-y-1/2 w-[40vw] max-w-[480px] h-[80vh] z-10"
+                  style={{ pointerEvents: 'none' }}
                 >
-                  {ingredients.map((ingredient, index) => {
-                    let translateY = 100
-                    let opacity = 0
-                    let scale = 0.96
-                    let zIndex = index
-                    const isActive = index === currentIndex
+                  <div
+                    className="relative w-full h-full overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
+                    style={{ borderRadius: '50% / 30%' }}
+                  >
+                    {ingredients.map((ingredient, index) => {
+                      let translateY = 100
+                      let opacity = 0
+                      let scale = 0.96
+                      let zIndex = index
+                      const isActive = index === currentIndex
 
-                    if (index <= currentIndex) {
-                      if (isActive) {
-                        opacity = 1
-                        translateY = 0
-                        scale = 1
-                      } else {
-                        opacity = Math.max(0.3, 1 - (currentIndex - index) * 0.15)
-                        scale = Math.max(0.9, 1 - (currentIndex - index) * 0.02)
-                        translateY = Math.min(20, (currentIndex - index) * 8)
+                      if (index <= currentIndex) {
+                        if (isActive) {
+                          opacity = 1
+                          translateY = 0
+                          scale = 1
+                        } else {
+                          opacity = Math.max(0.3, 1 - (currentIndex - index) * 0.15)
+                          scale = Math.max(0.9, 1 - (currentIndex - index) * 0.02)
+                          translateY = Math.min(20, (currentIndex - index) * 8)
+                        }
+                      } else if (index === currentIndex + 1) {
+                        translateY = (1 - offset) * 100
+                        opacity = 0.35 + offset * 0.65
+                        scale = 0.96 + offset * 0.04
                       }
-                    } else if (index === currentIndex + 1) {
-                      translateY = (1 - offset) * 100
-                      opacity = 0.35 + offset * 0.65
-                      scale = 0.96 + offset * 0.04
-                    }
 
-                    return (
-                      <div
-                        key={ingredient.id}
-                        className="absolute inset-0 transition-none"
-                        style={{
-                          transform: `translateY(${translateY}%) scale(${scale})`,
-                          opacity,
-                          zIndex: 10 + zIndex
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => navigateToIngredient(ingredient)}
-                          className={`w-full h-full border-0 bg-transparent p-0 ${
-                            isActive ? 'cursor-pointer' : 'pointer-events-none'
-                          }`}
-                          aria-label={`View ${ingredient.name}`}
+                      return (
+                        <div
+                          key={ingredient.id}
+                          className="absolute inset-0 transition-none"
+                          style={{
+                            transform: `translateY(${translateY}%) scale(${scale})`,
+                            opacity,
+                            zIndex: 10 + zIndex
+                          }}
                         >
-                          <img
-                            src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
-                            alt={ingredient.name}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
-                        </button>
-                      </div>
-                    )
-                  })}
+                          <div className="w-full h-full">
+                            <img
+                              src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
+                              alt={ingredient.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
+              <div className="md:hidden" />
             </div>
           </div>
         </div>
