@@ -120,7 +120,7 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
   return (
     <div ref={scrollyRef} className="hidden md:block relative w-full py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-12 gap-8 items-start">
+        <div className="grid md:grid-cols-12 gap-8">
           {/* LEFT COLUMN – DETAILS */}
           <div className="md:col-span-6">
             <div className="relative">
@@ -201,8 +201,8 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
         </div>
 
         {/* RIGHT COLUMN – STICKY IMAGE (floats within component) */}
-        <div className="md:col-span-6">
-          <div className="sticky top-[7rem] w-full max-w-[480px] h-[70vh] z-10 mx-auto">
+        <div className="md:col-span-6 relative">
+          <div className="sticky top-[5rem] w-full max-w-[480px] h-[70vh] mx-auto">
             <div
               className="relative w-full h-full overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
               style={{ borderRadius: '50% / 30%' }}
