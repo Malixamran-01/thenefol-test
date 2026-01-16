@@ -6,6 +6,7 @@ type Ingredient = {
   name: string
   image: string
   description: string
+  detailedInfo?: string
 }
 
 type IngredientsScrollytellingProps = {
