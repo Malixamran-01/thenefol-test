@@ -284,7 +284,6 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
             })}
           </div>
         </div>
-      </div>
     </div>
   )
 }
