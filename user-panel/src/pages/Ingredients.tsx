@@ -4889,7 +4889,7 @@ export default function Ingredients() {
         </div>
 
         <div ref={scrollyRef} className="hidden md:block relative">
-          <div className="grid md:grid-cols-12 gap-8 items-start">
+          <div className="grid md:grid-cols-12 gap-8 items-stretch">
             {/* LEFT COLUMN – DETAILS */}
             <div className="md:col-span-6">
               <div className="relative">
@@ -4970,7 +4970,7 @@ export default function Ingredients() {
             </div>
 
             {/* RIGHT COLUMN – STICKY IMAGE */}
-            <div className="md:col-span-6 self-start">
+            <div className="md:col-span-6 relative h-full">
               <div className="sticky top-16 h-[calc(100vh-4rem)] flex items-center justify-center">
                 <div
                   className="relative w-[90%] max-w-[480px] h-[80vh] overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
