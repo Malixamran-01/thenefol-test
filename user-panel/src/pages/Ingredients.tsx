@@ -4888,7 +4888,7 @@ export default function Ingredients() {
           </div>
         </div>
 
-        <section ref={scrollyRef} className="hidden md:block relative py-8 md:py-12">
+        <section ref={scrollyRef} className="hidden md:block relative py-16 md:py-20">
           <div className="grid md:grid-cols-12 gap-8 items-start">
             {/* LEFT COLUMN – DETAILS */}
             <div className="md:col-span-6">
@@ -4970,8 +4970,8 @@ export default function Ingredients() {
             </div>
 
             {/* RIGHT COLUMN – STICKY IMAGE (contained in section) */}
-            <div className="md:col-span-6 relative">
-              <div className="sticky top-24 flex items-center justify-center">
+            <div className="md:col-span-6 relative self-start">
+              <div className="sticky top-1/2 -translate-y-1/2 flex items-center justify-center">
                 <div
                   className="relative w-[90%] max-w-[480px] h-[70vh] overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
                   style={{ borderRadius: '50% / 30%' }}
