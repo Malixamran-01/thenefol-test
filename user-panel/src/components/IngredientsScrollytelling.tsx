@@ -22,6 +22,7 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
 }: IngredientsScrollytellingProps<T>) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [offset, setOffset] = useState(0)
+  const [isVisible, setIsVisible] = useState(false)
   const scrollyRef = useRef<HTMLDivElement | null>(null)
   const stepRefs = useRef<Array<HTMLDivElement | null>>([])
 
@@ -63,7 +64,15 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
       ticking = true
 
       window.requestAnimationFrame(() => {
+        const containerRect = scrollyRef.current?.getBoundingClientRect()
         const viewportCenter = window.innerHeight / 2
+        
+        // Check if component is in viewport
+        if (containerRect) {
+          const componentInView = containerRect.top < window.innerHeight && containerRect.bottom > 0
+          setIsVisible(componentInView)
+        }
+
         const rects = stepRefs.current
           .map((el) => el?.getBoundingClientRect())
           .filter(Boolean) as DOMRect[]
@@ -200,13 +209,26 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
           </div>
         </div>
 
-        {/* RIGHT COLUMN – STICKY IMAGE (floats within component) */}
-        <div className="md:col-span-6 relative">
-          <div className="sticky top-[5rem] w-full max-w-[480px] h-[70vh] mx-auto">
-            <div
-              className="relative w-full h-full overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
-              style={{ borderRadius: '50% / 30%' }}
-            >
+        {/* RIGHT COLUMN – FIXED FLOATING IMAGE (like navbar) */}
+        <div className="md:col-span-6">
+          {/* Placeholder to maintain grid layout */}
+          <div className="w-full h-[70vh]" />
+        </div>
+        </div>
+      </div>
+      
+      {/* FIXED FLOATING IMAGE FRAME */}
+      {isVisible && (
+        <div 
+          className="hidden md:block fixed right-[5%] top-[50%] -translate-y-1/2 w-[40vw] max-w-[480px] h-[70vh] z-50"
+          style={{
+            transition: 'opacity 0.3s ease'
+          }}
+        >
+          <div
+            className="relative w-full h-full overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
+            style={{ borderRadius: '50% / 30%' }}
+          >
                 {ingredients.map((ingredient, index) => {
                   let translateY = 100
                   let opacity = 0
@@ -230,39 +252,37 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
                     scale = 0.96 + offset * 0.04
                   }
 
-                  return (
-                    <div
-                      key={ingredient.id}
-                      className="absolute inset-0"
-                      style={{
-                        transform: `translateY(${translateY}%) scale(${scale})`,
-                        opacity,
-                        zIndex: 10 + zIndex,
-                        transition: 'transform 0.45s ease, opacity 0.45s ease'
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => onNavigate(ingredient)}
-                        className="w-full h-full border-0 bg-transparent p-0 cursor-pointer"
-                        style={{ pointerEvents: isActive ? 'auto' : 'none' }}
-                        aria-label={`View ${ingredient.name} details`}
-                      >
-                        <img
-                          src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
-                          alt={ingredient.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30 pointer-events-none" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+              return (
+                <div
+                  key={ingredient.id}
+                  className="absolute inset-0"
+                  style={{
+                    transform: `translateY(${translateY}%) scale(${scale})`,
+                    opacity,
+                    zIndex: 10 + zIndex,
+                    transition: 'transform 0.45s ease, opacity 0.45s ease'
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onNavigate(ingredient)}
+                    className="w-full h-full border-0 bg-transparent p-0 cursor-pointer"
+                    style={{ pointerEvents: isActive ? 'auto' : 'none' }}
+                    aria-label={`View ${ingredient.name} details`}
+                  >
+                    <img
+                      src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
+                      alt={ingredient.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30 pointer-events-none" />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
