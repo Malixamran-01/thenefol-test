@@ -4648,8 +4648,36 @@ Yellow Dragon stands as a vibrant, nutrient-rich ingredient for skincare, offeri
 
 export default function Ingredients() {
   const [selectedIngredient, setSelectedIngredient] = useState(ingredients[0])
-  const [progress, setProgress] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [offset, setOffset] = useState(0)
   const scrollyRef = useRef<HTMLDivElement | null>(null)
+  const stepRefs = useRef<Array<HTMLDivElement | null>>([])
+
+  const useMockImages = true
+  const mockImages = ingredients.map((ingredient, index) => {
+    const hue = (index * 33) % 360
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="hsl(${hue},70%,65%)"/>
+            <stop offset="100%" stop-color="hsl(${(hue + 40) % 360},70%,45%)"/>
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#g)"/>
+        <circle cx="150" cy="160" r="90" fill="rgba(255,255,255,0.18)"/>
+        <circle cx="760" cy="220" r="140" fill="rgba(255,255,255,0.12)"/>
+        <circle cx="580" cy="980" r="220" fill="rgba(255,255,255,0.08)"/>
+        <text x="60" y="700" font-family="Inter, Arial, sans-serif" font-size="64" fill="rgba(255,255,255,0.9)" letter-spacing="4">
+          ${ingredient.name.replace(/&/g, 'and')}
+        </text>
+        <text x="60" y="780" font-family="Inter, Arial, sans-serif" font-size="32" fill="rgba(255,255,255,0.7)">
+          Mock Image ${index + 1}
+        </text>
+      </svg>
+    `
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+  })
 
   const navigateToIngredient = (ingredient: typeof ingredients[number]) => {
     window.location.hash = `#/user/ingredients/${ingredient.id}`
@@ -4671,15 +4699,38 @@ export default function Ingredients() {
       ticking = true
 
       window.requestAnimationFrame(() => {
-        const rect = scrollyRef.current?.getBoundingClientRect()
-        if (!rect) return
+        const viewportCenter = window.innerHeight / 2
+        const rects = stepRefs.current.map((el) => el?.getBoundingClientRect()).filter(Boolean) as DOMRect[]
+        if (!rects.length) {
+          ticking = false
+          return
+        }
 
-        const windowH = window.innerHeight
-        const totalScroll = rect.height - windowH
-        const raw = totalScroll <= 0 ? 0 : (windowH - rect.top) / totalScroll
-        const clamped = Math.max(0, Math.min(1, raw))
+        let closestIndex = 0
+        let closestDistance = Number.POSITIVE_INFINITY
+        rects.forEach((rect, index) => {
+          const center = rect.top + rect.height / 2
+          const distance = Math.abs(center - viewportCenter)
+          if (distance < closestDistance) {
+            closestDistance = distance
+            closestIndex = index
+          }
+        })
 
-        setProgress(clamped)
+        const currentRect = rects[closestIndex]
+        const nextRect = rects[closestIndex + 1]
+        let nextOffset = 0
+        if (currentRect && nextRect) {
+          const currentCenter = currentRect.top + currentRect.height / 2
+          const nextCenter = nextRect.top + nextRect.height / 2
+          if (nextCenter !== currentCenter) {
+            nextOffset = (viewportCenter - currentCenter) / (nextCenter - currentCenter)
+          }
+          nextOffset = Math.max(0, Math.min(1, nextOffset))
+        }
+
+        setCurrentIndex(closestIndex)
+        setOffset(nextOffset)
         ticking = false
       })
     }
@@ -4697,10 +4748,6 @@ export default function Ingredients() {
   }, [])
 
   const totalSteps = ingredients.length
-  const stepFloat = progress * (totalSteps - 1)
-  const currentIndex = Math.max(0, Math.min(totalSteps - 1, Math.floor(stepFloat)))
-  const offset = stepFloat - currentIndex
-  const activeIngredient = ingredients[currentIndex] ?? ingredients[0]
 
   return (
     <>
@@ -4841,8 +4888,8 @@ export default function Ingredients() {
           </div>
         </div>
 
-        <div ref={scrollyRef} className="hidden md:block">
-          <div className="grid md:grid-cols-12 gap-8 items-stretch">
+        <div ref={scrollyRef} className="hidden md:block relative">
+          <div className="grid md:grid-cols-12 gap-8 items-start">
             {/* LEFT COLUMN – DETAILS */}
             <div className="md:col-span-6">
               <div className="relative">
@@ -4868,6 +4915,9 @@ export default function Ingredients() {
                   return (
                     <div
                       key={ingredient.id}
+                      ref={(el) => {
+                        stepRefs.current[index] = el
+                      }}
                       className="relative min-h-[80vh] flex items-center py-16"
                       style={{
                         opacity,
@@ -4920,8 +4970,8 @@ export default function Ingredients() {
             </div>
 
             {/* RIGHT COLUMN – STICKY IMAGE */}
-            <div className="md:col-span-6">
-              <div className="sticky top-0 h-screen flex items-center justify-center">
+            <div className="md:col-span-6 self-start">
+              <div className="sticky top-16 h-[calc(100vh-4rem)] flex items-center justify-center">
                 <div
                   className="relative w-[90%] max-w-[480px] h-[80vh] overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
                   style={{ borderRadius: '50% / 30%' }}
@@ -4968,7 +5018,7 @@ export default function Ingredients() {
                           aria-label={`View ${ingredient.name}`}
                         >
                           <img
-                            src={getOptimizedImage(ingredient.image)}
+                            src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
                             alt={ingredient.name}
                             className="w-full h-full object-cover"
                           />
