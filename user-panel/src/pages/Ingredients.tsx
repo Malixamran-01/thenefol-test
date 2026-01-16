@@ -4973,7 +4973,7 @@ export default function Ingredients() {
             <div className="md:col-span-6 relative">
               <div className="hidden md:block">
                 <div
-                  className="fixed right-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))] top-1/2 -translate-y-1/2 w-[40vw] max-w-[480px] h-[80vh] z-10"
+                  className="fixed right-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))] top-[max(7rem,12vh)] w-[40vw] max-w-[480px] h-[70vh] z-10"
                   style={{ pointerEvents: 'none' }}
                 >
                   <div
@@ -5006,11 +5006,12 @@ export default function Ingredients() {
                       return (
                         <div
                           key={ingredient.id}
-                          className="absolute inset-0 transition-none"
+                          className="absolute inset-0"
                           style={{
                             transform: `translateY(${translateY}%) scale(${scale})`,
                             opacity,
-                            zIndex: 10 + zIndex
+                            zIndex: 10 + zIndex,
+                            transition: 'transform 0.45s ease, opacity 0.45s ease'
                           }}
                         >
                           <div className="w-full h-full">
