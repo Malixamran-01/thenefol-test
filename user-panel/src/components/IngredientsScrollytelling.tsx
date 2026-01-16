@@ -6,7 +6,7 @@ type IngredientBase = {
   name: string
   image: string
   description: string
-  detailedInfo?: string
+  detailedInfo: string
 }
 
 type IngredientsScrollytellingProps<T extends IngredientBase> = {
@@ -118,14 +118,15 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
   const totalSteps = ingredients.length
 
   return (
-    <div ref={scrollyRef} className="hidden md:block relative">
-      <div className="grid md:grid-cols-12 gap-8 items-start">
-        {/* LEFT COLUMN – DETAILS */}
-        <div className="md:col-span-6">
-          <div className="relative">
-            <div className="absolute left-6 top-0 bottom-0 w-px bg-[#bfa45a]/20" />
+    <div ref={scrollyRef} className="hidden md:block relative w-full overflow-hidden py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid md:grid-cols-12 gap-8 items-start relative">
+          {/* LEFT COLUMN – DETAILS */}
+          <div className="md:col-span-6">
+            <div className="relative">
+              <div className="absolute left-6 top-0 bottom-0 w-px bg-[#bfa45a]/20" />
 
-            {ingredients.map((ingredient, index) => {
+              {ingredients.map((ingredient, index) => {
               let opacity = 0.25
               let scale = 0.96
               let isActive = false
@@ -199,11 +200,11 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
           </div>
         </div>
 
-        {/* RIGHT COLUMN – FIXED IMAGE (always on screen) */}
+        {/* RIGHT COLUMN – STICKY IMAGE (stays in view within container) */}
         <div className="md:col-span-6 relative">
           <div className="hidden md:block">
             <div
-              className="fixed right-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))] top-[max(7rem,12vh)] w-[40vw] max-w-[480px] h-[70vh] z-10"
+              className="sticky top-[7rem] w-full max-w-[480px] h-[70vh] z-10 mx-auto"
               style={{ pointerEvents: 'none' }}
             >
               <div
@@ -259,6 +260,7 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
             </div>
           </div>
           <div className="md:hidden" />
+        </div>
         </div>
       </div>
     </div>
