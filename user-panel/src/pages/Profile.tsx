@@ -142,11 +142,11 @@ export default function Profile() {
     try {
       const userData = await api.user.getProfile()
       setProfile(userData)
-      
+
       // Extract country code from phone if present
       let phoneNumber = userData.phone || ''
       let countryCode = '+91' // default
-      
+
       // Try to extract country code from phone
       for (const country of countries) {
         if (phoneNumber.startsWith(country.code)) {
@@ -155,7 +155,7 @@ export default function Profile() {
           break
         }
       }
-      
+
       setEditForm({
         name: userData.name,
         email: userData.email || '',
@@ -233,12 +233,12 @@ export default function Profile() {
     try {
       // Combine country code with phone number
       const fullPhone = `${editForm.country_code}${editForm.phone.replace(/\D/g, '')}`
-      
+
       const updateData: any = {
         name: editForm.name,
         address: editForm.address
       }
-      
+
       // Only include email/phone if they haven't been edited before
       if (!emailEdited && editForm.email) {
         updateData.email = editForm.email.trim()
@@ -246,15 +246,15 @@ export default function Profile() {
       if (!phoneEdited) {
         updateData.phone = fullPhone
       }
-      
+
       const updatedProfile = await api.user.updateProfile(updateData)
       setProfile(updatedProfile)
       setEditing(false)
-      
+
       // Update edited flags
       setEmailEdited(updatedProfile.email_edited || false)
       setPhoneEdited(updatedProfile.phone_edited || false)
-      
+
       alert('Profile updated successfully!')
     } catch (error: any) {
       console.error('Failed to save profile:', error)
@@ -290,7 +290,7 @@ export default function Profile() {
     }
 
     setUploadingPhoto(true)
-    
+
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -304,7 +304,7 @@ export default function Profile() {
       if (response.ok) {
         const result = await response.json()
         const photoUrl = `${apiBase}${result.url}`
-        
+
         // Update profile with new photo URL
         const token = localStorage.getItem('token')
         if (!token) {
@@ -363,7 +363,7 @@ export default function Profile() {
         type: newCard.type,
         is_default: savedCards.length === 0
       }
-      
+
       setSavedCards([...savedCards, card])
       setNewCard({
         card_number: '',
@@ -481,7 +481,7 @@ export default function Profile() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-12 sm:mb-16">
-          <h1 
+          <h1
             className="text-3xl sm:text-4xl md:text-5xl font-light tracking-[0.15em] mb-6"
             style={{
               color: '#1a1a1a',
@@ -491,7 +491,7 @@ export default function Profile() {
           >
             My Account
           </h1>
-          <p 
+          <p
             className="text-sm sm:text-base font-light tracking-wide"
             style={{ color: '#666', letterSpacing: '0.05em' }}
           >
@@ -505,7 +505,7 @@ export default function Profile() {
             <div className="bg-white border border-slate-100 p-6">
               <div className="text-center mb-6">
                 <div className="relative mx-auto mb-4">
-                  <ProfileAvatar 
+                  <ProfileAvatar
                     profilePhoto={profile.profile_photo}
                     name={profile.name}
                     size="50px"
@@ -548,7 +548,7 @@ export default function Profile() {
                   )}
                 </div>
                 <h3 className="text-sm sm:text-base font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{profile.name || 'User'}</h3>
-                {profile.unique_user_id && (
+                <p> User ID: </p>{profile.unique_user_id && (
                   <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}>{profile.unique_user_id}</p>
                 )}
                 <p className="text-xs sm:text-sm font-light mt-1" style={{ color: '#1a1a1a' }}>{profile.email || 'No email'}</p>
@@ -583,19 +583,18 @@ export default function Profile() {
                           setTimeout(() => {
                             const contentElement = document.getElementById('profile-content')
                             if (contentElement) {
-                              contentElement.scrollIntoView({ 
-                                behavior: 'smooth', 
-                                block: 'start' 
+                              contentElement.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
                               })
                             }
                           }, 100)
                         }
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-300 ${
-                        activeTab === tab.id
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-300 ${activeTab === tab.id
                           ? 'bg-slate-50 text-slate-900 border-l-2 border-slate-900'
                           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                      }`}
+                        }`}
                       style={{ letterSpacing: '0.02em' }}
                     >
                       <IconComponent className="h-5 w-5" />
@@ -603,7 +602,7 @@ export default function Profile() {
                     </button>
                   )
                 })}
-                
+
                 {isAuthenticated ? (
                   <button
                     onClick={handleLogout}
@@ -634,7 +633,7 @@ export default function Profile() {
               {activeTab === 'overview' && (
                 <div>
                   <div className="flex justify-between items-center mb-8">
-                    <h2 
+                    <h2
                       className="text-2xl sm:text-3xl font-light tracking-[0.1em]"
                       style={{
                         color: '#1a1a1a',
@@ -710,7 +709,7 @@ export default function Profile() {
                           <p className="text-xs text-slate-500 mt-1">Phone number can only be edited once</p>
                         )}
                       </div>
-                      
+
                       <div>
                         <label className="block text-xs font-light text-slate-700 mb-2 uppercase tracking-[0.1em]" style={{ letterSpacing: '0.1em' }}>Address</label>
                         <input
@@ -935,12 +934,11 @@ export default function Profile() {
                             </div>
                             <div className="text-right">
                               <p className="font-semibold dark:text-slate-100">₹{parseFloat(order.total?.toString() || '0').toFixed(2)}</p>
-                              <span className={`px-2 py-1 text-xs rounded-full ${
-                                order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                                order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                                order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
+                              <span className={`px-2 py-1 text-xs rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                  order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                                    order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                      'bg-yellow-100 text-yellow-800'
+                                }`}>
                                 {order.status}
                               </span>
                             </div>
@@ -966,7 +964,7 @@ export default function Profile() {
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-semibold dark:text-slate-100">Saved Cards</h2>
                     {isAuthenticated && (
-                      <button 
+                      <button
                         onClick={() => setShowAddCard(true)}
                         className="px-4 py-2 text-white rounded-lg transition-colors"
                         style={{ backgroundColor: 'rgb(75,151,201)' }}
@@ -977,14 +975,14 @@ export default function Profile() {
                       </button>
                     )}
                   </div>
-                  
+
                   {!Array.isArray(savedCards) || savedCards.length === 0 ? (
                     <div className="text-center py-12">
                       <CreditCard className="h-16 w-16 text-slate-400 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold dark:text-slate-100 mb-2">No Saved Cards</h3>
                       <p className="text-slate-600 dark:text-slate-400 mb-6">Add a card for faster checkout</p>
                       {isAuthenticated && (
-                        <button 
+                        <button
                           onClick={() => setShowAddCard(true)}
                           className="px-6 py-3 text-white rounded-lg transition-colors"
                           style={{ backgroundColor: 'rgb(75,151,201)' }}
@@ -1031,7 +1029,7 @@ export default function Profile() {
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-semibold dark:text-slate-100">Manage Address</h2>
                     {isAuthenticated && (
-                      <button 
+                      <button
                         onClick={() => setShowAddAddress(true)}
                         className="px-4 py-2 text-white rounded-lg transition-colors"
                         style={{ backgroundColor: 'rgb(75,151,201)' }}
@@ -1042,7 +1040,7 @@ export default function Profile() {
                       </button>
                     )}
                   </div>
-                  
+
                   <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-6">
                     <div className="flex justify-between items-start">
                       <div>
@@ -1074,7 +1072,7 @@ export default function Profile() {
               {activeTab === 'contact' && (
                 <div>
                   <h2 className="text-2xl font-semibold dark:text-slate-100 mb-6">Contact Us</h2>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                       <h3 className="text-lg font-semibold dark:text-slate-100 mb-4">Get in Touch</h3>
@@ -1105,7 +1103,7 @@ export default function Profile() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-lg font-semibold dark:text-slate-100 mb-4">Send Message</h3>
                       <form className="space-y-4">
@@ -1157,7 +1155,7 @@ export default function Profile() {
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                   placeholder="1234 5678 9012 3456"
                   value={newCard.card_number}
-                  onChange={(e) => setNewCard({...newCard, card_number: e.target.value})}
+                  onChange={(e) => setNewCard({ ...newCard, card_number: e.target.value })}
                   required
                 />
               </div>
@@ -1174,7 +1172,7 @@ export default function Profile() {
                       if (value.length >= 2) {
                         value = value.slice(0, 2) + '/' + value.slice(2, 4)
                       }
-                      setNewCard({...newCard, expiry: value})
+                      setNewCard({ ...newCard, expiry: value })
                     }}
                     maxLength={5}
                     inputMode="numeric"
@@ -1190,7 +1188,7 @@ export default function Profile() {
                     value={newCard.cvv}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, '').slice(0, 4)
-                      setNewCard({...newCard, cvv: value})
+                      setNewCard({ ...newCard, cvv: value })
                     }}
                     inputMode="numeric"
                     maxLength={4}
@@ -1205,7 +1203,7 @@ export default function Profile() {
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                   placeholder="John Doe"
                   value={newCard.name}
-                  onChange={(e) => setNewCard({...newCard, name: e.target.value})}
+                  onChange={(e) => setNewCard({ ...newCard, name: e.target.value })}
                   required
                 />
               </div>
@@ -1214,7 +1212,7 @@ export default function Profile() {
                 <select
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                   value={newCard.type}
-                  onChange={(e) => setNewCard({...newCard, type: e.target.value})}
+                  onChange={(e) => setNewCard({ ...newCard, type: e.target.value })}
                 >
                   <option value="Visa">Visa</option>
                   <option value="Mastercard">Mastercard</option>
@@ -1259,7 +1257,7 @@ export default function Profile() {
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                   placeholder="123 Main Street"
                   value={newAddress.street}
-                  onChange={(e) => setNewAddress({...newAddress, street: e.target.value})}
+                  onChange={(e) => setNewAddress({ ...newAddress, street: e.target.value })}
                   required
                 />
               </div>
@@ -1271,7 +1269,7 @@ export default function Profile() {
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                     placeholder="Mumbai"
                     value={newAddress.city}
-                    onChange={(e) => setNewAddress({...newAddress, city: e.target.value})}
+                    onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
                     required
                   />
                 </div>
@@ -1282,7 +1280,7 @@ export default function Profile() {
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                     placeholder="Maharashtra"
                     value={newAddress.state}
-                    onChange={(e) => setNewAddress({...newAddress, state: e.target.value})}
+                    onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
                     required
                   />
                 </div>
@@ -1295,7 +1293,7 @@ export default function Profile() {
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                     placeholder="400001"
                     value={newAddress.zip}
-                    onChange={(e) => setNewAddress({...newAddress, zip: e.target.value})}
+                    onChange={(e) => setNewAddress({ ...newAddress, zip: e.target.value })}
                     required
                   />
                 </div>
@@ -1306,7 +1304,7 @@ export default function Profile() {
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 dark:bg-slate-700 dark:text-slate-100"
                     placeholder="+91 98765 43210"
                     value={newAddress.phone}
-                    onChange={(e) => setNewAddress({...newAddress, phone: e.target.value})}
+                    onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
                   />
                 </div>
               </div>
