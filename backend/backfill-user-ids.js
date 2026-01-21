@@ -17,7 +17,7 @@ const pool = new Pool({
 
 const CHARSET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 const ID_LENGTH = 6
-const PREFIX = 'NEFOL'
+const PREFIX = 'N'
 
 /**
  * Generate a random alphanumeric string
