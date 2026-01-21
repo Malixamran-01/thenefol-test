@@ -8,6 +8,7 @@ import { sendWelcomeEmail, sendCartAddedEmail, sendVerificationEmail } from '../
 import { WhatsAppService } from '../services/whatsappService'
 import { verifyOtp } from '../services/otpService'
 import { sendWhatsAppTemplate, TemplateVariable } from '../utils/whatsappTemplateHelper'
+import { generateUniqueUserId } from '../utils/generateUserId'
 
 const SALT_ROUNDS = 10
 
@@ -286,7 +287,7 @@ export async function login(pool: Pool, req: Request, res: Response) {
     
     // Find user by email
     const { rows } = await pool.query(
-      'SELECT id, name, email, password FROM users WHERE email = $1',
+      'SELECT id, name, email, password, unique_user_id FROM users WHERE email = $1',
       [email]
     )
     
@@ -335,7 +336,8 @@ export async function login(pool: Pool, req: Request, res: Response) {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        unique_user_id: user.unique_user_id
       }
     })
     
@@ -386,12 +388,16 @@ export async function register(pool: Pool, req: Request, res: Response) {
     // Hash password with bcrypt before storing
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
     
+    // Generate unique user ID
+    const uniqueUserId = await generateUniqueUserId(pool)
+    console.log('✅ Generated unique user ID:', uniqueUserId)
+    
     // Create new user
     const { rows } = await pool.query(`
-      INSERT INTO users (name, email, password, phone, address)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, name, email, phone, created_at
-    `, [name, email, hashedPassword, phone, req.body.address ? JSON.stringify(req.body.address) : null])
+      INSERT INTO users (name, email, password, phone, address, unique_user_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, name, email, phone, unique_user_id, created_at
+    `, [name, email, hashedPassword, phone, req.body.address ? JSON.stringify(req.body.address) : null, uniqueUserId])
     
     const user = rows[0]
     const token = `user_token_${user.id}_${Date.now()}`
@@ -702,14 +708,18 @@ export async function verifyOTPSignup(pool: Pool, req: Request, res: Response) {
     // User can edit email and phone only once (first time)
     const userEmail = email && email.trim() ? email.trim() : null
     
+    // Generate unique user ID
+    const uniqueUserId = await generateUniqueUserId(pool)
+    console.log('✅ Generated unique user ID:', uniqueUserId)
+    
     // Create new user (no password required for OTP signup)
     // Set is_verified = false - user will remain unverified until both email and phone are properly updated
     // email_edited and phone_edited default to false, allowing first-time edit
     const { rows: userRows } = await pool.query(`
-      INSERT INTO users (name, email, phone, address, password, is_verified, email_edited, phone_edited)
-      VALUES ($1, $2, $3, $4, $5, false, false, false)
-      RETURNING id, name, email, phone, created_at
-    `, [name, userEmail, normalizedPhone, address ? JSON.stringify(address) : null, 'otp_signup_' + Date.now()])
+      INSERT INTO users (name, email, phone, address, password, is_verified, email_edited, phone_edited, unique_user_id)
+      VALUES ($1, $2, $3, $4, $5, false, false, false, $6)
+      RETURNING id, name, email, phone, unique_user_id, created_at
+    `, [name, userEmail, normalizedPhone, address ? JSON.stringify(address) : null, 'otp_signup_' + Date.now(), uniqueUserId])
     
     console.log(`✅ OTP verified and user created: ${normalizedPhone}`)
     
@@ -988,7 +998,7 @@ export async function verifyOTPLogin(pool: Pool, req: Request, res: Response) {
     
     // Find user by phone
     const { rows: userRows } = await pool.query(
-      'SELECT id, name, email, phone FROM users WHERE phone = $1',
+      'SELECT id, name, email, phone, unique_user_id FROM users WHERE phone = $1',
       [normalizedPhone]
     )
     
@@ -1035,7 +1045,8 @@ export async function verifyOTPLogin(pool: Pool, req: Request, res: Response) {
         id: user.id,
         name: user.name,
         email: user.email,
-        phone: user.phone
+        phone: user.phone,
+        unique_user_id: user.unique_user_id
       }
     })
   } catch (err: any) {
@@ -1060,6 +1071,7 @@ export async function getUserProfile(pool: Pool, req: Request, res: Response) {
         u.phone, 
         u.address, 
         u.profile_photo, 
+        u.unique_user_id,
         COALESCE(u.loyalty_points, 0) as loyalty_points,
         COALESCE(
           (SELECT COUNT(*) FROM orders WHERE customer_email = u.email),
@@ -1192,6 +1204,7 @@ export async function updateUserProfile(pool: Pool, req: Request, res: Response)
         u.phone, 
         u.address, 
         u.profile_photo, 
+        u.unique_user_id,
         COALESCE(u.loyalty_points, 0) as loyalty_points,
         COALESCE(
           (SELECT COUNT(*) FROM orders WHERE customer_email = u.email),

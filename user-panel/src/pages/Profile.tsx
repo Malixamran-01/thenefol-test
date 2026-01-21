@@ -11,6 +11,7 @@ interface UserProfile {
   name: string
   email: string
   phone: string
+  unique_user_id?: string
   address: {
     street: string
     city: string
@@ -547,7 +548,10 @@ export default function Profile() {
                   )}
                 </div>
                 <h3 className="text-sm sm:text-base font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{profile.name || 'User'}</h3>
-                <p className="text-xs sm:text-sm font-light" style={{ color: '#1a1a1a' }}>{profile.email || 'No email'}</p>
+                {profile.unique_user_id && (
+                  <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}>{profile.unique_user_id}</p>
+                )}
+                <p className="text-xs sm:text-sm font-light mt-1" style={{ color: '#1a1a1a' }}>{profile.email || 'No email'}</p>
                 <p className="text-xs font-light" style={{ color: '#1a1a1a' }}>{profile.phone || 'No phone'}</p>
               </div>
 

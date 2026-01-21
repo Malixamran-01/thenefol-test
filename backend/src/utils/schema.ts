@@ -77,6 +77,7 @@ export async function ensureSchema(pool: Pool) {
     
     create table if not exists users (
       id serial primary key,
+      unique_user_id text unique,
       name text not null,
       email text unique not null,
       password text not null,
@@ -123,6 +124,14 @@ export async function ensureSchema(pool: Pool) {
         where table_name = 'users' and column_name = 'phone_edited'
       ) then
         alter table users add column phone_edited boolean default false;
+      end if;
+      
+      -- Add unique_user_id column if it doesn't exist
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'users' and column_name = 'unique_user_id'
+      ) then
+        alter table users add column unique_user_id text unique;
       end if;
       
       -- Make email nullable (remove NOT NULL constraint if exists) to allow NULL emails for WhatsApp signup
