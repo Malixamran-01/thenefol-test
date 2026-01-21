@@ -548,7 +548,8 @@ export default function Profile() {
                   )}
                 </div>
                 <h3 className="text-sm sm:text-base font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{profile.name || 'User'}</h3>
-                <p> User ID: </p>{profile.unique_user_id && (
+                <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}> User ID: </p>
+                {profile.unique_user_id && (
                   <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}>{profile.unique_user_id}</p>
                 )}
                 <p className="text-xs sm:text-sm font-light mt-1" style={{ color: '#1a1a1a' }}>{profile.email || 'No email'}</p>
@@ -592,8 +593,8 @@ export default function Profile() {
                         }
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-300 ${activeTab === tab.id
-                          ? 'bg-slate-50 text-slate-900 border-l-2 border-slate-900'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-slate-50 text-slate-900 border-l-2 border-slate-900'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                       style={{ letterSpacing: '0.02em' }}
                     >
@@ -935,9 +936,9 @@ export default function Profile() {
                             <div className="text-right">
                               <p className="font-semibold dark:text-slate-100">₹{parseFloat(order.total?.toString() || '0').toFixed(2)}</p>
                               <span className={`px-2 py-1 text-xs rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                                  order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                                    order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                      'bg-yellow-100 text-yellow-800'
+                                order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                                  order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
                                 }`}>
                                 {order.status}
                               </span>
