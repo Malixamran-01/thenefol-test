@@ -548,9 +548,9 @@ export default function Profile() {
                   )}
                 </div>
                 <h3 className="text-sm sm:text-base font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{profile.name || 'User'}</h3>
-                <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}> User ID: </p>
+
                 {profile.unique_user_id && (
-                  <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}>{profile.unique_user_id}</p>
+                  <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}><p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}> User ID: </p>{profile.unique_user_id}</p>
                 )}
                 <p className="text-xs sm:text-sm font-light mt-1" style={{ color: '#1a1a1a' }}>{profile.email || 'No email'}</p>
                 <p className="text-xs font-light" style={{ color: '#1a1a1a' }}>{profile.phone || 'No phone'}</p>
