@@ -17,6 +17,7 @@ import SwipeNavigation from './components/SwipeNavigation'
 
 // Lazy load all pages for code splitting
 const LoginPage = lazy(() => import('./pages/Login'))
+const SignupPage = lazy(() => import('./pages/Signup'))
 const Profile = lazy(() => import('./pages/Profile'))
 const NefolCoins = lazy(() => import('./pages/NefolCoins'))
 const CoinWithdrawal = lazy(() => import('./pages/CoinWithdrawal'))
@@ -1028,6 +1029,7 @@ case '/user/referral-history':
     case '/user/manage-address': return <ManageAddress />
     case '/user/wishlist': return <Wishlist />
     case '/user/login': return <LoginPage />
+    case '/user/signup': return <SignupPage />
     case '/user/about': return <AboutUs />
     case '/user/faq': return <FAQ />
     case '/user/blue-tea-benefits': return <BlueTeaBenefits />
