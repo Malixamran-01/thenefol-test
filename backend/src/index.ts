@@ -1078,6 +1078,10 @@ app.post('/api/auth/request-reset', otpRateLimit, (req, res) => authRoutes.forgo
 app.post('/api/auth/forgot-password', otpRateLimit, (req, res) => authRoutes.forgotPassword(pool, req, res)) // Legacy route
 app.post('/api/auth/reset-password', (req, res) => authRoutes.resetPassword(pool, req, res))
 
+// Google OAuth route
+import * as googleAuthRoutes from './routes/googleAuth'
+app.post('/api/auth/google', (req, res) => googleAuthRoutes.googleAuth(pool, req, res))
+
 // OTP Routes (WhatsApp + Email) with rate limiting
 app.post('/api/auth/send-otp', otpRateLimit, (req, res) => otpRoutes.sendOTP(pool, req, res))
 app.post('/api/auth/verify-otp', (req, res) => otpRoutes.verifyOTP(pool, req, res))

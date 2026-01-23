@@ -134,6 +134,14 @@ export async function ensureSchema(pool: Pool) {
         alter table users add column unique_user_id text unique;
       end if;
       
+      -- Add google_id column for Google OAuth users
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'users' and column_name = 'google_id'
+      ) then
+        alter table users add column google_id text unique;
+      end if;
+      
       -- Make email nullable (remove NOT NULL constraint if exists) to allow NULL emails for WhatsApp signup
       -- This needs to be done carefully - drop unique constraint first, then alter column, then add unique back
       if exists (

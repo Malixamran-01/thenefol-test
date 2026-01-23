@@ -28,6 +28,7 @@ interface AuthContextValue {
   error: string | null
   login: (email: string, password: string) => Promise<boolean>
   loginWithWhatsApp: (phone: string, otp: string) => Promise<boolean>
+  loginWithGoogle: (accessToken: string) => Promise<boolean>
   signup: (userData: SignupData) => Promise<boolean>
   logout: () => void
   updateProfile: (data: Partial<User>) => Promise<boolean>
@@ -169,6 +170,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const loginWithGoogle = async (accessToken: string): Promise<boolean> => {
+    try {
+      setError(null)
+      setIsLoading(true)
+
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const { user, token } = data
+
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
+        
+        setUser(user)
+        setIsAuthenticated(true)
+        return true
+      } else {
+        const errorData = await response.json()
+        setError(errorData.error || errorData.message || 'Google login failed')
+        return false
+      }
+    } catch (error) {
+      setError('Network error. Please try again.')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const signup = async (userData: SignupData): Promise<boolean> => {
     try {
       setError(null)
@@ -273,6 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     login,
     loginWithWhatsApp,
+    loginWithGoogle,
     signup,
     logout,
     updateProfile,
