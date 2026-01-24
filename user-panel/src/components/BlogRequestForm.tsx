@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Upload, X, CheckCircle, AlertCircle } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface BlogRequestFormProps {
   onClose: () => void
@@ -17,6 +18,7 @@ interface BlogRequest {
 }
 
 export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogRequestFormProps) {
+  const { user, isAuthenticated } = useAuth()
   const [formData, setFormData] = useState<BlogRequest>({
     title: '',
     content: '',
@@ -28,6 +30,17 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
+
+  // Auto-fill user information if authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setFormData(prev => ({
+        ...prev,
+        author_name: user.name || '',
+        author_email: user.email || ''
+      }))
+    }
+  }, [isAuthenticated, user])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -68,8 +81,16 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         formDataToSend.append(`images`, image)
       })
 
+      // Get authentication token if user is logged in
+      const token = localStorage.getItem('token')
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${apiBase}/api/blog/request`, {
         method: 'POST',
+        headers,
         body: formDataToSend
       })
 
@@ -148,10 +169,11 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 name="author_name"
                 value={formData.author_name}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Enter your full name"
                 required
-                disabled={isSubmitting}
+                disabled={isSubmitting || (isAuthenticated && !!user?.name)}
+                title={isAuthenticated && user?.name ? "Your account name will be used" : ""}
               />
             </div>
             <div>
@@ -163,10 +185,11 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 name="author_email"
                 value={formData.author_email}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="your.email@domain.com"
                 required
-                disabled={isSubmitting}
+                disabled={isSubmitting || (isAuthenticated && !!user?.email)}
+                title={isAuthenticated && user?.email ? "Your account email will be used" : ""}
               />
             </div>
           </div>

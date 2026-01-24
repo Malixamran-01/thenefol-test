@@ -444,13 +444,26 @@ export async function ensureSchema(pool: Pool) {
       status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
       featured boolean default false,
       rejection_reason text,
+      user_id integer references users(id) on delete set null,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
     
+    -- Migration: Add user_id column if it doesn't exist
+    do $$
+    begin
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'user_id'
+      ) then
+        alter table blog_posts add column user_id integer references users(id) on delete set null;
+      end if;
+    end $$;
+    
     create index if not exists idx_blog_posts_status on blog_posts(status);
     create index if not exists idx_blog_posts_featured on blog_posts(featured);
     create index if not exists idx_blog_posts_created_at on blog_posts(created_at);
+    create index if not exists idx_blog_posts_user_id on blog_posts(user_id);
     
     -- CMS pages table
     create table if not exists cms_pages (

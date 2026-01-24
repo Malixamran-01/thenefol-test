@@ -60,12 +60,22 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
 
     const imageUrls = images.map(img => `/uploads/blog/${img.filename}`)
 
+    // Extract user_id from token if provided (optional authentication)
+    let userId = null
+    const token = req.headers.authorization?.replace('Bearer ', '')
+    if (token) {
+      const tokenParts = token.split('_')
+      if (tokenParts.length >= 3 && tokenParts[0] === 'user' && tokenParts[1] === 'token') {
+        userId = tokenParts[2]
+      }
+    }
+
     // Insert into database
     const { rows } = await pool.query(`
-      INSERT INTO blog_posts (title, content, excerpt, author_name, author_email, images, status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      INSERT INTO blog_posts (title, content, excerpt, author_name, author_email, images, status, user_id)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
       RETURNING id, created_at
-    `, [title, content, excerpt, author_name, author_email, JSON.stringify(imageUrls)])
+    `, [title, content, excerpt, author_name, author_email, JSON.stringify(imageUrls), userId])
 
     // Send email notification to admin (placeholder)
     console.log(`📧 New blog request from ${author_name}: ${title}`)

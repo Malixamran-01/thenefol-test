@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Plus, Calendar, User, Eye } from 'lucide-react'
 import BlogRequestForm from '../components/BlogRequestForm'
 import { getApiBase } from '../utils/apiBase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface BlogPost {
   id: string
@@ -18,9 +19,11 @@ interface BlogPost {
 }
 
 export default function Blog() {
+  const { isAuthenticated } = useAuth()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
   const [showRequestForm, setShowRequestForm] = useState(false)
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [error, setError] = useState('')
 
   // Fetch approved blog posts
@@ -295,7 +298,13 @@ export default function Blog() {
               Have a skincare tip, beauty secret, or personal journey to share? Submit your blog post and inspire our community.
             </p>
             <button
-              onClick={() => setShowRequestForm(true)}
+              onClick={() => {
+                if (isAuthenticated) {
+                  setShowRequestForm(true)
+                } else {
+                  setShowAuthPrompt(true)
+                }
+              }}
               className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium rounded-lg transition-colors text-sm tracking-wide uppercase shadow-lg"
               style={{ backgroundColor: 'rgb(75,151,201)' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
@@ -317,6 +326,68 @@ export default function Blog() {
             fetchBlogPosts()
           }}
         />
+      )}
+
+      {/* Authentication Prompt Modal */}
+      {showAuthPrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-8">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ backgroundColor: 'rgb(75,151,201,0.1)' }}>
+                  <User className="w-8 h-8" style={{ color: 'rgb(75,151,201)' }} />
+                </div>
+              </div>
+              <h3 className="text-2xl font-serif mb-3" style={{color: '#1B4965'}}>
+                Sign In Required
+              </h3>
+              <p className="text-base mb-6" style={{color: '#9DB4C0'}}>
+                Please sign in to your account to submit a blog post. If you don't have an account yet, you can create one in just a few moments.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => {
+                    // Save the current page to redirect back after login
+                    sessionStorage.setItem('post_login_redirect', '#/user/blog')
+                    window.location.hash = '#/user/login'
+                  }}
+                  className="flex-1 px-6 py-3 text-white font-medium rounded-lg transition-colors"
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => {
+                    // Save the current page to redirect back after signup
+                    sessionStorage.setItem('post_login_redirect', '#/user/blog')
+                    window.location.hash = '#/user/signup'
+                  }}
+                  className="flex-1 px-6 py-3 font-medium rounded-lg transition-colors border-2"
+                  style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+                    e.currentTarget.style.color = 'white'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = 'rgb(75,151,201)'
+                  }}
+                >
+                  Sign Up
+                </button>
+              </div>
+              <button
+                onClick={() => setShowAuthPrompt(false)}
+                className="mt-4 text-sm underline"
+                style={{color: '#9DB4C0'}}
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   )
