@@ -21,6 +21,7 @@
     "env:prod": "node switch-env.js prod"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/uuid": "^11.0.0",
     "bcrypt": "^5.1.1",
     "better-sqlite3": "^12.4.1",
@@ -28,6 +29,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-rate-limit": "^8.2.1",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.10.1",

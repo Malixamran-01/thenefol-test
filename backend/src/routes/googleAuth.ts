@@ -10,9 +10,17 @@ import { Pool } from 'pg'
 import { Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { sendError, sendSuccess } from '../utils/apiHelpers'
-import { generateUserId } from '../utils/generateUserId'
+import { generateUniqueUserId } from '../utils/generateUserId'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+
+// TypeScript interface for Google user info
+interface GoogleUserInfo {
+  email?: string
+  name?: string
+  picture?: string
+  sub?: string
+}
 
 /**
  * Verify Google ID token and authenticate/register user
@@ -33,7 +41,7 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
     }
 
     // Verify the Google token by calling Google's userinfo endpoint
-    let googleUser
+    let googleUser: GoogleUserInfo
     try {
       const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: {
@@ -45,7 +53,7 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
         throw new Error('Invalid Google token')
       }
 
-      googleUser = await response.json()
+      googleUser = await response.json() as GoogleUserInfo
     } catch (error) {
       console.error('Google token verification failed:', error)
       return sendError(res, 401, 'Invalid Google token')
@@ -82,7 +90,7 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
       }
     } else {
       // User doesn't exist - create new account
-      const userId = await generateUserId(pool)
+      const userId = await generateUniqueUserId(pool)
       
       const insertResult = await pool.query(
         `INSERT INTO users (
