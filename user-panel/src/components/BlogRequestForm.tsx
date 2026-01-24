@@ -30,6 +30,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   // Auto-fill user information if authenticated
   useEffect(() => {
@@ -61,6 +63,13 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!agreedToTerms) {
+      setSubmitStatus('error')
+      setErrorMessage('Please agree to the terms and conditions before submitting.')
+      return
+    }
+    
     setIsSubmitting(true)
     setSubmitStatus('idle')
     setErrorMessage('')
@@ -315,6 +324,29 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             </div>
           )}
 
+          {/* Terms and Conditions Checkbox */}
+          <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <input
+              type="checkbox"
+              id="terms-checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              disabled={isSubmitting}
+            />
+            <label htmlFor="terms-checkbox" className="text-sm text-gray-700">
+              I agree to the{' '}
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="text-blue-600 hover:text-blue-800 underline font-medium"
+              >
+                terms and conditions
+              </button>{' '}
+              for blog post submissions
+            </label>
+          </div>
+
           {/* Submit Button */}
           <div className="flex gap-3 justify-end">
             <button
@@ -331,7 +363,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
               style={{ backgroundColor: 'rgb(75,151,201)' }}
               onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
               onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !agreedToTerms}
+              title={!agreedToTerms ? "Please agree to terms and conditions" : ""}
             >
               {isSubmitting ? (
                 <>
@@ -344,6 +377,148 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           </div>
         </form>
       </div>
+
+      {/* Terms and Conditions Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-gray-900">Blog Submission Terms & Conditions</h3>
+              <button 
+                onClick={() => setShowTermsModal(false)} 
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="space-y-4 text-gray-700">
+                <p className="text-sm text-gray-500 italic">Last updated: {new Date().toLocaleDateString()}</p>
+                
+                <section>
+                  <h4 className="font-semibold text-lg mb-2">1. Content Guidelines</h4>
+                  <p className="text-sm leading-relaxed">
+                    By submitting a blog post to NEFOL, you agree that your content must be appropriate for all audiences. 
+                    We maintain a family-friendly platform and strictly prohibit:
+                  </p>
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                    <li>Not Safe For Work (NSFW) content including explicit, sexual, or graphic material</li>
+                    <li>Hate speech, discrimination, or harassment of any kind</li>
+                    <li>Violence, threats, or promotion of harmful activities</li>
+                    <li>Spam, misleading information, or false claims</li>
+                    <li>Copyright infringement or plagiarized content</li>
+                    <li>Personal attacks or defamatory statements</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h4 className="font-semibold text-lg mb-2">2. Content Ownership & Rights</h4>
+                  <p className="text-sm leading-relaxed">
+                    You retain ownership of your submitted content. However, by submitting a blog post, you grant NEFOL 
+                    a non-exclusive, worldwide, royalty-free license to publish, display, modify, and distribute your 
+                    content on our platform and promotional materials.
+                  </p>
+                </section>
+
+                <section>
+                  <h4 className="font-semibold text-lg mb-2">3. Review & Approval Process</h4>
+                  <p className="text-sm leading-relaxed">
+                    All blog submissions are subject to review by our moderation team. We reserve the right to:
+                  </p>
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                    <li>Approve or reject any submission without providing a reason</li>
+                    <li>Request edits or modifications before publication</li>
+                    <li>Delay publication for quality assurance</li>
+                    <li>Edit for grammar, formatting, or clarity while preserving your message</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h4 className="font-semibold text-lg mb-2">4. Content Removal</h4>
+                  <p className="text-sm leading-relaxed">
+                    NEFOL reserves the right to remove, unpublish, or delete any blog post at any time, with or without 
+                    notice, for any reason including but not limited to:
+                  </p>
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                    <li>Violation of these terms and conditions</li>
+                    <li>Receiving complaints from users or third parties</li>
+                    <li>Legal requirements or copyright claims</li>
+                    <li>Content no longer aligns with our brand values</li>
+                    <li>Technical or operational reasons</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h4 className="font-semibold text-lg mb-2">5. Accuracy & Liability</h4>
+                  <p className="text-sm leading-relaxed">
+                    You are solely responsible for the accuracy and legality of your submitted content. NEFOL is not 
+                    liable for any claims, damages, or disputes arising from your blog post. You agree to indemnify 
+                    NEFOL against any legal action resulting from your submission.
+                  </p>
+                </section>
+
+                <section>
+                  <h4 className="font-semibold text-lg mb-2">6. User Conduct</h4>
+                  <p className="text-sm leading-relaxed">
+                    You agree not to use our blog submission feature to:
+                  </p>
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                    <li>Promote competing products or services without disclosure</li>
+                    <li>Collect personal information from other users</li>
+                    <li>Upload malicious code, viruses, or harmful software</li>
+                    <li>Impersonate others or misrepresent your affiliation</li>
+                    <li>Manipulate or game our review system</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h4 className="font-semibold text-lg mb-2">7. Changes to Terms</h4>
+                  <p className="text-sm leading-relaxed">
+                    NEFOL reserves the right to modify these terms at any time. Continued submission of blog posts 
+                    after changes constitutes acceptance of the updated terms.
+                  </p>
+                </section>
+
+                <section>
+                  <h4 className="font-semibold text-lg mb-2">8. Contact</h4>
+                  <p className="text-sm leading-relaxed">
+                    If you have questions about these terms or your blog submission, please contact us at support@thenefol.com
+                  </p>
+                </section>
+
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-900 font-medium">
+                    By checking the agreement box and submitting your blog post, you acknowledge that you have read, 
+                    understood, and agree to be bound by these Terms and Conditions.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setAgreedToTerms(true)
+                  setShowTermsModal(false)
+                }}
+                className="px-6 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              >
+                I Agree
+              </button>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
