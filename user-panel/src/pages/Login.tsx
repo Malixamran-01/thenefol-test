@@ -71,7 +71,7 @@ export default function LoginPage() {
       setGoogleLoaded(true)
       if (window.google) {
         window.google.accounts.id.initialize({
-          client_id: '798899732644-k6v9e5o3p1uuikrfm8rlmq59n8icp5jc.apps.googleusercontent.com',
+          client_id: '269814794814-bbq2slkc637hnh7dqbchb6l3hu9b80j5.apps.googleusercontent.com',
           callback: handleGoogleResponse
         })
         console.log('Google SDK initialized')
