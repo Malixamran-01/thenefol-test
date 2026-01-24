@@ -29,28 +29,6 @@ export default function LoginPage() {
 
   const { login, loginWithWhatsApp, loginWithGoogle, error: authError } = useAuth()
 
-  // Load Google Sign-In script
-  React.useEffect(() => {
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.defer = true
-    script.onload = () => {
-      setGoogleLoaded(true)
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: '798899732644-k6v9e5o3p1uuikrfm8rlmq59n8icp5jc.apps.googleusercontent.com',
-          callback: handleGoogleResponse
-        })
-      }
-    }
-    document.body.appendChild(script)
-
-    return () => {
-      document.body.removeChild(script)
-    }
-  }, [])
-
   // ✅ SINGLE SOURCE OF REDIRECT TRUTH
   const redirectAfterLogin = () => {
     const redirect = sessionStorage.getItem('post_login_redirect')
@@ -63,7 +41,7 @@ export default function LoginPage() {
   }
 
   // Handle Google Sign-In response
-  const handleGoogleResponse = async (response: any) => {
+  const handleGoogleResponse = React.useCallback(async (response: any) => {
     try {
       setLoading(true)
       setError('')
@@ -80,12 +58,45 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [loginWithGoogle, authError])
+
+  // Load Google Sign-In script
+  React.useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      console.log('Google SDK loaded')
+      setGoogleLoaded(true)
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: '798899732644-k6v9e5o3p1uuikrfm8rlmq59n8icp5jc.apps.googleusercontent.com',
+          callback: handleGoogleResponse
+        })
+        console.log('Google SDK initialized')
+      }
+    }
+    script.onerror = () => {
+      console.error('Failed to load Google SDK')
+    }
+    document.body.appendChild(script)
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
+    }
+  }, [handleGoogleResponse])
 
   // Handle Google Sign-In button click
   const handleGoogleSignIn = () => {
+    console.log('Google button clicked, googleLoaded:', googleLoaded)
     if (window.google) {
+      console.log('Prompting Google One Tap')
       window.google.accounts.id.prompt()
+    } else {
+      console.error('Google SDK not available')
     }
   }
 
