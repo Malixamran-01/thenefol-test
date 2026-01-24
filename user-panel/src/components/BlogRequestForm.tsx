@@ -380,140 +380,113 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
       {/* Terms and Conditions Modal */}
       {showTermsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-2xl font-bold text-gray-900">Blog Submission Terms & Conditions</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
+              <h3 className="text-lg font-bold text-gray-900">Blog Submission Terms</h3>
               <button 
                 onClick={() => setShowTermsModal(false)} 
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
               >
-                <X className="w-6 h-6 text-gray-600" />
+                <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="space-y-4 text-gray-700">
-                <p className="text-sm text-gray-500 italic">Last updated: {new Date().toLocaleDateString()}</p>
+            <div className="px-4 py-4 overflow-y-auto flex-1">
+              <div className="space-y-3 text-gray-700">
+                <p className="text-xs text-gray-500 italic mb-3">Last updated: {new Date().toLocaleDateString()}</p>
                 
                 <section>
-                  <h4 className="font-semibold text-lg mb-2">1. Content Guidelines</h4>
-                  <p className="text-sm leading-relaxed">
-                    By submitting a blog post to NEFOL, you agree that your content must be appropriate for all audiences. 
-                    We maintain a family-friendly platform and strictly prohibit:
+                  <h4 className="font-semibold text-base mb-1.5">1. Content Guidelines</h4>
+                  <p className="text-xs leading-relaxed mb-1.5">
+                    By submitting a blog post, you agree your content must be appropriate for all audiences. We strictly prohibit:
                   </p>
-                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
-                    <li>Not Safe For Work (NSFW) content including explicit, sexual, or graphic material</li>
-                    <li>Hate speech, discrimination, or harassment of any kind</li>
-                    <li>Violence, threats, or promotion of harmful activities</li>
-                    <li>Spam, misleading information, or false claims</li>
-                    <li>Copyright infringement or plagiarized content</li>
-                    <li>Personal attacks or defamatory statements</li>
+                  <ul className="list-disc list-inside ml-2 space-y-0.5 text-xs">
+                    <li>NSFW content (explicit, sexual, or graphic material)</li>
+                    <li>Hate speech, discrimination, or harassment</li>
+                    <li>Violence, threats, or harmful activities</li>
+                    <li>Spam, misleading info, or false claims</li>
+                    <li>Copyright infringement or plagiarism</li>
+                    <li>Personal attacks or defamation</li>
                   </ul>
                 </section>
 
                 <section>
-                  <h4 className="font-semibold text-lg mb-2">2. Content Ownership & Rights</h4>
-                  <p className="text-sm leading-relaxed">
-                    You retain ownership of your submitted content. However, by submitting a blog post, you grant NEFOL 
-                    a non-exclusive, worldwide, royalty-free license to publish, display, modify, and distribute your 
-                    content on our platform and promotional materials.
+                  <h4 className="font-semibold text-base mb-1.5">2. Content Rights</h4>
+                  <p className="text-xs leading-relaxed">
+                    You retain ownership but grant NEFOL a non-exclusive license to publish, display, modify, and distribute your content.
                   </p>
                 </section>
 
                 <section>
-                  <h4 className="font-semibold text-lg mb-2">3. Review & Approval Process</h4>
-                  <p className="text-sm leading-relaxed">
-                    All blog submissions are subject to review by our moderation team. We reserve the right to:
+                  <h4 className="font-semibold text-base mb-1.5">3. Review Process</h4>
+                  <p className="text-xs leading-relaxed mb-1.5">
+                    All submissions are reviewed. We reserve the right to:
                   </p>
-                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
-                    <li>Approve or reject any submission without providing a reason</li>
-                    <li>Request edits or modifications before publication</li>
-                    <li>Delay publication for quality assurance</li>
-                    <li>Edit for grammar, formatting, or clarity while preserving your message</li>
+                  <ul className="list-disc list-inside ml-2 space-y-0.5 text-xs">
+                    <li>Approve or reject any submission</li>
+                    <li>Request edits before publication</li>
+                    <li>Edit for grammar/formatting</li>
                   </ul>
                 </section>
 
                 <section>
-                  <h4 className="font-semibold text-lg mb-2">4. Content Removal</h4>
-                  <p className="text-sm leading-relaxed">
-                    NEFOL reserves the right to remove, unpublish, or delete any blog post at any time, with or without 
-                    notice, for any reason including but not limited to:
+                  <h4 className="font-semibold text-base mb-1.5">4. Content Removal</h4>
+                  <p className="text-xs leading-relaxed mb-1.5">
+                    We can remove, unpublish, or delete any post at any time for:
                   </p>
-                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
-                    <li>Violation of these terms and conditions</li>
-                    <li>Receiving complaints from users or third parties</li>
-                    <li>Legal requirements or copyright claims</li>
-                    <li>Content no longer aligns with our brand values</li>
-                    <li>Technical or operational reasons</li>
+                  <ul className="list-disc list-inside ml-2 space-y-0.5 text-xs">
+                    <li>Terms violations</li>
+                    <li>User complaints or legal requirements</li>
+                    <li>Brand misalignment or technical reasons</li>
                   </ul>
                 </section>
 
                 <section>
-                  <h4 className="font-semibold text-lg mb-2">5. Accuracy & Liability</h4>
-                  <p className="text-sm leading-relaxed">
-                    You are solely responsible for the accuracy and legality of your submitted content. NEFOL is not 
-                    liable for any claims, damages, or disputes arising from your blog post. You agree to indemnify 
-                    NEFOL against any legal action resulting from your submission.
+                  <h4 className="font-semibold text-base mb-1.5">5. Liability</h4>
+                  <p className="text-xs leading-relaxed">
+                    You're responsible for your content's accuracy and legality. NEFOL isn't liable for claims arising from your post.
                   </p>
                 </section>
 
                 <section>
-                  <h4 className="font-semibold text-lg mb-2">6. User Conduct</h4>
-                  <p className="text-sm leading-relaxed">
-                    You agree not to use our blog submission feature to:
+                  <h4 className="font-semibold text-base mb-1.5">6. User Conduct</h4>
+                  <p className="text-xs leading-relaxed mb-1.5">
+                    You agree not to:
                   </p>
-                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
-                    <li>Promote competing products or services without disclosure</li>
-                    <li>Collect personal information from other users</li>
-                    <li>Upload malicious code, viruses, or harmful software</li>
-                    <li>Impersonate others or misrepresent your affiliation</li>
-                    <li>Manipulate or game our review system</li>
+                  <ul className="list-disc list-inside ml-2 space-y-0.5 text-xs">
+                    <li>Promote competing services</li>
+                    <li>Upload malicious code or viruses</li>
+                    <li>Impersonate others</li>
                   </ul>
                 </section>
 
-                <section>
-                  <h4 className="font-semibold text-lg mb-2">7. Changes to Terms</h4>
-                  <p className="text-sm leading-relaxed">
-                    NEFOL reserves the right to modify these terms at any time. Continued submission of blog posts 
-                    after changes constitutes acceptance of the updated terms.
-                  </p>
-                </section>
-
-                <section>
-                  <h4 className="font-semibold text-lg mb-2">8. Contact</h4>
-                  <p className="text-sm leading-relaxed">
-                    If you have questions about these terms or your blog submission, please contact us at support@thenefol.com
-                  </p>
-                </section>
-
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-900 font-medium">
-                    By checking the agreement box and submitting your blog post, you acknowledge that you have read, 
-                    understood, and agree to be bound by these Terms and Conditions.
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-xs text-blue-900 font-medium leading-relaxed">
+                    By checking the agreement box, you acknowledge you've read and agree to these Terms and Conditions.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
               <button
                 onClick={() => {
                   setAgreedToTerms(true)
                   setShowTermsModal(false)
                 }}
-                className="px-6 py-2 text-white rounded-lg transition-colors"
+                className="px-4 py-2 text-sm text-white rounded-lg transition-colors"
                 style={{ backgroundColor: 'rgb(75,151,201)' }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
               >
                 I Agree
-              </button>
-              <button
-                onClick={() => setShowTermsModal(false)}
-                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Close
               </button>
             </div>
           </div>
