@@ -167,8 +167,16 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+    <>
+      <style>{`
+        [contenteditable][data-placeholder]:empty:before {
+          content: attr(data-placeholder);
+          color: #9ca3af;
+          pointer-events: none;
+        }
+      `}</style>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between mb-6">
           <h2 className="text-2xl font-bold">Submit Blog Post</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
@@ -211,8 +219,11 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
               contentEditable
               onInput={handleEditorInput}
               className="min-h-[250px] p-4 outline-none text-lg leading-relaxed"
-              placeholder="Start writing..."
+              data-placeholder="Start writing..."
               suppressContentEditableWarning
+              style={{
+                minHeight: '250px'
+              }}
             />
           </div>
 
@@ -266,6 +277,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         </div>
       )}
 
-    </div>
+      </div>
+    </>
   )
 }
