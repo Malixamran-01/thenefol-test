@@ -381,27 +381,31 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       {/* Terms and Conditions Modal */}
       {showTermsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Blog Submission Terms</h3>
               <button 
                 onClick={() => setShowTermsModal(false)} 
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
               >
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
             
-            <div className="px-4 py-4 overflow-y-auto flex-1">
-              <div className="space-y-3 text-gray-700">
-                <p className="text-xs text-gray-500 italic mb-3">Last updated: {new Date().toLocaleDateString()}</p>
+            <div className="px-4 py-4 overflow-y-auto overflow-x-hidden flex-1">
+              <div className="space-y-3 text-gray-700 break-words">
+                <p className="text-xs text-gray-500 italic mb-3">
+                  Last updated: {new Date().toLocaleDateString()}
+                </p>
                 
-                <section>
-                  <h4 className="font-semibold text-base mb-1.5">1. Content Guidelines</h4>
-                  <p className="text-xs leading-relaxed mb-1.5">
+                <section className="mb-3">
+                  <h4 className="font-semibold text-sm mb-1.5 text-gray-900">
+                    1. Content Guidelines
+                  </h4>
+                  <p className="text-xs leading-relaxed mb-1.5 text-gray-700">
                     By submitting a blog post, you agree your content must be appropriate for all audiences. We strictly prohibit:
                   </p>
-                  <ul className="list-disc list-inside ml-2 space-y-0.5 text-xs">
+                  <ul className="list-disc pl-5 space-y-0.5 text-xs text-gray-700">
                     <li>NSFW content (explicit, sexual, or graphic material)</li>
                     <li>Hate speech, discrimination, or harassment</li>
                     <li>Violence, threats, or harmful activities</li>
@@ -411,50 +415,60 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   </ul>
                 </section>
 
-                <section>
-                  <h4 className="font-semibold text-base mb-1.5">2. Content Rights</h4>
-                  <p className="text-xs leading-relaxed">
+                <section className="mb-3">
+                  <h4 className="font-semibold text-sm mb-1.5 text-gray-900">
+                    2. Content Rights
+                  </h4>
+                  <p className="text-xs leading-relaxed text-gray-700">
                     You retain ownership but grant NEFOL a non-exclusive license to publish, display, modify, and distribute your content.
                   </p>
                 </section>
 
-                <section>
-                  <h4 className="font-semibold text-base mb-1.5">3. Review Process</h4>
-                  <p className="text-xs leading-relaxed mb-1.5">
+                <section className="mb-3">
+                  <h4 className="font-semibold text-sm mb-1.5 text-gray-900">
+                    3. Review Process
+                  </h4>
+                  <p className="text-xs leading-relaxed mb-1.5 text-gray-700">
                     All submissions are reviewed. We reserve the right to:
                   </p>
-                  <ul className="list-disc list-inside ml-2 space-y-0.5 text-xs">
+                  <ul className="list-disc pl-5 space-y-0.5 text-xs text-gray-700">
                     <li>Approve or reject any submission</li>
                     <li>Request edits before publication</li>
                     <li>Edit for grammar/formatting</li>
                   </ul>
                 </section>
 
-                <section>
-                  <h4 className="font-semibold text-base mb-1.5">4. Content Removal</h4>
-                  <p className="text-xs leading-relaxed mb-1.5">
+                <section className="mb-3">
+                  <h4 className="font-semibold text-sm mb-1.5 text-gray-900">
+                    4. Content Removal
+                  </h4>
+                  <p className="text-xs leading-relaxed mb-1.5 text-gray-700">
                     We can remove, unpublish, or delete any post at any time for:
                   </p>
-                  <ul className="list-disc list-inside ml-2 space-y-0.5 text-xs">
+                  <ul className="list-disc pl-5 space-y-0.5 text-xs text-gray-700">
                     <li>Terms violations</li>
                     <li>User complaints or legal requirements</li>
                     <li>Brand misalignment or technical reasons</li>
                   </ul>
                 </section>
 
-                <section>
-                  <h4 className="font-semibold text-base mb-1.5">5. Liability</h4>
-                  <p className="text-xs leading-relaxed">
+                <section className="mb-3">
+                  <h4 className="font-semibold text-sm mb-1.5 text-gray-900">
+                    5. Liability
+                  </h4>
+                  <p className="text-xs leading-relaxed text-gray-700">
                     You're responsible for your content's accuracy and legality. NEFOL isn't liable for claims arising from your post.
                   </p>
                 </section>
 
-                <section>
-                  <h4 className="font-semibold text-base mb-1.5">6. User Conduct</h4>
-                  <p className="text-xs leading-relaxed mb-1.5">
+                <section className="mb-3">
+                  <h4 className="font-semibold text-sm mb-1.5 text-gray-900">
+                    6. User Conduct
+                  </h4>
+                  <p className="text-xs leading-relaxed mb-1.5 text-gray-700">
                     You agree not to:
                   </p>
-                  <ul className="list-disc list-inside ml-2 space-y-0.5 text-xs">
+                  <ul className="list-disc pl-5 space-y-0.5 text-xs text-gray-700">
                     <li>Promote competing services</li>
                     <li>Upload malicious code or viruses</li>
                     <li>Impersonate others</li>
