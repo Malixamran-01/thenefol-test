@@ -1082,6 +1082,10 @@ app.post('/api/auth/reset-password', (req, res) => authRoutes.resetPassword(pool
 import * as googleAuthRoutes from './routes/googleAuth'
 app.post('/api/auth/google', (req, res) => googleAuthRoutes.googleAuth(pool, req, res))
 
+// Facebook OAuth route
+import * as facebookAuthRoutes from './routes/facebookAuth'
+app.post('/api/auth/facebook', (req, res) => facebookAuthRoutes.facebookAuth(pool, req, res))
+
 // OTP Routes (WhatsApp + Email) with rate limiting
 app.post('/api/auth/send-otp', otpRateLimit, (req, res) => otpRoutes.sendOTP(pool, req, res))
 app.post('/api/auth/verify-otp', (req, res) => otpRoutes.verifyOTP(pool, req, res))

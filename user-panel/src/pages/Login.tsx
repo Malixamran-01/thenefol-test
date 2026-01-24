@@ -8,6 +8,8 @@ import PhoneInput from '../components/PhoneInput'
 declare global {
   interface Window {
     google?: any
+    FB?: any
+    fbAsyncInit?: () => void
   }
 }
 
@@ -24,10 +26,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [googleLoaded, setGoogleLoaded] = useState(false)
+  const [fbLoaded, setFbLoaded] = useState(false)
 
   const otpTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const { login, loginWithWhatsApp, loginWithGoogle, error: authError } = useAuth()
+  const { login, loginWithWhatsApp, loginWithGoogle, loginWithFacebook, error: authError } = useAuth()
 
   // ✅ SINGLE SOURCE OF REDIRECT TRUTH
   const redirectAfterLogin = () => {
@@ -97,6 +100,67 @@ export default function LoginPage() {
       window.google.accounts.id.prompt()
     } else {
       console.error('Google SDK not available')
+    }
+  }
+
+  // Load Facebook SDK
+  React.useEffect(() => {
+    // Facebook SDK is already loaded in index.html
+    // Just check if it's ready
+    if (window.FB) {
+      setFbLoaded(true)
+      console.log('Facebook SDK already loaded')
+    } else {
+      // Wait for FB to be available
+      const checkFB = setInterval(() => {
+        if (window.FB) {
+          setFbLoaded(true)
+          console.log('Facebook SDK loaded')
+          clearInterval(checkFB)
+        }
+      }, 100)
+
+      return () => clearInterval(checkFB)
+    }
+  }, [])
+
+  // Handle Facebook Login
+  const handleFacebookLogin = () => {
+    console.log('Facebook button clicked, fbLoaded:', fbLoaded)
+    if (!window.FB) {
+      console.error('Facebook SDK not available')
+      setError('Facebook SDK not loaded. Please refresh the page.')
+      return
+    }
+
+    window.FB.login((response: any) => {
+      console.log('Facebook login response:', response)
+      if (response.authResponse) {
+        const { accessToken, userID } = response.authResponse
+        handleFacebookResponse(accessToken, userID)
+      } else {
+        console.log('User cancelled login or did not fully authorize.')
+      }
+    }, { scope: 'public_profile,email' })
+  }
+
+  // Handle Facebook response
+  const handleFacebookResponse = async (accessToken: string, userID: string) => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      const success = await loginWithFacebook(accessToken, userID)
+      
+      if (success) {
+        redirectAfterLogin()
+      } else {
+        setError(authError || 'Facebook login failed')
+      }
+    } catch (err) {
+      setError('Facebook login failed. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -434,6 +498,19 @@ export default function LoginPage() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             Continue with Google
+          </button>
+
+          <button
+            type="button"
+            onClick={handleFacebookLogin}
+            disabled={loading || !fbLoaded}
+            className="w-full flex items-center justify-center gap-3 py-3 px-6 border border-slate-300 rounded-md text-sm font-light text-slate-700 transition-all duration-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ letterSpacing: '0.02em' }}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            Continue with Facebook
           </button>
 
           <div className="text-center">
