@@ -260,7 +260,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         </div>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl mx-auto">
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
