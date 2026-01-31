@@ -26,6 +26,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const { user, isAuthenticated } = useAuth()
   const editorRef = useRef<HTMLDivElement>(null)
   const savedSelectionRef = useRef<Range | null>(null)
+  const colorButtonRef = useRef<HTMLButtonElement>(null)
 
   const [formData, setFormData] = useState<BlogRequest>({
     title: '',
@@ -45,6 +46,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const [linkData, setLinkData] = useState<LinkModalData>({ text: '', url: '' })
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [currentColor, setCurrentColor] = useState('#000000')
+  const [colorPickerPos, setColorPickerPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -153,6 +155,19 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     setCurrentColor(color)
     exec('foreColor', color)
     setShowColorPicker(false)
+  }
+
+  const toggleColorPicker = () => {
+    if (!colorButtonRef.current) {
+      setShowColorPicker(prev => !prev)
+      return
+    }
+    const rect = colorButtonRef.current.getBoundingClientRect()
+    setColorPickerPos({
+      top: rect.bottom + 8,
+      left: rect.left
+    })
+    setShowColorPicker(prev => !prev)
   }
 
   const insertList = (ordered: boolean) => {
@@ -413,12 +428,13 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   </div>
 
                   {/* Color Picker */}
-                  <div className="relative border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
+                  <div className="border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
                     <button 
                       type="button" 
-                      onClick={() => setShowColorPicker(!showColorPicker)} 
+                      onClick={toggleColorPicker}
                       className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1"
                       title="Text Color"
+                      ref={colorButtonRef}
                     >
                       <Palette size={18} className="sm:w-5 sm:h-5" />
                       <div 
@@ -426,25 +442,6 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                         style={{ backgroundColor: currentColor }}
                       />
                     </button>
-                    {showColorPicker && (
-                      <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-300 rounded-lg shadow-lg p-2 sm:p-3 z-50">
-                        <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-40 sm:w-48">
-                          {colors.map(color => (
-                            <button
-                              key={color}
-                              type="button"
-                              onClick={() => applyColor(color)}
-                              className="w-6 h-6 sm:w-8 sm:h-8 rounded border-2 hover:scale-110 transition-transform"
-                              style={{ 
-                                backgroundColor: color,
-                                borderColor: currentColor === color ? '#4B97C9' : '#D1D5DB'
-                              }}
-                              title={color}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Link & Lists Group */}
@@ -666,6 +663,30 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Color Picker Portal */}
+      {showColorPicker && (
+        <div
+          className="fixed bg-white border-2 border-gray-300 rounded-lg shadow-lg p-2 sm:p-3 z-[100]"
+          style={{ top: colorPickerPos.top, left: colorPickerPos.left }}
+        >
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-40 sm:w-48">
+            {colors.map(color => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => applyColor(color)}
+                className="w-6 h-6 sm:w-8 sm:h-8 rounded border-2 hover:scale-110 transition-transform"
+                style={{ 
+                  backgroundColor: color,
+                  borderColor: currentColor === color ? '#4B97C9' : '#D1D5DB'
+                }}
+                title={color}
+              />
+            ))}
           </div>
         </div>
       )}
