@@ -14,6 +14,14 @@ interface BlogPost {
   updated_at: string
   status: 'pending' | 'approved' | 'rejected'
   featured: boolean
+  meta_title?: string
+  meta_description?: string
+  meta_keywords?: string[] | string
+  og_title?: string
+  og_description?: string
+  og_image?: string
+  canonical_url?: string
+  categories?: string[] | string
 }
 
 export default function BlogDetail() {
@@ -79,6 +87,56 @@ export default function BlogDetail() {
 
     loadBlogPost()
   }, [])
+
+  useEffect(() => {
+    if (!post) return
+
+    const setMeta = (key: string, value: string, attr: 'name' | 'property' = 'name') => {
+      let tag = document.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null
+      if (!tag) {
+        tag = document.createElement('meta')
+        tag.setAttribute(attr, key)
+        document.head.appendChild(tag)
+      }
+      tag.setAttribute('content', value)
+    }
+
+    const setLink = (rel: string, href: string) => {
+      let link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null
+      if (!link) {
+        link = document.createElement('link')
+        link.setAttribute('rel', rel)
+        document.head.appendChild(link)
+      }
+      link.setAttribute('href', href)
+    }
+
+    const keywords = Array.isArray(post.meta_keywords)
+      ? post.meta_keywords.join(', ')
+      : typeof post.meta_keywords === 'string'
+        ? post.meta_keywords
+        : ''
+
+    const ogImage = post.og_image || post.images?.[0] || ''
+    const pageUrl = post.canonical_url || window.location.href
+
+    document.title = post.meta_title || post.title
+    setMeta('description', post.meta_description || post.excerpt || '')
+    if (keywords) setMeta('keywords', keywords)
+
+    setMeta('og:title', post.og_title || post.meta_title || post.title, 'property')
+    setMeta('og:description', post.og_description || post.meta_description || post.excerpt || '', 'property')
+    if (ogImage) setMeta('og:image', ogImage, 'property')
+    setMeta('og:type', 'article', 'property')
+    setMeta('og:url', pageUrl, 'property')
+
+    setMeta('twitter:card', ogImage ? 'summary_large_image' : 'summary', 'property')
+    setMeta('twitter:title', post.og_title || post.meta_title || post.title, 'property')
+    setMeta('twitter:description', post.og_description || post.meta_description || post.excerpt || '', 'property')
+    if (ogImage) setMeta('twitter:image', ogImage, 'property')
+
+    if (pageUrl) setLink('canonical', pageUrl)
+  }, [post])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

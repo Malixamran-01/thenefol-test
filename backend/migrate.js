@@ -68,6 +68,15 @@ async function runMigration() {
         status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
         featured boolean default false,
         rejection_reason text,
+        meta_title text,
+        meta_description text,
+        meta_keywords jsonb,
+        og_title text,
+        og_description text,
+        og_image text,
+        canonical_url text,
+        categories jsonb,
+        user_id integer references users(id) on delete set null,
         created_at timestamptz default now(),
         updated_at timestamptz default now()
       );
@@ -144,6 +153,8 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(status);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_featured ON blog_posts(featured);
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_user_id ON blog_posts(user_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_categories ON blog_posts USING gin ((categories));
       CREATE INDEX IF NOT EXISTS idx_cms_pages_slug ON cms_pages(slug);
       CREATE INDEX IF NOT EXISTS idx_cms_sections_page_id ON cms_sections(page_id);
       CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);

@@ -444,6 +444,14 @@ export async function ensureSchema(pool: Pool) {
       status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
       featured boolean default false,
       rejection_reason text,
+      meta_title text,
+      meta_description text,
+      meta_keywords jsonb,
+      og_title text,
+      og_description text,
+      og_image text,
+      canonical_url text,
+      categories jsonb,
       user_id integer references users(id) on delete set null,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
@@ -458,12 +466,61 @@ export async function ensureSchema(pool: Pool) {
       ) then
         alter table blog_posts add column user_id integer references users(id) on delete set null;
       end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'meta_title'
+      ) then
+        alter table blog_posts add column meta_title text;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'meta_description'
+      ) then
+        alter table blog_posts add column meta_description text;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'meta_keywords'
+      ) then
+        alter table blog_posts add column meta_keywords jsonb;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'og_title'
+      ) then
+        alter table blog_posts add column og_title text;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'og_description'
+      ) then
+        alter table blog_posts add column og_description text;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'og_image'
+      ) then
+        alter table blog_posts add column og_image text;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'canonical_url'
+      ) then
+        alter table blog_posts add column canonical_url text;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'categories'
+      ) then
+        alter table blog_posts add column categories jsonb;
+      end if;
     end $$;
     
     create index if not exists idx_blog_posts_status on blog_posts(status);
     create index if not exists idx_blog_posts_featured on blog_posts(featured);
     create index if not exists idx_blog_posts_created_at on blog_posts(created_at);
     create index if not exists idx_blog_posts_user_id on blog_posts(user_id);
+    create index if not exists idx_blog_posts_categories on blog_posts using gin ((categories));
     
     -- CMS pages table
     create table if not exists cms_pages (

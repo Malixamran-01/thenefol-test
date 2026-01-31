@@ -15,6 +15,14 @@ interface BlogRequest {
   author_name: string
   author_email: string
   images: File[]
+  meta_title: string
+  meta_description: string
+  meta_keywords: string
+  og_title: string
+  og_description: string
+  og_image: string
+  canonical_url: string
+  categories: string[]
 }
 
 interface LinkModalData {
@@ -35,7 +43,15 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     excerpt: '',
     author_name: '',
     author_email: '',
-    images: []
+    images: [],
+    meta_title: '',
+    meta_description: '',
+    meta_keywords: '',
+    og_title: '',
+    og_description: '',
+    og_image: '',
+    canonical_url: '',
+    categories: []
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -55,6 +71,17 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     '#FFC0CB', '#A52A2A', '#808080', '#FFD700', '#4B0082'
   ]
 
+  const categoryOptions = [
+    'lifestyle',
+    'blog',
+    'memory',
+    'post',
+    'journal',
+    'beauty',
+    'skincare',
+    'tips'
+  ]
+
   useEffect(() => {
     if (isAuthenticated && user) {
       setFormData(prev => ({
@@ -68,6 +95,15 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const toggleCategory = (category: string) => {
+    setFormData(prev => ({
+      ...prev,
+      categories: prev.categories.includes(category)
+        ? prev.categories.filter(item => item !== category)
+        : [...prev.categories, category]
+    }))
   }
 
   const handleEditorInput = () => {
@@ -251,6 +287,14 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       formDataToSend.append('excerpt', formData.excerpt)
       formDataToSend.append('author_name', formData.author_name)
       formDataToSend.append('author_email', formData.author_email)
+      formDataToSend.append('meta_title', formData.meta_title)
+      formDataToSend.append('meta_description', formData.meta_description)
+      formDataToSend.append('meta_keywords', formData.meta_keywords)
+      formDataToSend.append('og_title', formData.og_title)
+      formDataToSend.append('og_description', formData.og_description)
+      formDataToSend.append('og_image', formData.og_image)
+      formDataToSend.append('canonical_url', formData.canonical_url)
+      formDataToSend.append('categories', JSON.stringify(formData.categories))
 
       formData.images.forEach(image => {
         formDataToSend.append('images', image)
@@ -396,6 +440,124 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
               required 
               disabled={isSubmitting}
             />
+          </div>
+
+          {/* SEO & Categories */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">SEO & Social Sharing</h3>
+              <p className="text-xs text-gray-600 mt-1">
+                These fields improve how your blog appears in search results and social previews.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
+                <input
+                  name="meta_title"
+                  value={formData.meta_title}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Custom title for search engines"
+                  maxLength={60}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Canonical URL</label>
+                <input
+                  name="canonical_url"
+                  value={formData.canonical_url}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="https://www.yoursite.com/blog/your-post"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
+              <textarea
+                name="meta_description"
+                value={formData.meta_description}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={2}
+                maxLength={160}
+                placeholder="Short description for search engines (up to 160 characters)"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords / Tags</label>
+              <input
+                name="meta_keywords"
+                value={formData.meta_keywords}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g. skincare, routine, glowing skin"
+              />
+              <p className="text-xs text-gray-500 mt-1">Comma-separated keywords.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">OG Title</label>
+                <input
+                  name="og_title"
+                  value={formData.og_title}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Title for social preview"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">OG Image URL</label>
+                <input
+                  name="og_image"
+                  value={formData.og_image}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="https://.../image.jpg"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">OG Description</label>
+              <textarea
+                name="og_description"
+                value={formData.og_description}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={2}
+                maxLength={200}
+                placeholder="Description for social preview"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category Tags</label>
+              <div className="flex flex-wrap gap-2">
+                {categoryOptions.map(category => {
+                  const active = formData.categories.includes(category)
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => toggleCategory(category)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        active
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Rich Text Editor */}

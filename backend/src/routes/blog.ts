@@ -47,7 +47,21 @@ export function initBlogRouter(databasePool: Pool) {
 // Submit blog request
 router.post('/request', upload.array('images', 5), async (req, res) => {
   try {
-    const { title, content, excerpt, author_name, author_email } = req.body
+    const {
+      title,
+      content,
+      excerpt,
+      author_name,
+      author_email,
+      meta_title,
+      meta_description,
+      meta_keywords,
+      og_title,
+      og_description,
+      og_image,
+      canonical_url,
+      categories
+    } = req.body
     const images = req.files as Express.Multer.File[]
 
     if (!title || !content || !excerpt || !author_name || !author_email) {
@@ -70,12 +84,62 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
       }
     }
 
+    const parseStringArray = (value: any): string[] => {
+      if (!value) return []
+      if (Array.isArray(value)) return value.map(String).filter(Boolean)
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value)
+          if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean)
+        } catch {
+          return value.split(',').map(item => item.trim()).filter(Boolean)
+        }
+      }
+      return []
+    }
+
+    const parsedCategories = parseStringArray(categories)
+    const parsedKeywords = parseStringArray(meta_keywords)
+
     // Insert into database
     const { rows } = await pool.query(`
-      INSERT INTO blog_posts (title, content, excerpt, author_name, author_email, images, status, user_id)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
+      INSERT INTO blog_posts (
+        title,
+        content,
+        excerpt,
+        author_name,
+        author_email,
+        images,
+        status,
+        user_id,
+        meta_title,
+        meta_description,
+        meta_keywords,
+        og_title,
+        og_description,
+        og_image,
+        canonical_url,
+        categories
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING id, created_at
-    `, [title, content, excerpt, author_name, author_email, JSON.stringify(imageUrls), userId])
+    `, [
+      title,
+      content,
+      excerpt,
+      author_name,
+      author_email,
+      JSON.stringify(imageUrls),
+      userId,
+      meta_title || null,
+      meta_description || null,
+      parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
+      og_title || null,
+      og_description || null,
+      og_image || null,
+      canonical_url || null,
+      parsedCategories.length ? JSON.stringify(parsedCategories) : null
+    ])
 
     // Send email notification to admin (placeholder)
     console.log(`📧 New blog request from ${author_name}: ${title}`)
