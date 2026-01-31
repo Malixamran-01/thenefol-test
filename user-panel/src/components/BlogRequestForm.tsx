@@ -257,8 +257,9 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           >
             <X className="w-6 h-6 text-gray-600" />
           </button>
+        </div>
 
-        <div className="overflow-y-auto flex-1 p-6">
+        <div className="overflow-x-scroll overflow-y-scroll flex-1 p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -563,7 +564,6 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
         </form>
         </div>
-      </div>
       </div>
 
       {/* Link Modal */}
