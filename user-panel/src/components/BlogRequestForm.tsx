@@ -27,6 +27,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const editorRef = useRef<HTMLDivElement>(null)
   const savedSelectionRef = useRef<Range | null>(null)
   const colorButtonRef = useRef<HTMLButtonElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const [formData, setFormData] = useState<BlogRequest>({
     title: '',
@@ -158,17 +159,45 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   }
 
   const toggleColorPicker = () => {
-    if (!colorButtonRef.current) {
+    const button = colorButtonRef.current
+    const container = scrollContainerRef.current
+    if (!button || !container) {
       setShowColorPicker(prev => !prev)
       return
     }
-    const rect = colorButtonRef.current.getBoundingClientRect()
+    const rect = button.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
     setColorPickerPos({
-      top: rect.bottom + 8,
-      left: rect.left
+      top: rect.bottom - containerRect.top + container.scrollTop + 8,
+      left: rect.left - containerRect.left + container.scrollLeft
     })
     setShowColorPicker(prev => !prev)
   }
+
+  useEffect(() => {
+    if (!showColorPicker) return
+
+    const handleScrollOrResize = () => {
+      const button = colorButtonRef.current
+      const container = scrollContainerRef.current
+      if (!button || !container) return
+      const rect = button.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      setColorPickerPos({
+        top: rect.bottom - containerRect.top + container.scrollTop + 8,
+        left: rect.left - containerRect.left + container.scrollLeft
+      })
+    }
+
+    window.addEventListener('resize', handleScrollOrResize)
+    const scrollEl = scrollContainerRef.current
+    scrollEl?.addEventListener('scroll', handleScrollOrResize)
+
+    return () => {
+      window.removeEventListener('resize', handleScrollOrResize)
+      scrollEl?.removeEventListener('scroll', handleScrollOrResize)
+    }
+  }, [showColorPicker])
 
   const insertList = (ordered: boolean) => {
     // Get the current selection
@@ -307,7 +336,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
           </button>
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pt-12 sm:pt-14">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pt-12 sm:pt-14 relative">
             <form onSubmit={handleSubmit} className="space-y-6 w-full">
               {/* Title as heading */}
               <div className="mb-2">
@@ -372,16 +401,16 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           {/* Rich Text Editor */}
           <div className="w-full">
             <label className="block text-sm font-medium text-gray-700 mb-2">Blog Content *</label>
-            <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-700 w-full relative">
+            <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 w-full relative">
               {/* Enhanced Toolbar */}
-              <div className="bg-white-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative z-20">
-                <div className="flex flex-wrap gap-1 sm:gap-2 items-center min-w-max">
+              <div className="bg-gray-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative z-20">
+                <div className="flex flex-wrap gap-1 sm:gap-2 items-center min-w-max text-gray-700">
                   {/* Text Format Group */}
                   <div className="flex gap-1 border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
                     <button 
                       type="button" 
                       onClick={setParagraph} 
-                      className="px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-gray-200 rounded transition-colors text-xs sm:text-sm font-medium"
+                      className="px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-gray-200 rounded transition-colors text-xs sm:text-sm font-medium text-gray-700"
                       title="Paragraph"
                     >
                       P
@@ -391,7 +420,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                         key={h} 
                         type="button" 
                         onClick={() => setHeading(h)} 
-                        className="px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-gray-200 rounded transition-colors text-xs sm:text-sm font-semibold"
+                        className="px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-gray-200 rounded transition-colors text-xs sm:text-sm font-semibold text-gray-700"
                         title={`Heading ${h}`}
                       >
                         H{h}
@@ -404,7 +433,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <button 
                       type="button" 
                       onClick={() => exec('bold')} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors"
+                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
                       title="Bold"
                     >
                       <Bold size={18} className="sm:w-5 sm:h-5" />
@@ -412,7 +441,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <button 
                       type="button" 
                       onClick={() => exec('italic')} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors"
+                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
                       title="Italic"
                     >
                       <Italic size={18} className="sm:w-5 sm:h-5" />
@@ -420,7 +449,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <button 
                       type="button" 
                       onClick={() => exec('underline')} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors"
+                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
                       title="Underline"
                     >
                       <Underline size={18} className="sm:w-5 sm:h-5" />
@@ -432,7 +461,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <button 
                       type="button" 
                       onClick={toggleColorPicker}
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1"
+                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1 text-gray-700"
                       title="Text Color"
                       ref={colorButtonRef}
                     >
@@ -449,7 +478,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <button 
                       type="button" 
                       onClick={insertLink} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors"
+                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
                       title="Insert Link"
                     >
                       <LinkIcon size={18} className="sm:w-5 sm:h-5" />
@@ -457,7 +486,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <button 
                       type="button" 
                       onClick={() => insertList(false)} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors"
+                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
                       title="Bullet List"
                     >
                       <List size={18} className="sm:w-5 sm:h-5" />
@@ -465,7 +494,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <button 
                       type="button" 
                       onClick={() => insertList(true)} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors"
+                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
                       title="Numbered List"
                     >
                       <ListOrdered size={18} className="sm:w-5 sm:h-5" />
@@ -598,6 +627,30 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           </div>
 
         </form>
+
+        {/* Color Picker Overlay (scrolls with container) */}
+        {showColorPicker && (
+          <div
+            className="absolute bg-white border-2 border-gray-300 rounded-lg shadow-lg p-2 sm:p-3 z-[100]"
+            style={{ top: colorPickerPos.top, left: colorPickerPos.left }}
+          >
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-40 sm:w-48">
+              {colors.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => applyColor(color)}
+                  className="w-6 h-6 sm:w-8 sm:h-8 rounded border-2 hover:scale-110 transition-transform"
+                  style={{ 
+                    backgroundColor: color,
+                    borderColor: currentColor === color ? '#4B97C9' : '#D1D5DB'
+                  }}
+                  title={color}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         </div>
       </div>
 
@@ -667,29 +720,6 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         </div>
       )}
 
-      {/* Color Picker Portal */}
-      {showColorPicker && (
-        <div
-          className="fixed bg-white border-2 border-gray-300 rounded-lg shadow-lg p-2 sm:p-3 z-[100]"
-          style={{ top: colorPickerPos.top, left: colorPickerPos.left }}
-        >
-          <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-40 sm:w-48">
-            {colors.map(color => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => applyColor(color)}
-                className="w-6 h-6 sm:w-8 sm:h-8 rounded border-2 hover:scale-110 transition-transform"
-                style={{ 
-                  backgroundColor: color,
-                  borderColor: currentColor === color ? '#4B97C9' : '#D1D5DB'
-                }}
-                title={color}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Terms Modal */}
       {showTermsModal && (
