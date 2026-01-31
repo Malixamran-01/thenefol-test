@@ -61,6 +61,25 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     }
   }, [isAuthenticated, user])
 
+  // Close color picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showColorPicker) {
+        const target = event.target as HTMLElement
+        if (!target.closest('.color-picker-container')) {
+          setShowColorPicker(false)
+        }
+      }
+    }
+
+    if (showColorPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showColorPicker])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -76,12 +95,44 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   }
 
   const exec = (command: string, value?: string) => {
+    if (!editorRef.current) return
+    
+    // Save selection
+    const selection = window.getSelection()
+    let range: Range | null = null
+    if (selection && selection.rangeCount > 0) {
+      range = selection.getRangeAt(0)
+    }
+    
+    // Focus editor
+    editorRef.current.focus()
+    
+    // Restore selection if it exists
+    if (range && selection) {
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+    
+    // Execute command
     document.execCommand(command, false, value)
-    editorRef.current?.focus()
     handleEditorInput()
+    
+    // Maintain focus
+    editorRef.current.focus()
   }
 
   const setHeading = (level: number) => {
+    if (!editorRef.current) return
+    
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) {
+      // If no selection, just set format for new text
+      editorRef.current.focus()
+      exec('formatBlock', `h${level}`)
+      return
+    }
+    
+    // Apply heading format
     exec('formatBlock', `h${level}`)
   }
 
@@ -97,17 +148,56 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   }
 
   const confirmLink = () => {
-    if (!linkData.url) return
+    if (!linkData.url || !editorRef.current) return
     
-    // If there's text, insert it with the link
-    if (linkData.text) {
-      const html = `<a href="${linkData.url}" target="_blank" rel="noopener noreferrer" style="color: #4B97C9; text-decoration: underline;">${linkData.text}</a>`
-      exec('insertHTML', html)
-    } else {
-      // If no text, just insert the URL as clickable link
-      const html = `<a href="${linkData.url}" target="_blank" rel="noopener noreferrer" style="color: #4B97C9; text-decoration: underline;">${linkData.url}</a>`
-      exec('insertHTML', html)
+    const selection = window.getSelection()
+    if (!selection) {
+      // Fallback: just insert HTML
+      editorRef.current.focus()
+      const linkText = linkData.text || linkData.url
+      const linkHtml = `<a href="${linkData.url}" target="_blank" rel="noopener noreferrer" style="color: #4B97C9; text-decoration: underline;">${linkText}</a>`
+      document.execCommand('insertHTML', false, linkHtml)
+      handleEditorInput()
+      setShowLinkModal(false)
+      setLinkData({ text: '', url: '' })
+      return
     }
+    
+    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null
+    
+    if (!range) {
+      // If no selection, insert at cursor
+      editorRef.current.focus()
+      const linkText = linkData.text || linkData.url
+      const linkHtml = `<a href="${linkData.url}" target="_blank" rel="noopener noreferrer" style="color: #4B97C9; text-decoration: underline;">${linkText}</a>`
+      document.execCommand('insertHTML', false, linkHtml)
+    } else {
+      // Restore selection
+      selection.removeAllRanges()
+      selection.addRange(range)
+      
+      // Create link element
+      const linkText = linkData.text || linkData.url
+      const linkHtml = `<a href="${linkData.url}" target="_blank" rel="noopener noreferrer" style="color: #4B97C9; text-decoration: underline;">${linkText}</a>`
+      
+      // Insert the link
+      if (!range.collapsed) {
+        // Replace selected text with link
+        range.deleteContents()
+        const tempDiv = document.createElement('div')
+        tempDiv.innerHTML = linkHtml
+        const linkNode = tempDiv.firstChild
+        if (linkNode) {
+          range.insertNode(linkNode)
+        }
+      } else {
+        // Insert at cursor position
+        document.execCommand('insertHTML', false, linkHtml)
+      }
+    }
+    
+    handleEditorInput()
+    editorRef.current.focus()
     
     setShowLinkModal(false)
     setLinkData({ text: '', url: '' })
@@ -120,20 +210,37 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   }
 
   const insertList = (ordered: boolean) => {
-    // Get the current selection
-    const selection = window.getSelection()
-    if (!selection || !editorRef.current) return
-
-    // Save the selection range
-    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null
+    if (!editorRef.current) return
     
-    if (ordered) {
-      exec('insertOrderedList')
-    } else {
-      exec('insertUnorderedList')
+    const selection = window.getSelection()
+    if (!selection) {
+      editorRef.current.focus()
+      if (ordered) {
+        exec('insertOrderedList')
+      } else {
+        exec('insertUnorderedList')
+      }
+      return
     }
 
-    // Restore focus
+    // Focus editor first
+    editorRef.current.focus()
+    
+    // Save and restore selection
+    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null
+    if (range && selection) {
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+    
+    // Insert list
+    if (ordered) {
+      document.execCommand('insertOrderedList', false)
+    } else {
+      document.execCommand('insertUnorderedList', false)
+    }
+    
+    handleEditorInput()
     editorRef.current.focus()
   }
 
@@ -235,12 +342,15 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         }
         .editor-content {
           line-height: 1.8;
+          min-height: 300px;
+          max-height: 400px;
+          overflow-y: auto;
         }
-        .editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content h4 { font-size: 1.25em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content p { margin: 0.5em 0; }
+        .editor-content h1 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; line-height: 1.4; }
+        .editor-content h2 { font-size: 1.35em; font-weight: bold; margin: 0.5em 0; line-height: 1.4; }
+        .editor-content h3 { font-size: 1.2em; font-weight: bold; margin: 0.5em 0; line-height: 1.4; }
+        .editor-content h4 { font-size: 1.1em; font-weight: bold; margin: 0.5em 0; line-height: 1.4; }
+        .editor-content p { margin: 0.5em 0; line-height: 1.8; }
         .editor-content ul { list-style: disc; margin-left: 2em; padding-left: 0.5em; }
         .editor-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
         .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
@@ -260,7 +370,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           </div>
 
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-            <form onSubmit={handleSubmit} className="space-y-6 w-full">
+            <form onSubmit={handleSubmit} className="space-y-6 w-full max-w-none">
               {/* Title as heading */}
               <div className="mb-2">
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Submit Blog Post Request</h2>
@@ -324,10 +434,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           {/* Rich Text Editor */}
           <div className="w-full">
             <label className="block text-sm font-medium text-gray-700 mb-2">Blog Content *</label>
-            <div className="border-2 border-gray-300 rounded-lg overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 w-full">
+            <div className="border-2 border-gray-300 rounded-lg overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 w-full relative">
               {/* Enhanced Toolbar */}
-              <div className="bg-gray-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto">
-                <div className="flex flex-wrap gap-1 sm:gap-2 items-center min-w-max">
+              <div className="bg-gray-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative">
+                <div className="flex flex-wrap gap-1 sm:gap-2 items-center">
                   {/* Text Format Group */}
                   <div className="flex gap-1 border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
                     <button 
@@ -380,10 +490,13 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   </div>
 
                   {/* Color Picker */}
-                  <div className="relative border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
+                  <div className="color-picker-container relative border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
                     <button 
                       type="button" 
-                      onClick={() => setShowColorPicker(!showColorPicker)} 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowColorPicker(!showColorPicker)
+                      }} 
                       className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1"
                       title="Text Color"
                     >
@@ -394,13 +507,16 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                       />
                     </button>
                     {showColorPicker && (
-                      <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-300 rounded-lg shadow-lg p-2 sm:p-3 z-10">
+                      <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-2 sm:p-3 z-[200]">
                         <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-40 sm:w-48">
                           {colors.map(color => (
                             <button
                               key={color}
                               type="button"
-                              onClick={() => applyColor(color)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                applyColor(color)
+                              }}
                               className="w-6 h-6 sm:w-8 sm:h-8 rounded border-2 hover:scale-110 transition-transform"
                               style={{ 
                                 backgroundColor: color,
@@ -449,7 +565,12 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 ref={editorRef}
                 contentEditable
                 onInput={handleEditorInput}
-                className="editor-content min-h-[300px] sm:min-h-[400px] p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full"
+                className="editor-content p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full"
+                style={{ 
+                  minHeight: '300px',
+                  maxHeight: '400px',
+                  overflowY: 'auto'
+                }}
                 data-placeholder="Start writing your blog post here... Use the toolbar above to format your text, add links, and create lists."
                 suppressContentEditableWarning
               />
