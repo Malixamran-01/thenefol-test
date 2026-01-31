@@ -246,8 +246,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
         .editor-content a { color: #4B97C9; text-decoration: underline; }
       `}</style>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-3 sm:px-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-[95vw] sm:max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-2xl font-bold text-gray-800">Submit Blog Post Request</h2>
           <button 
@@ -259,7 +259,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           </button>
         </div>
 
-        <div className="overflow-x-scroll overflow-y-scroll flex-1 p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4">
           <form onSubmit={handleSubmit} className="space-y-6">
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
