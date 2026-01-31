@@ -19,6 +19,7 @@ import SwipeNavigation from './components/SwipeNavigation'
 const LoginPage = lazy(() => import('./pages/Login'))
 const SignupPage = lazy(() => import('./pages/Signup'))
 const Profile = lazy(() => import('./pages/Profile'))
+const AuthorProfile = lazy(() => import('./pages/AuthorProfile'))
 const NefolCoins = lazy(() => import('./pages/NefolCoins'))
 const CoinWithdrawal = lazy(() => import('./pages/CoinWithdrawal'))
 const UserOrders = lazy(() => import('./pages/UserOrders'))
@@ -995,6 +996,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
   if (lower.startsWith('/user/product/')) return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
   if (lower.startsWith('/user/blog/') && lower !== '/user/blog') return <BlogDetail />
+  if (lower.startsWith('/user/author/')) return <AuthorProfile />
   if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />
   if (lower.startsWith('/user/confirmation')) return <Confirmation />
   if (lower.startsWith('/user/order/')) return <OrderDetails />

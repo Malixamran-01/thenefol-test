@@ -80,6 +80,65 @@ async function runMigration() {
         created_at timestamptz default now(),
         updated_at timestamptz default now()
       );
+
+      -- Ensure blog_posts SEO columns exist (migration for existing tables)
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'user_id'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN user_id integer references users(id) on delete set null;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'meta_title'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN meta_title text;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'meta_description'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN meta_description text;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'meta_keywords'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN meta_keywords jsonb;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'og_title'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN og_title text;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'og_description'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN og_description text;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'og_image'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN og_image text;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'canonical_url'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN canonical_url text;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'categories'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN categories jsonb;
+        END IF;
+      END $$;
       
       -- CMS pages table
       CREATE TABLE IF NOT EXISTS cms_pages (

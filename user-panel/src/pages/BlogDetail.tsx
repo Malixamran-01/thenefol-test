@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, User, ArrowLeft, X } from 'lucide-react'
+import { Calendar, ArrowLeft, X } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
 interface BlogPost {
@@ -9,6 +9,7 @@ interface BlogPost {
   content: string
   author_name: string
   author_email: string
+  user_id?: string | number
   images: string[]
   created_at: string
   updated_at: string
@@ -154,6 +155,38 @@ export default function BlogDetail() {
     window.location.hash = '#/user/blog'
   }
 
+  const handleAuthorClick = () => {
+    if (!post) return
+    const authorId = post.user_id ?? 'guest'
+    sessionStorage.setItem('blog_author_profile', JSON.stringify({
+      id: authorId,
+      name: post.author_name,
+      email: post.author_email
+    }))
+    window.location.hash = `#/user/author/${authorId}`
+  }
+
+  const getReadingTime = (content: string) => {
+    const text = content.replace(/<[^>]*>/g, ' ')
+    const words = text.trim().split(/\s+/).filter(Boolean).length
+    const minutes = Math.max(1, Math.round(words / 200))
+    return `${minutes} min read`
+  }
+
+  const parseCategories = (value: BlogPost['categories']) => {
+    if (!value) return []
+    if (Array.isArray(value)) return value
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        if (Array.isArray(parsed)) return parsed
+      } catch {
+        return value.split(',').map(item => item.trim()).filter(Boolean)
+      }
+    }
+    return []
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
@@ -188,397 +221,110 @@ export default function BlogDetail() {
     )
   }
 
+  const categories = parseCategories(post.categories)
+  const readingTime = getReadingTime(post.content || '')
+
   return (
-    <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
-      <div className="mx-auto max-w-4xl px-4">
+    <main className="min-h-screen bg-white">
+      <div className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:pt-10">
         {/* Back Button */}
         <button
           onClick={handleBack}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
+          className="mb-8 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
           style={{color: '#1B4965'}}
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Blog
         </button>
 
-        {/* Blog Post Content */}
-        <article className="bg-white rounded-lg shadow-sm overflow-hidden">
-          {/* Desktop Layout: Image on Left, Text on Right */}
-          {post.images && post.images.length > 0 ? (
-            <div className="hidden md:flex md:flex-row gap-0">
-              {/* Image on Left */}
-              <div className="relative w-1/2 min-h-[600px] flex-shrink-0">
-                <img 
-                  src={post.images[0]} 
-                  alt={post.title}
-                  className="w-full h-full object-cover"
-                />
-                {post.featured && (
-                  <div className="absolute top-4 left-4">
-                    <span className="text-white px-3 py-1 text-xs font-medium tracking-wide uppercase rounded-full" style={{backgroundColor: '#4B97C9'}}>
-                      FEATURED
-                    </span>
-                  </div>
-                )}
-              </div>
-              {/* Text Content on Right */}
-              <div className="w-1/2 p-8 lg:p-12 overflow-y-auto">
-                {/* Meta Information */}
-                <div className="mb-6 flex items-center gap-4 text-sm" style={{color: '#9DB4C0'}}>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    {formatDate(post.created_at)}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    {post.author_name}
-                  </div>
-                </div>
+        {/* Title */}
+        <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
+          {post.title}
+        </h1>
 
-                {/* Title */}
-                <h1 className="text-3xl lg:text-4xl font-serif mb-6" style={{
-                  color: '#1B4965', 
-                  fontWeight: 600, 
-                  letterSpacing: '-0.01em',
-                  lineHeight: '1.3',
-                  fontFamily: 'Georgia, "Times New Roman", serif'
-                }}>
-                  {post.title}
-                </h1>
-
-                {/* Excerpt */}
-                {post.excerpt && (
-                  <p className="text-lg lg:text-xl font-light mb-8 leading-relaxed" style={{
-                    color: '#4B97C9', 
-                    fontSize: '1.125rem',
-                    lineHeight: '1.7',
-                    letterSpacing: '0.01em',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                  }}>
-                    {post.excerpt}
-                  </p>
-                )}
-
-                {/* Content */}
-                <div 
-                  className="prose prose-lg max-w-none mb-8"
-                  style={{
-                    color: '#1a1a1a',
-                    lineHeight: '1.8',
-                    fontSize: '1.0625rem',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
-                    fontWeight: 400,
-                    letterSpacing: '0.01em'
-                  }}
-                >
-                  {post.content ? (
-                    post.content.includes('<') && post.content.includes('>') ? (
-                      <div 
-                        dangerouslySetInnerHTML={{ __html: post.content }}
-                        style={{
-                          color: '#1a1a1a',
-                          lineHeight: '1.8',
-                          fontSize: '1.0625rem',
-                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-                          letterSpacing: '0.01em'
-                        }}
-                      />
-                    ) : (
-                      <div 
-                        style={{ 
-                          whiteSpace: 'pre-wrap',
-                          color: '#1a1a1a',
-                          lineHeight: '1.8',
-                          fontSize: '1.0625rem',
-                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-                          letterSpacing: '0.01em'
-                        }}
-                      >
-                        {post.content.split('\n').map((paragraph, index) => (
-                          paragraph.trim() ? (
-                            <p key={index} style={{ 
-                              marginBottom: '1.25rem', 
-                              marginTop: index === 0 ? 0 : '1.25rem',
-                              color: '#1a1a1a',
-                              lineHeight: '1.8'
-                            }}>
-                              {paragraph}
-                            </p>
-                          ) : null
-                        ))}
-                      </div>
-                    )
-                  ) : (
-                    <p style={{ color: '#9DB4C0' }}>No content available.</p>
-                  )}
-                </div>
-
-                {/* Additional Images */}
-                {post.images && post.images.length > 1 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                    {post.images.slice(1).map((image, index) => (
-                      <img 
-                        key={index}
-                        src={image} 
-                        alt={`${post.title} - Image ${index + 2}`}
-                        className="w-full h-64 object-cover rounded-lg"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Author Info */}
-                <div className="mt-12 pt-8 border-t border-gray-200">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center" style={{backgroundColor: '#9DB4C0'}}>
-                      <User className="w-8 h-8" style={{color: '#1B4965'}} />
-                    </div>
-                    <div>
-                      <p className="font-semibold" style={{color: '#1B4965'}}>{post.author_name}</p>
-                      {post.author_email && (
-                        <p className="text-sm" style={{color: '#9DB4C0'}}>{post.author_email}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+        {/* Author Block */}
+        <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-gray-600">
+          <button
+            onClick={handleAuthorClick}
+            className="inline-flex items-center gap-2 hover:text-gray-900 transition-colors"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700 font-semibold">
+              {post.author_name?.charAt(0) || 'U'}
+            </span>
+            <div className="text-left">
+              <div className="text-sm font-semibold text-gray-900">Posted by {post.author_name}</div>
+              <div className="text-xs text-gray-500">{post.author_email || 'Author'}</div>
             </div>
-          ) : (
-            /* No image - show content in single column */
-            <div className="p-8">
-              {/* Meta Information */}
-              <div className="mb-6 flex items-center gap-4 text-sm" style={{color: '#9DB4C0'}}>
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {formatDate(post.created_at)}
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  {post.author_name}
-                </div>
-              </div>
+          </button>
+          <span className="text-gray-400">•</span>
+          <div className="inline-flex items-center gap-1">
+            <Calendar className="w-4 h-4" />
+            {formatDate(post.created_at)}
+          </div>
+          <span className="text-gray-400">•</span>
+          <div>{readingTime}</div>
+        </div>
 
-              {/* Title */}
-              <h1 className="text-4xl font-serif mb-6" style={{color: '#1B4965', fontWeight: 600, letterSpacing: '-0.02em'}}>
-                {post.title}
-              </h1>
-
-              {/* Excerpt */}
-              {post.excerpt && (
-                <p className="text-xl font-light mb-8 leading-relaxed" style={{color: '#4B97C9', fontSize: '1.25rem', lineHeight: '1.75'}}>
-                  {post.excerpt}
-                </p>
-              )}
-
-              {/* Content */}
-              <div 
-                className="prose prose-lg max-w-none mb-8"
-                style={{
-                  color: '#2d3748',
-                  lineHeight: '1.85',
-                  fontSize: '1.125rem',
-                  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                  fontWeight: 400
-                }}
-              >
-                {post.content ? (
-                  post.content.includes('<') && post.content.includes('>') ? (
-                    <div 
-                      dangerouslySetInnerHTML={{ __html: post.content }}
-                      style={{
-                        color: '#2d3748',
-                        lineHeight: '1.85',
-                        fontSize: '1.125rem'
-                      }}
-                    />
-                  ) : (
-                    <div 
-                      style={{ 
-                        whiteSpace: 'pre-wrap',
-                        color: '#2d3748',
-                        lineHeight: '1.85',
-                        fontSize: '1.125rem',
-                        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                      }}
-                    >
-                      {post.content.split('\n').map((paragraph, index) => (
-                        paragraph.trim() ? (
-                          <p key={index} style={{ marginBottom: '1.5rem', marginTop: index === 0 ? 0 : '1.5rem' }}>
-                            {paragraph}
-                          </p>
-                        ) : null
-                      ))}
-                    </div>
-                  )
-                ) : (
-                  <p style={{ color: '#9DB4C0' }}>No content available.</p>
-                )}
-              </div>
-
-              {/* Additional Images */}
-              {post.images && post.images.length > 1 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                  {post.images.slice(1).map((image, index) => (
-                    <img 
-                      key={index}
-                      src={image} 
-                      alt={`${post.title} - Image ${index + 2}`}
-                      className="w-full h-64 object-cover rounded-lg"
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Author Info */}
-              <div className="mt-12 pt-8 border-t border-gray-200">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center" style={{backgroundColor: '#9DB4C0'}}>
-                    <User className="w-8 h-8" style={{color: '#1B4965'}} />
-                  </div>
-                  <div>
-                    <p className="font-semibold" style={{color: '#1B4965'}}>{post.author_name}</p>
-                    {post.author_email && (
-                      <p className="text-sm" style={{color: '#9DB4C0'}}>{post.author_email}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Mobile Layout: Image Above, Content Below */}
-          {post.images && post.images.length > 0 && (
-            <div className="md:hidden">
-              <div className="relative w-full h-96">
-                <img 
-                  src={post.images[0]} 
-                  alt={post.title}
-                  className="w-full h-full object-cover"
-                />
-                {post.featured && (
-                  <div className="absolute top-4 left-4">
-                    <span className="text-white px-3 py-1 text-xs font-medium tracking-wide uppercase rounded-full" style={{backgroundColor: '#4B97C9'}}>
-                      FEATURED
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Post Content - Mobile or when no image */}
-          <div className={`p-8 ${post.images && post.images.length > 0 ? 'md:hidden' : ''}`}>
-            {/* Meta Information */}
-            <div className="mb-6 flex items-center gap-4 text-sm" style={{color: '#9DB4C0'}}>
-              <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                {formatDate(post.created_at)}
-              </div>
-              <div className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                {post.author_name}
-              </div>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-4xl font-serif mb-6" style={{color: '#1B4965', fontWeight: 600, letterSpacing: '-0.02em'}}>
-              {post.title}
-            </h1>
-
-            {/* Excerpt */}
-            {post.excerpt && (
-              <p className="text-xl font-light mb-8 leading-relaxed" style={{color: '#4B97C9', fontSize: '1.25rem', lineHeight: '1.75'}}>
-                {post.excerpt}
-              </p>
-            )}
-
-            {/* Content */}
-            <div 
-              className="prose prose-lg max-w-none mb-8"
-              style={{
-                color: '#1a1a1a',
-                lineHeight: '1.8',
-                fontSize: '1.0625rem',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
-                fontWeight: 400,
-                letterSpacing: '0.01em'
-              }}
-            >
-              {post.content ? (
-                post.content.includes('<') && post.content.includes('>') ? (
-                  <div 
-                    dangerouslySetInnerHTML={{ __html: post.content }}
-                    style={{
-                      color: '#1a1a1a',
-                      lineHeight: '1.8',
-                      fontSize: '1.0625rem',
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-                      letterSpacing: '0.01em'
-                    }}
-                  />
-                ) : (
-                  <div 
-                    style={{ 
-                      whiteSpace: 'pre-wrap',
-                      color: '#1a1a1a',
-                      lineHeight: '1.8',
-                      fontSize: '1.0625rem',
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-                      letterSpacing: '0.01em'
-                    }}
-                  >
-                    {post.content.split('\n').map((paragraph, index) => (
-                      paragraph.trim() ? (
-                        <p key={index} style={{ 
-                          marginBottom: '1.25rem', 
-                          marginTop: index === 0 ? 0 : '1.25rem',
-                          color: '#1a1a1a',
-                          lineHeight: '1.8'
-                        }}>
-                          {paragraph}
-                        </p>
-                      ) : null
-                    ))}
-                  </div>
-                )
-              ) : (
-                <p style={{ color: '#9DB4C0' }}>No content available.</p>
-              )}
-            </div>
-
-            {/* Additional Images */}
-            {post.images && post.images.length > 1 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                {post.images.slice(1).map((image, index) => (
-                  <img 
-                    key={index}
-                    src={image} 
-                    alt={`${post.title} - Image ${index + 2}`}
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Author Info */}
-            <div className="mt-12 pt-8 border-t border-gray-200">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center" style={{backgroundColor: '#9DB4C0'}}>
-                  <User className="w-8 h-8" style={{color: '#1B4965'}} />
-                </div>
-                <div>
-                  <p className="font-semibold" style={{color: '#1B4965'}}>{post.author_name}</p>
-                  {post.author_email && (
-                    <p className="text-sm" style={{color: '#9DB4C0'}}>{post.author_email}</p>
-                  )}
-                </div>
-              </div>
+        {/* Hero Image (16:9) */}
+        {post.images && post.images.length > 0 && (
+          <div className="mt-8 overflow-hidden rounded-2xl bg-gray-100">
+            <div className="aspect-video w-full">
+              <img
+                src={post.images[0]}
+                alt={post.title}
+                className="h-full w-full object-cover"
+              />
             </div>
           </div>
-        </article>
+        )}
 
-        {/* Back and Close Buttons */}
-        <div className="mt-8 flex items-center justify-center gap-4">
+        {/* Excerpt */}
+        {post.excerpt && (
+          <p className="mt-8 text-lg sm:text-xl leading-relaxed text-gray-700">
+            {post.excerpt}
+          </p>
+        )}
+
+        {/* Content */}
+        <div
+          className="prose prose-lg max-w-none mt-10 text-gray-800"
+          style={{
+            lineHeight: '1.85',
+            fontSize: '1.0625rem',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif'
+          }}
+        >
+          {post.content ? (
+            post.content.includes('<') && post.content.includes('>') ? (
+              <div dangerouslySetInnerHTML={{ __html: post.content }} />
+            ) : (
+              <div style={{ whiteSpace: 'pre-wrap' }}>
+                {post.content.split('\n').map((paragraph, index) =>
+                  paragraph.trim() ? <p key={index}>{paragraph}</p> : null
+                )}
+              </div>
+            )
+          ) : (
+            <p style={{ color: '#9DB4C0' }}>No content available.</p>
+          )}
+        </div>
+
+        {/* Categories */}
+        {categories.length > 0 && (
+          <div className="mt-10 flex flex-wrap gap-2">
+            {categories.map(category => (
+              <span
+                key={category}
+                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700"
+              >
+                {category}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Footer Actions */}
+        <div className="mt-12 flex items-center justify-center gap-4">
           <button
             onClick={handleBack}
             className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90"
