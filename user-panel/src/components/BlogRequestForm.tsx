@@ -326,17 +326,17 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
         .editor-content a { color: #4B97C9; text-decoration: underline; }
       `}</style>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[95vh] flex flex-col overflow-hidden mx-auto relative">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+        <div className="bg-white rounded-none sm:rounded-xl shadow-xl w-full max-w-3xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[95vh] flex flex-col overflow-hidden mx-auto relative">
           <button 
             onClick={onClose} 
-            className="absolute top-3 right-3 p-2 hover:bg-gray-100 rounded-full transition-colors z-20"
+            className="absolute top-2 right-2 sm:top-3 sm:right-3 p-2 hover:bg-gray-100 rounded-full transition-colors z-20"
             aria-label="Close"
           >
             <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
           </button>
 
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pt-12 sm:pt-14 relative">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:p-6 pt-12 sm:pt-14 relative">
             <form onSubmit={handleSubmit} className="space-y-6 w-full">
               {/* Title as heading */}
               <div className="mb-2">
