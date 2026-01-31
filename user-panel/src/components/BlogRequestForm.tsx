@@ -372,7 +372,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           {/* Rich Text Editor */}
           <div className="w-full">
             <label className="block text-sm font-medium text-gray-700 mb-2">Blog Content *</label>
-            <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 w-full relative">
+            <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-700 w-full relative">
               {/* Enhanced Toolbar */}
               <div className="bg-white-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative z-20">
                 <div className="flex flex-wrap gap-1 sm:gap-2 items-center min-w-max">
