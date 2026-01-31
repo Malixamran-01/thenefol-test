@@ -357,9 +357,9 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           {/* Rich Text Editor */}
           <div className="w-full">
             <label className="block text-sm font-medium text-gray-700 mb-2">Blog Content *</label>
-            <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 w-full">
+            <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 w-full relative">
               {/* Enhanced Toolbar */}
-              <div className="bg-gray-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative">
+              <div className="bg-gray-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative z-20">
                 <div className="flex flex-wrap gap-1 sm:gap-2 items-center min-w-max">
                   {/* Text Format Group */}
                   <div className="flex gap-1 border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
@@ -427,7 +427,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                       />
                     </button>
                     {showColorPicker && (
-                      <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-300 rounded-lg shadow-lg p-2 sm:p-3 z-30">
+                      <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-300 rounded-lg shadow-lg p-2 sm:p-3 z-50">
                         <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-40 sm:w-48">
                           {colors.map(color => (
                             <button
@@ -482,7 +482,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 ref={editorRef}
                 contentEditable
                 onInput={handleEditorInput}
-                className="editor-content h-[320px] sm:h-[380px] overflow-y-auto p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full"
+                className="editor-content h-[320px] sm:h-[380px] overflow-y-auto p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full relative z-10"
                 data-placeholder="Start writing your blog post here... Use the toolbar above to format your text, add links, and create lists."
                 suppressContentEditableWarning
               />
