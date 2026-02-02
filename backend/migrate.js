@@ -77,6 +77,10 @@ async function runMigration() {
         canonical_url text,
         categories jsonb,
         user_id integer references users(id) on delete set null,
+        is_active boolean default true,
+        is_archived boolean default false,
+        is_deleted boolean default false,
+        deleted_at timestamptz,
         created_at timestamptz default now(),
         updated_at timestamptz default now()
       );
@@ -138,7 +142,57 @@ async function runMigration() {
         ) THEN
           ALTER TABLE blog_posts ADD COLUMN categories jsonb;
         END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'is_active'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN is_active boolean default true;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'is_archived'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN is_archived boolean default false;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'is_deleted'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN is_deleted boolean default false;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'deleted_at'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN deleted_at timestamptz;
+        END IF;
       END $$;
+
+      -- Blog comments (threaded)
+      CREATE TABLE IF NOT EXISTS blog_comments (
+        id serial primary key,
+        post_id integer not null references blog_posts(id) on delete cascade,
+        parent_id integer references blog_comments(id) on delete cascade,
+        user_id integer references users(id) on delete set null,
+        author_name text,
+        author_email text,
+        content text not null,
+        is_active boolean default true,
+        is_archived boolean default false,
+        is_deleted boolean default false,
+        deleted_at timestamptz,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+      );
+
+      -- Blog likes
+      CREATE TABLE IF NOT EXISTS blog_post_likes (
+        id serial primary key,
+        post_id integer not null references blog_posts(id) on delete cascade,
+        user_id integer references users(id) on delete set null,
+        created_at timestamptz default now(),
+        unique(post_id, user_id)
+      );
       
       -- CMS pages table
       CREATE TABLE IF NOT EXISTS cms_pages (
@@ -212,8 +266,16 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(status);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_featured ON blog_posts(featured);
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_active ON blog_posts(is_active);
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_archived ON blog_posts(is_archived);
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_deleted ON blog_posts(is_deleted);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_user_id ON blog_posts(user_id);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_categories ON blog_posts USING gin ((categories));
+      CREATE INDEX IF NOT EXISTS idx_blog_comments_post_id ON blog_comments(post_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_comments_parent_id ON blog_comments(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_comments_deleted ON blog_comments(is_deleted);
+      CREATE INDEX IF NOT EXISTS idx_blog_likes_post_id ON blog_post_likes(post_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_likes_user_id ON blog_post_likes(user_id);
       CREATE INDEX IF NOT EXISTS idx_cms_pages_slug ON cms_pages(slug);
       CREATE INDEX IF NOT EXISTS idx_cms_sections_page_id ON cms_sections(page_id);
       CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);

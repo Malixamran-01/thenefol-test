@@ -452,6 +452,10 @@ export async function ensureSchema(pool: Pool) {
       og_image text,
       canonical_url text,
       categories jsonb,
+      is_active boolean default true,
+      is_archived boolean default false,
+      is_deleted boolean default false,
+      deleted_at timestamptz,
       user_id integer references users(id) on delete set null,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
@@ -514,6 +518,30 @@ export async function ensureSchema(pool: Pool) {
       ) then
         alter table blog_posts add column categories jsonb;
       end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'is_active'
+      ) then
+        alter table blog_posts add column is_active boolean default true;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'is_archived'
+      ) then
+        alter table blog_posts add column is_archived boolean default false;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'is_deleted'
+      ) then
+        alter table blog_posts add column is_deleted boolean default false;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'deleted_at'
+      ) then
+        alter table blog_posts add column deleted_at timestamptz;
+      end if;
     end $$;
     
     create index if not exists idx_blog_posts_status on blog_posts(status);
@@ -521,6 +549,42 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_blog_posts_created_at on blog_posts(created_at);
     create index if not exists idx_blog_posts_user_id on blog_posts(user_id);
     create index if not exists idx_blog_posts_categories on blog_posts using gin ((categories));
+    create index if not exists idx_blog_posts_active on blog_posts(is_active);
+    create index if not exists idx_blog_posts_archived on blog_posts(is_archived);
+    create index if not exists idx_blog_posts_deleted on blog_posts(is_deleted);
+
+    -- Blog comments (threaded)
+    create table if not exists blog_comments (
+      id serial primary key,
+      post_id integer not null references blog_posts(id) on delete cascade,
+      parent_id integer references blog_comments(id) on delete cascade,
+      user_id integer references users(id) on delete set null,
+      author_name text,
+      author_email text,
+      content text not null,
+      is_active boolean default true,
+      is_archived boolean default false,
+      is_deleted boolean default false,
+      deleted_at timestamptz,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now()
+    );
+
+    create index if not exists idx_blog_comments_post_id on blog_comments(post_id);
+    create index if not exists idx_blog_comments_parent_id on blog_comments(parent_id);
+    create index if not exists idx_blog_comments_deleted on blog_comments(is_deleted);
+
+    -- Blog likes
+    create table if not exists blog_post_likes (
+      id serial primary key,
+      post_id integer not null references blog_posts(id) on delete cascade,
+      user_id integer references users(id) on delete set null,
+      created_at timestamptz default now(),
+      unique(post_id, user_id)
+    );
+
+    create index if not exists idx_blog_likes_post_id on blog_post_likes(post_id);
+    create index if not exists idx_blog_likes_user_id on blog_post_likes(user_id);
     
     -- CMS pages table
     create table if not exists cms_pages (

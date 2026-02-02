@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { v4 as uuidv4 } from 'uuid'
 import { Pool } from 'pg'
+import { authenticateToken } from '../utils/apiHelpers'
 
 const router = express.Router()
 
@@ -44,6 +45,41 @@ export function initBlogRouter(databasePool: Pool) {
   pool = databasePool
 }
 
+const getUserIdFromToken = (req: express.Request): string | null => {
+  const token = req.headers.authorization?.replace('Bearer ', '')
+  if (!token) return null
+  const tokenParts = token.split('_')
+  if (tokenParts.length >= 3 && tokenParts[0] === 'user' && tokenParts[1] === 'token') {
+    return tokenParts[2]
+  }
+  return null
+}
+
+const cleanupDeletedBlogPosts = async () => {
+  if (!pool) return
+  const { rows } = await pool.query(
+    `SELECT id, images FROM blog_posts WHERE is_deleted = true AND deleted_at < now() - interval '30 days'`
+  )
+  for (const row of rows) {
+    if (row.images) {
+      try {
+        const imageArray = typeof row.images === 'string' ? JSON.parse(row.images) : row.images
+        imageArray.forEach((imagePath: string) => {
+          const fullPath = path.join(__dirname, '../../uploads/blog', path.basename(imagePath))
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath)
+          }
+        })
+      } catch (e) {
+        console.warn('Could not parse images array:', e)
+      }
+    }
+  }
+  if (rows.length > 0) {
+    await pool.query(`DELETE FROM blog_posts WHERE is_deleted = true AND deleted_at < now() - interval '30 days'`)
+  }
+}
+
 // Submit blog request
 router.post('/request', upload.array('images', 5), async (req, res) => {
   try {
@@ -75,14 +111,7 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
     const imageUrls = images.map(img => `/uploads/blog/${img.filename}`)
 
     // Extract user_id from token if provided (optional authentication)
-    let userId = null
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    if (token) {
-      const tokenParts = token.split('_')
-      if (tokenParts.length >= 3 && tokenParts[0] === 'user' && tokenParts[1] === 'token') {
-        userId = tokenParts[2]
-      }
-    }
+    const userId = getUserIdFromToken(req)
 
     const parseStringArray = (value: any): string[] => {
       if (!value) return []
@@ -119,9 +148,13 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
         og_description,
         og_image,
         canonical_url,
-        categories
+        categories,
+        is_active,
+        is_archived,
+        is_deleted,
+        deleted_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, $13, $14, $15, true, false, false, null)
       RETURNING id, created_at
     `, [
       title,
@@ -164,6 +197,9 @@ router.get('/posts', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT * FROM blog_posts 
       WHERE status = 'approved' 
+        AND is_active = true
+        AND is_archived = false
+        AND is_deleted = false
       ORDER BY created_at DESC
     `)
     
@@ -183,7 +219,11 @@ router.get('/posts/:id', async (req, res) => {
 
     const { rows } = await pool.query(`
       SELECT * FROM blog_posts 
-      WHERE id = $1 AND status = 'approved'
+      WHERE id = $1
+        AND status = 'approved'
+        AND is_active = true
+        AND is_archived = false
+        AND is_deleted = false
     `, [req.params.id])
     
     if (rows.length === 0) {
@@ -201,13 +241,14 @@ router.get('/posts/:id', async (req, res) => {
 // Get all blog requests (admin only)
 router.get('/admin/requests', async (req, res) => {
   try {
+    await cleanupDeletedBlogPosts()
     if (!pool) {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
     const { rows } = await pool.query(`
       SELECT * FROM blog_posts 
-      WHERE status = 'pending' 
+      WHERE status = 'pending' AND is_deleted = false
       ORDER BY created_at DESC
     `)
     
@@ -221,12 +262,14 @@ router.get('/admin/requests', async (req, res) => {
 // Get all blog posts (admin only)
 router.get('/admin/posts', async (req, res) => {
   try {
+    await cleanupDeletedBlogPosts()
     if (!pool) {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
     const { rows } = await pool.query(`
       SELECT * FROM blog_posts 
+      WHERE is_deleted = false
       ORDER BY created_at DESC
     `)
     
@@ -355,7 +398,7 @@ router.put('/admin/posts/:id', async (req, res) => {
   }
 })
 
-// Delete blog post
+// Soft delete blog post (recycle bin)
 router.delete('/admin/posts/:id', async (req, res) => {
   try {
     const postId = req.params.id
@@ -364,41 +407,217 @@ router.delete('/admin/posts/:id', async (req, res) => {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
-    // Get post info before deleting
-    const { rows: postRows } = await pool.query(`
-      SELECT images FROM blog_posts WHERE id = $1
-    `, [postId])
+    const { rows } = await pool.query(
+      `UPDATE blog_posts
+       SET is_deleted = true, deleted_at = now()
+       WHERE id = $1
+       RETURNING id`,
+      [postId]
+    )
 
-    if (postRows.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ message: 'Blog post not found' })
     }
 
-    const post = postRows[0]
-    
-    // Delete associated images
-    if (post.images) {
-      try {
-        const imageArray = JSON.parse(post.images)
-        imageArray.forEach((imagePath: string) => {
-          const fullPath = path.join(__dirname, '../../uploads/blog', path.basename(imagePath))
-          if (fs.existsSync(fullPath)) {
-            fs.unlinkSync(fullPath)
-          }
-        })
-      } catch (e) {
-        console.warn('Could not parse images array:', e)
-      }
-    }
-
-    // Delete from database
-    await pool.query('DELETE FROM blog_posts WHERE id = $1', [postId])
-
     res.json({
-      message: 'Blog post deleted successfully'
+      message: 'Blog post moved to recycle bin'
     })
   } catch (error) {
     console.error('Error deleting blog post:', error)
     res.status(500).json({ message: 'Failed to delete blog post' })
+  }
+})
+
+// Restore blog post from recycle bin
+router.post('/admin/posts/:id/restore', async (req, res) => {
+  try {
+    const postId = req.params.id
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE blog_posts
+       SET is_deleted = false, deleted_at = null
+       WHERE id = $1
+       RETURNING *`,
+      [postId]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Blog post not found' })
+    }
+
+    res.json({ message: 'Blog post restored', post: rows[0] })
+  } catch (error) {
+    console.error('Error restoring blog post:', error)
+    res.status(500).json({ message: 'Failed to restore blog post' })
+  }
+})
+
+// Toggle post active/archive status
+router.post('/admin/posts/:id/status', async (req, res) => {
+  try {
+    const postId = req.params.id
+    const { is_active, is_archived } = req.body
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE blog_posts
+       SET is_active = COALESCE($2, is_active),
+           is_archived = COALESCE($3, is_archived),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [postId, is_active, is_archived]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Blog post not found' })
+    }
+
+    res.json({ message: 'Blog post status updated', post: rows[0] })
+  } catch (error) {
+    console.error('Error updating blog post status:', error)
+    res.status(500).json({ message: 'Failed to update blog post status' })
+  }
+})
+
+// Likes
+router.get('/posts/:id/likes', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const postId = req.params.id
+    const userId = getUserIdFromToken(req)
+
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_likes WHERE post_id = $1`,
+      [postId]
+    )
+    const { rows: likedRows } = userId
+      ? await pool.query(
+        `SELECT 1 FROM blog_post_likes WHERE post_id = $1 AND user_id = $2 LIMIT 1`,
+        [postId, userId]
+      )
+      : { rows: [] }
+
+    res.json({ count: countRows[0]?.count || 0, liked: likedRows.length > 0 })
+  } catch (error) {
+    console.error('Error fetching likes:', error)
+    res.status(500).json({ message: 'Failed to fetch likes' })
+  }
+})
+
+router.post('/posts/:id/like', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const postId = req.params.id
+    const userId = req.userId
+
+    await pool.query(
+      `INSERT INTO blog_post_likes (post_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (post_id, user_id) DO NOTHING`,
+      [postId, userId]
+    )
+
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_likes WHERE post_id = $1`,
+      [postId]
+    )
+    res.json({ count: rows[0]?.count || 0 })
+  } catch (error) {
+    console.error('Error liking post:', error)
+    res.status(500).json({ message: 'Failed to like post' })
+  }
+})
+
+router.post('/posts/:id/unlike', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const postId = req.params.id
+    const userId = req.userId
+
+    await pool.query(
+      `DELETE FROM blog_post_likes WHERE post_id = $1 AND user_id = $2`,
+      [postId, userId]
+    )
+
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_likes WHERE post_id = $1`,
+      [postId]
+    )
+    res.json({ count: rows[0]?.count || 0 })
+  } catch (error) {
+    console.error('Error unliking post:', error)
+    res.status(500).json({ message: 'Failed to unlike post' })
+  }
+})
+
+// Comments
+router.get('/posts/:id/comments', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const postId = req.params.id
+    const { rows } = await pool.query(
+      `SELECT * FROM blog_comments
+       WHERE post_id = $1
+         AND is_deleted = false
+         AND is_active = true
+         AND is_archived = false
+       ORDER BY created_at ASC`,
+      [postId]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching comments:', error)
+    res.status(500).json({ message: 'Failed to fetch comments' })
+  }
+})
+
+router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const postId = req.params.id
+    const userId = req.userId
+    const { content, parent_id, author_name, author_email } = req.body
+
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ message: 'Comment content is required' })
+    }
+
+    if (parent_id) {
+      const { rows: parentRows } = await pool.query(
+        `SELECT id FROM blog_comments WHERE id = $1 AND post_id = $2`,
+        [parent_id, postId]
+      )
+      if (parentRows.length === 0) {
+        return res.status(400).json({ message: 'Invalid parent comment' })
+      }
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO blog_comments (post_id, parent_id, user_id, author_name, author_email, content)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [postId, parent_id || null, userId, author_name || null, author_email || null, content]
+    )
+    res.json(rows[0])
+  } catch (error) {
+    console.error('Error creating comment:', error)
+    res.status(500).json({ message: 'Failed to create comment' })
   }
 })
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, ArrowLeft, X } from 'lucide-react'
+import { Calendar, ArrowLeft, X, MessageCircle, ThumbsUp } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface BlogPost {
   id: string
@@ -25,10 +26,27 @@ interface BlogPost {
   categories?: string[] | string
 }
 
+interface BlogComment {
+  id: string
+  post_id: string
+  parent_id: string | null
+  user_id?: string | number | null
+  author_name?: string
+  author_email?: string
+  content: string
+  created_at: string
+}
+
 export default function BlogDetail() {
+  const { isAuthenticated, user } = useAuth()
   const [post, setPost] = useState<BlogPost | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [likesCount, setLikesCount] = useState(0)
+  const [liked, setLiked] = useState(false)
+  const [comments, setComments] = useState<BlogComment[]>([])
+  const [commentText, setCommentText] = useState('')
+  const [replyText, setReplyText] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const loadBlogPost = async () => {
@@ -88,6 +106,12 @@ export default function BlogDetail() {
 
     loadBlogPost()
   }, [])
+
+  useEffect(() => {
+    if (!post) return
+    fetchLikes()
+    fetchComments()
+  }, [post])
 
   useEffect(() => {
     if (!post) return
@@ -154,6 +178,124 @@ export default function BlogDetail() {
   const handleClose = () => {
     window.location.hash = '#/user/blog'
   }
+
+  const fetchLikes = async () => {
+    if (!post) return
+    try {
+      const apiBase = getApiBase()
+      const token = localStorage.getItem('token')
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/likes`, { headers })
+      if (response.ok) {
+        const data = await response.json()
+        setLikesCount(data.count || 0)
+        setLiked(!!data.liked)
+      } else {
+        setLikesCount(0)
+        setLiked(false)
+      }
+    } catch {
+      setLikesCount(0)
+      setLiked(false)
+    }
+  }
+
+  const fetchComments = async () => {
+    if (!post) return
+    try {
+      const apiBase = getApiBase()
+      const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/comments`)
+      if (response.ok) {
+        const data = await response.json()
+        setComments(data)
+      }
+    } catch (err) {
+      console.error('Failed to load comments:', err)
+    }
+  }
+
+  const handleLikeToggle = async () => {
+    if (!post) return
+    if (!isAuthenticated) {
+      sessionStorage.setItem('post_login_redirect', window.location.hash)
+      window.location.hash = '#/user/login'
+      return
+    }
+    try {
+      const apiBase = getApiBase()
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/${liked ? 'unlike' : 'like'}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setLikesCount(data.count || 0)
+        setLiked(!liked)
+      }
+    } catch (err) {
+      console.error('Failed to toggle like:', err)
+    }
+  }
+
+  const submitComment = async (parentId?: string) => {
+    if (!post) return
+    if (!isAuthenticated) {
+      sessionStorage.setItem('post_login_redirect', window.location.hash)
+      window.location.hash = '#/user/login'
+      return
+    }
+    const content = parentId ? replyText[parentId] : commentText
+    if (!content || !content.trim()) return
+    try {
+      const apiBase = getApiBase()
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          content,
+          parent_id: parentId || null,
+          author_name: user?.name,
+          author_email: user?.email
+        })
+      })
+      if (response.ok) {
+        await fetchComments()
+        if (parentId) {
+          setReplyText(prev => ({ ...prev, [parentId]: '' }))
+        } else {
+          setCommentText('')
+        }
+      }
+    } catch (err) {
+      console.error('Failed to submit comment:', err)
+    }
+  }
+
+  const buildCommentTree = (items: BlogComment[]) => {
+    const byParent: Record<string, BlogComment[]> = {}
+    items.forEach((comment) => {
+      const key = comment.parent_id || 'root'
+      if (!byParent[key]) byParent[key] = []
+      byParent[key].push(comment)
+    })
+    const build = (parentId: string | null): BlogComment[] =>
+      (byParent[parentId || 'root'] || []).map((comment) => ({
+        ...comment,
+        children: build(comment.id)
+      })) as any
+    return build(null)
+  }
+
+  const commentTree = buildCommentTree(comments)
 
   const handleAuthorClick = () => {
     if (!post) return
@@ -307,6 +449,105 @@ export default function BlogDetail() {
           ) : (
             <p style={{ color: '#9DB4C0' }}>No content available.</p>
           )}
+        </div>
+
+        {/* Likes */}
+        <div className="mt-10 flex items-center gap-3">
+          <button
+            onClick={handleLikeToggle}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              liked ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <ThumbsUp className="w-4 h-4" />
+            {liked ? 'Liked' : 'Like'}
+          </button>
+          <span className="text-sm text-gray-600">{likesCount} likes</span>
+        </div>
+
+        {/* Comments */}
+        <div className="mt-10">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageCircle className="w-4 h-4 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Comments</h2>
+            <span className="text-sm text-gray-500">({comments.length})</span>
+          </div>
+
+          <div className="mb-6">
+            <textarea
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              rows={3}
+              placeholder={isAuthenticated ? 'Write a comment...' : 'Sign in to comment'}
+              disabled={!isAuthenticated}
+            />
+            <div className="mt-2 flex justify-end">
+              <button
+                onClick={() => submitComment()}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                disabled={!isAuthenticated || !commentText.trim()}
+              >
+                Post Comment
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {commentTree.length === 0 ? (
+              <p className="text-sm text-gray-500">No comments yet. Be the first to comment.</p>
+            ) : (
+              commentTree.map((comment: any) => (
+                <div key={comment.id} className="border-l-2 border-gray-100 pl-4">
+                  <div className="rounded-lg border border-gray-100 bg-white p-3">
+                    <div className="text-sm font-semibold text-gray-900">
+                      {comment.author_name || 'User'}
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">
+                      {new Date(comment.created_at).toLocaleString()}
+                    </div>
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</div>
+                  </div>
+
+                  <div className="mt-2">
+                    <textarea
+                      value={replyText[comment.id] || ''}
+                      onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      rows={2}
+                      placeholder={isAuthenticated ? 'Reply...' : 'Sign in to reply'}
+                      disabled={!isAuthenticated}
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        onClick={() => submitComment(comment.id)}
+                        className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                        disabled={!isAuthenticated || !(replyText[comment.id] || '').trim()}
+                      >
+                        Reply
+                      </button>
+                    </div>
+                  </div>
+
+                  {comment.children && comment.children.length > 0 && (
+                    <div className="mt-4 space-y-3 pl-4 border-l border-gray-100">
+                      {comment.children.map((child: any) => (
+                        <div key={child.id} className="rounded-lg border border-gray-100 bg-white p-3">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {child.author_name || 'User'}
+                          </div>
+                          <div className="text-xs text-gray-500 mb-2">
+                            {new Date(child.created_at).toLocaleString()}
+                          </div>
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap">{child.content}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Categories */}
