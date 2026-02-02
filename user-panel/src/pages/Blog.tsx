@@ -292,11 +292,11 @@ export default function Blog() {
             const { likes, comments } = getPostStats(post)
             return (
               <article key={post.id} className="group overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div className="relative">
+                <div className="relative h-64">
                   <img
                     src={post.images[0] || '/IMAGES/default-blog.jpg'}
                     alt={post.title}
-                    className="h-60 w-full object-cover"
+                    className="h-full w-full object-cover object-center"
                   />
                   {post.featured && (
                     <span className="absolute left-4 top-4 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
