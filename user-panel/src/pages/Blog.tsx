@@ -3,6 +3,7 @@ import { Plus, Calendar, User, Heart, MessageCircle, Tag } from 'lucide-react'
 import BlogRequestForm from '../components/BlogRequestForm'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 
 interface BlogPost {
   id: string
@@ -17,6 +18,7 @@ interface BlogPost {
   status: 'pending' | 'approved' | 'rejected'
   featured: boolean
   category?: string
+  categories?: string[] | string
   likes_count?: number
   comments_count?: number
 }
@@ -76,7 +78,7 @@ export default function Blog() {
       updated_at: '2025-05-01',
       status: 'approved' as const,
       featured: true,
-      category: 'Ingredients',
+      categories: ['ingredients'],
       likes_count: 312,
       comments_count: 24
     },
@@ -92,7 +94,7 @@ export default function Blog() {
       updated_at: '2025-05-01',
       status: 'approved' as const,
       featured: false,
-      category: 'DIY',
+      categories: ['diy'],
       likes_count: 198,
       comments_count: 17
     },
@@ -108,7 +110,7 @@ export default function Blog() {
       updated_at: '2025-05-01',
       status: 'approved' as const,
       featured: false,
-      category: 'Concerns',
+      categories: ['concerns'],
       likes_count: 241,
       comments_count: 29
     },
@@ -124,7 +126,7 @@ export default function Blog() {
       updated_at: '2025-05-01',
       status: 'approved' as const,
       featured: false,
-      category: 'Routine',
+      categories: ['routine'],
       likes_count: 276,
       comments_count: 22
     },
@@ -140,7 +142,7 @@ export default function Blog() {
       updated_at: '2025-05-01',
       status: 'approved' as const,
       featured: false,
-      category: 'Ingredients',
+      categories: ['ingredients'],
       likes_count: 164,
       comments_count: 13
     },
@@ -156,7 +158,7 @@ export default function Blog() {
       updated_at: '2025-05-01',
       status: 'approved' as const,
       featured: false,
-      category: 'Benefits',
+      categories: ['benefits'],
       likes_count: 221,
       comments_count: 19
     },
@@ -172,9 +174,38 @@ export default function Blog() {
     })
   }
 
-  const getPostCategory = (post: BlogPost) => {
-    const trimmed = post.category?.trim()
-    return trimmed && trimmed.length > 0 ? trimmed : 'General'
+  const formatCategoryLabel = (category: string) =>
+    category
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+
+  const extractCategories = (post: BlogPost) => {
+    if (Array.isArray(post.categories)) {
+      return post.categories.map((category) => category.trim().toLowerCase()).filter(Boolean)
+    }
+    if (typeof post.categories === 'string') {
+      const trimmed = post.categories.trim()
+      if (!trimmed) return []
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          return parsed.map((category) => String(category).trim().toLowerCase()).filter(Boolean)
+        }
+      } catch {
+        // fall through to comma separation
+      }
+      return trimmed.split(',').map((category) => category.trim().toLowerCase()).filter(Boolean)
+    }
+    if (post.category) {
+      const trimmed = post.category.trim()
+      return trimmed ? [trimmed.toLowerCase()] : []
+    }
+    return []
+  }
+
+  const getPrimaryCategory = (post: BlogPost) => {
+    const categories = extractCategories(post)
+    return categories[0] ?? 'general'
   }
 
   const getPostStats = (post: BlogPost) => {
@@ -185,10 +216,11 @@ export default function Blog() {
     return { likes, comments }
   }
 
-  const categories = ['All', ...Array.from(new Set(displayPosts.map(getPostCategory)))]
+  const postCategories = displayPosts.flatMap((post) => extractCategories(post))
+  const categories = ['All', ...Array.from(new Set([...BLOG_CATEGORY_OPTIONS, ...postCategories]))]
   const filteredPosts = selectedCategory === 'All'
     ? displayPosts
-    : displayPosts.filter((post) => getPostCategory(post) === selectedCategory)
+    : displayPosts.filter((post) => extractCategories(post).includes(selectedCategory))
 
   return (
     <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
@@ -233,7 +265,7 @@ export default function Blog() {
                     backgroundColor: selectedCategory === category ? '#1B4965' : 'white'
                   }}
                 >
-                  {category}
+                  {category === 'All' ? 'All' : formatCategoryLabel(category)}
                 </button>
               ))}
             </div>
@@ -246,7 +278,7 @@ export default function Blog() {
               >
                 {categories.map((category) => (
                   <option key={category} value={category}>
-                    {category}
+                    {category === 'All' ? 'All' : formatCategoryLabel(category)}
                   </option>
                 ))}
               </select>
@@ -274,7 +306,9 @@ export default function Blog() {
                 </div>
                 <div className="bg-[#3C3936] px-6 py-5 text-white">
                   <div className="mb-3 flex items-center gap-3 text-xs uppercase tracking-wide text-white/70">
-                    <span className="rounded-full border border-white/20 px-3 py-1">{getPostCategory(post)}</span>
+                    <span className="rounded-full border border-white/20 px-3 py-1">
+                      {formatCategoryLabel(getPrimaryCategory(post))}
+                    </span>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
                       {formatDate(post.created_at)}

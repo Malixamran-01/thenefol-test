@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 
 interface BlogRequestFormProps {
   onClose: () => void
@@ -73,16 +74,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     '#FFC0CB', '#A52A2A', '#808080', '#FFD700', '#4B0082'
   ]
 
-  const categoryOptions = [
-    'lifestyle',
-    'blog',
-    'memory',
-    'post',
-    'journal',
-    'beauty',
-    'skincare',
-    'tips'
-  ]
+  const categoryOptions = BLOG_CATEGORY_OPTIONS
 
   useEffect(() => {
     if (isAuthenticated && user) {
