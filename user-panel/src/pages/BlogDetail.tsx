@@ -56,7 +56,7 @@ export default function BlogDetail() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({})
   const [expandedText, setExpandedText] = useState<Record<string, boolean>>({})
-  const [commentSort, setCommentSort] = useState<'new' | 'top'>('new')
+  const [commentSort, setCommentSort] = useState<'new' | 'old' | 'top' | 'replies'>('new')
 
   useEffect(() => {
     const loadBlogPost = async () => {
@@ -376,15 +376,31 @@ export default function BlogDetail() {
       if (!byParent[key]) byParent[key] = []
       byParent[key].push(comment)
     })
+    const sortByOldest = (a: BlogComment, b: BlogComment) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     const build = (parentId: string | null): BlogComment[] =>
-      (byParent[parentId || 'root'] || []).map((comment) => ({
-        ...comment,
-        children: build(comment.id)
-      })) as any
+      (byParent[parentId || 'root'] || [])
+        .sort(sortByOldest)
+        .map((comment) => ({
+          ...comment,
+          children: build(comment.id)
+        })) as any
     return build(null)
   }
 
   const commentTree = buildCommentTree(comments)
+  const sortedRoots = [...commentTree].sort((a: any, b: any) => {
+    if (commentSort === 'new') {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    }
+    if (commentSort === 'old') {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    }
+    if (commentSort === 'replies') {
+      return (b.children?.length || 0) - (a.children?.length || 0)
+    }
+    return (b.like_count || 0) - (a.like_count || 0)
+  })
 
   const handleAuthorClick = () => {
     if (!post) return
@@ -564,15 +580,19 @@ export default function BlogDetail() {
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <MessageCircle className="w-4 h-4 text-gray-600" />
             <h2 className="text-lg font-semibold text-gray-900">Comments</h2>
-            <span className="text-sm text-gray-500">({comments.length})</span>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+              {comments.length}
+            </span>
             <div className="ml-auto">
               <select
                 value={commentSort}
-                onChange={(e) => setCommentSort(e.target.value as 'new' | 'top')}
+                onChange={(e) => setCommentSort(e.target.value as 'new' | 'old' | 'top' | 'replies')}
                 className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               >
                 <option value="new">Newest</option>
+                <option value="old">Oldest</option>
                 <option value="top">Top</option>
+                <option value="replies">Most Replies</option>
               </select>
             </div>
           </div>
@@ -600,7 +620,7 @@ export default function BlogDetail() {
             {commentTree.length === 0 ? (
               <p className="text-sm text-gray-500">No comments yet. Be the first to comment.</p>
             ) : (
-              commentTree.map((comment: any) => {
+              sortedRoots.map((comment: any) => {
                 const replies = comment.children || []
                 const isExpanded = expandedComments[comment.id] ?? true
                 const isEditing = activeEditId === comment.id
@@ -616,6 +636,11 @@ export default function BlogDetail() {
                         <div>
                           <div className="text-sm font-semibold text-gray-900">
                             {comment.author_name || 'User'}
+                            {post.user_id && String(comment.user_id || '') === String(post.user_id) && (
+                              <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                                Author
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-gray-500">
                             {new Date(comment.created_at).toLocaleString()}
@@ -712,7 +737,10 @@ export default function BlogDetail() {
                             onClick={() => toggleReplies(comment.id)}
                             className="hover:text-gray-900"
                           >
-                            {isExpanded ? `Hide replies (${replies.length})` : `Show replies (${replies.length})`}
+                            {isExpanded ? 'Hide replies' : 'Show replies'}
+                            <span className="ml-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700">
+                              {replies.length}
+                            </span>
                           </button>
                         )}
                       </div>
@@ -754,6 +782,11 @@ export default function BlogDetail() {
                                 <div>
                                   <div className="text-sm font-semibold text-gray-900">
                                     {child.author_name || 'User'}
+                                    {post.user_id && String(child.user_id || '') === String(post.user_id) && (
+                                      <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                                        Author
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-xs text-gray-500">
                                     {new Date(child.created_at).toLocaleString()}
