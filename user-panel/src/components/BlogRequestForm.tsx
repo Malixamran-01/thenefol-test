@@ -23,6 +23,7 @@ interface BlogRequest {
   og_image: string
   canonical_url: string
   categories: string[]
+  allow_comments: boolean
 }
 
 interface LinkModalData {
@@ -51,7 +52,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     og_description: '',
     og_image: '',
     canonical_url: '',
-    categories: []
+    categories: [],
+    allow_comments: true
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -295,6 +297,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       formDataToSend.append('og_image', formData.og_image)
       formDataToSend.append('canonical_url', formData.canonical_url)
       formDataToSend.append('categories', JSON.stringify(formData.categories))
+      formDataToSend.append('allow_comments', String(formData.allow_comments))
 
       formData.images.forEach(image => {
         formDataToSend.append('images', image)
@@ -453,7 +456,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title(For search engines)</label>
                 <input
                   name="meta_title"
                   value={formData.meta_title}
@@ -464,19 +467,19 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Canonical URL</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Canonical URL(For search engines)</label>
                 <input
                   name="canonical_url"
                   value={formData.canonical_url}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="https://www.yoursite.com/blog/your-post"
+                  placeholder="https://www.thenefol.com/blog/your-post"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description(For search engines)</label>
               <textarea
                 name="meta_description"
                 value={formData.meta_description}
@@ -489,7 +492,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords / Tags</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords / Tags(For search engine visibility</label>
               <input
                 name="meta_keywords"
                 value={formData.meta_keywords}
@@ -502,7 +505,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">OG Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">OG Title(For social sharing preview)</label>
                 <input
                   name="og_title"
                   value={formData.og_title}
@@ -512,7 +515,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">OG Image URL</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">OG Image URL(For social sharing preview)</label>
                 <input
                   name="og_image"
                   value={formData.og_image}
@@ -524,7 +527,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">OG Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">OG Description(For social sharing preview)</label>
               <textarea
                 name="og_description"
                 value={formData.og_description}
@@ -537,7 +540,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category Tags</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category Tags(For blog categorization)</label>
               <div className="flex flex-wrap gap-2">
                 {categoryOptions.map(category => {
                   const active = formData.categories.includes(category)
@@ -557,6 +560,24 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   )
                 })}
               </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Allow Comments</p>
+                <p className="text-xs text-gray-500">Toggle whether readers can comment on this post.</p>
+              </div>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.allow_comments}
+                  onChange={(e) => setFormData(prev => ({ ...prev, allow_comments: e.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  {formData.allow_comments ? 'On' : 'Off'}
+                </span>
+              </label>
             </div>
           </div>
 

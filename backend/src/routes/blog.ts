@@ -96,7 +96,8 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
       og_description,
       og_image,
       canonical_url,
-      categories
+      categories,
+      allow_comments
     } = req.body
     const images = req.files as Express.Multer.File[]
 
@@ -149,12 +150,13 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
         og_image,
         canonical_url,
         categories,
+        allow_comments,
         is_active,
         is_archived,
         is_deleted,
         deleted_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, $13, $14, $15, true, false, false, null)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true, false, false, null)
       RETURNING id, created_at
     `, [
       title,
@@ -171,7 +173,8 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
       og_description || null,
       og_image || null,
       canonical_url || null,
-      parsedCategories.length ? JSON.stringify(parsedCategories) : null
+      parsedCategories.length ? JSON.stringify(parsedCategories) : null,
+      String(allow_comments).toLowerCase() === 'false' ? false : true
     ])
 
     // Send email notification to admin (placeholder)
@@ -571,6 +574,16 @@ router.get('/posts/:id/comments', async (req, res) => {
     const postId = req.params.id
     const sort = (req.query.sort as string) || 'new'
     const userId = getUserIdFromToken(req)
+    const { rows: postRows } = await pool.query(
+      `SELECT allow_comments FROM blog_posts WHERE id = $1`,
+      [postId]
+    )
+    if (postRows.length === 0) {
+      return res.status(404).json({ message: 'Blog post not found' })
+    }
+    if (postRows[0].allow_comments === false) {
+      return res.json([])
+    }
     const orderClause = sort === 'top'
       ? 'like_count DESC, created_at ASC'
       : 'created_at ASC'
@@ -615,6 +628,17 @@ router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
     const postId = req.params.id
     const userId = req.userId
     const { content, parent_id, author_name, author_email } = req.body
+
+    const { rows: postRows } = await pool.query(
+      `SELECT allow_comments FROM blog_posts WHERE id = $1`,
+      [postId]
+    )
+    if (postRows.length === 0) {
+      return res.status(404).json({ message: 'Blog post not found' })
+    }
+    if (postRows[0].allow_comments === false) {
+      return res.status(403).json({ message: 'Comments are disabled for this post' })
+    }
 
     if (!content || !String(content).trim()) {
       return res.status(400).json({ message: 'Comment content is required' })

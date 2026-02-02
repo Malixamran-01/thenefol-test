@@ -452,6 +452,7 @@ export async function ensureSchema(pool: Pool) {
       og_image text,
       canonical_url text,
       categories jsonb,
+      allow_comments boolean default true,
       is_active boolean default true,
       is_archived boolean default false,
       is_deleted boolean default false,
@@ -517,6 +518,12 @@ export async function ensureSchema(pool: Pool) {
         where table_name = 'blog_posts' and column_name = 'categories'
       ) then
         alter table blog_posts add column categories jsonb;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'allow_comments'
+      ) then
+        alter table blog_posts add column allow_comments boolean default true;
       end if;
       if not exists (
         select 1 from information_schema.columns

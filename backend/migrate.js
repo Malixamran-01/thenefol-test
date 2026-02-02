@@ -77,6 +77,7 @@ async function runMigration() {
         canonical_url text,
         categories jsonb,
         user_id integer references users(id) on delete set null,
+        allow_comments boolean default true,
         is_active boolean default true,
         is_archived boolean default false,
         is_deleted boolean default false,
@@ -141,6 +142,12 @@ async function runMigration() {
           WHERE table_name = 'blog_posts' AND column_name = 'categories'
         ) THEN
           ALTER TABLE blog_posts ADD COLUMN categories jsonb;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'allow_comments'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN allow_comments boolean default true;
         END IF;
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns 

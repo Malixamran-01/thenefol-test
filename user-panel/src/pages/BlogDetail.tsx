@@ -24,6 +24,7 @@ interface BlogPost {
   og_image?: string
   canonical_url?: string
   categories?: string[] | string
+  allow_comments?: boolean
 }
 
 interface BlogComment {
@@ -555,6 +556,11 @@ export default function BlogDetail() {
 
         {/* Comments */}
         <div className="mt-10">
+          {!post.allow_comments ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+              Comments are turned off for this post.
+            </div>
+          ) : (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <MessageCircle className="w-4 h-4 text-gray-600" />
             <h2 className="text-lg font-semibold text-gray-900">Comments</h2>
@@ -842,6 +848,7 @@ export default function BlogDetail() {
               })
             )}
           </div>
+          )}
         </div>
 
         {/* Categories */}
