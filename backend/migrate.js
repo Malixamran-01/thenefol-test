@@ -185,6 +185,15 @@ async function runMigration() {
         updated_at timestamptz default now()
       );
 
+      -- Blog comment likes
+      CREATE TABLE IF NOT EXISTS blog_comment_likes (
+        id serial primary key,
+        comment_id integer not null references blog_comments(id) on delete cascade,
+        user_id integer references users(id) on delete set null,
+        created_at timestamptz default now(),
+        unique(comment_id, user_id)
+      );
+
       -- Blog likes
       CREATE TABLE IF NOT EXISTS blog_post_likes (
         id serial primary key,
@@ -274,6 +283,8 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_blog_comments_post_id ON blog_comments(post_id);
       CREATE INDEX IF NOT EXISTS idx_blog_comments_parent_id ON blog_comments(parent_id);
       CREATE INDEX IF NOT EXISTS idx_blog_comments_deleted ON blog_comments(is_deleted);
+      CREATE INDEX IF NOT EXISTS idx_blog_comment_likes_comment_id ON blog_comment_likes(comment_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_comment_likes_user_id ON blog_comment_likes(user_id);
       CREATE INDEX IF NOT EXISTS idx_blog_likes_post_id ON blog_post_likes(post_id);
       CREATE INDEX IF NOT EXISTS idx_blog_likes_user_id ON blog_post_likes(user_id);
       CREATE INDEX IF NOT EXISTS idx_cms_pages_slug ON cms_pages(slug);

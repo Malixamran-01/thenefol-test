@@ -569,14 +569,36 @@ router.get('/posts/:id/comments', async (req, res) => {
       return res.status(500).json({ message: 'Database not initialized' })
     }
     const postId = req.params.id
+    const sort = (req.query.sort as string) || 'new'
+    const userId = getUserIdFromToken(req)
+    const orderClause = sort === 'top'
+      ? 'like_count DESC, created_at ASC'
+      : 'created_at ASC'
+
     const { rows } = await pool.query(
-      `SELECT * FROM blog_comments
-       WHERE post_id = $1
-         AND is_deleted = false
-         AND is_active = true
-         AND is_archived = false
-       ORDER BY created_at ASC`,
-      [postId]
+      `
+      SELECT
+        c.*,
+        COALESCE(lc.like_count, 0) AS like_count,
+        CASE WHEN ul.user_id IS NULL THEN false ELSE true END AS liked
+      FROM blog_comments c
+      LEFT JOIN (
+        SELECT comment_id, COUNT(*)::int AS like_count
+        FROM blog_comment_likes
+        GROUP BY comment_id
+      ) lc ON lc.comment_id = c.id
+      LEFT JOIN (
+        SELECT comment_id, user_id
+        FROM blog_comment_likes
+        WHERE user_id = $2
+      ) ul ON ul.comment_id = c.id
+      WHERE c.post_id = $1
+        AND c.is_deleted = false
+        AND c.is_active = true
+        AND c.is_archived = false
+      ORDER BY ${orderClause}
+      `,
+      [postId, userId]
     )
     res.json(rows)
   } catch (error) {
@@ -618,6 +640,118 @@ router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error creating comment:', error)
     res.status(500).json({ message: 'Failed to create comment' })
+  }
+})
+
+// Comment like/unlike
+router.post('/comments/:id/like', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const commentId = req.params.id
+    const userId = req.userId
+
+    await pool.query(
+      `INSERT INTO blog_comment_likes (comment_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (comment_id, user_id) DO NOTHING`,
+      [commentId, userId]
+    )
+
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_comment_likes WHERE comment_id = $1`,
+      [commentId]
+    )
+    res.json({ count: rows[0]?.count || 0 })
+  } catch (error) {
+    console.error('Error liking comment:', error)
+    res.status(500).json({ message: 'Failed to like comment' })
+  }
+})
+
+router.post('/comments/:id/unlike', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const commentId = req.params.id
+    const userId = req.userId
+
+    await pool.query(
+      `DELETE FROM blog_comment_likes WHERE comment_id = $1 AND user_id = $2`,
+      [commentId, userId]
+    )
+
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_comment_likes WHERE comment_id = $1`,
+      [commentId]
+    )
+    res.json({ count: rows[0]?.count || 0 })
+  } catch (error) {
+    console.error('Error unliking comment:', error)
+    res.status(500).json({ message: 'Failed to unlike comment' })
+  }
+})
+
+// Update comment (author only)
+router.patch('/comments/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const commentId = req.params.id
+    const userId = req.userId
+    const { content } = req.body
+
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ message: 'Comment content is required' })
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE blog_comments
+       SET content = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 AND user_id = $3 AND is_deleted = false
+       RETURNING *`,
+      [content, commentId, userId]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Comment not found or not editable' })
+    }
+
+    res.json(rows[0])
+  } catch (error) {
+    console.error('Error updating comment:', error)
+    res.status(500).json({ message: 'Failed to update comment' })
+  }
+})
+
+// Delete comment (author only, soft delete)
+router.delete('/comments/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const commentId = req.params.id
+    const userId = req.userId
+
+    const { rows } = await pool.query(
+      `UPDATE blog_comments
+       SET is_deleted = true, deleted_at = now()
+       WHERE id = $1 AND user_id = $2 AND is_deleted = false
+       RETURNING id`,
+      [commentId, userId]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Comment not found or not deletable' })
+    }
+
+    res.json({ message: 'Comment deleted' })
+  } catch (error) {
+    console.error('Error deleting comment:', error)
+    res.status(500).json({ message: 'Failed to delete comment' })
   }
 })
 

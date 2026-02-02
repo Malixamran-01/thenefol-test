@@ -574,6 +574,18 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_blog_comments_parent_id on blog_comments(parent_id);
     create index if not exists idx_blog_comments_deleted on blog_comments(is_deleted);
 
+    -- Blog comment likes
+    create table if not exists blog_comment_likes (
+      id serial primary key,
+      comment_id integer not null references blog_comments(id) on delete cascade,
+      user_id integer references users(id) on delete set null,
+      created_at timestamptz default now(),
+      unique(comment_id, user_id)
+    );
+
+    create index if not exists idx_blog_comment_likes_comment_id on blog_comment_likes(comment_id);
+    create index if not exists idx_blog_comment_likes_user_id on blog_comment_likes(user_id);
+
     -- Blog likes
     create table if not exists blog_post_likes (
       id serial primary key,
