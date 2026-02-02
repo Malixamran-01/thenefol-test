@@ -292,11 +292,17 @@ export default function Blog() {
             const { likes, comments } = getPostStats(post)
             return (
               <article key={post.id} className="group overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div className="relative h-64">
+                <div className="relative h-64 overflow-hidden">
                   <img
                     src={post.images[0] || '/IMAGES/default-blog.jpg'}
                     alt={post.title}
-                    className="h-full w-full object-cover object-center"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                    loading="lazy"
+                    onError={(event) => {
+                      const target = event.currentTarget
+                      if (target.src.includes('/IMAGES/default-blog.jpg')) return
+                      target.src = '/IMAGES/default-blog.jpg'
+                    }}
                   />
                   {post.featured && (
                     <span className="absolute left-4 top-4 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
