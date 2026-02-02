@@ -435,6 +435,19 @@ function BlogDetailsModal({
   onClose: () => void
 }) {
   const API_BASE = getApiBaseUrl()
+  const renderContent = (content: string) => {
+    if (!content) return <p className="text-gray-500">No content provided.</p>
+    const hasHtml = content.includes('<') && content.includes('>')
+    if (hasHtml) {
+      return (
+        <div
+          className="prose prose-slate max-w-none"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      )
+    }
+    return <div className="whitespace-pre-wrap text-gray-700">{content}</div>
+  }
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
@@ -464,7 +477,7 @@ function BlogDetailsModal({
 
           <div className="bg-gray-50 rounded p-4">
             <h3 className="font-semibold mb-2">Full Content:</h3>
-            <div className="whitespace-pre-wrap text-gray-700">{blog.content}</div>
+            {renderContent(blog.content)}
           </div>
 
           {blog.images && blog.images.length > 0 && (
