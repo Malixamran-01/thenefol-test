@@ -178,7 +178,8 @@ export default function Blog() {
   }
 
   const getPostStats = (post: BlogPost) => {
-    const base = post.id.split('').reduce((total, char) => total + char.charCodeAt(0), 0)
+    const seedSource = (post.id ?? post.title ?? '').toString()
+    const base = seedSource.split('').reduce((total, char) => total + char.charCodeAt(0), 0)
     const likes = post.likes_count ?? (base % 420) + 35
     const comments = post.comments_count ?? (base % 60) + 6
     return { likes, comments }
