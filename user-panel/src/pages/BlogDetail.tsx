@@ -623,7 +623,7 @@ export default function BlogDetail() {
             ) : (
               sortedRoots.map((comment: any) => {
                 const replies = comment.children || []
-                const isExpanded = expandedComments[comment.id] ?? true
+                const isExpanded = expandedComments[comment.id] ?? false
                 const isEditing = activeEditId === comment.id
                 const textExpanded = expandedText[comment.id] ?? false
                 const showTruncate = (comment.content || '').length > 220
