@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Calendar, User, Eye } from 'lucide-react'
+import { Plus, Calendar, User, Heart, MessageCircle, Tag } from 'lucide-react'
 import BlogRequestForm from '../components/BlogRequestForm'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -16,6 +16,9 @@ interface BlogPost {
   updated_at: string
   status: 'pending' | 'approved' | 'rejected'
   featured: boolean
+  category?: string
+  likes_count?: number
+  comments_count?: number
 }
 
 export default function Blog() {
@@ -25,6 +28,7 @@ export default function Blog() {
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [error, setError] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('All')
 
   // Fetch approved blog posts
   const fetchBlogPosts = async () => {
@@ -71,7 +75,10 @@ export default function Blog() {
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
       status: 'approved' as const,
-      featured: true
+      featured: true,
+      category: 'Ingredients',
+      likes_count: 312,
+      comments_count: 24
     },
     {
       id: 'diy-skincare-tips',
@@ -84,7 +91,10 @@ export default function Blog() {
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
       status: 'approved' as const,
-      featured: false
+      featured: false,
+      category: 'DIY',
+      likes_count: 198,
+      comments_count: 17
     },
     {
       id: 'combat-skin-issues',
@@ -97,7 +107,10 @@ export default function Blog() {
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
       status: 'approved' as const,
-      featured: false
+      featured: false,
+      category: 'Concerns',
+      likes_count: 241,
+      comments_count: 29
     },
     {
       id: 'skincare-routine-guide',
@@ -110,7 +123,10 @@ export default function Blog() {
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
       status: 'approved' as const,
-      featured: false
+      featured: false,
+      category: 'Routine',
+      likes_count: 276,
+      comments_count: 22
     },
     {
       id: 'natural-ingredients',
@@ -123,7 +139,10 @@ export default function Blog() {
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
       status: 'approved' as const,
-      featured: false
+      featured: false,
+      category: 'Ingredients',
+      likes_count: 164,
+      comments_count: 13
     },
     {
       id: 'blue-pea-benefits',
@@ -136,7 +155,10 @@ export default function Blog() {
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
       status: 'approved' as const,
-      featured: false
+      featured: false,
+      category: 'Benefits',
+      likes_count: 221,
+      comments_count: 19
     },
   ]
 
@@ -149,6 +171,23 @@ export default function Blog() {
       day: 'numeric'
     })
   }
+
+  const getPostCategory = (post: BlogPost) => {
+    const trimmed = post.category?.trim()
+    return trimmed && trimmed.length > 0 ? trimmed : 'General'
+  }
+
+  const getPostStats = (post: BlogPost) => {
+    const base = post.id.split('').reduce((total, char) => total + char.charCodeAt(0), 0)
+    const likes = post.likes_count ?? (base % 420) + 35
+    const comments = post.comments_count ?? (base % 60) + 6
+    return { likes, comments }
+  }
+
+  const categories = ['All', ...Array.from(new Set(displayPosts.map(getPostCategory)))]
+  const filteredPosts = selectedCategory === 'All'
+    ? displayPosts
+    : displayPosts.filter((post) => getPostCategory(post) === selectedCategory)
 
   return (
     <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
@@ -171,98 +210,103 @@ export default function Blog() {
           </div>
         ) : null}
 
-        {/* Featured Post */}
-        {displayPosts.filter(post => post.featured).map((post) => (
-          <div key={post.id} className="mb-16">
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                <div className="relative">
-                  <img 
-                    src={post.images[0] || '/IMAGES/default-blog.jpg'} 
-                    alt={post.title}
-                    className="w-full h-96 lg:h-full object-cover"
-                  />
-                  <div className="absolute top-4 left-4">
-                    <span className="text-white px-3 py-1 text-xs font-medium tracking-wide uppercase rounded-full" style={{backgroundColor: '#4B97C9'}}>
-                      FEATURED
-                    </span>
-                  </div>
-                </div>
-                <div className="p-8 flex flex-col justify-center">
-                  <div className="mb-4 flex items-center gap-4 text-sm" style={{color: '#9DB4C0'}}>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {formatDate(post.created_at)}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <User className="w-4 h-4" />
-                      {post.author_name}
-                    </div>
-                  </div>
-                  <h2 className="text-3xl font-serif mb-4" style={{color: '#1B4965'}}>
-                    {post.title}
-                  </h2>
-                  <p className="text-lg font-light mb-6 leading-relaxed" style={{color: '#9DB4C0'}}>
-                    {post.excerpt}
-                  </p>
-                  <a 
-                    href={`#/user/blog/${post.id}`}
-                    className="inline-block px-8 py-4 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg"
-                    style={{backgroundColor: 'rgb(75,151,201)'}}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
-                  >
-                    READ MORE
-                  </a>
-                </div>
-              </div>
+        {/* Category Filters */}
+        <div className="mb-10">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-sm uppercase tracking-widest" style={{ color: '#9DB4C0' }}>
+              <Tag className="h-4 w-4" />
+              Browse by category
+            </div>
+            <div className="hidden sm:flex flex-wrap justify-center gap-3">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
+                    selectedCategory === category
+                      ? 'text-white border-transparent'
+                      : 'text-[#1B4965] border-[#DCE6EE] bg-white'
+                  }`}
+                  style={{
+                    backgroundColor: selectedCategory === category ? '#1B4965' : 'white'
+                  }}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+            <div className="w-full sm:hidden">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full h-12 rounded-full border border-[#DCE6EE] px-4 text-sm focus:border-[#1B4965] focus:outline-none focus:ring-2 focus:ring-blue-200"
+                style={{ color: '#1B4965' }}
+              >
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-        ))}
+        </div>
 
         {/* Blog Posts Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {displayPosts.filter(post => !post.featured).map((post) => (
-            <article key={post.id} className="bg-white rounded-lg shadow-sm group overflow-hidden">
-              <div className="relative overflow-hidden">
-                <img 
-                  src={post.images[0] || '/IMAGES/default-blog.jpg'} 
-                  alt={post.title}
-                  className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute top-4 left-4">
-                  <span className="text-white px-3 py-1 text-xs font-medium tracking-wide uppercase rounded-full" style={{backgroundColor: '#4B97C9'}}>
-                    BLOG
-                  </span>
+          {filteredPosts.map((post) => {
+            const { likes, comments } = getPostStats(post)
+            return (
+              <article key={post.id} className="group overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div className="relative">
+                  <img
+                    src={post.images[0] || '/IMAGES/default-blog.jpg'}
+                    alt={post.title}
+                    className="h-60 w-full object-cover"
+                  />
+                  {post.featured && (
+                    <span className="absolute left-4 top-4 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                      Featured
+                    </span>
+                  )}
                 </div>
-              </div>
-              <div className="p-6">
-                <div className="mb-3 flex items-center gap-4 text-sm" style={{color: '#9DB4C0'}}>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    {formatDate(post.created_at)}
+                <div className="bg-[#3C3936] px-6 py-5 text-white">
+                  <div className="mb-3 flex items-center gap-3 text-xs uppercase tracking-wide text-white/70">
+                    <span className="rounded-full border border-white/20 px-3 py-1">{getPostCategory(post)}</span>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {formatDate(post.created_at)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    {post.author_name}
+                  <h3 className="mb-3 text-lg font-semibold leading-snug">{post.title}</h3>
+                  <p className="mb-4 text-sm leading-relaxed text-white/70">{post.excerpt}</p>
+                  <div className="mb-4 flex items-center justify-between text-xs text-white/70">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {post.author_name}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1">
+                        <Heart className="h-4 w-4" />
+                        {likes}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MessageCircle className="h-4 w-4" />
+                        {comments}
+                      </div>
+                    </div>
                   </div>
+                  <a
+                    href={`#/user/blog/${post.id}`}
+                    className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-white hover:text-[#1B4965]"
+                  >
+                    Read more
+                  </a>
                 </div>
-                <h3 className="text-xl font-serif mb-3" style={{color: '#1B4965'}}>
-                  {post.title}
-                </h3>
-                <p className="text-sm font-light mb-4 leading-relaxed" style={{color: '#9DB4C0'}}>
-                  {post.excerpt}
-                </p>
-                <a 
-                  href={`#/user/blog/${post.id}`}
-                  className="inline-block px-6 py-3 text-white font-medium transition-all duration-300 text-xs tracking-wide uppercase shadow-lg"
-                  style={{backgroundColor: '#4B97C9'}}
-                >
-                  READ MORE
-                </a>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </div>
 
         {/* Subscription Section */}
