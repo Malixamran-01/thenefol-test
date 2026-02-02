@@ -304,7 +304,7 @@ export default function Blog() {
                     </span>
                   )}
                 </div>
-                <div className="-mt-10 bg-[#3C3936]/85 px-6 py-5 text-white backdrop-blur-sm">
+                <div className="-mt-10 bg-[#3C3936]/40 px-6 py-5 text-white backdrop-blur-sm">
                   <div className="mb-3 flex items-center gap-3 text-xs uppercase tracking-wide text-white/70">
                     <span className="rounded-full border border-white/20 px-3 py-1">
                       {formatCategoryLabel(getPrimaryCategory(post))}
