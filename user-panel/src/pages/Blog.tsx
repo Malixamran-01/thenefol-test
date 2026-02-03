@@ -292,68 +292,60 @@ export default function Blog() {
             const { likes, comments } = getPostStats(post)
             const coverImage = post.images[0] || '/IMAGES/default-blog.jpg'
             return (
-              <article
-                key={post.id}
-                className="group relative h-[420px] overflow-hidden rounded-2xl bg-white bg-cover bg-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-                style={{ backgroundImage: `url(${coverImage})` }}
-              >
-                <div className="absolute inset-0">
-                  {post.featured && (
-                    <span className="absolute left-4 top-4 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-                      Featured
-                    </span>
-                  )}
-                </div>
-                <div className="absolute inset-x-0 bottom-0 h-[34%] overflow-hidden bg-[#3C3936]/40 px-6 pb-14 pt-5 text-white backdrop-blur-sm">
-                  <div className="mb-2 flex items-center gap-3 text-xs uppercase tracking-wide text-white/70">
-                    <span className="rounded-full border border-white/20 px-3 py-1 whitespace-nowrap">
-                      {formatCategoryLabel(getPrimaryCategory(post))}
-                    </span>
-                    <div className="flex items-center gap-1 whitespace-nowrap">
-                      <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                      {formatDate(post.created_at)}
-                    </div>
-                  </div>
-                  <h3
-                    className="mb-2 text-lg font-semibold leading-tight"
-                    style={{
-                      display: '-webkit-box',
-                      WebkitBoxOrient: 'vertical',
-                      WebkitLineClamp: 2,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
-                  >
-                    {post.title}
-                  </h3>
-                  <p
-                    className="mb-3 text-sm leading-relaxed text-white/80"
-                    style={{
-                      display: '-webkit-box',
-                      WebkitBoxOrient: 'vertical',
-                      WebkitLineClamp: 2,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
-                  >
-                    {post.excerpt}
-                  </p>
+              <div key={post.id} className="flex flex-col gap-3">
+                {/* Author Header */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/20">
-                      <User className="h-4 w-4 text-white" />
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
+                      <User className="h-5 w-5 text-gray-600" />
                     </div>
-                    <span 
-                      className="text-sm font-medium overflow-hidden text-ellipsis whitespace-nowrap"
-                      style={{
-                        maxWidth: '200px'
-                      }}
-                    >
+                    <span className="text-sm font-semibold" style={{ color: '#1B4965' }}>
                       {post.author_name}
                     </span>
                   </div>
+                  <button
+                    className="rounded-full px-4 py-1.5 text-xs font-semibold transition-colors"
+                    style={{ 
+                      backgroundColor: '#1B4965',
+                      color: 'white'
+                    }}
+                  >
+                    Subscribe
+                  </button>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between bg-transparent px-6 py-3">
-                  <div className="flex items-center gap-4 text-white">
+
+                {/* Card */}
+                <article className="group relative h-[420px] overflow-hidden rounded-2xl bg-white bg-cover bg-center shadow-sm transition-all duration-300 hover:shadow-lg">
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${coverImage})` }}
+                  />
+                  <div className="absolute inset-0">
+                    {post.featured && (
+                      <span className="absolute left-4 top-4 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                        Featured
+                      </span>
+                    )}
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 bg-[#3C3936]/50 px-6 py-4 text-white backdrop-blur-sm">
+                    <h3
+                      className="text-xl font-semibold leading-tight"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp: 2,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      {post.title}
+                    </h3>
+                  </div>
+                </article>
+
+                {/* Stats Footer */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4" style={{ color: '#1B4965' }}>
                     <div className="flex items-center gap-1.5">
                       <Heart className="h-4 w-4" />
                       <span className="text-sm font-medium">{likes}</span>
@@ -365,12 +357,13 @@ export default function Blog() {
                   </div>
                   <a
                     href={`#/user/blog/${post.id}`}
-                    className="rounded-lg bg-white/20 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition hover:bg-white hover:text-[#1B4965]"
+                    className="text-xs font-semibold uppercase tracking-wide transition-colors"
+                    style={{ color: '#1B4965' }}
                   >
-                    Read more
+                    Read more →
                   </a>
                 </div>
-              </article>
+              </div>
             )
           })}
         </div>
