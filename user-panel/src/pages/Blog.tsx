@@ -327,42 +327,53 @@ export default function Blog() {
                       </span>
                     )}
                   </div>
-                  <div className="absolute inset-x-0 bottom-0 bg-[#3C3936]/50 px-6 py-4 text-white backdrop-blur-sm">
-                    <h3
-                      className="text-xl font-semibold leading-tight"
-                      style={{
-                        display: '-webkit-box',
-                        WebkitBoxOrient: 'vertical',
-                        WebkitLineClamp: 2,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {post.title}
-                    </h3>
+                  <div className="absolute inset-x-0 bottom-0 flex h-[35%] flex-col justify-between overflow-hidden bg-[#3C3936]/40 px-6 py-4 text-white backdrop-blur-sm">
+                    <div className="flex-1 overflow-hidden">
+                      <h3
+                        className="mb-2 text-lg font-semibold leading-tight"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: 2,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {post.title}
+                      </h3>
+                      <p
+                        className="text-sm leading-relaxed text-white/80"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: 2,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {post.excerpt}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-white/20 pt-3">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5">
+                          <Heart className="h-4 w-4" />
+                          <span className="text-sm font-medium">{likes}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <MessageCircle className="h-4 w-4" />
+                          <span className="text-sm font-medium">{comments}</span>
+                        </div>
+                      </div>
+                      <a
+                        href={`#/user/blog/${post.id}`}
+                        className="rounded-lg bg-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wide transition hover:bg-white hover:text-[#1B4965]"
+                      >
+                        Read more
+                      </a>
+                    </div>
                   </div>
                 </article>
-
-                {/* Stats Footer */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4" style={{ color: '#1B4965' }}>
-                    <div className="flex items-center gap-1.5">
-                      <Heart className="h-4 w-4" />
-                      <span className="text-sm font-medium">{likes}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <MessageCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">{comments}</span>
-                    </div>
-                  </div>
-                  <a
-                    href={`#/user/blog/${post.id}`}
-                    className="text-xs font-semibold uppercase tracking-wide transition-colors"
-                    style={{ color: '#1B4965' }}
-                  >
-                    Read more →
-                  </a>
-                </div>
               </div>
             )
           })}
