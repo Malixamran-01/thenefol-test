@@ -64,6 +64,8 @@ async function runMigration() {
         content text not null,
         author_name text not null,
         author_email text not null,
+        cover_image text,
+        detail_image text,
         images jsonb default '[]'::jsonb,
         status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
         featured boolean default false,
@@ -172,6 +174,18 @@ async function runMigration() {
           WHERE table_name = 'blog_posts' AND column_name = 'deleted_at'
         ) THEN
           ALTER TABLE blog_posts ADD COLUMN deleted_at timestamptz;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'cover_image'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN cover_image text;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'detail_image'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN detail_image text;
         END IF;
       END $$;
 
