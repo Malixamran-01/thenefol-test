@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, MoreVertical, Edit3, FileText, Tag, Droplet, Maximize2, Maximize, Trash2, RotateCcw, RotateCw, FlipHorizontal, Crop as CropIcon, Filter as FilterIcon, Sliders, Type, Smile, Square } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
@@ -71,6 +71,15 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [currentColor, setCurrentColor] = useState('#000000')
   const [colorPickerPos, setColorPickerPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
+  const [imageMenuPos, setImageMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const [showImageMenu, setShowImageMenu] = useState(false)
+  const [showImageEditor, setShowImageEditor] = useState(false)
+  const [imageToEdit, setImageToEdit] = useState<string | null>(null)
+  const [imageCaption, setImageCaption] = useState('')
+  const [imageAltText, setImageAltText] = useState('')
+  const [showCaptionModal, setShowCaptionModal] = useState(false)
+  const [showAltTextModal, setShowAltTextModal] = useState(false)
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -89,6 +98,25 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       }))
     }
   }, [isAuthenticated, user])
+
+  // Attach click handlers to all images in editor
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const handleImageClickInEditor = (e: Event) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'IMG') {
+        e.stopPropagation()
+        handleImageClick(target as HTMLImageElement, e as MouseEvent)
+      }
+    }
+
+    editor.addEventListener('click', handleImageClickInEditor)
+    return () => {
+      editor.removeEventListener('click', handleImageClickInEditor)
+    }
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -302,7 +330,27 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       img.style.maxWidth = '100%'
       img.style.height = 'auto'
       img.style.margin = '10px 0'
+      img.style.cursor = 'pointer'
+      img.style.border = '2px solid transparent'
+      img.style.transition = 'all 0.2s'
       img.setAttribute('data-filename', file.name)
+      img.setAttribute('data-caption', '')
+      img.setAttribute('data-alt', file.name)
+      img.setAttribute('data-width-style', 'normal')
+      
+      // Add click handler to show context menu
+      img.addEventListener('click', (e) => {
+        e.stopPropagation()
+        handleImageClick(img, e as MouseEvent)
+      })
+      
+      // Add hover effect
+      img.addEventListener('mouseenter', () => {
+        img.style.borderColor = '#4B97C9'
+      })
+      img.addEventListener('mouseleave', () => {
+        img.style.borderColor = 'transparent'
+      })
       
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0)
@@ -330,6 +378,82 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     }
     
     input.click()
+  }
+
+  const handleImageClick = (img: HTMLImageElement, e: MouseEvent) => {
+    setSelectedImage(img)
+    setImageMenuPos({ top: e.clientY, left: e.clientX })
+    setShowImageMenu(true)
+    setImageCaption(img.getAttribute('data-caption') || '')
+    setImageAltText(img.getAttribute('data-alt') || img.alt)
+  }
+
+  const deleteImage = () => {
+    if (selectedImage && selectedImage.parentNode) {
+      selectedImage.parentNode.removeChild(selectedImage)
+      setShowImageMenu(false)
+      setSelectedImage(null)
+      handleEditorInput()
+    }
+  }
+
+  const setImageWidth = (width: 'normal' | 'wide' | 'full') => {
+    if (!selectedImage) return
+    
+    switch (width) {
+      case 'wide':
+        selectedImage.style.maxWidth = '120%'
+        selectedImage.style.marginLeft = '-10%'
+        break
+      case 'full':
+        selectedImage.style.maxWidth = '100vw'
+        selectedImage.style.marginLeft = 'calc(-50vw + 50%)'
+        break
+      default:
+        selectedImage.style.maxWidth = '100%'
+        selectedImage.style.marginLeft = '0'
+    }
+    selectedImage.setAttribute('data-width-style', width)
+    setShowImageMenu(false)
+    handleEditorInput()
+  }
+
+  const openImageEditor = () => {
+    if (selectedImage) {
+      setImageToEdit(selectedImage.src)
+      setShowImageEditor(true)
+      setShowImageMenu(false)
+    }
+  }
+
+  const saveImageCaption = () => {
+    if (selectedImage) {
+      selectedImage.setAttribute('data-caption', imageCaption)
+      // Add caption below image if it doesn't exist
+      let caption = selectedImage.nextElementSibling as HTMLParagraphElement | null
+      if (!caption || !caption.classList.contains('image-caption')) {
+        caption = document.createElement('p')
+        caption.classList.add('image-caption')
+        caption.style.fontSize = '0.875rem'
+        caption.style.color = '#6b7280'
+        caption.style.fontStyle = 'italic'
+        caption.style.marginTop = '0.5rem'
+        caption.style.textAlign = 'center'
+        selectedImage.parentNode?.insertBefore(caption, selectedImage.nextSibling)
+      }
+      caption.textContent = imageCaption
+      setShowCaptionModal(false)
+      handleEditorInput()
+    }
+  }
+
+  const saveImageAltText = () => {
+    if (selectedImage) {
+      selectedImage.setAttribute('data-alt', imageAltText)
+      selectedImage.alt = imageAltText
+      setShowAltTextModal(false)
+      handleEditorInput()
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -451,6 +575,9 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         .editor-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
         .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
         .editor-content a { color: #4B97C9; text-decoration: underline; }
+        .editor-content img { max-width: 100%; height: auto; margin: 10px 0; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .editor-content img:hover { border-color: #4B97C9; }
+        .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
         <div className="bg-white rounded-none sm:rounded-xl shadow-xl w-full max-w-3xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[95vh] flex flex-col overflow-hidden mx-auto relative">
@@ -1079,6 +1206,208 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Context Menu */}
+      {showImageMenu && (
+        <>
+          <div 
+            className="fixed inset-0 z-[50]" 
+            onClick={() => setShowImageMenu(false)}
+          />
+          <div
+            className="fixed z-[60] bg-white rounded-lg shadow-xl py-2 min-w-[200px]"
+            style={{ top: imageMenuPos.top, left: imageMenuPos.left }}
+          >
+            <button
+              onClick={openImageEditor}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit image
+            </button>
+            <button
+              onClick={() => {
+                setShowImageMenu(false)
+                setShowCaptionModal(true)
+              }}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+            >
+              <FileText className="w-4 h-4" />
+              Edit caption
+            </button>
+            <button
+              onClick={() => {
+                setShowImageMenu(false)
+                setShowAltTextModal(true)
+              }}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+            >
+              <Tag className="w-4 h-4" />
+              Edit alt text
+            </button>
+            <div className="border-t my-2" />
+            <button
+              onClick={() => setImageWidth('wide')}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+            >
+              <Maximize2 className="w-4 h-4" />
+              Wide width
+            </button>
+            <button
+              onClick={() => setImageWidth('full')}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+            >
+              <Maximize className="w-4 h-4" />
+              Full width
+            </button>
+            <div className="border-t my-2" />
+            <button
+              onClick={deleteImage}
+              className="w-full px-4 py-2 text-left hover:bg-red-50 flex items-center gap-2 text-sm text-red-600"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete image
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Caption Modal */}
+      {showCaptionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Edit Image Caption</h3>
+            <input
+              type="text"
+              value={imageCaption}
+              onChange={(e) => setImageCaption(e.target.value)}
+              placeholder="Enter caption..."
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex gap-3 mt-4 justify-end">
+              <button
+                onClick={() => setShowCaptionModal(false)}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveImageCaption}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alt Text Modal */}
+      {showAltTextModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Edit Alt Text</h3>
+            <input
+              type="text"
+              value={imageAltText}
+              onChange={(e) => setImageAltText(e.target.value)}
+              placeholder="Enter alt text..."
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-2">Alt text helps screen readers and SEO</p>
+            <div className="flex gap-3 mt-4 justify-end">
+              <button
+                onClick={() => setShowAltTextModal(false)}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveImageAltText}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Editor Modal */}
+      {showImageEditor && imageToEdit && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
+          <div className="bg-gray-900 rounded-lg w-full max-w-6xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-700">
+              <h3 className="text-white font-semibold">Edit Image</h3>
+              <button
+                onClick={() => setShowImageEditor(false)}
+                className="p-2 hover:bg-gray-800 rounded"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            <div className="flex-1 flex">
+              <div className="w-20 bg-gray-800 p-2 flex flex-col gap-2">
+                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                  <CropIcon className="w-5 h-5" />
+                  <span className="text-xs">Crop</span>
+                </button>
+                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                  <FilterIcon className="w-5 h-5" />
+                  <span className="text-xs">Filter</span>
+                </button>
+                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                  <Sliders className="w-5 h-5" />
+                  <span className="text-xs">Adjust</span>
+                </button>
+                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                  <Type className="w-5 h-5" />
+                  <span className="text-xs">Text</span>
+                </button>
+                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                  <Smile className="w-5 h-5" />
+                  <span className="text-xs">Sticker</span>
+                </button>
+              </div>
+              <div className="flex-1 flex items-center justify-center p-8">
+                <img
+                  src={imageToEdit}
+                  alt="Edit"
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-700 flex items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  className="p-2 hover:bg-gray-800 rounded text-white"
+                  title="Rotate Left"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+                <button
+                  className="p-2 hover:bg-gray-800 rounded text-white"
+                  title="Rotate Right"
+                >
+                  <RotateCw className="w-5 h-5" />
+                </button>
+                <button
+                  className="p-2 hover:bg-gray-800 rounded text-white"
+                  title="Flip Horizontal"
+                >
+                  <FlipHorizontal className="w-5 h-5" />
+                </button>
+              </div>
+              <button
+                onClick={() => setShowImageEditor(false)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Done
               </button>
             </div>
           </div>
