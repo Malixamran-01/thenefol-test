@@ -15,6 +15,7 @@ interface BlogRequest {
   excerpt: string
   author_name: string
   author_email: string
+  coverImage: File | null
   images: File[]
   meta_title: string
   meta_description: string
@@ -45,6 +46,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     excerpt: '',
     author_name: '',
     author_email: '',
+    coverImage: null,
     images: [],
     meta_title: '',
     meta_description: '',
@@ -247,6 +249,17 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     editorRef.current.focus()
   }
 
+  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setFormData(prev => ({ ...prev, coverImage: file }))
+    }
+  }
+
+  const removeCoverImage = () => {
+    setFormData(prev => ({ ...prev, coverImage: null }))
+  }
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }))
@@ -265,6 +278,12 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     if (!agreedToTerms) {
       setSubmitStatus('error')
       setErrorMessage('Please agree to the terms and conditions before submitting.')
+      return
+    }
+
+    if (!formData.coverImage) {
+      setSubmitStatus('error')
+      setErrorMessage('Please upload a cover image for your blog post.')
       return
     }
 
@@ -290,6 +309,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       formDataToSend.append('canonical_url', formData.canonical_url)
       formDataToSend.append('categories', JSON.stringify(formData.categories))
       formDataToSend.append('allow_comments', String(formData.allow_comments))
+
+      if (formData.coverImage) {
+        formDataToSend.append('coverImage', formData.coverImage)
+      }
 
       formData.images.forEach(image => {
         formDataToSend.append('images', image)
@@ -690,9 +713,62 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             </div>
           </div>
 
+          {/* Cover Image Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cover Image * <span className="text-xs text-gray-500">(Required - Recommended: 800x420px or 16:9 ratio)</span>
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+              <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-600 mb-3">
+                Upload your blog cover image (will be displayed as card background)
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleCoverImageUpload}
+                className="hidden"
+                id="cover-image-upload"
+                disabled={isSubmitting}
+              />
+              <label
+                htmlFor="cover-image-upload"
+                className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors"
+              >
+                Choose Cover Image
+              </label>
+              <p className="text-xs text-gray-500 mt-2">
+                Supported formats: JPG, PNG, WebP. Max 5MB. Best size: 800x420px (16:9 ratio)
+              </p>
+            </div>
+
+            {/* Display uploaded cover image */}
+            {formData.coverImage && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Cover Image Preview:</h4>
+                <div className="relative group w-full max-w-md">
+                  <img
+                    src={URL.createObjectURL(formData.coverImage)}
+                    alt="Cover preview"
+                    className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeCoverImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    disabled={isSubmitting}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1 truncate">{formData.coverImage.name}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Image Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Upload Images (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Additional Images (Optional)</label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
               <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className="text-sm text-gray-600 mb-3">

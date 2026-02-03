@@ -12,6 +12,7 @@ interface BlogPost {
   content: string
   author_name: string
   author_email: string
+  cover_image?: string
   images: string[]
   created_at: string
   updated_at: string
@@ -42,6 +43,9 @@ export default function Blog() {
         // Convert relative image paths to full URLs
         const postsWithFullImageUrls = data.filter((post: BlogPost) => post.status === 'approved').map((post: BlogPost) => ({
           ...post,
+          cover_image: post.cover_image && post.cover_image.startsWith('/uploads/') 
+            ? `${apiBase}${post.cover_image}` 
+            : post.cover_image,
           images: post.images.map((imagePath: string) => {
             if (imagePath.startsWith('/uploads/')) {
               return `${apiBase}${imagePath}`
@@ -65,7 +69,7 @@ export default function Blog() {
   }, [])
 
   // Fallback posts if API fails
-  const fallbackPosts = [
+  const fallbackPosts: BlogPost[] = [
     {
       id: 'origin-blue-tea',
       title: 'The Origin of Blue Tea Flower',
@@ -73,6 +77,7 @@ export default function Blog() {
       content: '',
       author_name: 'NEFOL® Team',
       author_email: '',
+      cover_image: '/IMAGES/FACE SERUM (5).jpg',
       images: ['/IMAGES/FACE SERUM (5).jpg'],
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
@@ -89,6 +94,7 @@ export default function Blog() {
       content: '',
       author_name: 'NEFOL® Team',
       author_email: '',
+      cover_image: '/IMAGES/HYDRATING MOISTURIZER (5).jpg',
       images: ['/IMAGES/HYDRATING MOISTURIZER (5).jpg'],
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
@@ -105,6 +111,7 @@ export default function Blog() {
       content: '',
       author_name: 'NEFOL® Team',
       author_email: '',
+      cover_image: '/IMAGES/FACE MASK (5).jpg',
       images: ['/IMAGES/FACE MASK (5).jpg'],
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
@@ -121,6 +128,7 @@ export default function Blog() {
       content: '',
       author_name: 'NEFOL® Team',
       author_email: '',
+      cover_image: '/IMAGES/FACE CLEANSER (5).jpg',
       images: ['/IMAGES/FACE CLEANSER (5).jpg'],
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
@@ -137,6 +145,7 @@ export default function Blog() {
       content: '',
       author_name: 'NEFOL® Team',
       author_email: '',
+      cover_image: '/IMAGES/BODY LOTION (5).jpg',
       images: ['/IMAGES/BODY LOTION (5).jpg'],
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
@@ -153,6 +162,7 @@ export default function Blog() {
       content: '',
       author_name: 'NEFOL® Team',
       author_email: '',
+      cover_image: '/IMAGES/HAIR MASK (5).jpg',
       images: ['/IMAGES/HAIR MASK (5).jpg'],
       created_at: '2025-05-01',
       updated_at: '2025-05-01',
@@ -290,7 +300,7 @@ export default function Blog() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredPosts.map((post) => {
             const { likes, comments } = getPostStats(post)
-            const coverImage = post.images[0] || '/IMAGES/default-blog.jpg'
+            const coverImage = post.cover_image || post.images[0] || '/IMAGES/default-blog.jpg'
             return (
               <div key={post.id} className="flex flex-col gap-3">
                 {/* Author Header */}
