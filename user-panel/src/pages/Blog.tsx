@@ -13,6 +13,7 @@ interface BlogPost {
   author_name: string
   author_email: string
   cover_image?: string
+  detail_image?: string
   images: string[]
   created_at: string
   updated_at: string
@@ -46,6 +47,9 @@ export default function Blog() {
           cover_image: post.cover_image && post.cover_image.startsWith('/uploads/') 
             ? `${apiBase}${post.cover_image}` 
             : post.cover_image,
+          detail_image: post.detail_image && post.detail_image.startsWith('/uploads/') 
+            ? `${apiBase}${post.detail_image}` 
+            : post.detail_image,
           images: post.images.map((imagePath: string) => {
             if (imagePath.startsWith('/uploads/')) {
               return `${apiBase}${imagePath}`

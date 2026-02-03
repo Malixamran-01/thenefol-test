@@ -58,9 +58,26 @@ const getUserIdFromToken = (req: express.Request): string | null => {
 const cleanupDeletedBlogPosts = async () => {
   if (!pool) return
   const { rows } = await pool.query(
-    `SELECT id, images FROM blog_posts WHERE is_deleted = true AND deleted_at < now() - interval '30 days'`
+    `SELECT id, cover_image, detail_image, images FROM blog_posts WHERE is_deleted = true AND deleted_at < now() - interval '30 days'`
   )
   for (const row of rows) {
+    // Delete cover image
+    if (row.cover_image) {
+      const coverPath = path.join(__dirname, '../../uploads/blog', path.basename(row.cover_image))
+      if (fs.existsSync(coverPath)) {
+        fs.unlinkSync(coverPath)
+      }
+    }
+    
+    // Delete detail image
+    if (row.detail_image) {
+      const detailPath = path.join(__dirname, '../../uploads/blog', path.basename(row.detail_image))
+      if (fs.existsSync(detailPath)) {
+        fs.unlinkSync(detailPath)
+      }
+    }
+    
+    // Delete content images
     if (row.images) {
       try {
         const imageArray = typeof row.images === 'string' ? JSON.parse(row.images) : row.images
@@ -81,7 +98,11 @@ const cleanupDeletedBlogPosts = async () => {
 }
 
 // Submit blog request
-router.post('/request', upload.array('images', 5), async (req, res) => {
+router.post('/request', upload.fields([
+  { name: 'coverImage', maxCount: 1 },
+  { name: 'detailImage', maxCount: 1 },
+  { name: 'images', maxCount: 5 }
+]), async (req, res) => {
   try {
     const {
       title,
@@ -99,17 +120,30 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
       categories,
       allow_comments
     } = req.body
-    const images = req.files as Express.Multer.File[]
+    
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] }
+    
+    // Extract different image types
+    const coverImageFile = files?.coverImage?.[0]
+    const detailImageFile = files?.detailImage?.[0]
+    const contentImages = files?.images || []
 
     if (!title || !content || !excerpt || !author_name || !author_email) {
       return res.status(400).json({ message: 'All fields are required' })
+    }
+
+    if (!coverImageFile) {
+      return res.status(400).json({ message: 'Cover image is required' })
     }
 
     if (!pool) {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
-    const imageUrls = images.map(img => `/uploads/blog/${img.filename}`)
+    // Generate URLs for different image types
+    const coverImageUrl = `/uploads/blog/${coverImageFile.filename}`
+    const detailImageUrl = detailImageFile ? `/uploads/blog/${detailImageFile.filename}` : null
+    const contentImageUrls = contentImages.map(img => `/uploads/blog/${img.filename}`)
 
     // Extract user_id from token if provided (optional authentication)
     const userId = getUserIdFromToken(req)
@@ -139,6 +173,8 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
         excerpt,
         author_name,
         author_email,
+        cover_image,
+        detail_image,
         images,
         status,
         user_id,
@@ -156,7 +192,7 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
         is_deleted,
         deleted_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true, false, false, null)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, true, false, false, null)
       RETURNING id, created_at
     `, [
       title,
@@ -164,7 +200,9 @@ router.post('/request', upload.array('images', 5), async (req, res) => {
       excerpt,
       author_name,
       author_email,
-      JSON.stringify(imageUrls),
+      coverImageUrl,
+      detailImageUrl,
+      JSON.stringify(contentImageUrls),
       userId,
       meta_title || null,
       meta_description || null,

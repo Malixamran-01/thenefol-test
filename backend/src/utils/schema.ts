@@ -549,6 +549,18 @@ export async function ensureSchema(pool: Pool) {
       ) then
         alter table blog_posts add column deleted_at timestamptz;
       end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'cover_image'
+      ) then
+        alter table blog_posts add column cover_image text;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_name = 'blog_posts' and column_name = 'detail_image'
+      ) then
+        alter table blog_posts add column detail_image text;
+      end if;
     end $$;
     
     create index if not exists idx_blog_posts_status on blog_posts(status);

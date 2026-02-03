@@ -16,6 +16,7 @@ interface BlogRequest {
   author_name: string
   author_email: string
   coverImage: File | null
+  detailImage: File | null
   images: File[]
   meta_title: string
   meta_description: string
@@ -47,6 +48,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     author_name: '',
     author_email: '',
     coverImage: null,
+    detailImage: null,
     images: [],
     meta_title: '',
     meta_description: '',
@@ -260,6 +262,17 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     setFormData(prev => ({ ...prev, coverImage: null }))
   }
 
+  const handleDetailImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setFormData(prev => ({ ...prev, detailImage: file }))
+    }
+  }
+
+  const removeDetailImage = () => {
+    setFormData(prev => ({ ...prev, detailImage: null }))
+  }
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }))
@@ -312,6 +325,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
       if (formData.coverImage) {
         formDataToSend.append('coverImage', formData.coverImage)
+      }
+
+      if (formData.detailImage) {
+        formDataToSend.append('detailImage', formData.detailImage)
       }
 
       formData.images.forEach(image => {
@@ -766,13 +783,66 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             )}
           </div>
 
-          {/* Image Upload */}
+          {/* Detail Page Image Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Additional Images (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Detail Page Image <span className="text-xs text-gray-500">(Optional - Appears below title on detail page)</span>
+            </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
               <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className="text-sm text-gray-600 mb-3">
-                Drag and drop images here, or click to select
+                Upload an image to display below the blog title on the detail page
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleDetailImageUpload}
+                className="hidden"
+                id="detail-image-upload"
+                disabled={isSubmitting}
+              />
+              <label
+                htmlFor="detail-image-upload"
+                className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors"
+              >
+                Choose Detail Image
+              </label>
+              <p className="text-xs text-gray-500 mt-2">
+                Supported formats: JPG, PNG, WebP. Max 5MB.
+              </p>
+            </div>
+
+            {/* Display uploaded detail image */}
+            {formData.detailImage && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Detail Image Preview:</h4>
+                <div className="relative group w-full max-w-md">
+                  <img
+                    src={URL.createObjectURL(formData.detailImage)}
+                    alt="Detail preview"
+                    className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeDetailImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    disabled={isSubmitting}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1 truncate">{formData.detailImage.name}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Content Images Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Content Images (Optional - For inserting in blog content)</label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+              <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-600 mb-3">
+                Upload images to insert anywhere in your blog content
               </p>
               <input
                 type="file"
