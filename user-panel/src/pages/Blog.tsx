@@ -304,43 +304,52 @@ export default function Blog() {
                     </span>
                   )}
                 </div>
-                <div className="absolute inset-x-0 bottom-0 bg-[#3C3936]/40 px-6 pb-16 pt-6 text-white backdrop-blur-sm">
-                  <div className="mb-3 flex items-center gap-3 text-xs uppercase tracking-wide text-white/70">
-                    <span className="rounded-full border border-white/20 px-3 py-1">
+                <div className="absolute inset-x-0 bottom-0 h-[34%] overflow-hidden bg-[#3C3936]/40 px-6 pb-14 pt-5 text-white backdrop-blur-sm">
+                  <div className="mb-2 flex items-center gap-3 text-xs uppercase tracking-wide text-white/70">
+                    <span className="rounded-full border border-white/20 px-3 py-1 whitespace-nowrap">
                       {formatCategoryLabel(getPrimaryCategory(post))}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1 whitespace-nowrap">
+                      <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
                       {formatDate(post.created_at)}
                     </div>
                   </div>
                   <h3
-                    className="mb-3 text-xl font-semibold leading-tight"
+                    className="mb-2 text-lg font-semibold leading-tight"
                     style={{
                       display: '-webkit-box',
                       WebkitBoxOrient: 'vertical',
                       WebkitLineClamp: 2,
-                      overflow: 'hidden'
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
                   >
                     {post.title}
                   </h3>
                   <p
-                    className="mb-4 text-sm leading-relaxed text-white/80"
+                    className="mb-3 text-sm leading-relaxed text-white/80"
                     style={{
                       display: '-webkit-box',
                       WebkitBoxOrient: 'vertical',
                       WebkitLineClamp: 2,
-                      overflow: 'hidden'
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
                   >
                     {post.excerpt}
                   </p>
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/20">
                       <User className="h-4 w-4 text-white" />
                     </div>
-                    <span className="text-sm font-medium">{post.author_name}</span>
+                    <span 
+                      className="text-sm font-medium overflow-hidden text-ellipsis whitespace-nowrap"
+                      style={{
+                        maxWidth: '200px'
+                      }}
+                    >
+                      {post.author_name}
+                    </span>
                   </div>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between bg-transparent px-6 py-3">
