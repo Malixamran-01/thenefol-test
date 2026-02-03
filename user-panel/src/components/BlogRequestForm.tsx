@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
@@ -273,16 +273,63 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     setFormData(prev => ({ ...prev, detailImage: null }))
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }))
-  }
-
-  const removeImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }))
+  const insertImageIntoEditor = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size must be less than 5MB')
+        return
+      }
+      
+      // Create a preview URL for the image
+      const imageUrl = URL.createObjectURL(file)
+      
+      // Save the selection before inserting
+      const selection = window.getSelection()
+      editorRef.current?.focus()
+      
+      // Insert image at cursor position
+      const img = document.createElement('img')
+      img.src = imageUrl
+      img.alt = file.name
+      img.style.maxWidth = '100%'
+      img.style.height = 'auto'
+      img.style.margin = '10px 0'
+      img.setAttribute('data-filename', file.name)
+      
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        range.insertNode(img)
+        
+        // Move cursor after the image
+        range.setStartAfter(img)
+        range.setEndAfter(img)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      } else {
+        editorRef.current?.appendChild(img)
+      }
+      
+      // Store the file reference for later upload
+      const currentImages = formData.images || []
+      setFormData(prev => ({ 
+        ...prev, 
+        images: [...currentImages, file] 
+      }))
+      
+      // Update content
+      handleEditorInput()
+    }
+    
+    input.click()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -688,7 +735,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     </button>
                   </div>
 
-                  {/* Link & Lists Group */}
+                  {/* Link, Image & Lists Group */}
                   <div className="flex gap-1 flex-shrink-0">
                     <button 
                       type="button" 
@@ -697,6 +744,14 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                       title="Insert Link"
                     >
                       <LinkIcon size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={insertImageIntoEditor} 
+                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
+                      title="Insert Image"
+                    >
+                      <ImageIcon size={18} className="sm:w-5 sm:h-5" />
                     </button>
                     <button 
                       type="button" 
@@ -831,62 +886,6 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <X className="w-4 h-4" />
                   </button>
                   <p className="text-xs text-gray-500 mt-1 truncate">{formData.detailImage.name}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Content Images Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Content Images (Optional - For inserting in blog content)</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-              <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-              <p className="text-sm text-gray-600 mb-3">
-                Upload images to insert anywhere in your blog content
-              </p>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="image-upload"
-                disabled={isSubmitting}
-              />
-              <label
-                htmlFor="image-upload"
-                className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors"
-              >
-                Choose Images
-              </label>
-              <p className="text-xs text-gray-500 mt-2">
-                Supported formats: JPG, PNG, GIF. Max 5MB per image.
-              </p>
-            </div>
-
-            {/* Display uploaded images */}
-            {formData.images.length > 0 && (
-              <div className="mt-4 w-full">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Uploaded Images:</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 w-full">
-                  {formData.images.map((image, index) => (
-                    <div key={index} className="relative group w-full">
-                      <img
-                        src={URL.createObjectURL(image)}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-24 sm:h-32 object-cover rounded-lg border-2 border-gray-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                        disabled={isSubmitting}
-                      >
-                        <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                      </button>
-                      <p className="text-xs text-gray-500 mt-1 truncate">{image.name}</p>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
