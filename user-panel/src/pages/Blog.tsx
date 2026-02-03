@@ -290,20 +290,14 @@ export default function Blog() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredPosts.map((post) => {
             const { likes, comments } = getPostStats(post)
+            const coverImage = post.images[0] || '/IMAGES/default-blog.jpg'
             return (
-              <article key={post.id} className="group overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div className="relative h-64 overflow-hidden">
-                  <img
-                    src={post.images[0] || '/IMAGES/default-blog.jpg'}
-                    alt={post.title}
-                    className="absolute inset-0 h-full w-full object-cover object-center"
-                    loading="lazy"
-                    onError={(event) => {
-                      const target = event.currentTarget
-                      if (target.src.includes('/IMAGES/default-blog.jpg')) return
-                      target.src = '/IMAGES/default-blog.jpg'
-                    }}
-                  />
+              <article
+                key={post.id}
+                className="group relative overflow-hidden rounded-2xl bg-white bg-cover bg-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                style={{ backgroundImage: `url(${coverImage})` }}
+              >
+                <div className="relative h-64">
                   {post.featured && (
                     <span className="absolute left-4 top-4 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
                       Featured
