@@ -399,80 +399,96 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   }
 
   const handleImageEditorSave = async (editedImageObject: any) => {
-    const base64 = editedImageObject.imageBase64
-    const blob = await fetch(base64).then(r => r.blob())
-    const editedFile = new File([blob], editingImageName || 'edited.png', { type: blob.type })
+    console.log('handleImageEditorSave called with:', editedImageObject)
     
-    // Create a preview URL for the edited image
-    const imageUrl = URL.createObjectURL(blob)
-    
-    // Focus the editor and restore the saved cursor position
-    editorRef.current?.focus()
-    
-    const imageId = createImageId()
+    try {
+      const base64 = editedImageObject.imageBase64
+      const blob = await fetch(base64).then(r => r.blob())
+      const editedFile = new File([blob], editingImageName || 'edited.png', { type: blob.type })
+      
+      console.log('Created file:', editedFile)
+      
+      // Create a preview URL for the edited image
+      const imageUrl = URL.createObjectURL(blob)
+      
+      // Focus the editor and restore the saved cursor position
+      editorRef.current?.focus()
+      
+      const imageId = createImageId()
 
-    // Insert image at cursor position
-    const img = document.createElement('img')
-    img.src = imageUrl
-    img.alt = editingImageName || 'edited image'
-    img.style.maxWidth = '100%'
-    img.style.height = 'auto'
-    img.style.margin = '10px 0'
-    img.style.cursor = 'pointer'
-    img.style.border = '2px solid transparent'
-    img.style.transition = 'all 0.2s'
-    img.setAttribute('data-filename', editingImageName || 'edited.png')
-    img.setAttribute('data-image-id', imageId)
-    img.setAttribute('data-caption', '')
-    img.setAttribute('data-alt', editingImageName || 'edited image')
-    img.setAttribute('data-width-style', 'normal')
-    
-    // Add click handler to show context menu
-    img.addEventListener('click', (e) => {
-      e.stopPropagation()
-      handleImageClick(img, e as MouseEvent)
-    })
-    
-    // Add hover effect
-    img.addEventListener('mouseenter', () => {
-      img.style.borderColor = '#4B97C9'
-    })
-    img.addEventListener('mouseleave', () => {
-      img.style.borderColor = 'transparent'
-    })
-    
-    // Use saved cursor position if available
-    const selection = window.getSelection()
-    if (selection && savedSelectionRef.current) {
-      selection.removeAllRanges()
-      selection.addRange(savedSelectionRef.current)
+      // Insert image at cursor position
+      const img = document.createElement('img')
+      img.src = imageUrl
+      img.alt = editingImageName || 'edited image'
+      img.style.maxWidth = '100%'
+      img.style.height = 'auto'
+      img.style.margin = '10px 0'
+      img.style.cursor = 'pointer'
+      img.style.border = '2px solid transparent'
+      img.style.transition = 'all 0.2s'
+      img.setAttribute('data-filename', editingImageName || 'edited.png')
+      img.setAttribute('data-image-id', imageId)
+      img.setAttribute('data-caption', '')
+      img.setAttribute('data-alt', editingImageName || 'edited image')
+      img.setAttribute('data-width-style', 'normal')
       
-      const range = selection.getRangeAt(0)
-      range.deleteContents()
-      range.insertNode(img)
+      // Add click handler to show context menu
+      img.addEventListener('click', (e) => {
+        e.stopPropagation()
+        handleImageClick(img, e as MouseEvent)
+      })
       
-      // Move cursor after the image
-      range.setStartAfter(img)
-      range.setEndAfter(img)
-      selection.removeAllRanges()
-      selection.addRange(range)
-    } else {
-      // Fallback: append to the end of the editor
-      editorRef.current?.appendChild(img)
+      // Add hover effect
+      img.addEventListener('mouseenter', () => {
+        img.style.borderColor = '#4B97C9'
+      })
+      img.addEventListener('mouseleave', () => {
+        img.style.borderColor = 'transparent'
+      })
+      
+      console.log('About to insert image into editor')
+      
+      // Use saved cursor position if available
+      const selection = window.getSelection()
+      if (selection && savedSelectionRef.current) {
+        console.log('Using saved cursor position')
+        selection.removeAllRanges()
+        selection.addRange(savedSelectionRef.current)
+        
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        range.insertNode(img)
+        
+        // Move cursor after the image
+        range.setStartAfter(img)
+        range.setEndAfter(img)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      } else {
+        console.log('No saved cursor position, appending to end')
+        // Fallback: append to the end of the editor
+        editorRef.current?.appendChild(img)
+      }
+      
+      // Store the file reference for later upload
+      const currentImages = formData.images || []
+      setFormData(prev => ({ 
+        ...prev, 
+        images: [...currentImages, { id: imageId, file: editedFile }] 
+      }))
+      
+      console.log('Image added to formData.images')
+      
+      // Clear saved selection and update content
+      savedSelectionRef.current = null
+      handleEditorInput()
+      setShowImageEditor(false)
+      setImageToEdit(null)
+      
+      console.log('Image editor closed successfully')
+    } catch (error) {
+      console.error('Error in handleImageEditorSave:', error)
     }
-    
-    // Store the file reference for later upload
-    const currentImages = formData.images || []
-    setFormData(prev => ({ 
-      ...prev, 
-      images: [...currentImages, { id: imageId, file: editedFile }] 
-    }))
-    
-    // Clear saved selection and update content
-    savedSelectionRef.current = null
-    handleEditorInput()
-    setShowImageEditor(false)
-    setImageToEdit(null)
   }
 
   const saveImageCaption = () => {
