@@ -17,7 +17,7 @@ interface BlogRequest {
   author_email: string
   coverImage: File | null
   detailImage: File | null
-  images: File[]
+  images: ContentImageItem[]
   meta_title: string
   meta_description: string
   meta_keywords: string
@@ -34,12 +34,19 @@ interface LinkModalData {
   url: string
 }
 
+interface ContentImageItem {
+  id: string
+  file: File
+}
+
 export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogRequestFormProps) {
   const { user, isAuthenticated } = useAuth()
   const editorRef = useRef<HTMLDivElement>(null)
   const savedSelectionRef = useRef<Range | null>(null)
   const colorButtonRef = useRef<HTMLButtonElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const editorCanvasRef = useRef<HTMLCanvasElement>(null)
+  const editorImageRef = useRef<HTMLImageElement | null>(null)
 
   const [formData, setFormData] = useState<BlogRequest>({
     title: '',
@@ -80,6 +87,21 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const [imageAltText, setImageAltText] = useState('')
   const [showCaptionModal, setShowCaptionModal] = useState(false)
   const [showAltTextModal, setShowAltTextModal] = useState(false)
+  const [activeEditorTool, setActiveEditorTool] = useState<'crop' | 'filter' | 'adjust' | 'text' | 'sticker'>('crop')
+  const [editingImageId, setEditingImageId] = useState<string | null>(null)
+  const [editingImageName, setEditingImageName] = useState<string>('')
+  const [editorImageSize, setEditorImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+  const [editorState, setEditorState] = useState({
+    rotation: 0,
+    flipH: false,
+    brightness: 100,
+    contrast: 100,
+    saturation: 100,
+    filter: 'none',
+    crop: { x: 0, y: 0, width: 100, height: 100 },
+    text: { value: '', size: 32, color: '#ffffff' },
+    sticker: { value: '✨', size: 48 }
+  })
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -301,6 +323,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     setFormData(prev => ({ ...prev, detailImage: null }))
   }
 
+  const createImageId = () => `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
   const insertImageIntoEditor = () => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -323,6 +347,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       const selection = window.getSelection()
       editorRef.current?.focus()
       
+      const imageId = createImageId()
+
       // Insert image at cursor position
       const img = document.createElement('img')
       img.src = imageUrl
@@ -334,6 +360,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       img.style.border = '2px solid transparent'
       img.style.transition = 'all 0.2s'
       img.setAttribute('data-filename', file.name)
+      img.setAttribute('data-image-id', imageId)
       img.setAttribute('data-caption', '')
       img.setAttribute('data-alt', file.name)
       img.setAttribute('data-width-style', 'normal')
@@ -370,7 +397,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       const currentImages = formData.images || []
       setFormData(prev => ({ 
         ...prev, 
-        images: [...currentImages, file] 
+        images: [...currentImages, { id: imageId, file }] 
       }))
       
       // Update content
@@ -390,6 +417,13 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
   const deleteImage = () => {
     if (selectedImage && selectedImage.parentNode) {
+      const imageId = selectedImage.getAttribute('data-image-id')
+      if (imageId) {
+        setFormData(prev => ({
+          ...prev,
+          images: prev.images.filter(item => item.id !== imageId)
+        }))
+      }
       selectedImage.parentNode.removeChild(selectedImage)
       setShowImageMenu(false)
       setSelectedImage(null)
@@ -421,6 +455,20 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const openImageEditor = () => {
     if (selectedImage) {
       setImageToEdit(selectedImage.src)
+      setEditingImageId(selectedImage.getAttribute('data-image-id'))
+      setEditingImageName(selectedImage.getAttribute('data-filename') || 'edited-image')
+      setEditorState({
+        rotation: 0,
+        flipH: false,
+        brightness: 100,
+        contrast: 100,
+        saturation: 100,
+        filter: 'none',
+        crop: { x: 0, y: 0, width: 100, height: 100 },
+        text: { value: '', size: 32, color: '#ffffff' },
+        sticker: { value: '✨', size: 48 }
+      })
+      setActiveEditorTool('crop')
       setShowImageEditor(true)
       setShowImageMenu(false)
     }
@@ -454,6 +502,128 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       setShowAltTextModal(false)
       handleEditorInput()
     }
+  }
+
+  const buildFilterString = () => {
+    const { brightness, contrast, saturation, filter } = editorState
+    const base = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
+    switch (filter) {
+      case 'grayscale':
+        return `grayscale(1) ${base}`
+      case 'sepia':
+        return `sepia(1) ${base}`
+      case 'vivid':
+        return `saturate(1.6) contrast(1.1) ${base}`
+      case 'warm':
+        return `sepia(0.4) saturate(1.2) ${base}`
+      case 'cool':
+        return `hue-rotate(200deg) saturate(1.2) ${base}`
+      default:
+        return base
+    }
+  }
+
+  const renderEditorCanvas = () => {
+    const canvas = editorCanvasRef.current
+    const img = editorImageRef.current
+    if (!canvas || !img) return
+
+    const crop = editorState.crop
+    const cropX = Math.max(0, Math.min(100, crop.x))
+    const cropY = Math.max(0, Math.min(100, crop.y))
+    const cropW = Math.max(10, Math.min(100 - cropX, crop.width))
+    const cropH = Math.max(10, Math.min(100 - cropY, crop.height))
+
+    const srcX = (cropX / 100) * img.width
+    const srcY = (cropY / 100) * img.height
+    const srcW = (cropW / 100) * img.width
+    const srcH = (cropH / 100) * img.height
+
+    const temp = document.createElement('canvas')
+    temp.width = Math.round(srcW)
+    temp.height = Math.round(srcH)
+    const tctx = temp.getContext('2d')
+    if (!tctx) return
+    tctx.filter = buildFilterString()
+    tctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, temp.width, temp.height)
+
+    const rotate = editorState.rotation % 360
+    const swapSize = rotate === 90 || rotate === 270
+    canvas.width = swapSize ? temp.height : temp.width
+    canvas.height = swapSize ? temp.width : temp.height
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.save()
+    ctx.translate(canvas.width / 2, canvas.height / 2)
+    const scaleX = editorState.flipH ? -1 : 1
+    ctx.scale(scaleX, 1)
+    ctx.rotate((rotate * Math.PI) / 180)
+    ctx.drawImage(temp, -temp.width / 2, -temp.height / 2)
+    ctx.restore()
+
+    if (editorState.text.value.trim()) {
+      ctx.save()
+      ctx.fillStyle = editorState.text.color
+      ctx.font = `${editorState.text.size}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(editorState.text.value, canvas.width / 2, canvas.height / 2)
+      ctx.restore()
+    }
+
+    if (editorState.sticker.value.trim()) {
+      ctx.save()
+      ctx.font = `${editorState.sticker.size}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(editorState.sticker.value, canvas.width / 2, canvas.height / 2 + 60)
+      ctx.restore()
+    }
+  }
+
+  useEffect(() => {
+    if (!showImageEditor || !imageToEdit) return
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      editorImageRef.current = img
+      setEditorImageSize({ width: img.width, height: img.height })
+      renderEditorCanvas()
+    }
+    img.src = imageToEdit
+  }, [showImageEditor, imageToEdit])
+
+  useEffect(() => {
+    if (!showImageEditor) return
+    renderEditorCanvas()
+  }, [editorState, showImageEditor])
+
+  const saveEditedImage = () => {
+    const canvas = editorCanvasRef.current
+    if (!canvas || !selectedImage) {
+      setShowImageEditor(false)
+      return
+    }
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const filename = editingImageName || 'edited-image.png'
+      const editedFile = new File([blob], filename, { type: blob.type })
+      const imageUrl = URL.createObjectURL(blob)
+
+      selectedImage.src = imageUrl
+      selectedImage.setAttribute('data-filename', filename)
+
+      if (editingImageId) {
+        setFormData(prev => ({
+          ...prev,
+          images: prev.images.map(item => (item.id === editingImageId ? { ...item, file: editedFile } : item))
+        }))
+      }
+
+      handleEditorInput()
+      setShowImageEditor(false)
+    }, 'image/png', 0.95)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -503,7 +673,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       }
 
       formData.images.forEach(image => {
-        formDataToSend.append('images', image)
+        formDataToSend.append('images', image.file)
       })
 
       const token = localStorage.getItem('token')
@@ -1353,33 +1523,217 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             </div>
             <div className="flex-1 flex">
               <div className="w-20 bg-gray-800 p-2 flex flex-col gap-2">
-                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                <button
+                  onClick={() => setActiveEditorTool('crop')}
+                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'crop' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                >
                   <CropIcon className="w-5 h-5" />
                   <span className="text-xs">Crop</span>
                 </button>
-                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                <button
+                  onClick={() => setActiveEditorTool('filter')}
+                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'filter' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                >
                   <FilterIcon className="w-5 h-5" />
                   <span className="text-xs">Filter</span>
                 </button>
-                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                <button
+                  onClick={() => setActiveEditorTool('adjust')}
+                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'adjust' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                >
                   <Sliders className="w-5 h-5" />
                   <span className="text-xs">Adjust</span>
                 </button>
-                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                <button
+                  onClick={() => setActiveEditorTool('text')}
+                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'text' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                >
                   <Type className="w-5 h-5" />
                   <span className="text-xs">Text</span>
                 </button>
-                <button className="p-3 hover:bg-gray-700 rounded text-white flex flex-col items-center gap-1">
+                <button
+                  onClick={() => setActiveEditorTool('sticker')}
+                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'sticker' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                >
                   <Smile className="w-5 h-5" />
                   <span className="text-xs">Sticker</span>
                 </button>
               </div>
-              <div className="flex-1 flex items-center justify-center p-8">
-                <img
-                  src={imageToEdit}
-                  alt="Edit"
-                  className="max-w-full max-h-full object-contain"
+              <div className="flex-1 flex items-center justify-center p-6">
+                <canvas
+                  ref={editorCanvasRef}
+                  className="max-w-full max-h-full bg-gray-800 rounded shadow-lg"
                 />
+              </div>
+              <div className="w-72 bg-gray-800 p-4 text-white overflow-y-auto">
+                {activeEditorTool === 'crop' && (
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Crop</h4>
+                    <div>
+                      <label className="text-xs text-gray-300">X ({editorState.crop.x}%)</label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={90}
+                        value={editorState.crop.x}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, crop: { ...prev.crop, x: Number(e.target.value) } }))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-300">Y ({editorState.crop.y}%)</label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={90}
+                        value={editorState.crop.y}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, crop: { ...prev.crop, y: Number(e.target.value) } }))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-300">Width ({editorState.crop.width}%)</label>
+                      <input
+                        type="range"
+                        min={10}
+                        max={100}
+                        value={editorState.crop.width}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, crop: { ...prev.crop, width: Number(e.target.value) } }))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-300">Height ({editorState.crop.height}%)</label>
+                      <input
+                        type="range"
+                        min={10}
+                        max={100}
+                        value={editorState.crop.height}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, crop: { ...prev.crop, height: Number(e.target.value) } }))}
+                        className="w-full"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400">Image size: {editorImageSize.width}×{editorImageSize.height}</p>
+                  </div>
+                )}
+
+                {activeEditorTool === 'filter' && (
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Filters</h4>
+                    <select
+                      value={editorState.filter}
+                      onChange={(e) => setEditorState(prev => ({ ...prev, filter: e.target.value }))}
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                    >
+                      <option value="none">None</option>
+                      <option value="grayscale">Grayscale</option>
+                      <option value="sepia">Sepia</option>
+                      <option value="vivid">Vivid</option>
+                      <option value="warm">Warm</option>
+                      <option value="cool">Cool</option>
+                    </select>
+                  </div>
+                )}
+
+                {activeEditorTool === 'adjust' && (
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Adjust</h4>
+                    <div>
+                      <label className="text-xs text-gray-300">Brightness ({editorState.brightness}%)</label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={200}
+                        value={editorState.brightness}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, brightness: Number(e.target.value) }))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-300">Contrast ({editorState.contrast}%)</label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={200}
+                        value={editorState.contrast}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, contrast: Number(e.target.value) }))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-300">Saturation ({editorState.saturation}%)</label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={200}
+                        value={editorState.saturation}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, saturation: Number(e.target.value) }))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeEditorTool === 'text' && (
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Text</h4>
+                    <input
+                      type="text"
+                      value={editorState.text.value}
+                      onChange={(e) => setEditorState(prev => ({ ...prev, text: { ...prev.text, value: e.target.value } }))}
+                      placeholder="Type text..."
+                      className="w-full bg-gray-700 text-white rounded px-3 py-2"
+                    />
+                    <div>
+                      <label className="text-xs text-gray-300">Size ({editorState.text.size}px)</label>
+                      <input
+                        type="range"
+                        min={12}
+                        max={96}
+                        value={editorState.text.size}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, text: { ...prev.text, size: Number(e.target.value) } }))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-300">Color</label>
+                      <input
+                        type="color"
+                        value={editorState.text.color}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, text: { ...prev.text, color: e.target.value } }))}
+                        className="w-full h-10 rounded"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeEditorTool === 'sticker' && (
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Sticker</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {['✨', '⭐', '❤️', '🔥', '🌿', '💧', '🌸', '✅'].map(sticker => (
+                        <button
+                          key={sticker}
+                          onClick={() => setEditorState(prev => ({ ...prev, sticker: { ...prev.sticker, value: sticker } }))}
+                          className={`p-2 rounded ${editorState.sticker.value === sticker ? 'bg-gray-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                        >
+                          {sticker}
+                        </button>
+                      ))}
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-300">Size ({editorState.sticker.size}px)</label>
+                      <input
+                        type="range"
+                        min={16}
+                        max={120}
+                        value={editorState.sticker.size}
+                        onChange={(e) => setEditorState(prev => ({ ...prev, sticker: { ...prev.sticker, size: Number(e.target.value) } }))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="p-4 border-t border-gray-700 flex items-center justify-between">
@@ -1387,24 +1741,27 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 <button
                   className="p-2 hover:bg-gray-800 rounded text-white"
                   title="Rotate Left"
+                  onClick={() => setEditorState(prev => ({ ...prev, rotation: (prev.rotation - 90 + 360) % 360 }))}
                 >
                   <RotateCcw className="w-5 h-5" />
                 </button>
                 <button
                   className="p-2 hover:bg-gray-800 rounded text-white"
                   title="Rotate Right"
+                  onClick={() => setEditorState(prev => ({ ...prev, rotation: (prev.rotation + 90) % 360 }))}
                 >
                   <RotateCw className="w-5 h-5" />
                 </button>
                 <button
                   className="p-2 hover:bg-gray-800 rounded text-white"
                   title="Flip Horizontal"
+                  onClick={() => setEditorState(prev => ({ ...prev, flipH: !prev.flipH }))}
                 >
                   <FlipHorizontal className="w-5 h-5" />
                 </button>
               </div>
               <button
-                onClick={() => setShowImageEditor(false)}
+                onClick={saveEditedImage}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Done
