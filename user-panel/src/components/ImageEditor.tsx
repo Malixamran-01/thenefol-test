@@ -48,7 +48,7 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
   if (source && editorOpen) {
     return (
       <FilerobotImageEditor
-        source={selectedImage}
+        source={source}
         onSave={handleSave}
         onClose={handleClose}
         tabsIds={[TABS.ADJUST, TABS.ANNOTATE, TABS.WATERMARK, TABS.FILTERS]}
