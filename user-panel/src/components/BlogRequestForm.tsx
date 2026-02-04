@@ -528,6 +528,19 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     const img = editorImageRef.current
     if (!canvas || !img) return
 
+    // FIXED canvas size - never changes
+    const FIXED_WIDTH = 800
+    const FIXED_HEIGHT = 600
+    canvas.width = FIXED_WIDTH
+    canvas.height = FIXED_HEIGHT
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Clear canvas
+    ctx.fillStyle = '#1f2937'
+    ctx.fillRect(0, 0, FIXED_WIDTH, FIXED_HEIGHT)
+
     const crop = editorState.crop
     const cropX = Math.max(0, Math.min(100, crop.x))
     const cropY = Math.max(0, Math.min(100, crop.y))
@@ -552,18 +565,17 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     const outputWidth = swapSize ? temp.height : temp.width
     const outputHeight = swapSize ? temp.width : temp.height
 
-    // Fixed max display size for canvas (will scale to fit container)
-    const maxDisplayWidth = 800
-    const maxDisplayHeight = 600
-    const scale = Math.min(maxDisplayWidth / outputWidth, maxDisplayHeight / outputHeight, 1)
-    
-    canvas.width = Math.round(outputWidth * scale)
-    canvas.height = Math.round(outputHeight * scale)
+    // Scale to fit within fixed canvas while maintaining aspect ratio
+    const scale = Math.min(FIXED_WIDTH / outputWidth, FIXED_HEIGHT / outputHeight, 1)
+    const scaledWidth = outputWidth * scale
+    const scaledHeight = outputHeight * scale
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    // Center the image in the fixed canvas
+    const offsetX = (FIXED_WIDTH - scaledWidth) / 2
+    const offsetY = (FIXED_HEIGHT - scaledHeight) / 2
+
     ctx.save()
-    ctx.translate(canvas.width / 2, canvas.height / 2)
+    ctx.translate(FIXED_WIDTH / 2, FIXED_HEIGHT / 2)
     const scaleX = editorState.flipH ? -1 : 1
     ctx.scale(scaleX * scale, scale)
     ctx.rotate((rotate * Math.PI) / 180)
@@ -576,7 +588,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       ctx.font = `${editorState.text.size * scale}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(editorState.text.value, canvas.width / 2, canvas.height / 2)
+      ctx.fillText(editorState.text.value, FIXED_WIDTH / 2, FIXED_HEIGHT / 2)
       ctx.restore()
     }
 
@@ -585,7 +597,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       ctx.font = `${editorState.sticker.size * scale}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(editorState.sticker.value, canvas.width / 2, canvas.height / 2 + (60 * scale))
+      ctx.fillText(editorState.sticker.value, FIXED_WIDTH / 2, FIXED_HEIGHT / 2 + (60 * scale))
       ctx.restore()
     }
   }
@@ -1623,12 +1635,12 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   <span className="text-xs">Sticker</span>
                 </button>
               </div>
-              <div className="flex-1 flex items-center justify-center p-6 overflow-hidden">
-                <div className="flex items-center justify-center w-full h-full max-w-[900px] max-h-[650px]">
+              <div className="flex-1 flex items-center justify-center p-6 overflow-hidden bg-gray-900">
+                <div className="flex items-center justify-center" style={{ width: '800px', height: '600px' }}>
                   <canvas
                     ref={editorCanvasRef}
-                    className="max-w-full max-h-full bg-gray-800 rounded shadow-lg object-contain"
-                    style={{ imageRendering: 'auto' }}
+                    className="rounded shadow-2xl"
+                    style={{ width: '800px', height: '600px', imageRendering: 'auto' }}
                   />
                 </div>
               </div>
