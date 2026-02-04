@@ -312,6 +312,14 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const createImageId = () => `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
   const insertImageIntoEditor = () => {
+    // Save the current cursor position before opening file picker
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      savedSelectionRef.current = selection.getRangeAt(0).cloneRange()
+    } else {
+      savedSelectionRef.current = null
+    }
+
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -398,8 +406,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     // Create a preview URL for the edited image
     const imageUrl = URL.createObjectURL(blob)
     
-    // Save the selection before inserting
-    const selection = window.getSelection()
+    // Focus the editor and restore the saved cursor position
     editorRef.current?.focus()
     
     const imageId = createImageId()
@@ -434,7 +441,12 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       img.style.borderColor = 'transparent'
     })
     
-    if (selection && selection.rangeCount > 0) {
+    // Use saved cursor position if available
+    const selection = window.getSelection()
+    if (selection && savedSelectionRef.current) {
+      selection.removeAllRanges()
+      selection.addRange(savedSelectionRef.current)
+      
       const range = selection.getRangeAt(0)
       range.deleteContents()
       range.insertNode(img)
@@ -445,6 +457,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       selection.removeAllRanges()
       selection.addRange(range)
     } else {
+      // Fallback: append to the end of the editor
       editorRef.current?.appendChild(img)
     }
     
@@ -455,7 +468,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       images: [...currentImages, { id: imageId, file: editedFile }] 
     }))
     
-    // Update content and close editor
+    // Clear saved selection and update content
+    savedSelectionRef.current = null
     handleEditorInput()
     setShowImageEditor(false)
     setImageToEdit(null)
