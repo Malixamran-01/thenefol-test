@@ -21,9 +21,12 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
     setEditorOpen(true)
   }
 
-  const handleSave = async (editedImageObject: any) => {
+  const handleSave = async (editedImageObject: any, designState: any) => {
+    console.log('ImageEditor handleSave called:', editedImageObject, designState)
+    
     if (onSave) {
       // If onSave prop is provided, use it (for blog request form)
+      // Pass the editedImageObject directly - it should contain imageBase64
       onSave(editedImageObject)
     } else {
       // Default behavior for image manager
@@ -57,18 +60,6 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
         Text={{ text: 'NEFOL' }}
         savingPixelRatio={1}
         previewPixelRatio={1}
-        showBackButton={false}
-        closeAfterSave={true}
-        defaultSavedImageName="edited-image"
-        defaultSavedImageType="png"
-        forceToPngInEllipticalCrop={false}
-        useBackendToSave={false}
-        showCanvasOnly={false}
-        observePluginContainerSize={true}
-        showSaveButton={true}
-        saveButtonProps={{
-          label: 'Done'
-        }}
       />
     )
   }
@@ -111,18 +102,6 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
               Text={{ text: 'NEFOL' }}
               savingPixelRatio={1}
               previewPixelRatio={1}
-              showBackButton={false}
-              closeAfterSave={true}
-              defaultSavedImageName="edited-image"
-              defaultSavedImageType="png"
-              forceToPngInEllipticalCrop={false}
-              useBackendToSave={false}
-              showCanvasOnly={false}
-              observePluginContainerSize={true}
-              showSaveButton={true}
-              saveButtonProps={{
-                label: 'Done'
-              }}
             />
           </div>
         </div>

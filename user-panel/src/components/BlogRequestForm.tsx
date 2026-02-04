@@ -402,9 +402,30 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     console.log('handleImageEditorSave called with:', editedImageObject)
     
     try {
-      const base64 = editedImageObject.imageBase64
+      let base64: string
+      let filename = editingImageName || 'edited.png'
+      
+      // Handle different possible structures from FilerobotImageEditor
+      if (editedImageObject.imageBase64) {
+        base64 = editedImageObject.imageBase64
+      } else if (editedImageObject.editedImageObject?.imageBase64) {
+        base64 = editedImageObject.editedImageObject.imageBase64
+      } else if (typeof editedImageObject === 'string') {
+        base64 = editedImageObject
+      } else {
+        console.error('Unexpected editedImageObject structure:', editedImageObject)
+        return
+      }
+      
+      // Handle filename from the editor if provided
+      if (editedImageObject.fullName) {
+        filename = editedImageObject.fullName
+      } else if (editedImageObject.name) {
+        filename = editedImageObject.name
+      }
+      
       const blob = await fetch(base64).then(r => r.blob())
-      const editedFile = new File([blob], editingImageName || 'edited.png', { type: blob.type })
+      const editedFile = new File([blob], filename, { type: blob.type })
       
       console.log('Created file:', editedFile)
       
@@ -419,17 +440,17 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       // Insert image at cursor position
       const img = document.createElement('img')
       img.src = imageUrl
-      img.alt = editingImageName || 'edited image'
+      img.alt = filename
       img.style.maxWidth = '100%'
       img.style.height = 'auto'
       img.style.margin = '10px 0'
       img.style.cursor = 'pointer'
       img.style.border = '2px solid transparent'
       img.style.transition = 'all 0.2s'
-      img.setAttribute('data-filename', editingImageName || 'edited.png')
+      img.setAttribute('data-filename', filename)
       img.setAttribute('data-image-id', imageId)
       img.setAttribute('data-caption', '')
-      img.setAttribute('data-alt', editingImageName || 'edited image')
+      img.setAttribute('data-alt', filename)
       img.setAttribute('data-width-style', 'normal')
       
       // Add click handler to show context menu
@@ -452,18 +473,23 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       const selection = window.getSelection()
       if (selection && savedSelectionRef.current) {
         console.log('Using saved cursor position')
-        selection.removeAllRanges()
-        selection.addRange(savedSelectionRef.current)
-        
-        const range = selection.getRangeAt(0)
-        range.deleteContents()
-        range.insertNode(img)
-        
-        // Move cursor after the image
-        range.setStartAfter(img)
-        range.setEndAfter(img)
-        selection.removeAllRanges()
-        selection.addRange(range)
+        try {
+          selection.removeAllRanges()
+          selection.addRange(savedSelectionRef.current)
+          
+          const range = selection.getRangeAt(0)
+          range.deleteContents()
+          range.insertNode(img)
+          
+          // Move cursor after the image
+          range.setStartAfter(img)
+          range.setEndAfter(img)
+          selection.removeAllRanges()
+          selection.addRange(range)
+        } catch (selectionError) {
+          console.error('Error with cursor position, appending to end:', selectionError)
+          editorRef.current?.appendChild(img)
+        }
       } else {
         console.log('No saved cursor position, appending to end')
         // Fallback: append to the end of the editor
@@ -477,7 +503,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         images: [...currentImages, { id: imageId, file: editedFile }] 
       }))
       
-      console.log('Image added to formData.images')
+      console.log('Image added to formData.images, total images:', currentImages.length + 1)
       
       // Clear saved selection and update content
       savedSelectionRef.current = null
@@ -488,6 +514,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       console.log('Image editor closed successfully')
     } catch (error) {
       console.error('Error in handleImageEditorSave:', error)
+      alert('Failed to insert image. Please try again.')
     }
   }
 
