@@ -1588,8 +1588,48 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       {showImageEditor && imageToEdit && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
           <div className="bg-gray-900 rounded-lg w-full max-w-7xl h-[90vh] flex flex-col">
+            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
-              <h3 className="text-white font-semibold">Edit Image</h3>
+              <div className="flex items-center gap-4">
+                <h3 className="text-white font-semibold text-lg">Edit Image</h3>
+                <div className="flex items-center gap-1 ml-4">
+                  <button
+                    onClick={() => setActiveEditorTool('crop')}
+                    className={`px-3 py-2 rounded text-white flex items-center gap-2 text-sm ${activeEditorTool === 'crop' ? 'bg-gray-700' : 'hover:bg-gray-800'}`}
+                  >
+                    <CropIcon className="w-4 h-4" />
+                    <span>Crop</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveEditorTool('filter')}
+                    className={`px-3 py-2 rounded text-white flex items-center gap-2 text-sm ${activeEditorTool === 'filter' ? 'bg-gray-700' : 'hover:bg-gray-800'}`}
+                  >
+                    <FilterIcon className="w-4 h-4" />
+                    <span>Filter</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveEditorTool('adjust')}
+                    className={`px-3 py-2 rounded text-white flex items-center gap-2 text-sm ${activeEditorTool === 'adjust' ? 'bg-gray-700' : 'hover:bg-gray-800'}`}
+                  >
+                    <Sliders className="w-4 h-4" />
+                    <span>Adjust</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveEditorTool('text')}
+                    className={`px-3 py-2 rounded text-white flex items-center gap-2 text-sm ${activeEditorTool === 'text' ? 'bg-gray-700' : 'hover:bg-gray-800'}`}
+                  >
+                    <Type className="w-4 h-4" />
+                    <span>Text</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveEditorTool('sticker')}
+                    className={`px-3 py-2 rounded text-white flex items-center gap-2 text-sm ${activeEditorTool === 'sticker' ? 'bg-gray-700' : 'hover:bg-gray-800'}`}
+                  >
+                    <Smile className="w-4 h-4" />
+                    <span>Sticker</span>
+                  </button>
+                </div>
+              </div>
               <button
                 onClick={() => setShowImageEditor(false)}
                 className="p-2 hover:bg-gray-800 rounded"
@@ -1597,45 +1637,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <div className="flex-1 flex">
-              <div className="w-20 bg-gray-800 p-2 flex flex-col gap-2">
-                <button
-                  onClick={() => setActiveEditorTool('crop')}
-                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'crop' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
-                >
-                  <CropIcon className="w-5 h-5" />
-                  <span className="text-xs">Crop</span>
-                </button>
-                <button
-                  onClick={() => setActiveEditorTool('filter')}
-                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'filter' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
-                >
-                  <FilterIcon className="w-5 h-5" />
-                  <span className="text-xs">Filter</span>
-                </button>
-                <button
-                  onClick={() => setActiveEditorTool('adjust')}
-                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'adjust' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
-                >
-                  <Sliders className="w-5 h-5" />
-                  <span className="text-xs">Adjust</span>
-                </button>
-                <button
-                  onClick={() => setActiveEditorTool('text')}
-                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'text' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
-                >
-                  <Type className="w-5 h-5" />
-                  <span className="text-xs">Text</span>
-                </button>
-                <button
-                  onClick={() => setActiveEditorTool('sticker')}
-                  className={`p-3 rounded text-white flex flex-col items-center gap-1 ${activeEditorTool === 'sticker' ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
-                >
-                  <Smile className="w-5 h-5" />
-                  <span className="text-xs">Sticker</span>
-                </button>
-              </div>
-              <div className="flex-1 flex items-center justify-center p-6 overflow-hidden bg-gray-900">
+            {/* Content Area */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* Canvas Area */}
+              <div className="flex-1 flex items-center justify-center p-6 bg-gray-900">
                 <div className="flex items-center justify-center" style={{ width: '800px', height: '600px' }}>
                   <canvas
                     ref={editorCanvasRef}
@@ -1644,7 +1649,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   />
                 </div>
               </div>
-              <div className="w-72 bg-gray-800 p-4 text-white overflow-y-auto flex-shrink-0">
+              {/* Controls Panel */}
+              <div className="w-80 bg-gray-800 p-6 text-white overflow-y-auto flex-shrink-0 border-l border-gray-700">
                 {activeEditorTool === 'crop' && (
                   <div className="space-y-4">
                     <h4 className="font-semibold">Crop</h4>
@@ -1815,36 +1821,45 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 )}
               </div>
             </div>
-            <div className="p-4 border-t border-gray-700 flex items-center justify-between">
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-700 flex items-center justify-between bg-gray-900">
               <div className="flex gap-2">
                 <button
-                  className="p-2 hover:bg-gray-800 rounded text-white"
-                  title="Rotate Left"
+                  className="px-3 py-2 hover:bg-gray-800 rounded text-white flex items-center gap-2 text-sm"
                   onClick={() => setEditorState(prev => ({ ...prev, rotation: (prev.rotation - 90 + 360) % 360 }))}
                 >
-                  <RotateCcw className="w-5 h-5" />
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Rotate Left</span>
                 </button>
                 <button
-                  className="p-2 hover:bg-gray-800 rounded text-white"
-                  title="Rotate Right"
+                  className="px-3 py-2 hover:bg-gray-800 rounded text-white flex items-center gap-2 text-sm"
                   onClick={() => setEditorState(prev => ({ ...prev, rotation: (prev.rotation + 90) % 360 }))}
                 >
-                  <RotateCw className="w-5 h-5" />
+                  <RotateCw className="w-4 h-4" />
+                  <span>Rotate Right</span>
                 </button>
                 <button
-                  className="p-2 hover:bg-gray-800 rounded text-white"
-                  title="Flip Horizontal"
+                  className="px-3 py-2 hover:bg-gray-800 rounded text-white flex items-center gap-2 text-sm"
                   onClick={() => setEditorState(prev => ({ ...prev, flipH: !prev.flipH }))}
                 >
-                  <FlipHorizontal className="w-5 h-5" />
+                  <FlipHorizontal className="w-4 h-4" />
+                  <span>Flip Horizontal</span>
                 </button>
               </div>
-              <button
-                onClick={saveEditedImage}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Done
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowImageEditor(false)}
+                  className="px-6 py-2 border border-gray-600 text-white rounded-lg hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveEditedImage}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         </div>
