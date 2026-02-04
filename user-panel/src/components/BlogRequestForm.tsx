@@ -549,15 +549,23 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
     const rotate = editorState.rotation % 360
     const swapSize = rotate === 90 || rotate === 270
-    canvas.width = swapSize ? temp.height : temp.width
-    canvas.height = swapSize ? temp.width : temp.height
+    const outputWidth = swapSize ? temp.height : temp.width
+    const outputHeight = swapSize ? temp.width : temp.height
+
+    // Fixed max display size for canvas (will scale to fit container)
+    const maxDisplayWidth = 800
+    const maxDisplayHeight = 600
+    const scale = Math.min(maxDisplayWidth / outputWidth, maxDisplayHeight / outputHeight, 1)
+    
+    canvas.width = Math.round(outputWidth * scale)
+    canvas.height = Math.round(outputHeight * scale)
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.save()
     ctx.translate(canvas.width / 2, canvas.height / 2)
     const scaleX = editorState.flipH ? -1 : 1
-    ctx.scale(scaleX, 1)
+    ctx.scale(scaleX * scale, scale)
     ctx.rotate((rotate * Math.PI) / 180)
     ctx.drawImage(temp, -temp.width / 2, -temp.height / 2)
     ctx.restore()
@@ -565,7 +573,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     if (editorState.text.value.trim()) {
       ctx.save()
       ctx.fillStyle = editorState.text.color
-      ctx.font = `${editorState.text.size}px sans-serif`
+      ctx.font = `${editorState.text.size * scale}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(editorState.text.value, canvas.width / 2, canvas.height / 2)
@@ -574,10 +582,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
     if (editorState.sticker.value.trim()) {
       ctx.save()
-      ctx.font = `${editorState.sticker.size}px sans-serif`
+      ctx.font = `${editorState.sticker.size * scale}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(editorState.sticker.value, canvas.width / 2, canvas.height / 2 + 60)
+      ctx.fillText(editorState.sticker.value, canvas.width / 2, canvas.height / 2 + (60 * scale))
       ctx.restore()
     }
   }
@@ -600,12 +608,68 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   }, [editorState, showImageEditor])
 
   const saveEditedImage = () => {
-    const canvas = editorCanvasRef.current
-    if (!canvas || !selectedImage) {
+    const img = editorImageRef.current
+    if (!img || !selectedImage) {
       setShowImageEditor(false)
       return
     }
-    canvas.toBlob((blob) => {
+
+    // Create a high-res export canvas
+    const exportCanvas = document.createElement('canvas')
+    const crop = editorState.crop
+    const cropX = Math.max(0, Math.min(100, crop.x))
+    const cropY = Math.max(0, Math.min(100, crop.y))
+    const cropW = Math.max(10, Math.min(100 - cropX, crop.width))
+    const cropH = Math.max(10, Math.min(100 - cropY, crop.height))
+
+    const srcX = (cropX / 100) * img.width
+    const srcY = (cropY / 100) * img.height
+    const srcW = (cropW / 100) * img.width
+    const srcH = (cropH / 100) * img.height
+
+    const temp = document.createElement('canvas')
+    temp.width = Math.round(srcW)
+    temp.height = Math.round(srcH)
+    const tctx = temp.getContext('2d')
+    if (!tctx) return
+    tctx.filter = buildFilterString()
+    tctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, temp.width, temp.height)
+
+    const rotate = editorState.rotation % 360
+    const swapSize = rotate === 90 || rotate === 270
+    exportCanvas.width = swapSize ? temp.height : temp.width
+    exportCanvas.height = swapSize ? temp.width : temp.height
+
+    const ctx = exportCanvas.getContext('2d')
+    if (!ctx) return
+    ctx.save()
+    ctx.translate(exportCanvas.width / 2, exportCanvas.height / 2)
+    const scaleX = editorState.flipH ? -1 : 1
+    ctx.scale(scaleX, 1)
+    ctx.rotate((rotate * Math.PI) / 180)
+    ctx.drawImage(temp, -temp.width / 2, -temp.height / 2)
+    ctx.restore()
+
+    if (editorState.text.value.trim()) {
+      ctx.save()
+      ctx.fillStyle = editorState.text.color
+      ctx.font = `${editorState.text.size}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(editorState.text.value, exportCanvas.width / 2, exportCanvas.height / 2)
+      ctx.restore()
+    }
+
+    if (editorState.sticker.value.trim()) {
+      ctx.save()
+      ctx.font = `${editorState.sticker.size}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(editorState.sticker.value, exportCanvas.width / 2, exportCanvas.height / 2 + 60)
+      ctx.restore()
+    }
+
+    exportCanvas.toBlob((blob) => {
       if (!blob) return
       const filename = editingImageName || 'edited-image.png'
       const editedFile = new File([blob], filename, { type: blob.type })
@@ -1511,7 +1575,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       {/* Image Editor Modal */}
       {showImageEditor && imageToEdit && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
-          <div className="bg-gray-900 rounded-lg w-[1100px] max-w-[95vw] h-[90vh] flex flex-col">
+          <div className="bg-gray-900 rounded-lg w-full max-w-7xl h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
               <h3 className="text-white font-semibold">Edit Image</h3>
               <button
@@ -1521,7 +1585,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <div className="flex-1 flex min-h-0">
+            <div className="flex-1 flex">
               <div className="w-20 bg-gray-800 p-2 flex flex-col gap-2">
                 <button
                   onClick={() => setActiveEditorTool('crop')}
@@ -1559,15 +1623,16 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   <span className="text-xs">Sticker</span>
                 </button>
               </div>
-              <div className="flex-1 flex items-center justify-center p-6 min-h-0">
-                <div className="w-[720px] h-[420px] max-w-full max-h-full bg-gray-800 rounded shadow-lg overflow-hidden flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center p-6 overflow-hidden">
+                <div className="flex items-center justify-center w-full h-full max-w-[900px] max-h-[650px]">
                   <canvas
                     ref={editorCanvasRef}
-                    className="w-full h-full"
+                    className="max-w-full max-h-full bg-gray-800 rounded shadow-lg object-contain"
+                    style={{ imageRendering: 'auto' }}
                   />
                 </div>
               </div>
-              <div className="w-72 shrink-0 bg-gray-800 p-4 text-white overflow-y-auto">
+              <div className="w-72 bg-gray-800 p-4 text-white overflow-y-auto flex-shrink-0">
                 {activeEditorTool === 'crop' && (
                   <div className="space-y-4">
                     <h4 className="font-semibold">Crop</h4>
