@@ -1511,7 +1511,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       {/* Image Editor Modal */}
       {showImageEditor && imageToEdit && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
-          <div className="bg-gray-900 rounded-lg w-full max-w-6xl h-[90vh] flex flex-col">
+          <div className="bg-gray-900 rounded-lg w-[1100px] max-w-[95vw] h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
               <h3 className="text-white font-semibold">Edit Image</h3>
               <button
@@ -1521,7 +1521,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-            <div className="flex-1 flex">
+            <div className="flex-1 flex min-h-0">
               <div className="w-20 bg-gray-800 p-2 flex flex-col gap-2">
                 <button
                   onClick={() => setActiveEditorTool('crop')}
@@ -1559,13 +1559,15 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   <span className="text-xs">Sticker</span>
                 </button>
               </div>
-              <div className="flex-1 flex items-center justify-center p-6">
-                <canvas
-                  ref={editorCanvasRef}
-                  className="max-w-full max-h-full bg-gray-800 rounded shadow-lg"
-                />
+              <div className="flex-1 flex items-center justify-center p-6 min-h-0">
+                <div className="w-[720px] h-[420px] max-w-full max-h-full bg-gray-800 rounded shadow-lg overflow-hidden flex items-center justify-center">
+                  <canvas
+                    ref={editorCanvasRef}
+                    className="w-full h-full"
+                  />
+                </div>
               </div>
-              <div className="w-72 bg-gray-800 p-4 text-white overflow-y-auto">
+              <div className="w-72 shrink-0 bg-gray-800 p-4 text-white overflow-y-auto">
                 {activeEditorTool === 'crop' && (
                   <div className="space-y-4">
                     <h4 className="font-semibold">Crop</h4>
