@@ -97,48 +97,6 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
   const categoryOptions = BLOG_CATEGORY_OPTIONS
 
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    // Save original body overflow
-    const originalOverflow = document.body.style.overflow
-    
-    // Lock body scroll
-    document.body.style.overflow = 'hidden'
-    
-    // Cleanup: restore original overflow when component unmounts
-    return () => {
-      document.body.style.overflow = originalOverflow
-    }
-  }, [])
-
-  // Close image menu when clicking outside or scrolling
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showImageMenu && selectedImage && !selectedImage.contains(event.target as Node)) {
-        setShowImageMenu(false)
-        setSelectedImage(null)
-      }
-    }
-
-    const handleScroll = () => {
-      if (showImageMenu) {
-        setShowImageMenu(false)
-        setSelectedImage(null)
-      }
-    }
-
-    if (showImageMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-      // Listen for scroll on the modal's scroll container instead of window
-      scrollContainerRef.current?.addEventListener('scroll', handleScroll)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      scrollContainerRef.current?.removeEventListener('scroll', handleScroll)
-    }
-  }, [showImageMenu, selectedImage])
-
   useEffect(() => {
     if (isAuthenticated && user) {
       setFormData(prev => ({
@@ -410,31 +368,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
 
   const handleImageClick = (img: HTMLImageElement, e: MouseEvent) => {
     setSelectedImage(img)
-    
-    // Calculate position relative to the modal's scroll container
-    const scrollContainer = scrollContainerRef.current
-    if (scrollContainer) {
-      const containerRect = scrollContainer.getBoundingClientRect()
-      const scrollTop = scrollContainer.scrollTop
-      const scrollLeft = scrollContainer.scrollLeft
-      
-      // Position menu relative to the scroll container
-      const menuTop = e.clientY - containerRect.top + scrollTop
-      const menuLeft = e.clientX - containerRect.left + scrollLeft
-      
-      // Ensure menu stays within bounds
-      const maxTop = scrollContainer.scrollHeight - 300 // Approximate menu height
-      const maxLeft = scrollContainer.clientWidth - 220 // Menu width
-      
-      setImageMenuPos({ 
-        top: Math.min(menuTop, maxTop), 
-        left: Math.min(menuLeft, maxLeft) 
-      })
-    } else {
-      // Fallback to viewport positioning
-      setImageMenuPos({ top: e.clientY, left: e.clientX })
-    }
-    
+    setImageMenuPos({ top: e.clientY, left: e.clientX })
     setShowImageMenu(true)
     setImageCaption(img.getAttribute('data-caption') || '')
     setImageAltText(img.getAttribute('data-alt') || img.alt)
@@ -1463,7 +1397,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
             onClick={() => setShowImageMenu(false)}
           />
           <div
-            className="absolute z-[60] bg-white rounded-lg shadow-xl py-2 min-w-[200px] border border-gray-200"
+            className="fixed z-[60] bg-white rounded-lg shadow-xl py-2 min-w-[200px]"
             style={{ top: imageMenuPos.top, left: imageMenuPos.left }}
           >
             <button
