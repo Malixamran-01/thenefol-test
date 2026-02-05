@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -37,7 +36,6 @@ interface ContentImageItem {
 }
 
 export default function BlogRequestForm() {
-  const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const editorRef = useRef<HTMLDivElement>(null)
   const savedSelectionRef = useRef<Range | null>(null)
@@ -96,9 +94,9 @@ export default function BlogRequestForm() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/user/blog')
+      window.location.hash = '#/user/blog'
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated])
 
   // Close image menu when clicking outside or scrolling
   useEffect(() => {
@@ -701,7 +699,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
       if (response.ok) {
         setSubmitStatus('success')
         setTimeout(() => {
-          navigate('/user/blog')
+          window.location.hash = '#/user/blog'
         }, 2000)
       } else {
         const errorData = await response.json()
@@ -726,7 +724,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
             Your blog post request has been submitted successfully.
           </p>
           <button 
-            onClick={() => navigate('/user/blog')} 
+            onClick={() => window.location.hash = '#/user/blog'} 
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go Back to Blog
@@ -767,7 +765,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
           <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => navigate('/user/blog')} 
+                onClick={() => window.location.hash = '#/user/blog'} 
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 aria-label="Go back"
               >
@@ -1237,7 +1235,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
                 <button 
                   type="button" 
-                  onClick={() => navigate('/user/blog')} 
+                  onClick={() => window.location.hash = '#/user/blog'} 
                   className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   disabled={isSubmitting}
                 >
