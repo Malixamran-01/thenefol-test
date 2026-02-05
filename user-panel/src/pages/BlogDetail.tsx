@@ -11,6 +11,8 @@ interface BlogPost {
   author_name: string
   author_email: string
   user_id?: string | number
+  cover_image?: string
+  detail_image?: string
   images: string[]
   created_at: string
   updated_at: string
@@ -93,6 +95,12 @@ export default function BlogDetail() {
           // Convert relative image paths to full URLs
           const postWithFullImageUrls = {
             ...data,
+            cover_image: data.cover_image && data.cover_image.startsWith('/uploads/') 
+              ? `${apiBase}${data.cover_image}` 
+              : data.cover_image,
+            detail_image: data.detail_image && data.detail_image.startsWith('/uploads/') 
+              ? `${apiBase}${data.detail_image}` 
+              : data.detail_image,
             images: images.map((imagePath: string) => {
               if (imagePath.startsWith('/uploads/')) {
                 return `${apiBase}${imagePath}`
@@ -152,7 +160,7 @@ export default function BlogDetail() {
         ? post.meta_keywords
         : ''
 
-    const ogImage = post.og_image || post.images?.[0] || ''
+    const ogImage = post.og_image || post.cover_image || post.detail_image || ''
     const pageUrl = post.canonical_url || window.location.href
 
     document.title = post.meta_title || post.title
@@ -172,6 +180,16 @@ export default function BlogDetail() {
 
     if (pageUrl) setLink('canonical', pageUrl)
   }, [post])
+
+  const processContentImages = (content: string, apiBase: string): string => {
+    if (!content) return content
+    
+    // Replace relative image URLs in the content with full URLs
+    return content.replace(
+      /src="(\/uploads\/[^"]+)"/g,
+      `src="${apiBase}$1"`
+    )
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -512,12 +530,12 @@ export default function BlogDetail() {
           <div>{readingTime}</div>
         </div>
 
-        {/* Hero Image (16:9) */}
-        {post.images && post.images.length > 0 && (
+        {/* Detail Image (appears below title) */}
+        {post.detail_image && (
           <div className="mt-8 overflow-hidden rounded-2xl bg-gray-100">
             <div className="aspect-video w-full">
               <img
-                src={post.images[0]}
+                src={post.detail_image}
                 alt={post.title}
                 className="h-full w-full object-cover"
               />
@@ -543,7 +561,7 @@ export default function BlogDetail() {
         >
           {post.content ? (
             post.content.includes('<') && post.content.includes('>') ? (
-              <div dangerouslySetInnerHTML={{ __html: post.content }} />
+              <div dangerouslySetInnerHTML={{ __html: processContentImages(post.content, getApiBase()) }} />
             ) : (
               <div style={{ whiteSpace: 'pre-wrap' }}>
                 {post.content.split('\n').map((paragraph, index) =>
