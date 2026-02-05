@@ -184,11 +184,29 @@ export default function BlogDetail() {
   const processContentImages = (content: string, apiBase: string): string => {
     if (!content) return content
     
-    // Replace relative image URLs in the content with full URLs
-    return content.replace(
-      /src="(\/uploads\/[^"]+)"/g,
-      `src="${apiBase}$1"`
+    console.log('Original content:', content)
+    
+    let processedContent = content
+    
+    // Replace relative image URLs in img tags with full URLs
+    processedContent = processedContent
+      // Handle standard src="/uploads/..." format
+      .replace(/src="(\/uploads\/[^"]+)"/g, `src="${apiBase}$1"`)
+      // Handle src='/uploads/...' format (single quotes)
+      .replace(/src='(\/uploads\/[^']+)'/g, `src="${apiBase}$1"`)
+      // Handle cases where there might be extra spaces
+      .replace(/src\s*=\s*"(\/uploads\/[^"]+)"/g, `src="${apiBase}$1"`)
+      .replace(/src\s*=\s*'(\/uploads\/[^']+)'/g, `src="${apiBase}$1"`)
+    
+    // Handle cases where image paths might be stored as plain text (not in img tags)
+    // Convert standalone /uploads/ paths to proper img tags
+    processedContent = processedContent.replace(
+      /(?<!src=["'])(\/uploads\/[^\s<>"']+\.(?:jpg|jpeg|png|gif|webp|svg))(?!["'])/gi,
+      `<img src="${apiBase}$1" alt="Blog image" style="max-width: 100%; height: auto; margin: 10px auto; display: block;" />`
     )
+    
+    console.log('Processed content:', processedContent)
+    return processedContent
   }
 
   const formatDate = (dateString: string) => {
@@ -564,9 +582,21 @@ export default function BlogDetail() {
               <div dangerouslySetInnerHTML={{ __html: processContentImages(post.content, getApiBase()) }} />
             ) : (
               <div style={{ whiteSpace: 'pre-wrap' }}>
-                {post.content.split('\n').map((paragraph, index) =>
-                  paragraph.trim() ? <p key={index}>{paragraph}</p> : null
-                )}
+                {post.content.split('\n').map((paragraph, index) => {
+                  // Check if this paragraph is an image path
+                  if (paragraph.trim().match(/^\/uploads\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)$/i)) {
+                    return (
+                      <div key={index} style={{ textAlign: 'center', margin: '20px 0' }}>
+                        <img 
+                          src={`${getApiBase()}${paragraph.trim()}`}
+                          alt="Blog image"
+                          style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }}
+                        />
+                      </div>
+                    )
+                  }
+                  return paragraph.trim() ? <p key={index}>{paragraph}</p> : null
+                })}
               </div>
             )
           ) : (
