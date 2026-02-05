@@ -907,6 +907,7 @@ const Ingredients = lazy(() => import('./pages/Ingredients'))
 const IngredientDetail = lazy(() => import('./pages/IngredientDetail'))
 const Blog = lazy(() => import('./pages/Blog'))
 const BlogDetail = lazy(() => import('./pages/BlogDetail'))
+const BlogRequestForm = lazy(() => import('./pages/BlogRequestForm'))
 const Contact = lazy(() => import('./pages/Contact'))
 const ProductPage = lazy(() => import('./pages/Product'))
 const CategoryPage = lazy(() => import('./pages/Category'))
@@ -1011,6 +1012,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/skincare': return <Skincare />
     case '/user/ingredients': return <Ingredients />
     case '/user/blog': return <Blog />
+    case '/user/blog/request': return requireAuth(<BlogRequestForm />)
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
     case '/user/affiliate':

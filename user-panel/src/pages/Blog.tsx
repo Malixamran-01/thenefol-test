@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Calendar, User, Heart, MessageCircle, Tag } from 'lucide-react'
-import BlogRequestForm from '../components/BlogRequestForm'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
@@ -29,7 +28,6 @@ export default function Blog() {
   const { isAuthenticated } = useAuth()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
-  const [showRequestForm, setShowRequestForm] = useState(false)
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [error, setError] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -428,9 +426,10 @@ export default function Blog() {
             <button
               onClick={() => {
                 if (isAuthenticated) {
-                  setShowRequestForm(true)
+                  window.location.hash = '#/user/blog/request'
                 } else {
                   setShowAuthPrompt(true)
+                }
                 }
               }}
               className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium rounded-lg transition-colors text-sm tracking-wide uppercase shadow-lg"
@@ -444,17 +443,6 @@ export default function Blog() {
           </div>
         </div>
       </div>
-
-      {/* Blog Request Form Modal */}
-      {showRequestForm && (
-        <BlogRequestForm
-          onClose={() => setShowRequestForm(false)}
-          onSubmitSuccess={() => {
-            // Refresh blog posts after successful submission
-            fetchBlogPosts()
-          }}
-        />
-      )}
 
       {/* Authentication Prompt Modal */}
       {showAuthPrompt && (
