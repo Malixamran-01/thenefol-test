@@ -430,7 +430,6 @@ export default function Blog() {
                 } else {
                   setShowAuthPrompt(true)
                 }
-                }
               }}
               className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium rounded-lg transition-colors text-sm tracking-wide uppercase shadow-lg"
               style={{ backgroundColor: 'rgb(75,151,201)' }}
