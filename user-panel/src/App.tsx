@@ -981,22 +981,13 @@ function RouterView({ affiliateId }: RouterViewProps) {
   
   const path = hash.replace('#', '')
   const lower = path.toLowerCase()
-    const requireAuth = (component: JSX.Element) => {
-    if (!isAuthenticated) {
-      // redirect to login
-      window.location.hash = '#/user/login'
-      return null
-    }
-    return component
-  }
-
   
   // Extract path without query parameters
   const pathWithoutQuery = lower.split('?')[0]
   
   if (lower.startsWith('/user/product/')) return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
-  if (lower.startsWith('/user/blog/') && lower !== '/user/blog') return <BlogDetail />
+  if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && lower !== '/user/blog/request') return <BlogDetail />
   if (lower.startsWith('/user/author/')) return <AuthorProfile />
   if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />
   if (lower.startsWith('/user/confirmation')) return <Confirmation />
@@ -1012,7 +1003,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/skincare': return <Skincare />
     case '/user/ingredients': return <Ingredients />
     case '/user/blog': return <Blog />
-    case '/user/blog/request': return requireAuth(<BlogRequestForm />)
+    case '/user/blog/request': return RequiredAuth(<BlogRequestForm />)
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
     case '/user/affiliate':
