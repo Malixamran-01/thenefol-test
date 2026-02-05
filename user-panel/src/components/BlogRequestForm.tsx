@@ -312,12 +312,35 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const createImageId = () => `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
   const insertImageIntoEditor = () => {
+    // Ensure the editor is focused and available
+    if (!editorRef.current) {
+      console.error('Editor not available')
+      return
+    }
+    
+    // Focus the editor first
+    editorRef.current.focus()
+    
     // Save the current cursor position before opening file picker
     const selection = window.getSelection()
     if (selection && selection.rangeCount > 0) {
-      savedSelectionRef.current = selection.getRangeAt(0).cloneRange()
+      const range = selection.getRangeAt(0)
+      // Only save selection if it's within the editor
+      if (editorRef.current.contains(range.commonAncestorContainer)) {
+        savedSelectionRef.current = range.cloneRange()
+      } else {
+        // If cursor is not in editor, set it to the end of editor
+        const newRange = document.createRange()
+        newRange.selectNodeContents(editorRef.current)
+        newRange.collapse(false)
+        savedSelectionRef.current = newRange
+      }
     } else {
-      savedSelectionRef.current = null
+      // No selection, set cursor to end of editor
+      const newRange = document.createRange()
+      newRange.selectNodeContents(editorRef.current)
+      newRange.collapse(false)
+      savedSelectionRef.current = newRange
     }
 
     const input = document.createElement('input')
@@ -455,21 +478,36 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       } else {
         console.log('Inserting new image')
         
-        // Focus the editor and restore the saved cursor position
-        editorRef.current?.focus()
+        // Ensure we're working within the editor
+        if (!editorRef.current) {
+          console.error('Editor ref not available')
+          return
+        }
+        
+        // Focus the editor first
+        editorRef.current.focus()
         
         const imageId = createImageId()
 
-        // Insert new image at cursor position
+        // Create a container div for the image to ensure proper centering and line behavior
+        const imageContainer = document.createElement('div')
+        imageContainer.style.textAlign = 'center'
+        imageContainer.style.margin = '20px 0'
+        imageContainer.style.display = 'block'
+        imageContainer.style.width = '100%'
+        imageContainer.setAttribute('contenteditable', 'false')
+        
+        // Create the image element
         const img = document.createElement('img')
         img.src = imageUrl
         img.alt = filename
         img.style.maxWidth = '100%'
         img.style.height = 'auto'
-        img.style.margin = '10px 0'
         img.style.cursor = 'pointer'
         img.style.border = '2px solid transparent'
         img.style.transition = 'all 0.2s'
+        img.style.display = 'block'
+        img.style.margin = '0 auto'
         img.setAttribute('data-filename', filename)
         img.setAttribute('data-image-id', imageId)
         img.setAttribute('data-caption', '')
@@ -490,32 +528,52 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
           img.style.borderColor = 'transparent'
         })
         
-        // Use saved cursor position if available
+        // Append image to container
+        imageContainer.appendChild(img)
+        
+        // Insert the image container into the editor
         const selection = window.getSelection()
-        if (selection && savedSelectionRef.current) {
-          console.log('Using saved cursor position')
+        
+        // Always insert into the editor, regardless of cursor position
+        if (selection && savedSelectionRef.current && editorRef.current.contains(savedSelectionRef.current.commonAncestorContainer)) {
+          console.log('Using saved cursor position within editor')
           try {
             selection.removeAllRanges()
             selection.addRange(savedSelectionRef.current)
             
             const range = selection.getRangeAt(0)
-            range.deleteContents()
-            range.insertNode(img)
             
-            // Move cursor after the image
-            range.setStartAfter(img)
-            range.setEndAfter(img)
+            // Ensure we're inserting at block level for proper line behavior
+            const startContainer = range.startContainer
+            if (startContainer.nodeType === Node.TEXT_NODE) {
+              // Split text node if needed and insert at paragraph level
+              const parentElement = startContainer.parentElement
+              if (parentElement && editorRef.current.contains(parentElement)) {
+                parentElement.parentNode?.insertBefore(imageContainer, parentElement.nextSibling)
+              } else {
+                editorRef.current.appendChild(imageContainer)
+              }
+            } else {
+              range.insertNode(imageContainer)
+            }
+            
+            // Move cursor after the image container
+            range.setStartAfter(imageContainer)
+            range.setEndAfter(imageContainer)
             selection.removeAllRanges()
             selection.addRange(range)
           } catch (selectionError) {
             console.error('Error with cursor position, appending to end:', selectionError)
-            editorRef.current?.appendChild(img)
+            editorRef.current.appendChild(imageContainer)
           }
         } else {
-          console.log('No saved cursor position, appending to end')
-          // Fallback: append to the end of the editor
-          editorRef.current?.appendChild(img)
+          console.log('No valid saved cursor position, appending to end of editor')
+          editorRef.current.appendChild(imageContainer)
         }
+        
+        // Add a line break after the image for better editing experience
+        const lineBreak = document.createElement('br')
+        imageContainer.parentNode?.insertBefore(lineBreak, imageContainer.nextSibling)
         
         // Store the file reference for later upload
         const currentImages = formData.images || []
@@ -693,8 +751,9 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         .editor-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
         .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
         .editor-content a { color: #4B97C9; text-decoration: underline; }
-        .editor-content img { max-width: 100%; height: auto; margin: 10px 0; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .editor-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
         .editor-content img:hover { border-color: #4B97C9; }
+        .editor-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; }
         .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
