@@ -28,6 +28,10 @@ backend/supabase-connection-string.txt
 **/*.env
 supabase-connection-string.txt
 
+# Security cleanup files
+cleanup-secrets.md
+security-audit.md
+
 # IDE
 .vscode/settings.json
 .idea/
@@ -50,3 +54,11 @@ backend/dist/
 # Exclude large video files
 *.mp4
 *.webm
+
+# Additional security patterns
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.txt
+credentials.json

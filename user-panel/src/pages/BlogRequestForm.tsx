@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft, Eye } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import ImageEditor from '../components/ImageEditor'
+import BlogPreview from '../components/BlogPreview'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 
 interface BlogRequest {
@@ -82,6 +83,7 @@ export default function BlogRequestForm() {
   const [showAltTextModal, setShowAltTextModal] = useState(false)
   const [editingImageId, setEditingImageId] = useState<string | null>(null)
   const [editingImageName, setEditingImageName] = useState<string>('')
+  const [showPreview, setShowPreview] = useState(false)
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -1232,29 +1234,40 @@ const handleImageEditorSave = async (editedImageObject: any) => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t">
                 <button 
                   type="button" 
-                  onClick={() => window.location.hash = '#/user/blog'} 
-                  className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  onClick={() => setShowPreview(true)} 
+                  className="w-full sm:w-auto px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2"
                   disabled={isSubmitting}
                 >
-                  Cancel
+                  <Eye className="w-4 h-4" />
+                  Preview
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting || !agreedToTerms}
-                  className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    'Submit Blog Request'
-                  )}
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <button 
+                    type="button" 
+                    onClick={() => window.location.hash = '#/user/blog'} 
+                    className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting || !agreedToTerms}
+                    className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Blog Request'
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1494,6 +1507,21 @@ const handleImageEditorSave = async (editedImageObject: any) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Blog Preview Modal */}
+      {showPreview && (
+        <BlogPreview
+          title={formData.title}
+          excerpt={formData.excerpt}
+          content={formData.content}
+          authorName={formData.author_name}
+          authorEmail={formData.author_email}
+          coverImage={formData.coverImage}
+          detailImage={formData.detailImage}
+          categories={formData.categories}
+          onClose={() => setShowPreview(false)}
+        />
       )}
     </>
   )
