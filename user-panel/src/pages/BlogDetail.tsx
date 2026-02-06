@@ -199,10 +199,11 @@ export default function BlogDetail() {
     if (pageUrl) setLink('canonical', pageUrl)
   }, [post])
 
-  const processContentImages = (content: string, apiBase: string): string => {
+  const processContentImages = (content: string, apiBase: string, postImages: string[] = []): string => {
     if (!content) return content
     
     console.log('Original content:', content)
+    console.log('Available images:', postImages)
     
     let processedContent = content
     
@@ -216,11 +217,45 @@ export default function BlogDetail() {
       .replace(/src\s*=\s*"(\/uploads\/[^"]+)"/g, `src="${apiBase}$1"`)
       .replace(/src\s*=\s*'(\/uploads\/[^']+)'/g, `src="${apiBase}$1"`)
     
+    // Replace blob URLs or data-filename references with actual uploaded images
+    processedContent = processedContent.replace(
+      /<img[^>]*data-filename="([^"]+)"[^>]*>/gi,
+      (match, filename) => {
+        console.log('Found img with data-filename:', filename)
+        // Find the matching image in postImages array
+        const matchingImage = postImages.find(img => img.includes(filename) || filename.includes(img.split('/').pop() || ''))
+        if (matchingImage) {
+          console.log('Matched with:', matchingImage)
+          return `<img src="${matchingImage}" alt="Blog image" style="max-width: 100%; height: auto; margin: 20px auto; display: block; border-radius: 8px;" />`
+        }
+        // If no match found, try to construct the path
+        const imagePath = filename.startsWith('/uploads/') ? `${apiBase}${filename}` : `${apiBase}/uploads/blog/${filename}`
+        return `<img src="${imagePath}" alt="Blog image" style="max-width: 100%; height: auto; margin: 20px auto; display: block; border-radius: 8px;" />`
+      }
+    )
+    
     // Handle cases where image paths might be stored as plain text (not in img tags)
     // Convert standalone /uploads/ paths to proper img tags
     processedContent = processedContent.replace(
-      /(?<!src=["'])(\/uploads\/[^\s<>"']+\.(?:jpg|jpeg|png|gif|webp|svg))(?!["'])/gi,
-      `<img src="${apiBase}$1" alt="Blog image" style="max-width: 100%; height: auto; margin: 10px auto; display: block;" />`
+      /(?<!src=["'])(\/uploads\/blog\/[^\s<>"']+\.(?:jpg|jpeg|png|gif|webp|svg))(?!["'])/gi,
+      `<img src="${apiBase}$1" alt="Blog image" style="max-width: 100%; height: auto; margin: 20px auto; display: block; border-radius: 8px;" />`
+    )
+    
+    // Also handle just the filename without path (in case it's stored that way)
+    processedContent = processedContent.replace(
+      /(?<!src=["']|\/)([\w-]+\.(?:jpg|jpeg|png|gif|webp|svg))(?!["'])/gi,
+      (match, filename) => {
+        // Check if this looks like an uploaded blog image filename (has UUID pattern)
+        if (filename.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i)) {
+          // Try to find it in the postImages array first
+          const matchingImage = postImages.find(img => img.includes(filename))
+          if (matchingImage) {
+            return `<img src="${matchingImage}" alt="Blog image" style="max-width: 100%; height: auto; margin: 20px auto; display: block; border-radius: 8px;" />`
+          }
+          return `<img src="${apiBase}/uploads/blog/${filename}" alt="Blog image" style="max-width: 100%; height: auto; margin: 20px auto; display: block; border-radius: 8px;" />`
+        }
+        return match
+      }
     )
     
     console.log('Processed content:', processedContent)
@@ -756,26 +791,59 @@ export default function BlogDetail() {
             fontSize: '1.0625rem',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif'
           }}
+          onError={(e) => {
+            // Handle image load errors
+            const target = e.target as HTMLImageElement
+            if (target.tagName === 'IMG' && target.src) {
+              console.error('Failed to load image:', target.src)
+              target.style.border = '2px dashed #e5e7eb'
+              target.style.padding = '20px'
+              target.alt = 'Image failed to load'
+            }
+          }}
         >
           {post.content ? (
             post.content.includes('<') && post.content.includes('>') ? (
-              <div dangerouslySetInnerHTML={{ __html: processContentImages(post.content, getApiBase()) }} />
+              <div dangerouslySetInnerHTML={{ __html: processContentImages(post.content, getApiBase(), post.images || []) }} />
             ) : (
               <div style={{ whiteSpace: 'pre-wrap' }}>
                 {post.content.split('\n').map((paragraph, index) => {
-                  // Check if this paragraph is an image path
-                  if (paragraph.trim().match(/^\/uploads\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)$/i)) {
+                  const trimmed = paragraph.trim()
+                  
+                  // Check if this paragraph is a full image path
+                  if (trimmed.match(/^\/uploads\/blog\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)$/i)) {
                     return (
                       <div key={index} style={{ textAlign: 'center', margin: '20px 0' }}>
                         <img 
-                          src={`${getApiBase()}${paragraph.trim()}`}
+                          src={`${getApiBase()}${trimmed}`}
                           alt="Blog image"
-                          style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }}
+                          style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto', borderRadius: '8px' }}
                         />
                       </div>
                     )
                   }
-                  return paragraph.trim() ? <p key={index}>{paragraph}</p> : null
+                  
+                  // Check if this paragraph is just a filename (UUID pattern)
+                  if (trimmed.match(/^[\w-]+\.(?:jpg|jpeg|png|gif|webp|svg)$/i) && 
+                      trimmed.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i)) {
+                    // Try to find the image in the images array first
+                    const matchingImage = (post.images || []).find(img => 
+                      typeof img === 'string' && img.includes(trimmed)
+                    )
+                    const imageSrc = matchingImage || `${getApiBase()}/uploads/blog/${trimmed}`
+                    
+                    return (
+                      <div key={index} style={{ textAlign: 'center', margin: '20px 0' }}>
+                        <img 
+                          src={imageSrc}
+                          alt="Blog image"
+                          style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto', borderRadius: '8px' }}
+                        />
+                      </div>
+                    )
+                  }
+                  
+                  return trimmed ? <p key={index}>{paragraph}</p> : null
                 })}
               </div>
             )
