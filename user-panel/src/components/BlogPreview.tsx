@@ -71,13 +71,13 @@ export default function BlogPreview({
         .blog-preview-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="sticky top-4 right-4 float-right p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors z-10"
-          aria-label="Close preview"
-        >
+        <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="sticky top-4 right-4 float-right p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors z-10"
+            aria-label="Close preview"
+          >
           <X className="w-5 h-5 text-gray-600" />
         </button>
 
@@ -189,6 +189,7 @@ export default function BlogPreview({
             </div>
           </div>
         </div>
+      </div>
       </div>
     </>
   )
