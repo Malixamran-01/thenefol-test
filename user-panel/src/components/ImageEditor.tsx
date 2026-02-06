@@ -14,6 +14,79 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
   const [editorOpen, setEditorOpen] = useState(!!source)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
 
+  // Add custom CSS to fix input field styling issues
+  React.useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      /* Fix Filerobot Image Editor input field styling */
+      .FIE_root input[type="text"],
+      .FIE_root input[type="number"],
+      .FIE_root input {
+        padding: 8px 12px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: white !important;
+        color: #1f2937 !important;
+      }
+      
+      .FIE_root input:focus {
+        outline: none !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+      }
+      
+      /* Fix input containers */
+      .FIE_root .SfxInput-root,
+      .FIE_root .SfxInput-wrapper {
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      
+      /* Fix modal input fields */
+      .FIE_root .SfxModal-root input {
+        padding: 10px 12px !important;
+        margin: 0 !important;
+      }
+      
+      /* Fix text overflow */
+      .FIE_root input {
+        text-overflow: ellipsis !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+      }
+      
+      /* Fix select dropdowns */
+      .FIE_root select {
+        padding: 8px 12px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
+        background: white !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      
+      /* Fix number input spinners */
+      .FIE_root input[type="number"] {
+        -moz-appearance: textfield !important;
+      }
+      
+      .FIE_root input[type="number"]::-webkit-inner-spin-button,
+      .FIE_root input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+      }
+    `
+    document.head.appendChild(style)
+    
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
+
   const handleFileSelect = (file: File) => {
     const url = URL.createObjectURL(file)
     setSelectedImage(url)
