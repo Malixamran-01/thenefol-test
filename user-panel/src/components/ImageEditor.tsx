@@ -18,19 +18,30 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
   React.useEffect(() => {
     const style = document.createElement('style')
     style.textContent = `
-      /* Fix Filerobot Image Editor input field styling */
+      /* Fix Filerobot Image Editor input field styling - More specific targeting */
+      
+      /* Reset all input positioning and transforms */
       .FIE_root input[type="text"],
       .FIE_root input[type="number"],
       .FIE_root input {
+        position: relative !important;
+        transform: none !important;
         padding: 8px 12px !important;
         border: 1px solid #d1d5db !important;
         border-radius: 6px !important;
         font-size: 14px !important;
         line-height: 1.5 !important;
         width: 100% !important;
+        max-width: 100% !important;
         box-sizing: border-box !important;
         background: white !important;
         color: #1f2937 !important;
+        margin: 0 !important;
+        left: 0 !important;
+        top: 0 !important;
+        text-overflow: ellipsis !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
       }
       
       .FIE_root input:focus {
@@ -39,24 +50,35 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
       }
       
-      /* Fix input containers */
+      /* Fix input containers and wrappers */
       .FIE_root .SfxInput-root,
-      .FIE_root .SfxInput-wrapper {
+      .FIE_root .SfxInput-wrapper,
+      .FIE_root [class*="Input-root"],
+      .FIE_root [class*="Input-wrapper"],
+      .FIE_root [class*="input-wrapper"],
+      .FIE_root [class*="InputWrapper"] {
+        position: relative !important;
         width: 100% !important;
+        max-width: 100% !important;
         box-sizing: border-box !important;
+        overflow: hidden !important;
+        display: block !important;
       }
       
-      /* Fix modal input fields */
-      .FIE_root .SfxModal-root input {
+      /* Fix modal input fields specifically */
+      .FIE_root .SfxModal-root input,
+      .FIE_root [class*="Modal"] input {
         padding: 10px 12px !important;
         margin: 0 !important;
+        position: relative !important;
+        transform: none !important;
       }
       
-      /* Fix text overflow */
-      .FIE_root input {
-        text-overflow: ellipsis !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
+      /* Fix any absolutely positioned inputs */
+      .FIE_root input[style*="position: absolute"],
+      .FIE_root input[style*="transform"] {
+        position: relative !important;
+        transform: none !important;
       }
       
       /* Fix select dropdowns */
@@ -67,6 +89,8 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
         background: white !important;
         width: 100% !important;
         box-sizing: border-box !important;
+        position: relative !important;
+        transform: none !important;
       }
       
       /* Fix number input spinners */
@@ -78,6 +102,25 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
       .FIE_root input[type="number"]::-webkit-outer-spin-button {
         -webkit-appearance: none !important;
         margin: 0 !important;
+      }
+      
+      /* Fix any transform or translate on inputs */
+      .FIE_root input {
+        translate: none !important;
+      }
+      
+      /* Fix field containers in modals */
+      .FIE_root [class*="field"],
+      .FIE_root [class*="Field"] {
+        position: relative !important;
+        overflow: visible !important;
+      }
+      
+      /* Ensure parent containers don't cause overflow */
+      .FIE_root [class*="control"],
+      .FIE_root [class*="Control"] {
+        position: relative !important;
+        overflow: hidden !important;
       }
     `
     document.head.appendChild(style)
