@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, ArrowLeft, X, MessageCircle, ThumbsUp, Share2 } from 'lucide-react'
+import { Calendar, ArrowLeft, X, MessageCircle, ThumbsUp, Share2, ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -527,183 +527,231 @@ export default function BlogDetail() {
     return (b.like_count || 0) - (a.like_count || 0)
   })
 
-  // Recursive component to render nested comments
+  // Recursive component to render nested comments - Reddit style
   const renderComment = (comment: BlogComment, depth: number = 0) => {
     const replies = comment.children || []
-    const isExpanded = expandedComments[comment.id] ?? true
+    const isCollapsed = expandedComments[comment.id] === false
     const isEditing = activeEditId === comment.id
     const textExpanded = expandedText[comment.id] ?? false
-    const showTruncate = (comment.content || '').length > 220
+    const showTruncate = (comment.content || '').length > 300
     const displayText = showTruncate && !textExpanded
-      ? `${comment.content.slice(0, 220)}...`
+      ? `${comment.content.slice(0, 300)}...`
       : comment.content
 
-    // Calculate indentation based on depth (max 8 levels deep for visual clarity)
-    const indentLevel = Math.min(depth, 8)
-    const marginLeft = indentLevel * 20 // 20px per level
-    const threadGutter = depth > 0 ? 16 : 0
+    const replyCount = replies.length
+    const totalReplies = (c: BlogComment): number => {
+      return (c.children?.length || 0) + (c.children?.reduce((sum, child) => sum + totalReplies(child), 0) || 0)
+    }
 
     return (
-      <div key={comment.id} className="mb-4">
-        <div className="flex items-start gap-3" style={{ marginLeft: `${marginLeft}px` }}>
-          {depth > 0 && (
-            <div className="relative w-4 flex-shrink-0">
-              <div className="absolute left-1.5 top-0 bottom-0 w-px bg-gray-200" />
-              <div className="absolute left-1.5 top-4 h-3 w-3 border-b border-l border-gray-200 rounded-bl-md" />
-            </div>
-          )}
-
-          <div className="flex-1 rounded-xl border border-gray-200 bg-white p-3 shadow-sm hover:border-gray-300 transition-colors">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-700">
-                  {(comment.author_name || 'U').charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-900">
-                    <span>{comment.author_name || 'User'}</span>
-                    {post?.user_id && String(comment.user_id || '') === String(post.user_id) && (
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                        Author
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(comment.created_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-              {isAuthenticated && String(comment.user_id || '') === String(user?.id || '') && (
-                <div className="relative">
-                  <button
-                    onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)}
-                    className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
-                  >
-                    ⋯
-                  </button>
-                  {openMenuId === comment.id && (
-                    <div className="absolute right-0 mt-2 w-28 rounded-md border border-gray-200 bg-white shadow-lg z-10">
-                      <button
-                        onClick={() => {
-                          setActiveEditId(comment.id)
-                          setEditText(prev => ({ ...prev, [comment.id]: comment.content }))
-                          setOpenMenuId(null)
-                        }}
-                        className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          setOpenMenuId(null)
-                          deleteComment(comment.id)
-                        }}
-                        className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-50"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
+      <div key={comment.id} className="relative">
+        {/* Threading line */}
+        {depth > 0 && (
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200 hover:bg-orange-400 transition-colors cursor-pointer"
+            onClick={() => toggleReplies(comment.id)}
+          />
+        )}
+        
+        <div className={`${depth > 0 ? 'ml-6 pl-4' : ''} ${isCollapsed ? 'mb-2' : 'mb-4'}`}>
+          <div className="flex items-start gap-3">
+            {/* Collapse/Expand button */}
+            <button
+              onClick={() => toggleReplies(comment.id)}
+              className="mt-1 flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors"
+              title={isCollapsed ? 'Expand thread' : 'Collapse thread'}
+            >
+              {isCollapsed ? (
+                <Plus className="w-4 h-4 text-gray-500" />
+              ) : (
+                <Minus className="w-4 h-4 text-gray-500" />
               )}
+            </button>
+
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                {(comment.author_name || 'U').charAt(0).toUpperCase()}
+              </div>
             </div>
 
-            {!isEditing ? (
-              <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                {displayText}
-                {showTruncate && (
-                  <button
-                    onClick={() => toggleText(comment.id)}
-                    className="ml-2 text-xs text-blue-600 hover:underline"
-                  >
-                    {textExpanded ? 'Show less' : 'Show more'}
-                  </button>
+            {/* Comment content */}
+            <div className="flex-1 min-w-0">
+              {/* Header */}
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-sm font-semibold text-gray-900 hover:underline cursor-pointer">
+                  {comment.author_name || 'Anonymous'}
+                </span>
+                {post?.user_id && String(comment.user_id || '') === String(post.user_id) && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-blue-500 text-white">
+                    OP
+                  </span>
+                )}
+                <span className="text-xs text-gray-500">
+                  {new Date(comment.created_at).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: new Date(comment.created_at).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                  })}
+                </span>
+                {isCollapsed && replyCount > 0 && (
+                  <span className="text-xs text-blue-600 font-medium">
+                    [{replyCount} {replyCount === 1 ? 'reply' : 'replies'}]
+                  </span>
                 )}
               </div>
-            ) : (
-              <div className="mt-2 space-y-2">
-                <textarea
-                  value={editText[comment.id] || ''}
-                  onChange={(e) => setEditText(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  rows={2}
-                />
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setActiveEditId(null)}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => submitEdit(comment.id)}
-                    className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            )}
 
-            <div className="mt-3 flex items-center gap-4 text-xs text-gray-600">
-              <button
-                onClick={() => toggleCommentLike(comment.id, !!comment.liked)}
-                className="inline-flex items-center gap-1 hover:text-gray-900 transition-colors"
-              >
-                <ThumbsUp className={`w-3 h-3 ${comment.liked ? 'text-blue-600 fill-current' : 'text-gray-500'}`} />
-                {comment.like_count || 0}
-              </button>
-              <button
-                onClick={() => setActiveReplyId(activeReplyId === comment.id ? null : comment.id)}
-                className="hover:text-gray-900 transition-colors"
-              >
-                Reply
-              </button>
-              {replies.length > 0 && (
-                <button
-                  onClick={() => toggleReplies(comment.id)}
-                  className="hover:text-gray-900 transition-colors"
-                >
-                  {isExpanded ? 'Hide' : 'Show'} {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-                </button>
+              {/* Comment body - only show if not collapsed */}
+              {!isCollapsed && (
+                <>
+                  {!isEditing ? (
+                    <div className="text-[15px] text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
+                      {displayText}
+                      {showTruncate && (
+                        <button
+                          onClick={() => toggleText(comment.id)}
+                          className="ml-2 text-sm text-blue-600 hover:underline font-medium"
+                        >
+                          {textExpanded ? 'show less' : 'read more'}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      <textarea
+                        value={editText[comment.id] || ''}
+                        onChange={(e) => setEditText(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        rows={3}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => setActiveEditId(null)}
+                          className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-full"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => submitEdit(comment.id)}
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-full"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions bar */}
+                  <div className="mt-2 flex items-center gap-3 text-xs font-bold text-gray-600">
+                    {/* Vote */}
+                    <button
+                      onClick={() => toggleCommentLike(comment.id, !!comment.liked)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition-colors ${
+                        comment.liked ? 'text-orange-500' : ''
+                      }`}
+                    >
+                      <ChevronUp className={`w-4 h-4 ${comment.liked ? 'fill-current' : ''}`} />
+                      <span>{comment.like_count || 0}</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+
+                    {/* Reply */}
+                    <button
+                      onClick={() => setActiveReplyId(activeReplyId === comment.id ? null : comment.id)}
+                      className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Reply
+                    </button>
+
+                    {/* Share */}
+                    <button className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition-colors">
+                      <Share2 className="w-3.5 h-3.5" />
+                      Share
+                    </button>
+
+                    {/* Edit/Delete menu */}
+                    {isAuthenticated && String(comment.user_id || '') === String(user?.id || '') && (
+                      <div className="relative ml-auto">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)}
+                          className="px-2 py-1 rounded hover:bg-gray-100"
+                        >
+                          •••
+                        </button>
+                        {openMenuId === comment.id && (
+                          <div className="absolute right-0 mt-1 w-32 rounded-md border border-gray-200 bg-white shadow-lg z-10">
+                            <button
+                              onClick={() => {
+                                setActiveEditId(comment.id)
+                                setEditText(prev => ({ ...prev, [comment.id]: comment.content }))
+                                setOpenMenuId(null)
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null)
+                                deleteComment(comment.id)
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-50"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reply input */}
+                  {activeReplyId === comment.id && (
+                    <div className="mt-3">
+                      <div className="flex gap-2">
+                        <textarea
+                          value={replyText[comment.id] || ''}
+                          onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                          className="flex-1 rounded-md border border-gray-300 p-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                          placeholder={isAuthenticated ? 'What are your thoughts?' : 'Sign in to reply'}
+                          disabled={!isAuthenticated}
+                          rows={3}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.ctrlKey && isAuthenticated && replyText[comment.id]?.trim()) {
+                              submitComment(comment.id)
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2 mt-2">
+                        <button
+                          onClick={() => setActiveReplyId(null)}
+                          className="px-4 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-full"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => submitComment(comment.id)}
+                          className="px-4 py-1.5 text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!isAuthenticated || !(replyText[comment.id] || '').trim()}
+                        >
+                          Reply
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Reply input */}
-        {activeReplyId === comment.id && (
-          <div className="mt-2" style={{ marginLeft: `${marginLeft + threadGutter + 20}px` }}>
-            <div className="flex items-center gap-2">
-              <input
-                value={replyText[comment.id] || ''}
-                onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                placeholder={isAuthenticated ? 'Write a reply…' : 'Sign in to reply'}
-                disabled={!isAuthenticated}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.ctrlKey && isAuthenticated && replyText[comment.id]?.trim()) {
-                    submitComment(comment.id)
-                  }
-                }}
-              />
-              <button
-                onClick={() => submitComment(comment.id)}
-                className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
-                disabled={!isAuthenticated || !(replyText[comment.id] || '').trim()}
-              >
-                Reply
-              </button>
+          {/* Nested replies */}
+          {!isCollapsed && replies.length > 0 && (
+            <div className="mt-2">
+              {replies.map((child: BlogComment) => renderComment(child, depth + 1))}
             </div>
-          </div>
-        )}
-
-        {/* Nested replies */}
-        {isExpanded && replies.length > 0 && (
-          <div className="mt-3">
-            {replies.map((child: BlogComment) => renderComment(child, depth + 1))}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     )
   }
@@ -1112,29 +1160,34 @@ export default function BlogDetail() {
             </div>
 
           <div className="mb-6">
-            <div className="flex items-center gap-2">
+            <textarea
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+              placeholder={isAuthenticated ? 'What are your thoughts?' : 'Sign in to comment'}
+              disabled={!isAuthenticated}
+              rows={3}
+            />
+            <div className="flex justify-end mt-2">
               <button
                 onClick={() => submitComment()}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2 text-sm font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 disabled={!isAuthenticated || !commentText.trim()}
               >
-                Post Comment
+                Comment
               </button>
-              <input
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                placeholder={isAuthenticated ? 'Add a comment…' : 'Sign in to comment'}
-                disabled={!isAuthenticated}
-              />
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             {commentTree.length === 0 ? (
-              <p className="text-sm text-gray-500">No comments yet. Be the first to comment.</p>
+              <div className="py-8 text-center">
+                <MessageCircle className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                <p className="text-sm text-gray-500">No comments yet</p>
+                <p className="text-xs text-gray-400 mt-1">Be the first to share what you think!</p>
+              </div>
             ) : (
-              <div className="relative">
+              <div className="space-y-2">
                 {sortedRoots.map((comment: BlogComment) => renderComment(comment, 0))}
               </div>
             )}
