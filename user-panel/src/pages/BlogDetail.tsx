@@ -462,52 +462,51 @@ export default function BlogDetail() {
   }
 
   const buildCommentTree = (items: BlogComment[]) => {
-    // Use ancestors array for efficient tree building (Path Enumeration)
-    // Root comments have ancestors = null or []
+    // Build tree using ancestors when available, fallback to parent_id
     const rootComments: BlogComment[] = []
     const commentMap = new Map<string, BlogComment>()
-    
-    // First pass: create map of all comments and identify roots
+
     items.forEach((comment) => {
       const commentWithChildren: BlogComment = { ...comment, children: [] }
       commentMap.set(comment.id, commentWithChildren)
-      
-      // Root comment: no ancestors or empty ancestors array
-      if (!comment.ancestors || comment.ancestors.length === 0) {
-        rootComments.push(commentWithChildren)
-      }
     })
-    
-    // Second pass: build tree structure using ancestors
+
     items.forEach((comment) => {
-      if (comment.ancestors && comment.ancestors.length > 0) {
-        // Find parent (last element in ancestors array)
-        const parentId = String(comment.ancestors[comment.ancestors.length - 1])
-        const parent = commentMap.get(parentId)
-        const current = commentMap.get(comment.id)
-        
-        if (parent && current) {
-          if (!parent.children) {
-            parent.children = []
-          }
-          parent.children.push(current)
-        }
+      const current = commentMap.get(comment.id)
+      if (!current) return
+
+      const hasAncestors = Array.isArray(comment.ancestors) && comment.ancestors.length > 0
+      const parentIdFromAncestors = hasAncestors
+        ? String(comment.ancestors![comment.ancestors!.length - 1])
+        : null
+      const parentId = parentIdFromAncestors || (comment.parent_id ? String(comment.parent_id) : null)
+
+      if (!parentId) {
+        rootComments.push(current)
+        return
+      }
+
+      const parent = commentMap.get(parentId)
+      if (parent) {
+        parent.children = parent.children || []
+        parent.children.push(current)
+      } else {
+        // If parent is missing, treat as root to avoid dropping it
+        rootComments.push(current)
       }
     })
-    
-    // Sort comments by creation time
+
     const sortByOldest = (a: BlogComment, b: BlogComment) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    
-    const sortTree = (comments: BlogComment[]): BlogComment[] => {
-      return comments
+
+    const sortTree = (comments: BlogComment[]): BlogComment[] =>
+      comments
         .sort(sortByOldest)
         .map(comment => ({
           ...comment,
           children: comment.children ? sortTree(comment.children) : []
         }))
-    }
-    
+
     return sortTree(rootComments)
   }
 
@@ -531,7 +530,7 @@ export default function BlogDetail() {
   // Recursive component to render nested comments
   const renderComment = (comment: BlogComment, depth: number = 0) => {
     const replies = comment.children || []
-    const isExpanded = expandedComments[comment.id] ?? (depth < 2) // Auto-expand first 2 levels
+    const isExpanded = expandedComments[comment.id] ?? true
     const isEditing = activeEditId === comment.id
     const textExpanded = expandedText[comment.id] ?? false
     const showTruncate = (comment.content || '').length > 220
