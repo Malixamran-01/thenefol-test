@@ -310,8 +310,14 @@ export default function BlogDetail() {
       const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/comments?sort=${commentSort}`)
       if (response.ok) {
         const data = await response.json()
-        console.log('Fetched comments from API:', data)
-        setComments(data)
+        // Parse ancestors if it comes as a string from PostgreSQL
+        const parsedData = data.map((comment: any) => ({
+          ...comment,
+          ancestors: typeof comment.ancestors === 'string' 
+            ? JSON.parse(comment.ancestors) 
+            : comment.ancestors
+        }))
+        setComments(parsedData)
       }
     } catch (err) {
       console.error('Failed to load comments:', err)
@@ -463,15 +469,8 @@ export default function BlogDetail() {
   }
 
   const buildCommentTree = (items: BlogComment[]) => {
-    // Debug: Check what data we're receiving
-    console.log('Building comment tree with items:', items.length)
-    if (items.length > 0) {
-      console.log('Sample comment:', items[0])
-    }
-    
     // Check if ancestors field exists (new method) or fall back to parent_id (old method)
-    const hasAncestors = items.some(item => item.ancestors !== undefined)
-    console.log('Has ancestors field:', hasAncestors)
+    const hasAncestors = items.some(item => item.ancestors !== undefined && item.ancestors !== null)
     
     if (hasAncestors) {
       // Use ancestors array for efficient tree building (Path Enumeration)
@@ -519,12 +518,7 @@ export default function BlogDetail() {
           }))
       }
       
-      const result = sortTree(rootComments)
-      console.log('Built tree with', result.length, 'root comments')
-      result.forEach((root, idx) => {
-        console.log(`Root ${idx + 1}: ${root.content?.substring(0, 30)}... has ${root.children?.length || 0} children`)
-      })
-      return result
+      return sortTree(rootComments)
     } else {
       // Fallback: Use parent_id for tree building (old method)
       const byParent: Record<string, BlogComment[]> = {}
