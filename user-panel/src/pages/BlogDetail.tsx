@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Calendar, ArrowLeft, X, MessageCircle, ThumbsUp, Share2 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import { getCleanUrl, getAbsoluteImageUrl } from '../utils/urlHelper'
+import { getShareableUrl, getAbsoluteImageUrl } from '../utils/urlHelper'
 
 interface BlogPost {
   id: string
@@ -182,8 +182,8 @@ export default function BlogDetail() {
     // Get the API base for constructing full URLs
     const apiBase = getApiBase()
     
-    // Build the canonical URL (clean URL without hash)
-    const canonicalUrl = getCleanUrl(post.canonical_url)
+    // Build the shareable URL (keeps hash for hash-based routing)
+    const shareableUrl = getShareableUrl(post.canonical_url)
     
     // Ensure OG image has full URL
     const ogImageUrl = getAbsoluteImageUrl(
@@ -206,7 +206,7 @@ export default function BlogDetail() {
       setMeta('og:image:alt', post.title, 'property')
     }
     setMeta('og:type', 'article', 'property')
-    setMeta('og:url', canonicalUrl, 'property')
+    setMeta('og:url', shareableUrl, 'property')
     setMeta('og:site_name', 'NEFOL', 'property')
 
     setMeta('twitter:card', ogImageUrl ? 'summary_large_image' : 'summary', 'name')
@@ -214,11 +214,11 @@ export default function BlogDetail() {
     setMeta('twitter:description', post.og_description || post.meta_description || post.excerpt || '', 'name')
     if (ogImageUrl) setMeta('twitter:image', ogImageUrl, 'name')
 
-    setLink('canonical', canonicalUrl)
+    setLink('canonical', shareableUrl)
     
     console.log('Meta tags set:', {
       title: post.meta_title || post.title,
-      canonicalUrl,
+      shareableUrl,
       ogImageUrl,
       ogDescription: post.og_description || post.meta_description || post.excerpt
     })
@@ -551,7 +551,7 @@ export default function BlogDetail() {
   const handleShare = async () => {
     if (!post) return
 
-    const shareUrl = getCleanUrl(post.canonical_url)
+    const shareUrl = getShareableUrl(post.canonical_url)
     const shareTitle = post.og_title || post.meta_title || post.title
     const shareText = post.og_description || post.meta_description || post.excerpt || ''
     
@@ -579,7 +579,7 @@ export default function BlogDetail() {
 
   const copyToClipboard = async () => {
     if (!post) return
-    const shareUrl = getCleanUrl(post.canonical_url)
+    const shareUrl = getShareableUrl(post.canonical_url)
     
     try {
       await navigator.clipboard.writeText(shareUrl)
@@ -593,7 +593,7 @@ export default function BlogDetail() {
   const shareToSocial = (platform: string) => {
     if (!post) return
     
-    const shareUrlRaw = getCleanUrl(post.canonical_url)
+    const shareUrlRaw = getShareableUrl(post.canonical_url)
     const shareUrl = encodeURIComponent(shareUrlRaw)
     const shareTitle = encodeURIComponent(post.og_title || post.meta_title || post.title)
     const shareText = encodeURIComponent(post.og_description || post.meta_description || post.excerpt || '')

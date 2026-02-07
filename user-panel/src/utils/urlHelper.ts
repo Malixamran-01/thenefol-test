@@ -3,21 +3,18 @@
  */
 
 /**
- * Converts a hash-based URL to a clean URL
- * Example: https://example.com/#/user/blog/9 -> https://example.com/user/blog/9
+ * Gets the shareable URL for the current page
+ * For hash-based routing, this returns the full URL with hash
+ * If a custom canonical URL is provided, it uses that instead
  */
-export const getCleanUrl = (customCanonicalUrl?: string): string => {
-  // If a custom canonical URL is provided and doesn't contain hash, use it
-  if (customCanonicalUrl && !customCanonicalUrl.includes('#')) {
+export const getShareableUrl = (customCanonicalUrl?: string): string => {
+  // If a custom canonical URL is provided and is valid, use it
+  if (customCanonicalUrl && customCanonicalUrl.startsWith('http')) {
     return customCanonicalUrl
   }
 
-  const currentUrl = window.location.href
-  const baseUrl = currentUrl.split('#')[0].replace(/\/$/, '') // Remove trailing slash
-  const hash = window.location.hash || ''
-  const cleanPath = hash.replace('#/', '')
-
-  return `${baseUrl}/${cleanPath}`
+  // Otherwise, use the current URL with hash (as-is)
+  return window.location.href
 }
 
 /**
