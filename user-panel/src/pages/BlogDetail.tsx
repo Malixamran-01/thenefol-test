@@ -462,53 +462,90 @@ export default function BlogDetail() {
   }
 
   const buildCommentTree = (items: BlogComment[]) => {
-    // Use ancestors array for efficient tree building (Path Enumeration)
-    // Root comments have ancestors = null or []
-    const rootComments: BlogComment[] = []
-    const commentMap = new Map<string, BlogComment>()
-    
-    // First pass: create map of all comments and identify roots
-    items.forEach((comment) => {
-      const commentWithChildren: BlogComment = { ...comment, children: [] }
-      commentMap.set(comment.id, commentWithChildren)
-      
-      // Root comment: no ancestors or empty ancestors array
-      if (!comment.ancestors || comment.ancestors.length === 0) {
-        rootComments.push(commentWithChildren)
-      }
-    })
-    
-    // Second pass: build tree structure using ancestors
-    items.forEach((comment) => {
-      if (comment.ancestors && comment.ancestors.length > 0) {
-        // Find parent (last element in ancestors array)
-        const parentId = String(comment.ancestors[comment.ancestors.length - 1])
-        const parent = commentMap.get(parentId)
-        const current = commentMap.get(comment.id)
-        
-        if (parent && current) {
-          if (!parent.children) {
-            parent.children = []
-          }
-          parent.children.push(current)
-        }
-      }
-    })
-    
-    // Sort comments by creation time
-    const sortByOldest = (a: BlogComment, b: BlogComment) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    
-    const sortTree = (comments: BlogComment[]): BlogComment[] => {
-      return comments
-        .sort(sortByOldest)
-        .map(comment => ({
-          ...comment,
-          children: comment.children ? sortTree(comment.children) : []
-        }))
+    // Debug: Check what data we're receiving
+    console.log('Building comment tree with items:', items.length)
+    if (items.length > 0) {
+      console.log('Sample comment:', items[0])
     }
     
-    return sortTree(rootComments)
+    // Check if ancestors field exists (new method) or fall back to parent_id (old method)
+    const hasAncestors = items.some(item => item.ancestors !== undefined)
+    console.log('Has ancestors field:', hasAncestors)
+    
+    if (hasAncestors) {
+      // Use ancestors array for efficient tree building (Path Enumeration)
+      const rootComments: BlogComment[] = []
+      const commentMap = new Map<string, BlogComment>()
+      
+      // First pass: create map of all comments and identify roots
+      items.forEach((comment) => {
+        const commentWithChildren: BlogComment = { ...comment, children: [] }
+        commentMap.set(comment.id, commentWithChildren)
+        
+        // Root comment: no ancestors or empty ancestors array
+        if (!comment.ancestors || comment.ancestors.length === 0) {
+          rootComments.push(commentWithChildren)
+        }
+      })
+      
+      // Second pass: build tree structure using ancestors
+      items.forEach((comment) => {
+        if (comment.ancestors && comment.ancestors.length > 0) {
+          // Find parent (last element in ancestors array)
+          const parentId = String(comment.ancestors[comment.ancestors.length - 1])
+          const parent = commentMap.get(parentId)
+          const current = commentMap.get(comment.id)
+          
+          if (parent && current) {
+            if (!parent.children) {
+              parent.children = []
+            }
+            parent.children.push(current)
+          }
+        }
+      })
+      
+      // Sort comments by creation time
+      const sortByOldest = (a: BlogComment, b: BlogComment) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      
+      const sortTree = (comments: BlogComment[]): BlogComment[] => {
+        return comments
+          .sort(sortByOldest)
+          .map(comment => ({
+            ...comment,
+            children: comment.children ? sortTree(comment.children) : []
+          }))
+      }
+      
+      const result = sortTree(rootComments)
+      console.log('Built tree with', result.length, 'root comments')
+      result.forEach((root, idx) => {
+        console.log(`Root ${idx + 1}: ${root.content?.substring(0, 30)}... has ${root.children?.length || 0} children`)
+      })
+      return result
+    } else {
+      // Fallback: Use parent_id for tree building (old method)
+      const byParent: Record<string, BlogComment[]> = {}
+      items.forEach((comment) => {
+        const key = comment.parent_id || 'root'
+        if (!byParent[key]) byParent[key] = []
+        byParent[key].push(comment)
+      })
+      
+      const sortByOldest = (a: BlogComment, b: BlogComment) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      
+      const build = (parentId: string | null): BlogComment[] =>
+        (byParent[parentId || 'root'] || [])
+          .sort(sortByOldest)
+          .map((comment) => ({
+            ...comment,
+            children: build(comment.id)
+          })) as any
+      
+      return build(null)
+    }
   }
 
   const commentTree = buildCommentTree(comments)
