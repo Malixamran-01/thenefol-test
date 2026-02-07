@@ -189,11 +189,12 @@ async function runMigration() {
         END IF;
       END $$;
 
-      -- Blog comments (threaded)
+      -- Blog comments (threaded with Path Enumeration)
       CREATE TABLE IF NOT EXISTS blog_comments (
         id serial primary key,
         post_id integer not null references blog_posts(id) on delete cascade,
         parent_id integer references blog_comments(id) on delete cascade,
+        ancestors integer[], -- Path Enumeration: array of ancestor comment IDs from root to parent
         user_id integer references users(id) on delete set null,
         author_name text,
         author_email text,
@@ -304,6 +305,7 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_blog_comments_post_id ON blog_comments(post_id);
       CREATE INDEX IF NOT EXISTS idx_blog_comments_parent_id ON blog_comments(parent_id);
       CREATE INDEX IF NOT EXISTS idx_blog_comments_deleted ON blog_comments(is_deleted);
+      CREATE INDEX IF NOT EXISTS idx_blog_comments_ancestors ON blog_comments USING gin(ancestors); -- GIN index for efficient array queries
       CREATE INDEX IF NOT EXISTS idx_blog_comment_likes_comment_id ON blog_comment_likes(comment_id);
       CREATE INDEX IF NOT EXISTS idx_blog_comment_likes_user_id ON blog_comment_likes(user_id);
       CREATE INDEX IF NOT EXISTS idx_blog_likes_post_id ON blog_post_likes(post_id);

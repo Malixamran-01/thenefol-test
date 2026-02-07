@@ -572,11 +572,12 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_blog_posts_archived on blog_posts(is_archived);
     create index if not exists idx_blog_posts_deleted on blog_posts(is_deleted);
 
-    -- Blog comments (threaded)
+    -- Blog comments (threaded with Path Enumeration)
     create table if not exists blog_comments (
       id serial primary key,
       post_id integer not null references blog_posts(id) on delete cascade,
       parent_id integer references blog_comments(id) on delete cascade,
+      ancestors integer[], -- Path Enumeration: array of ancestor comment IDs from root to parent
       user_id integer references users(id) on delete set null,
       author_name text,
       author_email text,
@@ -592,6 +593,7 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_blog_comments_post_id on blog_comments(post_id);
     create index if not exists idx_blog_comments_parent_id on blog_comments(parent_id);
     create index if not exists idx_blog_comments_deleted on blog_comments(is_deleted);
+    create index if not exists idx_blog_comments_ancestors on blog_comments using gin(ancestors); -- GIN index for efficient array queries
 
     -- Blog comment likes
     create table if not exists blog_comment_likes (

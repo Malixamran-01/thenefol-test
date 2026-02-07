@@ -622,16 +622,23 @@ router.get('/posts/:id/comments', async (req, res) => {
     if (postRows[0].allow_comments === false) {
       return res.json([])
     }
-    const orderClause = sort === 'top'
-      ? 'like_count DESC, created_at ASC'
-      : 'created_at ASC'
+    // Build order clause based on sort preference
+    // Using ancestors array length for depth ordering
+    let orderClause = ''
+    if (sort === 'top') {
+      orderClause = 'COALESCE(lc.like_count, 0) DESC, array_length(c.ancestors, 1) ASC NULLS FIRST, c.created_at ASC'
+    } else {
+      // Order by depth first (root comments first), then by creation time
+      orderClause = 'array_length(c.ancestors, 1) ASC NULLS FIRST, c.created_at ASC'
+    }
 
     const { rows } = await pool.query(
       `
       SELECT
         c.*,
         COALESCE(lc.like_count, 0) AS like_count,
-        CASE WHEN ul.user_id IS NULL THEN false ELSE true END AS liked
+        CASE WHEN ul.user_id IS NULL THEN false ELSE true END AS liked,
+        COALESCE(array_length(c.ancestors, 1), 0) AS depth
       FROM blog_comments c
       LEFT JOIN (
         SELECT comment_id, COUNT(*)::int AS like_count
@@ -682,21 +689,27 @@ router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Comment content is required' })
     }
 
+    let ancestors: number[] | null = null
+    
     if (parent_id) {
       const { rows: parentRows } = await pool.query(
-        `SELECT id FROM blog_comments WHERE id = $1 AND post_id = $2`,
+        `SELECT id, ancestors FROM blog_comments WHERE id = $1 AND post_id = $2 AND is_deleted = false`,
         [parent_id, postId]
       )
       if (parentRows.length === 0) {
         return res.status(400).json({ message: 'Invalid parent comment' })
       }
+      
+      // Build ancestors array: parent's ancestors + parent's id
+      const parentAncestors = parentRows[0].ancestors || []
+      ancestors = [...parentAncestors, parseInt(parent_id)]
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO blog_comments (post_id, parent_id, user_id, author_name, author_email, content)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO blog_comments (post_id, parent_id, ancestors, user_id, author_name, author_email, content)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [postId, parent_id || null, userId, author_name || null, author_email || null, content]
+      [postId, parent_id || null, ancestors, userId, author_name || null, author_email || null, content]
     )
     res.json(rows[0])
   } catch (error) {
@@ -790,27 +803,41 @@ router.patch('/comments/:id', authenticateToken, async (req, res) => {
 })
 
 // Delete comment (author only, soft delete)
+// Uses ancestors column to efficiently delete comment and all its descendants
 router.delete('/comments/:id', authenticateToken, async (req, res) => {
   try {
     if (!pool) {
       return res.status(500).json({ message: 'Database not initialized' })
     }
-    const commentId = req.params.id
+    const commentId = parseInt(req.params.id)
     const userId = req.userId
 
-    const { rows } = await pool.query(
-      `UPDATE blog_comments
-       SET is_deleted = true, deleted_at = now()
-       WHERE id = $1 AND user_id = $2 AND is_deleted = false
-       RETURNING id`,
+    // First verify the comment exists and belongs to the user
+    const { rows: commentRows } = await pool.query(
+      `SELECT id FROM blog_comments 
+       WHERE id = $1 AND user_id = $2 AND is_deleted = false`,
       [commentId, userId]
     )
 
-    if (rows.length === 0) {
+    if (commentRows.length === 0) {
       return res.status(404).json({ message: 'Comment not found or not deletable' })
     }
 
-    res.json({ message: 'Comment deleted' })
+    // Delete the comment and all its descendants using ancestors array
+    // This is much more efficient than recursive queries
+    const { rows } = await pool.query(
+      `UPDATE blog_comments
+       SET is_deleted = true, deleted_at = now()
+       WHERE (id = $1 OR $1 = ANY(ancestors))
+         AND is_deleted = false
+       RETURNING id`,
+      [commentId]
+    )
+
+    res.json({ 
+      message: 'Comment and all replies deleted',
+      deletedCount: rows.length 
+    })
   } catch (error) {
     console.error('Error deleting comment:', error)
     res.status(500).json({ message: 'Failed to delete comment' })
