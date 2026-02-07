@@ -563,7 +563,7 @@ export default function BlogDetail() {
             <div className="flex-1">
               <div className="text-sm font-semibold text-gray-900">
                 {comment.author_name || 'User'}
-                {post.user_id && String(comment.user_id || '') === String(post.user_id) && (
+                {post?.user_id && String(comment.user_id || '') === String(post.user_id) && (
                   <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
                     Author
                   </span>
