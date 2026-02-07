@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { Calendar, ArrowLeft, X, MessageCircle, ThumbsUp, Share2 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import { getShareableUrl, getAbsoluteImageUrl } from '../utils/urlHelper'
 
 interface BlogPost {
   id: string
@@ -179,17 +178,8 @@ export default function BlogDetail() {
         ? post.meta_keywords
         : ''
 
-    // Get the API base for constructing full URLs
-    const apiBase = getApiBase()
-    
-    // Build the shareable URL (keeps hash for hash-based routing)
-    const shareableUrl = getShareableUrl(post.canonical_url)
-    
-    // Ensure OG image has full URL
-    const ogImageUrl = getAbsoluteImageUrl(
-      post.og_image || post.cover_image || post.detail_image || '',
-      apiBase
-    )
+    const ogImage = post.og_image || post.cover_image || post.detail_image || ''
+    const pageUrl = post.canonical_url || window.location.href
 
     document.title = post.meta_title || post.title
     setMeta('description', post.meta_description || post.excerpt || '')
@@ -197,31 +187,16 @@ export default function BlogDetail() {
 
     setMeta('og:title', post.og_title || post.meta_title || post.title, 'property')
     setMeta('og:description', post.og_description || post.meta_description || post.excerpt || '', 'property')
-    if (ogImageUrl) {
-      setMeta('og:image', ogImageUrl, 'property')
-      setMeta('og:image:secure_url', ogImageUrl, 'property')
-      setMeta('og:image:type', 'image/jpeg', 'property')
-      setMeta('og:image:width', '1200', 'property')
-      setMeta('og:image:height', '630', 'property')
-      setMeta('og:image:alt', post.title, 'property')
-    }
+    if (ogImage) setMeta('og:image', ogImage, 'property')
     setMeta('og:type', 'article', 'property')
-    setMeta('og:url', shareableUrl, 'property')
-    setMeta('og:site_name', 'NEFOL', 'property')
+    setMeta('og:url', pageUrl, 'property')
 
-    setMeta('twitter:card', ogImageUrl ? 'summary_large_image' : 'summary', 'name')
-    setMeta('twitter:title', post.og_title || post.meta_title || post.title, 'name')
-    setMeta('twitter:description', post.og_description || post.meta_description || post.excerpt || '', 'name')
-    if (ogImageUrl) setMeta('twitter:image', ogImageUrl, 'name')
+    setMeta('twitter:card', ogImage ? 'summary_large_image' : 'summary', 'property')
+    setMeta('twitter:title', post.og_title || post.meta_title || post.title, 'property')
+    setMeta('twitter:description', post.og_description || post.meta_description || post.excerpt || '', 'property')
+    if (ogImage) setMeta('twitter:image', ogImage, 'property')
 
-    setLink('canonical', shareableUrl)
-    
-    console.log('Meta tags set:', {
-      title: post.meta_title || post.title,
-      shareableUrl,
-      ogImageUrl,
-      ogDescription: post.og_description || post.meta_description || post.excerpt
-    })
+    if (pageUrl) setLink('canonical', pageUrl)
   }, [post])
 
   const processContentImages = (content: string, apiBase: string, postImages: string[] = []): string => {
@@ -551,7 +526,7 @@ export default function BlogDetail() {
   const handleShare = async () => {
     if (!post) return
 
-    const shareUrl = getShareableUrl(post.canonical_url)
+    const shareUrl = post.canonical_url || window.location.href
     const shareTitle = post.og_title || post.meta_title || post.title
     const shareText = post.og_description || post.meta_description || post.excerpt || ''
     
@@ -579,8 +554,7 @@ export default function BlogDetail() {
 
   const copyToClipboard = async () => {
     if (!post) return
-    const shareUrl = getShareableUrl(post.canonical_url)
-    
+    const shareUrl = post.canonical_url || window.location.href
     try {
       await navigator.clipboard.writeText(shareUrl)
       alert('Link copied to clipboard!')
@@ -592,9 +566,7 @@ export default function BlogDetail() {
 
   const shareToSocial = (platform: string) => {
     if (!post) return
-    
-    const shareUrlRaw = getShareableUrl(post.canonical_url)
-    const shareUrl = encodeURIComponent(shareUrlRaw)
+    const shareUrl = encodeURIComponent(post.canonical_url || window.location.href)
     const shareTitle = encodeURIComponent(post.og_title || post.meta_title || post.title)
     const shareText = encodeURIComponent(post.og_description || post.meta_description || post.excerpt || '')
     
