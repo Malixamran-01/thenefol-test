@@ -310,6 +310,7 @@ export default function BlogDetail() {
       const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/comments?sort=${commentSort}`)
       if (response.ok) {
         const data = await response.json()
+        console.log('Fetched comments from API:', data)
         setComments(data)
       }
     } catch (err) {
