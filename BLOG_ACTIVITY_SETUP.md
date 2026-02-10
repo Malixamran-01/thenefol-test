@@ -6,18 +6,20 @@ This system tracks author activities (likes, comments, posts) and surfaces them 
 ## Backend Setup
 
 ### 1. Database Migration
-Run the migration script to create necessary tables:
+Run the consolidated migration script to create all necessary tables:
 
 ```bash
 cd backend
-psql -U postgres -d your_database -f migrations/add_blog_activity_tables.sql
+node migrate.js
 ```
 
-**Tables Created:**
+**New Tables Created:**
 - `blog_author_followers` - Track author followers
 - `blog_author_subscribers` - Track author subscribers
-- `blog_activities` - General activity tracking
-- Indexes on blog_post_likes and blog_comments for performance
+- `blog_activities` - General activity tracking for feed algorithm
+- Performance indexes on all blog-related tables
+
+**Note:** The migration script is idempotent - it's safe to run multiple times. It will only create tables and indexes that don't already exist.
 
 ### 2. Backend Files Created
 
@@ -245,12 +247,12 @@ const activityFeed = useMemo(() => {
 
 ## Next Steps
 
-1. Run database migration
-2. Restart backend server
-3. Apply manual fix to AuthorProfile.tsx
-4. Test follow/subscribe functionality
-5. Test activity feed display
-6. Monitor performance with indexes
+1. **Run database migration**: `cd backend && node migrate.js`
+2. **Restart backend server**: `npm run dev` or `npm start`
+3. **Apply manual fix** to `AuthorProfile.tsx` (see Manual Fix section above)
+4. **Test follow/subscribe** functionality
+5. **Test activity feed** display
+6. **Monitor performance** with the new indexes
 
 ---
 
