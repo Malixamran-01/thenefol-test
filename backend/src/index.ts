@@ -28,6 +28,7 @@ import * as posRoutes from './routes/pos'
 import * as cartRoutes from './routes/cart'
 import createCMSRouter from './routes/cms'
 import blogRouter, { initBlogRouter } from './routes/blog'
+import blogActivityRouter, { initBlogActivityRouter } from './routes/blogActivity'
 import * as affiliateRoutes from './routes/affiliate'
 import * as searchRoutes from './routes/search'
 import * as marketingRoutes from './routes/marketing'
@@ -751,6 +752,10 @@ app.use('/api/cms', createCMSRouter(pool, io))
 // Initialize blog router with database pool
 initBlogRouter(pool)
 app.use('/api/blog', blogRouter)
+
+// Initialize blog activity router (follows, subscriptions, feed)
+initBlogActivityRouter(pool)
+app.use('/api/blog', blogActivityRouter)
 
 // ==================== AFFILIATE PROGRAM API ====================
 // Affiliate application submission

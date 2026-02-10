@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { blogActivityAPI } from '../services/api'
 
 interface AuthorSeedData {
   id: string | number
@@ -94,6 +95,10 @@ export default function AuthorProfile() {
   const [isFollowing, setIsFollowing] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [showCopied, setShowCopied] = useState(false)
+  const [realFollowers, setRealFollowers] = useState(0)
+  const [realSubscribers, setRealSubscribers] = useState(0)
+  const [activities, setActivities] = useState<any[]>([])
+  const [loadingActivities, setLoadingActivities] = useState(false)
 
   useEffect(() => {
     const raw = sessionStorage.getItem('blog_author_profile')
@@ -119,30 +124,27 @@ export default function AuthorProfile() {
     return normalize(authorSeed?.name || 'author')
   }, [authorSeed, routeAuthorId])
 
-  const profileStorageKey = `blog_author_profile_state_${authorKey}`
-
+  // Fetch author stats (followers, subscribers, follow/subscribe status)
   useEffect(() => {
-    if (!authorKey) return
-    const raw = localStorage.getItem(profileStorageKey)
-    if (!raw) {
-      setIsFollowing(false)
-      setIsSubscribed(false)
-      return
+    if (!routeAuthorId || routeAuthorId === 'guest') return
+    
+    const fetchAuthorStats = async () => {
+      try {
+        const stats = await blogActivityAPI.getAuthorStats(routeAuthorId)
+        setRealFollowers(stats.followers || 0)
+        setRealSubscribers(stats.subscribers || 0)
+        setIsFollowing(stats.isFollowing || false)
+        setIsSubscribed(stats.isSubscribed || false)
+      } catch (err) {
+        console.error('Error fetching author stats:', err)
+        // Keep local state as fallback
+      }
     }
-    try {
-      const parsed = JSON.parse(raw) as { following?: boolean; subscribed?: boolean }
-      setIsFollowing(Boolean(parsed.following))
-      setIsSubscribed(Boolean(parsed.subscribed))
-    } catch {
-      setIsFollowing(false)
-      setIsSubscribed(false)
-    }
-  }, [authorKey, profileStorageKey])
 
-  useEffect(() => {
-    if (!authorKey) return
-    localStorage.setItem(profileStorageKey, JSON.stringify({ following: isFollowing, subscribed: isSubscribed }))
-  }, [authorKey, isFollowing, isSubscribed, profileStorageKey])
+    if (isAuthenticated) {
+      fetchAuthorStats()
+    }
+  }, [routeAuthorId, isAuthenticated])
 
   useEffect(() => {
     const fetchAuthorPosts = async () => {
@@ -204,6 +206,26 @@ export default function AuthorProfile() {
     fetchAuthorPosts()
   }, [authorSeed, routeAuthorId])
 
+  // Fetch real author activities
+  useEffect(() => {
+    if (!routeAuthorId || routeAuthorId === 'guest' || activeTab !== 'activity') return
+    
+    const fetchActivities = async () => {
+      setLoadingActivities(true)
+      try {
+        const data = await blogActivityAPI.getAuthorActivity(routeAuthorId, 10, 0)
+        setActivities(data)
+      } catch (err) {
+        console.error('Error fetching activities:', err)
+        setActivities([])
+      } finally {
+        setLoadingActivities(false)
+      }
+    }
+
+    fetchActivities()
+  }, [routeAuthorId, activeTab])
+
   const resolvedAuthor = useMemo(() => {
     const fallbackName = posts[0]?.author_name || authorSeed?.name || 'Author'
     const fallbackEmail = posts[0]?.author_email || authorSeed?.email || ''
@@ -232,20 +254,19 @@ export default function AuthorProfile() {
       posts.reduce((sum, post) => sum + (post.views_count ?? 0), 0) ||
       posts.reduce((sum, post) => sum + getReadingTime(post.content, post.excerpt) * 125, 0)
 
-    const seed = `${authorKey}:${resolvedAuthor.name}:${resolvedAuthor.email}`
-    const hash = hashFromText(seed || 'author')
-    const baseFollowers = Math.max(85, totalPosts * 210 + totalLikes * 2 + (hash % 1500))
-    const baseSubscribers = Math.max(30, Math.round(baseFollowers * 0.36) + (hash % 350))
+    // Use real followers/subscribers if available, otherwise calculate
+    const followers = realFollowers > 0 ? realFollowers : Math.max(85, totalPosts * 210 + totalLikes * 2)
+    const subscribers = realSubscribers > 0 ? realSubscribers : Math.max(30, Math.round(followers * 0.36))
 
     return {
       posts: totalPosts,
       likes: totalLikes,
       comments: totalComments,
       reads: totalReads,
-      followers: baseFollowers + (isFollowing ? 1 : 0),
-      subscribers: baseSubscribers + (isSubscribed ? 1 : 0)
+      followers,
+      subscribers
     }
-  }, [authorKey, isFollowing, isSubscribed, posts, resolvedAuthor.email, resolvedAuthor.name])
+  }, [posts, realFollowers, realSubscribers])
 
   const featuredCategories = useMemo(() => {
     const categories = posts.flatMap((post) => parseCategories(post.categories))
@@ -314,14 +335,46 @@ export default function AuthorProfile() {
     return false
   }
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
     if (!ensureAuthForAction()) return
-    setIsFollowing((prev) => !prev)
+    if (!routeAuthorId || routeAuthorId === 'guest') return
+
+    try {
+      if (isFollowing) {
+        const result = await blogActivityAPI.unfollowAuthor(routeAuthorId)
+        setRealFollowers(result.followerCount || 0)
+        setIsFollowing(false)
+      } else {
+        const result = await blogActivityAPI.followAuthor(routeAuthorId)
+        setRealFollowers(result.followerCount || 0)
+        setIsFollowing(true)
+      }
+    } catch (err) {
+      console.error('Error toggling follow:', err)
+      // Fallback to local state
+      setIsFollowing((prev) => !prev)
+    }
   }
 
-  const handleSubscribe = () => {
+  const handleSubscribe = async () => {
     if (!ensureAuthForAction()) return
-    setIsSubscribed((prev) => !prev)
+    if (!routeAuthorId || routeAuthorId === 'guest') return
+
+    try {
+      if (isSubscribed) {
+        const result = await blogActivityAPI.unsubscribeFromAuthor(routeAuthorId)
+        setRealSubscribers(result.subscriberCount || 0)
+        setIsSubscribed(false)
+      } else {
+        const result = await blogActivityAPI.subscribeToAuthor(routeAuthorId)
+        setRealSubscribers(result.subscriberCount || 0)
+        setIsSubscribed(true)
+      }
+    } catch (err) {
+      console.error('Error toggling subscribe:', err)
+      // Fallback to local state
+      setIsSubscribed((prev) => !prev)
+    }
   }
 
   const handleShareProfile = async () => {

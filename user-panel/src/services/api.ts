@@ -821,4 +821,70 @@ export const productQuestionsAPI = {
   }
 }
 
+// Blog Activity API
+export const blogActivityAPI = {
+  async followAuthor(authorId: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/${authorId}/follow`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async unfollowAuthor(authorId: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/${authorId}/follow`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async subscribeToAuthor(authorId: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/${authorId}/subscribe`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async unsubscribeFromAuthor(authorId: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/${authorId}/subscribe`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async getAuthorStats(authorId: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/${authorId}/stats`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async getAuthorActivity(authorId: string, limit: number = 20, offset: number = 0) {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/authors/${authorId}/activity?limit=${limit}&offset=${offset}`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  async getPersonalizedFeed(limit: number = 30, offset: number = 0) {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/feed?limit=${limit}&offset=${offset}`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  async getAuthorSuggestions(limit: number = 10) {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/authors/suggestions?limit=${limit}`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  }
+}
+
 export default api
