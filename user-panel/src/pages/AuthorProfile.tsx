@@ -349,84 +349,97 @@ export default function AuthorProfile() {
 
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
-      <div className="mx-auto w-full max-w-6xl px-4 pt-8 sm:pt-10">
+      <div className="mx-auto w-full max-w-5xl px-4 pt-6 sm:pt-8">
         <button
           onClick={handleBack}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
+          className="mb-5 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
           style={{ color: '#1B4965' }}
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Blog
         </button>
 
-        <section className="overflow-hidden rounded-3xl border border-[#dbe7ef] bg-white shadow-sm">
-          <div className="relative h-44 w-full bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9]">
+        <section className="overflow-hidden rounded-2xl border border-[#dbe7ef] bg-white shadow-sm">
+          {/* Cover Image */}
+          <div className="relative h-48 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-56">
             {coverImage && (
-              <img src={coverImage} alt={resolvedAuthor.name} className="h-full w-full object-cover opacity-80" />
+              <img src={coverImage} alt="" className="h-full w-full object-cover opacity-75" />
             )}
-            <div className="absolute inset-0 bg-black/15" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
           </div>
 
-          <div className="relative px-5 pb-6 sm:px-8">
-            <div className="-mt-14 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <div className="flex items-end gap-4">
-                <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-gray-200 shadow-md">
-                  {profileImage ? (
-                    <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-2xl font-semibold text-gray-600">
-                      {resolvedAuthor.name?.charAt(0) || 'A'}
-                    </div>
-                  )}
-                </div>
-                <div className="pb-1">
-                  <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">{resolvedAuthor.name}</h1>
-                  <p className="text-sm font-medium text-[#1B4965]/80">{handle}</p>
-                </div>
+          {/* Profile Content - No Overlap */}
+          <div className="px-5 pb-6 pt-5 sm:px-8 sm:pt-6">
+            {/* Profile Picture */}
+            <div className="mb-4 flex justify-center sm:justify-start">
+              <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-white shadow-lg sm:h-32 sm:w-32">
+                {profileImage ? (
+                  <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-4xl font-bold text-white">
+                    {resolvedAuthor.name?.charAt(0) || 'A'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Name and Actions Row */}
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="text-center sm:text-left">
+                <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">{resolvedAuthor.name}</h1>
+                <p className="mt-1 text-base font-medium text-gray-500">{handle}</p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap justify-center gap-2 sm:justify-end">
                 <button
                   onClick={handleFollow}
-                  className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-95"
+                  className="rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
                   style={{ backgroundColor: isFollowing ? '#0f2f42' : '#4B97C9' }}
                 >
                   {isFollowing ? 'Following' : 'Follow'}
                 </button>
                 <button
                   onClick={handleSubscribe}
-                  className="rounded-xl border px-4 py-2 text-sm font-semibold transition-colors"
+                  className="rounded-lg border-2 px-6 py-2.5 text-sm font-semibold transition-all duration-200"
                   style={{
                     borderColor: isSubscribed ? '#1B4965' : '#d7e5ee',
-                    color: isSubscribed ? '#1B4965' : '#35556b',
-                    backgroundColor: isSubscribed ? '#e8f2f8' : 'white'
+                    color: isSubscribed ? 'white' : '#1B4965',
+                    backgroundColor: isSubscribed ? '#1B4965' : 'white'
                   }}
                 >
                   {isSubscribed ? 'Subscribed' : 'Subscribe'}
                 </button>
                 <button
                   onClick={handleShareProfile}
-                  className="rounded-xl border border-[#d7e5ee] bg-white px-3 py-2 text-[#1B4965] transition-colors hover:bg-[#f3f8fb]"
+                  className="rounded-lg border-2 border-[#d7e5ee] bg-white px-3 py-2.5 text-[#1B4965] transition-all duration-200 hover:bg-[#f3f8fb]"
                   aria-label="Share author profile"
                 >
-                  {showCopied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                  {showCopied ? <Check className="h-5 w-5" /> : <Share2 className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
-            <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-gray-700">{aboutText}</p>
+            {/* Bio */}
+            <p className="mb-5 max-w-3xl text-center text-[15px] leading-relaxed text-gray-700 sm:text-left">
+              {aboutText}
+            </p>
 
-            <div className="mt-5 flex flex-wrap gap-3 text-sm">
-              <span className="rounded-full bg-[#f1f7fb] px-3 py-1 font-medium text-[#1B4965]">
-                {formatCompactNumber(authorStats.followers)} followers
-              </span>
-              <span className="rounded-full bg-[#f1f7fb] px-3 py-1 font-medium text-[#1B4965]">
-                {formatCompactNumber(authorStats.subscribers)} subscribers
-              </span>
+            {/* Stats Row */}
+            <div className="flex flex-wrap justify-center gap-4 text-sm sm:justify-start">
+              <div className="flex items-center gap-1.5">
+                <Users className="h-4 w-4 text-[#4B97C9]" />
+                <span className="font-semibold text-gray-900">{formatCompactNumber(authorStats.followers)}</span>
+                <span className="text-gray-500">followers</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <UserRound className="h-4 w-4 text-[#4B97C9]" />
+                <span className="font-semibold text-gray-900">{formatCompactNumber(authorStats.subscribers)}</span>
+                <span className="text-gray-500">subscribers</span>
+              </div>
               {resolvedAuthor.email && (
                 <a
                   href={`mailto:${resolvedAuthor.email}`}
-                  className="rounded-full bg-[#f8fafb] px-3 py-1 text-gray-600 transition-colors hover:bg-[#eef4f8]"
+                  className="text-gray-600 transition-colors hover:text-[#1B4965] hover:underline"
                 >
                   {resolvedAuthor.email}
                 </a>
@@ -435,49 +448,78 @@ export default function AuthorProfile() {
           </div>
         </section>
 
-        <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Posts', value: formatCompactNumber(authorStats.posts), icon: UserRound },
             { label: 'Total Likes', value: formatCompactNumber(authorStats.likes), icon: Heart },
             { label: 'Comments', value: formatCompactNumber(authorStats.comments), icon: MessageCircle },
             { label: 'Reads', value: formatCompactNumber(authorStats.reads), icon: Users }
           ].map((item) => (
-            <article key={item.label} className="rounded-2xl border border-[#dbe7ef] bg-white p-4 shadow-sm">
-              <item.icon className="mb-2 h-4 w-4 text-[#4B97C9]" />
-              <div className="text-2xl font-semibold text-[#1B4965]">{item.value}</div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">{item.label}</div>
+            <article
+              key={item.label}
+              className="rounded-xl border border-[#dbe7ef] bg-white p-5 text-center shadow-sm transition-shadow hover:shadow-md"
+            >
+              <item.icon className="mx-auto mb-2 h-5 w-5 text-[#4B97C9]" />
+              <div className="text-3xl font-bold text-[#1B4965]">{item.value}</div>
+              <div className="mt-1 text-xs font-medium uppercase tracking-wider text-gray-500">{item.label}</div>
             </article>
           ))}
         </section>
 
-        <section className="mt-6 rounded-2xl border border-[#dbe7ef] bg-white shadow-sm">
-          <div className="flex items-center justify-between gap-3 border-b border-[#e6eff5] px-4 py-3 sm:px-6">
-            <div className="flex items-center gap-2 rounded-xl bg-[#f2f8fc] p-1">
-              {(['activity', 'posts', 'about'] as TabType[]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
-                    activeTab === tab ? 'bg-white text-[#1B4965] shadow-sm' : 'text-gray-500 hover:text-[#1B4965]'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+        <section className="mt-5 overflow-hidden rounded-2xl border border-[#dbe7ef] bg-white shadow-sm">
+          {/* Tabs Header */}
+          <div className="border-b border-[#e6eff5]">
+            <div className="flex items-center justify-between px-5 py-4 sm:px-8">
+              <div className="flex items-center gap-1">
+                {(['activity', 'posts', 'about'] as TabType[]).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition-all duration-200 ${
+                      activeTab === tab
+                        ? 'bg-[#1B4965] text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-[#1B4965]'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {activeTab === 'posts' && (
+                <div className="hidden items-center gap-2 sm:flex">
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    className="h-9 w-48 rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                    placeholder="Search posts..."
+                  />
+                  <select
+                    value={sortBy}
+                    onChange={(event) => setSortBy(event.target.value as SortType)}
+                    className="h-9 rounded-lg border border-[#dbe7ef] bg-white px-3 text-sm text-gray-700 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="popular">Popular</option>
+                    <option value="oldest">Oldest</option>
+                  </select>
+                </div>
+              )}
             </div>
 
+            {/* Mobile Search/Sort for Posts Tab */}
             {activeTab === 'posts' && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2 border-t border-[#e6eff5] px-5 py-3 sm:hidden">
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="h-9 w-40 rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] sm:w-56"
-                  placeholder="Search posts"
+                  className="h-9 w-full rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                  placeholder="Search posts..."
                 />
                 <select
                   value={sortBy}
                   onChange={(event) => setSortBy(event.target.value as SortType)}
-                  className="h-9 rounded-lg border border-[#dbe7ef] px-2 text-sm text-gray-700 outline-none focus:border-[#4B97C9]"
+                  className="h-9 w-full rounded-lg border border-[#dbe7ef] bg-white px-3 text-sm text-gray-700 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
                 >
                   <option value="newest">Newest</option>
                   <option value="popular">Popular</option>
@@ -487,24 +529,37 @@ export default function AuthorProfile() {
             )}
           </div>
 
+          {/* Tab Content */}
           {loading ? (
-            <div className="px-6 py-12 text-center text-sm text-gray-500">Loading author profile...</div>
+            <div className="px-6 py-16 text-center">
+              <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-[#4B97C9]" />
+              <p className="text-sm text-gray-500">Loading author profile...</p>
+            </div>
           ) : error ? (
-            <div className="px-6 py-12 text-center text-sm text-red-600">{error}</div>
+            <div className="px-6 py-16 text-center">
+              <p className="text-sm font-medium text-red-600">{error}</p>
+            </div>
           ) : activeTab === 'activity' ? (
-            <div className="space-y-4 px-4 py-5 sm:px-6">
+            <div className="space-y-3 px-5 py-6 sm:px-8">
               {activityFeed.length === 0 ? (
-                <p className="text-sm text-gray-500">No activity yet. Posts from this author will appear here.</p>
+                <div className="rounded-xl bg-gray-50 p-8 text-center">
+                  <Sparkles className="mx-auto mb-3 h-10 w-10 text-gray-400" />
+                  <p className="text-sm font-medium text-gray-600">No activity yet</p>
+                  <p className="mt-1 text-xs text-gray-500">Posts from this author will appear here.</p>
+                </div>
               ) : (
                 activityFeed.map((item) => (
-                  <article key={item.id} className="rounded-xl border border-[#e7f0f5] bg-[#fbfdff] p-4">
-                    <div className="mb-1 inline-flex items-center gap-2 text-xs font-medium text-[#4B97C9]">
+                  <article
+                    key={item.id}
+                    className="rounded-xl border border-[#e7f0f5] bg-gradient-to-br from-white to-[#fbfdff] p-5 transition-shadow hover:shadow-md"
+                  >
+                    <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#4B97C9]/10 px-3 py-1 text-xs font-semibold text-[#4B97C9]">
                       <Sparkles className="h-3.5 w-3.5" />
                       Latest activity
                     </div>
-                    <h3 className="text-base font-semibold text-gray-900">{item.headline}</h3>
-                    <p className="mt-1 text-sm text-gray-600">{item.summary}</p>
-                    <div className="mt-2 inline-flex items-center gap-1 text-xs text-gray-500">
+                    <h3 className="text-base font-semibold leading-snug text-gray-900">{item.headline}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-600">{item.summary}</p>
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
                       <Calendar className="h-3.5 w-3.5" />
                       {item.date}
                     </div>
@@ -513,9 +568,13 @@ export default function AuthorProfile() {
               )}
             </div>
           ) : activeTab === 'posts' ? (
-            <div className="space-y-4 px-4 py-5 sm:px-6">
+            <div className="space-y-5 px-5 py-6 sm:px-8">
               {filteredPosts.length === 0 ? (
-                <p className="text-sm text-gray-500">No posts found for this filter.</p>
+                <div className="rounded-xl bg-gray-50 p-8 text-center">
+                  <MessageCircle className="mx-auto mb-3 h-10 w-10 text-gray-400" />
+                  <p className="text-sm font-medium text-gray-600">No posts found</p>
+                  <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filters.</p>
+                </div>
               ) : (
                 filteredPosts.map((post) => {
                   const cover = post.cover_image || post.detail_image || post.images?.[0]
@@ -523,48 +582,67 @@ export default function AuthorProfile() {
                   return (
                     <article
                       key={post.id}
-                      className="overflow-hidden rounded-2xl border border-[#e6eff5] bg-white transition-shadow hover:shadow-md"
+                      className="group overflow-hidden rounded-xl border border-[#e6eff5] bg-white transition-all duration-200 hover:border-[#4B97C9]/40 hover:shadow-lg"
                     >
-                      {cover && (
-                        <div className="h-44 w-full bg-[#edf3f8]">
-                          <img src={cover} alt={post.title} className="h-full w-full object-cover" />
-                        </div>
-                      )}
-                      <div className="p-4 sm:p-5">
-                        <h3 className="text-xl font-semibold text-gray-900">{post.title}</h3>
-                        <p className="mt-2 line-clamp-2 text-sm text-gray-600">{post.excerpt}</p>
-
-                        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                          <span>{formatDate(post.created_at)}</span>
-                          <span>•</span>
-                          <span>{getReadingTime(post.content, post.excerpt)} min read</span>
-                          <span>•</span>
-                          <span>{post.likes_count ?? 0} likes</span>
-                          <span>•</span>
-                          <span>{post.comments_count ?? 0} comments</span>
-                        </div>
-
-                        {categories.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {categories.slice(0, 4).map((category) => (
-                              <span
-                                key={`${post.id}-${category}`}
-                                className="rounded-full bg-[#f0f7fc] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-[#1B4965]"
-                              >
-                                {category}
-                              </span>
-                            ))}
+                      <div className="flex flex-col sm:flex-row">
+                        {cover && (
+                          <div className="h-48 w-full overflow-hidden bg-[#edf3f8] sm:h-auto sm:w-56">
+                            <img
+                              src={cover}
+                              alt={post.title}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
                           </div>
                         )}
+                        <div className="flex flex-1 flex-col justify-between p-5 sm:p-6">
+                          <div>
+                            <h3 className="text-xl font-bold leading-snug text-gray-900 group-hover:text-[#1B4965]">
+                              {post.title}
+                            </h3>
+                            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-600">{post.excerpt}</p>
 
-                        <div className="mt-4">
-                          <a
-                            href={`#/user/blog/${post.id}`}
-                            className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-95"
-                            style={{ backgroundColor: '#1B4965' }}
-                          >
-                            Read post
-                          </a>
+                            {categories.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {categories.slice(0, 3).map((category) => (
+                                  <span
+                                    key={`${post.id}-${category}`}
+                                    className="rounded-full bg-[#f0f7fc] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#1B4965]"
+                                  >
+                                    {category}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3.5 w-3.5" />
+                                {formatDate(post.created_at)}
+                              </span>
+                              <span>•</span>
+                              <span>{getReadingTime(post.content, post.excerpt)} min read</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Heart className="h-3.5 w-3.5" />
+                                {post.likes_count ?? 0}
+                              </span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                {post.comments_count ?? 0}
+                              </span>
+                            </div>
+
+                            <a
+                              href={`#/user/blog/${post.id}`}
+                              className="inline-flex items-center gap-1 rounded-lg bg-[#1B4965] px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#0f2f42]"
+                            >
+                              Read post
+                              <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
+                            </a>
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -573,40 +651,69 @@ export default function AuthorProfile() {
               )}
             </div>
           ) : (
-            <div className="px-4 py-5 sm:px-6">
-              <div className="rounded-2xl border border-[#e6eff5] bg-[#fbfdff] p-5">
-                <h3 className="text-lg font-semibold text-gray-900">About {resolvedAuthor.name}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-700">{aboutText}</p>
+            <div className="px-5 py-6 sm:px-8">
+              <div className="rounded-xl border border-[#e6eff5] bg-gradient-to-br from-white to-[#fbfdff] p-6 sm:p-8">
+                <div className="mb-6 flex items-start gap-4">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-white">
+                    <UserRound className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">About {resolvedAuthor.name}</h3>
+                    <p className="mt-3 text-[15px] leading-relaxed text-gray-700">{aboutText}</p>
+                  </div>
+                </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl bg-white p-3">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Publishing cadence</div>
-                    <div className="mt-1 text-sm font-semibold text-[#1B4965]">
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Publishing cadence
+                    </div>
+                    <div className="text-lg font-bold text-[#1B4965]">
                       {authorStats.posts > 8 ? 'Weekly' : authorStats.posts > 3 ? 'Bi-weekly' : 'Occasional'}
                     </div>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {authorStats.posts} {authorStats.posts === 1 ? 'post' : 'posts'} published
+                    </p>
                   </div>
-                  <div className="rounded-xl bg-white p-3">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Community</div>
-                    <div className="mt-1 text-sm font-semibold text-[#1B4965]">
-                      {formatCompactNumber(authorStats.followers)} followers •{' '}
-                      {formatCompactNumber(authorStats.subscribers)} subscribers
+                  <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Community</div>
+                    <div className="text-lg font-bold text-[#1B4965]">
+                      {formatCompactNumber(authorStats.followers + authorStats.subscribers)}
                     </div>
+                    <p className="mt-1 text-xs text-gray-600">
+                      {formatCompactNumber(authorStats.followers)} followers • {formatCompactNumber(authorStats.subscribers)}{' '}
+                      subscribers
+                    </p>
                   </div>
                 </div>
 
                 {featuredCategories.length > 0 && (
-                  <div className="mt-5">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Popular topics</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="mt-6 rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
+                    <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Popular topics
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       {featuredCategories.map((topic) => (
                         <span
                           key={topic}
-                          className="rounded-full border border-[#dce9f2] bg-white px-3 py-1 text-xs font-medium text-[#1B4965]"
+                          className="rounded-full border-2 border-[#dce9f2] bg-gradient-to-r from-white to-[#f8fbfc] px-4 py-2 text-sm font-semibold capitalize text-[#1B4965] transition-all duration-200 hover:border-[#4B97C9] hover:shadow-sm"
                         >
                           {topic}
                         </span>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {resolvedAuthor.email && (
+                  <div className="mt-6 rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Contact</div>
+                    <a
+                      href={`mailto:${resolvedAuthor.email}`}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-[#4B97C9] transition-colors hover:text-[#1B4965] hover:underline"
+                    >
+                      <span>{resolvedAuthor.email}</span>
+                    </a>
                   </div>
                 )}
               </div>
