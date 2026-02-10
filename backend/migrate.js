@@ -56,9 +56,12 @@ async function runMigration() {
         updated_at timestamptz default now()
       );
       
-      -- Blog posts table
+      -- Blog posts table (extended for author_profiles)
       CREATE TABLE IF NOT EXISTS blog_posts (
         id serial primary key,
+        author_id integer references author_profiles(id) on delete set null,
+        publication_id integer references publications(id) on delete set null,
+        user_id integer references users(id) on delete set null,
         title text not null,
         excerpt text not null,
         content text not null,
@@ -67,7 +70,7 @@ async function runMigration() {
         cover_image text,
         detail_image text,
         images jsonb default '[]'::jsonb,
-        status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+        status text not null default 'pending' check (status in ('draft', 'pending', 'approved', 'rejected', 'deleted')),
         featured boolean default false,
         rejection_reason text,
         meta_title text,
@@ -78,17 +81,17 @@ async function runMigration() {
         og_image text,
         canonical_url text,
         categories jsonb,
-        user_id integer references users(id) on delete set null,
         allow_comments boolean default true,
         is_active boolean default true,
         is_archived boolean default false,
         is_deleted boolean default false,
         deleted_at timestamptz,
+        views_count integer default 0,
         created_at timestamptz default now(),
         updated_at timestamptz default now()
       );
 
-      -- Ensure blog_posts SEO columns exist (migration for existing tables)
+      -- Ensure blog_posts extended columns exist (migration for existing tables)
       DO $$ 
       BEGIN
         IF NOT EXISTS (
@@ -96,6 +99,24 @@ async function runMigration() {
           WHERE table_name = 'blog_posts' AND column_name = 'user_id'
         ) THEN
           ALTER TABLE blog_posts ADD COLUMN user_id integer references users(id) on delete set null;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'author_id'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN author_id integer references author_profiles(id) on delete set null;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'publication_id'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN publication_id integer references publications(id) on delete set null;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'views_count'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN views_count integer default 0;
         END IF;
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns 
@@ -225,31 +246,84 @@ async function runMigration() {
         unique(post_id, user_id)
       );
 
-      -- Blog Author Followers (for following authors)
-      CREATE TABLE IF NOT EXISTS blog_author_followers (
+      -- Author Profiles (Creator Identity - separate from users)
+      CREATE TABLE IF NOT EXISTS author_profiles (
         id serial primary key,
-        author_id text not null,
-        follower_id text not null,
+        user_id integer unique not null references users(id) on delete cascade,
+        username text unique not null,
+        display_name text not null,
+        bio text,
+        profile_image text,
+        cover_image text,
+        website text,
+        location text,
+        is_verified boolean default false,
+        status text not null default 'active' check (status in ('active', 'inactive', 'banned', 'deleted')),
+        deleted_at timestamptz,
+        recovery_until timestamptz,
         created_at timestamptz default now(),
-        unique(author_id, follower_id)
+        updated_at timestamptz default now()
       );
 
-      -- Blog Author Subscribers (for subscribing to authors)
-      CREATE TABLE IF NOT EXISTS blog_author_subscribers (
+      -- Publications (Substack-like, optional but powerful)
+      CREATE TABLE IF NOT EXISTS publications (
         id serial primary key,
-        author_id text not null,
-        subscriber_id text not null,
+        owner_author_id integer not null references author_profiles(id) on delete cascade,
+        name text not null,
+        slug text unique not null,
+        description text,
+        logo text,
+        cover_image text,
+        is_paid boolean default false,
+        status text not null default 'active' check (status in ('active', 'inactive', 'deleted')),
         created_at timestamptz default now(),
-        unique(author_id, subscriber_id)
+        updated_at timestamptz default now()
       );
 
-      -- Blog Activities (general activity tracking for feed algorithm)
+      -- Author Followers (Social graph - lightweight)
+      CREATE TABLE IF NOT EXISTS author_followers (
+        id serial primary key,
+        author_id integer not null references author_profiles(id) on delete cascade,
+        follower_user_id integer not null references users(id) on delete cascade,
+        created_at timestamptz default now(),
+        unique(author_id, follower_user_id)
+      );
+
+      -- Author Subscriptions (Email + money + trust - heavyweight)
+      CREATE TABLE IF NOT EXISTS author_subscriptions (
+        id serial primary key,
+        author_id integer not null references author_profiles(id) on delete cascade,
+        user_id integer references users(id) on delete set null,
+        email text not null,
+        type text not null default 'free' check (type in ('free', 'paid')),
+        status text not null default 'active' check (status in ('active', 'paused', 'cancelled')),
+        subscribed_at timestamptz default now(),
+        cancelled_at timestamptz,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now(),
+        constraint author_subscriptions_author_id_user_id_key unique(author_id, user_id)
+      );
+
+      -- Author Stats (Cached counters for performance)
+      CREATE TABLE IF NOT EXISTS author_stats (
+        author_id integer primary key references author_profiles(id) on delete cascade,
+        followers_count integer default 0,
+        subscribers_count integer default 0,
+        posts_count integer default 0,
+        total_views integer default 0,
+        total_likes integer default 0,
+        updated_at timestamptz default now()
+      );
+
+      -- Blog Activities (Feed algorithm tracking)
       CREATE TABLE IF NOT EXISTS blog_activities (
         id serial primary key,
-        user_id text not null,
+        user_id integer references users(id) on delete set null,
+        author_id integer references author_profiles(id) on delete set null,
         activity_type text not null,
-        post_id text,
+        post_id integer,
         comment_id integer,
+        metadata jsonb,
         created_at timestamptz default now()
       );
       
@@ -323,6 +397,19 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
       CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_author_profiles_user_id ON author_profiles(user_id);
+      CREATE INDEX IF NOT EXISTS idx_author_profiles_username ON author_profiles(username);
+      CREATE INDEX IF NOT EXISTS idx_author_profiles_status ON author_profiles(status);
+      CREATE INDEX IF NOT EXISTS idx_publications_slug ON publications(slug);
+      CREATE INDEX IF NOT EXISTS idx_publications_owner ON publications(owner_author_id);
+      CREATE INDEX IF NOT EXISTS idx_author_followers_author ON author_followers(author_id);
+      CREATE INDEX IF NOT EXISTS idx_author_followers_follower ON author_followers(follower_user_id);
+      CREATE INDEX IF NOT EXISTS idx_author_subscriptions_author ON author_subscriptions(author_id);
+      CREATE INDEX IF NOT EXISTS idx_author_subscriptions_user ON author_subscriptions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_author_subscriptions_email ON author_subscriptions(email);
+      CREATE INDEX IF NOT EXISTS idx_author_subscriptions_status ON author_subscriptions(status);
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_author_id ON blog_posts(author_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_publication_id ON blog_posts(publication_id);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(status);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_featured ON blog_posts(featured);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_active ON blog_posts(is_active);
@@ -339,11 +426,8 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_blog_likes_post_id ON blog_post_likes(post_id);
       CREATE INDEX IF NOT EXISTS idx_blog_likes_user_id ON blog_post_likes(user_id);
       CREATE INDEX IF NOT EXISTS idx_blog_post_likes_created ON blog_post_likes(created_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_blog_author_followers_author ON blog_author_followers(author_id);
-      CREATE INDEX IF NOT EXISTS idx_blog_author_followers_follower ON blog_author_followers(follower_id);
-      CREATE INDEX IF NOT EXISTS idx_blog_author_subscribers_author ON blog_author_subscribers(author_id);
-      CREATE INDEX IF NOT EXISTS idx_blog_author_subscribers_subscriber ON blog_author_subscribers(subscriber_id);
       CREATE INDEX IF NOT EXISTS idx_blog_activities_user ON blog_activities(user_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_activities_author ON blog_activities(author_id);
       CREATE INDEX IF NOT EXISTS idx_blog_activities_type ON blog_activities(activity_type);
       CREATE INDEX IF NOT EXISTS idx_blog_activities_date ON blog_activities(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_blog_comments_user ON blog_comments(user_id);
@@ -353,8 +437,9 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
     `);
     
-    // Create trigger function
+    // Create trigger functions
     await pool.query(`
+      -- Updated_at trigger
       CREATE OR REPLACE FUNCTION set_updated_at()
       RETURNS trigger AS $$ 
       BEGIN 
@@ -362,10 +447,65 @@ async function runMigration() {
         return new; 
       END; 
       $$ language plpgsql;
+
+      -- Update author stats on follower change
+      CREATE OR REPLACE FUNCTION update_author_followers_count()
+      RETURNS trigger AS $$
+      BEGIN
+        IF TG_OP = 'INSERT' THEN
+          INSERT INTO author_stats (author_id, followers_count)
+          VALUES (NEW.author_id, 1)
+          ON CONFLICT (author_id)
+          DO UPDATE SET followers_count = author_stats.followers_count + 1, updated_at = now();
+        ELSIF TG_OP = 'DELETE' THEN
+          UPDATE author_stats 
+          SET followers_count = GREATEST(0, followers_count - 1), updated_at = now()
+          WHERE author_id = OLD.author_id;
+        END IF;
+        RETURN NULL;
+      END;
+      $$ language plpgsql;
+
+      -- Update author stats on subscriber change
+      CREATE OR REPLACE FUNCTION update_author_subscribers_count()
+      RETURNS trigger AS $$
+      BEGIN
+        IF TG_OP = 'INSERT' THEN
+          INSERT INTO author_stats (author_id, subscribers_count)
+          VALUES (NEW.author_id, 1)
+          ON CONFLICT (author_id)
+          DO UPDATE SET subscribers_count = author_stats.subscribers_count + 1, updated_at = now();
+        ELSIF TG_OP = 'DELETE' THEN
+          UPDATE author_stats 
+          SET subscribers_count = GREATEST(0, subscribers_count - 1), updated_at = now()
+          WHERE author_id = OLD.author_id;
+        END IF;
+        RETURN NULL;
+      END;
+      $$ language plpgsql;
+
+      -- Update author stats on post change
+      CREATE OR REPLACE FUNCTION update_author_posts_count()
+      RETURNS trigger AS $$
+      BEGIN
+        IF TG_OP = 'INSERT' AND NEW.author_id IS NOT NULL THEN
+          INSERT INTO author_stats (author_id, posts_count)
+          VALUES (NEW.author_id, 1)
+          ON CONFLICT (author_id)
+          DO UPDATE SET posts_count = author_stats.posts_count + 1, updated_at = now();
+        ELSIF TG_OP = 'DELETE' AND OLD.author_id IS NOT NULL THEN
+          UPDATE author_stats 
+          SET posts_count = GREATEST(0, posts_count - 1), updated_at = now()
+          WHERE author_id = OLD.author_id;
+        END IF;
+        RETURN NULL;
+      END;
+      $$ language plpgsql;
     `);
     
     // Add triggers
     await pool.query(`
+      -- Updated_at triggers
       DROP TRIGGER IF EXISTS trg_products_updated_at ON products;
       CREATE TRIGGER trg_products_updated_at 
         BEFORE UPDATE ON products
@@ -379,6 +519,21 @@ async function runMigration() {
       DROP TRIGGER IF EXISTS trg_blog_posts_updated_at ON blog_posts;
       CREATE TRIGGER trg_blog_posts_updated_at 
         BEFORE UPDATE ON blog_posts
+        FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+
+      DROP TRIGGER IF EXISTS trg_author_profiles_updated_at ON author_profiles;
+      CREATE TRIGGER trg_author_profiles_updated_at 
+        BEFORE UPDATE ON author_profiles
+        FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+
+      DROP TRIGGER IF EXISTS trg_publications_updated_at ON publications;
+      CREATE TRIGGER trg_publications_updated_at 
+        BEFORE UPDATE ON publications
+        FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+
+      DROP TRIGGER IF EXISTS trg_author_subscriptions_updated_at ON author_subscriptions;
+      CREATE TRIGGER trg_author_subscriptions_updated_at 
+        BEFORE UPDATE ON author_subscriptions
         FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
         
       DROP TRIGGER IF EXISTS trg_cms_pages_updated_at ON cms_pages;
@@ -400,6 +555,22 @@ async function runMigration() {
       CREATE TRIGGER trg_cart_updated_at 
         BEFORE UPDATE ON cart
         FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+
+      -- Author stats triggers
+      DROP TRIGGER IF EXISTS trg_author_followers_stats ON author_followers;
+      CREATE TRIGGER trg_author_followers_stats
+        AFTER INSERT OR DELETE ON author_followers
+        FOR EACH ROW EXECUTE PROCEDURE update_author_followers_count();
+
+      DROP TRIGGER IF EXISTS trg_author_subscriptions_stats ON author_subscriptions;
+      CREATE TRIGGER trg_author_subscriptions_stats
+        AFTER INSERT OR DELETE ON author_subscriptions
+        FOR EACH ROW EXECUTE PROCEDURE update_author_subscribers_count();
+
+      DROP TRIGGER IF EXISTS trg_blog_posts_stats ON blog_posts;
+      CREATE TRIGGER trg_blog_posts_stats
+        AFTER INSERT OR DELETE ON blog_posts
+        FOR EACH ROW EXECUTE PROCEDURE update_author_posts_count();
     `);
     
     console.log('✅ Migration completed successfully!');

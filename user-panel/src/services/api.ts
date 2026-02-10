@@ -884,6 +884,63 @@ export const blogActivityAPI = {
       { headers: getAuthHeaders() }
     )
     return handleResponse(response)
+  },
+
+  async getAuthor(identifier: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/${identifier}`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async createAuthorProfile(data: {
+    username: string
+    display_name: string
+    bio?: string
+    profile_image?: string
+    cover_image?: string
+    website?: string
+    location?: string
+  }) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/create`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    })
+    return handleResponse(response)
+  },
+
+  async updateAuthorProfile(data: {
+    username?: string
+    display_name?: string
+    bio?: string
+    profile_image?: string
+    cover_image?: string
+    website?: string
+    location?: string
+  }) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/update`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    })
+    return handleResponse(response)
+  },
+
+  async deleteAuthorProfile() {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/delete`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async restoreAuthorProfile() {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/restore`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
   }
 }
 
