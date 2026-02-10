@@ -778,104 +778,6 @@ export const whatsappAPI = {
   }
 }
 
-// Blog API
-export const blogAPI = {
-  async getAllPosts() {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts`)
-    return handleResponse(response)
-  },
-
-  async getPostById(id: string | number) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${id}`)
-    return handleResponse(response)
-  },
-
-  async getPostLikes(postId: string | number) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/likes`, {
-      headers: getAuthHeaders()
-    })
-    return handleResponse(response)
-  },
-
-  async likePost(postId: string | number) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/like`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    })
-    return handleResponse(response)
-  },
-
-  async unlikePost(postId: string | number) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/unlike`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    })
-    return handleResponse(response)
-  },
-
-  async getPostComments(postId: string | number, sort: 'new' | 'old' | 'top' = 'new') {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/comments?sort=${sort}`, {
-      headers: getAuthHeaders()
-    })
-    return handleResponse(response)
-  },
-
-  async createComment(postId: string | number, data: {
-    content: string
-    parent_id?: string | number
-    author_name?: string
-    author_email?: string
-  }) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/comments`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data)
-    })
-    return handleResponse(response)
-  },
-
-  async likeComment(commentId: string | number) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/comments/${commentId}/like`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    })
-    return handleResponse(response)
-  },
-
-  async unlikeComment(commentId: string | number) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/comments/${commentId}/unlike`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    })
-    return handleResponse(response)
-  },
-
-  async updateComment(commentId: string | number, content: string) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/comments/${commentId}`, {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ content })
-    })
-    return handleResponse(response)
-  },
-
-  async deleteComment(commentId: string | number) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/comments/${commentId}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    })
-    return handleResponse(response)
-  },
-
-  async submitBlogRequest(formData: FormData) {
-    const response = await fetch(`${getApiBaseUrl()}/api/blog/request`, {
-      method: 'POST',
-      body: formData // Don't set Content-Type header for FormData
-    })
-    return handleResponse(response)
-  }
-}
-
 // Export all APIs
 export const api = {
   auth: authAPI,
@@ -893,8 +795,7 @@ export const api = {
   liveChat: liveChatAPI,
   recommendations: recommendationsAPI,
   collections: collectionsAPI,
-  whatsapp: whatsappAPI,
-  blog: blogAPI
+  whatsapp: whatsappAPI
 }
 
 // Product Questions API

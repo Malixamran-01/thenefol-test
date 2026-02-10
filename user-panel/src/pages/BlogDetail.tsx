@@ -678,12 +678,7 @@ export default function BlogDetail() {
     sessionStorage.setItem('blog_author_profile', JSON.stringify({
       id: authorId,
       name: post.author_name,
-      email: post.author_email,
-      bio: `Passionate writer and content creator sharing insights about skincare, wellness, and natural beauty. ${post.author_name} loves exploring the science behind effective skincare ingredients and helping others discover products that work.`,
-      location: 'India',
-      website: 'https://nefol.com',
-      joined_date: post.created_at,
-      avatar: undefined // Can be added if we have author avatars
+      email: post.author_email
     }))
     window.location.hash = `#/user/author/${authorId}`
   }
