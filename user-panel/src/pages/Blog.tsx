@@ -307,7 +307,23 @@ export default function Blog() {
               <div key={post.id} className="flex flex-col gap-3">
                 {/* Author Header */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div 
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      sessionStorage.setItem('blog_author_profile', JSON.stringify({
+                        id: (post as any).user_id ?? 'guest',
+                        name: post.author_name,
+                        email: post.author_email,
+                        bio: `Passionate writer and content creator sharing insights about skincare, wellness, and natural beauty. ${post.author_name} loves exploring the science behind effective skincare ingredients and helping others discover products that work.`,
+                        location: 'India',
+                        website: 'https://nefol.com',
+                        joined_date: post.created_at,
+                        avatar: undefined
+                      }))
+                      window.location.hash = `#/user/author/${(post as any).user_id ?? 'guest'}`
+                    }}
+                  >
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
                       <User className="h-5 w-5 text-gray-600" />
                     </div>
@@ -316,10 +332,15 @@ export default function Blog() {
                     </span>
                   </div>
                   <button
-                    className="rounded-full px-4 py-1.5 text-xs font-semibold transition-colors"
+                    className="rounded-full px-4 py-1.5 text-xs font-semibold transition-colors hover:opacity-90"
                     style={{ 
                       backgroundColor: '#1B4965',
                       color: 'white'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // Subscribe functionality
+                      alert('Subscribe feature coming soon!')
                     }}
                   >
                     Subscribe
