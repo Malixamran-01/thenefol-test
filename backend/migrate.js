@@ -224,6 +224,34 @@ async function runMigration() {
         created_at timestamptz default now(),
         unique(post_id, user_id)
       );
+
+      -- Blog Author Followers (for following authors)
+      CREATE TABLE IF NOT EXISTS blog_author_followers (
+        id serial primary key,
+        author_id text not null,
+        follower_id text not null,
+        created_at timestamptz default now(),
+        unique(author_id, follower_id)
+      );
+
+      -- Blog Author Subscribers (for subscribing to authors)
+      CREATE TABLE IF NOT EXISTS blog_author_subscribers (
+        id serial primary key,
+        author_id text not null,
+        subscriber_id text not null,
+        created_at timestamptz default now(),
+        unique(author_id, subscriber_id)
+      );
+
+      -- Blog Activities (general activity tracking for feed algorithm)
+      CREATE TABLE IF NOT EXISTS blog_activities (
+        id serial primary key,
+        user_id text not null,
+        activity_type text not null,
+        post_id text,
+        comment_id integer,
+        created_at timestamptz default now()
+      );
       
       -- CMS pages table
       CREATE TABLE IF NOT EXISTS cms_pages (
@@ -310,6 +338,16 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_blog_comment_likes_user_id ON blog_comment_likes(user_id);
       CREATE INDEX IF NOT EXISTS idx_blog_likes_post_id ON blog_post_likes(post_id);
       CREATE INDEX IF NOT EXISTS idx_blog_likes_user_id ON blog_post_likes(user_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_post_likes_created ON blog_post_likes(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_blog_author_followers_author ON blog_author_followers(author_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_author_followers_follower ON blog_author_followers(follower_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_author_subscribers_author ON blog_author_subscribers(author_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_author_subscribers_subscriber ON blog_author_subscribers(subscriber_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_activities_user ON blog_activities(user_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_activities_type ON blog_activities(activity_type);
+      CREATE INDEX IF NOT EXISTS idx_blog_activities_date ON blog_activities(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_blog_comments_user ON blog_comments(user_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_comments_created ON blog_comments(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_cms_pages_slug ON cms_pages(slug);
       CREATE INDEX IF NOT EXISTS idx_cms_sections_page_id ON cms_sections(page_id);
       CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
