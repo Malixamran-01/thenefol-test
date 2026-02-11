@@ -18,6 +18,14 @@ interface AuthorSeedData {
   id: string | number
   name: string
   email?: string
+  bio?: string
+}
+
+interface UserSummaryData {
+  id: string | number
+  name: string
+  email?: string
+  bio?: string
 }
 
 interface BlogPost {
@@ -102,6 +110,7 @@ const getReadingTime = (content: string, excerpt: string) => {
 export default function AuthorProfile() {
   const { isAuthenticated } = useAuth()
   const [authorSeed, setAuthorSeed] = useState<AuthorSeedData | null>(null)
+  const [userSummary, setUserSummary] = useState<UserSummaryData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [posts, setPosts] = useState<BlogPost[]>([])
@@ -139,6 +148,43 @@ export default function AuthorProfile() {
     if (authorSeed?.email) return normalize(authorSeed.email)
     return normalize(authorSeed?.name || 'author')
   }, [authorSeed, routeAuthorId])
+
+  useEffect(() => {
+    const fetchUserSummary = async () => {
+      if (!routeAuthorId || routeAuthorId === 'guest' || !/^\d+$/.test(routeAuthorId)) {
+        setUserSummary(null)
+        return
+      }
+
+      try {
+        const apiBase = getApiBase()
+        const response = await fetch(`${apiBase}/api/users/${routeAuthorId}`)
+        if (!response.ok) return
+
+        const data = await response.json()
+        const rawUser = data?.user || data
+        if (!rawUser || !rawUser.name) return
+
+        const profileBio =
+          rawUser.bio ||
+          rawUser.about ||
+          rawUser.about_me ||
+          rawUser.description ||
+          ''
+
+        setUserSummary({
+          id: rawUser.id ?? routeAuthorId,
+          name: rawUser.name,
+          email: rawUser.email || '',
+          bio: profileBio || ''
+        })
+      } catch {
+        // Keep graceful fallback to blog-seeded profile data.
+      }
+    }
+
+    fetchUserSummary()
+  }, [routeAuthorId])
 
   // Fetch author stats (followers, subscribers, follow/subscribe status)
   useEffect(() => {
@@ -243,15 +289,15 @@ export default function AuthorProfile() {
   }, [routeAuthorId, activeTab])
 
   const resolvedAuthor = useMemo(() => {
-    const fallbackName = posts[0]?.author_name || authorSeed?.name || 'Author'
-    const fallbackEmail = posts[0]?.author_email || authorSeed?.email || ''
-    const fallbackId = posts[0]?.user_id || authorSeed?.id || routeAuthorId || 'guest'
+    const fallbackName = userSummary?.name || posts[0]?.author_name || authorSeed?.name || 'Author'
+    const fallbackEmail = userSummary?.email || posts[0]?.author_email || authorSeed?.email || ''
+    const fallbackId = userSummary?.id || posts[0]?.user_id || authorSeed?.id || routeAuthorId || 'guest'
     return {
       id: fallbackId,
       name: fallbackName,
       email: fallbackEmail
     }
-  }, [authorSeed, posts, routeAuthorId])
+  }, [authorSeed, posts, routeAuthorId, userSummary])
 
   const handle = useMemo(() => {
     const fromEmail = resolvedAuthor.email ? resolvedAuthor.email.split('@')[0] : ''
@@ -337,12 +383,15 @@ export default function AuthorProfile() {
   }, [posts])
 
   const aboutText = useMemo(() => {
+    const basicBio = (authorSeed?.bio || userSummary?.bio || '').trim()
+    if (basicBio) return basicBio
+
     if (!posts.length) {
       return `${resolvedAuthor.name} shares thoughtful stories, practical ideas, and personal insights on NEFOL. Follow for new posts, subscriber updates, and focused discussions.`
     }
     const topics = featuredCategories.length ? featuredCategories.join(', ') : 'culture, skincare, and storytelling'
     return `${resolvedAuthor.name} is a featured writer on NEFOL covering ${topics}. With ${authorStats.posts} published posts and a growing community, this profile highlights their latest writing, reader activity, and subscriber updates.`
-  }, [authorStats.posts, featuredCategories, posts.length, resolvedAuthor.name])
+  }, [authorSeed?.bio, authorStats.posts, featuredCategories, posts.length, resolvedAuthor.name, userSummary?.bio])
 
   const ensureAuthForAction = () => {
     if (isAuthenticated) return true

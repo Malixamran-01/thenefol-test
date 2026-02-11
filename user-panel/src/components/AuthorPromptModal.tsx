@@ -13,6 +13,10 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
     window.location.hash = '#/user/author/onboarding'
   }
 
+  const handleContinueWithoutProfile = () => {
+    window.location.hash = '#/user/blog/request'
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="relative w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl">
@@ -76,12 +80,11 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
           </button>
 
           <button
-            onClick={onClose}
-            disabled
-            className="w-full rounded-lg border-2 border-gray-200 bg-gray-50 px-6 py-3 font-medium text-gray-400 cursor-not-allowed"
-            title="You need an author profile to publish content"
+            onClick={handleContinueWithoutProfile}
+            className="w-full rounded-lg border-2 border-gray-200 bg-gray-50 px-6 py-3 font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+            title="Continue to blog request form"
           >
-            Continue without profile (unavailable)
+            Continue without profile
           </button>
         </div>
 
