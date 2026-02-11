@@ -33,3 +33,6 @@ export const getApiBase = () => {
   // Default to production base URL (without /api)
   return 'https://thenefol.com'
 }
+
+// Backward-compatible alias used by newer service modules.
+export const getApiBaseUrl = getApiBase
