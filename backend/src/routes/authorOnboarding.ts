@@ -23,6 +23,9 @@ router.get('/check-eligibility', authenticateToken, async (req, res) => {
     }
 
     const userId = req.userId
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
 
     // Check if user already has an author profile
     const { rows: authorRows } = await pool.query(
@@ -65,6 +68,10 @@ router.post('/onboarding/step1', authenticateToken, async (req, res) => {
     }
 
     const userId = req.userId
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+
     const { username, display_name, pen_name, real_name, profile_image } = req.body
 
     if (!username || !display_name) {
@@ -134,6 +141,10 @@ router.post('/onboarding/step2', authenticateToken, async (req, res) => {
     }
 
     const userId = req.userId
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+
     const { bio, writing_categories, writing_languages, location } = req.body
 
     // Update author profile
@@ -172,6 +183,10 @@ router.post('/onboarding/step3', authenticateToken, async (req, res) => {
     }
 
     const userId = req.userId
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+
     const { website, social_links, email_visible } = req.body
 
     // Update author profile
@@ -209,6 +224,10 @@ router.post('/onboarding/step4', authenticateToken, async (req, res) => {
     }
 
     const userId = req.userId
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+
     const { preferences } = req.body
 
     // Default preferences
@@ -254,6 +273,10 @@ router.post('/onboarding/complete', authenticateToken, async (req, res) => {
 
     const userId = req.userId
 
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+
     // Mark onboarding as complete
     const { rows } = await pool.query(
       `UPDATE author_profiles 
@@ -269,7 +292,7 @@ router.post('/onboarding/complete', authenticateToken, async (req, res) => {
     }
 
     // Add AUTHOR role to user
-    await addRoleToUser(parseInt(userId), 'AUTHOR')
+    await addRoleToUser(parseInt(userId, 10), 'AUTHOR')
 
     res.json({
       message: 'Congratulations! Your author profile is ready.',
@@ -292,6 +315,9 @@ router.get('/onboarding/progress', authenticateToken, async (req, res) => {
     }
 
     const userId = req.userId
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
 
     const { rows } = await pool.query(
       `SELECT 
