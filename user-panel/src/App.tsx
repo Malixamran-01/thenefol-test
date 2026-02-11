@@ -20,6 +20,7 @@ const LoginPage = lazy(() => import('./pages/Login'))
 const SignupPage = lazy(() => import('./pages/Signup'))
 const Profile = lazy(() => import('./pages/Profile'))
 const AuthorProfile = lazy(() => import('./pages/AuthorProfile'))
+const AuthorOnboarding = lazy(() => import('./pages/AuthorOnboarding'))
 const NefolCoins = lazy(() => import('./pages/NefolCoins'))
 const CoinWithdrawal = lazy(() => import('./pages/CoinWithdrawal'))
 const UserOrders = lazy(() => import('./pages/UserOrders'))
@@ -1004,6 +1005,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/ingredients': return <Ingredients />
     case '/user/blog': return <Blog />
     case '/user/blog/request': return RequiredAuth(<BlogRequestForm />)
+    case '/user/author/onboarding': return RequiredAuth(<AuthorOnboarding />)
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
     case '/user/affiliate':

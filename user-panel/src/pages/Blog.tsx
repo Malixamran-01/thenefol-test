@@ -3,6 +3,8 @@ import { Plus, Calendar, User, Heart, MessageCircle, Tag } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
+import { authorAPI } from '../services/authorAPI'
+import AuthorPromptModal from '../components/AuthorPromptModal'
 
 interface BlogPost {
   id: string
@@ -29,6 +31,7 @@ export default function Blog() {
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
+  const [showAuthorPrompt, setShowAuthorPrompt] = useState(false)
   const [error, setError] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
 
@@ -424,11 +427,26 @@ export default function Blog() {
               Have a skincare tip, beauty secret, or personal journey to share? Submit your blog post and inspire our community.
             </p>
             <button
-              onClick={() => {
-                if (isAuthenticated) {
-                  window.location.hash = '#/user/blog/request'
-                } else {
+              onClick={async () => {
+                if (!isAuthenticated) {
                   setShowAuthPrompt(true)
+                  return
+                }
+
+                // Check if user has an author profile
+                try {
+                  const eligibility = await authorAPI.checkEligibility()
+                  
+                  if (eligibility.hasAuthorProfile && eligibility.onboardingCompleted) {
+                    // User is an author, proceed to blog request form
+                    window.location.hash = '#/user/blog/request'
+                  } else {
+                    // User needs to create author profile
+                    setShowAuthorPrompt(true)
+                  }
+                } catch (err) {
+                  // If API fails, show author prompt (safe fallback)
+                  setShowAuthorPrompt(true)
                 }
               }}
               className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium rounded-lg transition-colors text-sm tracking-wide uppercase shadow-lg"
@@ -504,6 +522,12 @@ export default function Blog() {
           </div>
         </div>
       )}
+
+      {/* Author Profile Prompt Modal */}
+      <AuthorPromptModal 
+        isOpen={showAuthorPrompt} 
+        onClose={() => setShowAuthorPrompt(false)} 
+      />
     </main>
   )
 }
