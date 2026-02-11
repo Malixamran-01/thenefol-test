@@ -49,6 +49,7 @@ async function runMigration() {
         phone text,
         address jsonb,
         profile_photo text,
+        roles text[] default ARRAY['USER']::text[], -- Role-based access: USER, AUTHOR, ADMIN
         loyalty_points integer default 0,
         total_orders integer default 0,
         member_since timestamptz default now(),
@@ -57,18 +58,26 @@ async function runMigration() {
         updated_at timestamptz default now()
       );
 
-      -- Author Profiles (Creator Identity - separate from users)
+      -- Author Profiles (Creator Identity - separate from users, opt-in)
       CREATE TABLE IF NOT EXISTS author_profiles (
         id serial primary key,
         user_id integer unique not null references users(id) on delete cascade,
         username text unique not null,
         display_name text not null,
+        pen_name text,
+        real_name text,
         bio text,
         profile_image text,
         cover_image text,
         website text,
         location text,
+        writing_categories text[], -- Tech, Mental health, Diaries, Business, Poetry
+        writing_languages text[], -- English, Spanish, etc
+        social_links jsonb default '{}'::jsonb, -- Twitter, Instagram, LinkedIn, etc
+        preferences jsonb default '{}'::jsonb, -- allow_comments, allow_subscriptions, show_products, etc
         is_verified boolean default false,
+        email_visible boolean default false,
+        onboarding_completed boolean default false,
         status text not null default 'active' check (status in ('active', 'inactive', 'banned', 'deleted')),
         deleted_at timestamptz,
         recovery_until timestamptz,
@@ -85,10 +94,24 @@ async function runMigration() {
         description text,
         logo text,
         cover_image text,
+        category text,
+        subscription_model text default 'free' check (subscription_model in ('free', 'paid', 'mixed')),
+        email_notifications boolean default true,
+        allow_co_authors boolean default false,
         is_paid boolean default false,
         status text not null default 'active' check (status in ('active', 'inactive', 'deleted')),
         created_at timestamptz default now(),
         updated_at timestamptz default now()
+      );
+
+      -- Publication Co-Authors (for collaborative writing)
+      CREATE TABLE IF NOT EXISTS publication_co_authors (
+        id serial primary key,
+        publication_id integer not null references publications(id) on delete cascade,
+        author_id integer not null references author_profiles(id) on delete cascade,
+        role text default 'contributor' check (role in ('owner', 'editor', 'contributor')),
+        created_at timestamptz default now(),
+        unique(publication_id, author_id)
       );
       
       -- Blog posts table (extended for author_profiles)
@@ -398,6 +421,14 @@ async function runMigration() {
     await pool.query(`
       DO $$ 
       BEGIN
+        -- Add roles to users if it doesn't exist (role-based access control)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'roles'
+        ) THEN
+          ALTER TABLE users ADD COLUMN roles text[] default ARRAY['USER']::text[];
+        END IF;
+
         -- Add author_id to blog_posts if it doesn't exist
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns 

@@ -29,6 +29,8 @@ import * as cartRoutes from './routes/cart'
 import createCMSRouter from './routes/cms'
 import blogRouter, { initBlogRouter } from './routes/blog'
 import blogActivityRouter, { initBlogActivityRouter } from './routes/blogActivity'
+import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
+import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
 import * as searchRoutes from './routes/search'
 import * as marketingRoutes from './routes/marketing'
@@ -756,6 +758,13 @@ app.use('/api/blog', blogRouter)
 // Initialize blog activity router (follows, subscriptions, feed)
 initBlogActivityRouter(pool)
 app.use('/api/blog', blogActivityRouter)
+
+// Initialize role-based access control
+initRoleCheck(pool)
+
+// Initialize author onboarding router
+initAuthorOnboardingRouter(pool)
+app.use('/api/authors', authorOnboardingRouter)
 
 // ==================== AFFILIATE PROGRAM API ====================
 // Affiliate application submission
