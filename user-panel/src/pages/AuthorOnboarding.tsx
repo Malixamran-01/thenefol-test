@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Check, ChevronRight, Sparkles, User, BookOpen, Share2, Settings, Loader2 } from 'lucide-react'
 import { authorAPI } from '../services/authorAPI'
 import { useAuth } from '../contexts/AuthContext'
@@ -12,7 +11,6 @@ interface OnboardingStep {
 }
 
 const AuthorOnboarding = () => {
-  const navigate = useNavigate()
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -47,6 +45,9 @@ const AuthorOnboarding = () => {
 
   const categories = ['Tech', 'Mental health', 'Diaries', 'Business', 'Poetry', 'Lifestyle', 'Health', 'Travel']
   const languages = ['English', 'Urdu', 'Hindi', 'Arabic', 'Spanish', 'French']
+  const navigateToBlogRequest = () => {
+    window.location.hash = '#/user/blog/request'
+  }
 
   const steps: OnboardingStep[] = [
     { number: 1, title: 'Identity', icon: <User className="h-5 w-5" />, completed: currentStep > 1 },
@@ -64,7 +65,7 @@ const AuthorOnboarding = () => {
     try {
       const progress = await authorAPI.getProgress()
       if (progress.onboardingCompleted) {
-        navigate('/blog-request')
+        navigateToBlogRequest()
       } else if (progress.started) {
         setCurrentStep(progress.currentStep)
       }
@@ -180,7 +181,7 @@ const AuthorOnboarding = () => {
       await authorAPI.completeOnboarding()
       setSuccess('🎉 Your author profile is ready!')
       setTimeout(() => {
-        navigate('/blog-request')
+        navigateToBlogRequest()
       }, 2000)
     } catch (err: any) {
       setError(err.message || 'Failed to complete onboarding')

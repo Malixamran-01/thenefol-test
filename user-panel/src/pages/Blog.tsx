@@ -436,8 +436,13 @@ export default function Blog() {
                 // Check if user has an author profile
                 try {
                   const eligibility = await authorAPI.checkEligibility()
-                  
-                  if (eligibility.hasAuthorProfile && eligibility.onboardingCompleted) {
+
+                  const canSubmitDirectly =
+                    Boolean(eligibility.hasAuthorRole) &&
+                    Boolean(eligibility.hasAuthorProfile) &&
+                    Boolean(eligibility.onboardingCompleted)
+
+                  if (canSubmitDirectly) {
                     // User is an author, proceed to blog request form
                     window.location.hash = '#/user/blog/request'
                   } else {

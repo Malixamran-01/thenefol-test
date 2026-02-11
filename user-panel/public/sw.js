@@ -1,6 +1,6 @@
 // Service Worker for Nefol PWA
-const CACHE_NAME = 'nefol-pwa-v1'
-const RUNTIME_CACHE = 'nefol-runtime-v1'
+const CACHE_NAME = 'nefol-pwa-v2'
+const RUNTIME_CACHE = 'nefol-runtime-v2'
 
 // Assets to cache immediately on install
 const PRECACHE_ASSETS = [
@@ -117,7 +117,29 @@ self.addEventListener('fetch', (event) => {
             })
         }
 
-        // For static assets (images, CSS, JS), use cache first
+        // For JS/CSS, prefer network first to avoid stale chunk/runtime mismatches after deploy.
+        if (request.destination === 'script' || request.destination === 'style') {
+          return fetch(request)
+            .then((networkResponse) => {
+              if (networkResponse.ok && networkResponse.status !== 206) {
+                const responseClone = networkResponse.clone()
+                caches.open(RUNTIME_CACHE).then((cache) => {
+                  cache.put(request, responseClone).catch((err) => {
+                    console.warn('[Service Worker] Failed to cache script/style:', err)
+                  })
+                })
+              }
+              return networkResponse
+            })
+            .catch(() => {
+              return cachedResponse || new Response('Offline', {
+                status: 503,
+                statusText: 'Service Unavailable'
+              })
+            })
+        }
+
+        // For other static assets (images, fonts, etc.), use cache first
         if (cachedResponse) {
           return cachedResponse
         }

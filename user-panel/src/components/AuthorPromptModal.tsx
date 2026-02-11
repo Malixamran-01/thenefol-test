@@ -1,5 +1,4 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Sparkles, X, ChevronRight } from 'lucide-react'
 
 interface AuthorPromptModalProps {
@@ -8,12 +7,10 @@ interface AuthorPromptModalProps {
 }
 
 const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }) => {
-  const navigate = useNavigate()
-
   if (!isOpen) return null
 
   const handleCreateProfile = () => {
-    navigate('/author/onboarding')
+    window.location.hash = '#/user/author/onboarding'
   }
 
   return (
