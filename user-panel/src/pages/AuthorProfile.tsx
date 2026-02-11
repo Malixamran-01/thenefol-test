@@ -48,6 +48,22 @@ const formatCompactNumber = (value: number) => {
   return Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
 }
 
+// Proper loading spinner component
+const LoadingSpinner = ({ size = 'md', message }: { size?: 'sm' | 'md' | 'lg'; message?: string }) => {
+  const sizeClasses = {
+    sm: 'h-6 w-6 border-2',
+    md: 'h-10 w-10 border-4',
+    lg: 'h-16 w-16 border-4'
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center py-8">
+      <div className={`${sizeClasses[size]} animate-spin rounded-full border-solid border-gray-300 border-t-[#4B97C9]`}></div>
+      {message && <p className="mt-3 text-sm text-gray-500">{message}</p>}
+    </div>
+  )
+}
+
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
@@ -586,9 +602,8 @@ export default function AuthorProfile() {
 
           {/* Tab Content */}
           {loading ? (
-            <div className="px-6 py-16 text-center">
-              <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-[#4B97C9]" />
-              <p className="text-sm text-gray-500">Loading author profile...</p>
+            <div className="px-6">
+              <LoadingSpinner size="md" message="Loading author profile..." />
             </div>
           ) : error ? (
             <div className="px-6 py-16 text-center">

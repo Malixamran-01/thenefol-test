@@ -19,7 +19,8 @@ async function runMigration() {
   console.log('🔄 Running database migration...');
   
   try {
-    // Create all tables
+    console.log('📝 Step 1: Creating base tables...');
+    // Create base tables first (without foreign key dependencies)
     await pool.query(`
       -- Products table
       CREATE TABLE IF NOT EXISTS products (
@@ -55,12 +56,46 @@ async function runMigration() {
         created_at timestamptz default now(),
         updated_at timestamptz default now()
       );
+
+      -- Author Profiles (Creator Identity - separate from users)
+      CREATE TABLE IF NOT EXISTS author_profiles (
+        id serial primary key,
+        user_id integer unique not null references users(id) on delete cascade,
+        username text unique not null,
+        display_name text not null,
+        bio text,
+        profile_image text,
+        cover_image text,
+        website text,
+        location text,
+        is_verified boolean default false,
+        status text not null default 'active' check (status in ('active', 'inactive', 'banned', 'deleted')),
+        deleted_at timestamptz,
+        recovery_until timestamptz,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+      );
+
+      -- Publications (Substack-like, optional but powerful)
+      CREATE TABLE IF NOT EXISTS publications (
+        id serial primary key,
+        owner_author_id integer not null references author_profiles(id) on delete cascade,
+        name text not null,
+        slug text unique not null,
+        description text,
+        logo text,
+        cover_image text,
+        is_paid boolean default false,
+        status text not null default 'active' check (status in ('active', 'inactive', 'deleted')),
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+      );
       
       -- Blog posts table (extended for author_profiles)
       CREATE TABLE IF NOT EXISTS blog_posts (
         id serial primary key,
-        author_id integer references author_profiles(id) on delete set null,
-        publication_id integer references publications(id) on delete set null,
+        author_id integer,
+        publication_id integer,
         user_id integer references users(id) on delete set null,
         title text not null,
         excerpt text not null,
@@ -246,40 +281,6 @@ async function runMigration() {
         unique(post_id, user_id)
       );
 
-      -- Author Profiles (Creator Identity - separate from users)
-      CREATE TABLE IF NOT EXISTS author_profiles (
-        id serial primary key,
-        user_id integer unique not null references users(id) on delete cascade,
-        username text unique not null,
-        display_name text not null,
-        bio text,
-        profile_image text,
-        cover_image text,
-        website text,
-        location text,
-        is_verified boolean default false,
-        status text not null default 'active' check (status in ('active', 'inactive', 'banned', 'deleted')),
-        deleted_at timestamptz,
-        recovery_until timestamptz,
-        created_at timestamptz default now(),
-        updated_at timestamptz default now()
-      );
-
-      -- Publications (Substack-like, optional but powerful)
-      CREATE TABLE IF NOT EXISTS publications (
-        id serial primary key,
-        owner_author_id integer not null references author_profiles(id) on delete cascade,
-        name text not null,
-        slug text unique not null,
-        description text,
-        logo text,
-        cover_image text,
-        is_paid boolean default false,
-        status text not null default 'active' check (status in ('active', 'inactive', 'deleted')),
-        created_at timestamptz default now(),
-        updated_at timestamptz default now()
-      );
-
       -- Author Followers (Social graph - lightweight)
       CREATE TABLE IF NOT EXISTS author_followers (
         id serial primary key,
@@ -391,7 +392,56 @@ async function runMigration() {
         unique(user_id, product_id)
       );
     `);
+
+    console.log('📝 Step 2: Adding missing columns and foreign keys...');
+    // Add columns to existing tables and foreign key constraints
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        -- Add author_id to blog_posts if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'author_id'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN author_id integer;
+        END IF;
+
+        -- Add publication_id to blog_posts if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'publication_id'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN publication_id integer;
+        END IF;
+
+        -- Add views_count to blog_posts if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'views_count'
+        ) THEN
+          ALTER TABLE blog_posts ADD COLUMN views_count integer default 0;
+        END IF;
+
+        -- Add foreign key constraints if they don't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'blog_posts_author_id_fkey'
+        ) THEN
+          ALTER TABLE blog_posts ADD CONSTRAINT blog_posts_author_id_fkey 
+            FOREIGN KEY (author_id) REFERENCES author_profiles(id) ON DELETE SET NULL;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'blog_posts_publication_id_fkey'
+        ) THEN
+          ALTER TABLE blog_posts ADD CONSTRAINT blog_posts_publication_id_fkey 
+            FOREIGN KEY (publication_id) REFERENCES publications(id) ON DELETE SET NULL;
+        END IF;
+      END $$;
+    `);
     
+    console.log('📝 Step 3: Creating indexes...');
     // Create indexes
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
@@ -408,8 +458,7 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_author_subscriptions_user ON author_subscriptions(user_id);
       CREATE INDEX IF NOT EXISTS idx_author_subscriptions_email ON author_subscriptions(email);
       CREATE INDEX IF NOT EXISTS idx_author_subscriptions_status ON author_subscriptions(status);
-      CREATE INDEX IF NOT EXISTS idx_blog_posts_author_id ON blog_posts(author_id);
-      CREATE INDEX IF NOT EXISTS idx_blog_posts_publication_id ON blog_posts(publication_id);
+      -- Indexes for new columns will be created in Step 4
       CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(status);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_featured ON blog_posts(featured);
       CREATE INDEX IF NOT EXISTS idx_blog_posts_active ON blog_posts(is_active);
@@ -427,7 +476,6 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_blog_likes_user_id ON blog_post_likes(user_id);
       CREATE INDEX IF NOT EXISTS idx_blog_post_likes_created ON blog_post_likes(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_blog_activities_user ON blog_activities(user_id);
-      CREATE INDEX IF NOT EXISTS idx_blog_activities_author ON blog_activities(author_id);
       CREATE INDEX IF NOT EXISTS idx_blog_activities_type ON blog_activities(activity_type);
       CREATE INDEX IF NOT EXISTS idx_blog_activities_date ON blog_activities(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_blog_comments_user ON blog_comments(user_id);
@@ -436,7 +484,39 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_cms_sections_page_id ON cms_sections(page_id);
       CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
     `);
+
+    console.log('📝 Step 4: Creating indexes for new columns...');
+    // Create indexes for newly added columns (conditional)
+    await pool.query(`
+      DO $$
+      BEGIN
+        -- Create index on author_id if column exists
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'author_id'
+        ) THEN
+          EXECUTE 'CREATE INDEX IF NOT EXISTS idx_blog_posts_author_id ON blog_posts(author_id)';
+        END IF;
+
+        -- Create index on publication_id if column exists
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_posts' AND column_name = 'publication_id'
+        ) THEN
+          EXECUTE 'CREATE INDEX IF NOT EXISTS idx_blog_posts_publication_id ON blog_posts(publication_id)';
+        END IF;
+
+        -- Create index on author_id in blog_activities if column exists
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'blog_activities' AND column_name = 'author_id'
+        ) THEN
+          EXECUTE 'CREATE INDEX IF NOT EXISTS idx_blog_activities_author ON blog_activities(author_id)';
+        END IF;
+      END $$;
+    `);
     
+    console.log('📝 Step 5: Creating trigger functions...');
     // Create trigger functions
     await pool.query(`
       -- Updated_at trigger
@@ -502,7 +582,8 @@ async function runMigration() {
       END;
       $$ language plpgsql;
     `);
-    
+
+    console.log('📝 Step 6: Creating triggers...');
     // Add triggers
     await pool.query(`
       -- Updated_at triggers
