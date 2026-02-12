@@ -113,8 +113,8 @@ export const addRoleToUser = async (userId: number, role: string): Promise<boole
 
     await pool.query(
       `UPDATE users 
-       SET roles = array_append(roles, $2)
-       WHERE id = $1 AND NOT ($2 = ANY(roles))`,
+       SET roles = array_append(COALESCE(roles, '{}'::text[]), $2)
+       WHERE id = $1 AND NOT ($2 = ANY(COALESCE(roles, '{}'::text[])))`,
       [userId, role]
     )
 
@@ -136,7 +136,7 @@ export const removeRoleFromUser = async (userId: number, role: string): Promise<
 
     await pool.query(
       `UPDATE users 
-       SET roles = array_remove(roles, $2)
+       SET roles = array_remove(COALESCE(roles, '{}'::text[]), $2)
        WHERE id = $1`,
       [userId, role]
     )

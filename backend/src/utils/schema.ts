@@ -150,6 +150,15 @@ export async function ensureSchema(pool: Pool) {
         alter table users add column facebook_id text unique;
       end if;
       
+      -- Add roles column for author/creator roles (USER, AUTHOR, etc.)
+      if not exists (
+        select 1 from information_schema.columns 
+        where table_name = 'users' and column_name = 'roles'
+      ) then
+        alter table users add column roles text[] default array['USER']::text[];
+        update users set roles = array['USER']::text[] where roles is null;
+      end if;
+      
       -- Make email nullable (remove NOT NULL constraint if exists) to allow NULL emails for WhatsApp signup
       -- This needs to be done carefully - drop unique constraint first, then alter column, then add unique back
       if exists (
@@ -187,6 +196,35 @@ export async function ensureSchema(pool: Pool) {
     -- Add indexes for password reset fields
     create index if not exists idx_users_reset_token on users(reset_password_token) where reset_password_token is not null;
     create index if not exists idx_users_reset_expires on users(reset_password_expires) where reset_password_expires is not null;
+    
+    -- Author Profiles (Creator Identity - separate from users, opt-in)
+    create table if not exists author_profiles (
+      id serial primary key,
+      user_id integer unique not null references users(id) on delete cascade,
+      username text unique not null,
+      display_name text not null,
+      pen_name text,
+      real_name text,
+      bio text,
+      profile_image text,
+      cover_image text,
+      website text,
+      location text,
+      writing_categories text[] default '{}',
+      writing_languages text[] default '{}',
+      social_links jsonb default '{}'::jsonb,
+      preferences jsonb default '{}'::jsonb,
+      is_verified boolean default false,
+      email_visible boolean default false,
+      onboarding_completed boolean default false,
+      status text not null default 'active' check (status in ('active', 'inactive', 'banned', 'deleted')),
+      deleted_at timestamptz,
+      recovery_until timestamptz,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now()
+    );
+    create index if not exists idx_author_profiles_user_id on author_profiles(user_id);
+    create index if not exists idx_author_profiles_username on author_profiles(username);
     
     -- OTP table for WhatsApp/Email authentication (matches otpService.ts)
     create table if not exists otps (
