@@ -226,6 +226,65 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_author_profiles_user_id on author_profiles(user_id);
     create index if not exists idx_author_profiles_username on author_profiles(username);
     
+    -- Migration: Add missing columns to author_profiles (for tables created with older schema)
+    do $$
+    begin
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'pen_name') then
+        alter table author_profiles add column pen_name text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'real_name') then
+        alter table author_profiles add column real_name text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'bio') then
+        alter table author_profiles add column bio text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'profile_image') then
+        alter table author_profiles add column profile_image text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'cover_image') then
+        alter table author_profiles add column cover_image text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'website') then
+        alter table author_profiles add column website text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'location') then
+        alter table author_profiles add column location text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'writing_categories') then
+        alter table author_profiles add column writing_categories text[] default '{}';
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'writing_languages') then
+        alter table author_profiles add column writing_languages text[] default '{}';
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'social_links') then
+        alter table author_profiles add column social_links jsonb default '{}'::jsonb;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'preferences') then
+        alter table author_profiles add column preferences jsonb default '{}'::jsonb;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'is_verified') then
+        alter table author_profiles add column is_verified boolean default false;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'email_visible') then
+        alter table author_profiles add column email_visible boolean default false;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'onboarding_completed') then
+        alter table author_profiles add column onboarding_completed boolean default false;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'status') then
+        alter table author_profiles add column status text not null default 'active';
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'deleted_at') then
+        alter table author_profiles add column deleted_at timestamptz;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'recovery_until') then
+        alter table author_profiles add column recovery_until timestamptz;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'updated_at') then
+        alter table author_profiles add column updated_at timestamptz default now();
+      end if;
+    end $$;
+    
     -- OTP table for WhatsApp/Email authentication (matches otpService.ts)
     create table if not exists otps (
       id serial primary key,
