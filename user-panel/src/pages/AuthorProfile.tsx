@@ -26,6 +26,31 @@ interface UserSummaryData {
   name: string
   email?: string
   bio?: string
+  profile_photo?: string
+}
+
+interface AuthorProfileData {
+  id: number
+  user_id: number
+  username: string
+  display_name: string
+  pen_name?: string
+  real_name?: string
+  bio?: string
+  profile_image?: string
+  cover_image?: string
+  website?: string
+  location?: string
+  writing_categories?: string[]
+  writing_languages?: string[]
+  social_links?: Record<string, string>
+  email_visible?: boolean
+  user_email?: string
+  followers_count?: number
+  subscribers_count?: number
+  posts_count?: number
+  total_views?: number
+  total_likes?: number
 }
 
 interface BlogPost {
@@ -111,6 +136,7 @@ export default function AuthorProfile() {
   const { isAuthenticated } = useAuth()
   const [authorSeed, setAuthorSeed] = useState<AuthorSeedData | null>(null)
   const [userSummary, setUserSummary] = useState<UserSummaryData | null>(null)
+  const [authorProfile, setAuthorProfile] = useState<AuthorProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [posts, setPosts] = useState<BlogPost[]>([])
@@ -149,12 +175,36 @@ export default function AuthorProfile() {
     return normalize(authorSeed?.name || 'author')
   }, [authorSeed, routeAuthorId])
 
+  const hasAuthorProfile = authorProfile != null
+  const effectiveAuthorId = hasAuthorProfile ? String(authorProfile!.id) : routeAuthorId
+
+  // Fetch full author profile from author_profiles (has onboarding data: bio, categories, location, etc.)
+  useEffect(() => {
+    const fetchAuthorProfile = async () => {
+      if (!routeAuthorId || routeAuthorId === 'guest') {
+        setAuthorProfile(null)
+        return
+      }
+
+      try {
+        const profile = await blogActivityAPI.getAuthor(routeAuthorId)
+        setAuthorProfile(profile)
+      } catch {
+        setAuthorProfile(null)
+      }
+    }
+
+    fetchAuthorProfile()
+  }, [routeAuthorId])
+
+  // Fallback: fetch user summary when no author profile (e.g. user with no author_profiles row)
   useEffect(() => {
     const fetchUserSummary = async () => {
       if (!routeAuthorId || routeAuthorId === 'guest' || !/^\d+$/.test(routeAuthorId)) {
         setUserSummary(null)
         return
       }
+      if (authorProfile) return // Prefer author profile data
 
       try {
         const apiBase = getApiBase()
@@ -176,7 +226,8 @@ export default function AuthorProfile() {
           id: rawUser.id ?? routeAuthorId,
           name: rawUser.name,
           email: rawUser.email || '',
-          bio: profileBio || ''
+          bio: profileBio || '',
+          profile_photo: rawUser.profile_photo || rawUser.profile_image || ''
         })
       } catch {
         // Keep graceful fallback to blog-seeded profile data.
@@ -184,15 +235,15 @@ export default function AuthorProfile() {
     }
 
     fetchUserSummary()
-  }, [routeAuthorId])
+  }, [routeAuthorId, authorProfile])
 
-  // Fetch author stats (followers, subscribers, follow/subscribe status)
+  // Fetch author stats (followers, subscribers, follow/subscribe status) - only for users with author profile
   useEffect(() => {
-    if (!routeAuthorId || routeAuthorId === 'guest') return
+    if (!hasAuthorProfile || !effectiveAuthorId || effectiveAuthorId === 'guest') return
     
     const fetchAuthorStats = async () => {
       try {
-        const stats = await blogActivityAPI.getAuthorStats(routeAuthorId)
+        const stats = await blogActivityAPI.getAuthorStats(effectiveAuthorId)
         setRealFollowers(stats.followers || 0)
         setRealSubscribers(stats.subscribers || 0)
         setIsFollowing(stats.isFollowing || false)
@@ -206,7 +257,7 @@ export default function AuthorProfile() {
     if (isAuthenticated) {
       fetchAuthorStats()
     }
-  }, [routeAuthorId, isAuthenticated])
+  }, [effectiveAuthorId, hasAuthorProfile, isAuthenticated])
 
   useEffect(() => {
     const fetchAuthorPosts = async () => {
@@ -268,14 +319,14 @@ export default function AuthorProfile() {
     fetchAuthorPosts()
   }, [authorSeed, routeAuthorId])
 
-  // Fetch real author activities
+  // Fetch real author activities - only for users with author profile
   useEffect(() => {
-    if (!routeAuthorId || routeAuthorId === 'guest' || activeTab !== 'activity') return
+    if (!hasAuthorProfile || !effectiveAuthorId || effectiveAuthorId === 'guest' || activeTab !== 'activity') return
     
     const fetchActivities = async () => {
       setLoadingActivities(true)
       try {
-        const data = await blogActivityAPI.getAuthorActivity(routeAuthorId, 10, 0)
+        const data = await blogActivityAPI.getAuthorActivity(effectiveAuthorId, 10, 0)
         setActivities(data)
       } catch (err) {
         console.error('Error fetching activities:', err)
@@ -286,27 +337,40 @@ export default function AuthorProfile() {
     }
 
     fetchActivities()
-  }, [routeAuthorId, activeTab])
+  }, [effectiveAuthorId, activeTab, hasAuthorProfile])
 
   const resolvedAuthor = useMemo(() => {
-    const fallbackName = userSummary?.name || posts[0]?.author_name || authorSeed?.name || 'Author'
-    const fallbackEmail = userSummary?.email || posts[0]?.author_email || authorSeed?.email || ''
-    const fallbackId = userSummary?.id || posts[0]?.user_id || authorSeed?.id || routeAuthorId || 'guest'
-    return {
-      id: fallbackId,
-      name: fallbackName,
-      email: fallbackEmail
+    // Author profile: use author_profiles table data
+    if (hasAuthorProfile) {
+      return {
+        id: authorProfile!.id,
+        name: authorProfile!.display_name || authorProfile!.pen_name || 'Author',
+        email: (authorProfile!.email_visible && authorProfile!.user_email) ? authorProfile!.user_email : ''
+      }
     }
-  }, [authorSeed, posts, routeAuthorId, userSummary])
+    // No author profile: use users table data (account created at signup)
+    return {
+      id: userSummary?.id ?? posts[0]?.user_id ?? authorSeed?.id ?? routeAuthorId ?? 'guest',
+      name: userSummary?.name || posts[0]?.author_name || authorSeed?.name || 'Author',
+      email: userSummary?.email || posts[0]?.author_email || authorSeed?.email || ''
+    }
+  }, [authorProfile, authorSeed, hasAuthorProfile, posts, routeAuthorId, userSummary])
 
   const handle = useMemo(() => {
+    if (hasAuthorProfile && authorProfile?.username) return authorProfile.username.startsWith('@') ? authorProfile.username : `@${authorProfile.username}`
     const fromEmail = resolvedAuthor.email ? resolvedAuthor.email.split('@')[0] : ''
     if (fromEmail) return `@${fromEmail.toLowerCase()}`
     return `@${normalize(resolvedAuthor.name).replace(/\s+/g, '') || 'author'}`
-  }, [resolvedAuthor])
+  }, [authorProfile, hasAuthorProfile, resolvedAuthor])
 
-  const coverImage = posts[0]?.detail_image || posts[0]?.cover_image || posts[0]?.images?.[0] || ''
-  const profileImage = posts.find((post) => post.cover_image)?.cover_image || posts[0]?.images?.[0] || ''
+  const apiBase = getApiBase()
+  const resolveImage = (url?: string) => (url && url.startsWith('/uploads/') ? `${apiBase}${url}` : url) || ''
+  const coverImage = hasAuthorProfile
+    ? resolveImage(authorProfile!.cover_image) || posts[0]?.detail_image || posts[0]?.cover_image || posts[0]?.images?.[0] || ''
+    : posts[0]?.detail_image || posts[0]?.cover_image || posts[0]?.images?.[0] || ''
+  const profileImage = hasAuthorProfile
+    ? resolveImage(authorProfile!.profile_image) || posts.find((p) => p.cover_image)?.cover_image || posts[0]?.images?.[0] || ''
+    : resolveImage(userSummary?.profile_photo) || posts.find((p) => p.cover_image)?.cover_image || posts[0]?.images?.[0] || ''
 
   const authorStats = useMemo(() => {
     const totalPosts = posts.length
@@ -383,15 +447,15 @@ export default function AuthorProfile() {
   }, [posts])
 
   const aboutText = useMemo(() => {
-    const basicBio = (authorSeed?.bio || userSummary?.bio || '').trim()
-    if (basicBio) return basicBio
+    const basicBio = (hasAuthorProfile ? authorProfile?.bio : userSummary?.bio) || authorSeed?.bio || ''
+    if (basicBio.trim()) return basicBio.trim()
 
     if (!posts.length) {
       return `${resolvedAuthor.name} shares thoughtful stories, practical ideas, and personal insights on NEFOL. Follow for new posts, subscriber updates, and focused discussions.`
     }
     const topics = featuredCategories.length ? featuredCategories.join(', ') : 'culture, skincare, and storytelling'
     return `${resolvedAuthor.name} is a featured writer on NEFOL covering ${topics}. With ${authorStats.posts} published posts and a growing community, this profile highlights their latest writing, reader activity, and subscriber updates.`
-  }, [authorSeed?.bio, authorStats.posts, featuredCategories, posts.length, resolvedAuthor.name, userSummary?.bio])
+  }, [authorProfile?.bio, authorSeed?.bio, authorStats.posts, featuredCategories, hasAuthorProfile, posts.length, resolvedAuthor.name, userSummary?.bio])
 
   const ensureAuthForAction = () => {
     if (isAuthenticated) return true
@@ -402,15 +466,15 @@ export default function AuthorProfile() {
 
   const handleFollow = async () => {
     if (!ensureAuthForAction()) return
-    if (!routeAuthorId || routeAuthorId === 'guest') return
+    if (!effectiveAuthorId || effectiveAuthorId === 'guest') return
 
     try {
       if (isFollowing) {
-        const result = await blogActivityAPI.unfollowAuthor(routeAuthorId)
+        const result = await blogActivityAPI.unfollowAuthor(effectiveAuthorId)
         setRealFollowers(result.followerCount || 0)
         setIsFollowing(false)
       } else {
-        const result = await blogActivityAPI.followAuthor(routeAuthorId)
+        const result = await blogActivityAPI.followAuthor(effectiveAuthorId)
         setRealFollowers(result.followerCount || 0)
         setIsFollowing(true)
       }
@@ -423,15 +487,15 @@ export default function AuthorProfile() {
 
   const handleSubscribe = async () => {
     if (!ensureAuthForAction()) return
-    if (!routeAuthorId || routeAuthorId === 'guest') return
+    if (!effectiveAuthorId || effectiveAuthorId === 'guest') return
 
     try {
       if (isSubscribed) {
-        const result = await blogActivityAPI.unsubscribeFromAuthor(routeAuthorId)
+        const result = await blogActivityAPI.unsubscribeFromAuthor(effectiveAuthorId)
         setRealSubscribers(result.subscriberCount || 0)
         setIsSubscribed(false)
       } else {
-        const result = await blogActivityAPI.subscribeToAuthor(routeAuthorId)
+        const result = await blogActivityAPI.subscribeToAuthor(effectiveAuthorId)
         setRealSubscribers(result.subscriberCount || 0)
         setIsSubscribed(true)
       }
@@ -509,26 +573,30 @@ export default function AuthorProfile() {
                 <p className="mt-1 text-sm font-medium text-gray-500 sm:text-base">{handle}</p>
               </div>
 
-              {/* Action Buttons - Right Side */}
+              {/* Action Buttons - Right Side (Follow/Subscribe only for authors) */}
               <div className="flex flex-shrink-0 flex-wrap gap-2 justify-end">
-                <button
-                  onClick={handleFollow}
-                  className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
-                  style={{ backgroundColor: isFollowing ? '#0f2f42' : '#4B97C9' }}
-                >
-                  {isFollowing ? 'Following' : 'Follow'}
-                </button>
-                <button
-                  onClick={handleSubscribe}
-                  className="rounded-lg border-2 px-5 py-2 text-sm font-semibold transition-all duration-200"
-                  style={{
-                    borderColor: isSubscribed ? '#1B4965' : '#d7e5ee',
-                    color: isSubscribed ? 'white' : '#1B4965',
-                    backgroundColor: isSubscribed ? '#1B4965' : 'white'
-                  }}
-                >
-                  {isSubscribed ? 'Subscribed' : 'Subscribe'}
-                </button>
+                {hasAuthorProfile && (
+                  <>
+                    <button
+                      onClick={handleFollow}
+                      className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
+                      style={{ backgroundColor: isFollowing ? '#0f2f42' : '#4B97C9' }}
+                    >
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </button>
+                    <button
+                      onClick={handleSubscribe}
+                      className="rounded-lg border-2 px-5 py-2 text-sm font-semibold transition-all duration-200"
+                      style={{
+                        borderColor: isSubscribed ? '#1B4965' : '#d7e5ee',
+                        color: isSubscribed ? 'white' : '#1B4965',
+                        backgroundColor: isSubscribed ? '#1B4965' : 'white'
+                      }}
+                    >
+                      {isSubscribed ? 'Subscribed' : 'Subscribe'}
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={handleShareProfile}
                   className="rounded-lg border-2 border-[#d7e5ee] bg-white px-3 py-2 text-[#1B4965] transition-all duration-200 hover:bg-[#f3f8fb]"
@@ -782,6 +850,43 @@ export default function AuthorProfile() {
                   </div>
                 </div>
 
+                {hasAuthorProfile && (authorProfile?.writing_languages?.length || authorProfile?.location || authorProfile?.website || (authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0)) ? (
+                  <div className="mt-6 space-y-4">
+                    {authorProfile?.writing_languages?.length ? (
+                      <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Languages</div>
+                        <div className="flex flex-wrap gap-2">
+                          {authorProfile.writing_languages.map((lang) => (
+                            <span key={lang} className="rounded-full bg-[#f0f7fc] px-3 py-1 text-sm font-medium text-[#1B4965]">{lang}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {authorProfile?.location ? (
+                      <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Location</div>
+                        <p className="text-sm font-medium text-gray-800">{authorProfile.location}</p>
+                      </div>
+                    ) : null}
+                    {authorProfile?.website ? (
+                      <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Website</div>
+                        <a href={authorProfile.website.startsWith('http') ? authorProfile.website : `https://${authorProfile.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#4B97C9] hover:underline">{authorProfile.website}</a>
+                      </div>
+                    ) : null}
+                    {authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0 ? (
+                      <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Connect</div>
+                        <div className="flex flex-wrap gap-3">
+                          {Object.entries(authorProfile.social_links).filter(([, url]) => url).map(([platform, url]) => (
+                            <a key={platform} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium capitalize text-[#4B97C9] hover:underline">{platform}</a>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
                     <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -806,13 +911,13 @@ export default function AuthorProfile() {
                   </div>
                 </div>
 
-                {featuredCategories.length > 0 && (
+                {((hasAuthorProfile && authorProfile?.writing_categories?.length) ? authorProfile!.writing_categories! : featuredCategories).length > 0 && (
                   <div className="mt-6 rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
                     <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Popular topics
+                      {hasAuthorProfile && authorProfile?.writing_categories?.length ? 'Writing interests' : 'Popular topics'}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {featuredCategories.map((topic) => (
+                      {(hasAuthorProfile && authorProfile?.writing_categories?.length ? authorProfile.writing_categories : featuredCategories).map((topic) => (
                         <span
                           key={topic}
                           className="rounded-full border-2 border-[#dce9f2] bg-gradient-to-r from-white to-[#f8fbfc] px-4 py-2 text-sm font-semibold capitalize text-[#1B4965] transition-all duration-200 hover:border-[#4B97C9] hover:shadow-sm"

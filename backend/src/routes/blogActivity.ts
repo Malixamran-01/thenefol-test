@@ -19,6 +19,18 @@ const getUserIdFromToken = (req: express.Request): string | null => {
   return null
 }
 
+// Resolve author_profiles.id from identifier (can be author id or user_id)
+const resolveAuthorId = async (identifier: string): Promise<number | null> => {
+  const isNumeric = /^\d+$/.test(identifier)
+  const { rows } = await pool.query(
+    `SELECT id FROM author_profiles 
+     WHERE status != 'deleted' AND ${isNumeric ? '(id = $1::integer OR user_id = $1::integer)' : 'username = $1'}
+     LIMIT 1`,
+    [identifier]
+  )
+  return rows[0]?.id ?? null
+}
+
 // Follow/Unfollow author
 router.post('/authors/:authorId/follow', authenticateToken, async (req, res) => {
   try {
@@ -27,22 +39,16 @@ router.post('/authors/:authorId/follow', authenticateToken, async (req, res) => 
     }
     
     const { authorId } = req.params
-    const userId = req.userId
-
-    // Check if author exists and is active
-    const { rows: authorRows } = await pool.query(
-      `SELECT id FROM author_profiles WHERE id = $1 AND status = 'active'`,
-      [authorId]
-    )
-
-    if (authorRows.length === 0) {
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) {
       return res.status(404).json({ message: 'Author not found or inactive' })
     }
+    const userId = req.userId
 
     // Check if trying to follow self
     const { rows: selfCheck } = await pool.query(
       `SELECT 1 FROM author_profiles WHERE id = $1 AND user_id = $2::integer`,
-      [authorId, userId]
+      [resolvedId, userId]
     )
 
     if (selfCheck.length > 0) {
@@ -54,20 +60,20 @@ router.post('/authors/:authorId/follow', authenticateToken, async (req, res) => 
       `INSERT INTO author_followers (author_id, follower_user_id, created_at)
        VALUES ($1, $2::integer, CURRENT_TIMESTAMP)
        ON CONFLICT (author_id, follower_user_id) DO NOTHING`,
-      [authorId, userId]
+      [resolvedId, userId]
     )
 
     // Log activity
     await pool.query(
       `INSERT INTO blog_activities (user_id, author_id, activity_type, created_at)
        VALUES ($1::integer, $2, 'follow', CURRENT_TIMESTAMP)`,
-      [userId, authorId]
+      [userId, resolvedId]
     )
 
     // Get updated count from cached stats
     const { rows } = await pool.query(
       `SELECT followers_count FROM author_stats WHERE author_id = $1`,
-      [authorId]
+      [resolvedId]
     )
 
     res.json({ 
@@ -87,17 +93,21 @@ router.delete('/authors/:authorId/follow', authenticateToken, async (req, res) =
     }
     
     const { authorId } = req.params
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) {
+      return res.status(404).json({ message: 'Author not found' })
+    }
     const userId = req.userId
 
     await pool.query(
       `DELETE FROM author_followers WHERE author_id = $1 AND follower_user_id = $2::integer`,
-      [authorId, userId]
+      [resolvedId, userId]
     )
 
     // Get updated count from cached stats
     const { rows } = await pool.query(
       `SELECT followers_count FROM author_stats WHERE author_id = $1`,
-      [authorId]
+      [resolvedId]
     )
 
     res.json({ 
@@ -118,6 +128,10 @@ router.post('/authors/:authorId/subscribe', authenticateToken, async (req, res) 
     }
     
     const { authorId } = req.params
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) {
+      return res.status(404).json({ message: 'Author not found or inactive' })
+    }
     const userId = req.userId
 
     // Get user email
@@ -132,20 +146,10 @@ router.post('/authors/:authorId/subscribe', authenticateToken, async (req, res) 
 
     const email = userRows[0].email
 
-    // Check if author exists and is active
-    const { rows: authorRows } = await pool.query(
-      `SELECT id FROM author_profiles WHERE id = $1 AND status = 'active'`,
-      [authorId]
-    )
-
-    if (authorRows.length === 0) {
-      return res.status(404).json({ message: 'Author not found or inactive' })
-    }
-
     // Check if trying to subscribe to self
     const { rows: selfCheck } = await pool.query(
       `SELECT 1 FROM author_profiles WHERE id = $1 AND user_id = $2::integer`,
-      [authorId, userId]
+      [resolvedId, userId]
     )
 
     if (selfCheck.length > 0) {
@@ -158,13 +162,13 @@ router.post('/authors/:authorId/subscribe', authenticateToken, async (req, res) 
        VALUES ($1, $2::integer, $3, 'free', 'active', CURRENT_TIMESTAMP)
        ON CONFLICT ON CONSTRAINT author_subscriptions_author_id_user_id_key 
        DO UPDATE SET status = 'active', subscribed_at = CURRENT_TIMESTAMP, cancelled_at = NULL`,
-      [authorId, userId, email]
+      [resolvedId, userId, email]
     )
 
     // Get updated count from cached stats
     const { rows } = await pool.query(
       `SELECT subscribers_count FROM author_stats WHERE author_id = $1`,
-      [authorId]
+      [resolvedId]
     )
 
     res.json({ 
@@ -184,6 +188,10 @@ router.delete('/authors/:authorId/subscribe', authenticateToken, async (req, res
     }
     
     const { authorId } = req.params
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) {
+      return res.status(404).json({ message: 'Author not found' })
+    }
     const userId = req.userId
 
     // Soft cancel subscription (don't delete, just mark cancelled)
@@ -191,13 +199,13 @@ router.delete('/authors/:authorId/subscribe', authenticateToken, async (req, res
       `UPDATE author_subscriptions 
        SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP
        WHERE author_id = $1 AND user_id = $2::integer`,
-      [authorId, userId]
+      [resolvedId, userId]
     )
 
     // Get updated count from cached stats
     const { rows } = await pool.query(
       `SELECT subscribers_count FROM author_stats WHERE author_id = $1`,
-      [authorId]
+      [resolvedId]
     )
 
     res.json({ 
@@ -218,13 +226,17 @@ router.get('/authors/:authorId/stats', async (req, res) => {
     }
     
     const { authorId } = req.params
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) {
+      return res.status(404).json({ message: 'Author not found' })
+    }
     const userId = getUserIdFromToken(req)
 
     // Get cached stats
     const { rows: statsRows } = await pool.query(
       `SELECT followers_count, subscribers_count, posts_count, total_views, total_likes
        FROM author_stats WHERE author_id = $1`,
-      [authorId]
+      [resolvedId]
     )
 
     let isFollowing = false
@@ -233,14 +245,14 @@ router.get('/authors/:authorId/stats', async (req, res) => {
     if (userId) {
       const { rows: followingRows } = await pool.query(
         `SELECT 1 FROM author_followers WHERE author_id = $1 AND follower_user_id = $2::integer LIMIT 1`,
-        [authorId, userId]
+        [resolvedId, userId]
       )
       isFollowing = followingRows.length > 0
 
       const { rows: subscribedRows } = await pool.query(
         `SELECT 1 FROM author_subscriptions 
          WHERE author_id = $1 AND user_id = $2::integer AND status = 'active' LIMIT 1`,
-        [authorId, userId]
+        [resolvedId, userId]
       )
       isSubscribed = subscribedRows.length > 0
     }
@@ -279,16 +291,15 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 20
     const offset = parseInt(req.query.offset as string) || 0
 
-    // Get author's user_id from author_profiles
-    const { rows: authorRows } = await pool.query(
-      `SELECT user_id FROM author_profiles WHERE id = $1 AND status = 'active'`,
-      [authorId]
-    )
-
-    if (authorRows.length === 0) {
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) {
       return res.status(404).json({ message: 'Author not found' })
     }
 
+    const { rows: authorRows } = await pool.query(
+      `SELECT user_id FROM author_profiles WHERE id = $1 AND status = 'active'`,
+      [resolvedId]
+    )
     const userIdOfAuthor = String(authorRows[0].user_id)
 
     // Get author's liked posts
@@ -360,7 +371,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
          AND bp.is_deleted = false
        ORDER BY bp.created_at DESC
        LIMIT $2 OFFSET $3`,
-      [authorId, limit, offset]
+      [resolvedId, limit, offset]
     )
 
     // Combine all activities and sort by date
@@ -590,6 +601,7 @@ router.get('/authors/:identifier', async (req, res) => {
       `SELECT 
         ap.*,
         u.email as user_email,
+        u.name as user_name,
         COALESCE(ast.followers_count, 0) as followers_count,
         COALESCE(ast.subscribers_count, 0) as subscribers_count,
         COALESCE(ast.posts_count, 0) as posts_count,
@@ -598,7 +610,7 @@ router.get('/authors/:identifier', async (req, res) => {
        FROM author_profiles ap
        LEFT JOIN users u ON ap.user_id = u.id
        LEFT JOIN author_stats ast ON ap.id = ast.author_id
-       WHERE ${isNumeric ? 'ap.id = $1' : 'ap.username = $1'}
+       WHERE ${isNumeric ? '(ap.id = $1::integer OR ap.user_id = $1::integer)' : 'ap.username = $1'}
          AND ap.status != 'deleted'`,
       [identifier]
     )
