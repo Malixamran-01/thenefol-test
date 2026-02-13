@@ -27,7 +27,7 @@ import * as supplierRoutes from './routes/suppliers'
 import * as posRoutes from './routes/pos'
 import * as cartRoutes from './routes/cart'
 import createCMSRouter from './routes/cms'
-import blogRouter, { initBlogRouter } from './routes/blog'
+import blogRouter, { initBlogRouter, serveBlogMetaPage } from './routes/blog'
 import blogActivityRouter, { initBlogActivityRouter } from './routes/blogActivity'
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
@@ -785,6 +785,8 @@ app.use('/api/cms', createCMSRouter(pool, io))
 // ==================== BLOG API ====================
 // Initialize blog router with database pool
 initBlogRouter(pool)
+// Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.) - path-based URL
+app.get('/blog/:id', serveBlogMetaPage)
 app.use('/api/blog', blogRouter)
 
 // Initialize blog activity router (follows, subscriptions, feed)

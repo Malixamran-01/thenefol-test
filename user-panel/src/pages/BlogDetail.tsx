@@ -698,10 +698,17 @@ export default function BlogDetail() {
     return []
   }
 
+  // Use path-based URL for sharing - crawlers (WhatsApp, Facebook) fetch this and get OG meta tags
+  const getShareUrl = () => {
+    if (!post) return ''
+    const base = getApiBase()
+    return post.canonical_url && post.canonical_url.startsWith('http') ? post.canonical_url : `${base}/blog/${post.id}`
+  }
+
   const handleShare = async () => {
     if (!post) return
 
-    const shareUrl = post.canonical_url || window.location.href
+    const shareUrl = getShareUrl()
     const shareTitle = post.og_title || post.meta_title || post.title
     const shareText = post.og_description || post.meta_description || post.excerpt || ''
     
@@ -729,7 +736,7 @@ export default function BlogDetail() {
 
   const copyToClipboard = async () => {
     if (!post) return
-    const shareUrl = post.canonical_url || window.location.href
+    const shareUrl = getShareUrl()
     try {
       await navigator.clipboard.writeText(shareUrl)
       alert('Link copied to clipboard!')
@@ -741,7 +748,7 @@ export default function BlogDetail() {
 
   const shareToSocial = (platform: string) => {
     if (!post) return
-    const shareUrl = encodeURIComponent(post.canonical_url || window.location.href)
+    const shareUrl = encodeURIComponent(getShareUrl())
     const shareTitle = encodeURIComponent(post.og_title || post.meta_title || post.title)
     const shareText = encodeURIComponent(post.og_description || post.meta_description || post.excerpt || '')
     

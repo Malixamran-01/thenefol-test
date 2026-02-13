@@ -256,6 +256,79 @@ router.get('/posts', async (req, res) => {
   }
 })
 
+// Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.)
+// Crawlers don't run JS - they need meta tags in the initial HTML
+export async function serveBlogMetaPage(req: express.Request, res: express.Response) {
+  try {
+    if (!pool) {
+      return res.status(500).send('Server error')
+    }
+    const id = req.params.id
+    const { rows } = await pool.query(`
+      SELECT id, title, excerpt, meta_title, meta_description, og_title, og_description, og_image, cover_image, detail_image, canonical_url
+      FROM blog_posts
+      WHERE id = $1 AND status = 'approved' AND is_active = true AND is_archived = false AND is_deleted = false
+    `, [id])
+    if (rows.length === 0) {
+      return res.status(404).send('Blog post not found')
+    }
+    const post = rows[0]
+    const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http')
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'thenefol.com'
+    const baseUrl = `${protocol}://${host}`
+    const toAbsolute = (url: string | null | undefined) => {
+      if (!url) return ''
+      if (url.startsWith('http')) return url
+      return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+    }
+    const ogImage = toAbsolute(post.og_image || post.cover_image || post.detail_image)
+    const title = post.og_title || post.meta_title || post.title
+    const description = (post.og_description || post.meta_description || post.excerpt || '').replace(/<[^>]*>/g, '').slice(0, 200)
+    const pageUrl = post.canonical_url || `${baseUrl}/blog/${id}`
+    const spaUrl = `${baseUrl}/#/user/blog/${id}`
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(pageUrl)}">
+  ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}">` : ''}
+  <link rel="canonical" href="${escapeHtml(pageUrl)}">
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(spaUrl)}">
+  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>
+</head>
+<body>
+  <p>Redirecting to <a href="${escapeHtml(spaUrl)}">${escapeHtml(title)}</a>...</p>
+</body>
+</html>`
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.send(html)
+  } catch (err) {
+    console.error('Blog meta page error:', err)
+    res.status(500).send('Server error')
+  }
+}
+
+function escapeHtml(s: string) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // Get single blog post
 router.get('/posts/:id', async (req, res) => {
   try {
