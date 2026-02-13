@@ -8,7 +8,10 @@ import {
   Share2,
   Sparkles,
   UserRound,
-  Users
+  Users,
+  Pencil,
+  Upload,
+  X
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -132,8 +135,162 @@ const getReadingTime = (content: string, excerpt: string) => {
   return Math.max(1, Math.round(words / 220))
 }
 
+function EditAuthorProfileModal({
+  authorProfile,
+  apiBase,
+  onClose,
+  onSaved
+}: {
+  authorProfile: AuthorProfileData
+  apiBase: string
+  onClose: () => void
+  onSaved: (updated: AuthorProfileData) => void
+}) {
+  const [username, setUsername] = useState(authorProfile.username)
+  const [displayName, setDisplayName] = useState(authorProfile.display_name || '')
+  const [penName, setPenName] = useState(authorProfile.pen_name || '')
+  const [bio, setBio] = useState(authorProfile.bio || '')
+  const [profileImage, setProfileImage] = useState(authorProfile.profile_image || '')
+  const [coverImage, setCoverImage] = useState(authorProfile.cover_image || '')
+  const [website, setWebsite] = useState(authorProfile.website || '')
+  const [location, setLocation] = useState(authorProfile.location || '')
+  const [twitter, setTwitter] = useState(authorProfile.social_links?.twitter || '')
+  const [instagram, setInstagram] = useState(authorProfile.social_links?.instagram || '')
+  const [linkedin, setLinkedin] = useState(authorProfile.social_links?.linkedin || '')
+  const [emailVisible, setEmailVisible] = useState(authorProfile.email_visible || false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${apiBase}/api/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData
+    })
+    if (!res.ok) throw new Error('Upload failed')
+    const data = await res.json()
+    return data?.url || data?.data?.url || ''
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await blogActivityAPI.updateAuthorProfile({
+        username,
+        display_name: displayName,
+        pen_name: penName || undefined,
+        bio: bio || undefined,
+        profile_image: profileImage || undefined,
+        cover_image: coverImage || undefined,
+        website: website || undefined,
+        location: location || undefined,
+        social_links: [twitter, instagram, linkedin].some(Boolean)
+          ? { ...(twitter?.trim() && { twitter: twitter.trim() }), ...(instagram?.trim() && { instagram: instagram.trim() }), ...(linkedin?.trim() && { linkedin: linkedin.trim() }) }
+          : undefined,
+        email_visible: emailVisible
+      })
+      const updatedAuthor = (res as any)?.author || res
+      onSaved({ ...authorProfile, ...updatedAuthor })
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resolveImg = (url?: string) => (url && url.startsWith('/uploads/') ? `${apiBase}${url}` : url) || ''
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+          <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
+          <button onClick={onClose} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 p-6">
+          {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Profile Picture</label>
+            <div className="flex items-center gap-3">
+              <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-100">
+                {profileImage ? <img src={resolveImg(profileImage)} alt="" className="h-full w-full object-cover" /> : <UserRound className="m-auto h-8 w-8 text-gray-400" />}
+              </div>
+              <div>
+                <input type="file" accept="image/*" className="hidden" id="edit-profile-pic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) try { setProfileImage(await uploadFile(f)) } catch { setError('Upload failed') } }} />
+                <label htmlFor="edit-profile-pic" className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium cursor-pointer hover:bg-gray-50"><Upload className="h-4 w-4" /> Upload</label>
+                {profileImage && <button type="button" onClick={() => setProfileImage('')} className="ml-2 text-sm text-red-600">Remove</button>}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cover Picture</label>
+            <div className="rounded-lg border-2 border-dashed border-gray-200 p-4">
+              {coverImage ? <div className="relative"><img src={resolveImg(coverImage)} alt="" className="h-24 w-full object-cover rounded" /><button type="button" onClick={() => setCoverImage('')} className="absolute top-1 right-1 rounded bg-red-500 p-1 text-white"><X className="h-3 w-3" /></button></div> : null}
+              <input type="file" accept="image/*" className="hidden" id="edit-cover-pic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) try { setCoverImage(await uploadFile(f)) } catch { setError('Upload failed') } }} />
+              <label htmlFor="edit-cover-pic" className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-gray-600 hover:text-gray-800"><Upload className="h-4 w-4" /> {coverImage ? 'Change' : 'Upload'} cover</label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="w-full rounded-lg border border-gray-300 px-3 py-2" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Display Name *</label>
+            <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pen Name</label>
+            <input type="text" value={penName} onChange={(e) => setPenName(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="Optional" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+            <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="Tell readers about yourself..." />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+            <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="https://..." />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="City, Country" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Social Links</label>
+            <div className="space-y-2">
+              <input type="url" value={twitter} onChange={(e) => setTwitter(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="Twitter / X URL" />
+              <input type="url" value={instagram} onChange={(e) => setInstagram(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="Instagram URL" />
+              <input type="url" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="LinkedIn URL" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="email-visible" checked={emailVisible} onChange={(e) => setEmailVisible(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-[#4B97C9]" />
+            <label htmlFor="email-visible" className="text-sm text-gray-700">Show email on profile</label>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button type="submit" disabled={loading} className="flex-1 rounded-lg bg-[#4B97C9] px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50">
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function AuthorProfile() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [authorSeed, setAuthorSeed] = useState<AuthorSeedData | null>(null)
   const [userSummary, setUserSummary] = useState<UserSummaryData | null>(null)
   const [authorProfile, setAuthorProfile] = useState<AuthorProfileData | null>(null)
@@ -150,6 +307,7 @@ export default function AuthorProfile() {
   const [realSubscribers, setRealSubscribers] = useState(0)
   const [activities, setActivities] = useState<any[]>([])
   const [loadingActivities, setLoadingActivities] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   useEffect(() => {
     const raw = sessionStorage.getItem('blog_author_profile')
@@ -177,6 +335,12 @@ export default function AuthorProfile() {
 
   const hasAuthorProfile = authorProfile != null
   const effectiveAuthorId = hasAuthorProfile ? String(authorProfile!.id) : routeAuthorId
+  const currentUserId = user?.id != null ? String(user.id) : null
+  const isOwnProfile = Boolean(
+    isAuthenticated &&
+    currentUserId &&
+    (hasAuthorProfile ? String(authorProfile!.user_id) === currentUserId : (routeAuthorId && /^\d+$/.test(routeAuthorId) && routeAuthorId === currentUserId))
+  )
 
   // Fetch full author profile from author_profiles (has onboarding data: bio, categories, location, etc.)
   useEffect(() => {
@@ -571,9 +735,18 @@ export default function AuthorProfile() {
                 <p className="mt-1 text-sm font-medium text-gray-500 sm:text-base">{handle}</p>
               </div>
 
-              {/* Action Buttons - Right Side (Follow/Subscribe only for authors) */}
+              {/* Action Buttons - Right Side (Edit for own profile, Follow/Subscribe for others) */}
               <div className="flex flex-shrink-0 flex-wrap gap-2 justify-end">
-                {hasAuthorProfile && (
+                {isOwnProfile && hasAuthorProfile ? (
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
+                    style={{ backgroundColor: '#4B97C9' }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Profile
+                  </button>
+                ) : hasAuthorProfile ? (
                   <>
                     <button
                       onClick={handleFollow}
@@ -594,7 +767,7 @@ export default function AuthorProfile() {
                       {isSubscribed ? 'Subscribed' : 'Subscribe'}
                     </button>
                   </>
-                )}
+                ) : null}
                 <button
                   onClick={handleShareProfile}
                   className="rounded-lg border-2 border-[#d7e5ee] bg-white px-3 py-2 text-[#1B4965] transition-all duration-200 hover:bg-[#f3f8fb]"
@@ -943,6 +1116,19 @@ export default function AuthorProfile() {
           )}
         </section>
       </div>
+
+      {/* Edit Profile Modal */}
+      {showEditModal && authorProfile && (
+        <EditAuthorProfileModal
+          authorProfile={authorProfile}
+          apiBase={apiBase}
+          onClose={() => setShowEditModal(false)}
+          onSaved={(updated) => {
+            setAuthorProfile(updated)
+            setShowEditModal(false)
+          }}
+        />
+      )}
     </main>
   )
 }

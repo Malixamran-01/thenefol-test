@@ -913,11 +913,17 @@ export const blogActivityAPI = {
   async updateAuthorProfile(data: {
     username?: string
     display_name?: string
+    pen_name?: string
+    real_name?: string
     bio?: string
     profile_image?: string
     cover_image?: string
     website?: string
     location?: string
+    writing_categories?: string[]
+    writing_languages?: string[]
+    social_links?: Record<string, string>
+    email_visible?: boolean
   }) {
     const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/update`, {
       method: 'PATCH',

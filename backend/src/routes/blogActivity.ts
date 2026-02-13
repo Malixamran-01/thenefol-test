@@ -704,7 +704,7 @@ router.patch('/authors/update', authenticateToken, async (req, res) => {
     const authorId = authorRows[0].id
 
     // Build dynamic update query
-    const allowedFields = ['username', 'display_name', 'bio', 'profile_image', 'cover_image', 'website', 'location']
+    const allowedFields = ['username', 'display_name', 'pen_name', 'real_name', 'bio', 'profile_image', 'cover_image', 'website', 'location', 'writing_categories', 'writing_languages', 'social_links', 'email_visible']
     const updateFields = []
     const values = []
     let paramCount = 1
