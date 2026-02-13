@@ -201,6 +201,8 @@ export async function ensureSchema(pool: Pool) {
     create table if not exists author_profiles (
       id serial primary key,
       user_id integer unique not null references users(id) on delete cascade,
+      unique_user_id text,
+      email text,
       username text unique not null,
       display_name text not null,
       pen_name text,
@@ -225,6 +227,7 @@ export async function ensureSchema(pool: Pool) {
     );
     create index if not exists idx_author_profiles_user_id on author_profiles(user_id);
     create index if not exists idx_author_profiles_username on author_profiles(username);
+    create index if not exists idx_author_profiles_unique_user_id on author_profiles(unique_user_id) where unique_user_id is not null;
     
     -- Migration: Add missing columns to author_profiles (for tables created with older schema)
     do $$
@@ -283,6 +286,18 @@ export async function ensureSchema(pool: Pool) {
       if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'updated_at') then
         alter table author_profiles add column updated_at timestamptz default now();
       end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'email') then
+        alter table author_profiles add column email text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'unique_user_id') then
+        alter table author_profiles add column unique_user_id text;
+      end if;
+      -- Backfill email and unique_user_id for existing author profiles from users table
+      update author_profiles ap set
+        email = u.email,
+        unique_user_id = u.unique_user_id
+      from users u
+      where ap.user_id = u.id and (ap.email is null or ap.unique_user_id is null);
     end $$;
     
     -- OTP table for WhatsApp/Email authentication (matches otpService.ts)

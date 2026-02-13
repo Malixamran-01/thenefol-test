@@ -650,14 +650,22 @@ router.post('/authors/create', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Author profile already exists' })
     }
 
+    // Get user email and unique_user_id for profile identification
+    const { rows: userRows } = await pool.query(
+      `SELECT email, unique_user_id FROM users WHERE id = $1::integer`,
+      [userId]
+    )
+    const userEmail = userRows[0]?.email || null
+    const uniqueUserId = userRows[0]?.unique_user_id || null
+
     // Create author profile
     const { rows } = await pool.query(
       `INSERT INTO author_profiles (
-        user_id, username, display_name, bio, profile_image, cover_image, website, location
+        user_id, unique_user_id, email, username, display_name, bio, profile_image, cover_image, website, location
        )
-       VALUES ($1::integer, $2, $3, $4, $5, $6, $7, $8)
+       VALUES ($1::integer, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [userId, username, display_name, bio, profile_image, cover_image, website, location]
+      [userId, uniqueUserId, userEmail, username, display_name, bio, profile_image, cover_image, website, location]
     )
 
     res.json({

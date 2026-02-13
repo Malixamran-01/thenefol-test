@@ -62,6 +62,8 @@ async function runMigration() {
       CREATE TABLE IF NOT EXISTS author_profiles (
         id serial primary key,
         user_id integer unique not null references users(id) on delete cascade,
+        unique_user_id text,
+        email text,
         username text unique not null,
         display_name text not null,
         pen_name text,
@@ -469,6 +471,28 @@ async function runMigration() {
           ALTER TABLE blog_posts ADD CONSTRAINT blog_posts_publication_id_fkey 
             FOREIGN KEY (publication_id) REFERENCES publications(id) ON DELETE SET NULL;
         END IF;
+
+        -- Add email and unique_user_id to author_profiles for profile identification
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'author_profiles' AND column_name = 'email'
+        ) THEN
+          ALTER TABLE author_profiles ADD COLUMN email text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'author_profiles' AND column_name = 'unique_user_id'
+        ) THEN
+          ALTER TABLE author_profiles ADD COLUMN unique_user_id text;
+        END IF;
+
+        -- Backfill email and unique_user_id for existing author profiles from users table
+        UPDATE author_profiles ap SET
+          email = u.email,
+          unique_user_id = u.unique_user_id
+        FROM users u
+        WHERE ap.user_id = u.id AND (ap.email IS NULL OR ap.unique_user_id IS NULL);
       END $$;
     `);
     
@@ -481,6 +505,7 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_author_profiles_user_id ON author_profiles(user_id);
       CREATE INDEX IF NOT EXISTS idx_author_profiles_username ON author_profiles(username);
       CREATE INDEX IF NOT EXISTS idx_author_profiles_status ON author_profiles(status);
+      CREATE INDEX IF NOT EXISTS idx_author_profiles_unique_user_id ON author_profiles(unique_user_id) WHERE unique_user_id IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_publications_slug ON publications(slug);
       CREATE INDEX IF NOT EXISTS idx_publications_owner ON publications(owner_author_id);
       CREATE INDEX IF NOT EXISTS idx_author_followers_author ON author_followers(author_id);

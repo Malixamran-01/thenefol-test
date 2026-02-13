@@ -2,9 +2,11 @@
 -- Run this after creating the new tables via migrate.js
 
 -- Step 1: Create author profiles for all users who have published posts
-INSERT INTO author_profiles (user_id, username, display_name, status)
+INSERT INTO author_profiles (user_id, unique_user_id, email, username, display_name, status)
 SELECT DISTINCT
   u.id,
+  u.unique_user_id,
+  u.email,
   LOWER(REGEXP_REPLACE(u.name, '[^a-zA-Z0-9]', '', 'g')),
   u.name,
   'active'

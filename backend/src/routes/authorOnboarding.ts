@@ -88,6 +88,14 @@ router.post('/onboarding/step1', authenticateToken, async (req, res) => {
       return res.status(409).json({ message: 'Username already taken' })
     }
 
+    // Get user email and unique_user_id for profile identification
+    const { rows: userRows } = await pool.query(
+      `SELECT email, unique_user_id FROM users WHERE id = $1`,
+      [userId]
+    )
+    const userEmail = userRows[0]?.email || null
+    const uniqueUserId = userRows[0]?.unique_user_id || null
+
     // Check if user already has an author profile (resume onboarding)
     const { rows: profileRows } = await pool.query(
       `SELECT id FROM author_profiles WHERE user_id = $1`,
@@ -100,19 +108,19 @@ router.post('/onboarding/step1', authenticateToken, async (req, res) => {
       // Update existing profile
       const { rows } = await pool.query(
         `UPDATE author_profiles 
-         SET username = $1, display_name = $2, pen_name = $3, real_name = $4, profile_image = $5
-         WHERE user_id = $6
+         SET username = $1, display_name = $2, pen_name = $3, real_name = $4, profile_image = $5, email = $6, unique_user_id = $7
+         WHERE user_id = $8
          RETURNING id`,
-        [username, display_name, pen_name, real_name, profile_image, userId]
+        [username, display_name, pen_name, real_name, profile_image, userEmail, uniqueUserId, userId]
       )
       authorId = rows[0].id
     } else {
       // Create new profile
       const { rows } = await pool.query(
-        `INSERT INTO author_profiles (user_id, username, display_name, pen_name, real_name, profile_image)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO author_profiles (user_id, unique_user_id, email, username, display_name, pen_name, real_name, profile_image)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
-        [userId, username, display_name, pen_name, real_name, profile_image]
+        [userId, uniqueUserId, userEmail, username, display_name, pen_name, real_name, profile_image]
       )
       authorId = rows[0].id
     }
