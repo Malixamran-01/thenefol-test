@@ -537,6 +537,38 @@ const upload = multer({
   }
 })
 
+// Profile image: 100KB min, 500KB max (standard for avatars)
+const PROFILE_IMAGE_MIN = 1024 // 1KB
+const PROFILE_IMAGE_MAX = 500 * 1024 // 500KB
+const uploadProfileImage = multer({
+  storage,
+  limits: { fileSize: PROFILE_IMAGE_MAX },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (allowed.includes(file.mimetype) || /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(file.originalname)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Profile image must be JPG, PNG, GIF or WebP.'))
+    }
+  }
+})
+
+// Cover image: 100KB min, 2MB max (standard for banners)
+const COVER_IMAGE_MIN = 1024 // 1KB
+const COVER_IMAGE_MAX = 2 * 1024 * 1024 // 2MB
+const uploadCoverImage = multer({
+  storage,
+  limits: { fileSize: COVER_IMAGE_MAX },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (allowed.includes(file.mimetype) || /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(file.originalname)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Cover image must be JPG, PNG, GIF or WebP.'))
+    }
+  }
+})
+
 // Ensure uploads directory exists
 const uploadsDir = path.resolve(process.cwd(), 'uploads')
 if (!fs.existsSync(uploadsDir)) {
@@ -2402,6 +2434,60 @@ app.post('/api/upload', (req, res, next) => {
   } catch (err: any) {
     console.error('Upload processing error:', err)
     sendError(res, 500, 'Failed to process uploaded file', err)
+  }
+})
+
+// Profile image upload: 1KB–500KB (avoids abuse from large files)
+app.post('/api/upload/profile-image', (req, res, next) => {
+  uploadProfileImage.single('file')(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return sendError(res, 400, 'Profile image must be 500KB or smaller.')
+        }
+        return sendError(res, 400, `Upload error: ${err.message}`)
+      }
+      return sendError(res, 400, err.message || 'Invalid profile image')
+    }
+    next()
+  })
+}, (req, res) => {
+  try {
+    const file = (req as any).file as Express.Multer.File | undefined
+    if (!file) return sendError(res, 400, 'No file uploaded')
+    if (file.size < PROFILE_IMAGE_MIN) {
+      return sendError(res, 400, 'Profile image must be at least 1KB.')
+    }
+    sendSuccess(res, { url: `/uploads/${file.filename}` })
+  } catch (err: any) {
+    sendError(res, 500, 'Failed to process profile image', err)
+  }
+})
+
+// Cover image upload: 1KB–2MB (avoids abuse from large files)
+app.post('/api/upload/cover-image', (req, res, next) => {
+  uploadCoverImage.single('file')(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return sendError(res, 400, 'Cover image must be 2MB or smaller.')
+        }
+        return sendError(res, 400, `Upload error: ${err.message}`)
+      }
+      return sendError(res, 400, err.message || 'Invalid cover image')
+    }
+    next()
+  })
+}, (req, res) => {
+  try {
+    const file = (req as any).file as Express.Multer.File | undefined
+    if (!file) return sendError(res, 400, 'No file uploaded')
+    if (file.size < COVER_IMAGE_MIN) {
+      return sendError(res, 400, 'Cover image must be at least 1KB.')
+    }
+    sendSuccess(res, { url: `/uploads/${file.filename}` })
+  } catch (err: any) {
+    sendError(res, 500, 'Failed to process cover image', err)
   }
 })
 

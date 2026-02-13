@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Check, ChevronRight, Sparkles, User, BookOpen, Share2, Settings, Loader2, Upload, X } from 'lucide-react'
 import { authorAPI } from '../services/authorAPI'
+import { uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 
@@ -85,18 +86,13 @@ const AuthorOnboarding = () => {
     }
   }
 
-  const uploadFile = async (file: File): Promise<string> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    const token = localStorage.getItem('token')
-    const res = await fetch(`${getApiBase()}/api/upload`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData
-    })
-    if (!res.ok) throw new Error('Upload failed')
-    const data = await res.json()
-    return data?.url || data?.data?.url || ''
+  const uploadProfilePic = async (file: File) => {
+    const url = await uploadAuthorProfileImage(file)
+    setProfileImage(url)
+  }
+  const uploadCoverPic = async (file: File) => {
+    const url = await uploadAuthorCoverImage(file)
+    setCoverImage(url)
   }
 
   const handleStep1 = async (e: React.FormEvent) => {
@@ -368,10 +364,9 @@ const AuthorOnboarding = () => {
                         const file = e.target.files?.[0]
                         if (file) {
                           try {
-                            const url = await uploadFile(file)
-                            setProfileImage(url)
-                          } catch {
-                            setError('Failed to upload profile picture')
+                            await uploadProfilePic(file)
+                          } catch (err: any) {
+                            setError(err?.message || 'Failed to upload profile picture')
                           }
                         }
                       }}
@@ -412,10 +407,9 @@ const AuthorOnboarding = () => {
                           const file = e.target.files?.[0]
                           if (file) {
                             try {
-                              const url = await uploadFile(file)
-                              setCoverImage(url)
-                            } catch {
-                              setError('Failed to upload cover picture')
+                              await uploadCoverPic(file)
+                            } catch (err: any) {
+                              setError(err?.message || 'Failed to upload cover picture')
                             }
                           }
                         }}

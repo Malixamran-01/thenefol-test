@@ -14,6 +14,7 @@ interface BlogRequest {
   author_email: string
   coverImage: File | null
   detailImage: File | null
+  ogImageFile: File | null
   images: ContentImageItem[]
   meta_title: string
   meta_description: string
@@ -51,6 +52,7 @@ export default function BlogRequestForm() {
     author_email: '',
     coverImage: null,
     detailImage: null,
+    ogImageFile: null,
     images: [],
     meta_title: '',
     meta_description: '',
@@ -135,6 +137,18 @@ export default function BlogRequestForm() {
       }))
     }
   }, [isAuthenticated, user])
+
+  // Auto-fill OG and meta fields from title/excerpt when empty
+  useEffect(() => {
+    setFormData(prev => {
+      const updates: Partial<BlogRequest> = {}
+      if (prev.title && !prev.meta_title) updates.meta_title = prev.title
+      if (prev.title && !prev.og_title) updates.og_title = prev.title
+      if (prev.excerpt && !prev.meta_description) updates.meta_description = prev.excerpt.slice(0, 160)
+      if (prev.excerpt && !prev.og_description) updates.og_description = prev.excerpt.slice(0, 200)
+      return Object.keys(updates).length ? { ...prev, ...updates } : prev
+    })
+  }, [formData.title, formData.excerpt])
 
   // Attach click handlers to all images in editor
   useEffect(() => {
@@ -329,6 +343,21 @@ export default function BlogRequestForm() {
 
   const removeDetailImage = () => {
     setFormData(prev => ({ ...prev, detailImage: null }))
+  }
+
+  const handleOgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      setFormData(prev => ({ ...prev, ogImageFile: file, og_image: '' }))
+    }
+  }
+
+  const removeOgImage = () => {
+    setFormData(prev => ({ ...prev, ogImageFile: null }))
+  }
+
+  const useCoverAsOg = () => {
+    setFormData(prev => ({ ...prev, ogImageFile: null, og_image: '' }))
   }  
   const createImageId = () => `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
@@ -671,7 +700,11 @@ const handleImageEditorSave = async (editedImageObject: any) => {
       formDataToSend.append('meta_keywords', formData.meta_keywords)
       formDataToSend.append('og_title', formData.og_title)
       formDataToSend.append('og_description', formData.og_description)
-      formDataToSend.append('og_image', formData.og_image)
+      if (formData.ogImageFile) {
+        formDataToSend.append('ogImage', formData.ogImageFile)
+      } else if (formData.og_image?.trim()) {
+        formDataToSend.append('og_image', formData.og_image.trim())
+      }
       formDataToSend.append('canonical_url', formData.canonical_url)
       formDataToSend.append('categories', JSON.stringify(formData.categories))
       formDataToSend.append('allow_comments', String(formData.allow_comments))
@@ -899,40 +932,120 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                   <p className="text-xs text-gray-500 mt-1">Comma-separated keywords.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">OG Title (For social sharing preview)</label>
-                    <input
-                      name="og_title"
-                      value={formData.og_title}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Title for social preview"
-                    />
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Open Graph (Social Sharing Preview)</h4>
+                  <p className="text-xs text-gray-600 mb-3">
+                    How your post appears when shared on Facebook, LinkedIn, Twitter, etc. Auto-filled from title and excerpt.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">OG Title</label>
+                      <input
+                        name="og_title"
+                        value={formData.og_title}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Auto-filled from blog title"
+                        maxLength={70}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">OG Description</label>
+                      <textarea
+                        name="og_description"
+                        value={formData.og_description}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        rows={2}
+                        maxLength={200}
+                        placeholder="Auto-filled from excerpt"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">OG Image URL (For social sharing preview)</label>
-                    <input
-                      name="og_image"
-                      value={formData.og_image}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="https://.../image.jpg"
-                    />
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">OG Image (1200×630px recommended)</label>
+                    <div className="flex flex-wrap gap-3 items-start">
+                      <div className="flex flex-col gap-2">
+                        {formData.ogImageFile ? (
+                          <div className="relative inline-block">
+                            <img
+                              src={URL.createObjectURL(formData.ogImageFile)}
+                              alt="OG preview"
+                              className="h-24 w-40 object-cover rounded-lg border border-gray-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={removeOgImage}
+                              className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center h-24 w-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
+                            <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                            <span className="text-xs text-gray-500">Upload image</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleOgImageUpload}
+                            />
+                          </label>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-[200px]">
+                        <input
+                          name="og_image"
+                          value={formData.og_image}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          placeholder="Or paste image URL"
+                          disabled={!!formData.ogImageFile}
+                        />
+                        <div className="flex gap-2 mt-2">
+                          {formData.coverImage && (
+                            <button
+                              type="button"
+                              onClick={useCoverAsOg}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Use cover image instead
+                            </button>
+                          )}
+                          {!formData.ogImageFile && !formData.og_image && formData.coverImage && (
+                            <span className="text-xs text-gray-500">Cover image will be used if left empty</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">OG Description (For social sharing preview)</label>
-                  <textarea
-                    name="og_description"
-                    value={formData.og_description}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows={2}
-                    maxLength={200}
-                    placeholder="Description for social preview"
-                  />
+                  {/* Live social preview */}
+                  <div className="mt-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                    <p className="text-xs font-medium text-gray-600 mb-2">Preview (Facebook/LinkedIn)</p>
+                    <div className="bg-white rounded-lg border border-gray-300 overflow-hidden max-w-md shadow-sm">
+                      {(formData.ogImageFile || formData.og_image || formData.coverImage) && (
+                        <div className="aspect-[1.91/1] bg-gray-200 overflow-hidden">
+                          {formData.ogImageFile ? (
+                            <img src={URL.createObjectURL(formData.ogImageFile)} alt="" className="w-full h-full object-cover" />
+                          ) : formData.og_image ? (
+                            <img src={formData.og_image} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                          ) : formData.coverImage ? (
+                            <img src={URL.createObjectURL(formData.coverImage)} alt="" className="w-full h-full object-cover" />
+                          ) : null}
+                        </div>
+                      )}
+                      <div className="p-3">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">thenefol.com</p>
+                        <p className="font-semibold text-gray-900 line-clamp-2 text-sm">
+                          {formData.og_title || formData.meta_title || formData.title || 'Post title'}
+                        </p>
+                        <p className="text-gray-600 text-xs line-clamp-2 mt-0.5">
+                          {formData.og_description || formData.meta_description || formData.excerpt || 'Post description'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

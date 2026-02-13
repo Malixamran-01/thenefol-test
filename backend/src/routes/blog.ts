@@ -101,6 +101,7 @@ const cleanupDeletedBlogPosts = async () => {
 router.post('/request', upload.fields([
   { name: 'coverImage', maxCount: 1 },
   { name: 'detailImage', maxCount: 1 },
+  { name: 'ogImage', maxCount: 1 },
   { name: 'images', maxCount: 5 }
 ]), async (req, res) => {
   try {
@@ -126,6 +127,7 @@ router.post('/request', upload.fields([
     // Extract different image types
     const coverImageFile = files?.coverImage?.[0]
     const detailImageFile = files?.detailImage?.[0]
+    const ogImageFile = files?.ogImage?.[0]
     const contentImages = files?.images || []
 
     if (!title || !content || !excerpt || !author_name || !author_email) {
@@ -143,6 +145,9 @@ router.post('/request', upload.fields([
     // Generate URLs for different image types
     const coverImageUrl = `/uploads/blog/${coverImageFile.filename}`
     const detailImageUrl = detailImageFile ? `/uploads/blog/${detailImageFile.filename}` : null
+    const ogImageUrl = ogImageFile
+      ? `/uploads/blog/${ogImageFile.filename}`
+      : (og_image && String(og_image).trim()) || null
     const contentImageUrls = contentImages.map(img => `/uploads/blog/${img.filename}`)
 
     // Extract user_id from token if provided (optional authentication)
@@ -209,7 +214,7 @@ router.post('/request', upload.fields([
       parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
       og_title || null,
       og_description || null,
-      og_image || null,
+      ogImageUrl || coverImageUrl,
       canonical_url || null,
       parsedCategories.length ? JSON.stringify(parsedCategories) : null,
       String(allow_comments).toLowerCase() === 'false' ? false : true

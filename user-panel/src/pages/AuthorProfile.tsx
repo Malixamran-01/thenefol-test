@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import { blogActivityAPI } from '../services/api'
+import { blogActivityAPI, uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
 
 interface AuthorSeedData {
   id: string | number
@@ -161,18 +161,13 @@ function EditAuthorProfileModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const uploadFile = async (file: File): Promise<string> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    const token = localStorage.getItem('token')
-    const res = await fetch(`${apiBase}/api/upload`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData
-    })
-    if (!res.ok) throw new Error('Upload failed')
-    const data = await res.json()
-    return data?.url || data?.data?.url || ''
+  const uploadProfilePic = async (file: File) => {
+    const url = await uploadAuthorProfileImage(file)
+    setProfileImage(url)
+  }
+  const uploadCoverPic = async (file: File) => {
+    const url = await uploadAuthorCoverImage(file)
+    setCoverImage(url)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -224,7 +219,7 @@ function EditAuthorProfileModal({
                 {profileImage ? <img src={resolveImg(profileImage)} alt="" className="h-full w-full object-cover" /> : <UserRound className="m-auto h-8 w-8 text-gray-400" />}
               </div>
               <div>
-                <input type="file" accept="image/*" className="hidden" id="edit-profile-pic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) try { setProfileImage(await uploadFile(f)) } catch { setError('Upload failed') } }} />
+                <input type="file" accept="image/*" className="hidden" id="edit-profile-pic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) try { await uploadProfilePic(f) } catch (err: any) { setError(err?.message || 'Upload failed') } }} />
                 <label htmlFor="edit-profile-pic" className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium cursor-pointer hover:bg-gray-50"><Upload className="h-4 w-4" /> Upload</label>
                 {profileImage && <button type="button" onClick={() => setProfileImage('')} className="ml-2 text-sm text-red-600">Remove</button>}
               </div>
@@ -235,7 +230,7 @@ function EditAuthorProfileModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">Cover Picture</label>
             <div className="rounded-lg border-2 border-dashed border-gray-200 p-4">
               {coverImage ? <div className="relative"><img src={resolveImg(coverImage)} alt="" className="h-24 w-full object-cover rounded" /><button type="button" onClick={() => setCoverImage('')} className="absolute top-1 right-1 rounded bg-red-500 p-1 text-white"><X className="h-3 w-3" /></button></div> : null}
-              <input type="file" accept="image/*" className="hidden" id="edit-cover-pic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) try { setCoverImage(await uploadFile(f)) } catch { setError('Upload failed') } }} />
+              <input type="file" accept="image/*" className="hidden" id="edit-cover-pic" onChange={async (e) => { const f = e.target.files?.[0]; if (f) try { await uploadCoverPic(f) } catch (err: any) { setError(err?.message || 'Upload failed') } }} />
               <label htmlFor="edit-cover-pic" className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-gray-600 hover:text-gray-800"><Upload className="h-4 w-4" /> {coverImage ? 'Change' : 'Upload'} cover</label>
             </div>
           </div>

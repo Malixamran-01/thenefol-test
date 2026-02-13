@@ -96,21 +96,15 @@ export default function BlogDetail() {
             images = data.images
           }
           
-          // Convert relative image paths to full URLs
+          // Convert relative image paths to full URLs (required for og:image, etc.)
+          const toFullUrl = (url: string | undefined) =>
+            url && url.startsWith('/uploads/') ? `${apiBase}${url}` : url
           const postWithFullImageUrls = {
             ...data,
-            cover_image: data.cover_image && data.cover_image.startsWith('/uploads/') 
-              ? `${apiBase}${data.cover_image}` 
-              : data.cover_image,
-            detail_image: data.detail_image && data.detail_image.startsWith('/uploads/') 
-              ? `${apiBase}${data.detail_image}` 
-              : data.detail_image,
-            images: images.map((imagePath: string) => {
-              if (imagePath.startsWith('/uploads/')) {
-                return `${apiBase}${imagePath}`
-              }
-              return imagePath
-            })
+            cover_image: toFullUrl(data.cover_image) || data.cover_image,
+            detail_image: toFullUrl(data.detail_image) || data.detail_image,
+            og_image: toFullUrl(data.og_image) || data.og_image,
+            images: images.map((imagePath: string) => toFullUrl(imagePath) || imagePath)
           }
           setPost(postWithFullImageUrls)
         } else if (response.status === 404) {

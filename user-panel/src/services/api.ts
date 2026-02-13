@@ -97,6 +97,47 @@ export interface Discount {
 // API Configuration - get at runtime to ensure correct URL based on current hostname
 const getApiBaseUrl = () => getApiBase()
 
+// Author profile/cover image upload limits (matches backend)
+export const PROFILE_IMAGE_MAX = 500 * 1024 // 500KB
+export const COVER_IMAGE_MAX = 2 * 1024 * 1024 // 2MB
+export const IMAGE_MIN = 1024 // 1KB
+
+/** Upload author profile image (1KB–500KB). Use for avatars. */
+export async function uploadAuthorProfileImage(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Profile image must be JPG, PNG, GIF or WebP.')
+  if (file.size < IMAGE_MIN) throw new Error('Profile image must be at least 1KB.')
+  if (file.size > PROFILE_IMAGE_MAX) throw new Error('Profile image must be 500KB or smaller.')
+  const formData = new FormData()
+  formData.append('file', file)
+  const token = localStorage.getItem('token')
+  const res = await fetch(`${getApiBaseUrl()}/api/upload/profile-image`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || data.message || 'Upload failed')
+  return data?.url || data?.data?.url || ''
+}
+
+/** Upload author cover image (1KB–2MB). Use for banners. */
+export async function uploadAuthorCoverImage(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Cover image must be JPG, PNG, GIF or WebP.')
+  if (file.size < IMAGE_MIN) throw new Error('Cover image must be at least 1KB.')
+  if (file.size > COVER_IMAGE_MAX) throw new Error('Cover image must be 2MB or smaller.')
+  const formData = new FormData()
+  formData.append('file', file)
+  const token = localStorage.getItem('token')
+  const res = await fetch(`${getApiBaseUrl()}/api/upload/cover-image`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || data.message || 'Upload failed')
+  return data?.url || data?.data?.url || ''
+}
+
 // Utility functions
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token')
