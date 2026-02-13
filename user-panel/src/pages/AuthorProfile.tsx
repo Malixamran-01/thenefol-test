@@ -447,15 +447,15 @@ export default function AuthorProfile() {
   }, [posts])
 
   const aboutText = useMemo(() => {
-    const basicBio = (hasAuthorProfile ? authorProfile?.bio : userSummary?.bio) || authorSeed?.bio || ''
+    const basicBio = (hasAuthorProfile ? authorProfile?.bio : userSummary?.bio) || ''
     if (basicBio.trim()) return basicBio.trim()
 
-    if (!posts.length) {
-      return `${resolvedAuthor.name} shares thoughtful stories, practical ideas, and personal insights on NEFOL. Follow for new posts, subscriber updates, and focused discussions.`
-    }
+    const defaultBio = `${resolvedAuthor.name} is a writer on NEFOL sharing stories and ideas with the community.`
+    if (!posts.length) return defaultBio
+
     const topics = featuredCategories.length ? featuredCategories.join(', ') : 'culture, skincare, and storytelling'
-    return `${resolvedAuthor.name} is a featured writer on NEFOL covering ${topics}. With ${authorStats.posts} published posts and a growing community, this profile highlights their latest writing, reader activity, and subscriber updates.`
-  }, [authorProfile?.bio, authorSeed?.bio, authorStats.posts, featuredCategories, hasAuthorProfile, posts.length, resolvedAuthor.name, userSummary?.bio])
+    return `${resolvedAuthor.name} writes on NEFOL covering ${topics}. With ${authorStats.posts} published ${authorStats.posts === 1 ? 'post' : 'posts'}, this profile highlights their writing and reader engagement.`
+  }, [authorProfile?.bio, authorStats.posts, featuredCategories, hasAuthorProfile, posts.length, resolvedAuthor.name, userSummary?.bio])
 
   const ensureAuthForAction = () => {
     if (isAuthenticated) return true

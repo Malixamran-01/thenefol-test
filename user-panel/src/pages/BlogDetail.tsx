@@ -678,8 +678,7 @@ export default function BlogDetail() {
     sessionStorage.setItem('blog_author_profile', JSON.stringify({
       id: authorId,
       name: post.author_name,
-      email: post.author_email,
-      bio: post.excerpt || ''
+      email: post.author_email
     }))
     window.location.hash = `#/user/author/${authorId}`
   }
