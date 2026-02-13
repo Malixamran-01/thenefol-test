@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Check, ChevronRight, Sparkles, User, BookOpen, Share2, Settings, Loader2 } from 'lucide-react'
+import { Check, ChevronRight, Sparkles, User, BookOpen, Share2, Settings, Loader2, Upload, X } from 'lucide-react'
 import { authorAPI } from '../services/authorAPI'
 import { useAuth } from '../contexts/AuthContext'
+import { getApiBase } from '../utils/apiBase'
 
 interface OnboardingStep {
   number: number
@@ -23,6 +24,7 @@ const AuthorOnboarding = () => {
   const [penName, setPenName] = useState('')
   const [realName, setRealName] = useState('')
   const [profileImage, setProfileImage] = useState('')
+  const [coverImage, setCoverImage] = useState('')
 
   // Step 2 data
   const [bio, setBio] = useState('')
@@ -68,10 +70,33 @@ const AuthorOnboarding = () => {
         navigateToBlogRequest()
       } else if (progress.started) {
         setCurrentStep(progress.currentStep)
+        const step1 = (progress as any).step1Data
+        if (step1) {
+          setUsername(step1.username || '')
+          setDisplayName(step1.display_name || '')
+          setPenName(step1.pen_name || '')
+          setRealName(step1.real_name || '')
+          setProfileImage(step1.profile_image || '')
+          setCoverImage(step1.cover_image || '')
+        }
       }
     } catch (err) {
       console.error('Failed to check progress:', err)
     }
+  }
+
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${getApiBase()}/api/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData
+    })
+    if (!res.ok) throw new Error('Upload failed')
+    const data = await res.json()
+    return data?.url || data?.data?.url || ''
   }
 
   const handleStep1 = async (e: React.FormEvent) => {
@@ -90,7 +115,8 @@ const AuthorOnboarding = () => {
         display_name: displayName,
         pen_name: penName,
         real_name: realName,
-        profile_image: profileImage
+        profile_image: profileImage || undefined,
+        cover_image: coverImage || undefined
       })
       setCurrentStep(2)
       setSuccess('Step 1 completed!')
@@ -318,6 +344,89 @@ const AuthorOnboarding = () => {
                   placeholder="Your real name (kept private)"
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Profile Picture (Optional)
+                </label>
+                <div className="flex items-center gap-4">
+                  <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                    {profileImage ? (
+                      <img src={profileImage.startsWith('/') ? `${getApiBase()}${profileImage}` : profileImage} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                      <User className="h-10 w-10 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      id="profile-upload"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          try {
+                            const url = await uploadFile(file)
+                            setProfileImage(url)
+                          } catch {
+                            setError('Failed to upload profile picture')
+                          }
+                        }
+                      }}
+                    />
+                    <label htmlFor="profile-upload" className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+                      <Upload className="h-4 w-4" />
+                      {profileImage ? 'Change' : 'Upload'}
+                    </label>
+                    {profileImage && (
+                      <button type="button" onClick={() => setProfileImage('')} className="ml-2 text-sm text-red-600 hover:underline">
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Picture (Optional)
+                </label>
+                <div className="rounded-lg border-2 border-dashed border-gray-200 p-6 bg-gray-50">
+                  {coverImage ? (
+                    <div className="relative">
+                      <img src={coverImage.startsWith('/') ? `${getApiBase()}${coverImage}` : coverImage} alt="Cover" className="w-full h-32 object-cover rounded-lg" />
+                      <button type="button" onClick={() => setCoverImage('')} className="absolute top-2 right-2 p-1 rounded-full bg-red-500 text-white hover:bg-red-600">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        id="cover-upload"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            try {
+                              const url = await uploadFile(file)
+                              setCoverImage(url)
+                            } catch {
+                              setError('Failed to upload cover picture')
+                            }
+                          }
+                        }}
+                      />
+                      <label htmlFor="cover-upload" className="flex flex-col items-center gap-2 cursor-pointer text-gray-500 hover:text-gray-700">
+                        <Upload className="h-8 w-8" />
+                        <span className="text-sm font-medium">Upload cover image</span>
+                      </label>
+                    </>
+                  )}
+                </div>
               </div>
 
               <button

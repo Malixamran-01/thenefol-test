@@ -365,12 +365,10 @@ export default function AuthorProfile() {
 
   const apiBase = getApiBase()
   const resolveImage = (url?: string) => (url && url.startsWith('/uploads/') ? `${apiBase}${url}` : url) || ''
-  const coverImage = hasAuthorProfile
-    ? resolveImage(authorProfile!.cover_image) || posts[0]?.detail_image || posts[0]?.cover_image || posts[0]?.images?.[0] || ''
-    : posts[0]?.detail_image || posts[0]?.cover_image || posts[0]?.images?.[0] || ''
+  const coverImage = hasAuthorProfile ? resolveImage(authorProfile!.cover_image) || '' : ''
   const profileImage = hasAuthorProfile
-    ? resolveImage(authorProfile!.profile_image) || posts.find((p) => p.cover_image)?.cover_image || posts[0]?.images?.[0] || ''
-    : resolveImage(userSummary?.profile_photo) || posts.find((p) => p.cover_image)?.cover_image || posts[0]?.images?.[0] || ''
+    ? resolveImage(authorProfile!.profile_image) || ''
+    : resolveImage(userSummary?.profile_photo) || ''
 
   const authorStats = useMemo(() => {
     const totalPosts = posts.length

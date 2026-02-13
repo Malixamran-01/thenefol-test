@@ -72,7 +72,7 @@ router.post('/onboarding/step1', authenticateToken, async (req, res) => {
       return res.status(401).json({ message: 'Authentication required' })
     }
 
-    const { username, display_name, pen_name, real_name, profile_image } = req.body
+    const { username, display_name, pen_name, real_name, profile_image, cover_image } = req.body
 
     if (!username || !display_name) {
       return res.status(400).json({ message: 'Username and display name are required' })
@@ -108,19 +108,19 @@ router.post('/onboarding/step1', authenticateToken, async (req, res) => {
       // Update existing profile
       const { rows } = await pool.query(
         `UPDATE author_profiles 
-         SET username = $1, display_name = $2, pen_name = $3, real_name = $4, profile_image = $5, email = $6, unique_user_id = $7
-         WHERE user_id = $8
+         SET username = $1, display_name = $2, pen_name = $3, real_name = $4, profile_image = $5, cover_image = $6, email = $7, unique_user_id = $8
+         WHERE user_id = $9
          RETURNING id`,
-        [username, display_name, pen_name, real_name, profile_image, userEmail, uniqueUserId, userId]
+        [username, display_name, pen_name, real_name, profile_image, cover_image, userEmail, uniqueUserId, userId]
       )
       authorId = rows[0].id
     } else {
       // Create new profile
       const { rows } = await pool.query(
-        `INSERT INTO author_profiles (user_id, unique_user_id, email, username, display_name, pen_name, real_name, profile_image)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO author_profiles (user_id, unique_user_id, email, username, display_name, pen_name, real_name, profile_image, cover_image)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id`,
-        [userId, uniqueUserId, userEmail, username, display_name, pen_name, real_name, profile_image]
+        [userId, uniqueUserId, userEmail, username, display_name, pen_name, real_name, profile_image, cover_image]
       )
       authorId = rows[0].id
     }
@@ -333,7 +333,8 @@ router.get('/onboarding/progress', authenticateToken, async (req, res) => {
         bio IS NOT NULL as step2_complete,
         website IS NOT NULL OR social_links::text != '{}'::text as step3_complete,
         preferences IS NOT NULL as step4_complete,
-        onboarding_completed
+        onboarding_completed,
+        username, display_name, pen_name, real_name, profile_image, cover_image
        FROM author_profiles
        WHERE user_id = $1`,
       [userId]
@@ -365,6 +366,14 @@ router.get('/onboarding/progress', authenticateToken, async (req, res) => {
         step2: progress.step2_complete,
         step3: progress.step3_complete,
         step4: progress.step4_complete
+      },
+      step1Data: {
+        username: progress.username,
+        display_name: progress.display_name,
+        pen_name: progress.pen_name,
+        real_name: progress.real_name,
+        profile_image: progress.profile_image,
+        cover_image: progress.cover_image
       }
     })
   } catch (error) {

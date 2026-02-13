@@ -62,7 +62,7 @@ export const authorAPI = {
   },
 
   /**
-   * Step 1: Identity (username, display name, profile image)
+   * Step 1: Identity (username, display name, profile image, cover image)
    */
   async submitStep1(data: {
     username: string
@@ -70,6 +70,7 @@ export const authorAPI = {
     pen_name?: string
     real_name?: string
     profile_image?: string
+    cover_image?: string
   }) {
     const response = await fetch(`${getApiBaseUrl()}/api/authors/onboarding/step1`, {
       method: 'POST',
