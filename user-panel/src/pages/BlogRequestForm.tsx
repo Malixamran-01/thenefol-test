@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import ImageEditor from '../components/ImageEditor'
@@ -72,6 +72,8 @@ export default function BlogRequestForm() {
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkData, setLinkData] = useState<LinkModalData>({ text: '', url: '' })
+  const [showYouTubeModal, setShowYouTubeModal] = useState(false)
+  const [youtubeUrl, setYoutubeUrl] = useState('')
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [currentColor, setCurrentColor] = useState('#000000')
   const [colorPickerPos, setColorPickerPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
@@ -287,7 +289,90 @@ export default function BlogRequestForm() {
     savedSelectionRef.current = null
     setShowLinkModal(false)
     setLinkData({ text: '', url: '' })
-  }  
+  }
+
+  const extractYouTubeVideoId = (url: string): string | null => {
+    const trimmed = url.trim()
+    if (!trimmed) return null
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
+    ]
+    for (const re of patterns) {
+      const m = trimmed.match(re)
+      if (m) return m[1]
+    }
+    return null
+  }
+
+  const insertYouTube = () => {
+    editorRef.current?.focus()
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      savedSelectionRef.current = selection.getRangeAt(0).cloneRange()
+    } else {
+      const newRange = document.createRange()
+      newRange.selectNodeContents(editorRef.current!)
+      newRange.collapse(false)
+      savedSelectionRef.current = newRange
+    }
+    setYoutubeUrl('')
+    setShowYouTubeModal(true)
+  }
+
+  const confirmYouTube = () => {
+    const videoId = extractYouTubeVideoId(youtubeUrl)
+    if (!videoId) {
+      alert('Please enter a valid YouTube URL (e.g. https://www.youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID)')
+      return
+    }
+
+    const embedUrl = `https://www.youtube.com/embed/${videoId}`
+    const iframeHtml = `<div class="youtube-embed-wrapper" contenteditable="false" style="text-align: center; margin: 20px auto; display: block; width: 100%;"><iframe src="${embedUrl}" title="YouTube video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px;"></iframe></div>`
+
+    const selection = window.getSelection()
+    editorRef.current?.focus()
+
+    if (selection && savedSelectionRef.current) {
+      selection.removeAllRanges()
+      selection.addRange(savedSelectionRef.current)
+    }
+
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
+    if (range) {
+      range.deleteContents()
+      const wrapper = document.createElement('div')
+      wrapper.className = 'youtube-embed-wrapper'
+      wrapper.contentEditable = 'false'
+      wrapper.style.textAlign = 'center'
+      wrapper.style.margin = '20px auto'
+      wrapper.style.display = 'block'
+      wrapper.style.width = '100%'
+      const iframe = document.createElement('iframe')
+      iframe.src = embedUrl
+      iframe.title = 'YouTube video'
+      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+      iframe.allowFullscreen = true
+      iframe.style.maxWidth = '100%'
+      iframe.style.width = '560px'
+      iframe.style.height = '315px'
+      iframe.style.border = '0'
+      iframe.style.borderRadius = '8px'
+      wrapper.appendChild(iframe)
+      range.insertNode(wrapper)
+      range.setStartAfter(wrapper)
+      range.setEndAfter(wrapper)
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    } else {
+      exec('insertHTML', iframeHtml)
+    }
+
+    handleEditorInput()
+    setShowYouTubeModal(false)
+    setYoutubeUrl('')
+  }
+
   const applyColor = (color: string) => {
     setCurrentColor(color)
     exec('foreColor', color)
@@ -816,6 +901,8 @@ const handleImageEditorSave = async (editedImageObject: any) => {
         .editor-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
         .editor-content img:hover { border-color: #4B97C9; }
         .editor-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; }
+        .editor-content .youtube-embed-wrapper { text-align: center; margin: 20px auto; display: block; width: 100%; }
+        .editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
         .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
       
@@ -1275,6 +1362,14 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                         </button>
                         <button 
                           type="button" 
+                          onClick={insertYouTube} 
+                          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
+                          title="Insert YouTube Video"
+                        >
+                          <Youtube size={18} className="sm:w-5 sm:h-5" />
+                        </button>
+                        <button 
+                          type="button" 
                           onClick={() => insertList(false)} 
                           className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
                           title="Bullet List"
@@ -1494,6 +1589,42 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                 title={color}
               />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* YouTube Modal */}
+      {showYouTubeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Insert YouTube Video</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">YouTube URL</label>
+              <input
+                type="url"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-2">Paste a YouTube link to embed the video (centered, like images)</p>
+            </div>
+            <div className="flex gap-3 mt-6 justify-end">
+              <button
+                type="button"
+                onClick={() => { setShowYouTubeModal(false); setYoutubeUrl('') }}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmYouTube}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Insert Video
+              </button>
+            </div>
           </div>
         </div>
       )}

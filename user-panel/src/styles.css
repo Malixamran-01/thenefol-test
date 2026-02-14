@@ -997,6 +997,28 @@ img, video, iframe {
   display: block;
 }
 
+/* YouTube embed in blog content - centered like images */
+.youtube-embed-wrapper {
+  text-align: center;
+  margin: 20px auto;
+  display: block;
+  width: 100%;
+}
+.youtube-embed-wrapper iframe {
+  max-width: 100%;
+  width: 560px;
+  height: 315px;
+  border: 0;
+  border-radius: 8px;
+}
+@media (max-width: 640px) {
+  .youtube-embed-wrapper iframe {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}
+
 img {
   object-fit: contain;
 }

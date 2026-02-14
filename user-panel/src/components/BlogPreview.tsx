@@ -68,6 +68,8 @@ export default function BlogPreview({
         .blog-preview-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
         .blog-preview-content img:hover { border-color: #4B97C9; }
         .blog-preview-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; }
+        .blog-preview-content .youtube-embed-wrapper { text-align: center; margin: 20px auto; display: block; width: 100%; }
+        .blog-preview-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
         .blog-preview-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 overflow-y-auto">
