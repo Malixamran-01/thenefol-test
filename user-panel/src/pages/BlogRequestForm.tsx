@@ -963,7 +963,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Tags</label>
                   <input
                     name="meta_keywords"
                     value={formData.meta_keywords}
@@ -978,7 +978,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                     ))}
                   </datalist>
                   <p className="text-xs text-gray-500 mt-1">
-                    Used for categorization, related posts, and internal discovery. Not directly used by search engines. Max 5–8 tags, comma-separated.
+                    Used for categorization, related posts, and internal discovery. Max 5–8 tags, comma-separated.
                   </p>
                 </div>
 
@@ -1039,7 +1039,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                   </div>
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">OG Image (1200×630px recommended)</label>
-                    <p className="text-xs text-gray-500 mb-2">Fallback: OG image → Cover image → Site default. Never ship without an image.</p>
+                    <p className="text-xs text-gray-500 mb-2">Falls back to cover image if not provided</p>
                     <div className="flex flex-wrap gap-3 items-start">
                       <div className="flex flex-col gap-2">
                         {formData.ogImageFile ? (
