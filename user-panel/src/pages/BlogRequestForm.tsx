@@ -43,6 +43,7 @@ export default function BlogRequestForm() {
   const savedSelectionRef = useRef<Range | null>(null)
   const colorButtonRef = useRef<HTMLButtonElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const imageMenuRef = useRef<HTMLDivElement>(null)
 
   const [formData, setFormData] = useState<BlogRequest>({
     title: '',
@@ -117,7 +118,10 @@ export default function BlogRequestForm() {
   // Close image menu when clicking outside or scrolling
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showImageMenu && selectedImage && !selectedImage.contains(event.target as Node)) {
+      const target = event.target as Node
+      const clickedImage = selectedImage?.contains(target)
+      const clickedMenu = imageMenuRef.current?.contains(target)
+      if (showImageMenu && selectedImage && !clickedImage && !clickedMenu) {
         setShowImageMenu(false)
         setSelectedImage(null)
       }
@@ -1547,57 +1551,64 @@ const handleImageEditorSave = async (editedImageObject: any) => {
             onClick={() => setShowImageMenu(false)}
           />
           <div
+            ref={imageMenuRef}
             className="absolute z-[60] bg-white rounded-lg shadow-xl py-2 min-w-[200px] border border-gray-200"
             style={{ top: imageMenuPos.top, left: imageMenuPos.left }}
           >
             <button
-              onClick={openImageEditor}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+              type="button"
+              onClick={() => { setShowImageMenu(false); openImageEditor() }}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-gray-800"
             >
-              <Edit3 className="w-4 h-4" />
+              <Edit3 className="w-4 h-4 text-gray-700" />
               Edit image
             </button>
             <button
+              type="button"
               onClick={() => {
                 setShowImageMenu(false)
                 setShowCaptionModal(true)
               }}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-gray-800"
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-4 h-4 text-gray-700" />
               Edit caption
             </button>
             <button
+              type="button"
               onClick={() => {
                 setShowImageMenu(false)
                 setShowAltTextModal(true)
               }}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-gray-800"
             >
-              <Tag className="w-4 h-4" />
+              <Tag className="w-4 h-4 text-gray-700" />
               Edit alt text
             </button>
-            <div className="border-t my-2" />
+            <div className="border-t border-gray-200 my-2" />
             <button
+              type="button"
               onClick={() => setImageWidth('wide')}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-gray-800"
             >
-              <Maximize2 className="w-4 h-4" />
+              <Maximize2 className="w-4 h-4 text-gray-700" />
               Wide width
             </button>
             <button
+              type="button"
               onClick={() => setImageWidth('full')}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-gray-800"
             >
-              <Maximize className="w-4 h-4" />
+              <Maximize className="w-4 h-4 text-gray-700" />
               Full width
             </button>
-            <div className="border-t my-2" />
+            <div className="border-t border-gray-200 my-2" />
             <button
+              type="button"
               onClick={deleteImage}
               className="w-full px-4 py-2 text-left hover:bg-red-50 flex items-center gap-2 text-sm text-red-600"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4 text-red-600" />
               Delete image
             </button>
           </div>
