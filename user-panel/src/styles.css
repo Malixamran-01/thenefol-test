@@ -999,9 +999,10 @@ img, video, iframe {
 
 /* YouTube embed in blog content - centered like images */
 .youtube-embed-wrapper {
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin: 20px auto;
-  display: block;
   width: 100%;
 }
 .youtube-embed-wrapper iframe {

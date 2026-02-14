@@ -174,11 +174,20 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     }))
   }
 
+  const getEditorContentForSave = () => {
+    if (!editorRef.current) return ''
+    const html = editorRef.current.innerHTML
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    tmp.querySelectorAll('.youtube-embed-remove').forEach((el) => el.remove())
+    return tmp.innerHTML
+  }
+
   const handleEditorInput = () => {
     if (editorRef.current) {
       setFormData(prev => ({
         ...prev,
-        content: editorRef.current!.innerHTML
+        content: getEditorContentForSave()
       }))
     }
   }
@@ -285,6 +294,43 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     setShowYouTubeModal(true)
   }
 
+  const removeYouTubeEmbed = (wrapper: HTMLElement) => {
+    const br = wrapper.nextSibling
+    if (br && br.nodeName === 'BR') br.remove()
+    wrapper.remove()
+    handleEditorInput()
+  }
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Backspace' || !editorRef.current) return
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return
+    const range = selection.getRangeAt(0)
+    if (!editorRef.current.contains(range.startContainer)) return
+
+    let nodeBefore: Node | null = null
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      if (range.startOffset > 0) return
+      const parent = range.startContainer.parentNode
+      if (!parent) return
+      const idx = Array.from(parent.childNodes).indexOf(range.startContainer as ChildNode)
+      nodeBefore = idx > 0 ? parent.childNodes[idx - 1] : parent.previousSibling
+    } else {
+      if (range.startOffset > 0) {
+        nodeBefore = range.startContainer.childNodes[range.startOffset - 1]
+      } else {
+        nodeBefore = range.startContainer.previousSibling
+      }
+    }
+    while (nodeBefore && nodeBefore.nodeType === Node.ELEMENT_NODE && (nodeBefore as Element).tagName === 'BR') {
+      nodeBefore = nodeBefore.previousSibling
+    }
+    if (nodeBefore?.nodeType === Node.ELEMENT_NODE && (nodeBefore as HTMLElement).classList?.contains('youtube-embed-wrapper')) {
+      removeYouTubeEmbed(nodeBefore as HTMLElement)
+      e.preventDefault()
+    }
+  }
+
   const confirmYouTube = () => {
     const videoId = extractYouTubeVideoId(youtubeUrl)
     if (!videoId) {
@@ -301,35 +347,70 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
       selection.addRange(savedSelectionRef.current)
     }
 
-    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
-    if (range) {
-      range.deleteContents()
-      const wrapper = document.createElement('div')
-      wrapper.className = 'youtube-embed-wrapper'
-      wrapper.contentEditable = 'false'
-      wrapper.style.textAlign = 'center'
-      wrapper.style.margin = '20px auto'
-      wrapper.style.display = 'block'
-      wrapper.style.width = '100%'
-      const iframe = document.createElement('iframe')
-      iframe.src = embedUrl
-      iframe.title = 'YouTube video'
-      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
-      iframe.allowFullscreen = true
-      iframe.style.maxWidth = '100%'
-      iframe.style.width = '560px'
-      iframe.style.height = '315px'
-      iframe.style.border = '0'
-      iframe.style.borderRadius = '8px'
-      wrapper.appendChild(iframe)
-      range.insertNode(wrapper)
-      range.setStartAfter(wrapper)
-      range.setEndAfter(wrapper)
-      selection?.removeAllRanges()
-      selection?.addRange(range)
+    const wrapper = document.createElement('div')
+    wrapper.className = 'youtube-embed-wrapper'
+    wrapper.setAttribute('contenteditable', 'false')
+    wrapper.setAttribute('data-youtube-embed', 'true')
+    wrapper.style.cssText = 'position: relative; display: flex; justify-content: center; align-items: center; margin: 20px auto; width: 100%;'
+
+    const inner = document.createElement('div')
+    inner.style.cssText = 'display: flex; justify-content: center; width: 100%;'
+
+    const iframe = document.createElement('iframe')
+    iframe.src = embedUrl
+    iframe.title = 'YouTube video'
+    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+    iframe.allowFullscreen = true
+    iframe.style.cssText = 'max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px;'
+    inner.appendChild(iframe)
+
+    const removeBtn = document.createElement('button')
+    removeBtn.type = 'button'
+    removeBtn.className = 'youtube-embed-remove'
+    removeBtn.innerHTML = '×'
+    removeBtn.title = 'Remove video'
+    removeBtn.style.cssText = 'position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: none; cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; z-index: 10;'
+    removeBtn.onclick = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      removeYouTubeEmbed(wrapper)
+    }
+    wrapper.addEventListener('mouseenter', () => { removeBtn.style.opacity = '1' })
+    wrapper.addEventListener('mouseleave', () => { removeBtn.style.opacity = '0' })
+    wrapper.appendChild(inner)
+    wrapper.appendChild(removeBtn)
+
+    const br = document.createElement('br')
+
+    if (selection && savedSelectionRef.current && editorRef.current?.contains(savedSelectionRef.current.commonAncestorContainer)) {
+      try {
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        const startContainer = range.startContainer
+        if (startContainer.nodeType === Node.TEXT_NODE && startContainer.parentElement) {
+          const parent = startContainer.parentElement
+          if (editorRef.current.contains(parent)) {
+            parent.parentNode?.insertBefore(wrapper, parent.nextSibling)
+            parent.parentNode?.insertBefore(br, wrapper.nextSibling)
+          } else {
+            range.insertNode(wrapper)
+            wrapper.parentNode?.insertBefore(br, wrapper.nextSibling)
+          }
+        } else {
+          range.insertNode(wrapper)
+          wrapper.parentNode?.insertBefore(br, wrapper.nextSibling)
+        }
+        range.setStartAfter(br)
+        range.setEndAfter(br)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      } catch {
+        editorRef.current?.appendChild(wrapper)
+        editorRef.current?.appendChild(br)
+      }
     } else {
-      const iframeHtml = `<div class="youtube-embed-wrapper" contenteditable="false" style="text-align: center; margin: 20px auto; display: block; width: 100%;"><iframe src="${embedUrl}" title="YouTube video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px;"></iframe></div>`
-      exec('insertHTML', iframeHtml)
+      editorRef.current?.appendChild(wrapper)
+      editorRef.current?.appendChild(br)
     }
 
     handleEditorInput()
@@ -888,8 +969,9 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
         .editor-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
         .editor-content img:hover { border-color: #4B97C9; }
         .editor-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; }
-        .editor-content .youtube-embed-wrapper { text-align: center; margin: 20px auto; display: block; width: 100%; }
+        .editor-content .youtube-embed-wrapper { position: relative; display: flex; justify-content: center; align-items: center; margin: 20px auto; width: 100%; }
         .editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
+        .editor-content .youtube-embed-remove:hover { background: rgba(0,0,0,0.8) !important; }
         .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
@@ -1252,6 +1334,7 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 ref={editorRef}
                 contentEditable
                 onInput={handleEditorInput}
+                onKeyDown={handleEditorKeyDown}
                 className="editor-content h-[320px] sm:h-[380px] overflow-y-auto p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full relative z-10"
                 data-placeholder="Start writing your blog post here... Use the toolbar above to format your text, add links, and create lists."
                 suppressContentEditableWarning
