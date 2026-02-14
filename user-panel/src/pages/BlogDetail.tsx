@@ -175,25 +175,64 @@ export default function BlogDetail() {
         ? post.meta_keywords
         : ''
 
+    // Fallback chain (matches backend meta page)
+    const title = post.meta_title || post.title
+    const description = post.meta_description || post.excerpt || ''
+    const ogTitle = post.og_title || title
+    const ogDescription = post.og_description || description
+    const base = getApiBase().replace(/\/$/, '')
+    const canonicalUrl = post.canonical_url?.startsWith('http') ? post.canonical_url : `${base}/blog/${post.id}`
     const ogImage = post.og_image || post.cover_image || post.detail_image || ''
-    const pageUrl = post.canonical_url || window.location.href
 
-    document.title = post.meta_title || post.title
-    setMeta('description', post.meta_description || post.excerpt || '')
+    document.title = title
+    setMeta('description', description)
     if (keywords) setMeta('keywords', keywords)
 
-    setMeta('og:title', post.og_title || post.meta_title || post.title, 'property')
-    setMeta('og:description', post.og_description || post.meta_description || post.excerpt || '', 'property')
-    if (ogImage) setMeta('og:image', ogImage, 'property')
+    setMeta('og:title', ogTitle, 'property')
+    setMeta('og:description', ogDescription, 'property')
+    setMeta('og:url', canonicalUrl, 'property')
     setMeta('og:type', 'article', 'property')
-    setMeta('og:url', pageUrl, 'property')
+    setMeta('og:site_name', 'The Nefol', 'property')
+    if (ogImage) {
+      setMeta('og:image', ogImage, 'property')
+      setMeta('og:image:width', '1200', 'property')
+      setMeta('og:image:height', '630', 'property')
+    }
+    setMeta('article:published_time', post.created_at, 'property')
+    setMeta('article:modified_time', post.updated_at || post.created_at, 'property')
+    setMeta('article:author', post.author_name || '', 'property')
 
     setMeta('twitter:card', ogImage ? 'summary_large_image' : 'summary', 'property')
-    setMeta('twitter:title', post.og_title || post.meta_title || post.title, 'property')
-    setMeta('twitter:description', post.og_description || post.meta_description || post.excerpt || '', 'property')
+    setMeta('twitter:title', ogTitle, 'property')
+    setMeta('twitter:description', ogDescription, 'property')
     if (ogImage) setMeta('twitter:image', ogImage, 'property')
 
-    if (pageUrl) setLink('canonical', pageUrl)
+    setLink('canonical', canonicalUrl)
+
+    // JSON-LD (separate from meta – huge for SEO rich results)
+    const jsonLd: Record<string, unknown> = {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: title,
+      description: description.replace(/<[^>]*>/g, '').slice(0, 200),
+      author: { '@type': 'Person', name: post.author_name || 'Unknown' },
+      datePublished: post.created_at,
+      dateModified: post.updated_at || post.created_at,
+      mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl }
+    }
+    if (ogImage) jsonLd.image = ogImage
+    let script = document.querySelector('script[data-blog-jsonld]') as HTMLScriptElement | null
+    if (!script) {
+      script = document.createElement('script')
+      script.setAttribute('type', 'application/ld+json')
+      script.setAttribute('data-blog-jsonld', '')
+      document.head.appendChild(script)
+    }
+    script.textContent = JSON.stringify(jsonLd)
+
+    return () => {
+      script?.remove()
+    }
   }, [post])
 
   const processContentImages = (content: string, apiBase: string, postImages: string[] = []): string => {

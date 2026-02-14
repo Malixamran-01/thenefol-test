@@ -329,9 +329,13 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:url" content="${escapeHtml(pageUrl)}">
+  <meta property="og:site_name" content="The Nefol">
   ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="article:published_time" content="${post.created_at}">
+  <meta property="article:modified_time" content="${post.updated_at || post.created_at}">
+  <meta property="article:author" content="${escapeHtml(post.author_name || '')}">
   <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}">
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">

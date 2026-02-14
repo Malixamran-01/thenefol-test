@@ -87,6 +87,7 @@ export default function BlogRequestForm() {
   const [editingImageName, setEditingImageName] = useState<string>('')
   const [showPreview, setShowPreview] = useState(false)
   const [showSeoPreview, setShowSeoPreview] = useState(false)
+  const [showSeoSection, setShowSeoSection] = useState(false)
   const [canonicalOverride, setCanonicalOverride] = useState(false)
   const [existingTags, setExistingTags] = useState<string[]>([])
 
@@ -894,15 +895,23 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                   disabled={isSubmitting}
                 />
               </div>  
-            {/* SEO & Categories */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-5 space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-800">SEO & Social Sharing</h3>
-                  <p className="text-xs text-gray-600 mt-1">
-                    These fields improve how your blog appears in search results and social previews.
-                  </p>
-                </div>
-
+            {/* SEO & Social Sharing - collapsible, collapsed by default */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowSeoSection(!showSeoSection)}
+                  className="w-full flex items-center justify-between px-4 sm:px-5 py-4 text-left hover:bg-gray-100/50 transition-colors"
+                >
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-800">SEO & Social Sharing</h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      These fields improve how your blog appears in search results and social previews.
+                    </p>
+                  </div>
+                  {showSeoSection ? <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0 ml-2" /> : <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0 ml-2" />}
+                </button>
+                {showSeoSection && (
+                <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-4 border-t border-gray-200 pt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
@@ -963,7 +972,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Tags</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Tags (like hashtags)</label>
                   <input
                     name="meta_keywords"
                     value={formData.meta_keywords}
@@ -978,7 +987,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                     ))}
                   </datalist>
                   <p className="text-xs text-gray-500 mt-1">
-                    Used for categorization, related posts, and internal discovery. Max 5–8 tags, comma-separated.
+                    Meta Tags and Keywords for visibilty. Max 5–8 tags, comma-separated.
                   </p>
                 </div>
 
@@ -1164,6 +1173,8 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                     </span>
                   </label>
                 </div>
+                </div>
+                )}
               </div> 
              {/* Rich Text Editor */}
               <div className="w-full">
