@@ -256,6 +256,34 @@ router.get('/posts', async (req, res) => {
   }
 })
 
+// Get existing tags for autocomplete (from meta_keywords across approved posts)
+router.get('/tags', async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const { rows } = await pool.query(`
+      SELECT meta_keywords FROM blog_posts
+      WHERE status = 'approved' AND is_active = true AND is_archived = false AND is_deleted = false AND meta_keywords IS NOT NULL
+    `)
+    const tagSet = new Set<string>()
+    for (const row of rows) {
+      const kw = row.meta_keywords
+      if (Array.isArray(kw)) kw.forEach((t: string) => tagSet.add(String(t).trim().toLowerCase()))
+      else if (typeof kw === 'string') {
+        try {
+          const arr = JSON.parse(kw)
+          if (Array.isArray(arr)) arr.forEach((t: string) => tagSet.add(String(t).trim().toLowerCase()))
+        } catch {
+          kw.split(/[,;]/).forEach((t: string) => { const s = t.trim().toLowerCase(); if (s) tagSet.add(s) })
+        }
+      }
+    }
+    res.json(Array.from(tagSet).sort())
+  } catch (err) {
+    console.error('Error fetching blog tags:', err)
+    res.status(500).json({ message: 'Failed to fetch tags' })
+  }
+})
+
 // Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.)
 // Crawlers don't run JS - they need meta tags in the initial HTML
 export async function serveBlogMetaPage(req: express.Request, res: express.Response) {
@@ -265,7 +293,7 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
     }
     const id = req.params.id
     const { rows } = await pool.query(`
-      SELECT id, title, excerpt, meta_title, meta_description, og_title, og_description, og_image, cover_image, detail_image, canonical_url
+      SELECT id, title, excerpt, meta_title, meta_description, og_title, og_description, og_image, cover_image, detail_image, canonical_url, author_name, created_at, updated_at
       FROM blog_posts
       WHERE id = $1 AND status = 'approved' AND is_active = true AND is_archived = false AND is_deleted = false
     `, [id])
@@ -281,7 +309,9 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
       if (url.startsWith('http')) return url
       return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
     }
-    const ogImage = toAbsolute(post.og_image || post.cover_image || post.detail_image)
+    // OG image fallback: og_image → cover_image → detail_image → site default (DEFAULT_OG_IMAGE env)
+    const siteDefaultOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
+    const ogImage = toAbsolute(post.og_image || post.cover_image || post.detail_image || (siteDefaultOg ? siteDefaultOg : null))
     const title = post.og_title || post.meta_title || post.title
     const description = (post.og_description || post.meta_description || post.excerpt || '').replace(/<[^>]*>/g, '').slice(0, 200)
     const pageUrl = post.canonical_url || `${baseUrl}/blog/${id}`
@@ -307,6 +337,17 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
   <meta name="twitter:description" content="${escapeHtml(description)}">
   ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}">` : ''}
   <link rel="canonical" href="${escapeHtml(pageUrl)}">
+  <script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    description: description,
+    image: ogImage || undefined,
+    author: { '@type': 'Person', name: post.author_name || 'Unknown' },
+    datePublished: post.created_at,
+    dateModified: post.updated_at || post.created_at,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl }
+  })}</script>
   <meta http-equiv="refresh" content="0;url=${escapeHtml(spaUrl)}">
   <script>window.location.replace(${JSON.stringify(spaUrl)})</script>
 </head>

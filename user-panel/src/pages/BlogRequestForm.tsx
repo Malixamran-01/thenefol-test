@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft, Eye } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import ImageEditor from '../components/ImageEditor'
@@ -86,6 +86,9 @@ export default function BlogRequestForm() {
   const [editingImageId, setEditingImageId] = useState<string | null>(null)
   const [editingImageName, setEditingImageName] = useState<string>('')
   const [showPreview, setShowPreview] = useState(false)
+  const [showSeoPreview, setShowSeoPreview] = useState(false)
+  const [canonicalOverride, setCanonicalOverride] = useState(false)
+  const [existingTags, setExistingTags] = useState<string[]>([])
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -101,6 +104,14 @@ export default function BlogRequestForm() {
       window.location.hash = '#/user/blog'
     }
   }, [isAuthenticated])
+
+  // Fetch existing tags for autocomplete
+  useEffect(() => {
+    fetch(`${getApiBase()}/api/blog/tags`)
+      .then(r => r.ok ? r.json() : [])
+      .then(setExistingTags)
+      .catch(() => setExistingTags([]))
+  }, [])
 
   // Close image menu when clicking outside or scrolling
   useEffect(() => {
@@ -138,17 +149,26 @@ export default function BlogRequestForm() {
     }
   }, [isAuthenticated, user])
 
-  // Auto-fill OG and meta fields from title/excerpt when empty
+  // Auto-fill OG and meta fields from title/excerpt/content when empty
+  const stripForMeta = (text: string, maxLen: number) =>
+    text.replace(/<[^>]*>/g, ' ').replace(/[#*_~`\[\]()]/g, '').replace(/\s+/g, ' ').replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim().slice(0, maxLen)
+  const truncateTitle = (s: string, max = 65) => s.length <= max ? s : s.slice(0, max - 3).replace(/\s+\S*$/, '') + '...'
   useEffect(() => {
     setFormData(prev => {
       const updates: Partial<BlogRequest> = {}
-      if (prev.title && !prev.meta_title) updates.meta_title = prev.title
-      if (prev.title && !prev.og_title) updates.og_title = prev.title
-      if (prev.excerpt && !prev.meta_description) updates.meta_description = prev.excerpt.slice(0, 160)
-      if (prev.excerpt && !prev.og_description) updates.og_description = prev.excerpt.slice(0, 200)
+      if (prev.title) {
+        if (!prev.meta_title) updates.meta_title = truncateTitle(prev.title, 60)
+        if (!prev.og_title) updates.og_title = prev.title
+      }
+      if (prev.excerpt && !prev.meta_description) updates.meta_description = stripForMeta(prev.excerpt, 155)
+      if (prev.excerpt && !prev.og_description) updates.og_description = stripForMeta(prev.excerpt, 200)
+      if (!prev.meta_description && prev.content) {
+        const firstP = prev.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
+        if (firstP) updates.meta_description = stripForMeta(firstP, 155)
+      }
       return Object.keys(updates).length ? { ...prev, ...updates } : prev
     })
-  }, [formData.title, formData.excerpt])
+  }, [formData.title, formData.excerpt, formData.content])
 
   // Attach click handlers to all images in editor
   useEffect(() => {
@@ -705,7 +725,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
       } else if (formData.og_image?.trim()) {
         formDataToSend.append('og_image', formData.og_image.trim())
       }
-      formDataToSend.append('canonical_url', formData.canonical_url)
+      formDataToSend.append('canonical_url', canonicalOverride ? formData.canonical_url : '')
       formDataToSend.append('categories', JSON.stringify(formData.categories))
       formDataToSend.append('allow_comments', String(formData.allow_comments))
 
@@ -885,51 +905,106 @@ const handleImageEditorSave = async (editedImageObject: any) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title (For search engines)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
                     <input
                       name="meta_title"
                       value={formData.meta_title}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Custom title for search engines"
-                      maxLength={60}
+                      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        formData.meta_title.length > 65 ? 'border-amber-500' : formData.meta_title.length > 60 ? 'border-amber-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Auto-filled from blog title"
+                      maxLength={65}
                     />
+                    <p className={`text-xs mt-1 ${formData.meta_title.length > 65 ? 'text-amber-600' : formData.meta_title.length > 60 ? 'text-amber-600' : 'text-gray-500'}`}>
+                      {formData.meta_title.length}/65 {formData.meta_title.length > 60 && formData.meta_title.length <= 65 && '(may be truncated in search)'}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Canonical URL (For search engines)</label>
-                    <input
-                      name="canonical_url"
-                      value={formData.canonical_url}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="https://www.thenefol.com/blog/your-post"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Canonical URL</label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-xs text-gray-600">
+                        <input
+                          type="checkbox"
+                          checked={canonicalOverride}
+                          onChange={e => setCanonicalOverride(e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        Advanced: Override canonical URL
+                      </label>
+                      <input
+                        name="canonical_url"
+                        value={canonicalOverride ? formData.canonical_url : `${getApiBase().replace(/\/$/, '')}/blog/[assigned-after-approval]`}
+                        onChange={handleInputChange}
+                        readOnly={!canonicalOverride}
+                        className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${!canonicalOverride ? 'bg-gray-100 text-gray-600' : ''}`}
+                        placeholder="https://www.thenefol.com/blog/your-post"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description (For search engines)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
                   <textarea
                     name="meta_description"
                     value={formData.meta_description}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formData.meta_description.length > 160 ? 'border-amber-500' : formData.meta_description.length > 155 ? 'border-amber-300' : 'border-gray-300'
+                    }`}
                     rows={2}
                     maxLength={160}
-                    placeholder="Short description for search engines (up to 160 characters)"
+                    placeholder="Auto-filled from excerpt or first paragraph. Google may rewrite this."
                   />
+                  <p className={`text-xs mt-1 ${formData.meta_description.length > 155 ? 'text-amber-600' : 'text-gray-500'}`}>
+                    {formData.meta_description.length}/160 (ideal 140–155)
+                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Keywords / Tags (For search engine visibility)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tags</label>
                   <input
                     name="meta_keywords"
                     value={formData.meta_keywords}
                     onChange={handleInputChange}
+                    list="blog-tags"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="e.g. skincare, routine, glowing skin"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Comma-separated keywords.</p>
+                  <datalist id="blog-tags">
+                    {existingTags.map(t => (
+                      <option key={t} value={t} />
+                    ))}
+                  </datalist>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Used for categorization, related posts, and internal discovery. Not directly used by search engines. Max 5–8 tags, comma-separated.
+                  </p>
+                </div>
+
+                {/* SEO Preview (collapsed) */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowSeoPreview(!showSeoPreview)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left text-sm font-medium text-gray-700"
+                  >
+                    SEO Preview (Google-style)
+                    {showSeoPreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                  {showSeoPreview && (
+                    <div className="p-4 bg-white border-t border-gray-200 space-y-1">
+                      <p className="text-blue-700 text-lg hover:underline cursor-default truncate">
+                        {formData.meta_title || formData.title || 'Post title'}
+                      </p>
+                      <p className="text-green-700 text-sm truncate">
+                        {getApiBase().replace(/\/$/, '')}/blog/...
+                      </p>
+                      <p className="text-gray-600 text-sm line-clamp-2">
+                        {formData.meta_description || formData.excerpt || 'Post description'}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-gray-200 pt-4 mt-4">
@@ -964,6 +1039,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                   </div>
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">OG Image (1200×630px recommended)</label>
+                    <p className="text-xs text-gray-500 mb-2">Fallback: OG image → Cover image → Site default. Never ship without an image.</p>
                     <div className="flex flex-wrap gap-3 items-start">
                       <div className="flex flex-col gap-2">
                         {formData.ogImageFile ? (
