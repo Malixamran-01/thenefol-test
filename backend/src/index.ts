@@ -5077,6 +5077,20 @@ app.delete('/api/user/notifications/:id', authenticateToken, async (req, res) =>
 
 // moved to routes/liveChat.ts
 
+// SPA fallback: serve user-panel for GET / when frontend is deployed alongside backend
+// Fixes "Cannot GET /" when users click shared blog links that redirect to /#/user/blog/:id
+const userPanelDist = process.env.USER_PANEL_DIST || path.join(__dirname, '../../user-panel/dist')
+const indexPath = path.join(userPanelDist, 'index.html')
+if (fs.existsSync(indexPath)) {
+  app.use(express.static(userPanelDist))
+  app.get('*', (req, res, next) => {
+    if (res.headersSent) return next()
+    if (req.method !== 'GET') return next()
+    res.sendFile(indexPath)
+  })
+  console.log('[SPA] User panel fallback enabled for GET /')
+}
+
 // Start server
 const port = Number(process.env.PORT || 2000)
 ensureSchema(pool)

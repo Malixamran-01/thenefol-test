@@ -285,7 +285,9 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
     const title = post.og_title || post.meta_title || post.title
     const description = (post.og_description || post.meta_description || post.excerpt || '').replace(/<[^>]*>/g, '').slice(0, 200)
     const pageUrl = post.canonical_url || `${baseUrl}/blog/${id}`
-    const spaUrl = `${baseUrl}/#/user/blog/${id}`
+    // Use FRONTEND_URL when frontend is on a different host (e.g. Vercel) - avoids "Cannot GET /" when backend-only serves /blog/:id
+    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+    const spaUrl = `${frontendBase}/#/user/blog/${id}`
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
