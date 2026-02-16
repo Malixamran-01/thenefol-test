@@ -252,6 +252,21 @@ export default function BlogRequestForm() {
     handleEditorInput()
   }
 
+  const ensureParagraphFormat = useCallback(() => {
+    if (!editorRef.current) return
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) return
+    const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
+    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4']
+    if (!validBlocks.includes(blockVal)) {
+      document.execCommand('formatBlock', false, 'p')
+      document.execCommand('foreColor', false, '#111827')
+      if (editorRef.current) {
+        setFormData(prev => ({ ...prev, content: getEditorContentForSave() }))
+      }
+    }
+  }, [])
+
   const updateToolbarState = useCallback(() => {
     if (!editorRef.current) return
     const sel = window.getSelection()
@@ -268,13 +283,35 @@ export default function BlogRequestForm() {
       italic: document.queryCommandState('italic'),
       underline: document.queryCommandState('underline')
     })
-  }, [])
+    if (!validBlocks.includes(blockVal)) {
+      ensureParagraphFormat()
+    }
+  }, [ensureParagraphFormat])
 
   useEffect(() => {
     const handler = () => updateToolbarState()
     document.addEventListener('selectionchange', handler)
     return () => document.removeEventListener('selectionchange', handler)
   }, [updateToolbarState])
+
+  // Ensure editor has a paragraph block when empty so typing starts in black
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor) return
+    const html = editor.innerHTML.trim()
+    if (!html || html === '<br>' || html === '<br/>') {
+      editor.innerHTML = '<p><br></p>'
+      const p = editor.querySelector('p')
+      if (p) {
+        const range = document.createRange()
+        range.setStart(p, 0)
+        range.collapse(true)
+        const sel = window.getSelection()
+        sel?.removeAllRanges()
+        sel?.addRange(range)
+      }
+    }
+  }, [])
 
   const setBlockFormat = (block: 'p' | 'h1' | 'h2' | 'h3' | 'h4') => {
     editorRef.current?.focus()
@@ -1030,12 +1067,13 @@ const handleImageEditorSave = async (editedImageObject: any) => {
         }
         .editor-content {
           line-height: 1.8;
+          color: #111827;
         }
         .editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h4 { font-size: 1.25em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content p { margin: 0.5em 0; }
+        .editor-content p { margin: 0.5em 0; color: #111827; }
         .editor-content ul { list-style: disc; margin-left: 2em; padding-left: 0.5em; }
         .editor-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
         .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
