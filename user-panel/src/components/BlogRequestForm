@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -100,6 +100,12 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     meta_description: false,
     og_title: false,
     og_description: false
+  })
+  const [toolbarState, setToolbarState] = useState({
+    block: 'p' as 'p' | 'h1' | 'h2' | 'h3' | 'h4',
+    bold: false,
+    italic: false,
+    underline: false
   })
 
   const colors = [
@@ -210,12 +216,56 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     handleEditorInput()
   }
 
+  const updateToolbarState = useCallback(() => {
+    if (!editorRef.current) return
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) {
+      setToolbarState({ block: 'p', bold: false, italic: false, underline: false })
+      return
+    }
+    const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
+    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4']
+    const block = validBlocks.includes(blockVal) ? (blockVal as 'p' | 'h1' | 'h2' | 'h3' | 'h4') : 'p'
+    setToolbarState({
+      block,
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline')
+    })
+  }, [])
+
+  useEffect(() => {
+    const handler = () => updateToolbarState()
+    document.addEventListener('selectionchange', handler)
+    return () => document.removeEventListener('selectionchange', handler)
+  }, [updateToolbarState])
+
+  const setBlockFormat = (block: 'p' | 'h1' | 'h2' | 'h3' | 'h4') => {
+    editorRef.current?.focus()
+    const current = toolbarState.block
+    if (block === 'p') {
+      exec('formatBlock', 'p')
+    } else {
+      if (current === block) {
+        exec('formatBlock', 'p')
+      } else {
+        exec('formatBlock', block)
+      }
+    }
+    setTimeout(updateToolbarState, 0)
+  }
+
+  const toggleFormat = (command: 'bold' | 'italic' | 'underline') => {
+    exec(command)
+    setTimeout(updateToolbarState, 0)
+  }
+
   const setHeading = (level: number) => {
-    exec('formatBlock', `h${level}`)
+    setBlockFormat(`h${level}` as 'h1' | 'h2' | 'h3' | 'h4')
   }
 
   const setParagraph = () => {
-    exec('formatBlock', 'p')
+    setBlockFormat('p')
   }
 
   const normalizeUrl = (url: string) => {
@@ -1234,8 +1284,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                     <button 
                       type="button" 
                       onClick={setParagraph} 
-                      className="px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-gray-200 rounded transition-colors text-xs sm:text-sm font-medium text-gray-700"
-                      title="Paragraph"
+                      className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors text-xs sm:text-sm font-medium ${
+                        toolbarState.block === 'p' ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                      }`}
+                      title="Paragraph (default)"
                     >
                       P
                     </button>
@@ -1244,8 +1296,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                         key={h} 
                         type="button" 
                         onClick={() => setHeading(h)} 
-                        className="px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-gray-200 rounded transition-colors text-xs sm:text-sm font-semibold text-gray-700"
-                        title={`Heading ${h}`}
+                        className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors text-xs sm:text-sm font-semibold ${
+                          toolbarState.block === `h${h}` ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title={`Heading ${h} (click again to unselect)`}
                       >
                         H{h}
                       </button>
@@ -1256,25 +1310,31 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                   <div className="flex gap-1 border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
                     <button 
                       type="button" 
-                      onClick={() => exec('bold')} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
-                      title="Bold"
+                      onClick={() => toggleFormat('bold')} 
+                      className={`p-1.5 sm:p-2 rounded transition-colors ${
+                        toolbarState.bold ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                      }`}
+                      title="Bold (toggle)"
                     >
                       <Bold size={18} className="sm:w-5 sm:h-5" />
                     </button>
                     <button 
                       type="button" 
-                      onClick={() => exec('italic')} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
-                      title="Italic"
+                      onClick={() => toggleFormat('italic')} 
+                      className={`p-1.5 sm:p-2 rounded transition-colors ${
+                        toolbarState.italic ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                      }`}
+                      title="Italic (toggle)"
                     >
                       <Italic size={18} className="sm:w-5 sm:h-5" />
                     </button>
                     <button 
                       type="button" 
-                      onClick={() => exec('underline')} 
-                      className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
-                      title="Underline"
+                      onClick={() => toggleFormat('underline')} 
+                      className={`p-1.5 sm:p-2 rounded transition-colors ${
+                        toolbarState.underline ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                      }`}
+                      title="Underline (toggle)"
                     >
                       <Underline size={18} className="sm:w-5 sm:h-5" />
                     </button>
@@ -1349,6 +1409,8 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
                 contentEditable
                 onInput={handleEditorInput}
                 onKeyDown={handleEditorKeyDown}
+                onFocus={updateToolbarState}
+                onClick={updateToolbarState}
                 className="editor-content h-[320px] sm:h-[380px] overflow-y-auto p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full relative z-10"
                 data-placeholder="Start writing your blog post here... Use the toolbar above to format your text, add links, and create lists."
                 suppressContentEditableWarning
