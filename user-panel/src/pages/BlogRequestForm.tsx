@@ -1096,8 +1096,8 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                 </button>
                 {showSeoSection && (
                 <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-4 border-t border-gray-200 pt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 items-start">
+                  <div className="flex flex-col">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
                     <input
                       name="meta_title"
@@ -1113,27 +1113,27 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                       {formData.meta_title.length}/65 {formData.meta_title.length > 60 && formData.meta_title.length <= 65 && '(may be truncated in search)'}
                     </p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Canonical URL</label>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-xs text-gray-600">
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-gray-700">Canonical URL</label>
+                      <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={canonicalOverride}
                           onChange={e => setCanonicalOverride(e.target.checked)}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
-                        Advanced: Override canonical URL
+                        Advanced: Override
                       </label>
-                      <input
-                        name="canonical_url"
-                        value={canonicalOverride ? formData.canonical_url : `${getApiBase().replace(/\/$/, '')}/blog/[assigned-after-approval]`}
-                        onChange={handleInputChange}
-                        readOnly={!canonicalOverride}
-                        className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${!canonicalOverride ? 'bg-gray-100 text-gray-600' : ''}`}
-                        placeholder="https://www.thenefol.com/blog/your-post"
-                      />
                     </div>
+                    <input
+                      name="canonical_url"
+                      value={canonicalOverride ? formData.canonical_url : `${getApiBase().replace(/\/$/, '')}/blog/[assigned-after-approval]`}
+                      onChange={handleInputChange}
+                      readOnly={!canonicalOverride}
+                      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${!canonicalOverride ? 'bg-gray-100 text-gray-600' : 'border-gray-300'}`}
+                      placeholder="https://www.thenefol.com/blog/your-post"
+                    />
                   </div>
                 </div>
 
@@ -1205,8 +1205,8 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                   <p className="text-xs text-gray-600 mb-3">
                     How your post appears when shared on Facebook, LinkedIn, Twitter, etc. Auto-filled from title and excerpt.
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 items-start">
+                    <div className="flex flex-col w-full">
                       <label className="block text-sm font-medium text-gray-700 mb-2">OG Title</label>
                       <input
                         name="og_title"
@@ -1217,13 +1217,13 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                         maxLength={70}
                       />
                     </div>
-                    <div>
+                    <div className="flex flex-col w-full">
                       <label className="block text-sm font-medium text-gray-700 mb-2">OG Description</label>
                       <textarea
                         name="og_description"
                         value={formData.og_description}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
                         rows={2}
                         maxLength={200}
                         placeholder="Auto-filled from excerpt"
