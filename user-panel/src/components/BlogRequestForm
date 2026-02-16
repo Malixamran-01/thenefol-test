@@ -95,6 +95,12 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const [showSeoSection, setShowSeoSection] = useState(false)
   const [canonicalOverride, setCanonicalOverride] = useState(false)
   const [existingTags, setExistingTags] = useState<string[]>([])
+  const [metaFieldsManuallyEdited, setMetaFieldsManuallyEdited] = useState({
+    meta_title: false,
+    meta_description: false,
+    og_title: false,
+    og_description: false
+  })
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -121,18 +127,20 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
     setFormData(prev => {
       const updates: Partial<BlogRequest> = {}
       if (prev.title) {
-        if (!prev.meta_title) updates.meta_title = truncateTitle(prev.title, 60)
-        if (!prev.og_title) updates.og_title = prev.title
+        if (!metaFieldsManuallyEdited.meta_title) updates.meta_title = truncateTitle(prev.title, 60)
+        if (!metaFieldsManuallyEdited.og_title) updates.og_title = prev.title
       }
-      if (prev.excerpt && !prev.meta_description) updates.meta_description = stripForMeta(prev.excerpt, 155)
-      if (prev.excerpt && !prev.og_description) updates.og_description = stripForMeta(prev.excerpt, 200)
-      if (!prev.meta_description && prev.content) {
+      if (prev.excerpt) {
+        if (!metaFieldsManuallyEdited.meta_description) updates.meta_description = stripForMeta(prev.excerpt, 155)
+        if (!metaFieldsManuallyEdited.og_description) updates.og_description = stripForMeta(prev.excerpt, 200)
+      }
+      if (!metaFieldsManuallyEdited.meta_description && !prev.excerpt && prev.content) {
         const firstP = prev.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
         if (firstP) updates.meta_description = stripForMeta(firstP, 155)
       }
       return Object.keys(updates).length ? { ...prev, ...updates } : prev
     })
-  }, [formData.title, formData.excerpt, formData.content])
+  }, [formData.title, formData.excerpt, formData.content, metaFieldsManuallyEdited])
 
   useEffect(() => {
     fetch(`${getApiBase()}/api/blog/tags`)
@@ -163,6 +171,10 @@ export default function BlogRequestForm({ onClose, onSubmitSuccess }: BlogReques
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    if (name === 'meta_title') setMetaFieldsManuallyEdited(prev => ({ ...prev, meta_title: value !== '' }))
+    else if (name === 'meta_description') setMetaFieldsManuallyEdited(prev => ({ ...prev, meta_description: value !== '' }))
+    else if (name === 'og_title') setMetaFieldsManuallyEdited(prev => ({ ...prev, og_title: value !== '' }))
+    else if (name === 'og_description') setMetaFieldsManuallyEdited(prev => ({ ...prev, og_description: value !== '' }))
   }
 
   const toggleCategory = (category: string) => {

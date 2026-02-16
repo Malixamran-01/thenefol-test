@@ -93,6 +93,12 @@ export default function BlogRequestForm() {
   const [showSeoSection, setShowSeoSection] = useState(false)
   const [canonicalOverride, setCanonicalOverride] = useState(false)
   const [existingTags, setExistingTags] = useState<string[]>([])
+  const [metaFieldsManuallyEdited, setMetaFieldsManuallyEdited] = useState({
+    meta_title: false,
+    meta_description: false,
+    og_title: false,
+    og_description: false
+  })
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -156,7 +162,7 @@ export default function BlogRequestForm() {
     }
   }, [isAuthenticated, user])
 
-  // Auto-fill OG and meta fields from title/excerpt/content when empty
+  // Auto-fill OG and meta fields from title/excerpt/content in real time (unless user manually edited)
   const stripForMeta = (text: string, maxLen: number) =>
     text.replace(/<[^>]*>/g, ' ').replace(/[#*_~`\[\]()]/g, '').replace(/\s+/g, ' ').replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim().slice(0, maxLen)
   const truncateTitle = (s: string, max = 65) => s.length <= max ? s : s.slice(0, max - 3).replace(/\s+\S*$/, '') + '...'
@@ -164,18 +170,20 @@ export default function BlogRequestForm() {
     setFormData(prev => {
       const updates: Partial<BlogRequest> = {}
       if (prev.title) {
-        if (!prev.meta_title) updates.meta_title = truncateTitle(prev.title, 60)
-        if (!prev.og_title) updates.og_title = prev.title
+        if (!metaFieldsManuallyEdited.meta_title) updates.meta_title = truncateTitle(prev.title, 60)
+        if (!metaFieldsManuallyEdited.og_title) updates.og_title = prev.title
       }
-      if (prev.excerpt && !prev.meta_description) updates.meta_description = stripForMeta(prev.excerpt, 155)
-      if (prev.excerpt && !prev.og_description) updates.og_description = stripForMeta(prev.excerpt, 200)
-      if (!prev.meta_description && prev.content) {
+      if (prev.excerpt) {
+        if (!metaFieldsManuallyEdited.meta_description) updates.meta_description = stripForMeta(prev.excerpt, 155)
+        if (!metaFieldsManuallyEdited.og_description) updates.og_description = stripForMeta(prev.excerpt, 200)
+      }
+      if (!metaFieldsManuallyEdited.meta_description && !prev.excerpt && prev.content) {
         const firstP = prev.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
         if (firstP) updates.meta_description = stripForMeta(firstP, 155)
       }
       return Object.keys(updates).length ? { ...prev, ...updates } : prev
     })
-  }, [formData.title, formData.excerpt, formData.content])
+  }, [formData.title, formData.excerpt, formData.content, metaFieldsManuallyEdited])
 
   // Attach click handlers to all images in editor
   useEffect(() => {
@@ -199,6 +207,10 @@ export default function BlogRequestForm() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    if (name === 'meta_title') setMetaFieldsManuallyEdited(prev => ({ ...prev, meta_title: value !== '' }))
+    else if (name === 'meta_description') setMetaFieldsManuallyEdited(prev => ({ ...prev, meta_description: value !== '' }))
+    else if (name === 'og_title') setMetaFieldsManuallyEdited(prev => ({ ...prev, og_title: value !== '' }))
+    else if (name === 'og_description') setMetaFieldsManuallyEdited(prev => ({ ...prev, og_description: value !== '' }))
   }
 
   const toggleCategory = (category: string) => {
