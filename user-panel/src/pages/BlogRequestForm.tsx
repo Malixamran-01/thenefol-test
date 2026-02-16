@@ -1598,7 +1598,7 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                 {/* Cover Image */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Cover Image * <span className="text-xs font-normal text-gray-500">800×420px, 16:9</span>
+                    Cover Image * <span className="text-xs font-normal text-gray-500">800×420px, 4:5 peferred</span>
                   </label>
                   {formData.coverImage ? (
                     <div className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-50 aspect-video">

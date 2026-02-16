@@ -1457,3 +1457,38 @@ html {
   transform: translateX(-20px);
   transition: opacity 800ms ease-in-out, transform 800ms ease-in-out;
 }
+
+/* ===== FILEROBOT IMAGE EDITOR - Save modal input overflow fix ===== */
+/* When the image editor is open, fix inputs in the Save modal that overflow their containers */
+body.filerobot-editor-open input[type="text"],
+body.filerobot-editor-open input[type="number"] {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+}
+/* Fix flex/grid containers that wrap the inputs - allow them to shrink */
+body.filerobot-editor-open [class*="Input"],
+body.filerobot-editor-open [class*="input-wrapper"],
+body.filerobot-editor-open [class*="Field"] {
+  min-width: 0 !important;
+  overflow: hidden;
+}
+/* Target inputs inside any modal/dialog that appears during editor session */
+body.filerobot-editor-open [role="dialog"] input,
+body.filerobot-editor-open [class*="Modal"] input,
+body.filerobot-editor-open [class*="modal"] input,
+body.filerobot-editor-open div[style*="position: fixed"] input,
+body.filerobot-editor-open div[style*="position:fixed"] input {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+}
+/* Fix input wrappers with suffix (e.g. "px" for width/height) - prevent flex overflow */
+body.filerobot-editor-open [class*="Input"] > *,
+body.filerobot-editor-open [class*="Field"] > * {
+  min-width: 0;
+}

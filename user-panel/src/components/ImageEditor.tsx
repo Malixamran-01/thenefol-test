@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import FilerobotImageEditor, { TABS, TOOLS } from 'react-filerobot-image-editor'
 
 interface Props {
@@ -13,6 +13,17 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
   const [selectedImage, setSelectedImage] = useState<string | null>(source || null)
   const [editorOpen, setEditorOpen] = useState(!!source)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
+
+  // Add body class when editor is open so we can target Filerobot save modal with CSS
+  const editorVisible = !!(source && editorOpen) || !!(editorOpen && selectedImage)
+  useEffect(() => {
+    if (editorVisible) {
+      document.body.classList.add('filerobot-editor-open')
+    }
+    return () => {
+      document.body.classList.remove('filerobot-editor-open')
+    }
+  }, [editorVisible])
 
   const handleFileSelect = (file: File) => {
     const url = URL.createObjectURL(file)
