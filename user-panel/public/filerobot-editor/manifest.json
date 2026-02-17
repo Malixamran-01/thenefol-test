@@ -1,0 +1,14 @@
+{
+  "name": "filerobot-image-editor-standalone",
+  "description": "Portable Filerobot Image Editor - copy this folder into any project",
+  "version": "4.9.1",
+  "bundledDependencies": ["React", "ReactDOM", "react-konva", "Konva", "styled-components", "@scaleflex/ui", "@scaleflex/icons"],
+  "contents": [
+    "filerobot-image-editor.min.js - Full bundle (React, Konva, styled-components, etc.)",
+    "index.html - Demo page",
+    "init.js - Vanilla JS initialization example",
+    "README.md - Quick start guide",
+    "INTEGRATION.md - Full API reference"
+  ],
+  "usage": "Copy this entire folder to your project, then add the script tag and container div. No npm install required."
+}
