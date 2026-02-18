@@ -233,6 +233,208 @@ router.post('/request', upload.fields([
   }
 })
 
+// --- Draft API (auto-save + manual drafts) ---
+
+// Auto-draft: create or update latest auto-draft (1 per user)
+router.post('/drafts/auto', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+    const {
+      title, content, excerpt, author_name, author_email,
+      meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
+      categories, allow_comments
+    } = req.body
+    const parseArray = (v: any): string[] => {
+      if (!v) return []
+      if (Array.isArray(v)) return v.map(String).filter(Boolean)
+      if (typeof v === 'string') {
+        try {
+          const p = JSON.parse(v)
+          return Array.isArray(p) ? p.map(String).filter(Boolean) : []
+        } catch {
+          return v.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      }
+      return []
+    }
+    const parsedCategories = parseArray(categories)
+    const parsedKeywords = parseArray(meta_keywords)
+    const { rows: existing } = await pool.query(
+      `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' ORDER BY updated_at DESC LIMIT 1`,
+      [userId]
+    )
+    if (existing.length > 0) {
+      await pool.query(`
+        UPDATE blog_drafts SET
+          title = $1, content = $2, excerpt = $3, author_name = $4, author_email = $5,
+          meta_title = $6, meta_description = $7, meta_keywords = $8, og_title = $9, og_description = $10,
+          og_image = $11, canonical_url = $12, categories = $13, allow_comments = $14,
+          updated_at = now()
+        WHERE id = $15
+      `, [
+        title || '', content || '', excerpt || '', author_name || '', author_email || '',
+        meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
+        og_title || null, og_description || null, og_image || null, canonical_url || null,
+        parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
+        String(allow_comments).toLowerCase() === 'false' ? false : true,
+        existing[0].id
+      ])
+      return res.json({ draftId: existing[0].id, updated: true })
+    }
+    const { rows } = await pool.query(`
+      INSERT INTO blog_drafts (user_id, title, content, excerpt, author_name, author_email,
+        meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
+        categories, allow_comments, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'auto')
+      RETURNING id, updated_at
+    `, [
+      userId, title || '', content || '', excerpt || '', author_name || '', author_email || '',
+      meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
+      og_title || null, og_description || null, og_image || null, canonical_url || null,
+      parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
+      String(allow_comments).toLowerCase() === 'false' ? false : true
+    ])
+    res.json({ draftId: rows[0].id, updated: false })
+  } catch (error) {
+    console.error('Error saving auto-draft:', error)
+    res.status(500).json({ message: 'Failed to save draft' })
+  }
+})
+
+// Get latest auto-draft for current user
+router.get('/drafts/auto', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const { rows } = await pool.query(
+      `SELECT * FROM blog_drafts WHERE user_id = $1 AND status = 'auto' ORDER BY updated_at DESC LIMIT 1`,
+      [userId]
+    )
+    res.json(rows[0] || null)
+  } catch (error) {
+    console.error('Error fetching auto-draft:', error)
+    res.status(500).json({ message: 'Failed to fetch draft' })
+  }
+})
+
+// Create manual draft (user clicks "Save Draft")
+router.post('/drafts', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+    const {
+      title, content, excerpt, author_name, author_email,
+      meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
+      categories, allow_comments, name
+    } = req.body
+    const parseArray = (v: any): string[] => {
+      if (!v) return []
+      if (Array.isArray(v)) return v.map(String).filter(Boolean)
+      if (typeof v === 'string') {
+        try {
+          const p = JSON.parse(v)
+          return Array.isArray(p) ? p.map(String).filter(Boolean) : []
+        } catch {
+          return v.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      }
+      return []
+    }
+    const parsedCategories = parseArray(categories)
+    const parsedKeywords = parseArray(meta_keywords)
+    const draftName = (name && String(name).trim()) || (title && String(title).trim()) || 'Untitled draft'
+    const { rows } = await pool.query(`
+      INSERT INTO blog_drafts (user_id, title, content, excerpt, author_name, author_email,
+        meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
+        categories, allow_comments, status, name)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'manual', $16)
+      RETURNING id, title, name, created_at, updated_at
+    `, [
+      userId, title || '', content || '', excerpt || '', author_name || '', author_email || '',
+      meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
+      og_title || null, og_description || null, og_image || null, canonical_url || null,
+      parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
+      String(allow_comments).toLowerCase() === 'false' ? false : true,
+      draftName
+    ])
+    res.status(201).json({ draftId: rows[0].id, name: rows[0].name, updatedAt: rows[0].updated_at })
+  } catch (error) {
+    console.error('Error saving manual draft:', error)
+    res.status(500).json({ message: 'Failed to save draft' })
+  }
+})
+
+// List manual drafts
+router.get('/drafts', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const { rows } = await pool.query(
+      `SELECT id, title, excerpt, name, status, created_at, updated_at FROM blog_drafts
+       WHERE user_id = $1 AND status = 'manual' ORDER BY updated_at DESC`,
+      [userId]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching drafts:', error)
+    res.status(500).json({ message: 'Failed to fetch drafts' })
+  }
+})
+
+// Get single draft by id
+router.get('/drafts/:id', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    const draftId = req.params.id
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const { rows } = await pool.query(
+      `SELECT * FROM blog_drafts WHERE id = $1 AND user_id = $2`,
+      [draftId, userId]
+    )
+    if (rows.length === 0) return res.status(404).json({ message: 'Draft not found' })
+    res.json(rows[0])
+  } catch (error) {
+    console.error('Error fetching draft:', error)
+    res.status(500).json({ message: 'Failed to fetch draft' })
+  }
+})
+
+// Delete auto-draft (called after successful publish)
+router.delete('/drafts/auto', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto'`)
+    res.json({ message: 'Auto-draft cleared' })
+  } catch (error) {
+    console.error('Error clearing auto-draft:', error)
+    res.status(500).json({ message: 'Failed to clear draft' })
+  }
+})
+
+// Delete draft by id (manual drafts)
+router.delete('/drafts/:id', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    const draftId = req.params.id
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const { rowCount } = await pool.query(
+      `DELETE FROM blog_drafts WHERE id = $1 AND user_id = $2`,
+      [draftId, userId]
+    )
+    if (rowCount === 0) return res.status(404).json({ message: 'Draft not found' })
+    res.json({ message: 'Draft deleted' })
+  } catch (error) {
+    console.error('Error deleting draft:', error)
+    res.status(500).json({ message: 'Failed to delete draft' })
+  }
+})
+
 // Get all blog posts (approved only for public)
 router.get('/posts', async (req, res) => {
   try {

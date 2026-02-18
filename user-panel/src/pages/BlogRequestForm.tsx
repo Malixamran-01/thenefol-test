@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp, Save, WifiOff } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
+import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS } from '../utils/blogDraft'
 
 const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
 const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
@@ -143,6 +144,12 @@ export default function BlogRequestForm() {
   const [showPreview, setShowPreview] = useState(false)
   const [showSeoPreview, setShowSeoPreview] = useState(false)
   const [showSeoSection, setShowSeoSection] = useState(false)
+  const [showRestoreModal, setShowRestoreModal] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [showDraftToast, setShowDraftToast] = useState(false)
+  const pendingDraftRestore = useRef<ReturnType<typeof getLocalDraft> | null>(null)
   const [canonicalOverride, setCanonicalOverride] = useState(false)
   const [existingTags, setExistingTags] = useState<string[]>([])
   const [metaFieldsManuallyEdited, setMetaFieldsManuallyEdited] = useState({
@@ -1051,7 +1058,194 @@ export default function BlogRequestForm() {
         }
       }, 0)
     }
-  }, [applyEditedImage])
+
+    // Check for draft to restore (only if we didn't just restore from image editor)
+    if (!formRaw) {
+      const localDraft = getLocalDraft()
+      const hasLocal = localDraft && (localDraft.title || localDraft.content || localDraft.excerpt)
+      if (hasLocal) {
+        pendingDraftRestore.current = localDraft
+        setShowRestoreModal(true)
+      } else if (isAuthenticated) {
+        fetch(`${getApiBase()}/api/blog/drafts/auto`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(serverDraft => {
+            if (serverDraft && (serverDraft.title || serverDraft.content || serverDraft.excerpt)) {
+              pendingDraftRestore.current = {
+                ...serverDraft,
+                updatedAt: serverDraft.updated_at || serverDraft.updatedAt,
+              }
+              setShowRestoreModal(true)
+            }
+          })
+          .catch(() => {})
+      }
+    }
+  }, [applyEditedImage, isAuthenticated])
+
+  // Offline detection
+  useEffect(() => {
+    const onOffline = () => setIsOffline(true)
+    const onOnline = () => setIsOffline(false)
+    window.addEventListener('offline', onOffline)
+    window.addEventListener('online', onOnline)
+    return () => {
+      window.removeEventListener('offline', onOffline)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [])
+
+  // Local auto-save (debounced)
+  useEffect(() => {
+    const payload = {
+      title: formData.title,
+      content: formData.content,
+      excerpt: formData.excerpt,
+      author_name: formData.author_name,
+      author_email: formData.author_email,
+      meta_title: formData.meta_title,
+      meta_description: formData.meta_description,
+      meta_keywords: formData.meta_keywords,
+      og_title: formData.og_title,
+      og_description: formData.og_description,
+      og_image: formData.og_image,
+      canonical_url: formData.canonical_url,
+      categories: formData.categories,
+      allow_comments: formData.allow_comments,
+    }
+    const t = setTimeout(() => {
+      const updated = saveLocalDraft(payload)
+      if (updated) setLastSavedAt(updated)
+    }, DEBOUNCE_MS)
+    return () => clearTimeout(t)
+  }, [formData.title, formData.content, formData.excerpt, formData.author_name, formData.author_email, formData.meta_title, formData.meta_description, formData.meta_keywords, formData.og_title, formData.og_description, formData.og_image, formData.canonical_url, formData.categories, formData.allow_comments])
+
+  // Server draft sync (when online and logged in)
+  useEffect(() => {
+    if (!isAuthenticated || !user || isOffline) return
+    const sync = async () => {
+      const content = (editorRef.current?.innerHTML ?? formData.content) || ''
+      const token = localStorage.getItem('token')
+      if (!token) return
+      try {
+        const res = await fetch(`${getApiBase()}/api/blog/drafts/auto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            title: formData.title,
+            content,
+            excerpt: formData.excerpt,
+            author_name: formData.author_name,
+            author_email: formData.author_email,
+            meta_title: formData.meta_title,
+            meta_description: formData.meta_description,
+            meta_keywords: formData.meta_keywords,
+            og_title: formData.og_title,
+            og_description: formData.og_description,
+            og_image: formData.og_image,
+            canonical_url: formData.canonical_url,
+            categories: formData.categories,
+            allow_comments: formData.allow_comments,
+          }),
+        })
+        if (res.ok) setLastSavedAt(new Date().toISOString())
+      } catch {
+        // ignore
+      }
+    }
+    const id = setInterval(sync, SERVER_SYNC_INTERVAL_MS)
+    sync()
+    return () => clearInterval(id)
+  }, [isAuthenticated, user, isOffline, formData])
+
+  const handleRestoreDraft = () => {
+    const draft = pendingDraftRestore.current
+    if (draft) {
+      const arr = (v: any): string[] => (Array.isArray(v) ? v : typeof v === 'string' ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [] } catch { return [] } })() : [])
+      const kw = draft.meta_keywords
+      const metaKeywords = typeof kw === 'string' ? kw : (Array.isArray(kw) ? (kw as string[]).join(', ') : '')
+      setFormData(prev => ({
+        ...prev,
+        title: draft.title || '',
+        content: draft.content || '',
+        excerpt: draft.excerpt || '',
+        author_name: draft.author_name || prev.author_name,
+        author_email: draft.author_email || prev.author_email,
+        meta_title: draft.meta_title || '',
+        meta_description: draft.meta_description || '',
+        meta_keywords: metaKeywords,
+        og_title: draft.og_title || '',
+        og_description: draft.og_description || '',
+        og_image: draft.og_image || '',
+        canonical_url: draft.canonical_url || '',
+        categories: arr(draft.categories),
+        allow_comments: draft.allow_comments ?? true,
+      }))
+      requestAnimationFrame(() => {
+        if (editorRef.current && draft.content) {
+          editorRef.current.innerHTML = draft.content
+        }
+      })
+    }
+    pendingDraftRestore.current = null
+    setShowRestoreModal(false)
+  }
+
+  const handleDiscardDraft = () => {
+    clearLocalDraft()
+    pendingDraftRestore.current = null
+    setShowRestoreModal(false)
+  }
+
+  const handleSaveDraft = async () => {
+    const content = (editorRef.current?.innerHTML ?? formData.content) || ''
+    const payload = {
+      title: formData.title,
+      content,
+      excerpt: formData.excerpt,
+      author_name: formData.author_name,
+      author_email: formData.author_email,
+      meta_title: formData.meta_title,
+      meta_description: formData.meta_description,
+      meta_keywords: formData.meta_keywords,
+      og_title: formData.og_title,
+      og_description: formData.og_description,
+      og_image: formData.og_image,
+      canonical_url: formData.canonical_url,
+      categories: formData.categories,
+      allow_comments: formData.allow_comments,
+    }
+    saveLocalDraft(payload)
+    setLastSavedAt(new Date().toISOString())
+    setIsSavingDraft(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (token && !isOffline) {
+        const res = await fetch(`${getApiBase()}/api/blog/drafts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            ...payload,
+            name: formData.title?.trim() || undefined,
+          }),
+        })
+        if (res.ok) {
+          setShowDraftToast(true)
+          setTimeout(() => setShowDraftToast(false), 3000)
+        }
+      } else {
+        setShowDraftToast(true)
+        setTimeout(() => setShowDraftToast(false), 3000)
+      }
+    } catch {
+      setShowDraftToast(true)
+      setTimeout(() => setShowDraftToast(false), 3000)
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1119,6 +1313,11 @@ export default function BlogRequestForm() {
 
       if (response.ok) {
         setSubmitStatus('success')
+        clearLocalDraft()
+        const token = localStorage.getItem('token')
+        if (token) {
+          fetch(`${apiBase}/api/blog/drafts/auto`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+        }
         setTimeout(() => {
           window.location.hash = '#/user/blog'
         }, 2000)
@@ -1200,6 +1399,20 @@ export default function BlogRequestForm() {
                 <h1 className="text-2xl font-bold text-gray-800">Submit Blog Post Request</h1>
                 <p className="text-sm text-gray-600">Share your story with our community</p>
               </div>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              {isOffline && (
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
+                  <WifiOff className="w-4 h-4" />
+                  Offline – saving locally
+                </span>
+              )}
+              {lastSavedAt && !isOffline && (
+                <span className="flex items-center gap-1.5 text-gray-500">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  Saved
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1811,6 +2024,24 @@ export default function BlogRequestForm() {
                     Cancel
                   </button>
                   <button 
+                    type="button" 
+                    onClick={handleSaveDraft}
+                    disabled={isSubmitting || isSavingDraft}
+                    className="w-full sm:w-auto px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingDraft ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Save Draft
+                      </>
+                    )}
+                  </button>
+                  <button 
                     type="submit" 
                     disabled={isSubmitting || !agreedToTerms}
                     className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -2073,6 +2304,32 @@ export default function BlogRequestForm() {
         </div>
       )}
 
+      {/* Draft Restore Modal */}
+      {showRestoreModal && pendingDraftRestore.current && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80] p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Unsaved draft found</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              We found an unsaved draft from {getDraftAge(pendingDraftRestore.current)}. Would you like to restore it?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleDiscardDraft}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleRestoreDraft}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Restore
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Terms Modal */}
       {showTermsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
@@ -2096,6 +2353,14 @@ export default function BlogRequestForm() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Draft saved toast */}
+      {showDraftToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] px-4 py-2 bg-slate-900/90 text-white rounded-lg shadow-lg flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+          <span className="text-sm font-medium">Draft saved</span>
         </div>
       )}
 
