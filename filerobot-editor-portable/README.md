@@ -32,12 +32,12 @@
 
 3. Open `index.html` in a browser to test locally.
 
-## This folder is self-contained
+## Rebuild from source
 
-All dependencies are bundled in `filerobot-image-editor.min.js`. No npm install needed.
-
-To regenerate this folder from source (in the main project):
+From the main project root:
 
 ```bash
 yarn build:standalone
 ```
+
+This rebuilds the bundle and copies it here.
