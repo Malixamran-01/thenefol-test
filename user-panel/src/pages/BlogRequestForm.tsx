@@ -3,7 +3,7 @@ import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as L
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
-import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS } from '../utils/blogDraft'
+import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, hasRealDraftContent, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS } from '../utils/blogDraft'
 
 const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
 const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
@@ -150,6 +150,8 @@ export default function BlogRequestForm() {
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [showDraftToast, setShowDraftToast] = useState(false)
   const pendingDraftRestore = useRef<ReturnType<typeof getLocalDraft> | null>(null)
+  const hasCheckedDraftRef = useRef(false)
+  const discardedDraftRef = useRef(false)
   const [canonicalOverride, setCanonicalOverride] = useState(false)
   const [existingTags, setExistingTags] = useState<string[]>([])
   const [metaFieldsManuallyEdited, setMetaFieldsManuallyEdited] = useState({
@@ -1059,11 +1061,11 @@ export default function BlogRequestForm() {
       }, 0)
     }
 
-    // Check for draft to restore (only if we didn't just restore from image editor)
-    if (!formRaw) {
+    // Check for draft to restore (only once per mount, and only if we didn't just restore from image editor)
+    if (!formRaw && !hasCheckedDraftRef.current) {
+      hasCheckedDraftRef.current = true
       const localDraft = getLocalDraft()
-      const hasLocal = localDraft && (localDraft.title || localDraft.content || localDraft.excerpt)
-      if (hasLocal) {
+      if (hasRealDraftContent(localDraft)) {
         pendingDraftRestore.current = localDraft
         setShowRestoreModal(true)
       } else if (isAuthenticated) {
@@ -1072,7 +1074,7 @@ export default function BlogRequestForm() {
         })
           .then(r => r.ok ? r.json() : null)
           .then(serverDraft => {
-            if (serverDraft && (serverDraft.title || serverDraft.content || serverDraft.excerpt)) {
+            if (!discardedDraftRef.current && hasRealDraftContent(serverDraft)) {
               pendingDraftRestore.current = {
                 ...serverDraft,
                 updatedAt: serverDraft.updated_at || serverDraft.updatedAt,
@@ -1194,6 +1196,7 @@ export default function BlogRequestForm() {
   }
 
   const handleDiscardDraft = () => {
+    discardedDraftRef.current = true
     clearLocalDraft()
     pendingDraftRestore.current = null
     setShowRestoreModal(false)

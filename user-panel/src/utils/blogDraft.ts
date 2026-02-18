@@ -38,6 +38,7 @@ export function getLocalDraft(): DraftPayload | null {
 
 export function saveLocalDraft(payload: Omit<DraftPayload, 'updatedAt'>) {
   try {
+    if (!hasRealDraftContent(payload)) return null
     const withTime = { ...payload, updatedAt: new Date().toISOString() }
     localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(withTime))
     return withTime.updatedAt
@@ -53,6 +54,16 @@ export function clearLocalDraft() {
   } catch {
     // ignore
   }
+}
+
+/** Returns false for empty/placeholder content (e.g. <p><br></p>) */
+export function hasRealDraftContent(draft: { title?: string; content?: string; excerpt?: string } | null): boolean {
+  if (!draft) return false
+  const stripHtml = (s: string) => (s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const hasTitle = (draft.title || '').trim().length > 0
+  const hasExcerpt = (draft.excerpt || '').trim().length > 0
+  const hasContent = stripHtml(draft.content || '').length > 0
+  return hasTitle || hasExcerpt || hasContent
 }
 
 export function getDraftAge(draft: DraftPayload): string {
