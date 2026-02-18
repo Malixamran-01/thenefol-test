@@ -6,6 +6,59 @@ import BlogPreview from '../components/BlogPreview'
 
 const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
 const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
+const BLOG_FORM_STATE_KEY = 'blog_form_state'
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const base64 = dataUrl?.includes(',') ? dataUrl.split(',')[1] ?? '' : ''
+      resolve(base64)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+function base64ToFile(base64: string, name: string, type: string): File {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], name, { type })
+}
+
+async function serializeFormDataForStorage(data: BlogRequest): Promise<string> {
+  const cover = data.coverImage ? { name: data.coverImage.name, type: data.coverImage.type, base64: await fileToBase64(data.coverImage) } : null
+  const detail = data.detailImage ? { name: data.detailImage.name, type: data.detailImage.type, base64: await fileToBase64(data.detailImage) } : null
+  const og = data.ogImageFile ? { name: data.ogImageFile.name, type: data.ogImageFile.type, base64: await fileToBase64(data.ogImageFile) } : null
+  const imgs = await Promise.all(data.images.map(async (i) => ({ id: i.id, name: i.file.name, type: i.file.type, base64: await fileToBase64(i.file) })))
+  return JSON.stringify({
+    ...data,
+    coverImage: cover,
+    detailImage: detail,
+    ogImageFile: og,
+    images: imgs,
+  })
+}
+
+function deserializeFormDataFromStorage(json: string): BlogRequest {
+  const raw = JSON.parse(json)
+  const cover = raw.coverImage ? base64ToFile(raw.coverImage.base64, raw.coverImage.name, raw.coverImage.type) : null
+  const detail = raw.detailImage ? base64ToFile(raw.detailImage.base64, raw.detailImage.name, raw.detailImage.type) : null
+  const og = raw.ogImageFile ? base64ToFile(raw.ogImageFile.base64, raw.ogImageFile.name, raw.ogImageFile.type) : null
+  const imgs = (raw.images || []).map((i: { id: string; name: string; type: string; base64: string }) => ({
+    id: i.id,
+    file: base64ToFile(i.base64, i.name, i.type),
+  }))
+  return {
+    ...raw,
+    coverImage: cover,
+    detailImage: detail,
+    ogImageFile: og,
+    images: imgs,
+  }
+}
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 
 interface BlogRequest {
@@ -42,6 +95,7 @@ interface ContentImageItem {
 export default function BlogRequestForm() {
   const { user, isAuthenticated } = useAuth()
   const editorRef = useRef<HTMLDivElement>(null)
+  const formDataRef = useRef<BlogRequest | null>(null)
   const savedSelectionRef = useRef<Range | null>(null)
   const colorButtonRef = useRef<HTMLButtonElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -111,6 +165,10 @@ export default function BlogRequestForm() {
   ]
 
   const categoryOptions = BLOG_CATEGORY_OPTIONS
+
+  useEffect(() => {
+    formDataRef.current = formData
+  }, [formData])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -678,7 +736,7 @@ export default function BlogRequestForm() {
     input.type = 'file'
     input.accept = 'image/*'
     
-    input.onchange = (e: Event) => {
+    input.onchange = async (e: Event) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
       
@@ -687,13 +745,21 @@ export default function BlogRequestForm() {
         return
       }
       
-      const source = URL.createObjectURL(file)
-      sessionStorage.setItem(EDIT_IMAGE_CTX_KEY, JSON.stringify({
-        source,
-        editingImageId: null,
-        editingImageName: file.name,
-      }))
-      window.location.hash = '#/user/blog/edit-image'
+      const content = getEditorContentForSave()
+      const dataToSave = { ...(formDataRef.current ?? formData), content }
+      try {
+        const serialized = await serializeFormDataForStorage(dataToSave)
+        sessionStorage.setItem(BLOG_FORM_STATE_KEY, serialized)
+        sessionStorage.setItem(EDIT_IMAGE_CTX_KEY, JSON.stringify({
+          source: URL.createObjectURL(file),
+          editingImageId: null,
+          editingImageName: file.name,
+        }))
+        window.location.hash = '#/user/blog/edit-image'
+      } catch (err) {
+        console.error('Failed to save form state:', err)
+        alert('Failed to save form. Please try again.')
+      }
     }
     
     input.click()
@@ -763,8 +829,13 @@ export default function BlogRequestForm() {
     handleEditorInput()
   }
 
-  const openImageEditor = () => {
-    if (selectedImage) {
+  const openImageEditor = async () => {
+    if (!selectedImage) return
+    const content = getEditorContentForSave()
+    const dataToSave = { ...(formDataRef.current ?? formData), content }
+    try {
+      const serialized = await serializeFormDataForStorage(dataToSave)
+      sessionStorage.setItem(BLOG_FORM_STATE_KEY, serialized)
       sessionStorage.setItem(EDIT_IMAGE_CTX_KEY, JSON.stringify({
         source: selectedImage.src,
         editingImageId: selectedImage.getAttribute('data-image-id'),
@@ -772,6 +843,9 @@ export default function BlogRequestForm() {
       }))
       setShowImageMenu(false)
       window.location.hash = '#/user/blog/edit-image'
+    } catch (err) {
+      console.error('Failed to save form state:', err)
+      alert('Failed to save form. Please try again.')
     }
   }
 
@@ -925,16 +999,34 @@ export default function BlogRequestForm() {
     }
   }, [handleImageClick, handleEditorInput])
 
-  // Process stored editor result when returning from full-page editor
+  // Restore form state and process editor result when returning from full-page editor
   useEffect(() => {
-    const raw = sessionStorage.getItem(EDIT_IMAGE_RESULT_KEY)
-    if (!raw) return
-    sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
-    try {
-      const { editedImageObject, editingImageId: storedId, editingImageName: storedName } = JSON.parse(raw)
-      applyEditedImage(editedImageObject, storedId, storedName)
-    } catch (e) {
-      console.error('Failed to process editor result:', e)
+    const formRaw = sessionStorage.getItem(BLOG_FORM_STATE_KEY)
+    const resultRaw = sessionStorage.getItem(EDIT_IMAGE_RESULT_KEY)
+
+    if (formRaw) {
+      sessionStorage.removeItem(BLOG_FORM_STATE_KEY)
+      try {
+        const restored = deserializeFormDataFromStorage(formRaw)
+        setFormData(restored)
+        if (editorRef.current && restored.content) {
+          editorRef.current.innerHTML = restored.content
+        }
+      } catch (e) {
+        console.error('Failed to restore form state:', e)
+      }
+    }
+
+    if (resultRaw) {
+      sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
+      const parsed = JSON.parse(resultRaw)
+      setTimeout(() => {
+        try {
+          applyEditedImage(parsed.editedImageObject, parsed.editingImageId, parsed.editingImageName)
+        } catch (e) {
+          console.error('Failed to process editor result:', e)
+        }
+      }, 0)
     }
   }, [applyEditedImage])
 
