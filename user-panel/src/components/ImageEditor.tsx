@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 
-const FILEROBOT_SCRIPT = '/filerobot-editor/filerobot-image-editor.min.js'
+const EDITOR_SCRIPT = '/vendor/nefol-editor-portable/filerobot-image-editor.min.js'
+const EDITOR_VERSION = '1771394902797'
 
 interface Props {
   images: File[]
@@ -10,13 +11,46 @@ interface Props {
   onClose?: () => void
 }
 
+declare global {
+  interface Window {
+    FilerobotImageEditor?: {
+      TABS: Record<string, string>
+      TOOLS: Record<string, string>
+      new (container: HTMLElement, config: Record<string, unknown>): {
+        render: () => void
+        terminate: () => void
+      }
+    }
+  }
+}
+
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      if (window.FilerobotImageEditor) return resolve()
+      const check = setInterval(() => {
+        if (window.FilerobotImageEditor) {
+          clearInterval(check)
+          resolve()
+        }
+      }, 50)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = `${src}?v=${EDITOR_VERSION}`
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load Filerobot Image Editor'))
+    document.body.appendChild(script)
+  })
+}
+
 export default function ImageEditor({ images, setImages, source, onSave, onClose }: Props) {
   const [selectedImage, setSelectedImage] = useState<string | null>(source || null)
   const [editorOpen, setEditorOpen] = useState(!!source)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
-  const [scriptLoaded, setScriptLoaded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const editorRef = useRef<any>(null)
+  const editorRef = useRef<{ terminate: () => void } | null>(null)
 
   const handleFileSelect = (file: File) => {
     const url = URL.createObjectURL(file)
@@ -30,88 +64,71 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
       onSave(editedImageObject)
     } else {
       const base64 = editedImageObject.imageBase64
-      const blob = await fetch(base64).then(r => r.blob())
+      const blob = await fetch(base64).then((r) => r.blob())
       const editedFile = new File([blob], currentFile?.name || 'edited.png', { type: blob.type })
-      setImages(prev => [...prev, editedFile])
+      setImages((prev) => [...prev, editedFile])
     }
     setEditorOpen(false)
   }
 
   const handleClose = () => {
-    if (editorRef.current) {
-      try {
-        editorRef.current.terminate()
-      } catch (_) {}
-      editorRef.current = null
-    }
     if (onClose) onClose()
     setEditorOpen(false)
   }
 
-  // Load Filerobot script when editor will be shown
+  // Mount portable editor when container is ready and we have a source
   useEffect(() => {
-    if (!editorOpen || (!source && !selectedImage)) return
-    const imgSrc = source || selectedImage
-    if (!imgSrc) return
+    if (!editorOpen || !selectedImage || !containerRef.current) return
 
-    const loadScript = () => {
-      if ((window as any).FilerobotImageEditor) {
-        setScriptLoaded(true)
-        return
-      }
-      const script = document.createElement('script')
-      script.src = FILEROBOT_SCRIPT
-      script.async = true
-      script.onload = () => setScriptLoaded(true)
-      script.onerror = () => {
-        console.error('Failed to load Filerobot Image Editor')
-        setEditorOpen(false)
-      }
-      document.head.appendChild(script)
-    }
-    loadScript()
-  }, [editorOpen, source, selectedImage])
+    const container = containerRef.current
+    let mounted = true
 
-  // Initialize editor when script is loaded and container is ready
-  useEffect(() => {
-    if (!scriptLoaded || !containerRef.current) return
-    const imgSrc = source || selectedImage
-    if (!imgSrc) return
+    loadScript(EDITOR_SCRIPT)
+      .then(() => {
+        if (!mounted || !window.FilerobotImageEditor) return
+        const { TABS } = window.FilerobotImageEditor
 
-    const FilerobotImageEditor = (window as any).FilerobotImageEditor
-    if (!FilerobotImageEditor) return
+        const editor = new window.FilerobotImageEditor(container, {
+          source: selectedImage,
+          tabsIds: [TABS.ADJUST, TABS.ANNOTATE, TABS.WATERMARK, TABS.FILTERS],
+          defaultTabId: TABS.ADJUST,
+          observePluginContainerSize: true,
+          Text: { text: 'NEFOL' },
+          savingPixelRatio: 1,
+          previewPixelRatio: 1,
+          onSave: (imageInfo: any) => {
+            handleSave(imageInfo)
+          },
+          onClose: () => {
+            editorRef.current?.terminate()
+            editorRef.current = null
+            handleClose()
+          },
+        })
 
-    const { TABS, TOOLS } = FilerobotImageEditor
-    const config = {
-      source: imgSrc,
-      tabsIds: [TABS.ADJUST, TABS.ANNOTATE, TABS.WATERMARK, TABS.FILTERS],
-      defaultTabId: TABS.ADJUST,
-      defaultToolId: TOOLS.CROP,
-      Text: { text: 'NEFOL' },
-      savingPixelRatio: 1,
-      previewPixelRatio: 1,
-      observePluginContainerSize: true,
-      onSave: (imageInfo: any) => handleSave(imageInfo),
-      onClose: () => handleClose(),
-    }
-
-    const editor = new FilerobotImageEditor(containerRef.current, config)
-    editorRef.current = editor
-    editor.render()
+        editorRef.current = editor
+        editor.render()
+      })
+      .catch((err) => {
+        console.error('ImageEditor load error:', err)
+        handleClose()
+      })
 
     return () => {
-      try {
-        editor.terminate()
-      } catch (_) {}
+      mounted = false
+      editorRef.current?.terminate()
       editorRef.current = null
     }
-  }, [scriptLoaded, source, selectedImage])
+  }, [editorOpen, selectedImage])
 
-  // If source is provided, show editor directly (full screen)
   if (source && editorOpen) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#1a1a1a]" style={{ width: '100%', height: '100vh' }}>
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div className="w-full h-full min-h-screen">
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+        <div ref={containerRef} style={{ width: '100%', height: '100vh' }} />
       </div>
     )
   }
@@ -124,17 +141,28 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
         multiple
         onChange={(e) => {
           const files = Array.from(e.target.files || [])
-          files.forEach(file => handleFileSelect(file))
+          files.forEach((file) => handleFileSelect(file))
         }}
       />
+
       <div className="grid grid-cols-3 gap-3">
         {images.map((img, i) => (
-          <img key={i} src={URL.createObjectURL(img)} className="h-32 w-full object-cover rounded" alt="" />
+          <img
+            key={i}
+            src={URL.createObjectURL(img)}
+            className="h-32 w-full object-cover rounded"
+            alt=""
+          />
         ))}
       </div>
+
       {editorOpen && selectedImage && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
           <div className="bg-white w-[90vw] h-[90vh] rounded overflow-hidden">
+            <link
+              href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"
+              rel="stylesheet"
+            />
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
           </div>
         </div>
