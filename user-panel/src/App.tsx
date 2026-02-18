@@ -68,7 +68,20 @@ function AppContent() {
   const [showMobileCollections, setShowMobileCollections] = useState(false)
   const [cartToast, setCartToast] = useState<{ message: string; id: number } | null>(null)
   const desktopCollectionsRef = useRef<HTMLDivElement>(null)
+  const [currentPath, setCurrentPath] = useState(() =>
+    (window.location.hash || '#/user/').replace('#', '').toLowerCase().split('?')[0]
+  )
 
+
+  useEffect(() => {
+    const onHashChange = () => {
+      setCurrentPath((window.location.hash || '#/user/').replace('#', '').toLowerCase().split('?')[0])
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  const isEditorPage = currentPath === '/user/blog/edit-image'
 
   // Capture referral parameter from URL
   useEffect(() => {
@@ -231,6 +244,10 @@ function AppContent() {
     <div className={`min-h-screen w-full overflow-x-hidden ${showSplash ? 'overflow-hidden h-screen' : ''}`} style={{ backgroundColor: 'var(--color-screen-bg)', color: 'var(--color-text-secondary-on-teal)', fontFamily: 'var(--font-body-family)' }}>
       {showSplash ? (
         <SplashScreen onComplete={handleSplashComplete} />
+      ) : isEditorPage ? (
+        <Suspense fallback={<PageLoader />}>
+          <RouterView affiliateId={affiliateId} />
+        </Suspense>
       ) : (
         <>
           <header
@@ -909,6 +926,7 @@ const IngredientDetail = lazy(() => import('./pages/IngredientDetail'))
 const Blog = lazy(() => import('./pages/Blog'))
 const BlogDetail = lazy(() => import('./pages/BlogDetail'))
 const BlogRequestForm = lazy(() => import('./pages/BlogRequestForm'))
+const ImageEditorPage = lazy(() => import('./pages/ImageEditorPage'))
 const Contact = lazy(() => import('./pages/Contact'))
 const ProductPage = lazy(() => import('./pages/Product'))
 const CategoryPage = lazy(() => import('./pages/Category'))
@@ -988,6 +1006,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
   
   if (lower.startsWith('/user/product/')) return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
+  if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
   if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && lower !== '/user/blog/request') return <BlogDetail />
   if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <AuthorProfile />
   if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />

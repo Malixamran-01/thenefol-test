@@ -9,6 +9,8 @@ interface Props {
   source?: string
   onSave?: (editedImageObject: any) => void
   onClose?: () => void
+  /** When true, renders full viewport (for standalone editor page) */
+  fullPage?: boolean
 }
 
 declare global {
@@ -45,7 +47,7 @@ function loadScript(src: string): Promise<void> {
   })
 }
 
-export default function ImageEditor({ images, setImages, source, onSave, onClose }: Props) {
+export default function ImageEditor({ images, setImages, source, onSave, onClose, fullPage }: Props) {
   const [selectedImage, setSelectedImage] = useState<string | null>(source || null)
   const [editorOpen, setEditorOpen] = useState(!!source)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
@@ -123,12 +125,26 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
 
   if (source && editorOpen) {
     return (
-      <div className="w-full h-full min-h-screen">
+      <div
+        className="w-full h-full"
+        style={{
+          width: '100%',
+          height: fullPage ? '100%' : '100vh',
+          minHeight: fullPage ? '100dvh' : undefined,
+        }}
+      >
         <link
           href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"
           rel="stylesheet"
         />
-        <div ref={containerRef} style={{ width: '100%', height: '100vh' }} />
+        <div
+          ref={containerRef}
+          style={{
+            width: '100%',
+            height: '100%',
+            minHeight: fullPage ? '100dvh' : '100vh',
+          }}
+        />
       </div>
     )
   }

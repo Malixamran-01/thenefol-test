@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import ImageEditor from '../components/ImageEditor'
 import BlogPreview from '../components/BlogPreview'
+
+const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
+const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 
 interface BlogRequest {
@@ -80,14 +82,10 @@ export default function BlogRequestForm() {
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
   const [imageMenuPos, setImageMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
   const [showImageMenu, setShowImageMenu] = useState(false)
-  const [showImageEditor, setShowImageEditor] = useState(false)
-  const [imageToEdit, setImageToEdit] = useState<string | null>(null)
   const [imageCaption, setImageCaption] = useState('')
   const [imageAltText, setImageAltText] = useState('')
   const [showCaptionModal, setShowCaptionModal] = useState(false)
   const [showAltTextModal, setShowAltTextModal] = useState(false)
-  const [editingImageId, setEditingImageId] = useState<string | null>(null)
-  const [editingImageName, setEditingImageName] = useState<string>('')
   const [showPreview, setShowPreview] = useState(false)
   const [showSeoPreview, setShowSeoPreview] = useState(false)
   const [showSeoSection, setShowSeoSection] = useState(false)
@@ -689,9 +687,13 @@ export default function BlogRequestForm() {
         return
       }
       
-      setImageToEdit(URL.createObjectURL(file))
-      setEditingImageName(file.name)
-      setShowImageEditor(true)
+      const source = URL.createObjectURL(file)
+      sessionStorage.setItem(EDIT_IMAGE_CTX_KEY, JSON.stringify({
+        source,
+        editingImageId: null,
+        editingImageName: file.name,
+      }))
+      window.location.hash = '#/user/blog/edit-image'
     }
     
     input.click()
@@ -763,11 +765,13 @@ export default function BlogRequestForm() {
 
   const openImageEditor = () => {
     if (selectedImage) {
-      setImageToEdit(selectedImage.src)
-      setEditingImageId(selectedImage.getAttribute('data-image-id'))
-      setEditingImageName(selectedImage.getAttribute('data-filename') || 'edited-image')
-      setShowImageEditor(true)
+      sessionStorage.setItem(EDIT_IMAGE_CTX_KEY, JSON.stringify({
+        source: selectedImage.src,
+        editingImageId: selectedImage.getAttribute('data-image-id'),
+        editingImageName: selectedImage.getAttribute('data-filename') || 'edited-image',
+      }))
       setShowImageMenu(false)
+      window.location.hash = '#/user/blog/edit-image'
     }
   }
 
@@ -799,12 +803,15 @@ export default function BlogRequestForm() {
       handleEditorInput()
     }
   }  
-const handleImageEditorSave = async (editedImageObject: any) => {
-    console.log('handleImageEditorSave called with:', editedImageObject)
-    
+  const applyEditedImage = useCallback(async (
+    editedImageObject: any,
+    targetImageId: string | null,
+    targetImageName: string,
+    targetImg?: HTMLImageElement | null
+  ) => {
     try {
       let base64: string
-      let filename = editingImageName || 'edited.png'
+      let filename = targetImageName || 'edited.png'
       
       if (editedImageObject.imageBase64) {
         base64 = editedImageObject.imageBase64
@@ -825,40 +832,26 @@ const handleImageEditorSave = async (editedImageObject: any) => {
       
       const blob = await fetch(base64).then(r => r.blob())
       const editedFile = new File([blob], filename, { type: blob.type })
-      
-      console.log('Created file:', editedFile)
-      
       const imageUrl = URL.createObjectURL(blob)
       
-      if (editingImageId && selectedImage) {
-        console.log('Editing existing image with ID:', editingImageId)
-        
-        selectedImage.src = imageUrl
-        selectedImage.alt = filename
-        selectedImage.setAttribute('data-filename', filename)
-        
+      const imgToUpdate = targetImg ?? (targetImageId && editorRef.current
+        ? editorRef.current.querySelector(`img[data-image-id="${targetImageId}"]`) as HTMLImageElement | null
+        : null)
+      
+      if (targetImageId && imgToUpdate) {
+        imgToUpdate.src = imageUrl
+        imgToUpdate.alt = filename
+        imgToUpdate.setAttribute('data-filename', filename)
         setFormData(prev => ({
           ...prev,
           images: prev.images.map(img => 
-            img.id === editingImageId 
-              ? { ...img, file: editedFile }
-              : img
+            img.id === targetImageId ? { ...img, file: editedFile } : img
           )
         }))
-        
-        console.log('Existing image updated')
       } else {
-        console.log('Inserting new image')
-        
-        if (!editorRef.current) {
-          console.error('Editor ref not available')
-          return
-        }
-        
+        if (!editorRef.current) return
         editorRef.current.focus()
-        
         const imageId = createImageId()
-
         const imageContainer = document.createElement('div')
         imageContainer.style.textAlign = 'center'
         imageContainer.style.margin = '20px 0'
@@ -886,26 +879,17 @@ const handleImageEditorSave = async (editedImageObject: any) => {
           e.stopPropagation()
           handleImageClick(img, e as MouseEvent)
         })
-        
-        img.addEventListener('mouseenter', () => {
-          img.style.borderColor = '#4B97C9'
-        })
-        img.addEventListener('mouseleave', () => {
-          img.style.borderColor = 'transparent'
-        })
+        img.addEventListener('mouseenter', () => { img.style.borderColor = '#4B97C9' })
+        img.addEventListener('mouseleave', () => { img.style.borderColor = 'transparent' })
         
         imageContainer.appendChild(img)
-        
         const selection = window.getSelection()
         
         if (selection && savedSelectionRef.current && editorRef.current.contains(savedSelectionRef.current.commonAncestorContainer)) {
-          console.log('Using saved cursor position within editor')
           try {
             selection.removeAllRanges()
             selection.addRange(savedSelectionRef.current)
-            
             const range = selection.getRangeAt(0)
-            
             const startContainer = range.startContainer
             if (startContainer.nodeType === Node.TEXT_NODE) {
               const parentElement = startContainer.parentElement
@@ -917,45 +901,43 @@ const handleImageEditorSave = async (editedImageObject: any) => {
             } else {
               range.insertNode(imageContainer)
             }
-            
             range.setStartAfter(imageContainer)
             range.setEndAfter(imageContainer)
             selection.removeAllRanges()
             selection.addRange(range)
-          } catch (selectionError) {
-            console.error('Error with cursor position, appending to end:', selectionError)
+          } catch {
             editorRef.current.appendChild(imageContainer)
           }
         } else {
-          console.log('No valid saved cursor position, appending to end of editor')
           editorRef.current.appendChild(imageContainer)
         }
         
         const lineBreak = document.createElement('br')
         imageContainer.parentNode?.insertBefore(lineBreak, imageContainer.nextSibling)
-        
-        const currentImages = formData.images || []
-        setFormData(prev => ({ 
-          ...prev, 
-          images: [...currentImages, { id: imageId, file: editedFile }] 
-        }))
-        
-        console.log('New image added to formData.images, total images:', currentImages.length + 1)
+        setFormData(prev => ({ ...prev, images: [...(prev.images || []), { id: imageId, file: editedFile }] }))
       }
       
       savedSelectionRef.current = null
       handleEditorInput()
-      setShowImageEditor(false)
-      setImageToEdit(null)
-      setEditingImageId(null)
-      setEditingImageName('')
-      
-      console.log('Image editor closed successfully')
     } catch (error) {
-      console.error('Error in handleImageEditorSave:', error)
+      console.error('Error applying edited image:', error)
       alert('Failed to save image. Please try again.')
     }
-  }  
+  }, [handleImageClick, handleEditorInput])
+
+  // Process stored editor result when returning from full-page editor
+  useEffect(() => {
+    const raw = sessionStorage.getItem(EDIT_IMAGE_RESULT_KEY)
+    if (!raw) return
+    sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
+    try {
+      const { editedImageObject, editingImageId: storedId, editingImageName: storedName } = JSON.parse(raw)
+      applyEditedImage(editedImageObject, storedId, storedName)
+    } catch (e) {
+      console.error('Failed to process editor result:', e)
+    }
+  }, [applyEditedImage])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -1964,24 +1946,6 @@ const handleImageEditorSave = async (editedImageObject: any) => {
                 Save
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Image Editor Modal */}
-      {showImageEditor && imageToEdit && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
-          <div className="bg-white w-[90vw] h-[90vh] rounded overflow-hidden">
-            <ImageEditor
-              images={[]}
-              setImages={() => {}}
-              source={imageToEdit}
-              onSave={handleImageEditorSave}
-              onClose={() => {
-                setShowImageEditor(false)
-                setImageToEdit(null)
-              }}
-            />
           </div>
         </div>
       )}
