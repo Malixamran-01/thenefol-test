@@ -5,8 +5,9 @@ A self-contained image editor with all dependencies bundled. Drop into any proje
 ## Contents
 
 - `filerobot-image-editor.min.js` — Full bundle (~900KB, includes React, Konva, styled-components, etc.)
-- `index.html` — Minimal full-screen editor example
+- `index.html` — Minimal full-screen editor example (includes cache-busting)
 - `init.js` — Vanilla JS initialization example
+- `version.txt` — Build version (use for cache busting in your project)
 
 ## Quick Start (Vanilla JS / Any HTML Project)
 
@@ -31,7 +32,7 @@ Copy these files into your project:
 <body>
   <div id="editor_container"></div>
 
-  <script src="path/to/filerobot-image-editor.min.js"></script>
+  <script src="path/to/filerobot-image-editor.min.js?v=1739781234567"></script>
   <script>
     const { TABS } = FilerobotImageEditor;
 
@@ -125,3 +126,15 @@ yarn build:standalone
 ```
 
 This updates `standalone/filerobot-image-editor.min.js` from the build output.
+
+## Cache busting (changes not appearing after update)
+
+If you replace the bundle in your project but still see old behavior:
+
+1. **Hard refresh** the page: `Ctrl+Shift+R` (Windows) or `Cmd+Shift+R` (Mac)
+2. **Add a version query param** to the script src, e.g.:
+   ```html
+   <script src="path/to/filerobot-image-editor.min.js?v=1739781234567"></script>
+   ```
+   Use the value from `version.txt` (written on each build) or any unique string.
+3. **Clear browser cache** for the site.

@@ -32,6 +32,8 @@
 
 3. Open `index.html` in a browser to test locally.
 
+**Changes not appearing?** After replacing the bundle, add `?v=123` (or use value from `version.txt`) to the script src to bypass cache, e.g. `filerobot-image-editor.min.js?v=1739781234567`.
+
 ## Rebuild from source
 
 From the main project root:
