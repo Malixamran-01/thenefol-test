@@ -34,9 +34,27 @@ export default function BlogPreview({
 
   const processContentImages = (htmlContent: string): string => {
     if (!htmlContent) return htmlContent
-    
-    // Convert blob URLs to visible format (they'll work in preview since they're in the same session)
-    return htmlContent
+    let content = htmlContent
+    // Fix image width styles to stay within content frame (no viewport overflow)
+    content = content.replace(
+      /<img([^>]*)>/gi,
+      (match) => {
+        const widthStyleMatch = match.match(/data-width-style=["'](full|wide|normal)["']/i)
+        const style = widthStyleMatch ? widthStyleMatch[1].toLowerCase() : null
+        const styleAttr = match.match(/style=["']([^"']*)["']/)?.[1] ?? ''
+        const hasOverflow = /100vw|calc\(|120%/.test(styleAttr)
+        const widthCss = style === 'full' ? 'width:100%;max-width:100%' : style === 'wide' ? 'width:50%;max-width:50%' : 'width:auto;max-width:100%'
+        const newStyle = `height:auto;margin:10px auto;display:block;${widthCss}`
+        if (style || hasOverflow) {
+          if (match.includes('style=')) {
+            return match.replace(/\s*style=["'][^"']*["']/, ` style="${newStyle}"`)
+          }
+          return match.replace(/<img/, `<img style="${newStyle}"`)
+        }
+        return match
+      }
+    )
+    return content
   }
 
   const estimateReadingTime = (text: string) => {

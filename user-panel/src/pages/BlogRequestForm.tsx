@@ -814,26 +814,24 @@ export default function BlogRequestForm() {
 
     switch (width) {
       case 'wide': {
-        selectedImage.style.maxWidth = 'none'
-        selectedImage.style.width = '120%'
+        selectedImage.style.maxWidth = '50%'
+        selectedImage.style.width = '50%'
         selectedImage.style.marginLeft = 'auto'
         selectedImage.style.marginRight = 'auto'
         selectedImage.style.display = 'block'
         if (container) {
-          container.style.overflow = 'visible'
-          container.style.width = '100%'
+          container.style.overflow = ''
         }
         break
       }
       case 'full': {
-        selectedImage.style.maxWidth = '100vw'
-        selectedImage.style.width = '100vw'
-        selectedImage.style.marginLeft = 'calc(-50vw + 50%)'
-        selectedImage.style.marginRight = '0'
+        selectedImage.style.maxWidth = '100%'
+        selectedImage.style.width = '100%'
+        selectedImage.style.marginLeft = 'auto'
+        selectedImage.style.marginRight = 'auto'
         selectedImage.style.display = 'block'
         if (container) {
-          container.style.overflow = 'visible'
-          container.style.width = '100%'
+          container.style.overflow = ''
         }
         break
       }
@@ -1991,7 +1989,7 @@ export default function BlogRequestForm() {
               className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-gray-800"
             >
               <Maximize2 className="w-4 h-4 text-gray-700" />
-              Wide width
+              Half width
             </button>
             <button
               type="button"
