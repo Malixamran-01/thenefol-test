@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
@@ -810,19 +810,44 @@ export default function BlogRequestForm() {
 
   const setImageWidth = (width: 'normal' | 'wide' | 'full') => {
     if (!selectedImage) return
-    
+    const container = selectedImage.parentElement
+
     switch (width) {
-      case 'wide':
-        selectedImage.style.maxWidth = '120%'
-        selectedImage.style.marginLeft = '-10%'
+      case 'wide': {
+        selectedImage.style.maxWidth = 'none'
+        selectedImage.style.width = '120%'
+        selectedImage.style.marginLeft = 'auto'
+        selectedImage.style.marginRight = 'auto'
+        selectedImage.style.display = 'block'
+        if (container) {
+          container.style.overflow = 'visible'
+          container.style.width = '100%'
+        }
         break
-      case 'full':
+      }
+      case 'full': {
         selectedImage.style.maxWidth = '100vw'
+        selectedImage.style.width = '100vw'
         selectedImage.style.marginLeft = 'calc(-50vw + 50%)'
+        selectedImage.style.marginRight = '0'
+        selectedImage.style.display = 'block'
+        if (container) {
+          container.style.overflow = 'visible'
+          container.style.width = '100%'
+        }
         break
-      default:
+      }
+      default: {
         selectedImage.style.maxWidth = '100%'
-        selectedImage.style.marginLeft = '0'
+        selectedImage.style.width = 'auto'
+        selectedImage.style.marginLeft = 'auto'
+        selectedImage.style.marginRight = 'auto'
+        selectedImage.style.display = 'block'
+        if (container) {
+          container.style.overflow = ''
+        }
+        break
+      }
     }
     selectedImage.setAttribute('data-width-style', width)
     setShowImageMenu(false)
@@ -1952,6 +1977,14 @@ export default function BlogRequestForm() {
               Edit alt text
             </button>
             <div className="border-t border-gray-200 my-2" />
+            <button
+              type="button"
+              onClick={() => setImageWidth('normal')}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-gray-800"
+            >
+              <Square className="w-4 h-4 text-gray-700" />
+              Normal width
+            </button>
             <button
               type="button"
               onClick={() => setImageWidth('wide')}
