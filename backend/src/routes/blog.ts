@@ -97,6 +97,18 @@ const cleanupDeletedBlogPosts = async () => {
   }
 }
 
+/** Delete old drafts to prevent unbounded growth. Auto-drafts: 7 days. Manual drafts: 90 days. */
+export async function cleanupOldDrafts(dbPool: Pool): Promise<{ auto: number; manual: number }> {
+  if (!dbPool) return { auto: 0, manual: 0 }
+  const { rowCount: autoCount } = await dbPool.query(
+    `DELETE FROM blog_drafts WHERE status = 'auto' AND updated_at < now() - interval '7 days'`
+  )
+  const { rowCount: manualCount } = await dbPool.query(
+    `DELETE FROM blog_drafts WHERE status = 'manual' AND updated_at < now() - interval '90 days'`
+  )
+  return { auto: autoCount ?? 0, manual: manualCount ?? 0 }
+}
+
 // Submit blog request
 router.post('/request', upload.fields([
   { name: 'coverImage', maxCount: 1 },
@@ -235,6 +247,16 @@ router.post('/request', upload.fields([
 
 // --- Draft API (auto-save + manual drafts) ---
 
+/** Returns false for empty/placeholder content (e.g. <p><br></p>, whitespace-only) */
+function hasRealDraftContent(draft: { title?: string; content?: string; excerpt?: string } | null): boolean {
+  if (!draft) return false
+  const stripHtml = (s: string) => (s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const hasTitle = (draft.title || '').trim().length > 0
+  const hasExcerpt = (draft.excerpt || '').trim().length > 0
+  const hasContent = stripHtml(draft.content || '').length > 0
+  return hasTitle || hasExcerpt || hasContent
+}
+
 // Auto-draft: create or update latest auto-draft (1 per user)
 router.post('/drafts/auto', authenticateToken, async (req, res) => {
   try {
@@ -262,6 +284,12 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
     }
     const parsedCategories = parseArray(categories)
     const parsedKeywords = parseArray(meta_keywords)
+    const payload = { title, content, excerpt }
+    if (!hasRealDraftContent(payload)) {
+      // Don't save empty drafts; delete existing auto-draft if present (cleanup)
+      await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto'`, [userId])
+      return res.json({ draftId: null, skipped: true })
+    }
     const { rows: existing } = await pool.query(
       `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' ORDER BY updated_at DESC LIMIT 1`,
       [userId]
@@ -347,6 +375,9 @@ router.post('/drafts', authenticateToken, async (req, res) => {
     }
     const parsedCategories = parseArray(categories)
     const parsedKeywords = parseArray(meta_keywords)
+    if (!hasRealDraftContent({ title, content, excerpt })) {
+      return res.status(400).json({ message: 'Draft must have at least a title, excerpt, or content' })
+    }
     const draftName = (name && String(name).trim()) || (title && String(title).trim()) || 'Untitled draft'
     const { rows } = await pool.query(`
       INSERT INTO blog_drafts (user_id, title, content, excerpt, author_name, author_email,

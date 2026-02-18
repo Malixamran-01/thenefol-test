@@ -1124,33 +1124,35 @@ export default function BlogRequestForm() {
     return () => clearTimeout(t)
   }, [formData.title, formData.content, formData.excerpt, formData.author_name, formData.author_email, formData.meta_title, formData.meta_description, formData.meta_keywords, formData.og_title, formData.og_description, formData.og_image, formData.canonical_url, formData.categories, formData.allow_comments])
 
-  // Server draft sync (when online and logged in)
+  // Server draft sync (when online and logged in) - only sync when there's real content
   useEffect(() => {
     if (!isAuthenticated || !user || isOffline) return
     const sync = async () => {
       const content = (editorRef.current?.innerHTML ?? formData.content) || ''
+      const payload = {
+        title: formData.title,
+        content,
+        excerpt: formData.excerpt,
+        author_name: formData.author_name,
+        author_email: formData.author_email,
+        meta_title: formData.meta_title,
+        meta_description: formData.meta_description,
+        meta_keywords: formData.meta_keywords,
+        og_title: formData.og_title,
+        og_description: formData.og_description,
+        og_image: formData.og_image,
+        canonical_url: formData.canonical_url,
+        categories: formData.categories,
+        allow_comments: formData.allow_comments,
+      }
+      if (!hasRealDraftContent(payload)) return
       const token = localStorage.getItem('token')
       if (!token) return
       try {
         const res = await fetch(`${getApiBase()}/api/blog/drafts/auto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            title: formData.title,
-            content,
-            excerpt: formData.excerpt,
-            author_name: formData.author_name,
-            author_email: formData.author_email,
-            meta_title: formData.meta_title,
-            meta_description: formData.meta_description,
-            meta_keywords: formData.meta_keywords,
-            og_title: formData.og_title,
-            og_description: formData.og_description,
-            og_image: formData.og_image,
-            canonical_url: formData.canonical_url,
-            categories: formData.categories,
-            allow_comments: formData.allow_comments,
-          }),
+          body: JSON.stringify(payload),
         })
         if (res.ok) setLastSavedAt(new Date().toISOString())
       } catch {
@@ -1220,9 +1222,14 @@ export default function BlogRequestForm() {
       categories: formData.categories,
       allow_comments: formData.allow_comments,
     }
+    if (!hasRealDraftContent(payload)) {
+      setErrorMessage('Add a title, excerpt, or content before saving a draft.')
+      return
+    }
     saveLocalDraft(payload)
     setLastSavedAt(new Date().toISOString())
     setIsSavingDraft(true)
+    setErrorMessage('')
     try {
       const token = localStorage.getItem('token')
       if (token && !isOffline) {
@@ -1237,14 +1244,16 @@ export default function BlogRequestForm() {
         if (res.ok) {
           setShowDraftToast(true)
           setTimeout(() => setShowDraftToast(false), 3000)
+        } else {
+          const data = await res.json().catch(() => ({}))
+          setErrorMessage(data.message || 'Failed to save draft')
         }
       } else {
         setShowDraftToast(true)
         setTimeout(() => setShowDraftToast(false), 3000)
       }
     } catch {
-      setShowDraftToast(true)
-      setTimeout(() => setShowDraftToast(false), 3000)
+      setErrorMessage('Failed to save draft')
     } finally {
       setIsSavingDraft(false)
     }

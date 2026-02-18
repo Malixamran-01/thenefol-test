@@ -27,7 +27,7 @@ import * as supplierRoutes from './routes/suppliers'
 import * as posRoutes from './routes/pos'
 import * as cartRoutes from './routes/cart'
 import createCMSRouter from './routes/cms'
-import blogRouter, { initBlogRouter, serveBlogMetaPage } from './routes/blog'
+import blogRouter, { initBlogRouter, serveBlogMetaPage, cleanupOldDrafts } from './routes/blog'
 import blogActivityRouter, { initBlogActivityRouter } from './routes/blogActivity'
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
@@ -5174,6 +5174,18 @@ cron.schedule('* * * * *', async () => {
     }
   } catch (err) {
     console.error('Scheduled WhatsApp messages processing failed', err)
+  }
+})
+
+// Cleanup old blog drafts (auto: 7 days, manual: 90 days) - runs daily at 3am
+cron.schedule('0 3 * * *', async () => {
+  try {
+    const result = await cleanupOldDrafts(pool)
+    if (result.auto > 0 || result.manual > 0) {
+      console.log(`📝 Cleaned up old drafts: ${result.auto} auto-drafts, ${result.manual} manual drafts`)
+    }
+  } catch (err) {
+    console.error('Blog draft cleanup failed', err)
   }
 })
 // ... existing code ...
