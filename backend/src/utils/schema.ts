@@ -460,7 +460,7 @@ export async function ensureSchema(pool: Pool) {
     
     -- Ensure updated_at trigger exists
     create or replace function set_updated_at()
-    returns trigger as $$ begin new.updated_at = now(); return new; end; $$ language plpgsql;
+    returns trigger as $$ begin new.updated_at = now(); return new; end; $$ language plpgsql set search_path = public;
     
     drop trigger if exists trg_products_updated_at on products;
     create trigger trg_products_updated_at before update on products

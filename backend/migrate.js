@@ -582,7 +582,7 @@ async function runMigration() {
         new.updated_at = now(); 
         return new; 
       END; 
-      $$ language plpgsql;
+      $$ language plpgsql SET search_path = public;
 
       -- Update author stats on follower change
       CREATE OR REPLACE FUNCTION update_author_followers_count()
@@ -600,7 +600,7 @@ async function runMigration() {
         END IF;
         RETURN NULL;
       END;
-      $$ language plpgsql;
+      $$ language plpgsql SET search_path = public;
 
       -- Update author stats on subscriber change
       CREATE OR REPLACE FUNCTION update_author_subscribers_count()
@@ -618,7 +618,7 @@ async function runMigration() {
         END IF;
         RETURN NULL;
       END;
-      $$ language plpgsql;
+      $$ language plpgsql SET search_path = public;
 
       -- Update author stats on post change
       CREATE OR REPLACE FUNCTION update_author_posts_count()
@@ -636,7 +636,7 @@ async function runMigration() {
         END IF;
         RETURN NULL;
       END;
-      $$ language plpgsql;
+      $$ language plpgsql SET search_path = public;
     `);
 
     console.log('📝 Step 6: Creating triggers...');
