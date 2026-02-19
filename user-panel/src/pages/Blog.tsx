@@ -444,7 +444,7 @@ export default function Blog() {
 
                   if (canSubmitDirectly) {
                     // User is an author, proceed to blog request form
-                    window.location.hash = '#/user/blog/request'
+                    window.location.hash = '#/user/blog/request?new=1'
                   } else {
                     // User needs to create author profile
                     setShowAuthorPrompt(true)

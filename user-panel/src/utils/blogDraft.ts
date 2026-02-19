@@ -5,6 +5,7 @@
 
 const LOCAL_DRAFT_KEY = 'blog_draft'
 const ACTIVE_DRAFT_TAB_KEY = 'blog_draft_active_tab'
+const SESSION_ID_KEY = 'blog_draft_session_id'
 const DEBOUNCE_MS = 2500
 const SERVER_SYNC_INTERVAL_MS = 45000
 
@@ -133,6 +134,29 @@ export function isActiveDraftTab(cb: (active: boolean) => void): () => void {
   window.addEventListener('storage', onStorage)
   check()
   return () => window.removeEventListener('storage', onStorage)
+}
+
+/** Get or create session_id for current writing session. Cleared on publish. */
+export function getOrCreateDraftSessionId(): string {
+  try {
+    let id = sessionStorage.getItem(SESSION_ID_KEY)
+    if (!id) {
+      id = crypto.randomUUID?.() || `session-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      sessionStorage.setItem(SESSION_ID_KEY, id)
+    }
+    return id
+  } catch {
+    return `session-${Date.now()}`
+  }
+}
+
+/** Clear session_id (call after successful publish) */
+export function clearDraftSessionId(): void {
+  try {
+    sessionStorage.removeItem(SESSION_ID_KEY)
+  } catch {
+    // ignore
+  }
 }
 
 export { DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS, LOCAL_DRAFT_KEY, ACTIVE_DRAFT_TAB_KEY }

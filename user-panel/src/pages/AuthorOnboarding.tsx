@@ -49,7 +49,7 @@ const AuthorOnboarding = () => {
   const categories = ['Tech', 'Mental health', 'Diaries', 'Business', 'Poetry', 'Lifestyle', 'Health', 'Travel']
   const languages = ['English', 'Urdu', 'Hindi', 'Arabic', 'Spanish', 'French']
   const navigateToBlogRequest = () => {
-    window.location.hash = '#/user/blog/request'
+    window.location.hash = '#/user/blog/request?new=1'
   }
 
   const steps: OnboardingStep[] = [

@@ -336,6 +336,16 @@ async function runMigration() {
       END $$;
       CREATE INDEX IF NOT EXISTS idx_blog_drafts_post_id ON blog_drafts(post_id);
 
+      -- Blog drafts v3: session_id for session-bound auto drafts (fixes "old draft restored on new blog")
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_drafts' AND column_name = 'session_id') THEN
+          ALTER TABLE blog_drafts ADD COLUMN session_id text;
+        END IF;
+      END $$;
+      CREATE INDEX IF NOT EXISTS idx_blog_drafts_session_id ON blog_drafts(session_id) WHERE session_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_blog_drafts_user_session ON blog_drafts(user_id, session_id) WHERE status = 'auto' AND session_id IS NOT NULL;
+
       -- Blog comment likes
       CREATE TABLE IF NOT EXISTS blog_comment_likes (
         id serial primary key,

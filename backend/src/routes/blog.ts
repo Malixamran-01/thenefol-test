@@ -289,7 +289,7 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
     const {
       title, content, excerpt, author_name, author_email,
       meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
-      categories, allow_comments, post_id, draftId, version
+      categories, allow_comments, post_id, session_id, draftId, version
     } = req.body
     const parseArray = (v: any): string[] => {
       if (!v) return []
@@ -308,16 +308,24 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
     const parsedKeywords = parseArray(meta_keywords)
     const payload = { title, content, excerpt }
     if (!hasRealDraftContent(payload)) {
-      await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto'`, [userId])
+      if (session_id) {
+        await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2`, [userId, session_id])
+      } else {
+        await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto'`, [userId])
+      }
       return res.json({ draftId: null, skipped: true })
     }
     const contentHash = computeContentHash(payload)
     const postId = post_id ? parseInt(String(post_id), 10) : null
+    const sessionId = session_id && String(session_id).trim() ? String(session_id).trim() : null
     const incomingDraftId = draftId ? parseInt(String(draftId), 10) : null
     const incomingVersion = version != null ? parseInt(String(version), 10) : null
+    // Session-bound: for new posts (postId null), match by session_id. For editing (postId set), match by post_id.
     const { rows: existing } = await pool.query(
-      `SELECT id, content_hash, version FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
-      [userId, postId]
+      sessionId
+        ? `SELECT id, content_hash, version FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2 AND (post_id IS NOT DISTINCT FROM $3) ORDER BY updated_at DESC LIMIT 1`
+        : `SELECT id, content_hash, version FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
+      sessionId ? [userId, sessionId, postId] : [userId, postId]
     )
     if (existing.length > 0 && existing[0].content_hash === contentHash) {
       return res.json({ draftId: existing[0].id, version: existing[0].version ?? 0, updated: false, skipped: true })
@@ -361,13 +369,13 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
       return res.json({ draftId: existing[0].id, version: newVersion, updated: true })
     }
     const { rows } = await pool.query(`
-      INSERT INTO blog_drafts (user_id, post_id, title, content, excerpt, author_name, author_email,
+      INSERT INTO blog_drafts (user_id, post_id, session_id, title, content, excerpt, author_name, author_email,
         meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
         categories, allow_comments, status, content_hash, version)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'auto', $17, 1)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'auto', $18, 1)
       RETURNING id, version, updated_at
     `, [
-      userId, postId, title || '', content || '', excerpt || '', author_name || '', author_email || '',
+      userId, postId, sessionId, title || '', content || '', excerpt || '', author_name || '', author_email || '',
       meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
       og_title || null, og_description || null, og_image || null, canonical_url || null,
       parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
@@ -381,15 +389,18 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
   }
 })
 
-// Get latest auto-draft for current user (optional postId for editing existing post)
+// Get latest auto-draft for current user (session_id for new posts, postId for editing existing)
 router.get('/drafts/auto', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
+    const sessionId = req.query.session_id && String(req.query.session_id).trim() ? String(req.query.session_id).trim() : null
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
     const { rows } = await pool.query(
-      `SELECT * FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
-      [userId, postId]
+      sessionId
+        ? `SELECT * FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2 AND (post_id IS NOT DISTINCT FROM $3) ORDER BY updated_at DESC LIMIT 1`
+        : `SELECT * FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
+      sessionId ? [userId, sessionId, postId] : [userId, postId]
     )
     const draft = rows[0] || null
     if (draft) {
@@ -402,18 +413,26 @@ router.get('/drafts/auto', authenticateToken, async (req, res) => {
   }
 })
 
-// Version history: current auto-draft + manual drafts (for Version History modal)
+// Version history: session-bound (auto drafts) + manual drafts for current session/post
 router.get('/drafts/versions', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
+    const sessionId = req.query.session_id && String(req.query.session_id).trim() ? String(req.query.session_id).trim() : null
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    // Session-bound: show auto drafts only for this session; manual drafts always (user-visible)
     const { rows } = await pool.query(
-      `SELECT id, title, content, excerpt, status, version, created_at, updated_at, author_name
-       FROM blog_drafts
-       WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
-       ORDER BY updated_at DESC LIMIT 30`,
-      [userId, postId]
+      sessionId
+        ? `SELECT id, title, content, excerpt, status, version, created_at, updated_at, author_name
+           FROM blog_drafts
+           WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
+             AND (status = 'manual' OR (status = 'auto' AND session_id = $3))
+           ORDER BY updated_at DESC LIMIT 30`
+        : `SELECT id, title, content, excerpt, status, version, created_at, updated_at, author_name
+           FROM blog_drafts
+           WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
+           ORDER BY updated_at DESC LIMIT 30`,
+      sessionId ? [userId, postId, sessionId] : [userId, postId]
     )
     const versions = rows.map((r: any) => ({
       id: r.id,
@@ -451,16 +470,22 @@ router.get('/drafts/version/:id', authenticateToken, async (req, res) => {
   }
 })
 
-// Get latest drafts (auto + manual) for restore logic - newest wins
+// Get latest drafts (auto + manual) for restore logic - session-bound, newest wins
 router.get('/drafts/latest', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
+    const sessionId = req.query.session_id && String(req.query.session_id).trim() ? String(req.query.session_id).trim() : null
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    // Session-bound: only restore drafts from current session (auto) or manual; never old session's auto drafts
     const { rows } = await pool.query(
-      `SELECT * FROM blog_drafts WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
-       ORDER BY updated_at DESC LIMIT 2`,
-      [userId, postId]
+      sessionId
+        ? `SELECT * FROM blog_drafts WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
+           AND (status = 'manual' OR (status = 'auto' AND session_id = $3))
+           ORDER BY updated_at DESC LIMIT 2`
+        : `SELECT * FROM blog_drafts WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
+           ORDER BY updated_at DESC LIMIT 2`,
+      sessionId ? [userId, postId, sessionId] : [userId, postId]
     )
     const auto = rows.find((r: any) => r.status === 'auto') || null
     const manual = rows.find((r: any) => r.status === 'manual') || null
@@ -558,12 +583,17 @@ router.get('/drafts/:id', authenticateToken, async (req, res) => {
   }
 })
 
-// Delete auto-draft (called after successful publish)
+// Delete auto-draft (called after successful publish) - session-bound when session_id provided
 router.delete('/drafts/auto', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
+    const sessionId = req.query.session_id && String(req.query.session_id).trim() ? String(req.query.session_id).trim() : null
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
-    await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto'`)
+    if (sessionId) {
+      await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2`, [userId, sessionId])
+    } else {
+      await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto'`, [userId])
+    }
     res.json({ message: 'Auto-draft cleared' })
   } catch (error) {
     console.error('Error clearing auto-draft:', error)

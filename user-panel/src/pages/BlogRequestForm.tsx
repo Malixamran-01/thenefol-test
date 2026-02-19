@@ -3,7 +3,7 @@ import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as L
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
-import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, hasRealDraftContent, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS, setActiveDraftTab, clearActiveDraftTab, isActiveDraftTab } from '../utils/blogDraft'
+import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, hasRealDraftContent, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS, setActiveDraftTab, clearActiveDraftTab, isActiveDraftTab, getOrCreateDraftSessionId, clearDraftSessionId } from '../utils/blogDraft'
 
 const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
 const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
@@ -161,6 +161,7 @@ export default function BlogRequestForm() {
   const discardedDraftRef = useRef(false)
   const draftIdRef = useRef<number | null>(null)
   const versionRef = useRef<number>(0)
+  const sessionIdRef = useRef<string>(getOrCreateDraftSessionId())
   const [canonicalOverride, setCanonicalOverride] = useState(false)
   const [existingTags, setExistingTags] = useState<string[]>([])
   const [metaFieldsManuallyEdited, setMetaFieldsManuallyEdited] = useState({
@@ -198,7 +199,7 @@ export default function BlogRequestForm() {
   const fetchDraftVersions = useCallback(() => {
     const token = localStorage.getItem('token')
     if (!token) return
-    fetch(`${getApiBase()}/api/blog/drafts/versions`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${getApiBase()}/api/blog/drafts/versions?session_id=${encodeURIComponent(sessionIdRef.current)}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(setDraftVersions)
       .catch(() => setDraftVersions([]))
@@ -207,6 +208,16 @@ export default function BlogRequestForm() {
   useEffect(() => {
     formDataRef.current = formData
   }, [formData])
+
+  // "New blog" intent: ?new=1 in URL means start fresh (clear session)
+  useEffect(() => {
+    const hash = window.location.hash || ''
+    if (hash.includes('?new=1')) {
+      clearDraftSessionId()
+      sessionIdRef.current = getOrCreateDraftSessionId()
+      window.location.hash = hash.replace(/\?new=1/, '') || '#/user/blog/request'
+    }
+  }, [])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -1100,7 +1111,7 @@ export default function BlogRequestForm() {
         pendingDraftRestore.current = localDraft
         setShowRestoreModal(true)
       } else if (isAuthenticated) {
-        fetch(`${getApiBase()}/api/blog/drafts/latest`, {
+        fetch(`${getApiBase()}/api/blog/drafts/latest?session_id=${encodeURIComponent(sessionIdRef.current)}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
         })
           .then(r => r.ok ? r.json() : null)
@@ -1201,7 +1212,7 @@ export default function BlogRequestForm() {
     const token = localStorage.getItem('token')
     if (!token) return
     const url = `${getApiBase()}/api/blog/drafts/auto`
-    const body = JSON.stringify(payload)
+    const body = JSON.stringify({ ...payload, session_id: sessionIdRef.current })
     if (opts?.keepalive) {
       fetch(url, {
         method: 'POST',
@@ -1476,7 +1487,8 @@ export default function BlogRequestForm() {
         clearLocalDraft()
         const token = localStorage.getItem('token')
         if (token) {
-          fetch(`${apiBase}/api/blog/drafts/auto`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+          clearDraftSessionId()
+          fetch(`${apiBase}/api/blog/drafts/auto?session_id=${encodeURIComponent(sessionIdRef.current)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
         }
         setTimeout(() => {
           window.location.hash = '#/user/blog'

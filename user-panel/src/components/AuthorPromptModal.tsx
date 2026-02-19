@@ -14,7 +14,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
   }
 
   const handleContinueWithoutProfile = () => {
-    window.location.hash = '#/user/blog/request'
+    window.location.hash = '#/user/blog/request?new=1'
   }
 
   return (
