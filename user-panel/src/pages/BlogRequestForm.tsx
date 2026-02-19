@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp, Save, WifiOff } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, ArrowRight, Eye, ChevronDown, ChevronUp, Save, WifiOff, RotateCcw, Info, Settings } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
@@ -144,6 +144,11 @@ export default function BlogRequestForm() {
   const [showPreview, setShowPreview] = useState(false)
   const [showSeoPreview, setShowSeoPreview] = useState(false)
   const [showSeoSection, setShowSeoSection] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false)
+  const [showContentInfoModal, setShowContentInfoModal] = useState(false)
+  const [draftVersions, setDraftVersions] = useState<Array<{ id: number; title: string; content: string; excerpt: string; status: string; version: number; createdAt: string; updatedAt: string; authorName: string }>>([])
+  const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null)
   const [showRestoreModal, setShowRestoreModal] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
@@ -178,6 +183,26 @@ export default function BlogRequestForm() {
   ]
 
   const categoryOptions = BLOG_CATEGORY_OPTIONS
+
+  const getContentStats = useCallback(() => {
+    const content = (editorRef.current?.innerHTML ?? formData.content) || ''
+    const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    const chars = text.length
+    const words = text ? text.split(/\s+/).filter(Boolean).length : 0
+    const sentences = text ? (text.match(/[.!?]+/g)?.length ?? 1) : 0
+    const readingTime = words > 0 ? Math.ceil(words / 200) : 0
+    const speakingTime = words > 0 ? Math.ceil(words / 150) : 0
+    return { chars, words, sentences, readingTime, speakingTime }
+  }, [formData.content])
+
+  const fetchDraftVersions = useCallback(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch(`${getApiBase()}/api/blog/drafts/versions`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setDraftVersions)
+      .catch(() => setDraftVersions([]))
+  }, [])
 
   useEffect(() => {
     formDataRef.current = formData
@@ -1480,7 +1505,7 @@ export default function BlogRequestForm() {
           </p>
           <button 
             onClick={() => window.location.hash = '#/user/blog'} 
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-6 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors"
           >
             Go Back to Blog
           </button>
@@ -1519,41 +1544,57 @@ export default function BlogRequestForm() {
       `}</style>
       
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b">
-          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        {/* Header - clean minimal design */}
+        <div className="bg-white shadow-sm border-b transition-all duration-300">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <button 
                 onClick={() => window.location.hash = '#/user/blog'} 
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105"
                 aria-label="Go back"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Submit Blog Post Request</h1>
-                <p className="text-sm text-gray-600">Share your story with our community</p>
+              <div className="flex items-center gap-3">
+                {lastSavedAt && !isOffline && (
+                  <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    Saved
+                  </span>
+                )}
+                {editingInOtherTab && (
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Editing in another tab
+                  </span>
+                )}
+                {isOffline && (
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
+                    <WifiOff className="w-3.5 h-3.5" />
+                    Offline
+                  </span>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              {editingInOtherTab && (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
-                  <AlertCircle className="w-4 h-4" />
-                  Editing in another tab
-                </span>
-              )}
-              {isOffline && (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
-                  <WifiOff className="w-4 h-4" />
-                  Offline – saving locally
-                </span>
-              )}
-              {lastSavedAt && !isOffline && (
-                <span className="flex items-center gap-1.5 text-gray-500">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  Saved
-                </span>
-              )}
+            <div className="flex items-center gap-2">
+              <button 
+                type="button"
+                onClick={() => setShowPreview(true)}
+                className="px-4 py-2 text-sm font-medium text-teal-600 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-full transition-all duration-200 flex items-center gap-2"
+                disabled={isSubmitting}
+              >
+                <Eye className="w-4 h-4" />
+                Preview
+              </button>
+              <button 
+                type="submit"
+                form="blog-form"
+                disabled={isSubmitting || !agreedToTerms}
+                className="px-5 py-2 text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                Continue
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -1589,7 +1630,7 @@ export default function BlogRequestForm() {
         {/* Main Content */}
         <div className="max-w-4xl mx-auto p-4 sm:p-6">
           <div ref={scrollContainerRef} className="bg-white rounded-lg shadow-sm border relative">
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form id="blog-form" onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Author Information */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -1598,7 +1639,7 @@ export default function BlogRequestForm() {
                     name="author_name" 
                     value={formData.author_name} 
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Enter your full name" 
                     required 
                     disabled={isSubmitting || (isAuthenticated && !!user?.name)}
@@ -1610,7 +1651,7 @@ export default function BlogRequestForm() {
                     name="author_email" 
                     value={formData.author_email} 
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="your.email@domain.com" 
                     required 
                     disabled={isSubmitting || (isAuthenticated && !!user?.email)}
@@ -1625,8 +1666,8 @@ export default function BlogRequestForm() {
                   name="title" 
                   value={formData.title} 
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter an engaging title for your blog post" 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  placeholder="Title" 
                   required 
                   disabled={isSubmitting}
                 />
@@ -1639,298 +1680,30 @@ export default function BlogRequestForm() {
                   name="excerpt" 
                   value={formData.excerpt} 
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   rows={3} 
-                  placeholder="Write a brief summary (2-3 sentences)" 
+                  placeholder="Add a subtitle..." 
                   required 
                   disabled={isSubmitting}
                 />
-              </div>  
-            {/* SEO & Social Sharing - collapsible, collapsed by default */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowSeoSection(!showSeoSection)}
-                  className="w-full flex items-center justify-between px-4 sm:px-5 py-4 text-left hover:bg-gray-100/50 transition-colors"
-                >
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-800">SEO & Social Sharing</h3>
-                    <p className="text-xs text-gray-600 mt-1">
-                      These fields improve how your blog appears in search results and social previews.
-                    </p>
-                  </div>
-                  {showSeoSection ? <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0 ml-2" /> : <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0 ml-2" />}
+              </div>
+
+              {/* Category tags - compact display, full edit in Settings */}
+              <div className="flex flex-wrap items-center gap-2">
+                {formData.categories.map(cat => (
+                  <span key={cat} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
+                    {cat}
+                    <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
+                  </span>
+                ))}
+                <button type="button" onClick={() => setShowSettingsModal(true)} className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 hover:border-teal-400 hover:text-teal-600 text-sm transition-colors">
+                  +
                 </button>
-                {showSeoSection && (
-                <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-4 border-t border-gray-200 pt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 items-start">
-                  <div className="flex flex-col">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
-                    <input
-                      name="meta_title"
-                      value={formData.meta_title}
-                      onChange={handleInputChange}
-                      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        formData.meta_title.length > 65 ? 'border-amber-500' : formData.meta_title.length > 60 ? 'border-amber-300' : 'border-gray-300'
-                      }`}
-                      placeholder="Auto-filled from blog title"
-                      maxLength={65}
-                    />
-                    <p className={`text-xs mt-1 ${formData.meta_title.length > 65 ? 'text-amber-600' : formData.meta_title.length > 60 ? 'text-amber-600' : 'text-gray-500'}`}>
-                      {formData.meta_title.length}/65 {formData.meta_title.length > 60 && formData.meta_title.length <= 65 && '(may be truncated in search)'}
-                    </p>
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-700">Canonical URL</label>
-                      <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={canonicalOverride}
-                          onChange={e => setCanonicalOverride(e.target.checked)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        Advanced: Override
-                      </label>
-                    </div>
-                    <input
-                      name="canonical_url"
-                      value={canonicalOverride ? formData.canonical_url : `${getApiBase().replace(/\/$/, '')}/blog/[assigned-after-approval]`}
-                      onChange={handleInputChange}
-                      readOnly={!canonicalOverride}
-                      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${!canonicalOverride ? 'bg-gray-100 text-gray-600' : 'border-gray-300'}`}
-                      placeholder="https://www.thenefol.com/blog/your-post"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
-                  <textarea
-                    name="meta_description"
-                    value={formData.meta_description}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      formData.meta_description.length > 160 ? 'border-amber-500' : formData.meta_description.length > 155 ? 'border-amber-300' : 'border-gray-300'
-                    }`}
-                    rows={2}
-                    maxLength={160}
-                    placeholder="Auto-filled from excerpt or first paragraph. Google may rewrite this."
-                  />
-                  <p className={`text-xs mt-1 ${formData.meta_description.length > 155 ? 'text-amber-600' : 'text-gray-500'}`}>
-                    {formData.meta_description.length}/160 (ideal 140–155)
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Tags (like hashtags)</label>
-                  <input
-                    name="meta_keywords"
-                    value={formData.meta_keywords}
-                    onChange={handleInputChange}
-                    list="blog-tags"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g. skincare, routine, glowing skin"
-                  />
-                  <datalist id="blog-tags">
-                    {existingTags.map(t => (
-                      <option key={t} value={t} />
-                    ))}
-                  </datalist>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Meta Tags and Keywords for visibilty. Max 5–8 tags, comma-separated.
-                  </p>
-                </div>
-
-                {/* SEO Preview (collapsed) */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setShowSeoPreview(!showSeoPreview)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left text-sm font-medium text-gray-700"
-                  >
-                    SEO Preview (Google-style)
-                    {showSeoPreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                  {showSeoPreview && (
-                    <div className="p-4 bg-white border-t border-gray-200 space-y-1">
-                      <p className="text-blue-700 text-lg hover:underline cursor-default truncate">
-                        {formData.meta_title || formData.title || 'Post title'}
-                      </p>
-                      <p className="text-green-700 text-sm truncate">
-                        {getApiBase().replace(/\/$/, '')}/blog/...
-                      </p>
-                      <p className="text-gray-600 text-sm line-clamp-2">
-                        {formData.meta_description || formData.excerpt || 'Post description'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Open Graph (Social Sharing Preview)</h4>
-                  <p className="text-xs text-gray-600 mb-3">
-                    How your post appears when shared on Facebook, LinkedIn, Twitter, etc. Auto-filled from title and excerpt.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 items-start">
-                    <div className="flex flex-col w-full">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">OG Title</label>
-                      <input
-                        name="og_title"
-                        value={formData.og_title}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Auto-filled from blog title"
-                        maxLength={70}
-                      />
-                    </div>
-                    <div className="flex flex-col w-full">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">OG Description</label>
-                      <textarea
-                        name="og_description"
-                        value={formData.og_description}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
-                        rows={2}
-                        maxLength={200}
-                        placeholder="Auto-filled from excerpt"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">OG Image (1200×630px recommended)</label>
-                    <p className="text-xs text-gray-500 mb-2">Falls back to cover image if not provided</p>
-                    <div className="flex flex-wrap gap-3 items-start">
-                      <div className="flex flex-col gap-2">
-                        {formData.ogImageFile ? (
-                          <div className="relative inline-block">
-                            <img
-                              src={URL.createObjectURL(formData.ogImageFile)}
-                              alt="OG preview"
-                              className="h-24 w-40 object-cover rounded-lg border border-gray-200"
-                            />
-                            <button
-                              type="button"
-                              onClick={removeOgImage}
-                              className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center h-24 w-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
-                            <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                            <span className="text-xs text-gray-500">Upload image</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={handleOgImageUpload}
-                            />
-                          </label>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-[200px]">
-                        <input
-                          name="og_image"
-                          value={formData.og_image}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          placeholder="Or paste image URL"
-                          disabled={!!formData.ogImageFile}
-                        />
-                        <div className="flex gap-2 mt-2">
-                          {formData.coverImage && (
-                            <button
-                              type="button"
-                              onClick={useCoverAsOg}
-                              className="text-xs text-blue-600 hover:underline"
-                            >
-                              Use cover image instead
-                            </button>
-                          )}
-                          {!formData.ogImageFile && !formData.og_image && formData.coverImage && (
-                            <span className="text-xs text-gray-500">Cover image will be used if left empty</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Live social preview */}
-                  <div className="mt-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                    <p className="text-xs font-medium text-gray-600 mb-2">Preview (Facebook/LinkedIn)</p>
-                    <div className="bg-white rounded-lg border border-gray-300 overflow-hidden max-w-md shadow-sm">
-                      {(formData.ogImageFile || formData.og_image || formData.coverImage) && (
-                        <div className="aspect-[1.91/1] bg-gray-200 overflow-hidden">
-                          {formData.ogImageFile ? (
-                            <img src={URL.createObjectURL(formData.ogImageFile)} alt="" className="w-full h-full object-cover" />
-                          ) : formData.og_image ? (
-                            <img src={formData.og_image} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                          ) : formData.coverImage ? (
-                            <img src={URL.createObjectURL(formData.coverImage)} alt="" className="w-full h-full object-cover" />
-                          ) : null}
-                        </div>
-                      )}
-                      <div className="p-3">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">thenefol.com</p>
-                        <p className="font-semibold text-gray-900 line-clamp-2 text-sm">
-                          {formData.og_title || formData.meta_title || formData.title || 'Post title'}
-                        </p>
-                        <p className="text-gray-600 text-xs line-clamp-2 mt-0.5">
-                          {formData.og_description || formData.meta_description || formData.excerpt || 'Post description'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category Tags (For blog categorization)</label>
-                  <div className="flex flex-wrap gap-2">
-                    {categoryOptions.map(category => {
-                      const active = formData.categories.includes(category)
-                      return (
-                        <button
-                          key={category}
-                          type="button"
-                          onClick={() => toggleCategory(category)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                            active
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                          }`}
-                        >
-                          {category}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">Allow Comments</p>
-                    <p className="text-xs text-gray-500">Toggle whether readers can comment on this post.</p>
-                  </div>
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.allow_comments}
-                      onChange={(e) => setFormData(prev => ({ ...prev, allow_comments: e.target.checked }))}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">
-                      {formData.allow_comments ? 'On' : 'Off'}
-                    </span>
-                  </label>
-                </div>
-                </div>
-                )}
-              </div> 
+              </div>
              {/* Rich Text Editor */}
               <div className="w-full">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Blog Content *</label>
-                <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 w-full relative">
+                <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-200 w-full relative">
                   {/* Enhanced Toolbar */}
                   <div className="bg-gray-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative z-20">
                     <div className="flex flex-wrap gap-1 sm:gap-2 items-center min-w-max text-gray-700">
@@ -1939,8 +1712,8 @@ export default function BlogRequestForm() {
                         <button 
                           type="button" 
                           onClick={setParagraph} 
-                          className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors text-xs sm:text-sm font-medium ${
-                            toolbarState.block === 'p' ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                          className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-all duration-200 text-xs sm:text-sm font-medium ${
+                            toolbarState.block === 'p' ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
                           }`}
                           title="Paragraph (default)"
                         >
@@ -1952,7 +1725,7 @@ export default function BlogRequestForm() {
                             type="button" 
                             onClick={() => setHeading(h)} 
                             className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors text-xs sm:text-sm font-semibold ${
-                              toolbarState.block === `h${h}` ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                              toolbarState.block === `h${h}` ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
                             }`}
                             title={`Heading ${h} (click again to unselect)`}
                           >
@@ -1967,7 +1740,7 @@ export default function BlogRequestForm() {
                           type="button" 
                           onClick={() => toggleFormat('bold')} 
                           className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.bold ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                            toolbarState.bold ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
                           }`}
                           title="Bold (toggle)"
                         >
@@ -1977,7 +1750,7 @@ export default function BlogRequestForm() {
                           type="button" 
                           onClick={() => toggleFormat('italic')} 
                           className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.italic ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                            toolbarState.italic ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
                           }`}
                           title="Italic (toggle)"
                         >
@@ -1987,7 +1760,7 @@ export default function BlogRequestForm() {
                           type="button" 
                           onClick={() => toggleFormat('underline')} 
                           className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.underline ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-gray-700 hover:bg-gray-200'
+                            toolbarState.underline ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
                           }`}
                           title="Underline (toggle)"
                         >
@@ -2077,9 +1850,39 @@ export default function BlogRequestForm() {
                     }}
                     onClick={updateToolbarState}
                     className="editor-content h-[320px] sm:h-[380px] overflow-y-auto p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full relative z-10"
-                    data-placeholder="Start writing your blog post here... Use the toolbar above to format your text, add links, and create lists."
+                    data-placeholder="Start writing..."
                     suppressContentEditableWarning
                   />
+                </div>
+                {/* Bottom bar: Version History, Content Info, Settings */}
+                <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 bg-gray-50/50 rounded-b-lg">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { fetchDraftVersions(); setShowVersionHistoryModal(true) }}
+                      className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
+                      title="Version history"
+                    >
+                      <RotateCcw className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowContentInfoModal(true)}
+                      className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
+                      title="Post info"
+                    >
+                      <Info className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(true)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200"
+                    title="SEO & Sharing"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Settings
+                  </button>
                 </div>
               </div> 
              {/* Cover & Detail Image Uploads - compact side-by-side */}
@@ -2108,11 +1911,11 @@ export default function BlogRequestForm() {
                   ) : (
                     <label
                       htmlFor="cover-image-upload"
-                      className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all group"
+                      className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-all group"
                     >
                       <input type="file" accept="image/*" onChange={handleCoverImageUpload} className="hidden" id="cover-image-upload" disabled={isSubmitting} />
-                      <Upload className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                      <span className="text-sm text-gray-600 group-hover:text-blue-600">Choose cover image</span>
+                      <Upload className="w-8 h-8 text-gray-400 group-hover:text-teal-500 transition-colors" />
+                      <span className="text-sm text-gray-600 group-hover:text-teal-600">Choose cover image</span>
                       <span className="text-xs text-gray-400">JPG, PNG, WebP · Max 5MB</span>
                     </label>
                   )}
@@ -2142,11 +1945,11 @@ export default function BlogRequestForm() {
                   ) : (
                     <label
                       htmlFor="detail-image-upload"
-                      className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all group"
+                      className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-all group"
                     >
                       <input type="file" accept="image/*" onChange={handleDetailImageUpload} className="hidden" id="detail-image-upload" disabled={isSubmitting} />
-                      <Upload className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                      <span className="text-sm text-gray-600 group-hover:text-blue-600">Choose detail image</span>
+                      <Upload className="w-8 h-8 text-gray-400 group-hover:text-teal-500 transition-colors" />
+                      <span className="text-sm text-gray-600 group-hover:text-teal-600">Choose detail image</span>
                       <span className="text-xs text-gray-400">JPG, PNG, WebP · Max 5MB</span>
                     </label>
                   )}
@@ -2168,14 +1971,14 @@ export default function BlogRequestForm() {
                   id="terms"
                   checked={agreedToTerms} 
                   onChange={e => setAgreedToTerms(e.target.checked)}
-                  className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-4 h-4 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
                 />
                 <label htmlFor="terms" className="text-sm text-gray-700">
                   I agree to the{' '}
                   <button 
                     type="button" 
                     onClick={() => setShowTermsModal(true)} 
-                    className="text-blue-600 hover:text-blue-700 underline font-medium"
+                    className="text-teal-600 hover:text-teal-700 underline font-medium"
                   >
                     Terms & Conditions
                   </button>
@@ -2187,7 +1990,7 @@ export default function BlogRequestForm() {
                 <button 
                   type="button" 
                   onClick={() => setShowPreview(true)} 
-                  className="w-full sm:w-auto px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-3 border-2 border-teal-600 text-teal-600 rounded-full hover:bg-teal-50 transition-colors font-medium flex items-center justify-center gap-2"
                   disabled={isSubmitting}
                 >
                   <Eye className="w-4 h-4" />
@@ -2206,11 +2009,11 @@ export default function BlogRequestForm() {
                     type="button" 
                     onClick={handleSaveDraft}
                     disabled={isSubmitting || isSavingDraft}
-                    className="w-full sm:w-auto px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto px-6 py-3 border-2 border-teal-600 text-teal-600 rounded-full hover:bg-teal-50 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSavingDraft ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
                         Saving...
                       </>
                     ) : (
@@ -2223,7 +2026,7 @@ export default function BlogRequestForm() {
                   <button 
                     type="submit" 
                     disabled={isSubmitting || !agreedToTerms}
-                    className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-6 py-3 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -2273,7 +2076,7 @@ export default function BlogRequestForm() {
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
                 placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
               />
               <p className="text-xs text-gray-500 mt-2">Paste a YouTube link to embed the video (centered, like images)</p>
             </div>
@@ -2288,7 +2091,7 @@ export default function BlogRequestForm() {
               <button
                 type="button"
                 onClick={confirmYouTube}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
               >
                 Insert Video
               </button>
@@ -2310,7 +2113,7 @@ export default function BlogRequestForm() {
                   value={linkData.text}
                   onChange={(e) => setLinkData(prev => ({ ...prev, text: e.target.value }))}
                   placeholder="Enter link text..."
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
                 />
               </div>
               <div>
@@ -2320,7 +2123,7 @@ export default function BlogRequestForm() {
                   value={linkData.url}
                   onChange={(e) => setLinkData(prev => ({ ...prev, url: e.target.value }))}
                   placeholder="https://example.com"
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             </div>
@@ -2333,7 +2136,7 @@ export default function BlogRequestForm() {
               </button>
               <button
                 onClick={confirmLink}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
               >
                 Insert Link
               </button>
@@ -2432,7 +2235,7 @@ export default function BlogRequestForm() {
               value={imageCaption}
               onChange={(e) => setImageCaption(e.target.value)}
               placeholder="Enter caption..."
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
             />
             <div className="flex gap-3 mt-4 justify-end">
               <button
@@ -2443,7 +2246,7 @@ export default function BlogRequestForm() {
               </button>
               <button
                 onClick={saveImageCaption}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
               >
                 Save
               </button>
@@ -2462,7 +2265,7 @@ export default function BlogRequestForm() {
               value={imageAltText}
               onChange={(e) => setImageAltText(e.target.value)}
               placeholder="Enter alt text..."
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
             />
             <p className="text-xs text-gray-500 mt-2">Alt text helps screen readers and SEO</p>
             <div className="flex gap-3 mt-4 justify-end">
@@ -2474,7 +2277,7 @@ export default function BlogRequestForm() {
               </button>
               <button
                 onClick={saveImageAltText}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
               >
                 Save
               </button>
@@ -2500,7 +2303,7 @@ export default function BlogRequestForm() {
               </button>
               <button
                 onClick={handleRestoreDraft}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
               >
                 Restore
               </button>
@@ -2526,7 +2329,7 @@ export default function BlogRequestForm() {
             <div className="flex justify-end mt-6">
               <button
                 onClick={() => setShowTermsModal(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
               >
                 Close
               </button>
@@ -2556,6 +2359,233 @@ export default function BlogRequestForm() {
           categories={formData.categories}
           onClose={() => setShowPreview(false)}
         />
+      )}
+
+      {/* Settings Modal - SEO & Sharing */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowSettingsModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-modal-in" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Settings — SEO & Sharing</h3>
+              <button onClick={() => setShowSettingsModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
+                  <input name="meta_title" value={formData.meta_title} onChange={handleInputChange} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-teal-500 ${formData.meta_title.length > 65 ? 'border-amber-500' : 'border-gray-300'}`} placeholder="Auto-filled from title" maxLength={65} />
+                  <p className="text-xs mt-1 text-gray-500">{formData.meta_title.length}/65</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">Canonical URL</label>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <input type="checkbox" checked={canonicalOverride} onChange={e => setCanonicalOverride(e.target.checked)} className="rounded" />
+                      Override
+                    </label>
+                  </div>
+                  <input name="canonical_url" value={canonicalOverride ? formData.canonical_url : `${getApiBase().replace(/\/$/, '')}/blog/[assigned-after-approval]`} onChange={handleInputChange} readOnly={!canonicalOverride} className={`w-full px-4 py-2.5 border rounded-lg ${!canonicalOverride ? 'bg-gray-100' : 'border-gray-300'}`} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
+                <textarea name="meta_description" value={formData.meta_description} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" rows={2} maxLength={160} placeholder="Auto-filled from excerpt" />
+                <p className="text-xs mt-1 text-gray-500">{formData.meta_description.length}/160</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Meta Tags</label>
+                <input name="meta_keywords" value={formData.meta_keywords} onChange={handleInputChange} list="blog-tags" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="skincare, routine, glowing skin" />
+                <datalist id="blog-tags">{existingTags.map(t => <option key={t} value={t} />)}</datalist>
+              </div>
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Open Graph (Social Sharing)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">OG Title</label>
+                    <input name="og_title" value={formData.og_title} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" maxLength={70} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">OG Description</label>
+                    <textarea name="og_description" value={formData.og_description} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" rows={2} maxLength={200} />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">OG Image</label>
+                  <div className="flex gap-3">
+                    {formData.ogImageFile ? (
+                      <div className="relative">
+                        <img src={URL.createObjectURL(formData.ogImageFile)} alt="" className="h-24 w-40 object-cover rounded-lg border" />
+                        <button type="button" onClick={removeOgImage} className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full"><X className="w-3 h-3" /></button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center h-24 w-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-teal-400">
+                        <Upload className="w-6 h-6 text-gray-400" />
+                        <span className="text-xs text-gray-500">Upload</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleOgImageUpload} />
+                      </label>
+                    )}
+                    <input name="og_image" value={formData.og_image} onChange={handleInputChange} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg" placeholder="Or paste URL" disabled={!!formData.ogImageFile} />
+                  </div>
+                  {formData.coverImage && (
+                    <button type="button" onClick={useCoverAsOg} className="text-xs text-teal-600 hover:underline mt-2">Use cover image</button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Categories</label>
+                <div className="flex flex-wrap gap-2">
+                  {categoryOptions.map(c => (
+                    <button key={c} type="button" onClick={() => toggleCategory(c)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${formData.categories.includes(c) ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-gray-700 border-gray-300 hover:border-teal-400'}`}>{c}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Allow Comments</p>
+                  <p className="text-xs text-gray-500">Readers can comment on this post</p>
+                </div>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={formData.allow_comments} onChange={e => setFormData(prev => ({ ...prev, allow_comments: e.target.checked }))} className="rounded" />
+                  <span className="text-sm">{formData.allow_comments ? 'On' : 'Off'}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Version History Modal */}
+      {showVersionHistoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowVersionHistoryModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col animate-modal-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
+              <button onClick={() => setShowVersionHistoryModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex flex-1 min-h-0">
+              <div className="flex-1 p-6 border-r overflow-y-auto">
+                {selectedVersionId ? (
+                  (() => {
+                    const v = draftVersions.find(x => x.id === selectedVersionId)
+                    const text = v ? (v.content || '').replace(/<[^>]*>/g, ' ').trim() : ''
+                    return (
+                      <div className="prose prose-sm max-w-none">
+                        {text ? <p className="whitespace-pre-wrap">{text.slice(0, 2000)}{text.length > 2000 ? '...' : ''}</p> : (
+                          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                            <FileText className="w-16 h-16 mb-4" />
+                            <p className="font-medium text-gray-600">This version is empty</p>
+                            <p className="text-sm">Please select another version</p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                    <FileText className="w-16 h-16 mb-4" />
+                    <p className="font-medium text-gray-600">This version is empty</p>
+                    <p className="text-sm">Please select another version</p>
+                  </div>
+                )}
+              </div>
+              <div className="w-72 flex-shrink-0 overflow-y-auto">
+                <div className="p-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">From database</p>
+                  {draftVersions.length === 0 ? (
+                    <p className="text-sm text-gray-500 py-4">No versions yet</p>
+                  ) : (
+                    draftVersions.map((v, i) => {
+                      const d = new Date(v.updatedAt || v.createdAt)
+                      const isCurrent = i === 0
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setSelectedVersionId(v.id)}
+                          className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition-all duration-200 ${selectedVersionId === v.id ? 'bg-teal-50 ring-1 ring-teal-200' : 'hover:bg-gray-50'} ${isCurrent ? 'border-l-4 border-teal-500' : ''}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {isCurrent && <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">Current version</span>}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">{d.toLocaleString()}</p>
+                          <p className="text-xs text-gray-600 mt-1">{v.authorName || 'unknown'}</p>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
+              <span className="text-gray-500 text-sm">Select a version to preview or restore</span>
+              <div className="flex gap-2">
+                <button onClick={() => setShowVersionHistoryModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">Cancel</button>
+                <button
+                  disabled={!selectedVersionId}
+                  onClick={async () => {
+                    if (!selectedVersionId) return
+                    const token = localStorage.getItem('token')
+                    if (!token) return
+                    try {
+                      const res = await fetch(`${getApiBase()}/api/blog/drafts/version/${selectedVersionId}`, { headers: { Authorization: `Bearer ${token}` } })
+                      const draft = res.ok ? await res.json() : null
+                      if (draft) {
+                        const arr = (x: any): string[] => (Array.isArray(x) ? x : typeof x === 'string' ? (() => { try { const p = JSON.parse(x); return Array.isArray(p) ? p : [] } catch { return [] } })() : [])
+                        const kw = draft.meta_keywords
+                        const metaKeywords = typeof kw === 'string' ? kw : (Array.isArray(kw) ? (kw as string[]).join(', ') : '')
+                        setFormData(prev => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: metaKeywords, og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
+                        if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
+                        draftIdRef.current = draft.id
+                        versionRef.current = draft.version ?? 0
+                      }
+                    } catch {}
+                    setShowVersionHistoryModal(false)
+                  }}
+                  className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Restore draft
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Content Info Modal (Post info) */}
+      {showContentInfoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowContentInfoModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-modal-in" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Post info</h3>
+            {(() => {
+              const s = getContentStats()
+              return (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Characters</span>
+                    <span className="text-sm font-medium text-gray-900">{s.chars}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Words</span>
+                    <span className="text-sm font-medium text-gray-900">{s.words}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Sentences</span>
+                    <span className="text-sm font-medium text-gray-900">{s.sentences}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Reading time</span>
+                    <span className="text-sm font-medium text-gray-900">{s.readingTime} min</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">Speaking time</span>
+                    <span className="text-sm font-medium text-gray-900">{s.speakingTime} min</span>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
       )}
     </>
   )

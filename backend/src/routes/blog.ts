@@ -402,6 +402,55 @@ router.get('/drafts/auto', authenticateToken, async (req, res) => {
   }
 })
 
+// Version history: current auto-draft + manual drafts (for Version History modal)
+router.get('/drafts/versions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const { rows } = await pool.query(
+      `SELECT id, title, content, excerpt, status, version, created_at, updated_at, author_name
+       FROM blog_drafts
+       WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
+       ORDER BY updated_at DESC LIMIT 30`,
+      [userId, postId]
+    )
+    const versions = rows.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      content: r.content,
+      excerpt: r.excerpt,
+      status: r.status,
+      version: r.version ?? 0,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      authorName: r.author_name || 'unknown',
+    }))
+    res.json(versions)
+  } catch (error) {
+    console.error('Error fetching draft versions:', error)
+    res.status(500).json({ message: 'Failed to fetch versions' })
+  }
+})
+
+// Get single version/draft by id (for restore)
+router.get('/drafts/version/:id', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    const id = req.params.id
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const { rows } = await pool.query(
+      `SELECT * FROM blog_drafts WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    )
+    if (rows.length === 0) return res.status(404).json({ message: 'Version not found' })
+    res.json(rows[0])
+  } catch (error) {
+    console.error('Error fetching draft version:', error)
+    res.status(500).json({ message: 'Failed to fetch version' })
+  }
+})
+
 // Get latest drafts (auto + manual) for restore logic - newest wins
 router.get('/drafts/latest', authenticateToken, async (req, res) => {
   try {

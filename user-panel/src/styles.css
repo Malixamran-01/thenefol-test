@@ -7,6 +7,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Modal animations */
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-modal-in {
+  animation: modalFadeIn 0.2s ease-out forwards;
+}
+
 /* Script text style for special headings */
 .script-text {
   font-family: 'Great Vibes', cursive;
