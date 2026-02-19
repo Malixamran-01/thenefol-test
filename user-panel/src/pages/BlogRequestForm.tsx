@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp, Save, WifiOff, RotateCcw, Info, Settings } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp, Save, WifiOff, RotateCcw, Info, Settings, Undo2, Redo2, Strikethrough, Quote } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
@@ -171,10 +171,11 @@ export default function BlogRequestForm() {
     og_description: false
   })
   const [toolbarState, setToolbarState] = useState({
-    block: 'p' as 'p' | 'h1' | 'h2' | 'h3' | 'h4',
+    block: 'p' as 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote',
     bold: false,
     italic: false,
-    underline: false
+    underline: false,
+    strikethrough: false
   })
 
   const colors = [
@@ -362,7 +363,7 @@ export default function BlogRequestForm() {
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) return
     const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
-    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4']
+    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4', 'blockquote']
     if (!validBlocks.includes(blockVal)) {
       document.execCommand('formatBlock', false, 'p')
       document.execCommand('foreColor', false, '#111827')
@@ -376,17 +377,18 @@ export default function BlogRequestForm() {
     if (!editorRef.current) return
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) {
-      setToolbarState({ block: 'p', bold: false, italic: false, underline: false })
+      setToolbarState({ block: 'p', bold: false, italic: false, underline: false, strikethrough: false })
       return
     }
     const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
-    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4']
-    const block = validBlocks.includes(blockVal) ? (blockVal as 'p' | 'h1' | 'h2' | 'h3' | 'h4') : 'p'
+    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4', 'blockquote']
+    const block = validBlocks.includes(blockVal) ? (blockVal as 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') : 'p'
     setToolbarState({
       block,
       bold: document.queryCommandState('bold'),
       italic: document.queryCommandState('italic'),
-      underline: document.queryCommandState('underline')
+      underline: document.queryCommandState('underline'),
+      strikethrough: document.queryCommandState('strikeThrough')
     })
     if (!validBlocks.includes(blockVal)) {
       ensureParagraphFormat()
@@ -418,25 +420,39 @@ export default function BlogRequestForm() {
     }
   }, [])
 
-  const setBlockFormat = (block: 'p' | 'h1' | 'h2' | 'h3' | 'h4') => {
+  const setBlockFormat = (block: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') => {
     editorRef.current?.focus()
     const current = toolbarState.block
     if (block === 'p') {
       exec('formatBlock', 'p')
+    } else if (block === 'blockquote') {
+      if (current === 'blockquote') exec('formatBlock', 'p')
+      else exec('formatBlock', 'blockquote')
     } else {
-      if (current === block) {
-        exec('formatBlock', 'p')
-      } else {
-        exec('formatBlock', block)
-      }
+      if (current === block) exec('formatBlock', 'p')
+      else exec('formatBlock', block)
     }
     setTimeout(updateToolbarState, 0)
   }
 
-  const toggleFormat = (command: 'bold' | 'italic' | 'underline') => {
+  const toggleFormat = (command: 'bold' | 'italic' | 'underline' | 'strikeThrough') => {
     exec(command)
     setTimeout(updateToolbarState, 0)
   }
+
+  const setBlockquote = () => {
+    editorRef.current?.focus()
+    const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
+    if (blockVal === 'blockquote') {
+      exec('formatBlock', 'p')
+    } else {
+      exec('formatBlock', 'blockquote')
+    }
+    setTimeout(updateToolbarState, 0)
+  }
+
+  const handleUndo = () => { editorRef.current?.focus(); exec('undo') }
+  const handleRedo = () => { editorRef.current?.focus(); exec('redo') }
 
   const setHeading = (level: number) => {
     setBlockFormat(`h${level}` as 'h1' | 'h2' | 'h3' | 'h4')
@@ -1545,6 +1561,7 @@ export default function BlogRequestForm() {
         .editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h4 { font-size: 1.25em; font-weight: bold; margin: 0.5em 0; }
         .editor-content p { margin: 0.5em 0; color: #111827; }
+        .editor-content blockquote { margin: 1em 0; padding-left: 1em; border-left: 4px solid #d1d5db; color: #6b7280; font-style: italic; }
         .editor-content ul { list-style: disc; margin-left: 2em; padding-left: 0.5em; }
         .editor-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
         .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
@@ -1635,233 +1652,101 @@ export default function BlogRequestForm() {
           </div>
         )}
 
-        {/* Main Content */}
+        {/* Main Content - whole-page notes app layout */}
         <div className="max-w-4xl mx-auto p-4 sm:p-6">
           <div ref={scrollContainerRef} className="bg-white rounded-lg shadow-sm border relative">
-            <form id="blog-form" onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Author Information */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Your Name *</label>
-                  <input 
-                    name="author_name" 
-                    value={formData.author_name} 
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)] disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    placeholder="Enter your full name" 
-                    required 
-                    disabled={isSubmitting || (isAuthenticated && !!user?.name)}
-                  />
+            <form id="blog-form" onSubmit={handleSubmit} className="min-h-[70vh] flex flex-col">
+              {/* Toolbar - above content */}
+              <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex flex-wrap gap-1 items-center overflow-x-auto shrink-0">
+                <button type="button" onClick={handleUndo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Undo"><Undo2 className="w-4 h-4" /></button>
+                <button type="button" onClick={handleRedo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Redo"><Redo2 className="w-4 h-4" /></button>
+                <span className="w-px h-5 bg-gray-300 mx-1" />
+                <div className="flex gap-0.5">
+                  <button type="button" onClick={setParagraph} className={`px-2 py-1.5 rounded text-xs font-medium ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Paragraph">P</button>
+                  {[1, 2, 3, 4].map(h => (
+                    <button key={h} type="button" onClick={() => setHeading(h)} className={`px-2 py-1.5 rounded text-xs font-semibold ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
-                  <input 
-                    name="author_email" 
-                    value={formData.author_email} 
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)] disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    placeholder="your.email@domain.com" 
-                    required 
-                    disabled={isSubmitting || (isAuthenticated && !!user?.email)}
-                  />
-                </div>
+                <span className="w-px h-5 bg-gray-300 mx-1" />
+                <button type="button" onClick={() => toggleFormat('bold')} className={`p-2 rounded ${toolbarState.bold ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Bold"><Bold className="w-4 h-4" /></button>
+                <button type="button" onClick={() => toggleFormat('italic')} className={`p-2 rounded ${toolbarState.italic ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Italic"><Italic className="w-4 h-4" /></button>
+                <button type="button" onClick={() => toggleFormat('underline')} className={`p-2 rounded ${toolbarState.underline ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Underline"><Underline className="w-4 h-4" /></button>
+                <button type="button" onClick={() => toggleFormat('strikeThrough')} className={`p-2 rounded ${toolbarState.strikethrough ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Strikethrough"><Strikethrough className="w-4 h-4" /></button>
+                <span className="w-px h-5 bg-gray-300 mx-1" />
+                <button type="button" onClick={insertLink} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Link"><LinkIcon className="w-4 h-4" /></button>
+                <button type="button" onClick={insertImageIntoEditor} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Image"><ImageIcon className="w-4 h-4" /></button>
+                <button type="button" onClick={insertYouTube} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="YouTube"><Youtube className="w-4 h-4" /></button>
+                <button type="button" onClick={setBlockquote} className={`p-2 rounded ${toolbarState.block === 'blockquote' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Quote"><Quote className="w-4 h-4" /></button>
+                <button type="button" onClick={() => insertList(false)} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Bullet List"><List className="w-4 h-4" /></button>
+                <button type="button" onClick={() => insertList(true)} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
+                <span className="w-px h-5 bg-gray-300 mx-1" />
+                <button type="button" onClick={toggleColorPicker} className="p-2 rounded hover:bg-gray-200 flex items-center gap-1 text-gray-600" ref={colorButtonRef} title="Text Color">
+                  <Palette className="w-4 h-4" />
+                  <div className="w-3 h-3 rounded border border-gray-400" style={{ backgroundColor: currentColor }} />
+                </button>
               </div>
 
-              {/* Blog Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Blog Title *</label>
-                <input 
-                  name="title" 
-                  value={formData.title} 
+              {/* Content area - title, subtitle, categories, body - notes app flow */}
+              <div className="flex-1 flex flex-col px-6 py-6 sm:px-8 sm:py-8">
+                <input
+                  name="title"
+                  value={formData.title}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]"
-                  placeholder="Title" 
-                  required 
+                  className="w-full text-2xl sm:text-3xl font-bold text-gray-900 placeholder-gray-400 border-none focus:ring-0 focus:outline-none py-1 mb-2"
+                  placeholder="Title"
+                  required
                   disabled={isSubmitting}
+                />
+                <textarea
+                  name="excerpt"
+                  value={formData.excerpt}
+                  onChange={handleInputChange}
+                  className="w-full text-base text-gray-500 placeholder-gray-400 border-none focus:ring-0 focus:outline-none resize-none py-1 mb-3 min-h-[4rem]"
+                  placeholder="Add a subtitle..."
+                  required
+                  disabled={isSubmitting}
+                  rows={2}
+                />
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  {formData.categories.map(cat => (
+                    <span key={cat} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
+                      {cat}
+                      <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
+                    </span>
+                  ))}
+                </div>
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleEditorInput}
+                  onKeyDown={handleEditorKeyDown}
+                  onFocus={updateToolbarState}
+                  onBlur={() => {
+                    const fd = formDataRef.current
+                    if (fd) {
+                      const content = (editorRef.current?.innerHTML ?? fd.content) || ''
+                      const payload = { ...fd, content }
+                      saveLocalDraft(payload)
+                      setLastSavedAt(new Date().toISOString())
+                      syncToServer()
+                    }
+                  }}
+                  onClick={updateToolbarState}
+                  className="editor-content flex-1 min-h-[320px] overflow-y-auto outline-none text-base text-gray-800 w-full pt-1"
+                  data-placeholder="Start writing..."
+                  suppressContentEditableWarning
                 />
               </div>
 
-              {/* Short Excerpt */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Short Excerpt *</label>
-                <textarea 
-                  name="excerpt" 
-                  value={formData.excerpt} 
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]"
-                  rows={3} 
-                  placeholder="Add a subtitle..." 
-                  required 
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* Category tags - edit via Settings button in bottom bar */}
-              <div className="flex flex-wrap items-center gap-2">
-                {formData.categories.map(cat => (
-                  <span key={cat} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
-                    {cat}
-                    <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
-                  </span>
-                ))}
-              </div>
-             {/* Rich Text Editor */}
-              <div className="w-full">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Blog Content *</label>
-                <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-[rgb(75,151,201)] focus-within:ring-2 focus-within:ring-[rgba(75,151,201,0.3)] w-full relative">
-                  {/* Enhanced Toolbar */}
-                  <div className="bg-gray-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative z-20">
-                    <div className="flex flex-wrap gap-1 sm:gap-2 items-center min-w-max text-gray-700">
-                      {/* Text Format Group */}
-                      <div className="flex gap-1 border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
-                        <button 
-                          type="button" 
-                          onClick={setParagraph} 
-                          className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-all duration-200 text-xs sm:text-sm font-medium ${
-                            toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
-                          }`}
-                          title="Paragraph (default)"
-                        >
-                          P
-                        </button>
-                        {[1, 2, 3, 4].map(h => (
-                          <button 
-                            key={h} 
-                            type="button" 
-                            onClick={() => setHeading(h)} 
-                            className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors text-xs sm:text-sm font-semibold ${
-                              toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
-                            }`}
-                            title={`Heading ${h} (click again to unselect)`}
-                          >
-                            H{h}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Style Group */}
-                      <div className="flex gap-1 border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
-                        <button 
-                          type="button" 
-                          onClick={() => toggleFormat('bold')} 
-                          className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.bold ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
-                          }`}
-                          title="Bold (toggle)"
-                        >
-                          <Bold size={18} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => toggleFormat('italic')} 
-                          className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.italic ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
-                          }`}
-                          title="Italic (toggle)"
-                        >
-                          <Italic size={18} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => toggleFormat('underline')} 
-                          className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.underline ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
-                          }`}
-                          title="Underline (toggle)"
-                        >
-                          <Underline size={18} className="sm:w-5 sm:h-5" />
-                        </button>
-                      </div>
-
-                      {/* Color Picker */}
-                      <div className="border-r border-gray-300 pr-1 sm:pr-2 flex-shrink-0">
-                        <button 
-                          type="button" 
-                          onClick={toggleColorPicker}
-                          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1 text-gray-700"
-                          title="Text Color"
-                          ref={colorButtonRef}
-                        >
-                          <Palette size={18} className="sm:w-5 sm:h-5" />
-                          <div 
-                            className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-gray-400 flex-shrink-0" 
-                            style={{ backgroundColor: currentColor }}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Link, Image & Lists Group */}
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button 
-                          type="button" 
-                          onClick={insertLink} 
-                          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
-                          title="Insert Link"
-                        >
-                          <LinkIcon size={18} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={insertImageIntoEditor} 
-                          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
-                          title="Insert Image"
-                        >
-                          <ImageIcon size={18} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={insertYouTube} 
-                          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
-                          title="Insert YouTube Video"
-                        >
-                          <Youtube size={18} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => insertList(false)} 
-                          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
-                          title="Bullet List"
-                        >
-                          <List size={18} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => insertList(true)} 
-                          className="p-1.5 sm:p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
-                          title="Numbered List"
-                        >
-                          <ListOrdered size={18} className="sm:w-5 sm:h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Editor Area */}
-                  <div
-                    ref={editorRef}
-                    contentEditable
-                    onInput={handleEditorInput}
-                    onKeyDown={handleEditorKeyDown}
-                    onFocus={updateToolbarState}
-                    onBlur={() => {
-                      const fd = formDataRef.current
-                      if (fd) {
-                        const content = (editorRef.current?.innerHTML ?? fd.content) || ''
-                        const payload = { ...fd, content }
-                        saveLocalDraft(payload)
-                        setLastSavedAt(new Date().toISOString())
-                        syncToServer()
-                      }
-                    }}
-                    onClick={updateToolbarState}
-                    className="editor-content h-[320px] sm:h-[380px] overflow-y-auto p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full relative z-10"
-                    data-placeholder="Start writing..."
-                    suppressContentEditableWarning
-                  />
+              {/* Author info - compact, at bottom of form area */}
+              <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/50 rounded-b-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input name="author_name" value={formData.author_name} onChange={handleInputChange} placeholder="Your name *" required disabled={isSubmitting || (isAuthenticated && !!user?.name)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]" />
+                  <input name="author_email" value={formData.author_email} onChange={handleInputChange} placeholder="Email *" required disabled={isSubmitting || (isAuthenticated && !!user?.email)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]" />
                 </div>
               </div> 
              {/* Cover & Detail Image Uploads - compact side-by-side */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 px-6 pb-6 sm:px-8 sm:pb-8">
                 {/* Cover Image */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
