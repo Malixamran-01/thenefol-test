@@ -1581,14 +1581,6 @@ export default function BlogRequestForm() {
             </div>
             <div className="flex items-center gap-2">
               <button 
-                type="button"
-                onClick={() => setShowPreview(true)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200"
-                disabled={isSubmitting}
-              >
-                Preview
-              </button>
-              <button 
                 type="submit"
                 form="blog-form"
                 disabled={isSubmitting || !agreedToTerms}
@@ -1597,7 +1589,7 @@ export default function BlogRequestForm() {
                 onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
-                Continue
+                Submit Blog Request
               </button>
             </div>
           </div>
@@ -1692,7 +1684,7 @@ export default function BlogRequestForm() {
                 />
               </div>
 
-              {/* Category tags - compact display, full edit in Settings */}
+              {/* Category tags - edit via Settings button in bottom bar */}
               <div className="flex flex-wrap items-center gap-2">
                 {formData.categories.map(cat => (
                   <span key={cat} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
@@ -1700,9 +1692,6 @@ export default function BlogRequestForm() {
                     <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
                   </span>
                 ))}
-                <button type="button" onClick={() => setShowSettingsModal(true)} className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 text-sm transition-colors hover:border-[rgb(75,151,201)] hover:text-[rgb(75,151,201)]">
-                  +
-                </button>
               </div>
              {/* Rich Text Editor */}
               <div className="w-full">
@@ -1858,36 +1847,6 @@ export default function BlogRequestForm() {
                     suppressContentEditableWarning
                   />
                 </div>
-                {/* Bottom bar: Version History, Content Info, Settings */}
-                <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 bg-gray-50/50 rounded-b-lg">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { fetchDraftVersions(); setShowVersionHistoryModal(true) }}
-                      className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
-                      title="Version history"
-                    >
-                      <RotateCcw className="w-5 h-5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowContentInfoModal(true)}
-                      className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
-                      title="Post info"
-                    >
-                      <Info className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowSettingsModal(true)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200"
-                    title="SEO & Sharing"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Settings
-                  </button>
-                </div>
               </div> 
              {/* Cover & Detail Image Uploads - compact side-by-side */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -1991,20 +1950,38 @@ export default function BlogRequestForm() {
                 </label>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons: Version History, Content Info, Preview | Cancel, Save Draft, Settings */}
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t">
-                <button 
-                  type="button" 
-                  onClick={() => setShowPreview(true)} 
-                  className="w-full sm:w-auto px-6 py-3 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
-                  style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
-                  disabled={isSubmitting}
-                >
-                  <Eye className="w-4 h-4" />
-                  Preview
-                </button>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => { fetchDraftVersions(); setShowVersionHistoryModal(true) }}
+                    className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
+                    title="Version history"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowContentInfoModal(true)}
+                    className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
+                    title="Post info"
+                  >
+                    <Info className="w-5 h-5" />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPreview(true)} 
+                    className="px-4 py-2 border-2 rounded-lg transition-colors font-medium flex items-center gap-2"
+                    style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+                    disabled={isSubmitting}
+                  >
+                    <Eye className="w-4 h-4" />
+                    Preview
+                  </button>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <button 
                     type="button" 
@@ -2035,22 +2012,14 @@ export default function BlogRequestForm() {
                       </>
                     )}
                   </button>
-                  <button 
-                    type="submit" 
-                    disabled={isSubmitting || !agreedToTerms}
-                    className="w-full sm:w-auto px-6 py-3 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    style={{ backgroundColor: 'rgb(75,151,201)' }}
-                    onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'; }}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(true)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200"
+                    title="SEO & Sharing"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      'Submit Blog Request'
-                    )}
+                    <Settings className="w-4 h-4" />
+                    Settings
                   </button>
                 </div>
               </div>
