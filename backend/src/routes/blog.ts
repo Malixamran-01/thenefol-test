@@ -8,6 +8,7 @@ import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
 
 const DRAFT_SAVE_RATE_LIMIT_MS = 30_000
+const VERSION_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes - create version snapshot
 const lastDraftSaveByUser = new Map<string, number>()
 
 const router = express.Router()
@@ -273,6 +274,47 @@ function computeContentHash(payload: { title?: string; content?: string; excerpt
   return crypto.createHash('sha256').update(str).digest('hex')
 }
 
+/** Insert immutable version snapshot. Only INSERT, never UPDATE. draftId can be null for orphaned versions. */
+async function insertDraftVersion(
+  p: Pool,
+  opts: {
+    draftId: number | null
+    userId: string
+    postId: number | null
+    snapshotReason: 'AUTO_INTERVAL' | 'MANUAL_SAVE' | 'PUBLISH' | 'RESTORE'
+    title: string
+    content: string
+    excerpt: string
+    authorName: string
+    authorEmail: string
+    metaTitle: string | null
+    metaDescription: string | null
+    metaKeywords: string | null
+    ogTitle: string | null
+    ogDescription: string | null
+    ogImage: string | null
+    canonicalUrl: string | null
+    categories: string
+    allowComments: boolean
+  }
+): Promise<void> {
+  const versionNumber = opts.draftId
+    ? (await p.query(`SELECT COALESCE(MAX(version_number), 0) + 1 as next_num FROM blog_draft_versions WHERE draft_id = $1`, [opts.draftId])).rows[0]?.next_num ?? 1
+    : 1
+  await p.query(
+    `INSERT INTO blog_draft_versions (draft_id, user_id, post_id, title, content, excerpt, author_name, author_email,
+      meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
+      categories, allow_comments, version_number, snapshot_reason)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+    [
+      opts.draftId, opts.userId, opts.postId, opts.title, opts.content, opts.excerpt,
+      opts.authorName, opts.authorEmail, opts.metaTitle, opts.metaDescription, opts.metaKeywords,
+      opts.ogTitle, opts.ogDescription, opts.ogImage, opts.canonicalUrl, opts.categories,
+      opts.allowComments, versionNumber, opts.snapshotReason
+    ]
+  )
+}
+
 // Auto-draft: create or update latest auto-draft (1 per user)
 // Rate limit: max 1 save / 30 sec per user. Hash check: skip write if content unchanged.
 router.post('/drafts/auto', authenticateToken, async (req, res) => {
@@ -343,6 +385,7 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
     lastDraftSaveByUser.set(userId, now)
     if (existing.length > 0) {
       const newVersion = (existing[0].version || 0) + 1
+      const draftId = existing[0].id
       const { rowCount } = await pool.query(`
         UPDATE blog_drafts SET
           title = $1, content = $2, excerpt = $3, author_name = $4, author_email = $5,
@@ -356,17 +399,49 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
         og_title || null, og_description || null, og_image || null, canonical_url || null,
         parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
         String(allow_comments).toLowerCase() === 'false' ? false : true,
-        contentHash, newVersion, existing[0].id, existing[0].version ?? 0
+        contentHash, newVersion, draftId, existing[0].version ?? 0
       ])
       if ((rowCount ?? 0) === 0) {
-        const { rows: recheck } = await pool.query(`SELECT version FROM blog_drafts WHERE id = $1`, [existing[0].id])
+        const { rows: recheck } = await pool.query(`SELECT version FROM blog_drafts WHERE id = $1`, [draftId])
         return res.status(409).json({
           status: 'conflict',
           serverVersion: recheck[0]?.version ?? 0,
           message: 'Draft was updated in another tab. Reload latest or continue here.',
         })
       }
-      return res.json({ draftId: existing[0].id, version: newVersion, updated: true })
+      // Create version snapshot if last one was > 5 min ago (meaningful snapshot, not every save)
+      try {
+        const { rows: lastVer } = await pool.query(
+          `SELECT created_at FROM blog_draft_versions WHERE draft_id = $1 ORDER BY created_at DESC LIMIT 1`,
+          [draftId]
+        )
+        const lastVerAt = lastVer[0]?.created_at ? new Date(lastVer[0].created_at).getTime() : 0
+        if (now - lastVerAt >= VERSION_SNAPSHOT_INTERVAL_MS) {
+          await insertDraftVersion(pool, {
+            draftId,
+            userId,
+            postId,
+            snapshotReason: 'AUTO_INTERVAL',
+            title: title || '',
+            content: content || '',
+            excerpt: excerpt || '',
+            authorName: author_name || '',
+            authorEmail: author_email || '',
+            metaTitle: meta_title || null,
+            metaDescription: meta_description || null,
+            metaKeywords: parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
+            ogTitle: og_title || null,
+            ogDescription: og_description || null,
+            ogImage: og_image || null,
+            canonicalUrl: canonical_url || null,
+            categories: parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
+            allowComments: String(allow_comments).toLowerCase() !== 'false',
+          })
+        }
+      } catch (e) {
+        console.warn('Failed to create draft version snapshot:', e)
+      }
+      return res.json({ draftId, version: newVersion, updated: true })
     }
     const { rows } = await pool.query(`
       INSERT INTO blog_drafts (user_id, post_id, session_id, title, content, excerpt, author_name, author_email,
@@ -382,7 +457,33 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
       String(allow_comments).toLowerCase() === 'false' ? false : true,
       contentHash
     ])
-    res.json({ draftId: rows[0].id, version: 1, updated: false })
+    const newDraftId = rows[0].id
+    // Create initial version snapshot for new draft
+    try {
+      await insertDraftVersion(pool, {
+        draftId: newDraftId,
+        userId,
+        postId,
+        snapshotReason: 'AUTO_INTERVAL',
+        title: title || '',
+        content: content || '',
+        excerpt: excerpt || '',
+        authorName: author_name || '',
+        authorEmail: author_email || '',
+        metaTitle: meta_title || null,
+        metaDescription: meta_description || null,
+        metaKeywords: parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
+        ogTitle: og_title || null,
+        ogDescription: og_description || null,
+        ogImage: og_image || null,
+        canonicalUrl: canonical_url || null,
+        categories: parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
+        allowComments: String(allow_comments).toLowerCase() !== 'false',
+      })
+    } catch (e) {
+      console.warn('Failed to create initial draft version:', e)
+    }
+    res.json({ draftId: newDraftId, version: 1, updated: false })
   } catch (error) {
     console.error('Error saving auto-draft:', error)
     res.status(500).json({ message: 'Failed to save draft' })
@@ -413,37 +514,43 @@ router.get('/drafts/auto', authenticateToken, async (req, res) => {
   }
 })
 
-// Version history: session-bound (auto drafts) + manual drafts for current session/post
+// Version history: immutable snapshots from draft_versions (NOT draft table)
 router.get('/drafts/versions', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
     const sessionId = req.query.session_id && String(req.query.session_id).trim() ? String(req.query.session_id).trim() : null
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
-    // Session-bound: show auto drafts only for this session; manual drafts always (user-visible)
-    const { rows } = await pool.query(
+    // Get current draft (session-bound for restore)
+    const { rows: draftRows } = await pool.query(
       sessionId
-        ? `SELECT id, title, content, excerpt, status, version, created_at, updated_at, author_name
-           FROM blog_drafts
-           WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
-             AND (status = 'manual' OR (status = 'auto' AND session_id = $3))
-           ORDER BY updated_at DESC LIMIT 30`
-        : `SELECT id, title, content, excerpt, status, version, created_at, updated_at, author_name
-           FROM blog_drafts
-           WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
-           ORDER BY updated_at DESC LIMIT 30`,
-      sessionId ? [userId, postId, sessionId] : [userId, postId]
+        ? `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2 AND (post_id IS NOT DISTINCT FROM $3) ORDER BY updated_at DESC LIMIT 1`
+        : `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
+      sessionId ? [userId, sessionId, postId] : [userId, postId]
+    )
+    const draftId = draftRows[0]?.id
+    if (!draftId) {
+      return res.json([])
+    }
+    // Fetch immutable snapshots from draft_versions
+    const { rows } = await pool.query(
+      `SELECT id, title, content, excerpt, version_number, snapshot_reason, created_at, author_name
+       FROM blog_draft_versions
+       WHERE draft_id = $1
+       ORDER BY created_at DESC LIMIT 30`,
+      [draftId]
     )
     const versions = rows.map((r: any) => ({
       id: r.id,
       title: r.title,
       content: r.content,
       excerpt: r.excerpt,
-      status: r.status,
-      version: r.version ?? 0,
+      status: r.snapshot_reason || 'AUTO_INTERVAL',
+      version: r.version_number ?? 0,
       createdAt: r.created_at,
-      updatedAt: r.updated_at,
+      updatedAt: r.created_at,
       authorName: r.author_name || 'unknown',
+      snapshotReason: r.snapshot_reason,
     }))
     res.json(versions)
   } catch (error) {
@@ -452,21 +559,142 @@ router.get('/drafts/versions', authenticateToken, async (req, res) => {
   }
 })
 
-// Get single version/draft by id (for restore)
+// Get single version snapshot by id (for restore) - from draft_versions
 router.get('/drafts/version/:id', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const id = req.params.id
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
     const { rows } = await pool.query(
-      `SELECT * FROM blog_drafts WHERE id = $1 AND user_id = $2`,
+      `SELECT * FROM blog_draft_versions WHERE id = $1 AND user_id = $2`,
       [id, userId]
     )
-    if (rows.length === 0) return res.status(404).json({ message: 'Version not found' })
-    res.json(rows[0])
+    if (rows.length === 0) {
+      // Fallback: check blog_drafts for legacy (manual drafts)
+      const { rows: draftRows } = await pool.query(
+        `SELECT * FROM blog_drafts WHERE id = $1 AND user_id = $2`,
+        [id, userId]
+      )
+      if (draftRows.length === 0) return res.status(404).json({ message: 'Version not found' })
+      return res.json(draftRows[0])
+    }
+    const v = rows[0]
+    res.json({
+      id: v.id,
+      title: v.title,
+      content: v.content,
+      excerpt: v.excerpt,
+      author_name: v.author_name,
+      author_email: v.author_email,
+      meta_title: v.meta_title,
+      meta_description: v.meta_description,
+      meta_keywords: v.meta_keywords,
+      og_title: v.og_title,
+      og_description: v.og_description,
+      og_image: v.og_image,
+      canonical_url: v.canonical_url,
+      categories: v.categories,
+      allow_comments: v.allow_comments,
+    })
   } catch (error) {
     console.error('Error fetching draft version:', error)
     res.status(500).json({ message: 'Failed to fetch version' })
+  }
+})
+
+// Restore a version: update draft with snapshot + insert RESTORE version
+router.post('/drafts/restore/:versionId', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    const versionId = parseInt(req.params.versionId, 10)
+    const sessionId = req.body?.session_id && String(req.body.session_id).trim() ? String(req.body.session_id).trim() : null
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const { rows: versionRows } = await pool.query(
+      `SELECT * FROM blog_draft_versions WHERE id = $1 AND user_id = $2`,
+      [versionId, userId]
+    )
+    if (versionRows.length === 0) return res.status(404).json({ message: 'Version not found' })
+    const snap = versionRows[0]
+    let draftId = snap.draft_id
+    if (!draftId) {
+      // Legacy: version has no draft_id - find current draft by session
+      const { rows: draftRows } = await pool.query(
+        sessionId
+          ? `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2 ORDER BY updated_at DESC LIMIT 1`
+          : `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' ORDER BY updated_at DESC LIMIT 1`,
+        sessionId ? [userId, sessionId] : [userId]
+      )
+      draftId = draftRows[0]?.id
+      if (!draftId) return res.status(404).json({ message: 'No draft to restore into' })
+    } else {
+      const { rows: draftRows } = await pool.query(
+        `SELECT id FROM blog_drafts WHERE id = $1 AND user_id = $2`,
+        [draftId, userId]
+      )
+      if (draftRows.length === 0) return res.status(404).json({ message: 'Draft not found' })
+      if (sessionId) {
+        const { rows: sessionCheck } = await pool.query(
+          `SELECT id FROM blog_drafts WHERE id = $1 AND user_id = $2 AND session_id = $3`,
+          [draftId, userId, sessionId]
+        )
+        if (sessionCheck.length === 0) return res.status(403).json({ message: 'Cannot restore into different session' })
+      }
+    }
+    const parseArray = (v: any): string[] => {
+      if (!v) return []
+      if (Array.isArray(v)) return v.map(String).filter(Boolean)
+      if (typeof v === 'string') {
+        try {
+          const p = JSON.parse(v)
+          return Array.isArray(p) ? p.map(String).filter(Boolean) : []
+        } catch {
+          return v.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      }
+      return []
+    }
+    const categories = snap.categories
+    const catsStr = Array.isArray(categories) ? JSON.stringify(categories) : (typeof categories === 'string' ? categories : '[]')
+    const metaKw = snap.meta_keywords
+    const metaKwStr = Array.isArray(metaKw) ? JSON.stringify(metaKw) : (typeof metaKw === 'string' ? metaKw : null)
+    await pool.query(`
+      UPDATE blog_drafts SET
+        title = $1, content = $2, excerpt = $3, author_name = $4, author_email = $5,
+        meta_title = $6, meta_description = $7, meta_keywords = $8, og_title = $9, og_description = $10,
+        og_image = $11, canonical_url = $12, categories = $13, allow_comments = $14,
+        updated_at = now(), version = version + 1
+      WHERE id = $15 AND user_id = $16
+    `, [
+      snap.title || '', snap.content || '', snap.excerpt || '', snap.author_name || '', snap.author_email || '',
+      snap.meta_title || null, snap.meta_description || null, metaKwStr,
+      snap.og_title || null, snap.og_description || null, snap.og_image || null, snap.canonical_url || null,
+      catsStr, snap.allow_comments !== false, draftId, userId
+    ])
+    await insertDraftVersion(pool, {
+      draftId,
+      userId,
+      postId: snap.post_id,
+      snapshotReason: 'RESTORE',
+      title: snap.title || '',
+      content: snap.content || '',
+      excerpt: snap.excerpt || '',
+      authorName: snap.author_name || '',
+      authorEmail: snap.author_email || '',
+      metaTitle: snap.meta_title || null,
+      metaDescription: snap.meta_description || null,
+      metaKeywords: metaKwStr,
+      ogTitle: snap.og_title || null,
+      ogDescription: snap.og_description || null,
+      ogImage: snap.og_image || null,
+      canonicalUrl: snap.canonical_url || null,
+      categories: catsStr,
+      allowComments: snap.allow_comments !== false,
+    })
+    const { rows: updated } = await pool.query(`SELECT * FROM blog_drafts WHERE id = $1`, [draftId])
+    res.json(updated[0])
+  } catch (error) {
+    console.error('Error restoring version:', error)
+    res.status(500).json({ message: 'Failed to restore version' })
   }
 })
 
@@ -496,7 +724,7 @@ router.get('/drafts/latest', authenticateToken, async (req, res) => {
   }
 })
 
-// Create manual draft (user clicks "Save Draft")
+// Create manual draft (user clicks "Save Draft") + create MANUAL_SAVE version for current auto draft
 router.post('/drafts', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
@@ -506,7 +734,7 @@ router.post('/drafts', authenticateToken, async (req, res) => {
     const {
       title, content, excerpt, author_name, author_email,
       meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
-      categories, allow_comments, name
+      categories, allow_comments, name, session_id
     } = req.body
     const parseArray = (v: any): string[] => {
       if (!v) return []
@@ -541,6 +769,40 @@ router.post('/drafts', authenticateToken, async (req, res) => {
       String(allow_comments).toLowerCase() === 'false' ? false : true,
       draftName
     ])
+    // Create MANUAL_SAVE version for current auto draft (if exists)
+    const sessionId = session_id && String(session_id).trim() ? String(session_id).trim() : null
+    if (sessionId) {
+      try {
+        const { rows: autoRows } = await pool.query(
+          `SELECT id, post_id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2 ORDER BY updated_at DESC LIMIT 1`,
+          [userId, sessionId]
+        )
+        if (autoRows.length > 0) {
+          await insertDraftVersion(pool, {
+            draftId: autoRows[0].id,
+            userId,
+            postId: autoRows[0].post_id,
+            snapshotReason: 'MANUAL_SAVE',
+            title: title || '',
+            content: content || '',
+            excerpt: excerpt || '',
+            authorName: author_name || '',
+            authorEmail: author_email || '',
+            metaTitle: meta_title || null,
+            metaDescription: meta_description || null,
+            metaKeywords: parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
+            ogTitle: og_title || null,
+            ogDescription: og_description || null,
+            ogImage: og_image || null,
+            canonicalUrl: canonical_url || null,
+            categories: parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
+            allowComments: String(allow_comments).toLowerCase() !== 'false',
+          })
+        }
+      } catch (e) {
+        console.warn('Failed to create MANUAL_SAVE version:', e)
+      }
+    }
     res.status(201).json({ draftId: rows[0].id, name: rows[0].name, updatedAt: rows[0].updated_at })
   } catch (error) {
     console.error('Error saving manual draft:', error)
@@ -583,13 +845,48 @@ router.get('/drafts/:id', authenticateToken, async (req, res) => {
   }
 })
 
-// Delete auto-draft (called after successful publish) - session-bound when session_id provided
+// Delete auto-draft (called after successful publish) - create PUBLISH version first, then delete
 router.delete('/drafts/auto', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const sessionId = req.query.session_id && String(req.query.session_id).trim() ? String(req.query.session_id).trim() : null
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
     if (sessionId) {
+      const { rows } = await pool.query(
+        `SELECT id, post_id, title, content, excerpt, author_name, author_email, meta_title, meta_description,
+          meta_keywords, og_title, og_description, og_image, canonical_url, categories, allow_comments
+         FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2`,
+        [userId, sessionId]
+      )
+      if (rows.length > 0) {
+        const d = rows[0]
+        const catsStr = Array.isArray(d.categories) ? JSON.stringify(d.categories) : (typeof d.categories === 'string' ? d.categories : '[]')
+        const metaKwStr = Array.isArray(d.meta_keywords) ? JSON.stringify(d.meta_keywords) : (typeof d.meta_keywords === 'string' ? d.meta_keywords : null)
+        try {
+          await insertDraftVersion(pool, {
+            draftId: d.id,
+            userId,
+            postId: d.post_id,
+            snapshotReason: 'PUBLISH',
+            title: d.title || '',
+            content: d.content || '',
+            excerpt: d.excerpt || '',
+            authorName: d.author_name || '',
+            authorEmail: d.author_email || '',
+            metaTitle: d.meta_title || null,
+            metaDescription: d.meta_description || null,
+            metaKeywords: metaKwStr,
+            ogTitle: d.og_title || null,
+            ogDescription: d.og_description || null,
+            ogImage: d.og_image || null,
+            canonicalUrl: d.canonical_url || null,
+            categories: catsStr,
+            allowComments: d.allow_comments !== false,
+          })
+        } catch (e) {
+          console.warn('Failed to create PUBLISH version:', e)
+        }
+      }
       await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND session_id = $2`, [userId, sessionId])
     } else {
       await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto'`, [userId])

@@ -346,6 +346,45 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_blog_drafts_session_id ON blog_drafts(session_id) WHERE session_id IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_blog_drafts_user_session ON blog_drafts(user_id, session_id) WHERE status = 'auto' AND session_id IS NOT NULL;
 
+      -- Blog draft versions (immutable snapshots; draft = mutable, version = snapshot)
+      CREATE TABLE IF NOT EXISTS blog_draft_versions (
+        id serial primary key,
+        user_id integer references users(id) on delete cascade,
+        post_id integer references blog_posts(id) on delete set null,
+        version integer not null default 1,
+        title text default '',
+        content text default '',
+        excerpt text default '',
+        author_name text default '',
+        author_email text default '',
+        meta_title text,
+        meta_description text,
+        meta_keywords jsonb,
+        og_title text,
+        og_description text,
+        canonical_url text,
+        categories jsonb default '[]'::jsonb,
+        allow_comments boolean default true,
+        created_at timestamptz default now()
+      );
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_draft_versions' AND column_name = 'draft_id') THEN
+          ALTER TABLE blog_draft_versions ADD COLUMN draft_id integer references blog_drafts(id) on delete set null;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_draft_versions' AND column_name = 'snapshot_reason') THEN
+          ALTER TABLE blog_draft_versions ADD COLUMN snapshot_reason text not null default 'AUTO_INTERVAL';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_draft_versions' AND column_name = 'version_number') THEN
+          ALTER TABLE blog_draft_versions ADD COLUMN version_number integer;
+          UPDATE blog_draft_versions SET version_number = version WHERE version_number IS NULL;
+          UPDATE blog_draft_versions SET version_number = 1 WHERE version_number IS NULL;
+        END IF;
+      END $$;
+      CREATE INDEX IF NOT EXISTS idx_draft_versions_draft_id ON blog_draft_versions(draft_id) WHERE draft_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_draft_versions_user ON blog_draft_versions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_draft_versions_created ON blog_draft_versions(created_at DESC);
+
       -- Blog comment likes
       CREATE TABLE IF NOT EXISTS blog_comment_likes (
         id serial primary key,

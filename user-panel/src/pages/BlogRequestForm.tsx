@@ -147,7 +147,7 @@ export default function BlogRequestForm() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false)
   const [showContentInfoModal, setShowContentInfoModal] = useState(false)
-  const [draftVersions, setDraftVersions] = useState<Array<{ id: number; title: string; content: string; excerpt: string; status: string; version: number; createdAt: string; updatedAt: string; authorName: string }>>([])
+  const [draftVersions, setDraftVersions] = useState<Array<{ id: number; title: string; content: string; excerpt: string; status: string; version: number; createdAt: string; updatedAt: string; authorName: string; snapshotReason?: string }>>([])
   const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null)
   const [showRestoreModal, setShowRestoreModal] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
@@ -1412,6 +1412,7 @@ export default function BlogRequestForm() {
           body: JSON.stringify({
             ...payload,
             name: formData.title?.trim() || undefined,
+            session_id: sessionIdRef.current,
           }),
         })
         if (res.ok) {
@@ -2405,10 +2406,12 @@ export default function BlogRequestForm() {
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-gray-900">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            {isCurrent && <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]">Current version</span>}
+                            {isCurrent && <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]">Latest</span>}
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5">{d.toLocaleString()}</p>
-                          <p className="text-xs text-gray-600 mt-1">{v.authorName || 'unknown'}</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {v.snapshotReason === 'MANUAL_SAVE' ? 'Manual save' : v.snapshotReason === 'PUBLISH' ? 'Before publish' : v.snapshotReason === 'RESTORE' ? 'Restored' : 'Auto snapshot'}
+                          </p>
                         </button>
                       )
                     })
@@ -2427,7 +2430,11 @@ export default function BlogRequestForm() {
                     const token = localStorage.getItem('token')
                     if (!token) return
                     try {
-                      const res = await fetch(`${getApiBase()}/api/blog/drafts/version/${selectedVersionId}`, { headers: { Authorization: `Bearer ${token}` } })
+                      const res = await fetch(`${getApiBase()}/api/blog/drafts/restore/${selectedVersionId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ session_id: sessionIdRef.current })
+                      })
                       const draft = res.ok ? await res.json() : null
                       if (draft) {
                         const arr = (x: any): string[] => (Array.isArray(x) ? x : typeof x === 'string' ? (() => { try { const p = JSON.parse(x); return Array.isArray(p) ? p : [] } catch { return [] } })() : [])
