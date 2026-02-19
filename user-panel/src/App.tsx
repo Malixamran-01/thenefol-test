@@ -1007,7 +1007,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
   if (lower.startsWith('/user/product/')) return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
-  if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && lower !== '/user/blog/request') return <BlogDetail />
+  if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogDetail />
   if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <AuthorProfile />
   if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />
   if (lower.startsWith('/user/confirmation')) return <Confirmation />
