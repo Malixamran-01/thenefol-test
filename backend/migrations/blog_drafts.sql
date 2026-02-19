@@ -28,3 +28,11 @@ CREATE TABLE IF NOT EXISTS blog_drafts (
 CREATE INDEX IF NOT EXISTS idx_blog_drafts_user_id ON blog_drafts(user_id);
 CREATE INDEX IF NOT EXISTS idx_blog_drafts_status ON blog_drafts(status);
 CREATE INDEX IF NOT EXISTS idx_blog_drafts_updated_at ON blog_drafts(updated_at);
+
+-- v2: production optimizations
+ALTER TABLE blog_drafts ADD COLUMN IF NOT EXISTS post_id integer references blog_posts(id) on delete set null;
+ALTER TABLE blog_drafts ADD COLUMN IF NOT EXISTS content_hash text;
+ALTER TABLE blog_drafts ADD COLUMN IF NOT EXISTS version integer default 0;
+ALTER TABLE blog_drafts ADD COLUMN IF NOT EXISTS last_opened_at timestamptz;
+CREATE INDEX IF NOT EXISTS idx_blog_drafts_post_id ON blog_drafts(post_id);
+CREATE INDEX IF NOT EXISTS idx_blog_drafts_user_post ON blog_drafts(user_id, post_id) WHERE status = 'auto';

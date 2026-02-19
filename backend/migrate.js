@@ -318,6 +318,24 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_blog_drafts_status ON blog_drafts(status);
       CREATE INDEX IF NOT EXISTS idx_blog_drafts_updated_at ON blog_drafts(updated_at);
 
+      -- Blog drafts v2: production columns (content_hash, version, post_id, last_opened_at)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_drafts' AND column_name = 'post_id') THEN
+          ALTER TABLE blog_drafts ADD COLUMN post_id integer references blog_posts(id) on delete set null;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_drafts' AND column_name = 'content_hash') THEN
+          ALTER TABLE blog_drafts ADD COLUMN content_hash text;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_drafts' AND column_name = 'version') THEN
+          ALTER TABLE blog_drafts ADD COLUMN version integer default 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_drafts' AND column_name = 'last_opened_at') THEN
+          ALTER TABLE blog_drafts ADD COLUMN last_opened_at timestamptz;
+        END IF;
+      END $$;
+      CREATE INDEX IF NOT EXISTS idx_blog_drafts_post_id ON blog_drafts(post_id);
+
       -- Blog comment likes
       CREATE TABLE IF NOT EXISTS blog_comment_likes (
         id serial primary key,

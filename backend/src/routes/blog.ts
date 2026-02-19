@@ -2,9 +2,13 @@ import express from 'express'
 import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
+import crypto from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
+
+const DRAFT_SAVE_RATE_LIMIT_MS = 30_000
+const lastDraftSaveByUser = new Map<string, number>()
 
 const router = express.Router()
 
@@ -97,11 +101,11 @@ const cleanupDeletedBlogPosts = async () => {
   }
 }
 
-/** Delete old drafts to prevent unbounded growth. Auto-drafts: 7 days. Manual drafts: 90 days. */
+/** Delete old drafts. Auto-drafts: 14 days. Manual drafts: 90 days. */
 export async function cleanupOldDrafts(dbPool: Pool): Promise<{ auto: number; manual: number }> {
   if (!dbPool) return { auto: 0, manual: 0 }
   const { rowCount: autoCount } = await dbPool.query(
-    `DELETE FROM blog_drafts WHERE status = 'auto' AND updated_at < now() - interval '7 days'`
+    `DELETE FROM blog_drafts WHERE status = 'auto' AND updated_at < now() - interval '14 days'`
   )
   const { rowCount: manualCount } = await dbPool.query(
     `DELETE FROM blog_drafts WHERE status = 'manual' AND updated_at < now() - interval '90 days'`
@@ -247,27 +251,45 @@ router.post('/request', upload.fields([
 
 // --- Draft API (auto-save + manual drafts) ---
 
-/** Returns false for empty/placeholder content (e.g. <p><br></p>, whitespace-only) */
+/** Returns false for empty/placeholder content (e.g. <p><br></p>, &nbsp;, whitespace-only) */
 function hasRealDraftContent(draft: { title?: string; content?: string; excerpt?: string } | null): boolean {
   if (!draft) return false
-  const stripHtml = (s: string) => (s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const stripHtml = (s: string) =>
+    (s || '')
+      .replace(/<p><br><\/p>/gi, '')
+      .replace(/<br\s*\/?>/gi, '')
+      .replace(/&nbsp;/g, '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
   const hasTitle = (draft.title || '').trim().length > 0
   const hasExcerpt = (draft.excerpt || '').trim().length > 0
   const hasContent = stripHtml(draft.content || '').length > 0
   return hasTitle || hasExcerpt || hasContent
 }
 
+function computeContentHash(payload: { title?: string; content?: string; excerpt?: string }): string {
+  const str = `${payload.title || ''}|${payload.content || ''}|${payload.excerpt || ''}`
+  return crypto.createHash('sha256').update(str).digest('hex')
+}
+
 // Auto-draft: create or update latest auto-draft (1 per user)
+// Rate limit: max 1 save / 30 sec per user. Hash check: skip write if content unchanged.
 router.post('/drafts/auto', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     if (!userId || !pool) {
       return res.status(401).json({ message: 'Authentication required' })
     }
+    const now = Date.now()
+    const lastSave = lastDraftSaveByUser.get(userId)
+    if (lastSave && now - lastSave < DRAFT_SAVE_RATE_LIMIT_MS) {
+      return res.status(429).json({ message: 'Please wait before saving again', retryAfter: Math.ceil((DRAFT_SAVE_RATE_LIMIT_MS - (now - lastSave)) / 1000) })
+    }
     const {
       title, content, excerpt, author_name, author_email,
       meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
-      categories, allow_comments
+      categories, allow_comments, post_id, draftId, version
     } = req.body
     const parseArray = (v: any): string[] => {
       if (!v) return []
@@ -286,65 +308,117 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
     const parsedKeywords = parseArray(meta_keywords)
     const payload = { title, content, excerpt }
     if (!hasRealDraftContent(payload)) {
-      // Don't save empty drafts; delete existing auto-draft if present (cleanup)
       await pool.query(`DELETE FROM blog_drafts WHERE user_id = $1 AND status = 'auto'`, [userId])
       return res.json({ draftId: null, skipped: true })
     }
+    const contentHash = computeContentHash(payload)
+    const postId = post_id ? parseInt(String(post_id), 10) : null
+    const incomingDraftId = draftId ? parseInt(String(draftId), 10) : null
+    const incomingVersion = version != null ? parseInt(String(version), 10) : null
     const { rows: existing } = await pool.query(
-      `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' ORDER BY updated_at DESC LIMIT 1`,
-      [userId]
+      `SELECT id, content_hash, version FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
+      [userId, postId]
     )
+    if (existing.length > 0 && existing[0].content_hash === contentHash) {
+      return res.json({ draftId: existing[0].id, version: existing[0].version ?? 0, updated: false, skipped: true })
+    }
     if (existing.length > 0) {
-      await pool.query(`
+      const dbVersion = existing[0].version ?? 0
+      if (incomingDraftId != null && incomingVersion != null && existing[0].id === incomingDraftId && incomingVersion !== dbVersion) {
+        return res.status(409).json({
+          status: 'conflict',
+          serverVersion: dbVersion,
+          message: 'Draft was updated in another tab. Reload latest or continue here.',
+        })
+      }
+    }
+    lastDraftSaveByUser.set(userId, now)
+    if (existing.length > 0) {
+      const newVersion = (existing[0].version || 0) + 1
+      const { rowCount } = await pool.query(`
         UPDATE blog_drafts SET
           title = $1, content = $2, excerpt = $3, author_name = $4, author_email = $5,
           meta_title = $6, meta_description = $7, meta_keywords = $8, og_title = $9, og_description = $10,
           og_image = $11, canonical_url = $12, categories = $13, allow_comments = $14,
-          updated_at = now()
-        WHERE id = $15
+          content_hash = $15, version = $16, updated_at = now()
+        WHERE id = $17 AND version = $18
       `, [
         title || '', content || '', excerpt || '', author_name || '', author_email || '',
         meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
         og_title || null, og_description || null, og_image || null, canonical_url || null,
         parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
         String(allow_comments).toLowerCase() === 'false' ? false : true,
-        existing[0].id
+        contentHash, newVersion, existing[0].id, existing[0].version ?? 0
       ])
-      return res.json({ draftId: existing[0].id, updated: true })
+      if ((rowCount ?? 0) === 0) {
+        const { rows: recheck } = await pool.query(`SELECT version FROM blog_drafts WHERE id = $1`, [existing[0].id])
+        return res.status(409).json({
+          status: 'conflict',
+          serverVersion: recheck[0]?.version ?? 0,
+          message: 'Draft was updated in another tab. Reload latest or continue here.',
+        })
+      }
+      return res.json({ draftId: existing[0].id, version: newVersion, updated: true })
     }
     const { rows } = await pool.query(`
-      INSERT INTO blog_drafts (user_id, title, content, excerpt, author_name, author_email,
+      INSERT INTO blog_drafts (user_id, post_id, title, content, excerpt, author_name, author_email,
         meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
-        categories, allow_comments, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'auto')
-      RETURNING id, updated_at
+        categories, allow_comments, status, content_hash, version)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'auto', $17, 1)
+      RETURNING id, version, updated_at
     `, [
-      userId, title || '', content || '', excerpt || '', author_name || '', author_email || '',
+      userId, postId, title || '', content || '', excerpt || '', author_name || '', author_email || '',
       meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
       og_title || null, og_description || null, og_image || null, canonical_url || null,
       parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
-      String(allow_comments).toLowerCase() === 'false' ? false : true
+      String(allow_comments).toLowerCase() === 'false' ? false : true,
+      contentHash
     ])
-    res.json({ draftId: rows[0].id, updated: false })
+    res.json({ draftId: rows[0].id, version: 1, updated: false })
   } catch (error) {
     console.error('Error saving auto-draft:', error)
     res.status(500).json({ message: 'Failed to save draft' })
   }
 })
 
-// Get latest auto-draft for current user
+// Get latest auto-draft for current user (optional postId for editing existing post)
 router.get('/drafts/auto', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
+    const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
     const { rows } = await pool.query(
-      `SELECT * FROM blog_drafts WHERE user_id = $1 AND status = 'auto' ORDER BY updated_at DESC LIMIT 1`,
-      [userId]
+      `SELECT * FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
+      [userId, postId]
     )
-    res.json(rows[0] || null)
+    const draft = rows[0] || null
+    if (draft) {
+      await pool.query(`UPDATE blog_drafts SET last_opened_at = now() WHERE id = $1`, [draft.id])
+    }
+    res.json(draft)
   } catch (error) {
     console.error('Error fetching auto-draft:', error)
     res.status(500).json({ message: 'Failed to fetch draft' })
+  }
+})
+
+// Get latest drafts (auto + manual) for restore logic - newest wins
+router.get('/drafts/latest', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const { rows } = await pool.query(
+      `SELECT * FROM blog_drafts WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
+       ORDER BY updated_at DESC LIMIT 2`,
+      [userId, postId]
+    )
+    const auto = rows.find((r: any) => r.status === 'auto') || null
+    const manual = rows.find((r: any) => r.status === 'manual') || null
+    res.json({ auto, manual })
+  } catch (error) {
+    console.error('Error fetching latest drafts:', error)
+    res.status(500).json({ message: 'Failed to fetch drafts' })
   }
 })
 

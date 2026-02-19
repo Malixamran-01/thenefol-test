@@ -4,7 +4,8 @@
  */
 
 const LOCAL_DRAFT_KEY = 'blog_draft'
-const DEBOUNCE_MS = 4000
+const ACTIVE_DRAFT_TAB_KEY = 'blog_draft_active_tab'
+const DEBOUNCE_MS = 2500
 const SERVER_SYNC_INTERVAL_MS = 45000
 
 export interface DraftPayload {
@@ -23,6 +24,8 @@ export interface DraftPayload {
   categories: string[]
   allow_comments: boolean
   updatedAt: string
+  draftId?: number
+  version?: number
 }
 
 export function getLocalDraft(): DraftPayload | null {
@@ -56,10 +59,17 @@ export function clearLocalDraft() {
   }
 }
 
-/** Returns false for empty/placeholder content (e.g. <p><br></p>) */
+/** Returns false for empty/placeholder content (e.g. <p><br></p>, &nbsp;) */
 export function hasRealDraftContent(draft: { title?: string; content?: string; excerpt?: string } | null): boolean {
   if (!draft) return false
-  const stripHtml = (s: string) => (s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const stripHtml = (s: string) =>
+    (s || '')
+      .replace(/<p><br><\/p>/gi, '')
+      .replace(/<br\s*\/?>/gi, '')
+      .replace(/&nbsp;/g, '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
   const hasTitle = (draft.title || '').trim().length > 0
   const hasExcerpt = (draft.excerpt || '').trim().length > 0
   const hasContent = stripHtml(draft.content || '').length > 0
@@ -75,4 +85,54 @@ export function getDraftAge(draft: DraftPayload): string {
   return `${Math.floor(diff / 86400000)} days ago`
 }
 
-export { DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS, LOCAL_DRAFT_KEY }
+export function getActiveDraftTabId(): string {
+  try {
+    return sessionStorage.getItem('blog_draft_tab_id') || (() => {
+      const id = crypto.randomUUID?.() || `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      sessionStorage.setItem('blog_draft_tab_id', id)
+      return id
+    })()
+  } catch {
+    return `tab-${Date.now()}`
+  }
+}
+
+export function setActiveDraftTab(): void {
+  try {
+    const id = getActiveDraftTabId()
+    localStorage.setItem(ACTIVE_DRAFT_TAB_KEY, JSON.stringify({ tabId: id, at: Date.now() }))
+  } catch { /* ignore */ }
+}
+
+export function clearActiveDraftTab(): void {
+  try {
+    const id = getActiveDraftTabId()
+    const raw = localStorage.getItem(ACTIVE_DRAFT_TAB_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed?.tabId === id) localStorage.removeItem(ACTIVE_DRAFT_TAB_KEY)
+    }
+  } catch { /* ignore */ }
+}
+
+export function isActiveDraftTab(cb: (active: boolean) => void): () => void {
+  const id = getActiveDraftTabId()
+  const check = () => {
+    try {
+      const raw = localStorage.getItem(ACTIVE_DRAFT_TAB_KEY)
+      if (!raw) { cb(true); return }
+      const parsed = JSON.parse(raw)
+      cb(parsed?.tabId === id)
+    } catch {
+      cb(true)
+    }
+  }
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === ACTIVE_DRAFT_TAB_KEY) check()
+  }
+  window.addEventListener('storage', onStorage)
+  check()
+  return () => window.removeEventListener('storage', onStorage)
+}
+
+export { DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS, LOCAL_DRAFT_KEY, ACTIVE_DRAFT_TAB_KEY }

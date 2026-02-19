@@ -3,7 +3,7 @@ import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as L
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
-import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, hasRealDraftContent, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS } from '../utils/blogDraft'
+import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, hasRealDraftContent, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS, setActiveDraftTab, clearActiveDraftTab, isActiveDraftTab } from '../utils/blogDraft'
 
 const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
 const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
@@ -149,9 +149,13 @@ export default function BlogRequestForm() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [showDraftToast, setShowDraftToast] = useState(false)
+  const [showConflictBanner, setShowConflictBanner] = useState(false)
+  const [editingInOtherTab, setEditingInOtherTab] = useState(false)
   const pendingDraftRestore = useRef<ReturnType<typeof getLocalDraft> | null>(null)
   const hasCheckedDraftRef = useRef(false)
   const discardedDraftRef = useRef(false)
+  const draftIdRef = useRef<number | null>(null)
+  const versionRef = useRef<number>(0)
   const [canonicalOverride, setCanonicalOverride] = useState(false)
   const [existingTags, setExistingTags] = useState<string[]>([])
   const [metaFieldsManuallyEdited, setMetaFieldsManuallyEdited] = useState({
@@ -1061,28 +1065,48 @@ export default function BlogRequestForm() {
       }, 0)
     }
 
-    // Check for draft to restore (only once per mount, and only if we didn't just restore from image editor)
+    // Check for draft to restore (only once per mount) - newest wins
     if (!formRaw && !hasCheckedDraftRef.current) {
       hasCheckedDraftRef.current = true
       const localDraft = getLocalDraft()
-      if (hasRealDraftContent(localDraft)) {
+      const localHasContent = hasRealDraftContent(localDraft)
+      const localTs = localDraft?.updatedAt ? new Date(localDraft.updatedAt).getTime() : 0
+      if (localHasContent && !isAuthenticated) {
         pendingDraftRestore.current = localDraft
         setShowRestoreModal(true)
       } else if (isAuthenticated) {
-        fetch(`${getApiBase()}/api/blog/drafts/auto`, {
+        fetch(`${getApiBase()}/api/blog/drafts/latest`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
         })
           .then(r => r.ok ? r.json() : null)
-          .then(serverDraft => {
-            if (!discardedDraftRef.current && hasRealDraftContent(serverDraft)) {
-              pendingDraftRestore.current = {
-                ...serverDraft,
-                updatedAt: serverDraft.updated_at || serverDraft.updatedAt,
-              }
+          .then((data: { auto?: any; manual?: any } | null) => {
+            if (discardedDraftRef.current) return
+            const serverAuto = data?.auto
+            const serverManual = data?.manual
+            const serverDraft = serverAuto || serverManual
+            const serverTs = serverDraft?.updated_at
+              ? new Date(serverDraft.updated_at).getTime()
+              : serverDraft?.updatedAt
+                ? new Date(serverDraft.updatedAt).getTime()
+                : 0
+            const serverHasContent = hasRealDraftContent(serverDraft)
+            if (!localHasContent && !serverHasContent) return
+            const best = localTs >= serverTs && localHasContent
+              ? localDraft
+              : serverHasContent
+                ? { ...serverDraft, updatedAt: serverDraft.updated_at || serverDraft.updatedAt }
+                : localDraft
+            if (best && hasRealDraftContent(best)) {
+              pendingDraftRestore.current = best
               setShowRestoreModal(true)
             }
           })
-          .catch(() => {})
+          .catch(() => {
+            if (localHasContent) {
+              pendingDraftRestore.current = localDraft
+              setShowRestoreModal(true)
+            }
+          })
       }
     }
   }, [applyEditedImage, isAuthenticated])
@@ -1099,9 +1123,9 @@ export default function BlogRequestForm() {
     }
   }, [])
 
-  // Local auto-save (debounced)
+  // Local auto-save (debounced) - include draftId/version when we have them
   useEffect(() => {
-    const payload = {
+    const payload: Record<string, unknown> = {
       title: formData.title,
       content: formData.content,
       excerpt: formData.excerpt,
@@ -1117,52 +1141,104 @@ export default function BlogRequestForm() {
       categories: formData.categories,
       allow_comments: formData.allow_comments,
     }
+    if (draftIdRef.current != null) payload.draftId = draftIdRef.current
+    if (versionRef.current) payload.version = versionRef.current
     const t = setTimeout(() => {
-      const updated = saveLocalDraft(payload)
+      const updated = saveLocalDraft(payload as any)
       if (updated) setLastSavedAt(updated)
     }, DEBOUNCE_MS)
     return () => clearTimeout(t)
   }, [formData.title, formData.content, formData.excerpt, formData.author_name, formData.author_email, formData.meta_title, formData.meta_description, formData.meta_keywords, formData.og_title, formData.og_description, formData.og_image, formData.canonical_url, formData.categories, formData.allow_comments])
 
-  // Server draft sync (when online and logged in) - only sync when there's real content
+  const syncToServer = useCallback((opts?: { keepalive?: boolean }) => {
+    const fd = formDataRef.current
+    if (!fd || !isAuthenticated || !user || isOffline) return
+    const content = (editorRef.current?.innerHTML ?? fd.content) || ''
+    const payload = {
+      title: fd.title,
+      content,
+      excerpt: fd.excerpt,
+      author_name: fd.author_name,
+      author_email: fd.author_email,
+      meta_title: fd.meta_title,
+      meta_description: fd.meta_description,
+      meta_keywords: fd.meta_keywords,
+      og_title: fd.og_title,
+      og_description: fd.og_description,
+      og_image: fd.og_image,
+      canonical_url: fd.canonical_url,
+      categories: fd.categories,
+      allow_comments: fd.allow_comments,
+      draftId: draftIdRef.current,
+      version: versionRef.current || undefined,
+    }
+    if (!hasRealDraftContent(payload)) return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const url = `${getApiBase()}/api/blog/drafts/auto`
+    const body = JSON.stringify(payload)
+    if (opts?.keepalive) {
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body,
+        keepalive: true,
+      }).catch(() => {})
+    } else {
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body,
+      })
+        .then(async r => {
+          if (r.ok) {
+            const data = await r.json().catch(() => ({}))
+            if (data?.draftId) draftIdRef.current = data.draftId
+            if (data?.version != null) versionRef.current = data.version
+            setLastSavedAt(new Date().toISOString())
+          } else if (r.status === 409) {
+            const data = await r.json().catch(() => ({}))
+            setShowConflictBanner(true)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [isAuthenticated, user, isOffline])
+
+  // Server draft sync: 45s interval + forced on blur / tab close / visibility hidden
   useEffect(() => {
     if (!isAuthenticated || !user || isOffline) return
-    const sync = async () => {
-      const content = (editorRef.current?.innerHTML ?? formData.content) || ''
-      const payload = {
-        title: formData.title,
-        content,
-        excerpt: formData.excerpt,
-        author_name: formData.author_name,
-        author_email: formData.author_email,
-        meta_title: formData.meta_title,
-        meta_description: formData.meta_description,
-        meta_keywords: formData.meta_keywords,
-        og_title: formData.og_title,
-        og_description: formData.og_description,
-        og_image: formData.og_image,
-        canonical_url: formData.canonical_url,
-        categories: formData.categories,
-        allow_comments: formData.allow_comments,
-      }
-      if (!hasRealDraftContent(payload)) return
-      const token = localStorage.getItem('token')
-      if (!token) return
-      try {
-        const res = await fetch(`${getApiBase()}/api/blog/drafts/auto`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(payload),
-        })
-        if (res.ok) setLastSavedAt(new Date().toISOString())
-      } catch {
-        // ignore
-      }
-    }
-    const id = setInterval(sync, SERVER_SYNC_INTERVAL_MS)
-    sync()
+    const id = setInterval(() => syncToServer(), SERVER_SYNC_INTERVAL_MS)
+    syncToServer()
     return () => clearInterval(id)
-  }, [isAuthenticated, user, isOffline, formData])
+  }, [isAuthenticated, user, isOffline, syncToServer])
+
+  // Forced save on tab close / navigation (best-effort)
+  useEffect(() => {
+    const onBeforeUnload = () => syncToServer({ keepalive: true })
+    const onPageHide = () => syncToServer({ keepalive: true })
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') syncToServer({ keepalive: true })
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    window.addEventListener('pagehide', onPageHide)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload)
+      window.removeEventListener('pagehide', onPageHide)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [syncToServer])
+
+  // Tab lock: claim active tab on mount, clear on unmount, detect other tabs
+  useEffect(() => {
+    setActiveDraftTab()
+    const unsub = isActiveDraftTab(active => setEditingInOtherTab(!active))
+    return () => {
+      unsub()
+      clearActiveDraftTab()
+    }
+  }, [])
 
   const handleRestoreDraft = () => {
     const draft = pendingDraftRestore.current
@@ -1192,6 +1268,9 @@ export default function BlogRequestForm() {
           editorRef.current.innerHTML = draft.content
         }
       })
+      const d = draft as any
+      draftIdRef.current = d.id ?? d.draftId ?? null
+      if (d.version != null) versionRef.current = d.version
     }
     pendingDraftRestore.current = null
     setShowRestoreModal(false)
@@ -1199,10 +1278,52 @@ export default function BlogRequestForm() {
 
   const handleDiscardDraft = () => {
     discardedDraftRef.current = true
+    draftIdRef.current = null
+    versionRef.current = 0
     clearLocalDraft()
     pendingDraftRestore.current = null
     setShowRestoreModal(false)
   }
+
+  const handleLoadLatest = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    try {
+      const res = await fetch(`${getApiBase()}/api/blog/drafts/auto`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const draft = res.ok ? await res.json() : null
+      if (draft && hasRealDraftContent(draft)) {
+        const arr = (v: any): string[] => (Array.isArray(v) ? v : typeof v === 'string' ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [] } catch { return [] } })() : [])
+        const kw = draft.meta_keywords
+        const metaKeywords = typeof kw === 'string' ? kw : (Array.isArray(kw) ? (kw as string[]).join(', ') : '')
+        setFormData(prev => ({
+          ...prev,
+          title: draft.title || '',
+          content: draft.content || '',
+          excerpt: draft.excerpt || '',
+          author_name: draft.author_name || prev.author_name,
+          author_email: draft.author_email || prev.author_email,
+          meta_title: draft.meta_title || '',
+          meta_description: draft.meta_description || '',
+          meta_keywords: metaKeywords,
+          og_title: draft.og_title || '',
+          og_description: draft.og_description || '',
+          og_image: draft.og_image || '',
+          canonical_url: draft.canonical_url || '',
+          categories: arr(draft.categories),
+          allow_comments: draft.allow_comments ?? true,
+        }))
+        if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
+        draftIdRef.current = draft.id
+        versionRef.current = draft.version ?? 0
+        setLastSavedAt(new Date().toISOString())
+      }
+    } catch { /* ignore */ }
+    setShowConflictBanner(false)
+  }
+
+  const handleDismissConflict = () => setShowConflictBanner(false)
 
   const handleSaveDraft = async () => {
     const content = (editorRef.current?.innerHTML ?? formData.content) || ''
@@ -1325,6 +1446,8 @@ export default function BlogRequestForm() {
 
       if (response.ok) {
         setSubmitStatus('success')
+        draftIdRef.current = null
+        versionRef.current = 0
         clearLocalDraft()
         const token = localStorage.getItem('token')
         if (token) {
@@ -1413,6 +1536,12 @@ export default function BlogRequestForm() {
               </div>
             </div>
             <div className="flex items-center gap-3 text-sm">
+              {editingInOtherTab && (
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
+                  <AlertCircle className="w-4 h-4" />
+                  Editing in another tab
+                </span>
+              )}
               {isOffline && (
                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
                   <WifiOff className="w-4 h-4" />
@@ -1428,6 +1557,34 @@ export default function BlogRequestForm() {
             </div>
           </div>
         </div>
+
+        {/* Conflict banner (non-blocking) */}
+        {showConflictBanner && (
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-2">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-amber-800">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm">This draft was updated in another tab. Reload latest or continue here.</span>
+              </div>
+              <div className="flex flex-shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={handleDismissConflict}
+                  className="px-3 py-1.5 text-sm border border-amber-300 rounded-lg hover:bg-amber-100 text-amber-800"
+                >
+                  Keep editing
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoadLatest}
+                  className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+                >
+                  Load latest
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="max-w-4xl mx-auto p-4 sm:p-6">
@@ -1908,6 +2065,16 @@ export default function BlogRequestForm() {
                     onInput={handleEditorInput}
                     onKeyDown={handleEditorKeyDown}
                     onFocus={updateToolbarState}
+                    onBlur={() => {
+                      const fd = formDataRef.current
+                      if (fd) {
+                        const content = (editorRef.current?.innerHTML ?? fd.content) || ''
+                        const payload = { ...fd, content }
+                        saveLocalDraft(payload)
+                        setLastSavedAt(new Date().toISOString())
+                        syncToServer()
+                      }
+                    }}
                     onClick={updateToolbarState}
                     className="editor-content h-[320px] sm:h-[380px] overflow-y-auto p-4 sm:p-6 outline-none text-sm sm:text-base bg-white w-full relative z-10"
                     data-placeholder="Start writing your blog post here... Use the toolbar above to format your text, add links, and create lists."
