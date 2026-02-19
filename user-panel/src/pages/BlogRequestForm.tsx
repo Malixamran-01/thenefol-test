@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, ArrowRight, Eye, ChevronDown, ChevronUp, Save, WifiOff, RotateCcw, Info, Settings } from 'lucide-react'
+import { Upload, X, CheckCircle, AlertCircle, Bold, Italic, Underline, Link as LinkIcon, List, ListOrdered, Palette, Image as ImageIcon, Youtube, MoreVertical, Edit3, FileText, Tag, Square, Maximize2, Maximize, Trash2, ArrowLeft, Eye, ChevronDown, ChevronUp, Save, WifiOff, RotateCcw, Info, Settings } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
@@ -1505,7 +1505,10 @@ export default function BlogRequestForm() {
           </p>
           <button 
             onClick={() => window.location.hash = '#/user/blog'} 
-            className="px-6 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors"
+            className="px-6 py-2 text-white rounded-lg transition-colors"
+            style={{ backgroundColor: 'rgb(75,151,201)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
           >
             Go Back to Blog
           </button>
@@ -1580,20 +1583,21 @@ export default function BlogRequestForm() {
               <button 
                 type="button"
                 onClick={() => setShowPreview(true)}
-                className="px-4 py-2 text-sm font-medium text-teal-600 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-full transition-all duration-200 flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200"
                 disabled={isSubmitting}
               >
-                <Eye className="w-4 h-4" />
                 Preview
               </button>
               <button 
                 type="submit"
                 form="blog-form"
                 disabled={isSubmitting || !agreedToTerms}
-                className="px-5 py-2 text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 Continue
-                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1639,7 +1643,7 @@ export default function BlogRequestForm() {
                     name="author_name" 
                     value={formData.author_name} 
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)] disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Enter your full name" 
                     required 
                     disabled={isSubmitting || (isAuthenticated && !!user?.name)}
@@ -1651,7 +1655,7 @@ export default function BlogRequestForm() {
                     name="author_email" 
                     value={formData.author_email} 
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)] disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="your.email@domain.com" 
                     required 
                     disabled={isSubmitting || (isAuthenticated && !!user?.email)}
@@ -1666,7 +1670,7 @@ export default function BlogRequestForm() {
                   name="title" 
                   value={formData.title} 
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]"
                   placeholder="Title" 
                   required 
                   disabled={isSubmitting}
@@ -1680,7 +1684,7 @@ export default function BlogRequestForm() {
                   name="excerpt" 
                   value={formData.excerpt} 
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]"
                   rows={3} 
                   placeholder="Add a subtitle..." 
                   required 
@@ -1696,14 +1700,14 @@ export default function BlogRequestForm() {
                     <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
                   </span>
                 ))}
-                <button type="button" onClick={() => setShowSettingsModal(true)} className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 hover:border-teal-400 hover:text-teal-600 text-sm transition-colors">
+                <button type="button" onClick={() => setShowSettingsModal(true)} className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 text-sm transition-colors hover:border-[rgb(75,151,201)] hover:text-[rgb(75,151,201)]">
                   +
                 </button>
               </div>
              {/* Rich Text Editor */}
               <div className="w-full">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Blog Content *</label>
-                <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-200 w-full relative">
+                <div className="border-2 border-gray-300 rounded-lg overflow-visible focus-within:border-[rgb(75,151,201)] focus-within:ring-2 focus-within:ring-[rgba(75,151,201,0.3)] w-full relative">
                   {/* Enhanced Toolbar */}
                   <div className="bg-gray-50 border-b border-gray-300 p-2 sm:p-3 overflow-x-auto relative z-20">
                     <div className="flex flex-wrap gap-1 sm:gap-2 items-center min-w-max text-gray-700">
@@ -1713,7 +1717,7 @@ export default function BlogRequestForm() {
                           type="button" 
                           onClick={setParagraph} 
                           className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-all duration-200 text-xs sm:text-sm font-medium ${
-                            toolbarState.block === 'p' ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
+                            toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
                           }`}
                           title="Paragraph (default)"
                         >
@@ -1725,7 +1729,7 @@ export default function BlogRequestForm() {
                             type="button" 
                             onClick={() => setHeading(h)} 
                             className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors text-xs sm:text-sm font-semibold ${
-                              toolbarState.block === `h${h}` ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
+                              toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
                             }`}
                             title={`Heading ${h} (click again to unselect)`}
                           >
@@ -1740,7 +1744,7 @@ export default function BlogRequestForm() {
                           type="button" 
                           onClick={() => toggleFormat('bold')} 
                           className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.bold ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
+                            toolbarState.bold ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
                           }`}
                           title="Bold (toggle)"
                         >
@@ -1750,7 +1754,7 @@ export default function BlogRequestForm() {
                           type="button" 
                           onClick={() => toggleFormat('italic')} 
                           className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.italic ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
+                            toolbarState.italic ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
                           }`}
                           title="Italic (toggle)"
                         >
@@ -1760,7 +1764,7 @@ export default function BlogRequestForm() {
                           type="button" 
                           onClick={() => toggleFormat('underline')} 
                           className={`p-1.5 sm:p-2 rounded transition-colors ${
-                            toolbarState.underline ? 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' : 'text-gray-700 hover:bg-gray-200'
+                            toolbarState.underline ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)] ring-1 ring-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'
                           }`}
                           title="Underline (toggle)"
                         >
@@ -1911,11 +1915,11 @@ export default function BlogRequestForm() {
                   ) : (
                     <label
                       htmlFor="cover-image-upload"
-                      className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-all group"
+                      className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[rgb(75,151,201)] hover:bg-[rgba(75,151,201,0.08)] transition-all group"
                     >
                       <input type="file" accept="image/*" onChange={handleCoverImageUpload} className="hidden" id="cover-image-upload" disabled={isSubmitting} />
-                      <Upload className="w-8 h-8 text-gray-400 group-hover:text-teal-500 transition-colors" />
-                      <span className="text-sm text-gray-600 group-hover:text-teal-600">Choose cover image</span>
+                      <Upload className="w-8 h-8 text-gray-400 transition-colors group-hover:text-[rgb(75,151,201)]" />
+                      <span className="text-sm text-gray-600 group-hover:text-[rgb(75,151,201)]">Choose cover image</span>
                       <span className="text-xs text-gray-400">JPG, PNG, WebP · Max 5MB</span>
                     </label>
                   )}
@@ -1945,11 +1949,11 @@ export default function BlogRequestForm() {
                   ) : (
                     <label
                       htmlFor="detail-image-upload"
-                      className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-all group"
+                      className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[rgb(75,151,201)] hover:bg-[rgba(75,151,201,0.08)] transition-all group"
                     >
                       <input type="file" accept="image/*" onChange={handleDetailImageUpload} className="hidden" id="detail-image-upload" disabled={isSubmitting} />
-                      <Upload className="w-8 h-8 text-gray-400 group-hover:text-teal-500 transition-colors" />
-                      <span className="text-sm text-gray-600 group-hover:text-teal-600">Choose detail image</span>
+                      <Upload className="w-8 h-8 text-gray-400 transition-colors group-hover:text-[rgb(75,151,201)]" />
+                      <span className="text-sm text-gray-600 group-hover:text-[rgb(75,151,201)]">Choose detail image</span>
                       <span className="text-xs text-gray-400">JPG, PNG, WebP · Max 5MB</span>
                     </label>
                   )}
@@ -1971,14 +1975,16 @@ export default function BlogRequestForm() {
                   id="terms"
                   checked={agreedToTerms} 
                   onChange={e => setAgreedToTerms(e.target.checked)}
-                  className="mt-1 w-4 h-4 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
+                  className="mt-1 w-4 h-4 rounded focus:ring-2 focus:ring-[rgb(75,151,201)]"
+                style={{ accentColor: 'rgb(75,151,201)' }}
                 />
                 <label htmlFor="terms" className="text-sm text-gray-700">
                   I agree to the{' '}
                   <button 
                     type="button" 
                     onClick={() => setShowTermsModal(true)} 
-                    className="text-teal-600 hover:text-teal-700 underline font-medium"
+                    className="underline font-medium transition-colors hover:text-[rgb(60,120,160)]"
+                    style={{ color: 'rgb(75,151,201)' }}
                   >
                     Terms & Conditions
                   </button>
@@ -1990,7 +1996,10 @@ export default function BlogRequestForm() {
                 <button 
                   type="button" 
                   onClick={() => setShowPreview(true)} 
-                  className="w-full sm:w-auto px-6 py-3 border-2 border-teal-600 text-teal-600 rounded-full hover:bg-teal-50 transition-colors font-medium flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-3 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                  style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
                   disabled={isSubmitting}
                 >
                   <Eye className="w-4 h-4" />
@@ -2009,11 +2018,14 @@ export default function BlogRequestForm() {
                     type="button" 
                     onClick={handleSaveDraft}
                     disabled={isSubmitting || isSavingDraft}
-                    className="w-full sm:w-auto px-6 py-3 border-2 border-teal-600 text-teal-600 rounded-full hover:bg-teal-50 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto px-6 py-3 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+                    onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
                   >
                     {isSavingDraft ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(75,151,201)' }} />
                         Saving...
                       </>
                     ) : (
@@ -2026,7 +2038,10 @@ export default function BlogRequestForm() {
                   <button 
                     type="submit" 
                     disabled={isSubmitting || !agreedToTerms}
-                    className="w-full sm:w-auto px-6 py-3 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-6 py-3 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'rgb(75,151,201)' }}
+                    onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'; }}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
                   >
                     {isSubmitting ? (
                       <>
@@ -2076,7 +2091,7 @@ export default function BlogRequestForm() {
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
                 placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]"
               />
               <p className="text-xs text-gray-500 mt-2">Paste a YouTube link to embed the video (centered, like images)</p>
             </div>
@@ -2091,7 +2106,10 @@ export default function BlogRequestForm() {
               <button
                 type="button"
                 onClick={confirmYouTube}
-                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
+                className="px-4 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 Insert Video
               </button>
@@ -2113,7 +2131,7 @@ export default function BlogRequestForm() {
                   value={linkData.text}
                   onChange={(e) => setLinkData(prev => ({ ...prev, text: e.target.value }))}
                   placeholder="Enter link text..."
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]"
                 />
               </div>
               <div>
@@ -2123,7 +2141,7 @@ export default function BlogRequestForm() {
                   value={linkData.url}
                   onChange={(e) => setLinkData(prev => ({ ...prev, url: e.target.value }))}
                   placeholder="https://example.com"
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]"
                 />
               </div>
             </div>
@@ -2136,7 +2154,10 @@ export default function BlogRequestForm() {
               </button>
               <button
                 onClick={confirmLink}
-                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
+                className="px-4 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 Insert Link
               </button>
@@ -2235,7 +2256,7 @@ export default function BlogRequestForm() {
               value={imageCaption}
               onChange={(e) => setImageCaption(e.target.value)}
               placeholder="Enter caption..."
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]"
             />
             <div className="flex gap-3 mt-4 justify-end">
               <button
@@ -2246,7 +2267,10 @@ export default function BlogRequestForm() {
               </button>
               <button
                 onClick={saveImageCaption}
-                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
+                className="px-4 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 Save
               </button>
@@ -2265,7 +2289,7 @@ export default function BlogRequestForm() {
               value={imageAltText}
               onChange={(e) => setImageAltText(e.target.value)}
               placeholder="Enter alt text..."
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]"
             />
             <p className="text-xs text-gray-500 mt-2">Alt text helps screen readers and SEO</p>
             <div className="flex gap-3 mt-4 justify-end">
@@ -2277,7 +2301,10 @@ export default function BlogRequestForm() {
               </button>
               <button
                 onClick={saveImageAltText}
-                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
+                className="px-4 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 Save
               </button>
@@ -2303,7 +2330,10 @@ export default function BlogRequestForm() {
               </button>
               <button
                 onClick={handleRestoreDraft}
-                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
+                className="px-4 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 Restore
               </button>
@@ -2329,7 +2359,10 @@ export default function BlogRequestForm() {
             <div className="flex justify-end mt-6">
               <button
                 onClick={() => setShowTermsModal(false)}
-                className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600"
+                className="px-4 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
                 Close
               </button>
@@ -2373,7 +2406,7 @@ export default function BlogRequestForm() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
-                  <input name="meta_title" value={formData.meta_title} onChange={handleInputChange} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-teal-500 ${formData.meta_title.length > 65 ? 'border-amber-500' : 'border-gray-300'}`} placeholder="Auto-filled from title" maxLength={65} />
+                  <input name="meta_title" value={formData.meta_title} onChange={handleInputChange} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] ${formData.meta_title.length > 65 ? 'border-amber-500' : 'border-gray-300'}`} placeholder="Auto-filled from title" maxLength={65} />
                   <p className="text-xs mt-1 text-gray-500">{formData.meta_title.length}/65</p>
                 </div>
                 <div>
@@ -2389,12 +2422,12 @@ export default function BlogRequestForm() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
-                <textarea name="meta_description" value={formData.meta_description} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" rows={2} maxLength={160} placeholder="Auto-filled from excerpt" />
+                <textarea name="meta_description" value={formData.meta_description} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]" rows={2} maxLength={160} placeholder="Auto-filled from excerpt" />
                 <p className="text-xs mt-1 text-gray-500">{formData.meta_description.length}/160</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Meta Tags</label>
-                <input name="meta_keywords" value={formData.meta_keywords} onChange={handleInputChange} list="blog-tags" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="skincare, routine, glowing skin" />
+                <input name="meta_keywords" value={formData.meta_keywords} onChange={handleInputChange} list="blog-tags" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]" placeholder="skincare, routine, glowing skin" />
                 <datalist id="blog-tags">{existingTags.map(t => <option key={t} value={t} />)}</datalist>
               </div>
               <div className="border-t pt-4">
@@ -2418,7 +2451,7 @@ export default function BlogRequestForm() {
                         <button type="button" onClick={removeOgImage} className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full"><X className="w-3 h-3" /></button>
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center h-24 w-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-teal-400">
+                      <label className="flex flex-col items-center justify-center h-24 w-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[rgb(75,151,201)]">
                         <Upload className="w-6 h-6 text-gray-400" />
                         <span className="text-xs text-gray-500">Upload</span>
                         <input type="file" accept="image/*" className="hidden" onChange={handleOgImageUpload} />
@@ -2427,7 +2460,7 @@ export default function BlogRequestForm() {
                     <input name="og_image" value={formData.og_image} onChange={handleInputChange} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg" placeholder="Or paste URL" disabled={!!formData.ogImageFile} />
                   </div>
                   {formData.coverImage && (
-                    <button type="button" onClick={useCoverAsOg} className="text-xs text-teal-600 hover:underline mt-2">Use cover image</button>
+                    <button type="button" onClick={useCoverAsOg} className="text-xs hover:underline mt-2 transition-colors" style={{ color: 'rgb(75,151,201)' }}>Use cover image</button>
                   )}
                 </div>
               </div>
@@ -2435,7 +2468,7 @@ export default function BlogRequestForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Categories</label>
                 <div className="flex flex-wrap gap-2">
                   {categoryOptions.map(c => (
-                    <button key={c} type="button" onClick={() => toggleCategory(c)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${formData.categories.includes(c) ? 'bg-teal-500 text-white border-teal-500' : 'bg-white text-gray-700 border-gray-300 hover:border-teal-400'}`}>{c}</button>
+                    <button key={c} type="button" onClick={() => toggleCategory(c)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${formData.categories.includes(c) ? 'text-white' : 'bg-white text-gray-700 border-gray-300 hover:border-[rgb(75,151,201)]'}`} style={formData.categories.includes(c) ? { backgroundColor: 'rgb(75,151,201)', borderColor: 'rgb(75,151,201)' } : undefined}>{c}</button>
                   ))}
                 </div>
               </div>
@@ -2502,11 +2535,11 @@ export default function BlogRequestForm() {
                           key={v.id}
                           type="button"
                           onClick={() => setSelectedVersionId(v.id)}
-                          className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition-all duration-200 ${selectedVersionId === v.id ? 'bg-teal-50 ring-1 ring-teal-200' : 'hover:bg-gray-50'} ${isCurrent ? 'border-l-4 border-teal-500' : ''}`}
+                          className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition-all duration-200 ${selectedVersionId === v.id ? 'bg-[rgba(75,151,201,0.12)] ring-1 ring-[rgb(75,151,201)]' : 'hover:bg-gray-50'} ${isCurrent ? 'border-l-4 border-[rgb(75,151,201)]' : ''}`}
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-gray-900">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            {isCurrent && <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">Current version</span>}
+                            {isCurrent && <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]">Current version</span>}
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5">{d.toLocaleString()}</p>
                           <p className="text-xs text-gray-600 mt-1">{v.authorName || 'unknown'}</p>
@@ -2542,7 +2575,10 @@ export default function BlogRequestForm() {
                     } catch {}
                     setShowVersionHistoryModal(false)
                   }}
-                  className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'; }}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
                 >
                   Restore draft
                 </button>
