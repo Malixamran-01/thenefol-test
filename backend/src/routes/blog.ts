@@ -885,6 +885,43 @@ router.delete('/drafts/auto', authenticateToken, async (req, res) => {
   }
 })
 
+// Discard current auto draft permanently (user intent: start fresh)
+// Deletes current logical auto draft and all its snapshots.
+router.post('/drafts/discard-current', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const postId = req.body?.post_id ? parseInt(String(req.body.post_id), 10) : null
+    const sessionId = req.body?.session_id && String(req.body.session_id).trim() ? String(req.body.session_id).trim() : null
+
+    const { rows: draftRows } = await pool.query(
+      sessionId
+        ? `SELECT id
+           FROM blog_drafts
+           WHERE user_id = $1 AND status = 'auto' AND session_id = $2 AND (post_id IS NOT DISTINCT FROM $3)
+           ORDER BY updated_at DESC LIMIT 1`
+        : `SELECT id
+           FROM blog_drafts
+           WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2)
+           ORDER BY updated_at DESC LIMIT 1`,
+      sessionId ? [userId, sessionId, postId] : [userId, postId]
+    )
+
+    if (draftRows.length === 0) {
+      return res.json({ discarded: false, message: 'No active draft found' })
+    }
+
+    const draftId = draftRows[0].id
+    await pool.query(`DELETE FROM blog_draft_versions WHERE draft_id = $1`, [draftId])
+    await pool.query(`DELETE FROM blog_drafts WHERE id = $1 AND user_id = $2`, [draftId, userId])
+
+    res.json({ discarded: true, draftId })
+  } catch (error) {
+    console.error('Error discarding current draft:', error)
+    res.status(500).json({ message: 'Failed to discard draft' })
+  }
+})
+
 // Delete draft by id (manual drafts)
 router.delete('/drafts/:id', authenticateToken, async (req, res) => {
   try {

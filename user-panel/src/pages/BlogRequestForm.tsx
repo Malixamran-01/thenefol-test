@@ -1328,7 +1328,24 @@ export default function BlogRequestForm() {
     setShowRestoreModal(false)
   }
 
-  const handleDiscardDraft = () => {
+  const handleKeepForLater = () => {
+    pendingDraftRestore.current = null
+    setShowRestoreModal(false)
+  }
+
+  const handleDiscardDraft = async () => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      try {
+        await fetch(`${getApiBase()}/api/blog/drafts/discard-current`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ session_id: sessionIdRef.current }),
+        })
+      } catch {
+        // fall back to local discard behavior
+      }
+    }
     discardedDraftRef.current = true
     draftIdRef.current = null
     versionRef.current = 0
@@ -2188,12 +2205,21 @@ export default function BlogRequestForm() {
             <p className="text-sm text-gray-600 mb-4">
               We found an unsaved draft from {getDraftAge(pendingDraftRestore.current)}. Would you like to restore it?
             </p>
+            <p className="text-xs text-gray-500 mb-4">
+              Keep for later keeps draft + version history. Discard permanently removes both.
+            </p>
             <div className="flex gap-3 justify-end">
               <button
-                onClick={handleDiscardDraft}
+                onClick={handleKeepForLater}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
               >
-                Discard
+                Keep for later
+              </button>
+              <button
+                onClick={handleDiscardDraft}
+                className="px-4 py-2 border border-red-300 rounded-lg hover:bg-red-50 text-red-700"
+              >
+                Discard permanently
               </button>
               <button
                 onClick={handleRestoreDraft}
