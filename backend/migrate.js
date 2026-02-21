@@ -345,6 +345,21 @@ async function runMigration() {
       END $$;
       CREATE INDEX IF NOT EXISTS idx_blog_drafts_session_id ON blog_drafts(session_id) WHERE session_id IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_blog_drafts_user_session ON blog_drafts(user_id, session_id) WHERE status = 'auto' AND session_id IS NOT NULL;
+      -- Enforce stable draft identity: one active auto draft per logical draft (user + post_id/null)
+      WITH ranked_auto AS (
+        SELECT id, row_number() OVER (
+          PARTITION BY user_id, post_id
+          ORDER BY updated_at DESC, id DESC
+        ) AS rn
+        FROM blog_drafts
+        WHERE status = 'auto'
+      )
+      DELETE FROM blog_drafts d
+      USING ranked_auto r
+      WHERE d.id = r.id AND r.rn > 1;
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_blog_drafts_auto_user_post
+        ON blog_drafts(user_id, COALESCE(post_id, -1))
+        WHERE status = 'auto';
 
       -- Blog draft versions (immutable snapshots; draft = mutable, version = snapshot)
       CREATE TABLE IF NOT EXISTS blog_draft_versions (
