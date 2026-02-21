@@ -1335,23 +1335,56 @@ export default function BlogRequestForm() {
 
   const handleDiscardDraft = async () => {
     const token = localStorage.getItem('token')
+    const draft = pendingDraftRestore.current as { id?: number; draftId?: number; post_id?: number } | null
+    const draftId = draft?.id ?? draft?.draftId
+
     if (token) {
       try {
         await fetch(`${getApiBase()}/api/blog/drafts/discard-current`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ session_id: sessionIdRef.current }),
+          body: JSON.stringify({
+            draft_id: draftId ?? undefined,
+            session_id: sessionIdRef.current,
+            post_id: draft?.post_id ?? null,
+          }),
         })
       } catch {
         // fall back to local discard behavior
       }
     }
+
     discardedDraftRef.current = true
     draftIdRef.current = null
     versionRef.current = 0
     clearLocalDraft()
+    clearDraftSessionId()
+    sessionIdRef.current = getOrCreateDraftSessionId()
     pendingDraftRestore.current = null
     setShowRestoreModal(false)
+
+    // Reset form to empty so user starts fresh
+    setFormData({
+      title: '',
+      content: '',
+      excerpt: '',
+      author_name: user?.name ?? formData.author_name,
+      author_email: user?.email ?? formData.author_email,
+      coverImage: null,
+      detailImage: null,
+      ogImageFile: null,
+      images: [],
+      meta_title: '',
+      meta_description: '',
+      meta_keywords: '',
+      og_title: '',
+      og_description: '',
+      og_image: '',
+      canonical_url: '',
+      categories: [],
+      allow_comments: true,
+    })
+    if (editorRef.current) editorRef.current.innerHTML = '<p><br></p>'
   }
 
   const handleLoadLatest = async () => {
@@ -2200,37 +2233,44 @@ export default function BlogRequestForm() {
       {/* Draft Restore Modal */}
       {showRestoreModal && pendingDraftRestore.current && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80] p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Unsaved draft found</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              We found an unsaved draft from {getDraftAge(pendingDraftRestore.current)}. Would you like to restore it?
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Unsaved draft found</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              We found an unsaved draft from {getDraftAge(pendingDraftRestore.current)}.
             </p>
-            <p className="text-xs text-gray-500 mb-4">
-              Keep for later keeps draft + version history. Discard permanently removes both.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={handleKeepForLater}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
-              >
-                Keep for later
-              </button>
-              <button
-                onClick={handleDiscardDraft}
-                className="px-4 py-2 border border-red-300 rounded-lg hover:bg-red-50 text-red-700"
-              >
-                Discard permanently
-              </button>
+            <div className="space-y-3">
               <button
                 onClick={handleRestoreDraft}
-                className="px-4 py-2 text-white rounded-lg transition-colors"
+                className="w-full px-4 py-3 text-white rounded-lg font-medium transition-colors"
                 style={{ backgroundColor: 'rgb(75,151,201)' }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
               >
-                Restore
+                Restore draft
               </button>
+              <div className="flex items-center gap-3 py-2">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs text-gray-400">or</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleKeepForLater}
+                  className="flex-1 px-4 py-2.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 transition-colors"
+                >
+                  Keep for later
+                </button>
+                <button
+                  onClick={handleDiscardDraft}
+                  className="flex-1 px-4 py-2.5 text-sm border border-red-200 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                >
+                  Discard permanently
+                </button>
+              </div>
             </div>
+            <p className="text-xs text-gray-400 mt-4 text-center">
+              Keep for later keeps your draft. Discard removes it and its history.
+            </p>
           </div>
         </div>
       )}

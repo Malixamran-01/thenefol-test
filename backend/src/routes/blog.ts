@@ -887,31 +887,45 @@ router.delete('/drafts/auto', authenticateToken, async (req, res) => {
 
 // Discard current auto draft permanently (user intent: start fresh)
 // Deletes current logical auto draft and all its snapshots.
+// Accepts draft_id (preferred) or falls back to session_id + post_id lookup.
 router.post('/drafts/discard-current', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
     const postId = req.body?.post_id ? parseInt(String(req.body.post_id), 10) : null
     const sessionId = req.body?.session_id && String(req.body.session_id).trim() ? String(req.body.session_id).trim() : null
+    const draftIdParam = req.body?.draft_id != null ? parseInt(String(req.body.draft_id), 10) : null
 
-    const { rows: draftRows } = await pool.query(
-      sessionId
-        ? `SELECT id
-           FROM blog_drafts
-           WHERE user_id = $1 AND status = 'auto' AND session_id = $2 AND (post_id IS NOT DISTINCT FROM $3)
-           ORDER BY updated_at DESC LIMIT 1`
-        : `SELECT id
-           FROM blog_drafts
-           WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2)
-           ORDER BY updated_at DESC LIMIT 1`,
-      sessionId ? [userId, sessionId, postId] : [userId, postId]
-    )
+    let draftId: number | null = null
 
-    if (draftRows.length === 0) {
-      return res.json({ discarded: false, message: 'No active draft found' })
+    if (draftIdParam && draftIdParam > 0) {
+      // Prefer explicit draft_id (reliable when we know which draft to discard)
+      const { rows } = await pool.query(
+        `SELECT id FROM blog_drafts WHERE id = $1 AND user_id = $2 AND status = 'auto'`,
+        [draftIdParam, userId]
+      )
+      if (rows.length > 0) draftId = rows[0].id
     }
 
-    const draftId = draftRows[0].id
+    if (!draftId) {
+      const { rows: draftRows } = await pool.query(
+        sessionId
+          ? `SELECT id
+             FROM blog_drafts
+             WHERE user_id = $1 AND status = 'auto' AND session_id = $2 AND (post_id IS NOT DISTINCT FROM $3)
+             ORDER BY updated_at DESC LIMIT 1`
+          : `SELECT id
+             FROM blog_drafts
+             WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2)
+             ORDER BY updated_at DESC LIMIT 1`,
+        sessionId ? [userId, sessionId, postId] : [userId, postId]
+      )
+      if (draftRows.length > 0) draftId = draftRows[0].id
+    }
+
+    if (!draftId) {
+      return res.json({ discarded: false, message: 'No active draft found' })
+    }
     await pool.query(`DELETE FROM blog_draft_versions WHERE draft_id = $1`, [draftId])
     await pool.query(`DELETE FROM blog_drafts WHERE id = $1 AND user_id = $2`, [draftId, userId])
 
