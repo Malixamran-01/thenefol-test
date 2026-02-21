@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS blog_draft_versions (
 ALTER TABLE blog_draft_versions ADD COLUMN IF NOT EXISTS draft_id integer references blog_drafts(id) on delete cascade;
 ALTER TABLE blog_draft_versions ADD COLUMN IF NOT EXISTS snapshot_reason text;
 ALTER TABLE blog_draft_versions ADD COLUMN IF NOT EXISTS version_number integer;
+ALTER TABLE blog_draft_versions ADD COLUMN IF NOT EXISTS og_image text;
 
 DO $$
 BEGIN

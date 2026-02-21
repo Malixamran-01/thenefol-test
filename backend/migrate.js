@@ -362,6 +362,7 @@ async function runMigration() {
         meta_keywords jsonb,
         og_title text,
         og_description text,
+        og_image text,
         canonical_url text,
         categories jsonb default '[]'::jsonb,
         allow_comments boolean default true,
@@ -379,6 +380,9 @@ async function runMigration() {
           ALTER TABLE blog_draft_versions ADD COLUMN version_number integer;
           UPDATE blog_draft_versions SET version_number = version WHERE version_number IS NULL;
           UPDATE blog_draft_versions SET version_number = 1 WHERE version_number IS NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'blog_draft_versions' AND column_name = 'og_image') THEN
+          ALTER TABLE blog_draft_versions ADD COLUMN og_image text;
         END IF;
       END $$;
       CREATE INDEX IF NOT EXISTS idx_draft_versions_draft_id ON blog_draft_versions(draft_id) WHERE draft_id IS NOT NULL;
