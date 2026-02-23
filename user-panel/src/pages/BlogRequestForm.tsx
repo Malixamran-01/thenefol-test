@@ -1663,6 +1663,11 @@ export default function BlogRequestForm() {
           line-height: 1.8;
           color: #111827;
         }
+        .overflow-y-auto { scrollbar-width: thin; scrollbar-color: #cbd5e0 #f7fafc; }
+        .overflow-y-auto::-webkit-scrollbar { width: 8px; }
+        .overflow-y-auto::-webkit-scrollbar-track { background: #f7fafc; }
+        .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
         .editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
@@ -1680,72 +1685,66 @@ export default function BlogRequestForm() {
         .editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
         .editor-content .youtube-embed-remove:hover { background: rgba(0,0,0,0.8) !important; }
         .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
-        .blog-editor-scroll::-webkit-scrollbar { width: 10px; }
-        .blog-editor-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
-        .blog-editor-scroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 5px; }
-        .blog-editor-scroll::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
       `}</style>
       
-      <div className="h-screen flex flex-col bg-white overflow-hidden">
-        {/* Fixed Header - dark grey, full width */}
-        <div className="flex-shrink-0 flex justify-between items-center px-4 sm:px-6 py-3 bg-[#2c3e50] text-white border-b border-[#34495e]">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => {
-                if (hasRealDraftContent({ title: formData.title, content: editorRef.current?.innerHTML ?? formData.content, excerpt: formData.excerpt }) && !window.confirm('Leave? Unsaved changes may be lost.')) return
-                window.location.hash = '#/user/blog'
-              }}
-              className="p-2 -ml-2 rounded hover:bg-white/10 transition-colors"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <span className="flex items-center gap-2 text-sm">
-              {lastSavedAt && !isOffline ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-green-400" />
-                  Saved
-                </>
-              ) : isSavingDraft ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  Saving...
-                </>
-              ) : isOffline ? (
-                <span className="flex items-center gap-1.5 text-amber-300">
-                  <WifiOff className="w-4 h-4" />
-                  Offline
-                </span>
-              ) : editingInOtherTab ? (
-                <span className="flex items-center gap-1.5 text-amber-300 text-xs">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  Editing in another tab
-                </span>
-              ) : null}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowPreview(true)}
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium rounded bg-[#ecf0f1] text-[#2c3e50] hover:bg-[#d5dbdb] transition-colors disabled:opacity-50"
-            >
-              Preview
-            </button>
-            <button
-              type="submit"
-              form="blog-form"
-              disabled={isSubmitting || !agreedToTerms}
-              className="px-5 py-2 text-sm font-medium rounded bg-[#ff6b35] text-white hover:bg-[#e55a2b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continue
-            </button>
+      <div className="fixed inset-0 flex flex-col bg-white">
+        {/* Fixed Header */}
+        <div className="flex-shrink-0 bg-white shadow-sm border-b transition-all duration-300">
+          <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => window.location.hash = '#/user/blog'} 
+                className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+              <div className="flex items-center gap-3">
+                {lastSavedAt && !isOffline && (
+                  <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    Saved
+                  </span>
+                )}
+                {editingInOtherTab && (
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Editing in another tab
+                  </span>
+                )}
+                {isOffline && (
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
+                    <WifiOff className="w-3.5 h-3.5" />
+                    Offline
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                type="button"
+                onClick={() => setShowPreview(true)}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+              >
+                Preview
+              </button>
+              <button 
+                type="submit"
+                form="blog-form"
+                disabled={isSubmitting || !agreedToTerms}
+                className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+              >
+                Continue
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Conflict banner (non-blocking) */}
+        {/* Conflict banner */}
         {showConflictBanner && (
           <div className="flex-shrink-0 px-4 sm:px-6 py-2 bg-amber-50 border-b border-amber-200">
             <div className="flex items-center justify-between gap-4">
@@ -1754,15 +1753,27 @@ export default function BlogRequestForm() {
                 <span className="text-sm">This draft was updated in another tab. Reload latest or continue here.</span>
               </div>
               <div className="flex flex-shrink-0 gap-2">
-                <button type="button" onClick={handleDismissConflict} className="px-3 py-1.5 text-sm border border-amber-300 rounded-lg hover:bg-amber-100 text-amber-800">Keep editing</button>
-                <button type="button" onClick={handleLoadLatest} className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700">Load latest</button>
+                <button
+                  type="button"
+                  onClick={handleDismissConflict}
+                  className="px-3 py-1.5 text-sm border border-amber-300 rounded-lg hover:bg-amber-100 text-amber-800"
+                >
+                  Keep editing
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoadLatest}
+                  className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+                >
+                  Load latest
+                </button>
               </div>
             </div>
           </div>
         )}
 
         {/* Fixed Toolbar */}
-        <div className="flex-shrink-0 bg-[#f8f9fa] border-b border-gray-200 px-4 py-2 flex flex-wrap gap-1 items-center overflow-x-auto">
+        <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-2 flex flex-wrap gap-1 items-center overflow-x-auto">
                 <button type="button" onClick={handleUndo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Undo"><Undo2 className="w-4 h-4" /></button>
                 <button type="button" onClick={handleRedo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Redo"><Redo2 className="w-4 h-4" /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
@@ -1789,17 +1800,18 @@ export default function BlogRequestForm() {
                   <Palette className="w-4 h-4" />
                   <div className="w-3 h-3 rounded border border-gray-400" style={{ backgroundColor: currentColor }} />
                 </button>
-        </div>
+              </div>
 
-        {/* Scrollable Content Area - only this scrolls */}
-        <div ref={scrollContainerRef} className="blog-editor-scroll flex-1 overflow-y-auto overflow-x-hidden bg-white">
-          <form id="blog-form" onSubmit={handleSubmit} className="min-h-full">
-            <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8 pb-32">
+        {/* Scrollable Content Area */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+            <form id="blog-form" onSubmit={handleSubmit} className="min-h-full flex flex-col">
+              {/* Content - max-width for readability */}
+              <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
                 <input
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className="w-full text-4xl sm:text-5xl font-normal text-gray-900 placeholder-gray-400 border-none focus:ring-0 focus:outline-none py-1 mb-2 font-serif"
+                  className="w-full text-4xl font-bold text-gray-900 placeholder-gray-400 border-none focus:ring-0 focus:outline-none mb-3 bg-transparent"
                   placeholder="Title"
                   required
                   disabled={isSubmitting}
@@ -1808,7 +1820,7 @@ export default function BlogRequestForm() {
                   name="excerpt"
                   value={formData.excerpt}
                   onChange={handleInputChange}
-                  className="w-full text-lg text-gray-500 placeholder-gray-400 border-none focus:ring-0 focus:outline-none resize-none py-1 mb-4 min-h-[3rem]"
+                  className="w-full text-lg text-gray-500 placeholder-gray-400 border-none focus:ring-0 focus:outline-none resize-none mb-4 bg-transparent"
                   placeholder="Add a subtitle..."
                   required
                   disabled={isSubmitting}
@@ -1816,18 +1828,17 @@ export default function BlogRequestForm() {
                 />
                 <div className="flex flex-wrap items-center gap-2 mb-6">
                   {formData.categories.map(cat => (
-                    <span key={cat} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-sm">
+                    <span key={cat} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
                       {cat}
-                      <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-red-600 text-gray-400"><X className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
                     </span>
                   ))}
                   <button
                     type="button"
                     onClick={() => setShowSettingsModal(true)}
-                    className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 text-gray-500 hover:bg-gray-200 flex items-center justify-center text-lg leading-none"
-                    title="Add category"
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 text-sm hover:border-gray-400"
                   >
-                    +
+                    + Add category
                   </button>
                 </div>
                 <div
@@ -1847,22 +1858,19 @@ export default function BlogRequestForm() {
                     }
                   }}
                   onClick={updateToolbarState}
-                  className="editor-content flex-1 min-h-[320px] overflow-y-auto outline-none text-base text-gray-800 w-full pt-1"
+                  className="editor-content min-h-[500px] outline-none text-base text-gray-800 w-full pt-1 pb-32"
                   data-placeholder="Start writing..."
                   suppressContentEditableWarning
                 />
+              </div>
 
-              {/* Author info */}
-              <div className="border-t border-gray-100 pt-6 mt-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input name="author_name" value={formData.author_name} onChange={handleInputChange} placeholder="Your name *" required disabled={isSubmitting || (isAuthenticated && !!user?.name)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]" />
-                  <input name="author_email" value={formData.author_email} onChange={handleInputChange} placeholder="Email *" required disabled={isSubmitting || (isAuthenticated && !!user?.email)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]" />
-                </div>
-              </div> 
-             {/* Cover & Detail Image Uploads */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
-                {/* Cover Image */}
-                <div className="space-y-2">
+              {/* Bottom Section - Images, Author, Terms */}
+              <div className="border-t bg-gray-50">
+                <div className="max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
+                  {/* Cover & Detail Images - side by side */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Cover Image */}
+                    <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Cover Image * <span className="text-xs font-normal text-gray-500">800×420px, 4:5 peferred</span>
                   </label>
@@ -1893,10 +1901,10 @@ export default function BlogRequestForm() {
                       <span className="text-xs text-gray-400">JPG, PNG, WebP · Max 5MB</span>
                     </label>
                   )}
-                </div>
+                    </div>
 
-                {/* Detail Page Image */}
-                <div className="space-y-2">
+                    {/* Detail Page Image */}
+                    <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Detail Image <span className="text-xs font-normal text-gray-500">Optional · Below title</span>
                   </label>
@@ -1927,77 +1935,141 @@ export default function BlogRequestForm() {
                       <span className="text-xs text-gray-400">JPG, PNG, WebP · Max 5MB</span>
                     </label>
                   )}
+                    </div>
+                  </div>
+
+                  {/* Author Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input 
+                      name="author_name" 
+                      value={formData.author_name} 
+                      onChange={handleInputChange} 
+                      placeholder="Your name *" 
+                      required 
+                      disabled={isSubmitting || (isAuthenticated && !!user?.name)} 
+                      className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-transparent bg-white" 
+                    />
+                    <input 
+                      name="author_email" 
+                      value={formData.author_email} 
+                      onChange={handleInputChange} 
+                      placeholder="Email *" 
+                      required 
+                      disabled={isSubmitting || (isAuthenticated && !!user?.email)} 
+                      className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-transparent bg-white" 
+                    />
+                  </div>
+
+                  {/* Error Message */}
+                  {submitStatus === 'error' && (
+                    <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                      <p className="text-sm text-red-700">{errorMessage}</p>
+                    </div>
+                  )}
+
+                  {/* Terms & Conditions */}
+                  <div className="flex items-start gap-3 p-4 bg-white border border-gray-200 rounded-lg">
+                    <input 
+                      type="checkbox" 
+                      id="terms"
+                      checked={agreedToTerms} 
+                      onChange={e => setAgreedToTerms(e.target.checked)}
+                      className="mt-1 w-4 h-4 rounded focus:ring-2 focus:ring-[rgb(75,151,201)]"
+                      style={{ accentColor: 'rgb(75,151,201)' }}
+                    />
+                    <label htmlFor="terms" className="text-sm text-gray-700">
+                      I agree to the{' '}
+                      <button 
+                        type="button" 
+                        onClick={() => setShowTermsModal(true)} 
+                        className="underline font-medium transition-colors hover:text-[rgb(60,120,160)]"
+                        style={{ color: 'rgb(75,151,201)' }}
+                      >
+                        Terms & Conditions
+                      </button>
+                    </label>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => { fetchDraftVersions(); setShowVersionHistoryModal(true) }}
+                        className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
+                        title="Version history"
+                      >
+                        <RotateCcw className="w-5 h-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowContentInfoModal(true)}
+                        className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
+                        title="Post info"
+                      >
+                        <Info className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                      <button 
+                        type="button" 
+                        onClick={() => window.location.hash = '#/user/blog'} 
+                        className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={handleSaveDraft}
+                        disabled={isSubmitting || isSavingDraft}
+                        className="w-full sm:w-auto px-6 py-2.5 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+                        onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+                      >
+                        {isSavingDraft ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(75,151,201)' }} />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            Save Draft
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </form>
+          </div>
 
-              {/* Error Message */}
-              {submitStatus === 'error' && (
-                <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                  <p className="text-sm text-red-700">{errorMessage}</p>
-                </div>
-              )}
-
-              {/* Terms & Conditions */}
-              <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-                <input 
-                  type="checkbox" 
-                  id="terms"
-                  checked={agreedToTerms} 
-                  onChange={e => setAgreedToTerms(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded focus:ring-2 focus:ring-[rgb(75,151,201)]"
-                style={{ accentColor: 'rgb(75,151,201)' }}
-                />
-                <label htmlFor="terms" className="text-sm text-gray-700">
-                  I agree to the{' '}
-                  <button 
-                    type="button" 
-                    onClick={() => setShowTermsModal(true)} 
-                    className="underline font-medium transition-colors hover:text-[rgb(60,120,160)]"
-                    style={{ color: 'rgb(75,151,201)' }}
-                  >
-                    Terms & Conditions
-                  </button>
-                </label>
-              </div>
-
-              {/* Inline actions: Version History, Content Info, Save Draft - compact */}
-              <div className="flex flex-wrap items-center gap-2 pt-6 mt-6 border-t border-gray-100">
-                <button type="button" onClick={() => { fetchDraftVersions(); setShowVersionHistoryModal(true) }} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700" title="Version history">
-                  <RotateCcw className="w-5 h-5" />
-                </button>
-                <button type="button" onClick={() => setShowContentInfoModal(true)} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700" title="Post info">
-                  <Info className="w-5 h-5" />
-                </button>
-                <button type="button" onClick={handleSaveDraft} disabled={isSubmitting || isSavingDraft} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50">
-                  {isSavingDraft ? <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin border-gray-400" /> : <Save className="w-4 h-4" />}
-                  Save Draft
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-
-        {/* Fixed Settings Button - bottom left */}
-        <button
-          type="button"
-          onClick={() => setShowSettingsModal(true)}
-          className="fixed bottom-6 left-6 z-40 flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-lg shadow-md text-gray-700 hover:bg-gray-50 transition-all"
-          title="SEO, Categories, Images"
-        >
-          <Settings className="w-5 h-5" />
-          Settings
-        </button>
-
-        {/* Floating Add Button - bottom right */}
+        {/* Floating Add Image Button */}
         <button
           type="button"
           onClick={insertImageIntoEditor}
-          className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-[#3498db] text-white shadow-lg hover:bg-[#2980b9] hover:scale-105 transition-all flex items-center justify-center"
+          className="fixed bottom-8 right-8 w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform z-40"
+          style={{ backgroundColor: 'rgb(75,151,201)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgb(60,120,160)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgb(75,151,201)' }}
           title="Add image"
-          aria-label="Add content"
         >
-          <span className="text-2xl font-light leading-none">+</span>
+          <ImageIcon className="w-6 h-6 text-white" />
+        </button>
+
+        {/* Floating Settings Button */}
+        <button
+          type="button"
+          onClick={() => setShowSettingsModal(true)}
+          className="fixed bottom-8 left-8 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-lg hover:shadow-xl transition-all z-40"
+          title="Settings"
+        >
+          <Settings className="w-4 h-4" />
+          <span className="text-sm font-medium">Settings</span>
         </button>
       </div>   
    {/* Color Picker */}
