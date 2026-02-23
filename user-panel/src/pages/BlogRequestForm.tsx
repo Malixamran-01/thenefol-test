@@ -227,6 +227,14 @@ export default function BlogRequestForm() {
     }
   }, [isAuthenticated])
 
+  // Lock page scroll when editor is active (only content scrolls)
+  useEffect(() => {
+    if (submitStatus !== 'success') {
+      document.body.classList.add('editor-page')
+    }
+    return () => document.body.classList.remove('editor-page')
+  }, [submitStatus])
+
   // Fetch existing tags for autocomplete
   useEffect(() => {
     fetch(`${getApiBase()}/api/blog/tags`)
@@ -1680,61 +1688,71 @@ export default function BlogRequestForm() {
         .editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
         .editor-content .youtube-embed-remove:hover { background: rgba(0,0,0,0.8) !important; }
         .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
+        .editor-content img { max-width: 100%; height: auto; display: block; margin: 24px 0; }
+        .editor-layout .editor-content::-webkit-scrollbar { width: 6px; }
+        .editor-layout .editor-content::-webkit-scrollbar-track { background: transparent; }
+        .editor-layout .editor-content::-webkit-scrollbar-thumb { background: #ddd; border-radius: 6px; }
       `}</style>
       
-      <div className="min-h-screen bg-gray-50">
-        {/* Header - clean minimal design */}
-        <div className="bg-white shadow-sm border-b transition-all duration-300">
-          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="editor-layout h-screen flex flex-col overflow-hidden bg-gray-50">
+        {/* Top bar - fixed */}
+        <div className="editor-topbar flex-shrink-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between z-10">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => window.location.hash = '#/user/blog'} 
+              className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
             <div className="flex items-center gap-3">
-              <button 
-                onClick={() => window.location.hash = '#/user/blog'} 
-                className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-              <div className="flex items-center gap-3">
-                {lastSavedAt && !isOffline && (
-                  <span className="flex items-center gap-1.5 text-sm text-gray-600">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    Saved
-                  </span>
-                )}
-                {editingInOtherTab && (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    Editing in another tab
-                  </span>
-                )}
-                {isOffline && (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
-                    <WifiOff className="w-3.5 h-3.5" />
-                    Offline
-                  </span>
-                )}
-              </div>
+              {lastSavedAt && !isOffline && (
+                <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  Saved
+                </span>
+              )}
+              {editingInOtherTab && (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  Editing in another tab
+                </span>
+              )}
+              {isOffline && (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">
+                  <WifiOff className="w-3.5 h-3.5" />
+                  Offline
+                </span>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <button 
-                type="submit"
-                form="blog-form"
-                disabled={isSubmitting || !agreedToTerms}
-                className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
-              >
-                Submit Blog Request
-              </button>
-            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              type="button" 
+              onClick={() => setShowPreview(true)} 
+              className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              disabled={isSubmitting}
+            >
+              Preview
+            </button>
+            <button 
+              type="submit"
+              form="blog-form"
+              disabled={isSubmitting || !agreedToTerms}
+              className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'rgb(75,151,201)' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+            >
+              Continue
+            </button>
           </div>
         </div>
 
         {/* Conflict banner (non-blocking) */}
         {showConflictBanner && (
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-2">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex-shrink-0 px-4 sm:px-6 py-2 bg-amber-50/80 border-b border-amber-200">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-amber-800">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm">This draft was updated in another tab. Reload latest or continue here.</span>
@@ -1759,12 +1777,8 @@ export default function BlogRequestForm() {
           </div>
         )}
 
-        {/* Main Content - whole-page notes app layout */}
-        <div className="max-w-4xl mx-auto p-4 sm:p-6">
-          <div ref={scrollContainerRef} className="bg-white rounded-lg shadow-sm border relative">
-            <form id="blog-form" onSubmit={handleSubmit} className="min-h-[70vh] flex flex-col">
-              {/* Toolbar - above content */}
-              <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex flex-wrap gap-1 items-center overflow-x-auto shrink-0">
+        {/* Toolbar - fixed */}
+        <div className="editor-toolbar flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2 flex flex-wrap gap-1 items-center overflow-x-auto">
                 <button type="button" onClick={handleUndo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Undo"><Undo2 className="w-4 h-4" /></button>
                 <button type="button" onClick={handleRedo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Redo"><Redo2 className="w-4 h-4" /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
@@ -1791,10 +1805,12 @@ export default function BlogRequestForm() {
                   <Palette className="w-4 h-4" />
                   <div className="w-3 h-3 rounded border border-gray-400" style={{ backgroundColor: currentColor }} />
                 </button>
-              </div>
+        </div>
 
-              {/* Content area - title, subtitle, categories, body - notes app flow */}
-              <div className="flex-1 flex flex-col px-6 py-6 sm:px-8 sm:py-8">
+        {/* Scrollable editor content - only this scrolls */}
+        <div ref={scrollContainerRef} className="editor-content flex-1 overflow-y-auto min-h-0">
+          <form id="blog-form" onSubmit={handleSubmit} className="min-h-full">
+            <div className="editor-inner max-w-[720px] mx-auto px-5 py-10">
                 <input
                   name="title"
                   value={formData.title}
@@ -1839,21 +1855,20 @@ export default function BlogRequestForm() {
                     }
                   }}
                   onClick={updateToolbarState}
-                  className="editor-content flex-1 min-h-[320px] overflow-y-auto outline-none text-base text-gray-800 w-full pt-1"
+                  className="editor-content min-h-[320px] outline-none text-base text-gray-800 w-full pt-1"
                   data-placeholder="Start writing..."
                   suppressContentEditableWarning
                 />
-              </div>
 
-              {/* Author info - compact, at bottom of form area */}
-              <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/50 rounded-b-lg">
+              {/* Author info - compact */}
+              <div className="border-t border-gray-100 py-4 mt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input name="author_name" value={formData.author_name} onChange={handleInputChange} placeholder="Your name *" required disabled={isSubmitting || (isAuthenticated && !!user?.name)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]" />
                   <input name="author_email" value={formData.author_email} onChange={handleInputChange} placeholder="Email *" required disabled={isSubmitting || (isAuthenticated && !!user?.email)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-[rgb(75,151,201)]" />
                 </div>
               </div> 
              {/* Cover & Detail Image Uploads - compact side-by-side */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 px-6 pb-6 sm:px-8 sm:pb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pb-6 sm:pb-8 mt-6">
                 {/* Cover Image */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
@@ -1954,8 +1969,8 @@ export default function BlogRequestForm() {
                 </label>
               </div>
 
-              {/* Action Buttons: Version History, Content Info, Preview | Cancel, Save Draft, Settings */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t">
+              {/* Action Buttons: Version History, Content Info | Cancel, Save Draft, Settings */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-6 mt-6 border-t border-gray-200">
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
@@ -1972,18 +1987,6 @@ export default function BlogRequestForm() {
                     title="Post info"
                   >
                     <Info className="w-5 h-5" />
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPreview(true)} 
-                    className="px-4 py-2 border-2 rounded-lg transition-colors font-medium flex items-center gap-2"
-                    style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
-                    disabled={isSubmitting}
-                  >
-                    <Eye className="w-4 h-4" />
-                    Preview
                   </button>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -2027,10 +2030,10 @@ export default function BlogRequestForm() {
                   </button>
                 </div>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
-      </div>   
+      </div>
    {/* Color Picker */}
       {showColorPicker && (
         <div
