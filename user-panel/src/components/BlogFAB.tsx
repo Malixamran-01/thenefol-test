@@ -82,18 +82,21 @@ export default function BlogFAB() {
           style={{ transformOrigin: 'bottom right' }}
         >
           <div className="bg-white rounded-xl shadow-xl border border-gray-200 py-2 min-w-[180px]">
-            {MENU_ITEMS.map((item, i) => (
-              <button
-                key={item.id}
-                onClick={() => handleAction(item.action)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 ${
-                  i === 0 ? 'rounded-t-lg' : ''
-                } ${i === MENU_ITEMS.length - 1 ? 'rounded-b-lg' : ''}`}
-              >
-                <item.icon className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                <span>{item.label}</span>
-              </button>
-            )}
+            {MENU_ITEMS.map((item, i) => {
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleAction(item.action)}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 ${
+                    i === 0 ? 'rounded-t-lg' : ''
+                  } ${i === MENU_ITEMS.length - 1 ? 'rounded-b-lg' : ''}`}
+                >
+                  <Icon className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                  <span>{item.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
