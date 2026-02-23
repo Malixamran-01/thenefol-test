@@ -2681,9 +2681,9 @@ export default function BlogRequestForm() {
                   </div>
                 )}
               </div>
-              {/* Right: Version list - fixed width */}
-              <div className="w-64 flex-shrink-0 flex flex-col border-l border-gray-200">
-                <div className="p-4 overflow-y-auto flex-1">
+              {/* Right: Version list - fixed width, scrollable when many versions */}
+              <div className="w-64 flex-shrink-0 flex flex-col border-l border-gray-200 min-h-0">
+                <div className="p-4 overflow-y-auto flex-1 min-h-0" style={{ scrollbarWidth: 'thin' }}>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">From today</p>
                   {draftVersions.length === 0 ? (
                     <p className="text-sm text-gray-500 py-4">No versions yet</p>
@@ -2693,6 +2693,8 @@ export default function BlogRequestForm() {
                       const isCurrent = i === 0
                       const isToday = d.toDateString() === new Date().toDateString()
                       const timeStr = isToday ? `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Today` : d.toLocaleDateString()
+                      const isManual = v.snapshotReason === 'MANUAL_SAVE'
+                      const versionType = isManual ? 'Manual' : (v.snapshotReason === 'PUBLISH' ? 'Publish' : v.snapshotReason === 'RESTORE' ? 'Restored' : 'Auto')
                       return (
                         <button
                           key={v.id}
@@ -2704,6 +2706,9 @@ export default function BlogRequestForm() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-semibold text-gray-900">{timeStr}</span>
                             {isCurrent && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: 'rgba(75,151,201,0.2)', color: 'rgb(75,151,201)' }}>Current version</span>}
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isManual ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`} title={isManual ? 'Manually saved' : 'Auto-saved'}>
+                              {versionType}
+                            </span>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">{d.toLocaleString()}</p>
                           <p className="text-xs text-gray-600 mt-0.5">
