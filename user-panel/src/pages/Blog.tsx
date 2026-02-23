@@ -89,6 +89,15 @@ export default function Blog() {
     fetchBlogPosts()
   }, [])
 
+  useEffect(() => {
+    const hash = window.location.hash || ''
+    if (hash.includes('drafts=1')) {
+      openDraftsModal()
+      const clean = hash.replace(/[?&]drafts=1/, '').replace(/\?&/, '?').replace(/\?$/, '') || '#/user/blog'
+      window.location.hash = clean
+    }
+  }, [])
+
   const fetchDrafts = async () => {
     const token = localStorage.getItem('token')
     if (!token) return

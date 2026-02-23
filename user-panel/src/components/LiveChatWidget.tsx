@@ -12,7 +12,11 @@ interface LiveChatMessage {
   timestamp: string
 }
 
-export default function LiveChatWidget() {
+interface LiveChatWidgetProps {
+  hideButton?: boolean
+}
+
+export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetProps) {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [session, setSession] = useState<any>(null)
@@ -142,6 +146,12 @@ export default function LiveChatWidget() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, open])
 
+  useEffect(() => {
+    const handler = () => setOpen(true)
+    window.addEventListener('open-live-chat', handler)
+    return () => window.removeEventListener('open-live-chat', handler)
+  }, [])
+
   const sendMessage = async () => {
     const text = input.trim()
     if (!text || !session) return
@@ -212,6 +222,7 @@ export default function LiveChatWidget() {
   }
 
   if (!open) {
+    if (hideButton) return null
     return (
       <button
         onClick={() => setOpen(true)}

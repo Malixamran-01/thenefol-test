@@ -9,6 +9,7 @@ import { WishlistProvider, useWishlist } from './contexts/WishlistContext'
 import { CartProvider } from './contexts/CartContext'
 import { userSocketService } from './services/socket'
 import LiveChatWidget from './components/LiveChatWidget'
+import BlogFAB from './components/BlogFAB'
 import SmoothScroll from './components/SmoothScroll'
 import SearchButton from './components/SearchButton'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
@@ -906,7 +907,15 @@ function AppContent() {
         </div>
       )}
 
-          <LiveChatWidget />
+          {(() => {
+            const isBlogPage = currentPath === '/user/blog' || currentPath.startsWith('/user/blog/')
+            return (
+              <>
+                {isBlogPage && <BlogFAB />}
+                <LiveChatWidget hideButton={isBlogPage} />
+              </>
+            )
+          })()}
           <SearchButton />
           <PWAInstallPrompt />
           <BottomNavigation />
