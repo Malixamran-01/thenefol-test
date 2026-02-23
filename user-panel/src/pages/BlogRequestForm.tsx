@@ -2041,38 +2041,24 @@ export default function BlogRequestForm() {
                           </>
                         )}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowSettingsModal(true)}
+                        className="w-full sm:w-auto px-6 py-2.5 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all font-medium text-gray-700"
+                        title="Settings"
+                      >
+                        <Settings className="w-4 h-4" style={{ color: 'rgb(75,151,201)' }} />
+                        Settings
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             </form>
           </div>
+      </div>
 
-        {/* Floating Add Image Button */}
-        <button
-          type="button"
-          onClick={insertImageIntoEditor}
-          className="fixed bottom-8 right-8 w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform z-40"
-          style={{ backgroundColor: 'rgb(75,151,201)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgb(60,120,160)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgb(75,151,201)' }}
-          title="Add image"
-        >
-          <ImageIcon className="w-6 h-6 text-white" />
-        </button>
-
-        {/* Floating Settings Button */}
-        <button
-          type="button"
-          onClick={() => setShowSettingsModal(true)}
-          className="fixed bottom-8 left-8 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-lg hover:shadow-xl transition-all z-40"
-          title="Settings"
-        >
-          <Settings className="w-4 h-4" />
-          <span className="text-sm font-medium">Settings</span>
-        </button>
-      </div>   
-   {/* Color Picker */}
+      {/* Color Picker */}
       {showColorPicker && (
         <div
           className="absolute z-30 bg-white border border-gray-300 rounded-lg shadow-lg p-3"

@@ -82,7 +82,7 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  const isEditorPage = currentPath === '/user/blog/edit-image'
+  const isEditorPage = currentPath === '/user/blog/edit-image' || currentPath === '/user/blog/request'
 
   // Capture referral parameter from URL
   useEffect(() => {
