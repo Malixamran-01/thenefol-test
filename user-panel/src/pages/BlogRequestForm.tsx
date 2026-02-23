@@ -61,7 +61,6 @@ function deserializeFormDataFromStorage(json: string): BlogRequest {
   }
 }
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
-import { useBlogEditor, isInBody } from '../components/BlogTipTapEditor'
 
 interface BlogRequest {
   title: string
@@ -96,6 +95,7 @@ interface ContentImageItem {
 
 export default function BlogRequestForm() {
   const { user, isAuthenticated } = useAuth()
+  const editorRef = useRef<HTMLDivElement>(null)
   const formDataRef = useRef<BlogRequest | null>(null)
   const savedSelectionRef = useRef<Range | null>(null)
   const colorButtonRef = useRef<HTMLButtonElement>(null)
@@ -170,43 +170,13 @@ export default function BlogRequestForm() {
     og_title: false,
     og_description: false
   })
-  const [toolbarUpdate, setToolbarUpdate] = useState(0)
-
-  const insertImageCbRef = useRef<() => void>(() => {})
-  const handleImageClickCbRef = useRef<(img: HTMLImageElement, e: MouseEvent) => void>(() => {})
-  const syncToServerRef = useRef<((opts?: { keepalive?: boolean }) => void) | null>(null)
-
-  const blogEditor = useBlogEditor({
-    title: formData.title,
-    excerpt: formData.excerpt,
-    content: formData.content,
-    onChange: (t, e, c) => setFormData(prev => ({ ...prev, title: t, excerpt: e, content: c })),
-    onBlur: () => {
-      const fd = formDataRef.current
-      if (fd) {
-        const payload = { ...fd, title: fd.title, excerpt: fd.excerpt, content: fd.content }
-        saveLocalDraft(payload)
-        setLastSavedAt(new Date().toISOString())
-        syncToServerRef.current?.()
-      }
-    },
-    onInsertImage: () => insertImageCbRef.current?.(),
-    onImageClick: (img, e) => handleImageClickCbRef.current?.(img, e),
-    placeholder: 'Start writing...',
-    disabled: isSubmitting,
+  const [toolbarState, setToolbarState] = useState({
+    block: 'p' as 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote',
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false
   })
-
-  useEffect(() => {
-    const ed = blogEditor.editor
-    if (!ed) return
-    const handler = () => setToolbarUpdate((n) => n + 1)
-    ed.on('selectionUpdate', handler)
-    ed.on('transaction', handler)
-    return () => {
-      ed.off('selectionUpdate', handler)
-      ed.off('transaction', handler)
-    }
-  }, [blogEditor.editor])
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -217,7 +187,7 @@ export default function BlogRequestForm() {
   const categoryOptions = BLOG_CATEGORY_OPTIONS
 
   const getContentStats = useCallback(() => {
-    const content = formData.content || ''
+    const content = (editorRef.current?.innerHTML ?? formData.content) || ''
     const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
     const chars = text.length
     const words = text ? text.split(/\s+/).filter(Boolean).length : 0
@@ -327,6 +297,25 @@ export default function BlogRequestForm() {
     })
   }, [formData.title, formData.excerpt, formData.content, metaFieldsManuallyEdited])
 
+  // Attach click handlers to all images in editor
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const handleImageClickInEditor = (e: Event) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'IMG') {
+        e.stopPropagation()
+        handleImageClick(target as HTMLImageElement, e as MouseEvent)
+      }
+    }
+
+    editor.addEventListener('click', handleImageClickInEditor)
+    return () => {
+      editor.removeEventListener('click', handleImageClickInEditor)
+    }
+  }, [])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -345,7 +334,133 @@ export default function BlogRequestForm() {
     }))
   }
 
-  const getEditorContentForSave = () => formData.content || ''  
+  const getEditorContentForSave = () => {
+    if (!editorRef.current) return ''
+    const html = editorRef.current.innerHTML
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    tmp.querySelectorAll('.youtube-embed-remove').forEach((el) => el.remove())
+    return tmp.innerHTML
+  }
+
+  const handleEditorInput = () => {
+    if (editorRef.current) {
+      setFormData(prev => ({
+        ...prev,
+        content: getEditorContentForSave()
+      }))
+    }
+  }
+
+  const exec = (command: string, value?: string) => {
+    document.execCommand(command, false, value)
+    editorRef.current?.focus()
+    handleEditorInput()
+  }
+
+  const ensureParagraphFormat = useCallback(() => {
+    if (!editorRef.current) return
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) return
+    const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
+    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4', 'blockquote']
+    if (!validBlocks.includes(blockVal)) {
+      document.execCommand('formatBlock', false, 'p')
+      document.execCommand('foreColor', false, '#111827')
+      if (editorRef.current) {
+        setFormData(prev => ({ ...prev, content: getEditorContentForSave() }))
+      }
+    }
+  }, [])
+
+  const updateToolbarState = useCallback(() => {
+    if (!editorRef.current) return
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) {
+      setToolbarState({ block: 'p', bold: false, italic: false, underline: false, strikethrough: false })
+      return
+    }
+    const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
+    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4', 'blockquote']
+    const block = validBlocks.includes(blockVal) ? (blockVal as 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') : 'p'
+    setToolbarState({
+      block,
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline'),
+      strikethrough: document.queryCommandState('strikeThrough')
+    })
+    if (!validBlocks.includes(blockVal)) {
+      ensureParagraphFormat()
+    }
+  }, [ensureParagraphFormat])
+
+  useEffect(() => {
+    const handler = () => updateToolbarState()
+    document.addEventListener('selectionchange', handler)
+    return () => document.removeEventListener('selectionchange', handler)
+  }, [updateToolbarState])
+
+  // Ensure editor has a paragraph block when empty so typing starts in black
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor) return
+    const html = editor.innerHTML.trim()
+    if (!html || html === '<br>' || html === '<br/>') {
+      editor.innerHTML = '<p><br></p>'
+      const p = editor.querySelector('p')
+      if (p) {
+        const range = document.createRange()
+        range.setStart(p, 0)
+        range.collapse(true)
+        const sel = window.getSelection()
+        sel?.removeAllRanges()
+        sel?.addRange(range)
+      }
+    }
+  }, [])
+
+  const setBlockFormat = (block: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') => {
+    editorRef.current?.focus()
+    const current = toolbarState.block
+    if (block === 'p') {
+      exec('formatBlock', 'p')
+    } else if (block === 'blockquote') {
+      if (current === 'blockquote') exec('formatBlock', 'p')
+      else exec('formatBlock', 'blockquote')
+    } else {
+      if (current === block) exec('formatBlock', 'p')
+      else exec('formatBlock', block)
+    }
+    setTimeout(updateToolbarState, 0)
+  }
+
+  const toggleFormat = (command: 'bold' | 'italic' | 'underline' | 'strikeThrough') => {
+    exec(command)
+    setTimeout(updateToolbarState, 0)
+  }
+
+  const setBlockquote = () => {
+    editorRef.current?.focus()
+    const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
+    if (blockVal === 'blockquote') {
+      exec('formatBlock', 'p')
+    } else {
+      exec('formatBlock', 'blockquote')
+    }
+    setTimeout(updateToolbarState, 0)
+  }
+
+  const handleUndo = () => { editorRef.current?.focus(); exec('undo') }
+  const handleRedo = () => { editorRef.current?.focus(); exec('redo') }
+
+  const setHeading = (level: number) => {
+    setBlockFormat(`h${level}` as 'h1' | 'h2' | 'h3' | 'h4')
+  }
+
+  const setParagraph = () => {
+    setBlockFormat('p')
+  }  
   const  normalizeUrl = (url: string) => {
     const trimmed = url.trim()
     if (!trimmed) return ''
@@ -369,16 +484,38 @@ export default function BlogRequestForm() {
     const normalizedUrl = normalizeUrl(linkData.url)
     if (!normalizedUrl) return
 
-    const ed = blogEditor.editor
-    if (ed) {
-      const linkText = linkData.text?.trim() || normalizedUrl
-      if (ed.state.selection.empty) {
-        ed.chain().focus().insertContent(`<a href="${normalizedUrl}" target="_blank" rel="noopener noreferrer" style="color: #4B97C9; text-decoration: underline;">${linkText}</a>`).run()
-      } else {
-        ed.chain().focus().setLink({ href: normalizedUrl }).run()
-      }
+    const selection = window.getSelection()
+    editorRef.current?.focus()
+
+    if (selection && savedSelectionRef.current) {
+      selection.removeAllRanges()
+      selection.addRange(savedSelectionRef.current)
     }
 
+    const linkText = linkData.text?.trim() || normalizedUrl
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
+
+    if (range) {
+      range.deleteContents()
+      const anchor = document.createElement('a')
+      anchor.href = normalizedUrl
+      anchor.target = '_blank'
+      anchor.rel = 'noopener noreferrer'
+      anchor.textContent = linkText
+      anchor.style.color = '#4B97C9'
+      anchor.style.textDecoration = 'underline'
+      range.insertNode(anchor)
+      range.setStartAfter(anchor)
+      range.setEndAfter(anchor)
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+      handleEditorInput()
+    } else {
+      const html = `<a href="${normalizedUrl}" target="_blank" rel="noopener noreferrer" style="color: #4B97C9; text-decoration: underline;">${linkText}</a>`
+      exec('insertHTML', html)
+    }
+
+    savedSelectionRef.current = null
     setShowLinkModal(false)
     setLinkData({ text: '', url: '' })
   }
@@ -397,6 +534,58 @@ export default function BlogRequestForm() {
     return null
   }
 
+  const insertYouTube = () => {
+    editorRef.current?.focus()
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      savedSelectionRef.current = selection.getRangeAt(0).cloneRange()
+    } else {
+      const newRange = document.createRange()
+      newRange.selectNodeContents(editorRef.current!)
+      newRange.collapse(false)
+      savedSelectionRef.current = newRange
+    }
+    setYoutubeUrl('')
+    setShowYouTubeModal(true)
+  }
+
+  const removeYouTubeEmbed = (wrapper: HTMLElement) => {
+    const br = wrapper.nextSibling
+    if (br && br.nodeName === 'BR') br.remove()
+    wrapper.remove()
+    handleEditorInput()
+  }
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Backspace' || !editorRef.current) return
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return
+    const range = selection.getRangeAt(0)
+    if (!editorRef.current.contains(range.startContainer)) return
+
+    let nodeBefore: Node | null = null
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      if (range.startOffset > 0) return
+      const parent = range.startContainer.parentNode
+      if (!parent) return
+      const idx = Array.from(parent.childNodes).indexOf(range.startContainer as ChildNode)
+      nodeBefore = idx > 0 ? parent.childNodes[idx - 1] : parent.previousSibling
+    } else {
+      if (range.startOffset > 0) {
+        nodeBefore = range.startContainer.childNodes[range.startOffset - 1]
+      } else {
+        nodeBefore = range.startContainer.previousSibling
+      }
+    }
+    while (nodeBefore && nodeBefore.nodeType === Node.ELEMENT_NODE && (nodeBefore as Element).tagName === 'BR') {
+      nodeBefore = nodeBefore.previousSibling
+    }
+    if (nodeBefore?.nodeType === Node.ELEMENT_NODE && (nodeBefore as HTMLElement).classList?.contains('youtube-embed-wrapper')) {
+      removeYouTubeEmbed(nodeBefore as HTMLElement)
+      e.preventDefault()
+    }
+  }
+
   const confirmYouTube = () => {
     const videoId = extractYouTubeVideoId(youtubeUrl)
     if (!videoId) {
@@ -405,19 +594,88 @@ export default function BlogRequestForm() {
     }
 
     const embedUrl = `https://www.youtube.com/embed/${videoId}`
-    const ed = blogEditor.editor
-    if (ed) {
-      if (!isInBody(ed)) ed.commands.focus('end')
-      ed.commands.setYoutubeVideo({ src: embedUrl })
+    const selection = window.getSelection()
+    editorRef.current?.focus()
+
+    if (selection && savedSelectionRef.current) {
+      selection.removeAllRanges()
+      selection.addRange(savedSelectionRef.current)
     }
 
+    const wrapper = document.createElement('div')
+    wrapper.className = 'youtube-embed-wrapper'
+    wrapper.setAttribute('contenteditable', 'false')
+    wrapper.setAttribute('data-youtube-embed', 'true')
+    wrapper.style.cssText = 'position: relative; display: flex; justify-content: center; align-items: center; margin: 20px auto; width: 100%;'
+
+    const inner = document.createElement('div')
+    inner.style.cssText = 'display: flex; justify-content: center; width: 100%;'
+
+    const iframe = document.createElement('iframe')
+    iframe.src = embedUrl
+    iframe.title = 'YouTube video'
+    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+    iframe.allowFullscreen = true
+    iframe.style.cssText = 'max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px;'
+    inner.appendChild(iframe)
+
+    const removeBtn = document.createElement('button')
+    removeBtn.type = 'button'
+    removeBtn.className = 'youtube-embed-remove'
+    removeBtn.innerHTML = '×'
+    removeBtn.title = 'Remove video'
+    removeBtn.style.cssText = 'position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: none; cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; z-index: 10;'
+    removeBtn.onclick = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      removeYouTubeEmbed(wrapper)
+    }
+    wrapper.addEventListener('mouseenter', () => { removeBtn.style.opacity = '1' })
+    wrapper.addEventListener('mouseleave', () => { removeBtn.style.opacity = '0' })
+    wrapper.appendChild(inner)
+    wrapper.appendChild(removeBtn)
+
+    const br = document.createElement('br')
+
+    if (selection && savedSelectionRef.current && editorRef.current?.contains(savedSelectionRef.current.commonAncestorContainer)) {
+      try {
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        const startContainer = range.startContainer
+        if (startContainer.nodeType === Node.TEXT_NODE && startContainer.parentElement) {
+          const parent = startContainer.parentElement
+          if (editorRef.current.contains(parent)) {
+            parent.parentNode?.insertBefore(wrapper, parent.nextSibling)
+            parent.parentNode?.insertBefore(br, wrapper.nextSibling)
+          } else {
+            range.insertNode(wrapper)
+            wrapper.parentNode?.insertBefore(br, wrapper.nextSibling)
+          }
+        } else {
+          range.insertNode(wrapper)
+          wrapper.parentNode?.insertBefore(br, wrapper.nextSibling)
+        }
+        range.setStartAfter(br)
+        range.setEndAfter(br)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      } catch {
+        editorRef.current?.appendChild(wrapper)
+        editorRef.current?.appendChild(br)
+      }
+    } else {
+      editorRef.current?.appendChild(wrapper)
+      editorRef.current?.appendChild(br)
+    }
+
+    handleEditorInput()
     setShowYouTubeModal(false)
     setYoutubeUrl('')
   }
 
   const applyColor = (color: string) => {
     setCurrentColor(color)
-    blogEditor.editor?.chain().focus().setColor(color).run()
+    exec('foreColor', color)
     setShowColorPicker(false)
   }
 
@@ -463,11 +721,16 @@ export default function BlogRequestForm() {
   }, [showColorPicker])
 
   const insertList = (ordered: boolean) => {
+    const selection = window.getSelection()
+    if (!selection || !editorRef.current) return
+
     if (ordered) {
-      blogEditor.editor?.chain().focus().toggleOrderedList().run()
+      exec('insertOrderedList')
     } else {
-      blogEditor.editor?.chain().focus().toggleBulletList().run()
+      exec('insertUnorderedList')
     }
+
+    editorRef.current.focus()
   }
 
   const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -509,6 +772,31 @@ export default function BlogRequestForm() {
   const createImageId = () => `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
   const insertImageIntoEditor = () => {
+    if (!editorRef.current) {
+      console.error('Editor not available')
+      return
+    }
+    
+    editorRef.current.focus()
+    
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      if (editorRef.current.contains(range.commonAncestorContainer)) {
+        savedSelectionRef.current = range.cloneRange()
+      } else {
+        const newRange = document.createRange()
+        newRange.selectNodeContents(editorRef.current)
+        newRange.collapse(false)
+        savedSelectionRef.current = newRange
+      }
+    } else {
+      const newRange = document.createRange()
+      newRange.selectNodeContents(editorRef.current)
+      newRange.collapse(false)
+      savedSelectionRef.current = newRange
+    }
+
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -542,11 +830,6 @@ export default function BlogRequestForm() {
     input.click()
   }
 
-  useEffect(() => {
-    insertImageCbRef.current = insertImageIntoEditor
-    handleImageClickCbRef.current = handleImageClick
-  })
-
   const handleImageClick = (img: HTMLImageElement, e: MouseEvent) => {
     setSelectedImage(img)
     
@@ -575,7 +858,7 @@ export default function BlogRequestForm() {
     setImageAltText(img.getAttribute('data-alt') || img.alt)
   }  
   const deleteImage = () => {
-    if (selectedImage && blogEditor.editor) {
+    if (selectedImage && selectedImage.parentNode) {
       const imageId = selectedImage.getAttribute('data-image-id')
       if (imageId) {
         setFormData(prev => ({
@@ -583,18 +866,10 @@ export default function BlogRequestForm() {
           images: prev.images.filter(item => item.id !== imageId)
         }))
       }
-      try {
-        const pos = blogEditor.editor.view.posAtDOM(selectedImage, 0)
-        const $pos = blogEditor.editor.state.doc.resolve(pos)
-        const node = $pos.nodeAfter
-        if (node) {
-          blogEditor.editor.commands.deleteRange({ from: pos, to: pos + node.nodeSize })
-        }
-      } catch {
-        selectedImage.parentNode?.removeChild(selectedImage)
-      }
+      selectedImage.parentNode.removeChild(selectedImage)
       setShowImageMenu(false)
       setSelectedImage(null)
+      handleEditorInput()
     }
   }
 
@@ -639,6 +914,7 @@ export default function BlogRequestForm() {
     }
     selectedImage.setAttribute('data-width-style', width)
     setShowImageMenu(false)
+    handleEditorInput()
   }
 
   const openImageEditor = async () => {
@@ -677,14 +953,16 @@ export default function BlogRequestForm() {
       }
       caption.textContent = imageCaption
       setShowCaptionModal(false)
+      handleEditorInput()
     }
   }
 
   const saveImageAltText = () => {
     if (selectedImage) {
-    selectedImage.setAttribute('data-alt', imageAltText)
-    selectedImage.alt = imageAltText
-    setShowAltTextModal(false)
+      selectedImage.setAttribute('data-alt', imageAltText)
+      selectedImage.alt = imageAltText
+      setShowAltTextModal(false)
+      handleEditorInput()
     }
   }  
   const applyEditedImage = useCallback(async (
@@ -718,9 +996,8 @@ export default function BlogRequestForm() {
       const editedFile = new File([blob], filename, { type: blob.type })
       const imageUrl = URL.createObjectURL(blob)
       
-      const editorDom = blogEditor.editor?.view.dom
-      const imgToUpdate = targetImg ?? (targetImageId && editorDom
-        ? editorDom.querySelector(`img[data-image-id="${targetImageId}"]`) as HTMLImageElement | null
+      const imgToUpdate = targetImg ?? (targetImageId && editorRef.current
+        ? editorRef.current.querySelector(`img[data-image-id="${targetImageId}"]`) as HTMLImageElement | null
         : null)
       
       if (targetImageId && imgToUpdate) {
@@ -734,20 +1011,81 @@ export default function BlogRequestForm() {
           )
         }))
       } else {
-        const ed = blogEditor.editor
-        if (!ed) return
+        if (!editorRef.current) return
+        editorRef.current.focus()
         const imageId = createImageId()
-        if (!isInBody(ed)) ed.commands.focus('end')
-        ed.chain().focus().setImage({ src: imageUrl, alt: filename }).run()
+        const imageContainer = document.createElement('div')
+        imageContainer.style.textAlign = 'center'
+        imageContainer.style.margin = '20px 0'
+        imageContainer.style.display = 'block'
+        imageContainer.style.width = '100%'
+        imageContainer.setAttribute('contenteditable', 'false')
+        
+        const img = document.createElement('img')
+        img.src = imageUrl
+        img.alt = filename
+        img.style.maxWidth = '100%'
+        img.style.height = 'auto'
+        img.style.cursor = 'pointer'
+        img.style.border = '2px solid transparent'
+        img.style.transition = 'all 0.2s'
+        img.style.display = 'block'
+        img.style.margin = '0 auto'
+        img.setAttribute('data-filename', filename)
+        img.setAttribute('data-image-id', imageId)
+        img.setAttribute('data-caption', '')
+        img.setAttribute('data-alt', filename)
+        img.setAttribute('data-width-style', 'normal')
+        
+        img.addEventListener('click', (e) => {
+          e.stopPropagation()
+          handleImageClick(img, e as MouseEvent)
+        })
+        img.addEventListener('mouseenter', () => { img.style.borderColor = '#4B97C9' })
+        img.addEventListener('mouseleave', () => { img.style.borderColor = 'transparent' })
+        
+        imageContainer.appendChild(img)
+        const selection = window.getSelection()
+        
+        if (selection && savedSelectionRef.current && editorRef.current.contains(savedSelectionRef.current.commonAncestorContainer)) {
+          try {
+            selection.removeAllRanges()
+            selection.addRange(savedSelectionRef.current)
+            const range = selection.getRangeAt(0)
+            const startContainer = range.startContainer
+            if (startContainer.nodeType === Node.TEXT_NODE) {
+              const parentElement = startContainer.parentElement
+              if (parentElement && editorRef.current.contains(parentElement)) {
+                parentElement.parentNode?.insertBefore(imageContainer, parentElement.nextSibling)
+              } else {
+                editorRef.current.appendChild(imageContainer)
+              }
+            } else {
+              range.insertNode(imageContainer)
+            }
+            range.setStartAfter(imageContainer)
+            range.setEndAfter(imageContainer)
+            selection.removeAllRanges()
+            selection.addRange(range)
+          } catch {
+            editorRef.current.appendChild(imageContainer)
+          }
+        } else {
+          editorRef.current.appendChild(imageContainer)
+        }
+        
+        const lineBreak = document.createElement('br')
+        imageContainer.parentNode?.insertBefore(lineBreak, imageContainer.nextSibling)
         setFormData(prev => ({ ...prev, images: [...(prev.images || []), { id: imageId, file: editedFile }] }))
       }
       
       savedSelectionRef.current = null
+      handleEditorInput()
     } catch (error) {
       console.error('Error applying edited image:', error)
       alert('Failed to save image. Please try again.')
     }
-  }, [handleImageClick])
+  }, [handleImageClick, handleEditorInput])
 
   // Restore form state and process editor result when returning from full-page editor
   useEffect(() => {
@@ -759,7 +1097,9 @@ export default function BlogRequestForm() {
       try {
         const restored = deserializeFormDataFromStorage(formRaw)
         setFormData(restored)
-        blogEditor.setContent(restored.title || '', restored.excerpt || '', restored.content || '')
+        if (editorRef.current && restored.content) {
+          editorRef.current.innerHTML = restored.content
+        }
       } catch (e) {
         console.error('Failed to restore form state:', e)
       }
@@ -812,7 +1152,7 @@ export default function BlogRequestForm() {
               categories: arr(draft.categories),
               allow_comments: draft.allow_comments ?? true,
             }))
-            blogEditor.setContent(draft.title || '', draft.excerpt || '', draft.content || '')
+            if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
             draftIdRef.current = draft.status === 'auto' ? draft.id : null
             versionRef.current = draft.version ?? 0
             setLastSavedAt(new Date().toISOString())
@@ -921,7 +1261,7 @@ export default function BlogRequestForm() {
   const syncToServer = useCallback((opts?: { keepalive?: boolean }) => {
     const fd = formDataRef.current
     if (!fd || !isAuthenticated || !user || isOffline) return
-    const content = fd.content || ''
+    const content = (editorRef.current?.innerHTML ?? fd.content) || ''
     const payload = {
       title: fd.title,
       content,
@@ -972,10 +1312,6 @@ export default function BlogRequestForm() {
         .catch(() => {})
     }
   }, [isAuthenticated, user, isOffline])
-
-  useEffect(() => {
-    syncToServerRef.current = syncToServer
-  }, [syncToServer])
 
   // Server draft sync: 45s interval + forced on blur / tab close / visibility hidden
   useEffect(() => {
@@ -1036,7 +1372,9 @@ export default function BlogRequestForm() {
         allow_comments: draft.allow_comments ?? true,
       }))
       requestAnimationFrame(() => {
-        blogEditor.setContent(draft.title || '', draft.excerpt || '', draft.content || '')
+        if (editorRef.current && draft.content) {
+          editorRef.current.innerHTML = draft.content
+        }
       })
       const d = draft as any
       draftIdRef.current = d.id ?? d.draftId ?? null
@@ -1102,7 +1440,7 @@ export default function BlogRequestForm() {
       categories: [],
       allow_comments: true,
     })
-    blogEditor.setContent('', '', '')
+    if (editorRef.current) editorRef.current.innerHTML = '<p><br></p>'
   }
 
   const handleLoadLatest = async () => {
@@ -1134,7 +1472,7 @@ export default function BlogRequestForm() {
           categories: arr(draft.categories),
           allow_comments: draft.allow_comments ?? true,
         }))
-        blogEditor.setContent(draft.title || '', draft.excerpt || '', draft.content || '')
+        if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
         draftIdRef.current = draft.id
         versionRef.current = draft.version ?? 0
         setLastSavedAt(new Date().toISOString())
@@ -1146,7 +1484,7 @@ export default function BlogRequestForm() {
   const handleDismissConflict = () => setShowConflictBanner(false)
 
   const handleSaveDraft = async () => {
-    const content = formData.content || ''
+    const content = (editorRef.current?.innerHTML ?? formData.content) || ''
     const payload = {
       title: formData.title,
       content,
@@ -1213,18 +1551,6 @@ export default function BlogRequestForm() {
     if (!formData.coverImage) {
       setSubmitStatus('error')
       setErrorMessage('Please upload a cover image for your blog post.')
-      return
-    }
-
-    if (!formData.title?.trim()) {
-      setSubmitStatus('error')
-      setErrorMessage('Please add a title.')
-      return
-    }
-
-    if (!formData.excerpt?.trim()) {
-      setSubmitStatus('error')
-      setErrorMessage('Please add a subtitle.')
       return
     }
 
@@ -1359,7 +1685,6 @@ export default function BlogRequestForm() {
         .editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
         .editor-content .youtube-embed-remove:hover { background: rgba(0,0,0,0.8) !important; }
         .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
-        .editor-content .blog-subtitle { color: #6b7280; font-size: 1.125rem; font-weight: 400; }
       `}</style>
       
       <div className="fixed inset-0 flex flex-col bg-white">
@@ -1449,27 +1774,27 @@ export default function BlogRequestForm() {
 
         {/* Fixed Toolbar */}
         <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-2 flex flex-wrap gap-1 items-center overflow-x-auto">
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().undo().run()} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Undo"><Undo2 className="w-4 h-4" /></button>
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().redo().run()} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Redo"><Redo2 className="w-4 h-4" /></button>
+                <button type="button" onClick={handleUndo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Undo"><Undo2 className="w-4 h-4" /></button>
+                <button type="button" onClick={handleRedo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Redo"><Redo2 className="w-4 h-4" /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
                 <div className="flex gap-0.5">
-                  <button type="button" onClick={() => blogEditor.editor?.chain().focus().setParagraph().run()} className={`px-2 py-1.5 rounded text-xs font-medium ${blogEditor.editor?.isActive('paragraph') && !blogEditor.editor?.isActive('blockquote') ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Paragraph">P</button>
+                  <button type="button" onClick={setParagraph} className={`px-2 py-1.5 rounded text-xs font-medium ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Paragraph">P</button>
                   {[1, 2, 3, 4].map(h => (
-                    <button key={h} type="button" onClick={() => blogEditor.editor?.chain().focus().toggleHeading({ level: h as 1 | 2 | 3 | 4 }).run()} className={`px-2 py-1.5 rounded text-xs font-semibold ${blogEditor.editor?.isActive('heading', { level: h }) ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
+                    <button key={h} type="button" onClick={() => setHeading(h)} className={`px-2 py-1.5 rounded text-xs font-semibold ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
                   ))}
                 </div>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().toggleBold().run()} className={`p-2 rounded ${blogEditor.editor?.isActive('bold') ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Bold"><Bold className="w-4 h-4" /></button>
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().toggleItalic().run()} className={`p-2 rounded ${blogEditor.editor?.isActive('italic') ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Italic"><Italic className="w-4 h-4" /></button>
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().toggleUnderline().run()} className={`p-2 rounded ${blogEditor.editor?.isActive('underline') ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Underline"><Underline className="w-4 h-4" /></button>
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().toggleStrike().run()} className={`p-2 rounded ${blogEditor.editor?.isActive('strike') ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Strikethrough"><Strikethrough className="w-4 h-4" /></button>
+                <button type="button" onClick={() => toggleFormat('bold')} className={`p-2 rounded ${toolbarState.bold ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Bold"><Bold className="w-4 h-4" /></button>
+                <button type="button" onClick={() => toggleFormat('italic')} className={`p-2 rounded ${toolbarState.italic ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Italic"><Italic className="w-4 h-4" /></button>
+                <button type="button" onClick={() => toggleFormat('underline')} className={`p-2 rounded ${toolbarState.underline ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Underline"><Underline className="w-4 h-4" /></button>
+                <button type="button" onClick={() => toggleFormat('strikeThrough')} className={`p-2 rounded ${toolbarState.strikethrough ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Strikethrough"><Strikethrough className="w-4 h-4" /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
-                <button type="button" onClick={() => { const sel = blogEditor.editor?.state.selection; const text = sel ? blogEditor.editor?.state.doc.textBetween(sel.from, sel.to) : ''; setLinkData({ text: text || '', url: '' }); setShowLinkModal(true) }} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Link"><LinkIcon className="w-4 h-4" /></button>
-                <button type="button" onClick={blogEditor.safeInsertImage} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Image"><ImageIcon className="w-4 h-4" /></button>
-                <button type="button" onClick={() => { setYoutubeUrl(''); setShowYouTubeModal(true) }} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="YouTube"><Youtube className="w-4 h-4" /></button>
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().toggleBlockquote().run()} className={`p-2 rounded ${blogEditor.editor?.isActive('blockquote') ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Quote"><Quote className="w-4 h-4" /></button>
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().toggleBulletList().run()} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Bullet List"><List className="w-4 h-4" /></button>
-                <button type="button" onClick={() => blogEditor.editor?.chain().focus().toggleOrderedList().run()} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
+                <button type="button" onClick={insertLink} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Link"><LinkIcon className="w-4 h-4" /></button>
+                <button type="button" onClick={insertImageIntoEditor} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Image"><ImageIcon className="w-4 h-4" /></button>
+                <button type="button" onClick={insertYouTube} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="YouTube"><Youtube className="w-4 h-4" /></button>
+                <button type="button" onClick={setBlockquote} className={`p-2 rounded ${toolbarState.block === 'blockquote' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Quote"><Quote className="w-4 h-4" /></button>
+                <button type="button" onClick={() => insertList(false)} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Bullet List"><List className="w-4 h-4" /></button>
+                <button type="button" onClick={() => insertList(true)} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
                 <button type="button" onClick={toggleColorPicker} className="p-2 rounded hover:bg-gray-200 flex items-center gap-1 text-gray-600" ref={colorButtonRef} title="Text Color">
                   <Palette className="w-4 h-4" />
@@ -1482,13 +1807,26 @@ export default function BlogRequestForm() {
             <form id="blog-form" onSubmit={handleSubmit} className="min-h-full flex flex-col">
               {/* Content - max-width for readability */}
               <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
-                <div className="min-h-[200px]">
-                  {blogEditor.editor && (() => {
-                    const { EditorContent } = blogEditor
-                    return <EditorContent editor={blogEditor.editor} />
-                  })()}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mb-6 mt-6">
+                <input
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="w-full text-4xl font-bold text-gray-900 placeholder-gray-400 border-none focus:ring-0 focus:outline-none mb-3 bg-transparent"
+                  placeholder="Title"
+                  required
+                  disabled={isSubmitting}
+                />
+                <textarea
+                  name="excerpt"
+                  value={formData.excerpt}
+                  onChange={handleInputChange}
+                  className="w-full text-lg text-gray-500 placeholder-gray-400 border-none focus:ring-0 focus:outline-none resize-none mb-4 bg-transparent"
+                  placeholder="Add a subtitle..."
+                  required
+                  disabled={isSubmitting}
+                  rows={2}
+                />
+                <div className="flex flex-wrap items-center gap-2 mb-6">
                   {formData.categories.map(cat => (
                     <span key={cat} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
                       {cat}
@@ -1503,6 +1841,27 @@ export default function BlogRequestForm() {
                     + Add category
                   </button>
                 </div>
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleEditorInput}
+                  onKeyDown={handleEditorKeyDown}
+                  onFocus={updateToolbarState}
+                  onBlur={() => {
+                    const fd = formDataRef.current
+                    if (fd) {
+                      const content = (editorRef.current?.innerHTML ?? fd.content) || ''
+                      const payload = { ...fd, content }
+                      saveLocalDraft(payload)
+                      setLastSavedAt(new Date().toISOString())
+                      syncToServer()
+                    }
+                  }}
+                  onClick={updateToolbarState}
+                  className="editor-content min-h-[500px] outline-none text-base text-gray-800 w-full pt-1 pb-32"
+                  data-placeholder="Start writing..."
+                  suppressContentEditableWarning
+                />
               </div>
 
               {/* Bottom Section - Images, Author, Terms */}
@@ -2234,7 +2593,7 @@ export default function BlogRequestForm() {
                         const kw = draft.meta_keywords
                         const metaKeywords = typeof kw === 'string' ? kw : (Array.isArray(kw) ? (kw as string[]).join(', ') : '')
                         setFormData(prev => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: metaKeywords, og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
-                        blogEditor.setContent(draft.title || '', draft.excerpt || '', draft.content || '')
+                        if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
                         draftIdRef.current = draft.id
                         versionRef.current = draft.version ?? 0
                       }
