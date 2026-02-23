@@ -909,9 +909,10 @@ function AppContent() {
 
           {(() => {
             const isBlogPage = currentPath === '/user/blog' || currentPath.startsWith('/user/blog/')
+            const isBlogRequestForm = currentPath === '/user/blog/request'
             return (
               <>
-                {isBlogPage && <BlogFAB />}
+                {isBlogPage && !isBlogRequestForm && <BlogFAB />}
                 <LiveChatWidget hideButton={isBlogPage} />
               </>
             )
