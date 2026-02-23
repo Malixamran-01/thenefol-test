@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Calendar, User, Heart, MessageCircle, Tag } from 'lucide-react'
+import { Plus, Calendar, User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
@@ -26,12 +26,27 @@ interface BlogPost {
   comments_count?: number
 }
 
+interface BlogDraft {
+  id: number
+  title: string
+  excerpt: string
+  name: string
+  status: 'auto' | 'manual'
+  created_at: string
+  updated_at: string
+}
+
 export default function Blog() {
   const { isAuthenticated } = useAuth()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
   const [showAuthorPrompt, setShowAuthorPrompt] = useState(false)
+  const [showDraftsModal, setShowDraftsModal] = useState(false)
+  const [drafts, setDrafts] = useState<BlogDraft[]>([])
+  const [draftsLoading, setDraftsLoading] = useState(false)
+  const [expandedDraftId, setExpandedDraftId] = useState<number | null>(null)
+  const [deletingDraftId, setDeletingDraftId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
 
@@ -72,6 +87,61 @@ export default function Blog() {
   useEffect(() => {
     fetchBlogPosts()
   }, [])
+
+  const fetchDrafts = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    setDraftsLoading(true)
+    try {
+      const res = await fetch(`${getApiBase()}/api/blog/drafts?include_auto=1`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDrafts(data)
+      } else {
+        setDrafts([])
+      }
+    } catch {
+      setDrafts([])
+    } finally {
+      setDraftsLoading(false)
+    }
+  }
+
+  const openDraftsModal = async () => {
+    if (!isAuthenticated) {
+      setShowAuthPrompt(true)
+      return
+    }
+    setShowDraftsModal(true)
+    await fetchDrafts()
+  }
+
+  const handleEditDraft = (draftId: number) => {
+    setShowDraftsModal(false)
+    window.location.hash = `#/user/blog/request?draft=${draftId}`
+  }
+
+  const handleDeleteDraft = async (draftId: number) => {
+    if (!window.confirm('Delete this draft permanently? This cannot be undone.')) return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    setDeletingDraftId(draftId)
+    try {
+      const res = await fetch(`${getApiBase()}/api/blog/drafts/${draftId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setDrafts((prev) => prev.filter((d) => d.id !== draftId))
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDeletingDraftId(null)
+    }
+  }
 
   // Fallback posts if API fails
   const fallbackPosts: BlogPost[] = [
@@ -426,45 +496,152 @@ export default function Blog() {
             <p className="text-lg font-light mb-6" style={{color: '#9DB4C0'}}>
               Have a skincare tip, beauty secret, or personal journey to share? Submit your blog post and inspire our community.
             </p>
-            <button
-              onClick={async () => {
-                if (!isAuthenticated) {
-                  setShowAuthPrompt(true)
-                  return
-                }
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={async () => {
+                  if (!isAuthenticated) {
+                    setShowAuthPrompt(true)
+                    return
+                  }
 
-                // Check if user has an author profile
-                try {
-                  const eligibility = await authorAPI.checkEligibility()
+                  // Check if user has an author profile
+                  try {
+                    const eligibility = await authorAPI.checkEligibility()
 
-                  const canSubmitDirectly =
-                    Boolean(eligibility.hasAuthorRole) &&
-                    Boolean(eligibility.hasAuthorProfile) &&
-                    Boolean(eligibility.onboardingCompleted)
+                    const canSubmitDirectly =
+                      Boolean(eligibility.hasAuthorRole) &&
+                      Boolean(eligibility.hasAuthorProfile) &&
+                      Boolean(eligibility.onboardingCompleted)
 
-                  if (canSubmitDirectly) {
-                    // User is an author, proceed to blog request form
-                    window.location.hash = '#/user/blog/request?new=1'
-                  } else {
-                    // User needs to create author profile
+                    if (canSubmitDirectly) {
+                      // User is an author, proceed to blog request form
+                      window.location.hash = '#/user/blog/request?new=1'
+                    } else {
+                      // User needs to create author profile
+                      setShowAuthorPrompt(true)
+                    }
+                  } catch (err) {
+                    // If API fails, show author prompt (safe fallback)
                     setShowAuthorPrompt(true)
                   }
-                } catch (err) {
-                  // If API fails, show author prompt (safe fallback)
-                  setShowAuthorPrompt(true)
-                }
-              }}
-              className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium rounded-lg transition-colors text-sm tracking-wide uppercase shadow-lg"
-              style={{ backgroundColor: 'rgb(75,151,201)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
-            >
-              <Plus className="w-5 h-5" />
-              Submit Your Blog Post
-            </button>
+                }}
+                className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium rounded-lg transition-colors text-sm tracking-wide uppercase shadow-lg"
+                style={{ backgroundColor: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              >
+                <Plus className="w-5 h-5" />
+                Submit Your Blog Post
+              </button>
+              <button
+                onClick={openDraftsModal}
+                className="inline-flex items-center gap-2 px-6 py-4 font-medium rounded-lg transition-colors text-sm tracking-wide uppercase border-2"
+                style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgb(75,151,201,0.1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                }}
+              >
+                <FileText className="w-5 h-5" />
+                Drafts
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Drafts Modal */}
+      {showDraftsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="text-xl font-semibold" style={{ color: '#1B4965' }}>
+                My Drafts
+              </h3>
+              <button
+                onClick={() => setShowDraftsModal(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {draftsLoading ? (
+                <p className="text-center py-8 text-gray-500">Loading drafts...</p>
+              ) : drafts.length === 0 ? (
+                <p className="text-center py-8 text-gray-500">No drafts yet. Start writing to save drafts.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {drafts.map((draft) => (
+                    <li
+                      key={draft.id}
+                      className="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors"
+                    >
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 truncate">
+                              {draft.title || draft.name || 'Untitled'}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full ${
+                                  draft.status === 'auto'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}
+                              >
+                                {draft.status === 'auto' ? 'Auto-save' : 'Manual'}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {formatDate(draft.updated_at)}
+                              </span>
+                            </div>
+                            {expandedDraftId === draft.id && draft.excerpt && (
+                              <p className="mt-2 text-sm text-gray-600 line-clamp-3">
+                                {draft.excerpt}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() =>
+                                setExpandedDraftId((prev) => (prev === draft.id ? null : draft.id))
+                              }
+                              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                              title="View preview"
+                            >
+                              <Eye className="w-4 h-4 text-gray-600" />
+                            </button>
+                            <button
+                              onClick={() => handleEditDraft(draft.id)}
+                              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                              title="Edit draft"
+                            >
+                              <Pencil className="w-4 h-4 text-gray-600" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDraft(draft.id)}
+                              disabled={deletingDraftId === draft.id}
+                              className="p-2 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                              title="Delete permanently"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Authentication Prompt Modal */}
       {showAuthPrompt && (

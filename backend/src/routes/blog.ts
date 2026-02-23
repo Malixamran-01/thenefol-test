@@ -102,11 +102,18 @@ const cleanupDeletedBlogPosts = async () => {
   }
 }
 
-/** Delete old drafts. Auto-drafts: 14 days. Manual drafts: 90 days. */
+/** Delete old drafts. Auto-drafts: 7 days (recovery window). Manual drafts: 90 days. */
 export async function cleanupOldDrafts(dbPool: Pool): Promise<{ auto: number; manual: number }> {
   if (!dbPool) return { auto: 0, manual: 0 }
+  const { rows: oldAuto } = await dbPool.query(
+    `SELECT id FROM blog_drafts WHERE status = 'auto' AND updated_at < now() - interval '7 days'`
+  )
+  const autoIds = oldAuto.map((r: any) => r.id)
+  if (autoIds.length > 0) {
+    await dbPool.query(`DELETE FROM blog_draft_versions WHERE draft_id = ANY($1)`, [autoIds])
+  }
   const { rowCount: autoCount } = await dbPool.query(
-    `DELETE FROM blog_drafts WHERE status = 'auto' AND updated_at < now() - interval '14 days'`
+    `DELETE FROM blog_drafts WHERE status = 'auto' AND updated_at < now() - interval '7 days'`
   )
   const { rowCount: manualCount } = await dbPool.query(
     `DELETE FROM blog_drafts WHERE status = 'manual' AND updated_at < now() - interval '90 days'`
@@ -693,13 +700,29 @@ router.post('/drafts/restore/:versionId', authenticateToken, async (req, res) =>
   }
 })
 
-// Get latest drafts (auto + manual) for restore logic - newest wins (stable draft identity)
+// Get latest drafts (auto + manual) for restore logic or drafts list.
+// When for_prompt=1: returns only recent AUTO draft (<24h) for restore modal. Manual drafts never prompt.
 router.get('/drafts/latest', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
+    const forPrompt = req.query.for_prompt === '1' || req.query.for_prompt === 'true'
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
-    // Restore by logical draft identity (user + post_id), not session.
+
+    if (forPrompt) {
+      // Prompt only for recent AUTO drafts (<24h). Manual drafts never trigger prompt.
+      const { rows } = await pool.query(
+        `SELECT * FROM blog_drafts
+         WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2)
+           AND updated_at > NOW() - INTERVAL '1 day'
+         ORDER BY updated_at DESC LIMIT 1`,
+        [userId, postId]
+      )
+      const auto = rows[0] || null
+      return res.json({ auto, manual: null })
+    }
+
+    // Full list: auto + manual (for drafts section, etc.)
     const { rows } = await pool.query(
       `SELECT * FROM blog_drafts WHERE user_id = $1 AND (post_id IS NOT DISTINCT FROM $2)
        ORDER BY updated_at DESC LIMIT 2`,
@@ -797,14 +820,18 @@ router.post('/drafts', authenticateToken, async (req, res) => {
   }
 })
 
-// List manual drafts
+// List drafts (manual only by default; include_auto=1 for both manual and auto)
 router.get('/drafts', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
+    const includeAuto = req.query.include_auto === '1' || req.query.include_auto === 'true'
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
     const { rows } = await pool.query(
-      `SELECT id, title, excerpt, name, status, created_at, updated_at FROM blog_drafts
-       WHERE user_id = $1 AND status = 'manual' ORDER BY updated_at DESC`,
+      includeAuto
+        ? `SELECT id, title, excerpt, name, status, created_at, updated_at FROM blog_drafts
+           WHERE user_id = $1 ORDER BY updated_at DESC`
+        : `SELECT id, title, excerpt, name, status, created_at, updated_at FROM blog_drafts
+           WHERE user_id = $1 AND status = 'manual' ORDER BY updated_at DESC`,
       [userId]
     )
     res.json(rows)
@@ -936,17 +963,19 @@ router.post('/drafts/discard-current', authenticateToken, async (req, res) => {
   }
 })
 
-// Delete draft by id (manual drafts)
+// Delete draft by id (manual or auto - also deletes versions for auto drafts)
 router.delete('/drafts/:id', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const draftId = req.params.id
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
-    const { rowCount } = await pool.query(
-      `DELETE FROM blog_drafts WHERE id = $1 AND user_id = $2`,
+    const { rows } = await pool.query(
+      `SELECT id, status FROM blog_drafts WHERE id = $1 AND user_id = $2`,
       [draftId, userId]
     )
-    if (rowCount === 0) return res.status(404).json({ message: 'Draft not found' })
+    if (rows.length === 0) return res.status(404).json({ message: 'Draft not found' })
+    await pool.query(`DELETE FROM blog_draft_versions WHERE draft_id = $1`, [draftId])
+    await pool.query(`DELETE FROM blog_drafts WHERE id = $1 AND user_id = $2`, [draftId, userId])
     res.json({ message: 'Draft deleted' })
   } catch (error) {
     console.error('Error deleting draft:', error)

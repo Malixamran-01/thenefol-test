@@ -5177,7 +5177,7 @@ cron.schedule('* * * * *', async () => {
   }
 })
 
-// Cleanup old blog drafts (auto: 14 days, manual: 90 days) - runs daily at 3am
+// Cleanup old blog drafts (auto: 7 days, manual: 90 days) - runs daily at 3am
 cron.schedule('0 3 * * *', async () => {
   try {
     const result = await cleanupOldDrafts(pool)

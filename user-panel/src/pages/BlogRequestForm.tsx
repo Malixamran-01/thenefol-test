@@ -1117,44 +1117,96 @@ export default function BlogRequestForm() {
       }, 0)
     }
 
-    // Check for draft to restore (only once per mount) - newest wins
+    // Check for explicit ?draft=id in URL (from Drafts modal "Edit")
+    const hash = window.location.hash || ''
+    const draftMatch = hash.match(/[?&]draft=(\d+)/)
+    const explicitDraftId = draftMatch ? parseInt(draftMatch[1], 10) : null
+    if (explicitDraftId && isAuthenticated && !formRaw) {
+      hasCheckedDraftRef.current = true
+      const token = localStorage.getItem('token')
+      if (token) {
+        fetch(`${getApiBase()}/api/blog/drafts/${explicitDraftId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((draft: any) => {
+            if (!draft || !hasRealDraftContent(draft)) return
+            const arr = (v: any): string[] =>
+              Array.isArray(v) ? v : typeof v === 'string' ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [] } catch { return [] } })() : []
+            const kw = draft.meta_keywords
+            const metaKeywords = typeof kw === 'string' ? kw : Array.isArray(kw) ? (kw as string[]).join(', ') : ''
+            setFormData((prev) => ({
+              ...prev,
+              title: draft.title || '',
+              content: draft.content || '',
+              excerpt: draft.excerpt || '',
+              author_name: draft.author_name || prev.author_name,
+              author_email: draft.author_email || prev.author_email,
+              meta_title: draft.meta_title || '',
+              meta_description: draft.meta_description || '',
+              meta_keywords: metaKeywords,
+              og_title: draft.og_title || '',
+              og_description: draft.og_description || '',
+              og_image: draft.og_image || '',
+              canonical_url: draft.canonical_url || '',
+              categories: arr(draft.categories),
+              allow_comments: draft.allow_comments ?? true,
+            }))
+            if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
+            draftIdRef.current = draft.status === 'auto' ? draft.id : null
+            versionRef.current = draft.version ?? 0
+            setLastSavedAt(new Date().toISOString())
+            const cleanHash = hash.replace(/[?&]draft=\d+/, '').replace(/\?&/, '?').replace(/\?$/, '')
+            window.location.hash = cleanHash || '#/user/blog/request'
+          })
+          .catch(() => {})
+      }
+      return
+    }
+
+    // Check for AUTO draft to restore (only once per mount). Prompt ONLY for recent auto (<24h). Never prompt for manual.
     if (!formRaw && !hasCheckedDraftRef.current) {
       hasCheckedDraftRef.current = true
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000
+      const isRecent = (ts: number) => Date.now() - ts < ONE_DAY_MS
+
       const localDraft = getLocalDraft()
       const localHasContent = hasRealDraftContent(localDraft)
       const localTs = localDraft?.updatedAt ? new Date(localDraft.updatedAt).getTime() : 0
-      if (localHasContent && !isAuthenticated) {
+      const localRecent = localHasContent && isRecent(localTs)
+
+      if (localRecent && !isAuthenticated) {
         pendingDraftRestore.current = localDraft
         setShowRestoreModal(true)
       } else if (isAuthenticated) {
-        fetch(`${getApiBase()}/api/blog/drafts/latest?session_id=${encodeURIComponent(sessionIdRef.current)}`, {
+        fetch(`${getApiBase()}/api/blog/drafts/latest?for_prompt=1&session_id=${encodeURIComponent(sessionIdRef.current)}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
         })
           .then(r => r.ok ? r.json() : null)
           .then((data: { auto?: any; manual?: any } | null) => {
             if (discardedDraftRef.current) return
-            const serverAuto = data?.auto
-            const serverManual = data?.manual
-            const serverDraft = serverAuto || serverManual
-            const serverTs = serverDraft?.updated_at
-              ? new Date(serverDraft.updated_at).getTime()
-              : serverDraft?.updatedAt
-                ? new Date(serverDraft.updatedAt).getTime()
+            const serverAuto = data?.auto ?? null
+            const serverTs = serverAuto?.updated_at
+              ? new Date(serverAuto.updated_at).getTime()
+              : serverAuto?.updatedAt
+                ? new Date(serverAuto.updatedAt).getTime()
                 : 0
-            const serverHasContent = hasRealDraftContent(serverDraft)
-            if (!localHasContent && !serverHasContent) return
-            const best = localTs >= serverTs && localHasContent
+            const serverHasContent = hasRealDraftContent(serverAuto)
+            if (!localRecent && !serverHasContent) return
+            const best = localTs >= serverTs && localRecent
               ? localDraft
               : serverHasContent
-                ? { ...serverDraft, updatedAt: serverDraft.updated_at || serverDraft.updatedAt }
-                : localDraft
+                ? { ...serverAuto, updatedAt: serverAuto.updated_at || serverAuto.updatedAt }
+                : localRecent
+                  ? localDraft
+                  : null
             if (best && hasRealDraftContent(best)) {
               pendingDraftRestore.current = best
               setShowRestoreModal(true)
             }
           })
           .catch(() => {
-            if (localHasContent) {
+            if (localRecent) {
               pendingDraftRestore.current = localDraft
               setShowRestoreModal(true)
             }
@@ -2270,6 +2322,9 @@ export default function BlogRequestForm() {
             </div>
             <p className="text-xs text-gray-400 mt-4 text-center">
               Keep for later keeps your draft. Discard removes it and its history.
+            </p>
+            <p className="text-xs text-gray-400 mt-1 text-center">
+              Auto draft expires in 24 hours.
             </p>
           </div>
         </div>
