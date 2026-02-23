@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, X, CheckCircle, WarningCircle, TextB, TextItalic, TextUnderline, Link, ListBullets, ListNumbers, Palette, Image, YoutubeLogo, PencilSimple, FileText, Tag, Square, ArrowsOut, ArrowsIn, Trash, ArrowLeft, FloppyDisk, WifiSlash, ArrowCounterClockwise, Info, Gear, ArrowUUpLeft, ArrowUUpRight, TextStrikethrough, Quotes } from '@phosphor-icons/react'
+import { Upload, X, CheckCircle, WarningCircle, TextB, TextItalic, TextUnderline, Link, ListBullets, ListNumbers, Palette, Image, YoutubeLogo, PencilSimple, FileText, Tag, Square, ArrowsOut, ArrowsIn, Trash, ArrowLeft, FloppyDisk, WifiSlash, ClockCounterClockwise, Info, Gear, ArrowUUpLeft, ArrowUUpRight, TextStrikethrough, Quotes, Question } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
@@ -2140,7 +2140,7 @@ export default function BlogRequestForm() {
                         className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all duration-200"
                         title="Version history"
                       >
-                        <ArrowCounterClockwise size={20} />
+                        <ClockCounterClockwise size={20} />
                       </button>
                       <button
                         type="button"
@@ -2646,63 +2646,68 @@ export default function BlogRequestForm() {
         </div>
       )}
 
-      {/* Version History Modal */}
+      {/* Version History Modal - fixed size, site theme */}
       {showVersionHistoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowVersionHistoryModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col animate-modal-in" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="bg-white rounded-t-xl shadow-2xl w-full max-w-3xl h-[min(560px,90vh)] flex flex-col animate-modal-in overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
-              <button onClick={() => setShowVersionHistoryModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+              <button onClick={() => setShowVersionHistoryModal(false)} className="w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}><X size={18} /></button>
             </div>
-            <div className="flex flex-1 min-h-0">
-              <div className="flex-1 p-6 border-r overflow-y-auto">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+              {/* Left: Preview - fixed height, scrollable */}
+              <div className="flex-1 p-6 border-r border-gray-200 overflow-y-auto min-w-0">
                 {selectedVersionId ? (
                   (() => {
                     const v = draftVersions.find(x => x.id === selectedVersionId)
                     const text = v ? (v.content || '').replace(/<[^>]*>/g, ' ').trim() : ''
                     return (
                       <div className="prose prose-sm max-w-none">
-                        {text ? <p className="whitespace-pre-wrap">{text.slice(0, 2000)}{text.length > 2000 ? '...' : ''}</p> : (
-                          <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                            <FileText size={64} className="mb-4" />
-                            <p className="font-medium text-gray-600">This version is empty</p>
-                            <p className="text-sm">Please select another version</p>
+                        {text ? <p className="whitespace-pre-wrap text-gray-800">{text.slice(0, 2000)}{text.length > 2000 ? '...' : ''}</p> : (
+                          <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
+                            <FileText size={64} className="mb-4 text-gray-300" />
+                            <p className="font-semibold text-gray-700">This version is empty</p>
+                            <p className="text-sm text-gray-500 mt-1">Please select another version</p>
                           </div>
                         )}
                       </div>
                     )
                   })()
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                    <FileText size={64} className="mb-4" />
-                    <p className="font-medium text-gray-600">This version is empty</p>
-                    <p className="text-sm">Please select another version</p>
+                  <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
+                    <FileText size={64} className="mb-4 text-gray-300" />
+                    <p className="font-semibold text-gray-700">This version is empty</p>
+                    <p className="text-sm text-gray-500 mt-1">Please select another version</p>
                   </div>
                 )}
               </div>
-              <div className="w-72 flex-shrink-0 overflow-y-auto">
-                <div className="p-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">From database</p>
+              {/* Right: Version list - fixed width */}
+              <div className="w-64 flex-shrink-0 flex flex-col border-l border-gray-200">
+                <div className="p-4 overflow-y-auto flex-1">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">From today</p>
                   {draftVersions.length === 0 ? (
                     <p className="text-sm text-gray-500 py-4">No versions yet</p>
                   ) : (
                     draftVersions.map((v, i) => {
                       const d = new Date(v.updatedAt || v.createdAt)
                       const isCurrent = i === 0
+                      const isToday = d.toDateString() === new Date().toDateString()
+                      const timeStr = isToday ? `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Today` : d.toLocaleDateString()
                       return (
                         <button
                           key={v.id}
                           type="button"
                           onClick={() => setSelectedVersionId(v.id)}
-                          className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition-all duration-200 ${selectedVersionId === v.id ? 'bg-[rgba(75,151,201,0.12)] ring-1 ring-[rgb(75,151,201)]' : 'hover:bg-gray-50'} ${isCurrent ? 'border-l-4 border-[rgb(75,151,201)]' : ''}`}
+                          className={`w-full text-left px-4 py-3 rounded-r-lg mb-2 transition-all duration-200 ${selectedVersionId === v.id ? 'bg-[rgba(75,151,201,0.08)]' : 'hover:bg-gray-50'} ${selectedVersionId === v.id ? 'border-l-2' : ''}`}
+                          style={selectedVersionId === v.id ? { borderLeftColor: 'rgb(75,151,201)' } : undefined}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-900">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            {isCurrent && <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]">Latest</span>}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-gray-900">{timeStr}</span>
+                            {isCurrent && <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: 'rgba(75,151,201,0.2)', color: 'rgb(75,151,201)' }}>Current version</span>}
                           </div>
-                          <p className="text-xs text-gray-500 mt-0.5">{d.toLocaleString()}</p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {v.snapshotReason === 'MANUAL_SAVE' ? 'Manual save' : v.snapshotReason === 'PUBLISH' ? 'Before publish' : v.snapshotReason === 'RESTORE' ? 'Restored' : 'Auto snapshot'}
+                          <p className="text-xs text-gray-500 mt-1">{d.toLocaleString()}</p>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            {v.authorName || (v.snapshotReason === 'MANUAL_SAVE' ? 'Manual save' : v.snapshotReason === 'PUBLISH' ? 'Before publish' : v.snapshotReason === 'RESTORE' ? 'Restored' : 'Auto snapshot')}
                           </p>
                         </button>
                       )
@@ -2711,10 +2716,10 @@ export default function BlogRequestForm() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
-              <span className="text-gray-500 text-sm">Select a version to preview or restore</span>
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+              <button type="button" className="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors" title="Help"><Question size={18} /></button>
               <div className="flex gap-2">
-                <button onClick={() => setShowVersionHistoryModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">Cancel</button>
+                <button onClick={() => setShowVersionHistoryModal(false)} className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-gray-700 font-medium">Cancel</button>
                 <button
                   disabled={!selectedVersionId}
                   onClick={async () => {
@@ -2734,16 +2739,18 @@ export default function BlogRequestForm() {
                         const metaKeywords = typeof kw === 'string' ? kw : (Array.isArray(kw) ? (kw as string[]).join(', ') : '')
                         setFormData(prev => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: metaKeywords, og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
                         if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
+                        if (titleRef.current && draft.title) titleRef.current.innerHTML = draft.title
+                        if (subtitleRef.current && draft.excerpt) subtitleRef.current.innerHTML = draft.excerpt
                         draftIdRef.current = draft.id
                         versionRef.current = draft.version ?? 0
                       }
                     } catch {}
                     setShowVersionHistoryModal(false)
                   }}
-                  className="px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
-                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'; }}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+                  className="px-5 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200"
+                  style={{ backgroundColor: 'rgb(75,151,201)', color: 'white', border: '2px solid rgb(75,151,201)' }}
+                  onMouseEnter={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'; e.currentTarget.style.borderColor = 'rgb(60,120,160)'; } }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'; e.currentTarget.style.borderColor = 'rgb(75,151,201)'; }}
                 >
                   Restore draft
                 </button>
