@@ -62,6 +62,58 @@ function deserializeFormDataFromStorage(json: string): BlogRequest {
 }
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 
+// Unified editor: title + subtitle + body are blocks in ONE contentEditable
+const EDITOR_TITLE_SEL = 'h1[data-block="title"], h1.editor-title'
+const EDITOR_SUBTITLE_SEL = 'p[data-block="subtitle"], p.editor-subtitle'
+
+function escapeHtml(text: string): string {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
+
+function parseEditorBlocks(html: string): { title: string; excerpt: string; content: string } {
+  const content = html || ''
+  const tmp = document.createElement('div')
+  tmp.innerHTML = content
+  const kids = Array.from(tmp.children) as HTMLElement[]
+  const title = (kids[0]?.textContent || '').trim()
+  const excerpt = (kids[1]?.textContent || '').trim()
+  return { title, excerpt, content }
+}
+
+function buildEditorHtml(title: string, excerpt: string, content: string): string {
+  if (content && (content.includes('data-block="title"') || content.includes('editor-title'))) {
+    return content
+  }
+  const t = escapeHtml(title)
+  const e = escapeHtml(excerpt)
+  const titleBlock = `<h1 class="editor-title" data-block="title">${t || '<br>'}</h1>`
+  const subtitleBlock = `<p class="editor-subtitle" data-block="subtitle">${e || '<br>'}</p>`
+  const body = (content || '').trim() || '<p><br></p>'
+  return titleBlock + subtitleBlock + body
+}
+
+function setEditorFromDraft(editor: HTMLDivElement, content: string, title: string, excerpt: string) {
+  const isNewFormat = content && (content.includes('data-block="title"') || content.includes('editor-title'))
+  editor.innerHTML = isNewFormat ? content : buildEditorHtml(title, excerpt, content)
+}
+
+function isCursorInEditorBody(editor: HTMLElement): boolean {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return false
+  const range = sel.getRangeAt(0)
+  let node: Node | null = range.commonAncestorContainer
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentNode
+  if (!node || !editor.contains(node)) return false
+  const el = node as HTMLElement
+  const titleEl = editor.querySelector(EDITOR_TITLE_SEL)
+  const subtitleEl = editor.querySelector(EDITOR_SUBTITLE_SEL)
+  if (titleEl && (titleEl === el || titleEl.contains(el))) return false
+  if (subtitleEl && (subtitleEl === el || subtitleEl.contains(el))) return false
+  return true
+}
+
 interface BlogRequest {
   title: string
   content: string
@@ -344,12 +396,10 @@ export default function BlogRequestForm() {
   }
 
   const handleEditorInput = () => {
-    if (editorRef.current) {
-      setFormData(prev => ({
-        ...prev,
-        content: getEditorContentForSave()
-      }))
-    }
+    if (!editorRef.current) return
+    const raw = getEditorContentForSave()
+    const { title, excerpt, content } = parseEditorBlocks(raw)
+    setFormData(prev => ({ ...prev, title, excerpt, content }))
   }
 
   const exec = (command: string, value?: string) => {
@@ -401,17 +451,18 @@ export default function BlogRequestForm() {
     return () => document.removeEventListener('selectionchange', handler)
   }, [updateToolbarState])
 
-  // Ensure editor has a paragraph block when empty so typing starts in black
+  // Ensure editor has unified structure: H1 (title) + P (subtitle) + P (body) - runs once on mount
   useEffect(() => {
     const editor = editorRef.current
     if (!editor) return
     const html = editor.innerHTML.trim()
-    if (!html || html === '<br>' || html === '<br/>') {
-      editor.innerHTML = '<p><br></p>'
-      const p = editor.querySelector('p')
-      if (p) {
+    const hasStructure = html.includes('data-block="title"') || html.includes('editor-title')
+    if (!html || html === '<br>' || html === '<br/>' || !hasStructure) {
+      editor.innerHTML = buildEditorHtml('', '', '')
+      const first = editor.querySelector('h1')
+      if (first) {
         const range = document.createRange()
-        range.setStart(p, 0)
+        range.setStart(first, 0)
         range.collapse(true)
         const sel = window.getSelection()
         sel?.removeAllRanges()
@@ -469,6 +520,7 @@ export default function BlogRequestForm() {
   }
 
   const insertLink = () => {
+    if (editorRef.current && !isCursorInEditorBody(editorRef.current)) return
     const selection = window.getSelection()
     if (selection && selection.rangeCount > 0) {
       savedSelectionRef.current = selection.getRangeAt(0).cloneRange()
@@ -535,6 +587,7 @@ export default function BlogRequestForm() {
   }
 
   const insertYouTube = () => {
+    if (editorRef.current && !isCursorInEditorBody(editorRef.current)) return
     editorRef.current?.focus()
     const selection = window.getSelection()
     if (selection && selection.rangeCount > 0) {
@@ -776,7 +829,9 @@ export default function BlogRequestForm() {
       console.error('Editor not available')
       return
     }
-    
+    if (!isCursorInEditorBody(editorRef.current)) {
+      return
+    }
     editorRef.current.focus()
     
     const selection = window.getSelection()
@@ -1098,7 +1153,7 @@ export default function BlogRequestForm() {
         const restored = deserializeFormDataFromStorage(formRaw)
         setFormData(restored)
         if (editorRef.current && restored.content) {
-          editorRef.current.innerHTML = restored.content
+          setEditorFromDraft(editorRef.current, restored.content, restored.title || '', restored.excerpt || '')
         }
       } catch (e) {
         console.error('Failed to restore form state:', e)
@@ -1152,7 +1207,7 @@ export default function BlogRequestForm() {
               categories: arr(draft.categories),
               allow_comments: draft.allow_comments ?? true,
             }))
-            if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
+            if (editorRef.current && draft.content) setEditorFromDraft(editorRef.current, draft.content, draft.title || '', draft.excerpt || '')
             draftIdRef.current = draft.status === 'auto' ? draft.id : null
             versionRef.current = draft.version ?? 0
             setLastSavedAt(new Date().toISOString())
@@ -1373,7 +1428,7 @@ export default function BlogRequestForm() {
       }))
       requestAnimationFrame(() => {
         if (editorRef.current && draft.content) {
-          editorRef.current.innerHTML = draft.content
+          setEditorFromDraft(editorRef.current, draft.content, draft.title || '', draft.excerpt || '')
         }
       })
       const d = draft as any
@@ -1440,7 +1495,7 @@ export default function BlogRequestForm() {
       categories: [],
       allow_comments: true,
     })
-    if (editorRef.current) editorRef.current.innerHTML = '<p><br></p>'
+    if (editorRef.current) editorRef.current.innerHTML = buildEditorHtml('', '', '')
   }
 
   const handleLoadLatest = async () => {
@@ -1472,7 +1527,7 @@ export default function BlogRequestForm() {
           categories: arr(draft.categories),
           allow_comments: draft.allow_comments ?? true,
         }))
-        if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
+        if (editorRef.current && draft.content) setEditorFromDraft(editorRef.current, draft.content, draft.title || '', draft.excerpt || '')
         draftIdRef.current = draft.id
         versionRef.current = draft.version ?? 0
         setLastSavedAt(new Date().toISOString())
@@ -1484,11 +1539,12 @@ export default function BlogRequestForm() {
   const handleDismissConflict = () => setShowConflictBanner(false)
 
   const handleSaveDraft = async () => {
-    const content = (editorRef.current?.innerHTML ?? formData.content) || ''
+    const raw = (editorRef.current ? getEditorContentForSave() : formData.content) || ''
+    const { title, excerpt, content } = parseEditorBlocks(raw)
     const payload = {
-      title: formData.title,
+      title,
       content,
-      excerpt: formData.excerpt,
+      excerpt,
       author_name: formData.author_name,
       author_email: formData.author_email,
       meta_title: formData.meta_title,
@@ -1542,6 +1598,19 @@ export default function BlogRequestForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const raw = editorRef.current ? getEditorContentForSave() : formData.content
+    const { title, excerpt, content } = parseEditorBlocks(raw || '')
+    if (!title?.trim()) {
+      setSubmitStatus('error')
+      setErrorMessage('Please add a title.')
+      return
+    }
+    if (!excerpt?.trim()) {
+      setSubmitStatus('error')
+      setErrorMessage('Please add a subtitle/excerpt.')
+      return
+    }
+
     if (!agreedToTerms) {
       setSubmitStatus('error')
       setErrorMessage('Please agree to the terms and conditions before submitting.')
@@ -1562,9 +1631,9 @@ export default function BlogRequestForm() {
       const apiBase = getApiBase()
       const formDataToSend = new FormData()
 
-      formDataToSend.append('title', formData.title)
-      formDataToSend.append('content', formData.content)
-      formDataToSend.append('excerpt', formData.excerpt)
+      formDataToSend.append('title', title)
+      formDataToSend.append('content', content)
+      formDataToSend.append('excerpt', excerpt)
       formDataToSend.append('author_name', formData.author_name)
       formDataToSend.append('author_email', formData.author_email)
       formDataToSend.append('meta_title', formData.meta_title)
@@ -1668,6 +1737,8 @@ export default function BlogRequestForm() {
         .overflow-y-auto::-webkit-scrollbar-track { background: #f7fafc; }
         .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
         .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+        .editor-content > *:first-child { font-size: 2.25rem; font-weight: bold; margin: 0 0 0.5rem 0; line-height: 1.2; word-wrap: break-word; }
+        .editor-content > *:nth-child(2) { font-size: 1.125rem; color: #6b7280; margin: 0 0 1rem 0; line-height: 1.6; word-wrap: break-word; }
         .editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
@@ -1805,28 +1876,31 @@ export default function BlogRequestForm() {
         {/* Scrollable Content Area */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
             <form id="blog-form" onSubmit={handleSubmit} className="min-h-full flex flex-col">
-              {/* Content - max-width for readability */}
+              {/* Content - max-width for readability. Single editor: title (H1) + subtitle (P) + body */}
               <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
-                <input
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  className="w-full text-4xl font-bold text-gray-900 placeholder-gray-400 border-none focus:ring-0 focus:outline-none mb-3 bg-transparent"
-                  placeholder="Title"
-                  required
-                  disabled={isSubmitting}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleEditorInput}
+                  onKeyDown={handleEditorKeyDown}
+                  onFocus={updateToolbarState}
+                  onBlur={() => {
+                    const fd = formDataRef.current
+                    if (fd) {
+                      const raw = getEditorContentForSave()
+                      const { title, excerpt, content } = parseEditorBlocks(raw)
+                      const payload = { ...fd, title, excerpt, content }
+                      saveLocalDraft(payload)
+                      setLastSavedAt(new Date().toISOString())
+                      syncToServer()
+                    }
+                  }}
+                  onClick={updateToolbarState}
+                  className="editor-content min-h-[500px] outline-none text-base text-gray-800 w-full pt-1 pb-32"
+                  data-placeholder="Start writing..."
+                  suppressContentEditableWarning
                 />
-                <textarea
-                  name="excerpt"
-                  value={formData.excerpt}
-                  onChange={handleInputChange}
-                  className="w-full text-lg text-gray-500 placeholder-gray-400 border-none focus:ring-0 focus:outline-none resize-none mb-4 bg-transparent"
-                  placeholder="Add a subtitle..."
-                  required
-                  disabled={isSubmitting}
-                  rows={2}
-                />
-                <div className="flex flex-wrap items-center gap-2 mb-6">
+                <div className="flex flex-wrap items-center gap-2 mb-6 mt-6">
                   {formData.categories.map(cat => (
                     <span key={cat} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
                       {cat}
@@ -1841,27 +1915,6 @@ export default function BlogRequestForm() {
                     + Add category
                   </button>
                 </div>
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  onInput={handleEditorInput}
-                  onKeyDown={handleEditorKeyDown}
-                  onFocus={updateToolbarState}
-                  onBlur={() => {
-                    const fd = formDataRef.current
-                    if (fd) {
-                      const content = (editorRef.current?.innerHTML ?? fd.content) || ''
-                      const payload = { ...fd, content }
-                      saveLocalDraft(payload)
-                      setLastSavedAt(new Date().toISOString())
-                      syncToServer()
-                    }
-                  }}
-                  onClick={updateToolbarState}
-                  className="editor-content min-h-[500px] outline-none text-base text-gray-800 w-full pt-1 pb-32"
-                  data-placeholder="Start writing..."
-                  suppressContentEditableWarning
-                />
               </div>
 
               {/* Bottom Section - Images, Author, Terms */}
@@ -2593,7 +2646,7 @@ export default function BlogRequestForm() {
                         const kw = draft.meta_keywords
                         const metaKeywords = typeof kw === 'string' ? kw : (Array.isArray(kw) ? (kw as string[]).join(', ') : '')
                         setFormData(prev => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: metaKeywords, og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
-                        if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
+                        if (editorRef.current && draft.content) setEditorFromDraft(editorRef.current, draft.content, draft.title || '', draft.excerpt || '')
                         draftIdRef.current = draft.id
                         versionRef.current = draft.version ?? 0
                       }
