@@ -24,6 +24,12 @@ export default function BlogPreview({
   categories,
   onClose
 }: BlogPreviewProps) {
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    return (tmp.textContent || tmp.innerText || '').trim()
+  }
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -122,9 +128,13 @@ export default function BlogPreview({
             </div>
           )}
 
-          {/* Title */}
+          {/* Title - supports HTML for rich formatting */}
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-6" style={{ color: '#1B4965' }}>
-            {title || 'Untitled Blog Post'}
+            {title && /<[^>]+>/.test(title) ? (
+              <span dangerouslySetInnerHTML={{ __html: title }} />
+            ) : (
+              (title || 'Untitled Blog Post')
+            )}
           </h1>
 
           {/* Author & Meta Info */}
@@ -153,17 +163,21 @@ export default function BlogPreview({
               <div className="aspect-video w-full">
                 <img
                   src={URL.createObjectURL(detailImage)}
-                  alt={title || 'Blog detail image'}
+                  alt={stripHtml(title) || 'Blog detail image'}
                   className="h-full w-full object-cover"
                 />
               </div>
             </div>
           )}
 
-          {/* Excerpt */}
+          {/* Excerpt - supports HTML for rich formatting */}
           {excerpt && (
             <p className="mt-8 text-lg sm:text-xl leading-relaxed text-gray-700">
-              {excerpt}
+              {/<[^>]+>/.test(excerpt) ? (
+                <span dangerouslySetInnerHTML={{ __html: excerpt }} />
+              ) : (
+                excerpt
+              )}
             </p>
           )}
 

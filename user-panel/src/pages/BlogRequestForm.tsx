@@ -96,6 +96,8 @@ interface ContentImageItem {
 export default function BlogRequestForm() {
   const { user, isAuthenticated } = useAuth()
   const editorRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLDivElement>(null)
+  const subtitleRef = useRef<HTMLDivElement>(null)
   const formDataRef = useRef<BlogRequest | null>(null)
   const savedSelectionRef = useRef<Range | null>(null)
   const colorButtonRef = useRef<HTMLButtonElement>(null)
@@ -177,6 +179,7 @@ export default function BlogRequestForm() {
     underline: false,
     strikethrough: false
   })
+  const [activeEditableType, setActiveEditableType] = useState<'title' | 'subtitle' | 'editor' | null>(null)
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -352,10 +355,35 @@ export default function BlogRequestForm() {
     }
   }
 
+  const getActiveEditable = (): HTMLDivElement | null => {
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return null
+    const node = sel.anchorNode
+    if (!node) return null
+    const el = node.nodeType === Node.ELEMENT_NODE ? node as Element : node.parentElement
+    if (!el) return null
+    if (titleRef.current?.contains(el)) return titleRef.current
+    if (subtitleRef.current?.contains(el)) return subtitleRef.current
+    if (editorRef.current?.contains(el)) return editorRef.current
+    return null
+  }
+
+  const syncActiveEditable = (el: HTMLDivElement | null) => {
+    if (!el) return
+    if (el === titleRef.current) {
+      setFormData(prev => ({ ...prev, title: el.innerHTML }))
+    } else if (el === subtitleRef.current) {
+      setFormData(prev => ({ ...prev, excerpt: el.innerHTML }))
+    } else if (el === editorRef.current) {
+      handleEditorInput()
+    }
+  }
+
   const exec = (command: string, value?: string) => {
+    const active = getActiveEditable()
+    if (!active) return
     document.execCommand(command, false, value)
-    editorRef.current?.focus()
-    handleEditorInput()
+    syncActiveEditable(active)
   }
 
   const ensureParagraphFormat = useCallback(() => {
@@ -374,25 +402,66 @@ export default function BlogRequestForm() {
   }, [])
 
   const updateToolbarState = useCallback(() => {
-    if (!editorRef.current) return
     const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) {
+    if (!sel || sel.rangeCount === 0) {
       setToolbarState({ block: 'p', bold: false, italic: false, underline: false, strikethrough: false })
+      setActiveEditableType(null)
       return
     }
-    const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
-    const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4', 'blockquote']
-    const block = validBlocks.includes(blockVal) ? (blockVal as 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') : 'p'
-    setToolbarState({
-      block,
-      bold: document.queryCommandState('bold'),
-      italic: document.queryCommandState('italic'),
-      underline: document.queryCommandState('underline'),
-      strikethrough: document.queryCommandState('strikeThrough')
-    })
-    if (!validBlocks.includes(blockVal)) {
-      ensureParagraphFormat()
+    const node = sel.anchorNode
+    const el = node?.nodeType === Node.ELEMENT_NODE ? node as Element : node?.parentElement
+    if (!el) {
+      setToolbarState({ block: 'p', bold: false, italic: false, underline: false, strikethrough: false })
+      setActiveEditableType(null)
+      return
     }
+    if (titleRef.current?.contains(el)) {
+      setActiveEditableType('title')
+      const blockVal = (document.queryCommandValue('formatBlock') || 'h1').toLowerCase()
+      const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4', 'blockquote']
+      const block = validBlocks.includes(blockVal) ? (blockVal as 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') : 'h1'
+      setToolbarState({
+        block,
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        underline: document.queryCommandState('underline'),
+        strikethrough: document.queryCommandState('strikeThrough')
+      })
+      return
+    }
+    if (subtitleRef.current?.contains(el)) {
+      setActiveEditableType('subtitle')
+      const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
+      const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4', 'blockquote']
+      const block = validBlocks.includes(blockVal) ? (blockVal as 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') : 'p'
+      setToolbarState({
+        block,
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        underline: document.queryCommandState('underline'),
+        strikethrough: document.queryCommandState('strikeThrough')
+      })
+      return
+    }
+    if (editorRef.current?.contains(el)) {
+      setActiveEditableType('editor')
+      const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
+      const validBlocks = ['p', 'h1', 'h2', 'h3', 'h4', 'blockquote']
+      const block = validBlocks.includes(blockVal) ? (blockVal as 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') : 'p'
+      setToolbarState({
+        block,
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        underline: document.queryCommandState('underline'),
+        strikethrough: document.queryCommandState('strikeThrough')
+      })
+      if (!validBlocks.includes(blockVal)) {
+        ensureParagraphFormat()
+      }
+      return
+    }
+    setToolbarState({ block: 'p', bold: false, italic: false, underline: false, strikethrough: false })
+    setActiveEditableType(null)
   }, [ensureParagraphFormat])
 
   useEffect(() => {
@@ -400,6 +469,20 @@ export default function BlogRequestForm() {
     document.addEventListener('selectionchange', handler)
     return () => document.removeEventListener('selectionchange', handler)
   }, [updateToolbarState])
+
+  // Sync formData into title/subtitle when loaded from draft (don't overwrite while user is typing)
+  useEffect(() => {
+    if (document.activeElement !== titleRef.current && titleRef.current) {
+      if (formData.title !== titleRef.current.innerHTML) {
+        titleRef.current.innerHTML = formData.title
+      }
+    }
+    if (document.activeElement !== subtitleRef.current && subtitleRef.current) {
+      if (formData.excerpt !== subtitleRef.current.innerHTML) {
+        subtitleRef.current.innerHTML = formData.excerpt
+      }
+    }
+  }, [formData.title, formData.excerpt])
 
   // Ensure editor has a paragraph block when empty so typing starts in black
   useEffect(() => {
@@ -421,7 +504,6 @@ export default function BlogRequestForm() {
   }, [])
 
   const setBlockFormat = (block: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote') => {
-    editorRef.current?.focus()
     const current = toolbarState.block
     if (block === 'p') {
       exec('formatBlock', 'p')
@@ -441,7 +523,6 @@ export default function BlogRequestForm() {
   }
 
   const setBlockquote = () => {
-    editorRef.current?.focus()
     const blockVal = (document.queryCommandValue('formatBlock') || 'p').toLowerCase()
     if (blockVal === 'blockquote') {
       exec('formatBlock', 'p')
@@ -1100,6 +1181,10 @@ export default function BlogRequestForm() {
         if (editorRef.current && restored.content) {
           editorRef.current.innerHTML = restored.content
         }
+        setTimeout(() => {
+          if (titleRef.current && restored.title) titleRef.current.innerHTML = restored.title
+          if (subtitleRef.current && restored.excerpt) subtitleRef.current.innerHTML = restored.excerpt
+        }, 0)
       } catch (e) {
         console.error('Failed to restore form state:', e)
       }
@@ -1441,6 +1526,8 @@ export default function BlogRequestForm() {
       allow_comments: true,
     })
     if (editorRef.current) editorRef.current.innerHTML = '<p><br></p>'
+    if (titleRef.current) titleRef.current.innerHTML = ''
+    if (subtitleRef.current) subtitleRef.current.innerHTML = ''
   }
 
   const handleLoadLatest = async () => {
@@ -1473,6 +1560,10 @@ export default function BlogRequestForm() {
           allow_comments: draft.allow_comments ?? true,
         }))
         if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
+        setTimeout(() => {
+          if (titleRef.current && draft.title) titleRef.current.innerHTML = draft.title
+          if (subtitleRef.current && draft.excerpt) subtitleRef.current.innerHTML = draft.excerpt
+        }, 0)
         draftIdRef.current = draft.id
         versionRef.current = draft.version ?? 0
         setLastSavedAt(new Date().toISOString())
@@ -1539,8 +1630,27 @@ export default function BlogRequestForm() {
     }
   }
 
+  const getTextFromHtml = (html: string) => {
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    return (tmp.textContent || tmp.innerText || '').trim()
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const titleText = getTextFromHtml(titleRef.current?.innerHTML ?? formData.title)
+    const excerptText = getTextFromHtml(subtitleRef.current?.innerHTML ?? formData.excerpt)
+    if (!titleText) {
+      setSubmitStatus('error')
+      setErrorMessage('Please add a title.')
+      return
+    }
+    if (!excerptText) {
+      setSubmitStatus('error')
+      setErrorMessage('Please add a subtitle.')
+      return
+    }
 
     if (!agreedToTerms) {
       setSubmitStatus('error')
@@ -1562,9 +1672,9 @@ export default function BlogRequestForm() {
       const apiBase = getApiBase()
       const formDataToSend = new FormData()
 
-      formDataToSend.append('title', formData.title)
+      formDataToSend.append('title', titleRef.current?.innerHTML ?? formData.title)
       formDataToSend.append('content', formData.content)
-      formDataToSend.append('excerpt', formData.excerpt)
+      formDataToSend.append('excerpt', subtitleRef.current?.innerHTML ?? formData.excerpt)
       formDataToSend.append('author_name', formData.author_name)
       formDataToSend.append('author_email', formData.author_email)
       formDataToSend.append('meta_title', formData.meta_title)
@@ -1773,35 +1883,41 @@ export default function BlogRequestForm() {
           </div>
         )}
 
-        {/* Fixed Toolbar */}
+        {/* Fixed Toolbar - format buttons use onMouseDown preventDefault to keep selection in title/subtitle/editor */}
+        {(() => {
+          const keepFocus = (e: React.MouseEvent) => e.preventDefault()
+          const isEditorOnly = activeEditableType === 'editor'
+          return (
         <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-2 flex flex-wrap gap-1 items-center overflow-x-auto">
-                <button type="button" onClick={handleUndo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Undo"><ArrowUUpLeft size={16} /></button>
-                <button type="button" onClick={handleRedo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Redo"><ArrowUUpRight size={16} /></button>
+                <button type="button" onMouseDown={keepFocus} onClick={handleUndo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Undo"><ArrowUUpLeft size={16} /></button>
+                <button type="button" onMouseDown={keepFocus} onClick={handleRedo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Redo"><ArrowUUpRight size={16} /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
                 <div className="flex gap-0.5">
-                  <button type="button" onClick={setParagraph} className={`px-2 py-1.5 rounded text-xs font-medium ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Paragraph">P</button>
+                  <button type="button" onMouseDown={keepFocus} onClick={setParagraph} className={`px-2 py-1.5 rounded text-xs font-medium ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Paragraph">P</button>
                   {[1, 2, 3, 4].map(h => (
-                    <button key={h} type="button" onClick={() => setHeading(h)} className={`px-2 py-1.5 rounded text-xs font-semibold ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
+                    <button key={h} type="button" onMouseDown={keepFocus} onClick={() => setHeading(h)} className={`px-2 py-1.5 rounded text-xs font-semibold ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
                   ))}
                 </div>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
-                <button type="button" onClick={() => toggleFormat('bold')} className={`p-2 rounded ${toolbarState.bold ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Bold"><TextB size={16} /></button>
-                <button type="button" onClick={() => toggleFormat('italic')} className={`p-2 rounded ${toolbarState.italic ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Italic"><TextItalic size={16} /></button>
-                <button type="button" onClick={() => toggleFormat('underline')} className={`p-2 rounded ${toolbarState.underline ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Underline"><TextUnderline size={16} /></button>
-                <button type="button" onClick={() => toggleFormat('strikeThrough')} className={`p-2 rounded ${toolbarState.strikethrough ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Strikethrough"><TextStrikethrough size={16} /></button>
+                <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('bold')} className={`p-2 rounded ${toolbarState.bold ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Bold"><TextB size={16} /></button>
+                <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('italic')} className={`p-2 rounded ${toolbarState.italic ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Italic"><TextItalic size={16} /></button>
+                <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('underline')} className={`p-2 rounded ${toolbarState.underline ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Underline"><TextUnderline size={16} /></button>
+                <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('strikeThrough')} className={`p-2 rounded ${toolbarState.strikethrough ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Strikethrough"><TextStrikethrough size={16} /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
-                <button type="button" onClick={insertLink} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Link"><Link size={16} /></button>
-                <button type="button" onClick={insertImageIntoEditor} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Image"><Image size={16} /></button>
-                <button type="button" onClick={insertYouTube} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="YouTube"><YoutubeLogo size={16} /></button>
-                <button type="button" onClick={setBlockquote} className={`p-2 rounded ${toolbarState.block === 'blockquote' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Quote"><Quotes size={16} /></button>
-                <button type="button" onClick={() => insertList(false)} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Bullet List"><ListBullets size={16} /></button>
-                <button type="button" onClick={() => insertList(true)} className="p-2 rounded text-gray-600 hover:bg-gray-200" title="Numbered List"><ListNumbers size={16} /></button>
+                <button type="button" onClick={insertLink} disabled={!isEditorOnly} className={`p-2 rounded ${isEditorOnly ? 'text-gray-600 hover:bg-gray-200' : 'text-gray-300 cursor-not-allowed'}`} title="Link (editor only)"><Link size={16} /></button>
+                <button type="button" onClick={insertImageIntoEditor} disabled={!isEditorOnly} className={`p-2 rounded ${isEditorOnly ? 'text-gray-600 hover:bg-gray-200' : 'text-gray-300 cursor-not-allowed'}`} title="Image (editor only)"><Image size={16} /></button>
+                <button type="button" onClick={insertYouTube} disabled={!isEditorOnly} className={`p-2 rounded ${isEditorOnly ? 'text-gray-600 hover:bg-gray-200' : 'text-gray-300 cursor-not-allowed'}`} title="YouTube (editor only)"><YoutubeLogo size={16} /></button>
+                <button type="button" onMouseDown={keepFocus} onClick={setBlockquote} className={`p-2 rounded ${toolbarState.block === 'blockquote' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Quote"><Quotes size={16} /></button>
+                <button type="button" onClick={() => insertList(false)} disabled={!isEditorOnly} className={`p-2 rounded ${isEditorOnly ? 'text-gray-600 hover:bg-gray-200' : 'text-gray-300 cursor-not-allowed'}`} title="Bullet List (editor only)"><ListBullets size={16} /></button>
+                <button type="button" onClick={() => insertList(true)} disabled={!isEditorOnly} className={`p-2 rounded ${isEditorOnly ? 'text-gray-600 hover:bg-gray-200' : 'text-gray-300 cursor-not-allowed'}`} title="Numbered List (editor only)"><ListNumbers size={16} /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
-                <button type="button" onClick={toggleColorPicker} className="p-2 rounded hover:bg-gray-200 flex items-center gap-1 text-gray-600" ref={colorButtonRef} title="Text Color">
+                <button type="button" onMouseDown={keepFocus} onClick={toggleColorPicker} className="p-2 rounded hover:bg-gray-200 flex items-center gap-1 text-gray-600" ref={colorButtonRef} title="Text Color">
                   <Palette size={16} />
                   <div className="w-3 h-3 rounded border border-gray-400" style={{ backgroundColor: currentColor }} />
                 </button>
               </div>
+          )
+        })()}
 
         {/* Scrollable Content Area */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -1810,26 +1926,45 @@ export default function BlogRequestForm() {
               <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 min-w-0">
                 {/* Title - scrollable horizontally on mobile when long */}
                 <div className="title-scroll-wrapper overflow-x-auto overflow-y-hidden mb-3 -mx-4 px-4 sm:-mx-6 sm:px-6">
-                  <input
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    className="w-full min-w-full text-2xl sm:text-4xl font-bold text-gray-900 placeholder-gray-400 border-none focus:ring-0 focus:outline-none bg-transparent"
+                  <div
+                    ref={titleRef}
+                    contentEditable={!isSubmitting}
+                    onInput={() => titleRef.current && setFormData(prev => ({ ...prev, title: titleRef.current!.innerHTML }))}
+                    onFocus={updateToolbarState}
+                    onClick={updateToolbarState}
+                    onBlur={() => {
+                      const fd = formDataRef.current
+                      if (fd && titleRef.current) {
+                        const payload = { ...fd, title: titleRef.current.innerHTML }
+                        saveLocalDraft(payload)
+                        setLastSavedAt(new Date().toISOString())
+                        syncToServer()
+                      }
+                    }}
+                    className="title-editable w-full min-w-full text-2xl sm:text-4xl font-bold text-gray-900 placeholder-gray-400 border-none focus:ring-0 focus:outline-none bg-transparent outline-none"
                     style={{ width: 'max-content', minWidth: '100%' }}
-                    placeholder="Title"
-                    required
-                    disabled={isSubmitting}
+                    data-placeholder="Title"
+                    suppressContentEditableWarning
                   />
                 </div>
-                <textarea
-                  name="excerpt"
-                  value={formData.excerpt}
-                  onChange={handleInputChange}
-                  className="w-full text-lg text-gray-500 placeholder-gray-400 border-none focus:ring-0 focus:outline-none resize-none mb-4 bg-transparent"
-                  placeholder="Add a subtitle..."
-                  required
-                  disabled={isSubmitting}
-                  rows={2}
+                <div
+                  ref={subtitleRef}
+                  contentEditable={!isSubmitting}
+                  onInput={() => subtitleRef.current && setFormData(prev => ({ ...prev, excerpt: subtitleRef.current!.innerHTML }))}
+                  onFocus={updateToolbarState}
+                  onClick={updateToolbarState}
+                  onBlur={() => {
+                    const fd = formDataRef.current
+                    if (fd && subtitleRef.current) {
+                      const payload = { ...fd, excerpt: subtitleRef.current.innerHTML }
+                      saveLocalDraft(payload)
+                      setLastSavedAt(new Date().toISOString())
+                      syncToServer()
+                    }
+                  }}
+                  className="subtitle-editable w-full text-lg text-gray-500 placeholder-gray-400 border-none focus:ring-0 focus:outline-none resize-none mb-4 bg-transparent outline-none min-h-[3.5rem]"
+                  data-placeholder="Add a subtitle..."
+                  suppressContentEditableWarning
                 />
                 <div className="flex flex-wrap items-center gap-2 mb-6">
                   {formData.categories.map(cat => (
