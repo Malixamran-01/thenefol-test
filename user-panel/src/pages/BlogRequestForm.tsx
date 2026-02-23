@@ -2324,9 +2324,9 @@ export default function BlogRequestForm() {
                 </button>
               </div>
             </div>
-            <p className="text-xs text-gray-400 mt-4 text-center">
-              Keep for later keeps your draft. Discard removes it and its history.
-            </p>
+            {/* <p className="text-xs text-gray-400 mt-4 text-center">
+              Keep for later keeps your draft. Discard removes it and its h
+            </p> */}
             <p className="text-xs text-gray-400 mt-1 text-center">
               Auto draft expires in 24 hours.
             </p>
