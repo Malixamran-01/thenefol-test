@@ -2682,9 +2682,9 @@ export default function BlogRequestForm() {
                 )}
               </div>
               {/* Right: Version list - fixed width, scrollable when many versions */}
-              <div className="w-64 flex-shrink-0 flex flex-col border-l border-gray-200 min-h-0">
-                <div className="p-4 overflow-y-auto flex-1 min-h-0" style={{ scrollbarWidth: 'thin' }}>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">From today</p>
+              <div className="w-64 flex-shrink-0 flex flex-col border-l border-gray-200 min-h-0 overflow-hidden">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2 flex-shrink-0">From today</p>
+                <div className="flex-1 min-h-0 h-0 overflow-y-auto overflow-x-hidden px-4 pb-4" style={{ scrollbarWidth: 'thin' }}>
                   {draftVersions.length === 0 ? (
                     <p className="text-sm text-gray-500 py-4">No versions yet</p>
                   ) : (
