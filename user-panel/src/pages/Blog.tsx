@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Calendar, User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
+import { clearLocalDraft, getLocalDraft } from '../utils/blogDraft'
 import { useAuth } from '../contexts/AuthContext'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 import { authorAPI } from '../services/authorAPI'
@@ -135,6 +136,8 @@ export default function Blog() {
       })
       if (res.ok) {
         setDrafts((prev) => prev.filter((d) => d.id !== draftId))
+        const local = getLocalDraft()
+        if (local?.draftId === draftId) clearLocalDraft()
       }
     } catch {
       // ignore

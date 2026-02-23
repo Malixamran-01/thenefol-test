@@ -1193,6 +1193,10 @@ export default function BlogRequestForm() {
                 : 0
             const serverHasContent = hasRealDraftContent(serverAuto)
             if (!localRecent && !serverHasContent) return
+            if (serverAuto == null && localDraft?.draftId != null) {
+              clearLocalDraft()
+              return
+            }
             const best = localTs >= serverTs && localRecent
               ? localDraft
               : serverHasContent
