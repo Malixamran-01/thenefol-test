@@ -1194,35 +1194,42 @@ export default function BlogRequestForm() {
     const formRaw = sessionStorage.getItem(BLOG_FORM_STATE_KEY)
     const resultRaw = sessionStorage.getItem(EDIT_IMAGE_RESULT_KEY)
 
+    let restored: ReturnType<typeof deserializeFormDataFromStorage> | null = null
+
     if (formRaw) {
-      sessionStorage.removeItem(BLOG_FORM_STATE_KEY)
       hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
       try {
-        const restored = deserializeFormDataFromStorage(formRaw)
+        restored = deserializeFormDataFromStorage(formRaw)
         setFormData(restored)
         if (editorRef.current && restored.content) {
           editorRef.current.innerHTML = restored.content
         }
         setTimeout(() => {
-          if (titleRef.current && restored.title) titleRef.current.innerHTML = restored.title
-          if (subtitleRef.current && restored.excerpt) subtitleRef.current.innerHTML = restored.excerpt
+          if (titleRef.current && restored?.title) titleRef.current.innerHTML = restored.title
+          if (subtitleRef.current && restored?.excerpt) subtitleRef.current.innerHTML = restored.excerpt
         }, 0)
       } catch (e) {
         console.error('Failed to restore form state:', e)
       }
+      // Delay removal to avoid losing data on React Strict Mode double-mount
+      setTimeout(() => sessionStorage.removeItem(BLOG_FORM_STATE_KEY), 300)
     }
 
     if (resultRaw) {
       hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
-      sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
       const parsed = JSON.parse(resultRaw)
+      setTimeout(() => sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY), 300)
       setTimeout(() => {
         try {
+          // Re-apply restored content before inserting image (guards against re-render wiping editor)
+          if (restored?.content && editorRef.current) {
+            editorRef.current.innerHTML = restored.content
+          }
           applyEditedImage(parsed.editedImageObject, parsed.editingImageId, parsed.editingImageName)
         } catch (e) {
           console.error('Failed to process editor result:', e)
         }
-      }, 0)
+      }, 50)
     }
 
     // Check for explicit ?draft=id in URL (from Drafts modal "Edit")
