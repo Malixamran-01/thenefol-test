@@ -8,6 +8,7 @@ import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, hasRealDra
 const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
 const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
 const BLOG_FORM_STATE_KEY = 'blog_form_state'
+const BLOG_TEXT_BACKUP_KEY = 'blog_text_backup'
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -45,13 +46,19 @@ async function serializeFormDataForStorage(data: BlogRequest): Promise<string> {
 
 function deserializeFormDataFromStorage(json: string): BlogRequest {
   const raw = JSON.parse(json)
-  const cover = raw.coverImage ? base64ToFile(raw.coverImage.base64, raw.coverImage.name, raw.coverImage.type) : null
-  const detail = raw.detailImage ? base64ToFile(raw.detailImage.base64, raw.detailImage.name, raw.detailImage.type) : null
-  const og = raw.ogImageFile ? base64ToFile(raw.ogImageFile.base64, raw.ogImageFile.name, raw.ogImageFile.type) : null
-  const imgs = (raw.images || []).map((i: { id: string; name: string; type: string; base64: string }) => ({
-    id: i.id,
-    file: base64ToFile(i.base64, i.name, i.type),
-  }))
+  // Wrap each image conversion so a single bad image doesn't wipe the whole form
+  const tryFile = (obj: { base64: string; name: string; type: string } | null): File | null => {
+    if (!obj) return null
+    try { return base64ToFile(obj.base64, obj.name, obj.type) } catch { return null }
+  }
+  const cover = tryFile(raw.coverImage)
+  const detail = tryFile(raw.detailImage)
+  const og = tryFile(raw.ogImageFile)
+  const imgs: { id: string; file: File }[] = (raw.images || []).reduce((acc: { id: string; file: File }[], i: { id: string; name: string; type: string; base64: string }) => {
+    const file = tryFile(i)
+    if (file) acc.push({ id: i.id, file })
+    return acc
+  }, [])
   return {
     ...raw,
     coverImage: cover,
@@ -908,7 +915,19 @@ export default function BlogRequestForm() {
       }
       
       const content = getEditorContentForSave()
-      const dataToSave = { ...(formDataRef.current ?? formData), content }
+      const fd = formDataRef.current ?? formData
+      const dataToSave = { ...fd, content }
+
+      // Always save a lightweight text backup to localStorage first so content
+      // is recoverable even if the sessionStorage write fails or is corrupted
+      try {
+        localStorage.setItem(BLOG_TEXT_BACKUP_KEY, JSON.stringify({
+          title: titleRef.current?.innerHTML || fd.title || '',
+          content,
+          excerpt: subtitleRef.current?.innerHTML || fd.excerpt || '',
+        }))
+      } catch {}
+
       try {
         const serialized = await serializeFormDataForStorage(dataToSave)
         sessionStorage.setItem(BLOG_FORM_STATE_KEY, serialized)
@@ -1022,7 +1041,18 @@ export default function BlogRequestForm() {
   const openImageEditor = async () => {
     if (!selectedImage) return
     const content = getEditorContentForSave()
-    const dataToSave = { ...(formDataRef.current ?? formData), content }
+    const fd = formDataRef.current ?? formData
+    const dataToSave = { ...fd, content }
+
+    // Save a lightweight text backup to localStorage before navigating
+    try {
+      localStorage.setItem(BLOG_TEXT_BACKUP_KEY, JSON.stringify({
+        title: titleRef.current?.innerHTML || fd.title || '',
+        content,
+        excerpt: subtitleRef.current?.innerHTML || fd.excerpt || '',
+      }))
+    } catch {}
+
     try {
       const serialized = await serializeFormDataForStorage(dataToSave)
       sessionStorage.setItem(BLOG_FORM_STATE_KEY, serialized)
@@ -1194,45 +1224,53 @@ export default function BlogRequestForm() {
     const formRaw = sessionStorage.getItem(BLOG_FORM_STATE_KEY)
     const resultRaw = sessionStorage.getItem(EDIT_IMAGE_RESULT_KEY)
 
-    // Remove result immediately so we only process it once (effect may run multiple times)
-    if (resultRaw) sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
-
-    let restored: ReturnType<typeof deserializeFormDataFromStorage> | null = null
-
     if (formRaw) {
       sessionStorage.removeItem(BLOG_FORM_STATE_KEY)
-      hasCheckedDraftRef.current = true
+      hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
+      let restoreTitle = ''
+      let restoreContent = ''
+      let restoreExcerpt = ''
       try {
-        restored = deserializeFormDataFromStorage(formRaw)
+        const restored = deserializeFormDataFromStorage(formRaw)
         setFormData(restored)
-        if (editorRef.current && restored.content) {
-          editorRef.current.innerHTML = restored.content
-        }
-        setTimeout(() => {
-          if (titleRef.current && restored?.title) titleRef.current.innerHTML = restored.title
-          if (subtitleRef.current && restored?.excerpt) subtitleRef.current.innerHTML = restored.excerpt
-        }, 0)
+        restoreTitle = restored.title || ''
+        restoreContent = restored.content || ''
+        restoreExcerpt = restored.excerpt || ''
       } catch (e) {
-        console.error('Failed to restore form state:', e)
+        console.error('Failed to restore form state from sessionStorage:', e)
+        // Fall back to the lightweight text backup saved in localStorage
+        try {
+          const backup = localStorage.getItem(BLOG_TEXT_BACKUP_KEY)
+          if (backup) {
+            const parsed = JSON.parse(backup)
+            restoreTitle = parsed.title || ''
+            restoreContent = parsed.content || ''
+            restoreExcerpt = parsed.excerpt || ''
+          }
+        } catch {}
       }
+      if (editorRef.current && restoreContent) {
+        editorRef.current.innerHTML = restoreContent
+      }
+      setTimeout(() => {
+        if (titleRef.current && restoreTitle) titleRef.current.innerHTML = restoreTitle
+        if (subtitleRef.current && restoreExcerpt) subtitleRef.current.innerHTML = restoreExcerpt
+        // Clean up text backup after a successful restore
+        try { localStorage.removeItem(BLOG_TEXT_BACKUP_KEY) } catch {}
+      }, 0)
     }
 
     if (resultRaw) {
-      hasCheckedDraftRef.current = true
+      hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
+      sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
       const parsed = JSON.parse(resultRaw)
-      const contentToRestore = restored?.content ?? null
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          try {
-            if (contentToRestore && editorRef.current) {
-              editorRef.current.innerHTML = contentToRestore
-            }
-            applyEditedImage(parsed.editedImageObject, parsed.editingImageId, parsed.editingImageName)
-          } catch (e) {
-            console.error('Failed to process editor result:', e)
-          }
-        })
-      })
+      setTimeout(() => {
+        try {
+          applyEditedImage(parsed.editedImageObject, parsed.editingImageId, parsed.editingImageName)
+        } catch (e) {
+          console.error('Failed to process editor result:', e)
+        }
+      }, 0)
     }
 
     // Check for explicit ?draft=id in URL (from Drafts modal "Edit")
