@@ -205,7 +205,10 @@ export default function BlogRequestForm() {
   const fetchDraftVersions = useCallback(() => {
     const token = localStorage.getItem('token')
     if (!token) return
-    fetch(`${getApiBase()}/api/blog/drafts/versions?session_id=${encodeURIComponent(sessionIdRef.current)}`, { headers: { Authorization: `Bearer ${token}` } })
+    const params = new URLSearchParams()
+    params.set('session_id', sessionIdRef.current)
+    if (draftIdRef.current != null) params.set('draft_id', String(draftIdRef.current))
+    fetch(`${getApiBase()}/api/blog/drafts/versions?${params}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(setDraftVersions)
       .catch(() => setDraftVersions([]))
@@ -1258,7 +1261,7 @@ export default function BlogRequestForm() {
               allow_comments: draft.allow_comments ?? true,
             }))
             if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
-            draftIdRef.current = draft.status === 'auto' ? draft.id : null
+            draftIdRef.current = draft.id ?? null
             versionRef.current = draft.version ?? 0
             setLastSavedAt(new Date().toISOString())
             const cleanHash = hash.replace(/[?&]draft=\d+/, '').replace(/\?&/, '?').replace(/\?$/, '')

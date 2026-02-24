@@ -533,13 +533,24 @@ router.get('/drafts/versions', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId
     const postId = req.query.postId ? parseInt(String(req.query.postId), 10) : null
+    const explicitDraftId = req.query.draft_id ? parseInt(String(req.query.draft_id), 10) : null
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
-    // Get current draft by stable draft identity (not session-scoped)
-    const { rows: draftRows } = await pool.query(
-      `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
-      [userId, postId]
-    )
-    const draftId = draftRows[0]?.id
+    let draftId = explicitDraftId
+    if (!draftId) {
+      // Fallback: get most recently updated auto draft (for new/unsaved drafts)
+      const { rows: draftRows } = await pool.query(
+        `SELECT id FROM blog_drafts WHERE user_id = $1 AND status = 'auto' AND (post_id IS NOT DISTINCT FROM $2) ORDER BY updated_at DESC LIMIT 1`,
+        [userId, postId]
+      )
+      draftId = draftRows[0]?.id
+    } else {
+      // Verify the draft belongs to the user
+      const { rows: checkRows } = await pool.query(
+        `SELECT id FROM blog_drafts WHERE id = $1 AND user_id = $2`,
+        [draftId, userId]
+      )
+      if (checkRows.length === 0) return res.status(403).json({ message: 'Draft not found or access denied' })
+    }
     if (!draftId) {
       return res.json([])
     }
