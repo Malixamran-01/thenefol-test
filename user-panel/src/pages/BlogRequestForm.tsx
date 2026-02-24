@@ -1194,10 +1194,14 @@ export default function BlogRequestForm() {
     const formRaw = sessionStorage.getItem(BLOG_FORM_STATE_KEY)
     const resultRaw = sessionStorage.getItem(EDIT_IMAGE_RESULT_KEY)
 
+    // Remove result immediately so we only process it once (effect may run multiple times)
+    if (resultRaw) sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
+
     let restored: ReturnType<typeof deserializeFormDataFromStorage> | null = null
 
     if (formRaw) {
-      hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
+      sessionStorage.removeItem(BLOG_FORM_STATE_KEY)
+      hasCheckedDraftRef.current = true
       try {
         restored = deserializeFormDataFromStorage(formRaw)
         setFormData(restored)
@@ -1211,25 +1215,24 @@ export default function BlogRequestForm() {
       } catch (e) {
         console.error('Failed to restore form state:', e)
       }
-      // Delay removal to avoid losing data on React Strict Mode double-mount
-      setTimeout(() => sessionStorage.removeItem(BLOG_FORM_STATE_KEY), 300)
     }
 
     if (resultRaw) {
-      hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
+      hasCheckedDraftRef.current = true
       const parsed = JSON.parse(resultRaw)
-      setTimeout(() => sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY), 300)
-      setTimeout(() => {
-        try {
-          // Re-apply restored content before inserting image (guards against re-render wiping editor)
-          if (restored?.content && editorRef.current) {
-            editorRef.current.innerHTML = restored.content
+      const contentToRestore = restored?.content ?? null
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            if (contentToRestore && editorRef.current) {
+              editorRef.current.innerHTML = contentToRestore
+            }
+            applyEditedImage(parsed.editedImageObject, parsed.editingImageId, parsed.editingImageName)
+          } catch (e) {
+            console.error('Failed to process editor result:', e)
           }
-          applyEditedImage(parsed.editedImageObject, parsed.editingImageId, parsed.editingImageName)
-        } catch (e) {
-          console.error('Failed to process editor result:', e)
-        }
-      }, 50)
+        })
+      })
     }
 
     // Check for explicit ?draft=id in URL (from Drafts modal "Edit")
