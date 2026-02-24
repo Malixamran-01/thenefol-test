@@ -348,6 +348,17 @@ export default function BlogRequestForm() {
     return tmp.innerHTML
   }
 
+  const isEditorContentEmpty = (content: string) => {
+    const stripped = (content || '')
+      .replace(/<p><br><\/p>/gi, '')
+      .replace(/<br\s*\/?>/gi, '')
+      .replace(/&nbsp;/g, '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    return stripped.length === 0
+  }
+
   const handleEditorInput = () => {
     if (editorRef.current) {
       setFormData(prev => ({
@@ -2021,27 +2032,33 @@ export default function BlogRequestForm() {
                     </div>
                   )}
                 </div>
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  onInput={handleEditorInput}
-                  onKeyDown={handleEditorKeyDown}
-                  onFocus={updateToolbarState}
-                  onBlur={() => {
-                    const fd = formDataRef.current
-                    if (fd) {
-                      const content = (editorRef.current?.innerHTML ?? fd.content) || ''
-                      const payload = { ...fd, content }
-                      saveLocalDraft(payload)
-                      setLastSavedAt(new Date().toISOString())
-                      syncToServer()
-                    }
-                  }}
-                  onClick={updateToolbarState}
-                  className="editor-content min-h-[500px] outline-none text-base text-gray-800 w-full pt-1 pb-32"
-                  data-placeholder="Start writing..."
-                  suppressContentEditableWarning
-                />
+                <div className="relative">
+                  {isEditorContentEmpty(formData.content) && (
+                    <span className="absolute top-0 left-0 pt-1 text-base text-gray-400 pointer-events-none select-none">
+                      Start writing..
+                    </span>
+                  )}
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    onInput={handleEditorInput}
+                    onKeyDown={handleEditorKeyDown}
+                    onFocus={updateToolbarState}
+                    onBlur={() => {
+                      const fd = formDataRef.current
+                      if (fd) {
+                        const content = (editorRef.current?.innerHTML ?? fd.content) || ''
+                        const payload = { ...fd, content }
+                        saveLocalDraft(payload)
+                        setLastSavedAt(new Date().toISOString())
+                        syncToServer()
+                      }
+                    }}
+                    onClick={updateToolbarState}
+                    className="editor-content min-h-[500px] outline-none text-base text-gray-800 w-full pt-1 pb-32"
+                    suppressContentEditableWarning
+                  />
+                </div>
               </div>
 
               {/* Bottom Section - Images, Author, Terms */}
