@@ -947,6 +947,11 @@ export default function BlogRequestForm() {
           images: prev.images.filter(item => item.id !== imageId)
         }))
       }
+      // Remove caption if present (it's the next sibling of the image)
+      const caption = selectedImage.nextElementSibling
+      if (caption?.classList?.contains('image-caption')) {
+        caption.parentNode?.removeChild(caption)
+      }
       selectedImage.parentNode.removeChild(selectedImage)
       setShowImageMenu(false)
       setSelectedImage(null)
@@ -1175,6 +1180,7 @@ export default function BlogRequestForm() {
 
     if (formRaw) {
       sessionStorage.removeItem(BLOG_FORM_STATE_KEY)
+      hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
       try {
         const restored = deserializeFormDataFromStorage(formRaw)
         setFormData(restored)
@@ -1191,6 +1197,7 @@ export default function BlogRequestForm() {
     }
 
     if (resultRaw) {
+      hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
       sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
       const parsed = JSON.parse(resultRaw)
       setTimeout(() => {
