@@ -1421,8 +1421,11 @@ export default function BlogRequestForm() {
         .then(async r => {
           if (r.ok) {
             const data = await r.json().catch(() => ({}))
-            if (data?.draftId) draftIdRef.current = data.draftId
-            if (data?.version != null) versionRef.current = data.version
+            const sentDraftId = payload.draftId ?? draftIdRef.current
+            if (data?.draftId != null && (sentDraftId == null || data.draftId === sentDraftId)) {
+              draftIdRef.current = data.draftId
+              if (data?.version != null) versionRef.current = data.version
+            }
             setLastSavedAt(new Date().toISOString())
           } else if (r.status === 409) {
             const data = await r.json().catch(() => ({}))
