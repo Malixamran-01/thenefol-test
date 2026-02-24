@@ -9,6 +9,7 @@ const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
 const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
 const BLOG_FORM_STATE_KEY = 'blog_form_state'
 const BLOG_TEXT_BACKUP_KEY = 'blog_text_backup'
+const BLOG_IMAGE_EDITOR_MARKER = 'blog_in_image_editor'
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -936,6 +937,7 @@ export default function BlogRequestForm() {
           editingImageId: null,
           editingImageName: file.name,
         }))
+        sessionStorage.setItem(BLOG_IMAGE_EDITOR_MARKER, '1')
         window.location.hash = '#/user/blog/edit-image'
       } catch (err) {
         console.error('Failed to save form state:', err)
@@ -1061,6 +1063,7 @@ export default function BlogRequestForm() {
         editingImageId: selectedImage.getAttribute('data-image-id'),
         editingImageName: selectedImage.getAttribute('data-filename') || 'edited-image',
       }))
+      sessionStorage.setItem(BLOG_IMAGE_EDITOR_MARKER, '1')
       setShowImageMenu(false)
       window.location.hash = '#/user/blog/edit-image'
     } catch (err) {
@@ -1223,38 +1226,52 @@ export default function BlogRequestForm() {
   useEffect(() => {
     const formRaw = sessionStorage.getItem(BLOG_FORM_STATE_KEY)
     const resultRaw = sessionStorage.getItem(EDIT_IMAGE_RESULT_KEY)
+    const fromImageEditor = sessionStorage.getItem(BLOG_IMAGE_EDITOR_MARKER)
 
-    if (formRaw) {
-      sessionStorage.removeItem(BLOG_FORM_STATE_KEY)
+    if (formRaw || fromImageEditor) {
+      if (fromImageEditor) sessionStorage.removeItem(BLOG_IMAGE_EDITOR_MARKER)
+      if (formRaw) sessionStorage.removeItem(BLOG_FORM_STATE_KEY)
       hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
       let restoreTitle = ''
       let restoreContent = ''
       let restoreExcerpt = ''
-      try {
-        const restored = deserializeFormDataFromStorage(formRaw)
-        setFormData(restored)
-        restoreTitle = restored.title || ''
-        restoreContent = restored.content || ''
-        restoreExcerpt = restored.excerpt || ''
-      } catch (e) {
-        console.error('Failed to restore form state from sessionStorage:', e)
-        // Fall back to the lightweight text backup saved in localStorage
+
+      // Step 1: try to restore the full form (binary images, settings, etc.) from sessionStorage
+      if (formRaw) {
         try {
-          const backup = localStorage.getItem(BLOG_TEXT_BACKUP_KEY)
-          if (backup) {
-            const parsed = JSON.parse(backup)
-            restoreTitle = parsed.title || ''
-            restoreContent = parsed.content || ''
-            restoreExcerpt = parsed.excerpt || ''
-          }
-        } catch {}
+          const restored = deserializeFormDataFromStorage(formRaw)
+          setFormData(restored)
+          restoreTitle = restored.title || ''
+          restoreContent = restored.content || ''
+          restoreExcerpt = restored.excerpt || ''
+        } catch (e) {
+          console.error('Failed to restore form state from sessionStorage:', e)
+        }
       }
+
+      // Step 2: ALWAYS prefer the lightweight localStorage backup for text content.
+      // It is saved right before navigation and is the most accurate snapshot of
+      // what the user had in the editor — immune to sessionStorage quota issues.
+      try {
+        const backup = localStorage.getItem(BLOG_TEXT_BACKUP_KEY)
+        if (backup) {
+          const parsed = JSON.parse(backup)
+          if (parsed.content) restoreContent = parsed.content
+          if (parsed.title) restoreTitle = parsed.title
+          if (parsed.excerpt) restoreExcerpt = parsed.excerpt
+        }
+      } catch {}
+
       if (editorRef.current && restoreContent) {
         editorRef.current.innerHTML = restoreContent
       }
       setTimeout(() => {
         if (titleRef.current && restoreTitle) titleRef.current.innerHTML = restoreTitle
         if (subtitleRef.current && restoreExcerpt) subtitleRef.current.innerHTML = restoreExcerpt
+        // Sync formData.content with what is now in the editor
+        if (editorRef.current) {
+          setFormData(prev => ({ ...prev, content: editorRef.current!.innerHTML }))
+        }
         // Clean up text backup after a successful restore
         try { localStorage.removeItem(BLOG_TEXT_BACKUP_KEY) } catch {}
       }, 0)
