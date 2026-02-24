@@ -3,72 +3,15 @@ import { Upload, X, CheckCircle, WarningCircle, TextB, TextItalic, TextUnderline
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
+import ImageEditor from '../components/ImageEditor'
 import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, hasRealDraftContent, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS, setActiveDraftTab, clearActiveDraftTab, isActiveDraftTab, getOrCreateDraftSessionId, clearDraftSessionId } from '../utils/blogDraft'
-
-const EDIT_IMAGE_CTX_KEY = 'blog_edit_image_ctx'
-const EDIT_IMAGE_RESULT_KEY = 'blog_edit_image_result'
-const BLOG_FORM_STATE_KEY = 'blog_form_state'
-const BLOG_TEXT_BACKUP_KEY = 'blog_text_backup'
-const BLOG_IMAGE_EDITOR_MARKER = 'blog_in_image_editor'
-
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      const base64 = dataUrl?.includes(',') ? dataUrl.split(',')[1] ?? '' : ''
-      resolve(base64)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-function base64ToFile(base64: string, name: string, type: string): File {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return new File([bytes], name, { type })
-}
-
-async function serializeFormDataForStorage(data: BlogRequest): Promise<string> {
-  const cover = data.coverImage ? { name: data.coverImage.name, type: data.coverImage.type, base64: await fileToBase64(data.coverImage) } : null
-  const detail = data.detailImage ? { name: data.detailImage.name, type: data.detailImage.type, base64: await fileToBase64(data.detailImage) } : null
-  const og = data.ogImageFile ? { name: data.ogImageFile.name, type: data.ogImageFile.type, base64: await fileToBase64(data.ogImageFile) } : null
-  const imgs = await Promise.all(data.images.map(async (i) => ({ id: i.id, name: i.file.name, type: i.file.type, base64: await fileToBase64(i.file) })))
-  return JSON.stringify({
-    ...data,
-    coverImage: cover,
-    detailImage: detail,
-    ogImageFile: og,
-    images: imgs,
-  })
-}
-
-function deserializeFormDataFromStorage(json: string): BlogRequest {
-  const raw = JSON.parse(json)
-  // Wrap each image conversion so a single bad image doesn't wipe the whole form
-  const tryFile = (obj: { base64: string; name: string; type: string } | null): File | null => {
-    if (!obj) return null
-    try { return base64ToFile(obj.base64, obj.name, obj.type) } catch { return null }
-  }
-  const cover = tryFile(raw.coverImage)
-  const detail = tryFile(raw.detailImage)
-  const og = tryFile(raw.ogImageFile)
-  const imgs: { id: string; file: File }[] = (raw.images || []).reduce((acc: { id: string; file: File }[], i: { id: string; name: string; type: string; base64: string }) => {
-    const file = tryFile(i)
-    if (file) acc.push({ id: i.id, file })
-    return acc
-  }, [])
-  return {
-    ...raw,
-    coverImage: cover,
-    detailImage: detail,
-    ogImageFile: og,
-    images: imgs,
-  }
-}
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
+
+interface ImageEditorCtx {
+  source: string
+  editingImageId: string | null
+  editingImageName: string
+}
 
 interface BlogRequest {
   title: string
@@ -190,6 +133,7 @@ export default function BlogRequestForm() {
     strikethrough: false
   })
   const [activeEditableType, setActiveEditableType] = useState<'title' | 'subtitle' | 'editor' | null>(null)
+  const [imageEditorCtx, setImageEditorCtx] = useState<ImageEditorCtx | null>(null)
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
@@ -906,43 +850,18 @@ export default function BlogRequestForm() {
     input.type = 'file'
     input.accept = 'image/*'
     
-    input.onchange = async (e: Event) => {
+    input.onchange = (e: Event) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      
       if (file.size > 5 * 1024 * 1024) {
         alert('Image size must be less than 5MB')
         return
       }
-      
-      const content = getEditorContentForSave()
-      const fd = formDataRef.current ?? formData
-      const dataToSave = { ...fd, content }
-
-      // Always save a lightweight text backup to localStorage first so content
-      // is recoverable even if the sessionStorage write fails or is corrupted
-      try {
-        localStorage.setItem(BLOG_TEXT_BACKUP_KEY, JSON.stringify({
-          title: titleRef.current?.innerHTML || fd.title || '',
-          content,
-          excerpt: subtitleRef.current?.innerHTML || fd.excerpt || '',
-        }))
-      } catch {}
-
-      try {
-        const serialized = await serializeFormDataForStorage(dataToSave)
-        sessionStorage.setItem(BLOG_FORM_STATE_KEY, serialized)
-        sessionStorage.setItem(EDIT_IMAGE_CTX_KEY, JSON.stringify({
-          source: URL.createObjectURL(file),
-          editingImageId: null,
-          editingImageName: file.name,
-        }))
-        sessionStorage.setItem(BLOG_IMAGE_EDITOR_MARKER, '1')
-        window.location.hash = '#/user/blog/edit-image'
-      } catch (err) {
-        console.error('Failed to save form state:', err)
-        alert('Failed to save form. Please try again.')
-      }
+      setImageEditorCtx({
+        source: URL.createObjectURL(file),
+        editingImageId: null,
+        editingImageName: file.name,
+      })
     }
     
     input.click()
@@ -1040,36 +959,14 @@ export default function BlogRequestForm() {
     handleEditorInput()
   }
 
-  const openImageEditor = async () => {
+  const openImageEditor = () => {
     if (!selectedImage) return
-    const content = getEditorContentForSave()
-    const fd = formDataRef.current ?? formData
-    const dataToSave = { ...fd, content }
-
-    // Save a lightweight text backup to localStorage before navigating
-    try {
-      localStorage.setItem(BLOG_TEXT_BACKUP_KEY, JSON.stringify({
-        title: titleRef.current?.innerHTML || fd.title || '',
-        content,
-        excerpt: subtitleRef.current?.innerHTML || fd.excerpt || '',
-      }))
-    } catch {}
-
-    try {
-      const serialized = await serializeFormDataForStorage(dataToSave)
-      sessionStorage.setItem(BLOG_FORM_STATE_KEY, serialized)
-      sessionStorage.setItem(EDIT_IMAGE_CTX_KEY, JSON.stringify({
-        source: selectedImage.src,
-        editingImageId: selectedImage.getAttribute('data-image-id'),
-        editingImageName: selectedImage.getAttribute('data-filename') || 'edited-image',
-      }))
-      sessionStorage.setItem(BLOG_IMAGE_EDITOR_MARKER, '1')
-      setShowImageMenu(false)
-      window.location.hash = '#/user/blog/edit-image'
-    } catch (err) {
-      console.error('Failed to save form state:', err)
-      alert('Failed to save form. Please try again.')
-    }
+    setShowImageMenu(false)
+    setImageEditorCtx({
+      source: selectedImage.src,
+      editingImageId: selectedImage.getAttribute('data-image-id'),
+      editingImageName: selectedImage.getAttribute('data-filename') || 'edited-image',
+    })
   }
 
   const saveImageCaption = () => {
@@ -1222,79 +1119,13 @@ export default function BlogRequestForm() {
     }
   }, [handleImageClick, handleEditorInput])
 
-  // Restore form state and process editor result when returning from full-page editor
+  // On mount: load explicit draft from URL or show auto-draft restore prompt
   useEffect(() => {
-    const formRaw = sessionStorage.getItem(BLOG_FORM_STATE_KEY)
-    const resultRaw = sessionStorage.getItem(EDIT_IMAGE_RESULT_KEY)
-    const fromImageEditor = sessionStorage.getItem(BLOG_IMAGE_EDITOR_MARKER)
-
-    if (formRaw || fromImageEditor) {
-      if (fromImageEditor) sessionStorage.removeItem(BLOG_IMAGE_EDITOR_MARKER)
-      if (formRaw) sessionStorage.removeItem(BLOG_FORM_STATE_KEY)
-      hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
-      let restoreTitle = ''
-      let restoreContent = ''
-      let restoreExcerpt = ''
-
-      // Step 1: try to restore the full form (binary images, settings, etc.) from sessionStorage
-      if (formRaw) {
-        try {
-          const restored = deserializeFormDataFromStorage(formRaw)
-          setFormData(restored)
-          restoreTitle = restored.title || ''
-          restoreContent = restored.content || ''
-          restoreExcerpt = restored.excerpt || ''
-        } catch (e) {
-          console.error('Failed to restore form state from sessionStorage:', e)
-        }
-      }
-
-      // Step 2: ALWAYS prefer the lightweight localStorage backup for text content.
-      // It is saved right before navigation and is the most accurate snapshot of
-      // what the user had in the editor — immune to sessionStorage quota issues.
-      try {
-        const backup = localStorage.getItem(BLOG_TEXT_BACKUP_KEY)
-        if (backup) {
-          const parsed = JSON.parse(backup)
-          if (parsed.content) restoreContent = parsed.content
-          if (parsed.title) restoreTitle = parsed.title
-          if (parsed.excerpt) restoreExcerpt = parsed.excerpt
-        }
-      } catch {}
-
-      if (editorRef.current && restoreContent) {
-        editorRef.current.innerHTML = restoreContent
-      }
-      setTimeout(() => {
-        if (titleRef.current && restoreTitle) titleRef.current.innerHTML = restoreTitle
-        if (subtitleRef.current && restoreExcerpt) subtitleRef.current.innerHTML = restoreExcerpt
-        // Sync formData.content with what is now in the editor
-        if (editorRef.current) {
-          setFormData(prev => ({ ...prev, content: editorRef.current!.innerHTML }))
-        }
-        // Clean up text backup after a successful restore
-        try { localStorage.removeItem(BLOG_TEXT_BACKUP_KEY) } catch {}
-      }, 0)
-    }
-
-    if (resultRaw) {
-      hasCheckedDraftRef.current = true // Don't show restore draft when returning from image editor
-      sessionStorage.removeItem(EDIT_IMAGE_RESULT_KEY)
-      const parsed = JSON.parse(resultRaw)
-      setTimeout(() => {
-        try {
-          applyEditedImage(parsed.editedImageObject, parsed.editingImageId, parsed.editingImageName)
-        } catch (e) {
-          console.error('Failed to process editor result:', e)
-        }
-      }, 0)
-    }
-
     // Check for explicit ?draft=id in URL (from Drafts modal "Edit")
     const hash = window.location.hash || ''
     const draftMatch = hash.match(/[?&]draft=(\d+)/)
     const explicitDraftId = draftMatch ? parseInt(draftMatch[1], 10) : null
-    if (explicitDraftId && isAuthenticated && !formRaw) {
+    if (explicitDraftId && isAuthenticated) {
       hasCheckedDraftRef.current = true
       const token = localStorage.getItem('token')
       if (token) {
@@ -1338,7 +1169,7 @@ export default function BlogRequestForm() {
     }
 
     // Check for AUTO draft to restore (only once per mount). Prompt ONLY for recent auto (<24h). Never prompt for manual.
-    if (!formRaw && !hasCheckedDraftRef.current) {
+    if (!hasCheckedDraftRef.current) {
       hasCheckedDraftRef.current = true
       const ONE_DAY_MS = 24 * 60 * 60 * 1000
       const isRecent = (ts: number) => Date.now() - ts < ONE_DAY_MS
@@ -1390,7 +1221,7 @@ export default function BlogRequestForm() {
           })
       }
     }
-  }, [applyEditedImage, isAuthenticated])
+  }, [isAuthenticated])
 
   // Offline detection
   useEffect(() => {
@@ -2918,6 +2749,40 @@ export default function BlogRequestForm() {
               )
             })()}
           </div>
+        </div>
+      )}
+
+      {/* In-page image editor overlay — keeps BlogRequestForm mounted, zero state loss */}
+      {imageEditorCtx && (
+        <div
+          className="fixed inset-0 overflow-hidden bg-slate-900"
+          style={{
+            zIndex: 9999,
+            width: '100vw',
+            height: '100dvh',
+            minHeight: '-webkit-fill-available',
+            padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <link
+            href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"
+            rel="stylesheet"
+          />
+          <ImageEditor
+            images={[]}
+            setImages={() => {}}
+            source={imageEditorCtx.source}
+            onSave={(editedImageObject) => {
+              const ctx = imageEditorCtx
+              setImageEditorCtx(null)
+              setTimeout(() => {
+                applyEditedImage(editedImageObject, ctx.editingImageId, ctx.editingImageName)
+              }, 0)
+            }}
+            onClose={() => setImageEditorCtx(null)}
+            fullPage
+          />
         </div>
       )}
     </>
