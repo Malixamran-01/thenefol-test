@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, X, CheckCircle, WarningCircle, TextB, TextItalic, TextUnderline, Link, ListBullets, ListNumbers, Palette, Image, YoutubeLogo, PencilSimple, FileText, Tag, Square, ArrowsOut, ArrowsIn, Trash, ArrowLeft, FloppyDisk, WifiSlash, ClockCounterClockwise, Info, Gear, ArrowUUpLeft, ArrowUUpRight, TextStrikethrough, Quotes, Question } from '@phosphor-icons/react'
+import { Upload, X, CheckCircle, WarningCircle, TextB, TextItalic, TextUnderline, Link, ListBullets, ListNumbers, Palette, Image, YoutubeLogo, PencilSimple, FileText, Tag, Square, ArrowsOut, ArrowsIn, Trash, ArrowLeft, FloppyDisk, WifiSlash, ClockCounterClockwise, Info, Gear, ArrowUUpLeft, ArrowUUpRight, TextStrikethrough, Quotes, Question, Plus } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import BlogPreview from '../components/BlogPreview'
@@ -147,6 +147,8 @@ export default function BlogRequestForm() {
   const [showSeoPreview, setShowSeoPreview] = useState(false)
   const [showSeoSection, setShowSeoSection] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false)
+  const categoryPickerRef = useRef<HTMLDivElement>(null)
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false)
   const [showContentInfoModal, setShowContentInfoModal] = useState(false)
   const [draftVersions, setDraftVersions] = useState<Array<{ id: number; title: string; content: string; excerpt: string; status: string; version: number; createdAt: string; updatedAt: string; authorName: string; snapshotReason?: string }>>([])
@@ -1323,6 +1325,18 @@ export default function BlogRequestForm() {
     }
   }, [])
 
+  // Close category picker when clicking outside
+  useEffect(() => {
+    if (!showCategoryPicker) return
+    const handler = (e: MouseEvent) => {
+      if (categoryPickerRef.current && !categoryPickerRef.current.contains(e.target as Node)) {
+        setShowCategoryPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showCategoryPicker])
+
   // Local auto-save (debounced) - include draftId/version when we have them
   useEffect(() => {
     const payload: Record<string, unknown> = {
@@ -1973,7 +1987,7 @@ export default function BlogRequestForm() {
                   data-placeholder="Add a subtitle..."
                   suppressContentEditableWarning
                 />
-                <div className="flex flex-wrap items-center gap-2 mb-6">
+                <div ref={categoryPickerRef} className="relative flex flex-wrap items-center gap-2 mb-6">
                   {formData.categories.map(cat => (
                     <span key={cat} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm">
                       {cat}
@@ -1982,11 +1996,30 @@ export default function BlogRequestForm() {
                   ))}
                   <button
                     type="button"
-                    onClick={() => setShowSettingsModal(true)}
-                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 text-sm hover:border-gray-400"
+                    onClick={() => setShowCategoryPicker(prev => !prev)}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 text-sm hover:border-[rgb(75,151,201)] hover:text-[rgb(75,151,201)] transition-colors"
                   >
-                    + Add category
+                    <Plus size={14} weight="bold" />
+                    Add category
                   </button>
+                  {showCategoryPicker && (
+                    <div className="absolute left-0 top-full mt-1 z-50 min-w-[200px] p-3 bg-white rounded-lg shadow-lg border border-gray-200">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Select categories</p>
+                      <div className="flex flex-wrap gap-2">
+                        {categoryOptions.map(c => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => toggleCategory(c)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${formData.categories.includes(c) ? 'text-white' : 'bg-white text-gray-700 border-gray-300 hover:border-[rgb(75,151,201)]'}`}
+                            style={formData.categories.includes(c) ? { backgroundColor: 'rgb(75,151,201)', borderColor: 'rgb(75,151,201)' } : undefined}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div
                   ref={editorRef}
@@ -2628,14 +2661,6 @@ export default function BlogRequestForm() {
                   {formData.coverImage && (
                     <button type="button" onClick={useCoverAsOg} className="text-xs hover:underline mt-2 transition-colors" style={{ color: 'rgb(75,151,201)' }}>Use cover image</button>
                   )}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categories</label>
-                <div className="flex flex-wrap gap-2">
-                  {categoryOptions.map(c => (
-                    <button key={c} type="button" onClick={() => toggleCategory(c)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${formData.categories.includes(c) ? 'text-white' : 'bg-white text-gray-700 border-gray-300 hover:border-[rgb(75,151,201)]'}`} style={formData.categories.includes(c) ? { backgroundColor: 'rgb(75,151,201)', borderColor: 'rgb(75,151,201)' } : undefined}>{c}</button>
-                  ))}
                 </div>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
