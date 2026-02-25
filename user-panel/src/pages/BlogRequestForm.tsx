@@ -2605,37 +2605,39 @@ export default function BlogRequestForm() {
               <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
               <button onClick={() => setShowVersionHistoryModal(false)} className="w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}><X size={18} /></button>
             </div>
-            <div className="flex flex-1 min-h-0 overflow-hidden" style={{ minHeight: 0 }}>
-              {/* Left: Preview - scrollable content, always show scrollbar */}
-              <div className="flex-1 min-w-0 min-h-0 p-6 border-r border-gray-200 overflow-y-scroll overflow-x-hidden" style={{ minHeight: 0, scrollbarGutter: 'stable' }}>
-                {selectedVersionId ? (
-                  (() => {
-                    const v = draftVersions.find(x => x.id === selectedVersionId)
-                    const text = v ? (v.content || '').replace(/<[^>]*>/g, ' ').trim() : ''
-                    return (
-                      <div className="prose prose-sm max-w-none">
-                        {text ? <p className="whitespace-pre-wrap text-gray-800">{text.slice(0, 2000)}{text.length > 2000 ? '...' : ''}</p> : (
-                          <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
-                            <FileText size={64} className="mb-4 text-gray-300" />
-                            <p className="font-semibold text-gray-700">This version is empty</p>
-                            <p className="text-sm text-gray-500 mt-1">Please select another version</p>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
-                    <FileText size={64} className="mb-4 text-gray-300" />
-                    <p className="font-semibold text-gray-700">This version is empty</p>
-                    <p className="text-sm text-gray-500 mt-1">Please select another version</p>
-                  </div>
-                )}
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+              {/* Left: Preview - fixed height, scrollable */}
+              <div className="flex-1 min-w-0 min-h-0 border-r border-gray-200 overflow-hidden">
+                <div className="h-full overflow-y-auto p-6">
+                  {selectedVersionId ? (
+                    (() => {
+                      const v = draftVersions.find(x => x.id === selectedVersionId)
+                      const text = v ? (v.content || '').replace(/<[^>]*>/g, ' ').trim() : ''
+                      return (
+                        <div className="prose prose-sm max-w-none">
+                          {text ? <p className="whitespace-pre-wrap text-gray-800">{text}</p> : (
+                            <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
+                              <FileText size={64} className="mb-4 text-gray-300" />
+                              <p className="font-semibold text-gray-700">This version is empty</p>
+                              <p className="text-sm text-gray-500 mt-1">Please select another version</p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
+                      <FileText size={64} className="mb-4 text-gray-300" />
+                      <p className="font-semibold text-gray-700">This version is empty</p>
+                      <p className="text-sm text-gray-500 mt-1">Please select another version</p>
+                    </div>
+                  )}
+                </div>
               </div>
               {/* Right: Version list - fixed width, scrollable when many versions */}
-              <div className="w-64 flex-shrink-0 flex flex-col border-l border-gray-200 min-h-0 overflow-hidden" style={{ minHeight: 0 }}>
+              <div className="w-64 flex-shrink-0 flex flex-col border-l border-gray-200 min-h-0 overflow-hidden">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2 flex-shrink-0">From today</p>
-                <div className="flex-1 min-h-0 overflow-y-scroll overflow-x-hidden px-4 pb-4" style={{ minHeight: 0, scrollbarGutter: 'stable' }}>
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-4" style={{ scrollbarWidth: 'thin' }}>
                   {draftVersions.length === 0 ? (
                     <p className="text-sm text-gray-500 py-4">No versions yet</p>
                   ) : (
