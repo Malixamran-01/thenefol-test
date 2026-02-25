@@ -2600,21 +2600,21 @@ export default function BlogRequestForm() {
       {/* Version History Modal - scrollable body, constrained height */}
       {showVersionHistoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowVersionHistoryModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col animate-modal-in overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col animate-modal-in overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
               <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
               <button onClick={() => setShowVersionHistoryModal(false)} className="w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}><X size={18} /></button>
             </div>
-            <div className="flex flex-1 min-h-0 overflow-hidden">
+            <div className="flex flex-1 min-h-0 max-h-full overflow-hidden">
               {/* Left: Preview - scrollable */}
-              <div className="flex-1 p-6 border-r border-gray-200 overflow-y-auto min-h-0 min-w-0">
+              <div className="flex-1 p-6 border-r border-gray-200 overflow-y-auto min-h-0 min-w-0 break-words">
                 {selectedVersionId ? (
                   (() => {
                     const v = draftVersions.find(x => x.id === selectedVersionId)
                     const text = v ? (v.content || '').replace(/<[^>]*>/g, ' ').trim() : ''
                     return (
-                      <div className="prose prose-sm max-w-none">
-                        {text ? <p className="whitespace-pre-wrap text-gray-800">{text.slice(0, 2000)}{text.length > 2000 ? '...' : ''}</p> : (
+                      <div className="prose prose-sm max-w-none break-words">
+                        {text ? <p className="whitespace-pre-wrap break-words text-gray-800">{text.slice(0, 2000)}{text.length > 2000 ? '...' : ''}</p> : (
                           <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
                             <FileText size={64} className="mb-4 text-gray-300" />
                             <p className="font-semibold text-gray-700">This version is empty</p>
