@@ -2600,14 +2600,14 @@ export default function BlogRequestForm() {
       {/* Version History Modal - fixed size, site theme */}
       {showVersionHistoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowVersionHistoryModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl flex flex-col animate-modal-in overflow-hidden" style={{ maxHeight: 'min(580px, 90vh)' }} onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl h-[min(560px,90vh)] flex flex-col animate-modal-in overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
               <button onClick={() => setShowVersionHistoryModal(false)} className="w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}><X size={18} /></button>
             </div>
             <div className="flex flex-1 min-h-0 overflow-hidden">
-              {/* Left: Preview - scrollable */}
-              <div className="flex-1 min-h-0 p-6 border-r border-gray-200 overflow-y-auto min-w-0">
+              {/* Left: Preview - scrollable content */}
+              <div className="flex-1 p-6 border-r border-gray-200 overflow-y-auto min-w-0 min-h-0">
                 {selectedVersionId ? (
                   (() => {
                     const v = draftVersions.find(x => x.id === selectedVersionId)
@@ -2635,7 +2635,7 @@ export default function BlogRequestForm() {
               {/* Right: Version list - fixed width, scrollable when many versions */}
               <div className="w-64 flex-shrink-0 flex flex-col border-l border-gray-200 min-h-0 overflow-hidden">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2 flex-shrink-0">From today</p>
-                <div className="flex-1 min-h-0 h-0 overflow-y-auto overflow-x-hidden px-4 pb-4" style={{ scrollbarWidth: 'thin' }}>
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-4" style={{ scrollbarWidth: 'thin' }}>
                   {draftVersions.length === 0 ? (
                     <p className="text-sm text-gray-500 py-4">No versions yet</p>
                   ) : (
