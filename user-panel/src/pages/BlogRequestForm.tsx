@@ -2597,17 +2597,17 @@ export default function BlogRequestForm() {
         </div>
       )}
 
-      {/* Version History Modal - scrollable body, constrained height */}
+      {/* Version History Modal - same pattern as Settings modal (scrollable) */}
       {showVersionHistoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowVersionHistoryModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col animate-modal-in overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto animate-modal-in" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
               <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
               <button onClick={() => setShowVersionHistoryModal(false)} className="w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}><X size={18} /></button>
             </div>
-            <div className="flex flex-1 min-h-0 overflow-hidden">
-              {/* Left: Preview - scrollable */}
-              <div className="flex-1 min-h-0 min-w-0 p-6 border-r border-gray-200 overflow-y-auto break-words">
+            <div className="p-6 flex gap-6">
+              {/* Left: Preview */}
+              <div className="flex-1 min-w-0 break-words">
                 {selectedVersionId ? (
                   (() => {
                     const v = draftVersions.find(x => x.id === selectedVersionId)
@@ -2615,8 +2615,8 @@ export default function BlogRequestForm() {
                     return (
                       <div className="prose prose-sm max-w-none break-words">
                         {text ? <p className="whitespace-pre-wrap break-words text-gray-800">{text.slice(0, 2000)}{text.length > 2000 ? '...' : ''}</p> : (
-                          <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
-                            <FileText size={64} className="mb-4 text-gray-300" />
+                          <div className="flex flex-col items-center justify-center min-h-[200px] text-gray-400">
+                            <FileText size={48} className="mb-3 text-gray-300" />
                             <p className="font-semibold text-gray-700">This version is empty</p>
                             <p className="text-sm text-gray-500 mt-1">Please select another version</p>
                           </div>
@@ -2625,17 +2625,17 @@ export default function BlogRequestForm() {
                     )
                   })()
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-gray-400">
-                    <FileText size={64} className="mb-4 text-gray-300" />
+                  <div className="flex flex-col items-center justify-center min-h-[200px] text-gray-400">
+                    <FileText size={48} className="mb-3 text-gray-300" />
                     <p className="font-semibold text-gray-700">This version is empty</p>
                     <p className="text-sm text-gray-500 mt-1">Please select another version</p>
                   </div>
                 )}
               </div>
-              {/* Right: Version list - fixed width, scrollable when many versions */}
-              <div className="w-64 shrink-0 flex flex-col border-l border-gray-200 min-h-0">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2 shrink-0">From today</p>
-                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-4" style={{ scrollbarWidth: 'thin' }}>
+              {/* Right: Version list */}
+              <div className="w-64 shrink-0">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">From today</p>
+                <div className="space-y-2">
                   {draftVersions.length === 0 ? (
                     <p className="text-sm text-gray-500 py-4">No versions yet</p>
                   ) : (
@@ -2651,7 +2651,7 @@ export default function BlogRequestForm() {
                           key={v.id}
                           type="button"
                           onClick={() => setSelectedVersionId(v.id)}
-                          className={`w-full text-left px-4 py-3 rounded-r-lg mb-2 transition-all duration-200 ${selectedVersionId === v.id ? 'bg-[rgba(75,151,201,0.08)]' : 'hover:bg-gray-50'} ${selectedVersionId === v.id ? 'border-l-2' : ''}`}
+                          className={`w-full text-left px-4 py-3 rounded-r-lg transition-all duration-200 ${selectedVersionId === v.id ? 'bg-[rgba(75,151,201,0.08)]' : 'hover:bg-gray-50'} ${selectedVersionId === v.id ? 'border-l-2' : ''}`}
                           style={selectedVersionId === v.id ? { borderLeftColor: 'rgb(75,151,201)' } : undefined}
                         >
                           <div className="flex items-center gap-2 flex-wrap">
@@ -2672,7 +2672,7 @@ export default function BlogRequestForm() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 shrink-0">
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between">
               <button type="button" className="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors" title="Help"><Question size={18} /></button>
               <div className="flex gap-2">
                 <button onClick={() => setShowVersionHistoryModal(false)} className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-gray-700 font-medium">Cancel</button>
