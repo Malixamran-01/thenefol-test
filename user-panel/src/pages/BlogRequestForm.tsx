@@ -2605,9 +2605,9 @@ export default function BlogRequestForm() {
               <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
               <button onClick={() => setShowVersionHistoryModal(false)} className="w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}><X size={18} /></button>
             </div>
-            <div className="flex flex-1 min-h-0 max-h-full overflow-hidden">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
               {/* Left: Preview - scrollable */}
-              <div className="flex-1 p-6 border-r border-gray-200 overflow-y-auto min-h-0 min-w-0 break-words">
+              <div className="flex-1 min-h-0 min-w-0 p-6 border-r border-gray-200 overflow-y-auto break-words">
                 {selectedVersionId ? (
                   (() => {
                     const v = draftVersions.find(x => x.id === selectedVersionId)
@@ -2633,7 +2633,7 @@ export default function BlogRequestForm() {
                 )}
               </div>
               {/* Right: Version list - fixed width, scrollable when many versions */}
-              <div className="w-64 shrink-0 flex flex-col border-l border-gray-200 min-h-0 overflow-hidden">
+              <div className="w-64 shrink-0 flex flex-col border-l border-gray-200 min-h-0">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-4 pt-4 pb-2 shrink-0">From today</p>
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-4" style={{ scrollbarWidth: 'thin' }}>
                   {draftVersions.length === 0 ? (
