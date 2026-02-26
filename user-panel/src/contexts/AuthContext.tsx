@@ -3,6 +3,7 @@ import { getApiBase } from '../utils/apiBase'
 
 interface User {
   id: number
+  unique_user_id?: string
   name: string
   email: string
   phone: string

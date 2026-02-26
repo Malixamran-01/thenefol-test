@@ -7,7 +7,7 @@ import AuthorPromptModal from './AuthorPromptModal'
 const MENU_ITEMS = [
   { id: 'write', label: 'Write blog', icon: FileText, action: 'write' },
   { id: 'drafts', label: 'Drafts', icon: LayoutList, action: 'drafts' },
-  { id: 'edit', label: 'Edit blog', icon: Edit3, action: 'edit' },
+  { id: 'edit', label: 'Your Blog', icon: Edit3, action: 'edit' },
   { id: 'view', label: 'View blog', icon: BookOpen, action: 'view' },
   { id: 'support', label: 'Support', icon: MessageCircle, action: 'support' },
 ] as const

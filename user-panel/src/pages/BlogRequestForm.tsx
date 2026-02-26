@@ -1380,7 +1380,7 @@ export default function BlogRequestForm() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <input name="author_name" value={formData.author_name} onChange={handleInputChange} placeholder="Your name *" required disabled={isSubmitting || (isAuthenticated && !!user?.name)} className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-transparent bg-white text-sm sm:text-base" />
                   <div className="px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-sm sm:text-base text-gray-700">
-                    {isAuthenticated && user?.id ? `User ID: ${user.id}` : 'Sign in to use your account'}
+                    {isAuthenticated && user ? (user.unique_user_id || `User #${user.id}`) : 'Sign in to use your account'}
                   </div>
                 </div>
 
