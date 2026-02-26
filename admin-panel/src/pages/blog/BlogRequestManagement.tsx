@@ -8,7 +8,9 @@ interface BlogRequest {
   content: string
   excerpt: string
   author_name: string
-  author_email: string
+  author_email?: string
+  author_id?: number | null
+  user_id?: number | null
   images: string[]
   status: 'pending' | 'approved' | 'rejected'
   featured: boolean
