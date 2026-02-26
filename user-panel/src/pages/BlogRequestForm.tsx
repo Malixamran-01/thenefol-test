@@ -110,6 +110,7 @@ export default function BlogRequestForm() {
   const [showDraftToast, setShowDraftToast] = useState(false)
   const [showConflictBanner, setShowConflictBanner] = useState(false)
   const [editingInOtherTab, setEditingInOtherTab] = useState(false)
+  const [toolbarExpanded, setToolbarExpanded] = useState(false)
   // Mobile: show extra toolbar items in overflow menu
   const [showToolbarOverflow, setShowToolbarOverflow] = useState(false)
   const toolbarOverflowRef = useRef<HTMLDivElement>(null)
@@ -1110,33 +1111,40 @@ export default function BlogRequestForm() {
     <>
       <style>{`
         [contenteditable][data-placeholder]:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }
-        .editor-content { line-height: 1.8; color: #111827; }
-        .overflow-y-auto { scrollbar-width: thin; scrollbar-color: #cbd5e0 #f7fafc; }
-        .overflow-y-auto::-webkit-scrollbar { width: 6px; }
-        .overflow-y-auto::-webkit-scrollbar-track { background: #f7fafc; }
-        .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
-        .title-scroll-wrapper { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
-        .editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content h4 { font-size: 1.25em; font-weight: bold; margin: 0.5em 0; }
-        .editor-content p { margin: 0.5em 0; color: #111827; }
-        .editor-content blockquote { margin: 1em 0; padding-left: 1em; border-left: 4px solid #d1d5db; color: #6b7280; font-style: italic; }
-        .editor-content ul { list-style: disc; margin-left: 2em; padding-left: 0.5em; }
-        .editor-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
-        .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
-        .editor-content a { color: #4B97C9; text-decoration: underline; }
-        .editor-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
-        .editor-content img:hover { border-color: #4B97C9; }
-        .editor-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; }
-        .editor-content .youtube-embed-wrapper { position: relative; display: flex; justify-content: center; align-items: center; margin: 20px auto; width: 100%; }
-        .editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 100%; height: auto; aspect-ratio: 16/9; border: 0; border-radius: 8px; }
-        .editor-content .youtube-embed-remove:hover { background: rgba(0,0,0,0.8) !important; }
-        .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
-        /* Prevent zoom on input focus on iOS */
-        @media (max-width: 640px) {
-          input, textarea, select, [contenteditable] { font-size: 16px !important; }
-        }
+.editor-content { line-height: 1.8; color: #111827; word-break: break-word; overflow-wrap: break-word; overflow: hidden; }
+.overflow-y-auto { scrollbar-width: thin; scrollbar-color: #cbd5e0 #f7fafc; }
+.overflow-y-auto::-webkit-scrollbar { width: 6px; }
+.overflow-y-auto::-webkit-scrollbar-track { background: #f7fafc; }
+.overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+.title-scroll-wrapper { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
+.editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
+.editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
+.editor-content h4 { font-size: 1.25em; font-weight: bold; margin: 0.5em 0; }
+.editor-content p { margin: 0.5em 0; color: #111827; }
+.editor-content blockquote { margin: 1em 0; padding-left: 1em; border-left: 4px solid #d1d5db; color: #6b7280; font-style: italic; }
+.editor-content ul { list-style: disc; margin-left: 2em; padding-left: 0.5em; }
+.editor-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
+.editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
+.editor-content a { color: #4B97C9; text-decoration: underline; word-break: break-all; }
+.editor-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
+.editor-content img:hover { border-color: #4B97C9; }
+.editor-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; max-width: 100%; }
+.editor-content .youtube-embed-wrapper { position: relative; display: flex; justify-content: center; align-items: center; margin: 20px auto; width: 100%; max-width: 100%; }
+.editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 100%; height: auto; aspect-ratio: 16/9; border: 0; border-radius: 8px; }
+.editor-content .youtube-embed-remove:hover { background: rgba(0,0,0,0.8) !important; }
+.editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
+.editor-content pre, .editor-content code { white-space: pre-wrap; word-break: break-word; max-width: 100%; }
+/* Contain everything inside viewport on mobile */
+@media (max-width: 640px) {
+  input, textarea, select, [contenteditable] { font-size: 16px !important; }
+  .editor-content { max-width: 100vw; }
+  .title-editable { white-space: pre-wrap !important; width: 100% !important; word-break: break-word !important; overflow-wrap: break-word !important; }
+}
+/* Toolbar expand/collapse transition */
+.toolbar-expanded { max-height: 200px; opacity: 1; }
+.toolbar-collapsed { max-height: 0; opacity: 0; overflow: hidden; }
+.toolbar-transition { transition: max-height 0.2s ease, opacity 0.15s ease; }
       `}</style>
 
       <div className="fixed inset-0 flex flex-col bg-white">
@@ -1198,72 +1206,70 @@ export default function BlogRequestForm() {
         )}
 
         {/* ── Toolbar ── */}
-        <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-2 sm:px-6 py-1.5 sm:py-2">
-          {/* Primary toolbar row — always visible */}
-          <div className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto no-scrollbar">
-            {/* Undo/Redo */}
-            <button type="button" onMouseDown={keepFocus} onClick={handleUndo} className={btnInactive} title="Undo"><ArrowUUpLeft size={15} /></button>
-            <button type="button" onMouseDown={keepFocus} onClick={handleRedo} className={btnInactive} title="Redo"><ArrowUUpRight size={15} /></button>
-            <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0" />
+<div className="flex-shrink-0 bg-gray-50 border-b border-gray-200">
+  {/* Toggle row — always visible */}
+  <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 border-b border-gray-100">
+    {/* Primary always-visible buttons */}
+    <button type="button" onMouseDown={keepFocus} onClick={handleUndo} className={btnInactive} title="Undo"><ArrowUUpLeft size={15} /></button>
+    <button type="button" onMouseDown={keepFocus} onClick={handleRedo} className={btnInactive} title="Redo"><ArrowUUpRight size={15} /></button>
+    <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0" />
+    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('bold')} className={`flex-shrink-0 ${toolbarState.bold ? btnActive : btnInactive}`} title="Bold"><TextB size={15} /></button>
+    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('italic')} className={`flex-shrink-0 ${toolbarState.italic ? btnActive : btnInactive}`} title="Italic"><TextItalic size={15} /></button>
+    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('underline')} className={`flex-shrink-0 ${toolbarState.underline ? btnActive : btnInactive}`} title="Underline"><TextUnderline size={15} /></button>
+    <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0" />
+    <button type="button" onClick={insertLink} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Link"><Link size={15} /></button>
+    <button type="button" onClick={insertImageIntoEditor} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Image"><Image size={15} /></button>
+    {/* Expand/collapse toggle — pushed to right */}
+    <button
+      type="button"
+      onMouseDown={keepFocus}
+      onClick={() => setToolbarExpanded(p => !p)}
+      className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors flex-shrink-0"
+      title={toolbarExpanded ? 'Collapse toolbar' : 'Expand toolbar'}
+    >
+      <span className="hidden sm:inline">{toolbarExpanded ? 'Less' : 'More'}</span>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform duration-200 ${toolbarExpanded ? 'rotate-180' : ''}`}>
+        <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
+  </div>
 
-            {/* Block format */}
-            <button type="button" onMouseDown={keepFocus} onClick={setParagraph} className={`px-1.5 sm:px-2 py-1.5 rounded text-xs font-medium flex-shrink-0 ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Paragraph">P</button>
-            {[1, 2, 3].map(h => (
-              <button key={h} type="button" onMouseDown={keepFocus} onClick={() => setHeading(h)} className={`px-1.5 sm:px-2 py-1.5 rounded text-xs font-semibold flex-shrink-0 ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
-            ))}
-            {/* H4 hidden on mobile */}
-            <button type="button" onMouseDown={keepFocus} onClick={() => setHeading(4)} className={`hidden sm:block px-2 py-1.5 rounded text-xs font-semibold ${toolbarState.block === 'h4' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Heading 4">H4</button>
-            <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0" />
-
-            {/* Format */}
-            <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('bold')} className={`flex-shrink-0 ${toolbarState.bold ? btnActive : btnInactive}`} title="Bold"><TextB size={15} /></button>
-            <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('italic')} className={`flex-shrink-0 ${toolbarState.italic ? btnActive : btnInactive}`} title="Italic"><TextItalic size={15} /></button>
-            <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('underline')} className={`flex-shrink-0 ${toolbarState.underline ? btnActive : btnInactive}`} title="Underline"><TextUnderline size={15} /></button>
-            {/* Strikethrough hidden on mobile, shown in overflow */}
-            <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('strikeThrough')} className={`hidden sm:block flex-shrink-0 ${toolbarState.strikethrough ? btnActive : btnInactive}`} title="Strikethrough"><TextStrikethrough size={15} /></button>
-            <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0" />
-
-            {/* Insert actions */}
-            <button type="button" onClick={insertLink} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Link"><Link size={15} /></button>
-            <button type="button" onClick={insertImageIntoEditor} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Image"><Image size={15} /></button>
-            {/* YouTube hidden on mobile, in overflow */}
-            <button type="button" onClick={insertYouTube} disabled={!isEditorOnly} className={`hidden sm:block flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="YouTube"><YoutubeLogo size={15} /></button>
-            <button type="button" onMouseDown={keepFocus} onClick={setBlockquote} className={`hidden sm:block flex-shrink-0 ${toolbarState.block === 'blockquote' ? btnActive : btnInactive}`} title="Quote"><Quotes size={15} /></button>
-            <button type="button" onClick={() => insertList(false)} disabled={!isEditorOnly} className={`hidden sm:block flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Bullet List"><ListBullets size={15} /></button>
-            <button type="button" onClick={() => insertList(true)} disabled={!isEditorOnly} className={`hidden sm:block flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Numbered List"><ListNumbers size={15} /></button>
-            <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0 hidden sm:block" />
-            <button type="button" onMouseDown={keepFocus} onClick={toggleColorPicker} className="hidden sm:flex flex-shrink-0 p-2 rounded hover:bg-gray-200 items-center gap-1 text-gray-600" ref={colorButtonRef} title="Text Color">
-              <Palette size={15} />
-              <div className="w-3 h-3 rounded border border-gray-400" style={{ backgroundColor: currentColor }} />
-            </button>
-
-            {/* Mobile overflow button */}
-            <div className="sm:hidden relative ml-auto flex-shrink-0" ref={toolbarOverflowRef}>
-              <button type="button" onClick={() => setShowToolbarOverflow(p => !p)} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="More">
-                <DotsThree size={18} weight="bold" />
-              </button>
-              {showToolbarOverflow && (
-                <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-3 w-64">
-                  <div className="grid grid-cols-5 gap-1.5 mb-3">
-                    <button type="button" onMouseDown={keepFocus} onClick={() => { toggleFormat('strikeThrough'); setShowToolbarOverflow(false) }} className={toolbarState.strikethrough ? btnActive : btnInactive} title="Strikethrough"><TextStrikethrough size={15} /></button>
-                    <button type="button" onClick={() => { insertYouTube(); setShowToolbarOverflow(false) }} disabled={!isEditorOnly} className={isEditorOnly ? btnInactive : btnDisabled} title="YouTube"><YoutubeLogo size={15} /></button>
-                    <button type="button" onMouseDown={keepFocus} onClick={() => { setBlockquote(); setShowToolbarOverflow(false) }} className={toolbarState.block === 'blockquote' ? btnActive : btnInactive} title="Quote"><Quotes size={15} /></button>
-                    <button type="button" onClick={() => { insertList(false); setShowToolbarOverflow(false) }} disabled={!isEditorOnly} className={isEditorOnly ? btnInactive : btnDisabled} title="Bullet List"><ListBullets size={15} /></button>
-                    <button type="button" onClick={() => { insertList(true); setShowToolbarOverflow(false) }} disabled={!isEditorOnly} className={isEditorOnly ? btnInactive : btnDisabled} title="Numbered List"><ListNumbers size={15} /></button>
-                  </div>
-                  {/* Color picker inline */}
-                  <p className="text-xs text-gray-500 mb-2">Text color</p>
-                  <div className="grid grid-cols-5 gap-2">
-                    {colors.map(color => (
-                      <button key={color} type="button" onClick={() => { applyColor(color); setShowToolbarOverflow(false) }} className="w-8 h-8 rounded-full border-2 border-gray-200 hover:scale-110 transition-transform" style={{ backgroundColor: color }} title={color} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+  {/* Expanded rows — all options */}
+  <div className={`toolbar-transition ${toolbarExpanded ? 'toolbar-expanded' : 'toolbar-collapsed'}`}>
+    <div className="px-2 sm:px-3 py-1.5 flex flex-wrap gap-0.5 sm:gap-1">
+      {/* Block format */}
+      <button type="button" onMouseDown={keepFocus} onClick={setParagraph} className={`px-1.5 sm:px-2 py-1.5 rounded text-xs font-medium flex-shrink-0 ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Paragraph">P</button>
+      {[1, 2, 3, 4].map(h => (
+        <button key={h} type="button" onMouseDown={keepFocus} onClick={() => setHeading(h)} className={`px-1.5 sm:px-2 py-1.5 rounded text-xs font-semibold flex-shrink-0 ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
+      ))}
+      <span className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0 self-center" />
+      {/* Extra format */}
+      <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('strikeThrough')} className={`flex-shrink-0 ${toolbarState.strikethrough ? btnActive : btnInactive}`} title="Strikethrough"><TextStrikethrough size={15} /></button>
+      <button type="button" onMouseDown={keepFocus} onClick={setBlockquote} className={`flex-shrink-0 ${toolbarState.block === 'blockquote' ? btnActive : btnInactive}`} title="Quote"><Quotes size={15} /></button>
+      <span className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0 self-center" />
+      {/* Insert */}
+      <button type="button" onClick={insertYouTube} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="YouTube"><YoutubeLogo size={15} /></button>
+      <button type="button" onClick={() => insertList(false)} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Bullet List"><ListBullets size={15} /></button>
+      <button type="button" onClick={() => insertList(true)} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Numbered List"><ListNumbers size={15} /></button>
+      <span className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0 self-center" />
+      {/* Color picker */}
+      <button type="button" onMouseDown={keepFocus} onClick={toggleColorPicker} className="flex flex-shrink-0 p-2 rounded hover:bg-gray-200 items-center gap-1 text-gray-600" ref={colorButtonRef} title="Text Color">
+        <Palette size={15} />
+        <div className="w-3 h-3 rounded border border-gray-400" style={{ backgroundColor: currentColor }} />
+      </button>
+    </div>
+    {/* Inline color swatches when picker open */}
+    {showColorPicker && (
+      <div className="px-3 pb-2">
+        <div className="flex flex-wrap gap-1.5">
+          {colors.map(color => (
+            <button key={color} type="button" onClick={() => applyColor(color)} className="w-6 h-6 rounded border border-gray-300 hover:scale-110 transition-transform flex-shrink-0" style={{ backgroundColor: color }} title={color} />
+          ))}
         </div>
-
+      </div>
+    )}
+  </div>
+</div>
         {/* ── Scrollable Content ── */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
           <form id="blog-form" onSubmit={handleSubmit} className="min-h-full flex flex-col">
@@ -1419,7 +1425,7 @@ export default function BlogRequestForm() {
         </div>
       </div>
 
-      {/* Color Picker (desktop) */}
+      {/* Color Picker (desktop)
       {showColorPicker && (
         <div className="absolute z-30 bg-white border border-gray-300 rounded-lg shadow-lg p-3" style={{ top: colorPickerPos.top, left: colorPickerPos.left }}>
           <div className="grid grid-cols-5 gap-2">
@@ -1428,7 +1434,7 @@ export default function BlogRequestForm() {
             ))}
           </div>
         </div>
-      )}
+      )} */}
 
       {/* YouTube Modal */}
       {showYouTubeModal && (
