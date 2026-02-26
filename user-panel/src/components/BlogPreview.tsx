@@ -96,12 +96,12 @@ export default function BlogPreview({
         .blog-preview-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
         .blog-preview-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
-      <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[100] p-4 overflow-y-auto" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-        <div className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="sticky top-4 right-4 float-right min-w-[44px] min-h-[44px] flex items-center justify-center p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors z-10 touch-manipulation"
+            className="sticky top-4 right-4 float-right p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors z-10"
             aria-label="Close preview"
           >
           <X className="w-5 h-5 text-gray-600" />
