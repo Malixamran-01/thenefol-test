@@ -135,6 +135,7 @@ router.post('/request', upload.fields([
       excerpt,
       author_name,
       author_email,
+      author_id,
       meta_title,
       meta_description,
       meta_keywords,
@@ -154,8 +155,13 @@ router.post('/request', upload.fields([
     const ogImageFile = files?.ogImage?.[0]
     const contentImages = files?.images || []
 
-    if (!title || !content || !excerpt || !author_name || !author_email) {
-      return res.status(400).json({ message: 'All fields are required' })
+    // Require author_name and either author_id (user ID) or author_email (legacy)
+    const authorId = author_id != null ? parseInt(String(author_id), 10) : null
+    if (!title || !content || !excerpt || !author_name) {
+      return res.status(400).json({ message: 'Title, content, excerpt, and author name are required' })
+    }
+    if (!authorId && !author_email) {
+      return res.status(400).json({ message: 'Author ID (sign in) or email is required' })
     }
 
     if (!coverImageFile) {
@@ -174,8 +180,9 @@ router.post('/request', upload.fields([
       : (og_image && String(og_image).trim()) || null
     const contentImageUrls = contentImages.map(img => `/uploads/blog/${img.filename}`)
 
-    // Extract user_id from token if provided (optional authentication)
-    const userId = getUserIdFromToken(req)
+    // Use author_id from body, or from token, or null for guest
+    const userId = authorId ?? getUserIdFromToken(req)
+    const authorEmailForDb = author_email || (authorId ? '' : null) // Store empty when using user ID
 
     const parseStringArray = (value: any): string[] => {
       if (!value) return []
@@ -228,7 +235,7 @@ router.post('/request', upload.fields([
       content,
       excerpt,
       author_name,
-      author_email,
+      authorEmailForDb ?? '',
       coverImageUrl,
       detailImageUrl,
       JSON.stringify(contentImageUrls),
@@ -336,10 +343,12 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
       return res.status(429).json({ message: 'Please wait before saving again', retryAfter: Math.ceil((DRAFT_SAVE_RATE_LIMIT_MS - (now - lastSave)) / 1000) })
     }
     const {
-      title, content, excerpt, author_name, author_email,
+      title, content, excerpt, author_name, author_email, author_id,
       meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
       categories, allow_comments, post_id, session_id, draftId, version
     } = req.body
+    // Use user_id from token for author; author_email kept for backward compat (empty when using user ID)
+    const authorEmailForDraft = author_email ?? ''
     const parseArray = (v: any): string[] => {
       if (!v) return []
       if (Array.isArray(v)) return v.map(String).filter(Boolean)
@@ -406,7 +415,7 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
           content_hash = $15, version = $16, session_id = $17, updated_at = now()
         WHERE id = $18 AND version = $19
       `, [
-        title || '', content || '', excerpt || '', author_name || '', author_email || '',
+        title || '', content || '', excerpt || '', author_name || '', authorEmailForDraft,
         meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
         og_title || null, og_description || null, og_image || null, canonical_url || null,
         parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
@@ -438,7 +447,7 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
             content: content || '',
             excerpt: excerpt || '',
             authorName: author_name || '',
-            authorEmail: author_email || '',
+            authorEmail: authorEmailForDraft,
             metaTitle: meta_title || null,
             metaDescription: meta_description || null,
             metaKeywords: parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
@@ -462,7 +471,7 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'auto', $18, 1)
       RETURNING id, version, updated_at
     `, [
-      userId, postId, sessionId, title || '', content || '', excerpt || '', author_name || '', author_email || '',
+      userId, postId, sessionId, title || '', content || '', excerpt || '', author_name || '', authorEmailForDraft,
       meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
       og_title || null, og_description || null, og_image || null, canonical_url || null,
       parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
@@ -481,7 +490,7 @@ router.post('/drafts/auto', authenticateToken, async (req, res) => {
         content: content || '',
         excerpt: excerpt || '',
         authorName: author_name || '',
-        authorEmail: author_email || '',
+        authorEmail: authorEmailForDraft,
         metaTitle: meta_title || null,
         metaDescription: meta_description || null,
         metaKeywords: parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
@@ -521,7 +530,7 @@ router.get('/drafts/auto', authenticateToken, async (req, res) => {
       }
       await pool.query(`UPDATE blog_drafts SET last_opened_at = now() WHERE id = $1`, [draft.id])
     }
-    res.json(draft)
+    res.json(draft ? { ...draft, author_id: draft.user_id } : null)
   } catch (error) {
     console.error('Error fetching auto-draft:', error)
     res.status(500).json({ message: 'Failed to fetch draft' })
@@ -607,6 +616,7 @@ router.get('/drafts/version/:id', authenticateToken, async (req, res) => {
       content: v.content,
       excerpt: v.excerpt,
       author_name: v.author_name,
+      author_id: v.user_id,
       author_email: v.author_email,
       meta_title: v.meta_title,
       meta_description: v.meta_description,
@@ -756,10 +766,11 @@ router.post('/drafts', authenticateToken, async (req, res) => {
       return res.status(401).json({ message: 'Authentication required' })
     }
     const {
-      title, content, excerpt, author_name, author_email,
+      title, content, excerpt, author_name, author_email, author_id,
       meta_title, meta_description, meta_keywords, og_title, og_description, og_image, canonical_url,
       categories, allow_comments, name, session_id
     } = req.body
+    const authorEmailVal = author_email ?? ''
     const parseArray = (v: any): string[] => {
       if (!v) return []
       if (Array.isArray(v)) return v.map(String).filter(Boolean)
@@ -786,7 +797,7 @@ router.post('/drafts', authenticateToken, async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'manual', $16)
       RETURNING id, title, name, created_at, updated_at
     `, [
-      userId, title || '', content || '', excerpt || '', author_name || '', author_email || '',
+      userId, title || '', content || '', excerpt || '', author_name || '', authorEmailVal,
       meta_title || null, meta_description || null, parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
       og_title || null, og_description || null, og_image || null, canonical_url || null,
       parsedCategories.length ? JSON.stringify(parsedCategories) : '[]',
@@ -809,7 +820,7 @@ router.post('/drafts', authenticateToken, async (req, res) => {
           content: content || '',
           excerpt: excerpt || '',
           authorName: author_name || '',
-          authorEmail: author_email || '',
+          authorEmail: authorEmailVal,
           metaTitle: meta_title || null,
           metaDescription: meta_description || null,
           metaKeywords: parsedKeywords.length ? JSON.stringify(parsedKeywords) : null,
@@ -863,7 +874,8 @@ router.get('/drafts/:id', authenticateToken, async (req, res) => {
       [draftId, userId]
     )
     if (rows.length === 0) return res.status(404).json({ message: 'Draft not found' })
-    res.json(rows[0])
+    const d = rows[0]
+    res.json({ ...d, author_id: d.user_id })
   } catch (error) {
     console.error('Error fetching draft:', error)
     res.status(500).json({ message: 'Failed to fetch draft' })
@@ -1010,7 +1022,7 @@ router.get('/posts', async (req, res) => {
       ORDER BY created_at DESC
     `)
     
-    res.json(rows)
+    res.json(rows.map((r: any) => ({ ...r, author_id: r.user_id })))
   } catch (error) {
     console.error('Error fetching blog posts:', error)
     res.status(500).json({ message: 'Failed to fetch blog posts' })
@@ -1157,7 +1169,8 @@ router.get('/posts/:id', async (req, res) => {
       return res.status(404).json({ message: 'Blog post not found' })
     }
     
-    res.json(rows[0])
+    const post = rows[0]
+    res.json({ ...post, author_id: post.user_id })
   } catch (error) {
     console.error('Error fetching blog post:', error)
     res.status(500).json({ message: 'Failed to fetch blog post' })
@@ -1558,7 +1571,7 @@ router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
     }
     const postId = req.params.id
     const userId = req.userId
-    const { content, parent_id, author_name, author_email } = req.body
+    const { content, parent_id, author_name, author_email, author_id } = req.body
 
     const { rows: postRows } = await pool.query(
       `SELECT allow_comments FROM blog_posts WHERE id = $1`,
@@ -1595,7 +1608,7 @@ router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
       `INSERT INTO blog_comments (post_id, parent_id, ancestors, user_id, author_name, author_email, content)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [postId, parent_id || null, ancestors, userId, author_name || null, author_email || null, content]
+      [postId, parent_id || null, ancestors, userId, author_name || null, (author_id != null ? '' : author_email) || null, content]
     )
     res.json(rows[0])
   } catch (error) {

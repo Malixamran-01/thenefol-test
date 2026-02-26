@@ -14,7 +14,7 @@ export interface DraftPayload {
   content: string
   excerpt: string
   author_name: string
-  author_email: string
+  author_id?: number | null
   meta_title: string
   meta_description: string
   meta_keywords: string

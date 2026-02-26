@@ -9,7 +9,8 @@ interface BlogPost {
   excerpt: string
   content: string
   author_name: string
-  author_email: string
+  author_email?: string
+  author_id?: number | null
   user_id?: string | number
   cover_image?: string
   detail_image?: string
@@ -419,7 +420,7 @@ export default function BlogDetail() {
           content,
           parent_id: parentId || null,
           author_name: user?.name,
-          author_email: user?.email
+          author_id: user?.id
         })
       })
       if (response.ok) {
@@ -727,11 +728,10 @@ export default function BlogDetail() {
 
   const handleAuthorClick = () => {
     if (!post) return
-    const authorId = post.user_id ?? 'guest'
+    const authorId = post.author_id ?? post.user_id ?? 'guest'
     sessionStorage.setItem('blog_author_profile', JSON.stringify({
       id: authorId,
-      name: post.author_name,
-      email: post.author_email
+      name: post.author_name
     }))
     window.location.hash = `#/user/author/${authorId}`
   }
@@ -992,7 +992,7 @@ export default function BlogDetail() {
             </span>
             <div className="text-left">
               <div className="text-sm font-semibold text-gray-900">Posted by {post.author_name}</div>
-              <div className="text-xs text-gray-500">{post.author_email || 'Author'}</div>
+              <div className="text-xs text-gray-500">{post.author_id != null || post.user_id != null ? `User #${post.author_id ?? post.user_id}` : post.author_email || 'Author'}</div>
             </div>
           </button>
           <span className="text-gray-400">•</span>

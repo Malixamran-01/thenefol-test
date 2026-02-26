@@ -19,7 +19,7 @@ interface BlogRequest {
   content: string
   excerpt: string
   author_name: string
-  author_email: string
+  author_id: number | null
   coverImage: File | null
   detailImage: File | null
   ogImageFile: File | null
@@ -61,7 +61,7 @@ export default function BlogRequestForm() {
     content: '',
     excerpt: '',
     author_name: '',
-    author_email: '',
+    author_id: null,
     coverImage: null,
     detailImage: null,
     ogImageFile: null,
@@ -228,7 +228,7 @@ export default function BlogRequestForm() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      setFormData(prev => ({ ...prev, author_name: user.name || '', author_email: user.email || '' }))
+      setFormData(prev => ({ ...prev, author_name: user.name || '', author_id: user.id ?? null }))
     }
   }, [isAuthenticated, user])
 
@@ -848,7 +848,7 @@ export default function BlogRequestForm() {
             if (!draft || !hasRealDraftContent(draft)) return
             const arr = (v: any): string[] => Array.isArray(v) ? v : typeof v === 'string' ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [] } catch { return [] } })() : []
             const kw = draft.meta_keywords
-            setFormData((prev) => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', author_name: draft.author_name || prev.author_name, author_email: draft.author_email || prev.author_email, meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: typeof kw === 'string' ? kw : Array.isArray(kw) ? kw.join(', ') : '', og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
+            setFormData((prev) => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', author_name: draft.author_name || prev.author_name, author_id: draft.author_id ?? prev.author_id, meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: typeof kw === 'string' ? kw : Array.isArray(kw) ? kw.join(', ') : '', og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
             if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
             draftIdRef.current = draft.id ?? null
             versionRef.current = draft.version ?? 0
@@ -903,18 +903,18 @@ export default function BlogRequestForm() {
   }, [showCategoryPicker])
 
   useEffect(() => {
-    const payload: Record<string, unknown> = { title: formData.title, content: formData.content, excerpt: formData.excerpt, author_name: formData.author_name, author_email: formData.author_email, meta_title: formData.meta_title, meta_description: formData.meta_description, meta_keywords: formData.meta_keywords, og_title: formData.og_title, og_description: formData.og_description, og_image: formData.og_image, canonical_url: formData.canonical_url, categories: formData.categories, allow_comments: formData.allow_comments }
+    const payload: Record<string, unknown> = { title: formData.title, content: formData.content, excerpt: formData.excerpt, author_name: formData.author_name, author_id: formData.author_id, meta_title: formData.meta_title, meta_description: formData.meta_description, meta_keywords: formData.meta_keywords, og_title: formData.og_title, og_description: formData.og_description, og_image: formData.og_image, canonical_url: formData.canonical_url, categories: formData.categories, allow_comments: formData.allow_comments }
     if (draftIdRef.current != null) payload.draftId = draftIdRef.current
     if (versionRef.current) payload.version = versionRef.current
     const t = setTimeout(() => { const updated = saveLocalDraft(payload as any); if (updated) setLastSavedAt(updated) }, DEBOUNCE_MS)
     return () => clearTimeout(t)
-  }, [formData.title, formData.content, formData.excerpt, formData.author_name, formData.author_email, formData.meta_title, formData.meta_description, formData.meta_keywords, formData.og_title, formData.og_description, formData.og_image, formData.canonical_url, formData.categories, formData.allow_comments])
+  }, [formData.title, formData.content, formData.excerpt, formData.author_name, formData.author_id, formData.meta_title, formData.meta_description, formData.meta_keywords, formData.og_title, formData.og_description, formData.og_image, formData.canonical_url, formData.categories, formData.allow_comments])
 
   const syncToServer = useCallback((opts?: { keepalive?: boolean }) => {
     const fd = formDataRef.current
     if (!fd || !isAuthenticated || !user || isOffline) return
     const content = (editorRef.current?.innerHTML ?? fd.content) || ''
-    const payload = { title: fd.title, content, excerpt: fd.excerpt, author_name: fd.author_name, author_email: fd.author_email, meta_title: fd.meta_title, meta_description: fd.meta_description, meta_keywords: fd.meta_keywords, og_title: fd.og_title, og_description: fd.og_description, og_image: fd.og_image, canonical_url: fd.canonical_url, categories: fd.categories, allow_comments: fd.allow_comments, draftId: draftIdRef.current, version: versionRef.current || undefined }
+    const payload = { title: fd.title, content, excerpt: fd.excerpt, author_name: fd.author_name, author_id: fd.author_id, meta_title: fd.meta_title, meta_description: fd.meta_description, meta_keywords: fd.meta_keywords, og_title: fd.og_title, og_description: fd.og_description, og_image: fd.og_image, canonical_url: fd.canonical_url, categories: fd.categories, allow_comments: fd.allow_comments, draftId: draftIdRef.current, version: versionRef.current || undefined }
     if (!hasRealDraftContent(payload)) return
     const token = localStorage.getItem('token')
     if (!token) return
@@ -963,7 +963,7 @@ export default function BlogRequestForm() {
     if (draft) {
       const arr = (v: any): string[] => Array.isArray(v) ? v : typeof v === 'string' ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [] } catch { return [] } })() : []
       const kw = draft.meta_keywords
-      setFormData(prev => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', author_name: draft.author_name || prev.author_name, author_email: draft.author_email || prev.author_email, meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: typeof kw === 'string' ? kw : Array.isArray(kw) ? (kw as string[]).join(', ') : '', og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
+      setFormData(prev => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', author_name: draft.author_name || prev.author_name, author_id: draft.author_id ?? prev.author_id, meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: typeof kw === 'string' ? kw : Array.isArray(kw) ? (kw as string[]).join(', ') : '', og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
       requestAnimationFrame(() => { if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content })
       const d = draft as any
       draftIdRef.current = d.id ?? d.draftId ?? null
@@ -992,7 +992,7 @@ export default function BlogRequestForm() {
     sessionIdRef.current = getOrCreateDraftSessionId()
     pendingDraftRestore.current = null
     setShowRestoreModal(false)
-    setFormData({ title: '', content: '', excerpt: '', author_name: user?.name ?? formData.author_name, author_email: user?.email ?? formData.author_email, coverImage: null, detailImage: null, ogImageFile: null, images: [], meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', categories: [], allow_comments: true })
+    setFormData({ title: '', content: '', excerpt: '', author_name: user?.name ?? formData.author_name, author_id: user?.id ?? formData.author_id, coverImage: null, detailImage: null, ogImageFile: null, images: [], meta_title: '', meta_description: '', meta_keywords: '', og_title: '', og_description: '', og_image: '', canonical_url: '', categories: [], allow_comments: true })
     if (editorRef.current) editorRef.current.innerHTML = '<p><br></p>'
     if (titleRef.current) titleRef.current.innerHTML = ''
     if (subtitleRef.current) subtitleRef.current.innerHTML = ''
@@ -1007,7 +1007,7 @@ export default function BlogRequestForm() {
       if (draft && hasRealDraftContent(draft)) {
         const arr = (v: any): string[] => Array.isArray(v) ? v : typeof v === 'string' ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p : [] } catch { return [] } })() : []
         const kw = draft.meta_keywords
-        setFormData(prev => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', author_name: draft.author_name || prev.author_name, author_email: draft.author_email || prev.author_email, meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: typeof kw === 'string' ? kw : Array.isArray(kw) ? kw.join(', ') : '', og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
+        setFormData(prev => ({ ...prev, title: draft.title || '', content: draft.content || '', excerpt: draft.excerpt || '', author_name: draft.author_name || prev.author_name, author_id: draft.author_id ?? prev.author_id, meta_title: draft.meta_title || '', meta_description: draft.meta_description || '', meta_keywords: typeof kw === 'string' ? kw : Array.isArray(kw) ? kw.join(', ') : '', og_title: draft.og_title || '', og_description: draft.og_description || '', og_image: draft.og_image || '', canonical_url: draft.canonical_url || '', categories: arr(draft.categories), allow_comments: draft.allow_comments ?? true }))
         if (editorRef.current && draft.content) editorRef.current.innerHTML = draft.content
         setTimeout(() => { if (titleRef.current && draft.title) titleRef.current.innerHTML = draft.title; if (subtitleRef.current && draft.excerpt) subtitleRef.current.innerHTML = draft.excerpt }, 0)
         draftIdRef.current = draft.id
@@ -1022,7 +1022,7 @@ export default function BlogRequestForm() {
 
   const handleSaveDraft = async () => {
     const content = (editorRef.current?.innerHTML ?? formData.content) || ''
-    const payload = { title: formData.title, content, excerpt: formData.excerpt, author_name: formData.author_name, author_email: formData.author_email, meta_title: formData.meta_title, meta_description: formData.meta_description, meta_keywords: formData.meta_keywords, og_title: formData.og_title, og_description: formData.og_description, og_image: formData.og_image, canonical_url: formData.canonical_url, categories: formData.categories, allow_comments: formData.allow_comments }
+    const payload = { title: formData.title, content, excerpt: formData.excerpt, author_name: formData.author_name, author_id: formData.author_id, meta_title: formData.meta_title, meta_description: formData.meta_description, meta_keywords: formData.meta_keywords, og_title: formData.og_title, og_description: formData.og_description, og_image: formData.og_image, canonical_url: formData.canonical_url, categories: formData.categories, allow_comments: formData.allow_comments }
     if (!hasRealDraftContent(payload)) { setErrorMessage('Add a title, excerpt, or content before saving a draft.'); return }
     saveLocalDraft(payload)
     setLastSavedAt(new Date().toISOString())
@@ -1049,6 +1049,7 @@ export default function BlogRequestForm() {
     if (!excerptText) { setSubmitStatus('error'); setErrorMessage('Please add a subtitle.'); return }
     if (!agreedToTerms) { setSubmitStatus('error'); setErrorMessage('Please agree to the terms and conditions before submitting.'); return }
     if (!formData.coverImage) { setSubmitStatus('error'); setErrorMessage('Please upload a cover image for your blog post.'); return }
+    if (formData.author_id == null) { setSubmitStatus('error'); setErrorMessage('Please sign in to submit a blog post.'); return }
     setIsSubmitting(true); setSubmitStatus('idle'); setErrorMessage('')
     try {
       const apiBase = getApiBase()
@@ -1057,7 +1058,7 @@ export default function BlogRequestForm() {
       formDataToSend.append('content', formData.content)
       formDataToSend.append('excerpt', subtitleRef.current?.innerHTML ?? formData.excerpt)
       formDataToSend.append('author_name', formData.author_name)
-      formDataToSend.append('author_email', formData.author_email)
+      if (formData.author_id != null) formDataToSend.append('author_id', String(formData.author_id))
       formDataToSend.append('meta_title', formData.meta_title)
       formDataToSend.append('meta_description', formData.meta_description)
       formDataToSend.append('meta_keywords', formData.meta_keywords)
@@ -1378,7 +1379,9 @@ export default function BlogRequestForm() {
                 {/* Author Info */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <input name="author_name" value={formData.author_name} onChange={handleInputChange} placeholder="Your name *" required disabled={isSubmitting || (isAuthenticated && !!user?.name)} className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-transparent bg-white text-sm sm:text-base" />
-                  <input name="author_email" value={formData.author_email} onChange={handleInputChange} placeholder="Email *" required disabled={isSubmitting || (isAuthenticated && !!user?.email)} className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-transparent bg-white text-sm sm:text-base" />
+                  <div className="px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-sm sm:text-base text-gray-700">
+                    {isAuthenticated && user?.id ? `User ID: ${user.id}` : 'Sign in to use your account'}
+                  </div>
                 </div>
 
                 {/* Error */}
@@ -1580,7 +1583,7 @@ export default function BlogRequestForm() {
 
       {/* Blog Preview */}
       {showPreview && (
-        <BlogPreview title={formData.title} excerpt={formData.excerpt} content={formData.content} authorName={formData.author_name} authorEmail={formData.author_email} coverImage={formData.coverImage} detailImage={formData.detailImage} categories={formData.categories} onClose={() => setShowPreview(false)} />
+        <BlogPreview title={formData.title} excerpt={formData.excerpt} content={formData.content} authorName={formData.author_name} authorId={formData.author_id} coverImage={formData.coverImage} detailImage={formData.detailImage} categories={formData.categories} onClose={() => setShowPreview(false)} />
       )}
 
       {/* Settings Modal */}

@@ -62,7 +62,8 @@ interface BlogPost {
   excerpt: string
   content: string
   author_name: string
-  author_email: string
+  author_email?: string
+  author_id?: number | null
   user_id?: string | number
   cover_image?: string
   detail_image?: string
@@ -324,7 +325,6 @@ export default function AuthorProfile() {
   const authorKey = useMemo(() => {
     const stableId = normalize(authorSeed?.id || routeAuthorId)
     if (stableId) return stableId
-    if (authorSeed?.email) return normalize(authorSeed.email)
     return normalize(authorSeed?.name || 'author')
   }, [authorSeed, routeAuthorId])
 
@@ -438,16 +438,16 @@ export default function AuthorProfile() {
           .filter((post) => {
             const matchesId =
               routeAuthorId && routeAuthorId !== 'guest'
-                ? normalize(post.user_id) === normalize(routeAuthorId)
+                ? normalize(post.user_id ?? post.author_id) === normalize(routeAuthorId)
                 : false
-            const matchesEmail = authorSeed?.email
-              ? normalize(post.author_email) === normalize(authorSeed.email)
+            const matchesAuthorId = authorSeed?.id != null
+              ? normalize(String(post.user_id ?? post.author_id)) === normalize(String(authorSeed.id))
               : false
             const matchesName = authorSeed?.name
               ? normalize(post.author_name) === normalize(authorSeed.name)
               : false
 
-            return matchesId || matchesEmail || matchesName
+            return matchesId || matchesAuthorId || matchesName
           })
           .map((post) => ({
             ...post,
@@ -509,7 +509,7 @@ export default function AuthorProfile() {
     }
     // No author profile: use users table data (account created at signup)
     return {
-      id: userSummary?.id ?? posts[0]?.user_id ?? authorSeed?.id ?? routeAuthorId ?? 'guest',
+      id: userSummary?.id ?? posts[0]?.user_id ?? posts[0]?.author_id ?? authorSeed?.id ?? routeAuthorId ?? 'guest',
       name: userSummary?.name || posts[0]?.author_name || authorSeed?.name || 'Author',
       email: userSummary?.email || posts[0]?.author_email || authorSeed?.email || ''
     }
