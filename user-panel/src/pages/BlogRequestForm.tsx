@@ -2600,12 +2600,12 @@ export default function BlogRequestForm() {
       {/* Version History Modal - same pattern as Settings modal (scrollable) */}
       {showVersionHistoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowVersionHistoryModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto animate-modal-in" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-modal-in" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
               <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
               <button onClick={() => setShowVersionHistoryModal(false)} className="w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}><X size={18} /></button>
             </div>
-            <div className="p-6 flex gap-6">
+            <div className="flex-1 min-w-0 break-words overflow-y-auto pr-2">
               {/* Left: Preview */}
               <div className="flex-1 min-w-0 break-words">
                 {selectedVersionId ? (
@@ -2633,8 +2633,8 @@ export default function BlogRequestForm() {
                 )}
               </div>
               {/* Right: Version list */}
-              <div className="w-64 shrink-0">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">From today</p>
+              <div className="w-64 shrink-0 overflow-y-auto border-l border-gray-100 pl-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 sticky top-0 bg-white py-1">From this week</p>
                 <div className="space-y-2">
                   {draftVersions.length === 0 ? (
                     <p className="text-sm text-gray-500 py-4">No versions yet</p>
