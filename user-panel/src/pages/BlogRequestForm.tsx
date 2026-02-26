@@ -1707,12 +1707,21 @@ export default function BlogRequestForm() {
           line-height: 1.8;
           color: #111827;
         }
+        .overflow-y-auto, .overflow-x-auto { -webkit-overflow-scrolling: touch; }
         .overflow-y-auto { scrollbar-width: thin; scrollbar-color: #cbd5e0 #f7fafc; }
         .overflow-y-auto::-webkit-scrollbar { width: 8px; }
         .overflow-y-auto::-webkit-scrollbar-track { background: #f7fafc; }
         .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
         .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
         .title-scroll-wrapper { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+        @supports (padding: env(safe-area-inset-top)) {
+          .safe-top { padding-top: env(safe-area-inset-top); }
+          .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+          .safe-x { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+        }
+        @media (max-width: 639px) {
+          .image-menu-mobile { position: fixed !important; left: 1rem !important; right: 1rem !important; bottom: calc(1rem + env(safe-area-inset-bottom)) !important; top: auto !important; }
+        }
         .editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
         .editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
@@ -1732,19 +1741,19 @@ export default function BlogRequestForm() {
         .editor-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
       
-      <div className="fixed inset-0 flex flex-col bg-white">
+      <div className="fixed inset-0 flex flex-col bg-white safe-x" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Fixed Header */}
         <div className="flex-shrink-0 bg-white shadow-sm border-b transition-all duration-300">
-          <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button 
                 onClick={() => window.location.hash = '#/user/blog'} 
-                className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 flex-shrink-0 touch-manipulation"
                 aria-label="Go back"
               >
                 <ArrowLeft size={20} className="text-gray-600" />
               </button>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
                 {lastSavedAt && !isOffline && (
                   <span className="flex items-center gap-1.5 text-sm text-gray-600">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -1765,12 +1774,12 @@ export default function BlogRequestForm() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button 
                 type="button"
                 onClick={() => setShowPreview(true)}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+                className="min-h-[44px] px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 touch-manipulation"
               >
                 Preview
               </button>
@@ -1778,7 +1787,7 @@ export default function BlogRequestForm() {
                 type="submit"
                 form="blog-form"
                 disabled={isSubmitting || !agreedToTerms}
-                className="px-5 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="min-h-[44px] px-5 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                 style={{ backgroundColor: 'rgb(75,151,201)' }}
                 onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
@@ -1822,7 +1831,7 @@ export default function BlogRequestForm() {
           const keepFocus = (e: React.MouseEvent) => e.preventDefault()
           const isEditorOnly = activeEditableType === 'editor'
           return (
-        <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-2 flex flex-wrap gap-1 items-center overflow-x-auto">
+        <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-3 sm:px-6 py-2 flex gap-1 items-center overflow-x-auto overflow-y-hidden [&_button]:flex-shrink-0 [&_button]:min-h-[40px] [&_button]:touch-manipulation">
                 <button type="button" onMouseDown={keepFocus} onClick={handleUndo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Undo"><ArrowUUpLeft size={16} /></button>
                 <button type="button" onMouseDown={keepFocus} onClick={handleRedo} className="p-2 rounded hover:bg-gray-200 text-gray-600" title="Redo"><ArrowUUpRight size={16} /></button>
                 <span className="w-px h-5 bg-gray-300 mx-1" />
@@ -1916,7 +1925,7 @@ export default function BlogRequestForm() {
                     Add category
                   </button>
                   {showCategoryPicker && (
-                    <div className="absolute left-0 top-full mt-1 z-50 min-w-[200px] p-3 bg-white rounded-lg shadow-lg border border-gray-200">
+                    <div className="absolute left-0 top-full mt-1 z-50 min-w-[200px] max-w-[calc(100vw-2rem)] p-3 bg-white rounded-lg shadow-lg border border-gray-200">
                       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Select categories</p>
                       <div className="flex flex-wrap gap-2">
                         {categoryOptions.map(c => (
@@ -1957,7 +1966,7 @@ export default function BlogRequestForm() {
                       }
                     }}
                     onClick={updateToolbarState}
-                    className="editor-content min-h-[500px] outline-none text-base text-gray-800 w-full pt-1 pb-32"
+                    className="editor-content min-h-[280px] sm:min-h-[400px] md:min-h-[500px] outline-none text-base text-gray-800 w-full pt-1 pb-24 sm:pb-32"
                     suppressContentEditableWarning
                   />
                 </div>
@@ -2160,7 +2169,7 @@ export default function BlogRequestForm() {
       {/* Color Picker */}
       {showColorPicker && (
         <div
-          className="absolute z-30 bg-white border border-gray-300 rounded-lg shadow-lg p-3"
+          className="absolute z-30 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-[calc(100vw-2rem)]"
           style={{ top: colorPickerPos.top, left: colorPickerPos.left }}
         >
           <div className="grid grid-cols-5 gap-2">
@@ -2169,7 +2178,7 @@ export default function BlogRequestForm() {
                 key={color}
                 type="button"
                 onClick={() => applyColor(color)}
-                className="w-6 h-6 rounded border border-gray-300 hover:scale-110 transition-transform"
+                className="w-8 h-8 sm:w-6 sm:h-6 rounded border border-gray-300 hover:scale-110 transition-transform touch-manipulation"
                 style={{ backgroundColor: color }}
                 title={color}
               />
@@ -2180,8 +2189,8 @@ export default function BlogRequestForm() {
 
       {/* YouTube Modal */}
       {showYouTubeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[70] p-4 sm:p-4" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Insert YouTube Video</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">YouTube URL</label>
@@ -2194,7 +2203,7 @@ export default function BlogRequestForm() {
               />
               <p className="text-xs text-gray-500 mt-2">Paste a YouTube link to embed the video (centered, like images)</p>
             </div>
-            <div className="flex gap-3 mt-6 justify-end">
+            <div className="flex gap-3 mt-6 justify-end [&_button]:min-h-[44px] [&_button]:touch-manipulation">
               <button
                 type="button"
                 onClick={() => { setShowYouTubeModal(false); setYoutubeUrl('') }}
@@ -2219,8 +2228,8 @@ export default function BlogRequestForm() {
 
       {/* Link Modal */}
       {showLinkModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[70] p-4" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Insert Link</h3>
             <div className="space-y-4">
               <div>
@@ -2244,7 +2253,7 @@ export default function BlogRequestForm() {
                 />
               </div>
             </div>
-            <div className="flex gap-3 mt-6 justify-end">
+            <div className="flex gap-3 mt-6 justify-end [&_button]:min-h-[44px] [&_button]:touch-manipulation">
               <button
                 onClick={() => setShowLinkModal(false)}
                 className="px-4 py-2 border rounded-lg hover:bg-gray-50"
@@ -2274,7 +2283,7 @@ export default function BlogRequestForm() {
           />
           <div
             ref={imageMenuRef}
-            className="absolute z-[60] bg-white rounded-lg shadow-xl py-2 min-w-[200px] border border-gray-200"
+            className="absolute z-[60] bg-white rounded-lg shadow-xl py-2 min-w-[180px] max-w-[calc(100vw-2rem)] border border-gray-200 image-menu-mobile"
             style={{ top: imageMenuPos.top, left: imageMenuPos.left }}
           >
             <button
@@ -2347,8 +2356,8 @@ export default function BlogRequestForm() {
 
       {/* Caption Modal */}
       {showCaptionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[70] p-4" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Edit Image Caption</h3>
             <input
               type="text"
@@ -2357,7 +2366,7 @@ export default function BlogRequestForm() {
               placeholder="Enter caption..."
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]"
             />
-            <div className="flex gap-3 mt-4 justify-end">
+            <div className="flex gap-3 mt-4 justify-end [&_button]:min-h-[44px] [&_button]:touch-manipulation">
               <button
                 onClick={() => setShowCaptionModal(false)}
                 className="px-4 py-2 border rounded-lg hover:bg-gray-50"
@@ -2380,8 +2389,8 @@ export default function BlogRequestForm() {
 
       {/* Alt Text Modal */}
       {showAltTextModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[70] p-4" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Edit Alt Text</h3>
             <input
               type="text"
@@ -2391,7 +2400,7 @@ export default function BlogRequestForm() {
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)]"
             />
             <p className="text-xs text-gray-500 mt-2">Alt text helps screen readers and SEO</p>
-            <div className="flex gap-3 mt-4 justify-end">
+            <div className="flex gap-3 mt-4 justify-end [&_button]:min-h-[44px] [&_button]:touch-manipulation">
               <button
                 onClick={() => setShowAltTextModal(false)}
                 className="px-4 py-2 border rounded-lg hover:bg-gray-50"
@@ -2414,13 +2423,13 @@ export default function BlogRequestForm() {
 
       {/* Draft Restore Modal */}
       {showRestoreModal && pendingDraftRestore.current && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80] p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[80] p-4" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Unsaved draft found</h3>
             <p className="text-sm text-gray-600 mb-6">
               We found an unsaved draft from {getDraftAge(pendingDraftRestore.current)}.
             </p>
-            <div className="space-y-3">
+            <div className="space-y-3 [&_button]:min-h-[44px] [&_button]:touch-manipulation">
               <button
                 onClick={handleRestoreDraft}
                 className="w-full px-4 py-3 text-white rounded-lg font-medium transition-colors"
@@ -2462,8 +2471,8 @@ export default function BlogRequestForm() {
 
       {/* Terms Modal */}
       {showTermsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[70] p-4" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-6 max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Terms & Conditions</h3>
             <div className="prose prose-sm max-w-none">
               <p>By submitting a blog post request, you agree to the following terms:</p>
@@ -2477,7 +2486,7 @@ export default function BlogRequestForm() {
             <div className="flex justify-end mt-6">
               <button
                 onClick={() => setShowTermsModal(false)}
-                className="px-4 py-2 text-white rounded-lg transition-colors"
+                className="min-h-[44px] px-4 py-2 text-white rounded-lg transition-colors touch-manipulation"
                 style={{ backgroundColor: 'rgb(75,151,201)' }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
@@ -2514,13 +2523,13 @@ export default function BlogRequestForm() {
 
       {/* Settings Modal - SEO & Sharing */}
       {showSettingsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowSettingsModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-modal-in" onClick={e => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[75] p-0 sm:p-4" style={{ paddingLeft: 'max(0.5rem, env(safe-area-inset-left))', paddingRight: 'max(0.5rem, env(safe-area-inset-right))', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }} onClick={() => setShowSettingsModal(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-modal-in" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Settings — SEO & Sharing</h3>
-              <button onClick={() => setShowSettingsModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors"><X size={20} /></button>
+              <button onClick={() => setShowSettingsModal(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"><X size={20} /></button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
@@ -2562,7 +2571,7 @@ export default function BlogRequestForm() {
                 </div>
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">OG Image</label>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     {formData.ogImageFile ? (
                       <div className="relative">
                         <img src={URL.createObjectURL(formData.ogImageFile)} alt="" className="h-24 w-40 object-cover rounded-lg border" />
@@ -2575,7 +2584,7 @@ export default function BlogRequestForm() {
                         <input type="file" accept="image/*" className="hidden" onChange={handleOgImageUpload} />
                       </label>
                     )}
-                    <input name="og_image" value={formData.og_image} onChange={handleInputChange} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg" placeholder="Or paste URL" disabled={!!formData.ogImageFile} />
+                    <input name="og_image" value={formData.og_image} onChange={handleInputChange} className="flex-1 min-w-0 px-4 py-2.5 border border-gray-300 rounded-lg" placeholder="Or paste URL" disabled={!!formData.ogImageFile} />
                   </div>
                   {formData.coverImage && (
                     <button type="button" onClick={useCoverAsOg} className="text-xs hover:underline mt-2 transition-colors" style={{ color: 'rgb(75,151,201)' }}>Use cover image</button>
@@ -2599,29 +2608,24 @@ export default function BlogRequestForm() {
 
       {/* Version History Modal - same pattern as Settings modal (scrollable) */}
       {showVersionHistoryModal && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowVersionHistoryModal(false)}>
-    <div
-      className="bg-white rounded-xl shadow-2xl w-full max-w-6xl animate-modal-in"
-      style={{ height: '90vh', display: 'flex', flexDirection: 'column' }}
-      onClick={e => e.stopPropagation()}
-    >
-      {/* Sticky Header */}
-      <div className="flex-shrink-0 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
-        <button
-          onClick={() => setShowVersionHistoryModal(false)}
-          className="w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors"
-          style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
-        >
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[75] p-0 sm:p-4" style={{ paddingLeft: 'max(0.5rem, env(safe-area-inset-left))', paddingRight: 'max(0.5rem, env(safe-area-inset-right))', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }} onClick={() => setShowVersionHistoryModal(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col animate-modal-in overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex-shrink-0 border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Version history</h3>
+              <button
+                onClick={() => setShowVersionHistoryModal(false)}
+                className="min-w-[44px] min-h-[44px] w-9 h-9 flex items-center justify-center rounded-full border-2 transition-colors touch-manipulation"
+                style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+              >
           <X size={18} />
         </button>
       </div>
 
       {/* Body: two independent scroll panels */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+      <div className="flex flex-col sm:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* Left: Content Preview */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', borderRight: '1px solid #e5e7eb' }}>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 border-b sm:border-b-0 sm:border-r border-gray-200 min-h-0">
           {selectedVersionId ? (
             (() => {
               const v = draftVersions.find(x => x.id === selectedVersionId)
@@ -2650,7 +2654,7 @@ export default function BlogRequestForm() {
         </div>
 
         {/* Right: Version List */}
-        <div style={{ width: '280px', flexShrink: 0, overflowY: 'auto', padding: '24px 16px' }}>
+        <div className="w-full sm:w-72 flex-shrink-0 overflow-y-auto p-4 sm:p-6 min-h-0">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">From this week</p>
           <div className="space-y-1">
             {draftVersions.length === 0 ? (
@@ -2721,7 +2725,7 @@ export default function BlogRequestForm() {
       </div>
 
       {/* Sticky Footer */}
-      <div className="flex-shrink-0 border-t border-gray-200 px-6 py-4 flex items-center justify-between bg-gray-50">
+      <div className="flex-shrink-0 border-t border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between bg-gray-50 [&_button]:min-h-[44px] [&_button]:touch-manipulation">
         <button type="button" className="p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors" title="Help">
           <Question size={18} />
         </button>
@@ -2774,8 +2778,8 @@ export default function BlogRequestForm() {
 
       {/* Content Info Modal (Post info) */}
       {showContentInfoModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[75] p-4" onClick={() => setShowContentInfoModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-modal-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[75] p-4" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }} onClick={() => setShowContentInfoModal(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl shadow-xl p-6 max-w-sm w-full animate-modal-in" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Post info</h3>
             {(() => {
               const s = getContentStats()
