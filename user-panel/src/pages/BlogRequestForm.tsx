@@ -1717,7 +1717,7 @@ export default function BlogRequestForm() {
 
       {/* Image Editor */}
       {imageEditorCtx && (
-        <div className="fixed inset-0 overflow-hidden bg-slate-900" style={{ zIndex: 9999, width: '100vw', height: '100dvh', minHeight: '-webkit-fill-available', padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)', boxSizing: 'border-box' }}>
+        <div className="fixed inset-0 overflow-visible bg-slate-900" style={{ zIndex: 9999, width: '100vw', height: '100dvh', minHeight: '-webkit-fill-available', padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)', boxSizing: 'border-box' }}>
           <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
           <ImageEditor images={[]} setImages={() => {}} source={imageEditorCtx.source} onSave={(editedImageObject) => { const ctx = imageEditorCtx; setImageEditorCtx(null); setTimeout(() => { applyEditedImage(editedImageObject, ctx.editingImageId, ctx.editingImageName) }, 0) }} onClose={() => setImageEditorCtx(null)} fullPage />
         </div>
