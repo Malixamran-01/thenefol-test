@@ -11,6 +11,7 @@ interface BlogPost {
   author_name: string
   author_email?: string
   author_id?: number | null
+  author_unique_user_id?: string | null
   user_id?: string | number
   cover_image?: string
   detail_image?: string
@@ -992,7 +993,7 @@ export default function BlogDetail() {
             </span>
             <div className="text-left">
               <div className="text-sm font-semibold text-gray-900">Posted by {post.author_name}</div>
-              <div className="text-xs text-gray-500">{post.author_id != null || post.user_id != null ? `User #${post.author_id ?? post.user_id}` : post.author_email || 'Author'}</div>
+              <div className="text-xs text-gray-500">{post.author_unique_user_id || (post.author_id != null || post.user_id != null ? `User #${post.author_id ?? post.user_id}` : post.author_email || 'Author')}</div>
             </div>
           </button>
           <span className="text-gray-400">•</span>

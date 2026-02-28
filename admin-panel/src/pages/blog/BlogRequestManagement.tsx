@@ -10,6 +10,7 @@ interface BlogRequest {
   author_name: string
   author_email?: string
   author_id?: number | null
+  author_unique_user_id?: string | null
   user_id?: number | null
   images: string[]
   status: 'pending' | 'approved' | 'rejected'
@@ -464,7 +465,7 @@ function BlogDetailsModal({
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1">
               <User className="w-4 h-4" />
-              {blog.author_name} {blog.author_id != null || blog.user_id != null ? `(User #${blog.author_id ?? blog.user_id})` : blog.author_email ? `(${blog.author_email})` : ''}
+              {blog.author_name} {blog.author_unique_user_id ? `(${blog.author_unique_user_id})` : blog.author_id != null || blog.user_id != null ? `(User #${blog.author_id ?? blog.user_id})` : blog.author_email ? `(${blog.author_email})` : ''}
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />

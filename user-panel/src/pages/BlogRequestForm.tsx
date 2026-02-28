@@ -1583,7 +1583,7 @@ export default function BlogRequestForm() {
 
       {/* Blog Preview */}
       {showPreview && (
-        <BlogPreview title={formData.title} excerpt={formData.excerpt} content={formData.content} authorName={formData.author_name} authorId={formData.author_id} coverImage={formData.coverImage} detailImage={formData.detailImage} categories={formData.categories} onClose={() => setShowPreview(false)} />
+        <BlogPreview title={formData.title} excerpt={formData.excerpt} content={formData.content} authorName={formData.author_name} authorId={formData.author_id} authorUniqueUserId={user?.unique_user_id} coverImage={formData.coverImage} detailImage={formData.detailImage} categories={formData.categories} onClose={() => setShowPreview(false)} />
       )}
 
       {/* Settings Modal */}

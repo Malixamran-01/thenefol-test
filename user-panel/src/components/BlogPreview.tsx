@@ -7,6 +7,7 @@ interface BlogPreviewProps {
   content: string
   authorName: string
   authorId: number | null
+  authorUniqueUserId?: string | null
   coverImage: File | null
   detailImage: File | null
   categories: string[]
@@ -19,6 +20,7 @@ export default function BlogPreview({
   content,
   authorName,
   authorId,
+  authorUniqueUserId,
   coverImage,
   detailImage,
   categories,
@@ -145,7 +147,7 @@ export default function BlogPreview({
               </span>
               <div className="text-left">
                 <div className="text-sm font-semibold text-gray-900">{authorName || 'Anonymous'}</div>
-                <div className="text-xs text-gray-500">{authorId != null ? `User #${authorId}` : 'Author'}</div>
+                <div className="text-xs text-gray-500">{authorUniqueUserId ?? (authorId != null ? `User #${authorId}` : 'Author')}</div>
               </div>
             </button>
             <span className="text-gray-400">•</span>

@@ -1014,15 +1014,17 @@ router.get('/posts', async (req, res) => {
     }
 
     const { rows } = await pool.query(`
-      SELECT * FROM blog_posts 
-      WHERE status = 'approved' 
-        AND is_active = true
-        AND is_archived = false
-        AND is_deleted = false
-      ORDER BY created_at DESC
+      SELECT p.*, u.unique_user_id as author_unique_user_id
+      FROM blog_posts p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.status = 'approved' 
+        AND p.is_active = true
+        AND p.is_archived = false
+        AND p.is_deleted = false
+      ORDER BY p.created_at DESC
     `)
     
-    res.json(rows.map((r: any) => ({ ...r, author_id: r.user_id })))
+    res.json(rows.map((r: any) => ({ ...r, author_id: r.user_id, author_unique_user_id: r.author_unique_user_id })))
   } catch (error) {
     console.error('Error fetching blog posts:', error)
     res.status(500).json({ message: 'Failed to fetch blog posts' })
@@ -1157,12 +1159,14 @@ router.get('/posts/:id', async (req, res) => {
     }
 
     const { rows } = await pool.query(`
-      SELECT * FROM blog_posts 
-      WHERE id = $1
-        AND status = 'approved'
-        AND is_active = true
-        AND is_archived = false
-        AND is_deleted = false
+      SELECT p.*, u.unique_user_id as author_unique_user_id
+      FROM blog_posts p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
+        AND p.status = 'approved'
+        AND p.is_active = true
+        AND p.is_archived = false
+        AND p.is_deleted = false
     `, [req.params.id])
     
     if (rows.length === 0) {
@@ -1170,7 +1174,7 @@ router.get('/posts/:id', async (req, res) => {
     }
     
     const post = rows[0]
-    res.json({ ...post, author_id: post.user_id })
+    res.json({ ...post, author_id: post.user_id, author_unique_user_id: post.author_unique_user_id })
   } catch (error) {
     console.error('Error fetching blog post:', error)
     res.status(500).json({ message: 'Failed to fetch blog post' })
@@ -1187,9 +1191,11 @@ router.get('/admin/requests', async (req, res) => {
     }
 
     const { rows } = await pool.query(`
-      SELECT * FROM blog_posts 
-      WHERE status = 'pending' AND is_deleted = false
-      ORDER BY created_at DESC
+      SELECT p.*, u.unique_user_id as author_unique_user_id
+      FROM blog_posts p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.status = 'pending' AND p.is_deleted = false
+      ORDER BY p.created_at DESC
     `)
     
     res.json(rows)
@@ -1208,9 +1214,11 @@ router.get('/admin/posts', async (req, res) => {
     }
 
     const { rows } = await pool.query(`
-      SELECT * FROM blog_posts 
-      WHERE is_deleted = false
-      ORDER BY created_at DESC
+      SELECT p.*, u.unique_user_id as author_unique_user_id
+      FROM blog_posts p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.is_deleted = false
+      ORDER BY p.created_at DESC
     `)
     
     res.json(rows)
