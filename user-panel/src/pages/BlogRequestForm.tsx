@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Upload, X, CheckCircle, WarningCircle, TextB, TextItalic, TextUnderline, Link, ListBullets, ListNumbers, Palette, Image, YoutubeLogo, PencilSimple, FileText, Tag, Square, ArrowsOut, ArrowsIn, Trash, ArrowLeft, FloppyDisk, WifiSlash, ClockCounterClockwise, Info, Gear, ArrowUUpLeft, ArrowUUpRight, TextStrikethrough, Quotes, Question, Plus, DotsThree } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -43,6 +44,50 @@ interface LinkModalData {
 interface ContentImageItem {
   id: string
   file: File
+}
+
+/** Wrapper for ImageEditor when used as overlay - portaled to body to avoid ancestor overflow/stacking */
+function ImageEditorOverlay({
+  source,
+  editingImageId,
+  editingImageName,
+  onSave,
+  onClose
+}: {
+  source: string
+  editingImageId: string | null
+  editingImageName: string
+  onSave: (editedImageObject: any) => void
+  onClose: () => void
+}) {
+  useEffect(() => {
+    document.body.classList.add('filerobot-editor-open')
+    return () => document.body.classList.remove('filerobot-editor-open')
+  }, [])
+  return (
+    <div
+      className="fixed inset-0 bg-slate-900"
+      style={{
+        zIndex: 99999,
+        width: '100vw',
+        height: '100dvh',
+        minHeight: '-webkit-fill-available',
+        padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)',
+        boxSizing: 'border-box',
+        overflow: 'visible',
+      }}
+    >
+      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
+      <ImageEditor
+        images={[]}
+        setImages={() => {}}
+        source={source}
+        onSave={onSave}
+        onClose={onClose}
+        fullPage
+      />
+    </div>
+  )
 }
 
 export default function BlogRequestForm() {
@@ -1715,12 +1760,20 @@ export default function BlogRequestForm() {
         </div>
       )}
 
-      {/* Image Editor */}
-      {imageEditorCtx && (
-        <div className="fixed inset-0 overflow-visible bg-slate-900" style={{ zIndex: 9999, width: '100vw', height: '100dvh', minHeight: '-webkit-fill-available', padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)', boxSizing: 'border-box' }}>
-          <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
-          <ImageEditor images={[]} setImages={() => {}} source={imageEditorCtx.source} onSave={(editedImageObject) => { const ctx = imageEditorCtx; setImageEditorCtx(null); setTimeout(() => { applyEditedImage(editedImageObject, ctx.editingImageId, ctx.editingImageName) }, 0) }} onClose={() => setImageEditorCtx(null)} fullPage />
-        </div>
+      {/* Image Editor - portaled to body to avoid ancestor overflow/stacking issues (dropdowns, close button) */}
+      {imageEditorCtx && createPortal(
+        <ImageEditorOverlay
+          source={imageEditorCtx.source}
+          editingImageId={imageEditorCtx.editingImageId}
+          editingImageName={imageEditorCtx.editingImageName}
+          onSave={(editedImageObject) => {
+            const ctx = imageEditorCtx
+            setImageEditorCtx(null)
+            setTimeout(() => applyEditedImage(editedImageObject, ctx.editingImageId, ctx.editingImageName), 0)
+          }}
+          onClose={() => setImageEditorCtx(null)}
+        />,
+        document.body
       )}
     </>
   )
