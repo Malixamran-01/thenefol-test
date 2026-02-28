@@ -68,7 +68,7 @@ function ImageEditorOverlay({
     <div
       className="fixed inset-0 bg-slate-900"
       style={{
-        zIndex: 99999,
+        zIndex: 1000,
         width: '100vw',
         height: '100dvh',
         minHeight: '-webkit-fill-available',

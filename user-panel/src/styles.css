@@ -1467,7 +1467,16 @@ html {
   transition: opacity 800ms ease-in-out, transform 800ms ease-in-out;
 }
 
-/* ===== FILEROBOT IMAGE EDITOR - Save modal input overflow fix ===== */
+/* ===== FILEROBOT IMAGE EDITOR - Overlay, dropdowns, Save modal ===== */
+/* Ensure Filerobot's portaled dropdowns and Save modal appear above our overlay (z-index 1000) */
+body.filerobot-editor-open [role="menu"],
+body.filerobot-editor-open [role="dialog"],
+body.filerobot-editor-open [class*="Popover"],
+body.filerobot-editor-open [class*="Dropdown"],
+body.filerobot-editor-open [class*="Modal"],
+body.filerobot-editor-open [class*="modal"] {
+  z-index: 10001 !important;
+}
 /* When the image editor is open, fix inputs in the Save modal that overflow their containers */
 body.filerobot-editor-open input[type="text"],
 body.filerobot-editor-open input[type="number"] {
