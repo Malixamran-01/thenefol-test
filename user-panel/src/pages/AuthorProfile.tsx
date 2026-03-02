@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import {
   ArrowLeft,
   Calendar,
   Check,
+  ChevronDown,
   Heart,
   MessageCircle,
   Share2,
@@ -16,7 +17,10 @@ import {
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { useBlogBack } from '../hooks/useBlogBack'
+import { useDispatch, useSelector } from 'react-redux'
 import { blogActivityAPI, uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
+import { setFollowStatus } from '../store/followSlice'
+import type { RootState } from '../store'
 
 interface AuthorSeedData {
   id: string | number
@@ -298,8 +302,7 @@ export default function AuthorProfile() {
   const [activeTab, setActiveTab] = useState<TabType>('activity')
   const [sortBy, setSortBy] = useState<SortType>('newest')
   const [query, setQuery] = useState('')
-  const [isFollowing, setIsFollowing] = useState(false)
-  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [showUnfollowMenu, setShowUnfollowMenu] = useState(false)
   const [showCopied, setShowCopied] = useState(false)
   const [realFollowers, setRealFollowers] = useState(0)
   const [realSubscribers, setRealSubscribers] = useState(0)
@@ -330,8 +333,15 @@ export default function AuthorProfile() {
     return normalize(authorSeed?.name || 'author')
   }, [authorSeed, routeAuthorId])
 
+  const dispatch = useDispatch()
   const hasAuthorProfile = authorProfile != null
   const effectiveAuthorId = hasAuthorProfile ? String(authorProfile!.id) : routeAuthorId
+  const reduxFollowKey = hasAuthorProfile ? String(authorProfile!.user_id) : routeAuthorId
+  const isFollowingFromRedux = reduxFollowKey
+    ? useSelector((s: RootState) => s.follow.byAuthorId[reduxFollowKey])
+    : null
+  const isFollowing = isFollowingFromRedux ?? false
+  const unfollowMenuRef = useRef<HTMLDivElement>(null)
   const currentUserId = user?.id != null ? String(user.id) : null
   const isOwnProfile = Boolean(
     isAuthenticated &&
@@ -398,7 +408,7 @@ export default function AuthorProfile() {
     fetchUserSummary()
   }, [routeAuthorId, authorProfile])
 
-  // Fetch author stats (followers, subscribers, follow/subscribe status) - only for users with author profile
+  // Fetch author stats (followers, subscribers, follow status) - only for users with author profile
   useEffect(() => {
     if (!hasAuthorProfile || !effectiveAuthorId || effectiveAuthorId === 'guest') return
     
@@ -407,18 +417,16 @@ export default function AuthorProfile() {
         const stats = await blogActivityAPI.getAuthorStats(effectiveAuthorId)
         setRealFollowers(stats.followers || 0)
         setRealSubscribers(stats.subscribers || 0)
-        setIsFollowing(stats.isFollowing || false)
-        setIsSubscribed(stats.isSubscribed || false)
+        if (reduxFollowKey) {
+          dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: stats.isFollowing ?? false }))
+        }
       } catch (err) {
         console.error('Error fetching author stats:', err)
-        // Keep local state as fallback
       }
     }
 
-    if (isAuthenticated) {
-      fetchAuthorStats()
-    }
-  }, [effectiveAuthorId, hasAuthorProfile, isAuthenticated])
+    fetchAuthorStats()
+  }, [effectiveAuthorId, hasAuthorProfile, reduxFollowKey, dispatch])
 
   useEffect(() => {
     const fetchAuthorPosts = async () => {
@@ -672,42 +680,26 @@ export default function AuthorProfile() {
   const handleFollow = async () => {
     if (!ensureAuthForAction()) return
     if (!effectiveAuthorId || effectiveAuthorId === 'guest') return
-
     try {
-      if (isFollowing) {
-        const result = await blogActivityAPI.unfollowAuthor(effectiveAuthorId)
-        setRealFollowers(result.followerCount || 0)
-        setIsFollowing(false)
-      } else {
-        const result = await blogActivityAPI.followAuthor(effectiveAuthorId)
-        setRealFollowers(result.followerCount || 0)
-        setIsFollowing(true)
-      }
+      const result = await blogActivityAPI.followAuthor(effectiveAuthorId)
+      setRealFollowers(result.followerCount ?? realFollowers + 1)
+      if (reduxFollowKey) dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: true }))
     } catch (err) {
-      console.error('Error toggling follow:', err)
-      // Fallback to local state
-      setIsFollowing((prev) => !prev)
+      console.error('Error following:', err)
     }
   }
 
-  const handleSubscribe = async () => {
+  const handleUnfollow = async () => {
     if (!ensureAuthForAction()) return
     if (!effectiveAuthorId || effectiveAuthorId === 'guest') return
-
+    setShowUnfollowMenu(false)
     try {
-      if (isSubscribed) {
-        const result = await blogActivityAPI.unsubscribeFromAuthor(effectiveAuthorId)
-        setRealSubscribers(result.subscriberCount || 0)
-        setIsSubscribed(false)
-      } else {
-        const result = await blogActivityAPI.subscribeToAuthor(effectiveAuthorId)
-        setRealSubscribers(result.subscriberCount || 0)
-        setIsSubscribed(true)
-      }
+      const result = await blogActivityAPI.unfollowAuthor(effectiveAuthorId)
+      setRealFollowers(Math.max(0, (result.followerCount ?? realFollowers - 1)))
+      if (reduxFollowKey) dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: false }))
     } catch (err) {
-      console.error('Error toggling subscribe:', err)
-      // Fallback to local state
-      setIsSubscribed((prev) => !prev)
+      console.error('Error unfollowing:', err)
+      if (reduxFollowKey) dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: false }))
     }
   }
 
@@ -734,6 +726,16 @@ export default function AuthorProfile() {
   }
 
   const { goBack, backLabel } = useBlogBack()
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (unfollowMenuRef.current && !unfollowMenuRef.current.contains(e.target as Node)) {
+        setShowUnfollowMenu(false)
+      }
+    }
+    if (showUnfollowMenu) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showUnfollowMenu])
 
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
@@ -779,7 +781,7 @@ export default function AuthorProfile() {
                 <p className="mt-1 text-sm font-medium text-gray-500 sm:text-base">{handle}</p>
               </div>
 
-              {/* Action Buttons - Right Side (Edit for own profile, Follow/Subscribe for others) */}
+              {/* Action Buttons - Right Side (Edit for own profile, Follow for others) */}
               <div className="flex flex-shrink-0 flex-wrap gap-2 justify-end">
                 {isOwnProfile && hasAuthorProfile ? (
                   <button
@@ -791,26 +793,38 @@ export default function AuthorProfile() {
                     Edit Profile
                   </button>
                 ) : hasAuthorProfile ? (
-                  <>
-                    <button
-                      onClick={handleFollow}
-                      className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
-                      style={{ backgroundColor: isFollowing ? '#0f2f42' : '#4B97C9' }}
-                    >
-                      {isFollowing ? 'Following' : 'Follow'}
-                    </button>
-                    <button
-                      onClick={handleSubscribe}
-                      className="rounded-lg border-2 px-5 py-2 text-sm font-semibold transition-all duration-200"
-                      style={{
-                        borderColor: isSubscribed ? '#1B4965' : '#d7e5ee',
-                        color: isSubscribed ? 'white' : '#1B4965',
-                        backgroundColor: isSubscribed ? '#1B4965' : 'white'
-                      }}
-                    >
-                      {isSubscribed ? 'Subscribed' : 'Subscribe'}
-                    </button>
-                  </>
+                  <div className="relative" ref={unfollowMenuRef}>
+                    {isFollowing ? (
+                      <>
+                        <button
+                          onClick={() => setShowUnfollowMenu((s) => !s)}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
+                          style={{ backgroundColor: '#1B4965' }}
+                        >
+                          Followed
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                        {showUnfollowMenu && (
+                          <div className="absolute right-0 top-full mt-1 z-20 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                            <button
+                              onClick={handleUnfollow}
+                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              Unfollow
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        onClick={handleFollow}
+                        className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
+                        style={{ backgroundColor: '#4B97C9' }}
+                      >
+                        Follow
+                      </button>
+                    )}
+                  </div>
                 ) : null}
                 <button
                   onClick={handleShareProfile}

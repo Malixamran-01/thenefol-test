@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 import { authorAPI } from '../services/authorAPI'
 import AuthorPromptModal from '../components/AuthorPromptModal'
+import { BlogCardAuthor } from '../components/BlogCardAuthor'
 
 interface BlogPost {
   id: string
@@ -14,6 +15,8 @@ interface BlogPost {
   content: string
   author_name: string
   author_email: string
+  author_id?: number | string | null
+  author_unique_user_id?: string | null
   cover_image?: string
   detail_image?: string
   images: string[]
@@ -391,25 +394,11 @@ export default function Blog() {
             return (
               <div key={post.id} className="flex flex-col gap-3">
                 {/* Author Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-200">
-                      <User className="h-5 w-5 text-gray-600" />
-                    </div>
-                    <span className="text-sm font-semibold" style={{ color: '#1B4965' }}>
-                      {post.author_name}
-                    </span>
-                  </div>
-                  <button
-                    className="rounded-full px-4 py-1.5 text-xs font-semibold transition-colors"
-                    style={{ 
-                      backgroundColor: '#1B4965',
-                      color: 'white'
-                    }}
-                  >
-                    Subscribe
-                  </button>
-                </div>
+                <BlogCardAuthor
+                  authorId={post.author_id}
+                  authorUniqueUserId={post.author_unique_user_id}
+                  authorName={post.author_name}
+                />
 
                 {/* Card */}
                 <article className="group relative h-[420px] overflow-hidden rounded-2xl bg-white bg-cover bg-center shadow-sm transition-all duration-300 hover:shadow-lg">
