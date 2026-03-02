@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Upload, X, CheckCircle, WarningCircle, TextB, TextItalic, TextUnderline, Link, ListBullets, ListNumbers, Palette, Image, YoutubeLogo, PencilSimple, FileText, Tag, Square, ArrowsOut, ArrowsIn, Trash, ArrowLeft, FloppyDisk, WifiSlash, ClockCounterClockwise, Info, Gear, ArrowUUpLeft, ArrowUUpRight, TextStrikethrough, Quotes, Question, Plus, DotsThree } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { useBlogBack } from '../hooks/useBlogBack'
 import BlogPreview from '../components/BlogPreview'
 import ImageEditor from '../components/ImageEditor'
 import VersionHistoryModal from '../components/VersionHistoryModal'
@@ -92,6 +93,7 @@ function ImageEditorOverlay({
 
 export default function BlogRequestForm() {
   const { user, isAuthenticated } = useAuth()
+  const { goBack } = useBlogBack()
   const editorRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLDivElement>(null)
   const subtitleRef = useRef<HTMLDivElement>(null)
@@ -1168,7 +1170,7 @@ export default function BlogRequestForm() {
           <CheckCircle size={64} className="text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Request Submitted!</h2>
           <p className="text-gray-600 mb-4">Your blog post request has been submitted successfully.</p>
-          <button onClick={() => window.location.hash = '#/user/blog'} className="px-6 py-2 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}>
+          <button onClick={goBack} className="px-6 py-2 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}>
             Go Back to Blog
           </button>
         </div>
@@ -1229,7 +1231,7 @@ export default function BlogRequestForm() {
         <div className="flex-shrink-0 bg-white shadow-sm border-b">
           <div className="px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <button onClick={() => window.location.hash = '#/user/blog'} className="flex-shrink-0 p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Go back">
+              <button onClick={goBack} className="flex-shrink-0 p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Go back">
                 <ArrowLeft size={20} className="text-gray-600" />
               </button>
               {/* Status badges — hide text label on very small screens */}
@@ -1485,7 +1487,7 @@ export default function BlogRequestForm() {
                   </div>
                   {/* Primary action buttons */}
                   <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3">
-                    <button type="button" onClick={() => window.location.hash = '#/user/blog'} className="px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm" disabled={isSubmitting}>
+                    <button type="button" onClick={goBack} className="px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm" disabled={isSubmitting}>
                       Cancel
                     </button>
                     <button type="button" onClick={handleSaveDraft} disabled={isSubmitting || isSavingDraft} className="px-4 py-2.5 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }} onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)' }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}>

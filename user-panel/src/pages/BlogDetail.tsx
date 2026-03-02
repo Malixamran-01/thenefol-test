@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Calendar, ArrowLeft, X, MessageCircle, ThumbsUp, Share2 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { useBlogBack } from '../hooks/useBlogBack'
 
 interface BlogPost {
   id: string
@@ -49,6 +50,9 @@ interface BlogComment {
 
 export default function BlogDetail() {
   const { isAuthenticated, user } = useAuth()
+  const { goBack, backLabel } = useBlogBack()
+  const handleBack = goBack
+  const handleClose = goBack
   const [post, setPost] = useState<BlogPost | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -326,14 +330,6 @@ export default function BlogDetail() {
       month: 'long',
       day: 'numeric'
     })
-  }
-
-  const handleBack = () => {
-    window.location.hash = '#/user/blog'
-  }
-
-  const handleClose = () => {
-    window.location.hash = '#/user/blog'
   }
 
   const fetchLikes = async () => {
@@ -866,7 +862,7 @@ export default function BlogDetail() {
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Blog
+              {backLabel}
             </button>
           </div>
         </div>
@@ -888,7 +884,7 @@ export default function BlogDetail() {
             style={{color: '#1B4965'}}
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Blog
+            {backLabel}
           </button>
 
           {/* Share Button */}

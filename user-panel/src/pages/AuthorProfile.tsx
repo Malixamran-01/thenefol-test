@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { useBlogBack } from '../hooks/useBlogBack'
 import { blogActivityAPI, uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
 
 interface AuthorSeedData {
@@ -732,20 +733,18 @@ export default function AuthorProfile() {
     }
   }
 
-  const handleBack = () => {
-    window.location.hash = '#/user/blog'
-  }
+  const { goBack, backLabel } = useBlogBack()
 
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
       <div className="mx-auto w-full max-w-5xl px-4 pt-6 sm:pt-8">
         <button
-          onClick={handleBack}
+          onClick={goBack}
           className="mb-5 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
           style={{ color: '#1B4965' }}
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Blog
+          {backLabel}
         </button>
 
         <section className="overflow-hidden rounded-2xl border border-[#dbe7ef] bg-white shadow-sm">

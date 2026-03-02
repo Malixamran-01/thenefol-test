@@ -1,6 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { Provider } from 'react-redux'
+import { store } from './store'
 import App from './App'
+import { BlogNavListener } from './components/BlogNavListener'
 import './styles.css'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
@@ -66,7 +69,10 @@ if ('serviceWorker' in navigator) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <App />
+  <Provider store={store}>
+    <App />
+    <BlogNavListener />
+  </Provider>
 )
 
 
