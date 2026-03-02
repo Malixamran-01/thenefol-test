@@ -4,14 +4,19 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  Copy,
+  Flag,
   Heart,
+  Link2,
   MessageCircle,
+  MoreVertical,
+  Pencil,
   Share2,
   Sparkles,
+  Upload,
   UserRound,
   Users,
-  Pencil,
-  Upload,
+  UserPlus,
   X
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
@@ -303,6 +308,7 @@ export default function AuthorProfile() {
   const [sortBy, setSortBy] = useState<SortType>('newest')
   const [query, setQuery] = useState('')
   const [showUnfollowMenu, setShowUnfollowMenu] = useState(false)
+  const [showDotsMenu, setShowDotsMenu] = useState(false)
   const [showCopied, setShowCopied] = useState(false)
   const [realFollowers, setRealFollowers] = useState(0)
   const [realFollowing, setRealFollowing] = useState(0)
@@ -342,6 +348,7 @@ export default function AuthorProfile() {
     : null
   const isFollowing = isFollowingFromRedux ?? false
   const unfollowMenuRef = useRef<HTMLDivElement>(null)
+  const dotsMenuRef = useRef<HTMLDivElement>(null)
   const currentUserId = user?.id != null ? String(user.id) : null
   const isOwnProfile = Boolean(
     isAuthenticated &&
@@ -736,6 +743,16 @@ export default function AuthorProfile() {
     return () => document.removeEventListener('mousedown', handler)
   }, [showUnfollowMenu])
 
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dotsMenuRef.current && !dotsMenuRef.current.contains(e.target as Node)) {
+        setShowDotsMenu(false)
+      }
+    }
+    if (showDotsMenu) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showDotsMenu])
+
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
       <div className="mx-auto w-full max-w-5xl px-4 pt-6 sm:pt-8">
@@ -749,66 +766,131 @@ export default function AuthorProfile() {
         </button>
 
         <section className="overflow-hidden rounded-2xl border border-[#dbe7ef] bg-white shadow-sm">
-          {/* Cover Image */}
-          <div className="relative h-44 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-48">
-            {coverImage && (
-              <img src={coverImage} alt="" className="h-full w-full object-cover opacity-75" />
+          {/* ── Cover Banner ── */}
+          <div className="relative h-52 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64">
+            {coverImage ? (
+              <img src={coverImage} alt="" className="h-full w-full object-cover" />
+            ) : (
+              /* Decorative pattern when no cover */
+              <div className="absolute inset-0 opacity-10">
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute rounded-full border border-white/40"
+                    style={{
+                      width: `${120 + i * 60}px`,
+                      height: `${120 + i * 60}px`,
+                      top: `${-20 + i * 10}px`,
+                      left: `${-30 + i * 80}px`,
+                    }}
+                  />
+                ))}
+              </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
+            {/* Bottom gradient fade */}
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent" />
+
+            {/* Upload cover (own profile) */}
+            {isOwnProfile && hasAuthorProfile && (
+              <label
+                htmlFor="cover-upload"
+                className="absolute bottom-3 right-3 flex cursor-pointer items-center gap-1.5 rounded-lg bg-black/40 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-all hover:bg-black/60"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Edit cover
+                <input
+                  id="cover-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file || !authorProfile) return
+                    try {
+                      const url = await uploadAuthorCoverImage(file)
+                      setAuthorProfile((prev) => prev ? { ...prev, cover_image: url } : prev)
+                    } catch {
+                      /* no-op */
+                    }
+                  }}
+                />
+              </label>
+            )}
           </div>
 
-          {/* Profile Content with Overlapping Avatar */}
-          <div className="relative px-5 pb-6 sm:px-8">
-            {/* Profile Picture - Overlapping on LEFT */}
-            <div className="absolute -top-12 left-5 sm:-top-16 sm:left-8">
-              <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-white shadow-xl sm:h-32 sm:w-32">
-                {profileImage ? (
-                  <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-3xl font-bold text-white sm:text-4xl">
-                    {resolvedAuthor.name?.charAt(0) || 'A'}
-                  </div>
+          {/* ── Profile Body ── */}
+          <div className="relative px-5 pb-7 sm:px-8">
+            {/* Avatar — overlaps the cover */}
+            <div className="absolute -top-14 left-5 sm:-top-18 sm:left-8">
+              <div className="relative">
+                <div className="h-28 w-28 overflow-hidden rounded-full border-[5px] border-white bg-white shadow-xl sm:h-36 sm:w-36">
+                  {profileImage ? (
+                    <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-4xl font-bold text-white sm:text-5xl">
+                      {resolvedAuthor.name?.charAt(0)?.toUpperCase() || 'A'}
+                    </div>
+                  )}
+                </div>
+                {/* Upload avatar (own profile) */}
+                {isOwnProfile && hasAuthorProfile && (
+                  <label
+                    htmlFor="avatar-upload"
+                    className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/0 transition-all hover:bg-black/30"
+                    title="Change photo"
+                  >
+                    <Upload className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100" />
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file || !authorProfile) return
+                        try {
+                          const url = await uploadAuthorProfileImage(file)
+                          setAuthorProfile((prev) => prev ? { ...prev, profile_image: url } : prev)
+                        } catch {
+                          /* no-op */
+                        }
+                      }}
+                    />
+                  </label>
                 )}
               </div>
             </div>
 
-            {/* Header Row: Name on left, Buttons on right */}
-            <div className="flex items-start justify-between gap-4 pt-16 pb-4 sm:pt-20">
-              {/* Name and Handle - Left Side */}
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">{resolvedAuthor.name}</h1>
-                <p className="mt-1 text-sm font-medium text-gray-500 sm:text-base">{handle}</p>
-              </div>
-
-              {/* Action Buttons - Right Side (Edit for own profile, Follow for others) */}
-              <div className="flex flex-shrink-0 flex-wrap gap-2 justify-end">
-                {isOwnProfile && hasAuthorProfile ? (
-                  <button
-                    onClick={() => setShowEditModal(true)}
-                    className="inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
-                    style={{ backgroundColor: '#4B97C9' }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Edit Profile
-                  </button>
-                ) : !isOwnProfile && routeAuthorId && routeAuthorId !== 'guest' ? (
+            {/* Action bar — top-right of the profile body */}
+            <div className="flex items-center justify-end gap-2 pt-3 pb-5">
+              {isOwnProfile ? (
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-[#1B4965] px-5 py-2 text-sm font-semibold text-[#1B4965] transition-all duration-200 hover:bg-[#1B4965] hover:text-white"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit profile
+                </button>
+              ) : !isOwnProfile && routeAuthorId && routeAuthorId !== 'guest' ? (
+                <>
+                  {/* Follow / Followed button */}
                   <div className="relative" ref={unfollowMenuRef}>
                     {isFollowing ? (
                       <>
                         <button
                           onClick={() => setShowUnfollowMenu((s) => !s)}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
-                          style={{ backgroundColor: '#1B4965' }}
+                          className="inline-flex items-center gap-1.5 rounded-full border-2 border-[#1B4965] bg-[#1B4965] px-6 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#163d57]"
                         >
-                          Followed
+                          Following
                           <ChevronDown className="h-4 w-4" />
                         </button>
                         {showUnfollowMenu && (
-                          <div className="absolute right-0 top-full mt-1 z-20 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                          <div className="absolute left-0 top-full mt-2 z-30 min-w-[150px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
                             <button
                               onClick={handleUnfollow}
-                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                              className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                             >
+                              <UserPlus className="h-4 w-4 rotate-180" />
                               Unfollow
                             </button>
                           </div>
@@ -817,48 +899,113 @@ export default function AuthorProfile() {
                     ) : (
                       <button
                         onClick={handleFollow}
-                        className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
-                        style={{ backgroundColor: '#4B97C9' }}
+                        className="inline-flex items-center gap-1.5 rounded-full border-2 border-[#4B97C9] bg-[#4B97C9] px-6 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#3a82b0]"
                       >
+                        <UserPlus className="h-4 w-4" />
                         Follow
                       </button>
                     )}
                   </div>
-                ) : null}
+                </>
+              ) : null}
+
+              {/* 3-dot menu */}
+              <div className="relative" ref={dotsMenuRef}>
                 <button
-                  onClick={handleShareProfile}
-                  className="rounded-lg border-2 border-[#d7e5ee] bg-white px-3 py-2 text-[#1B4965] transition-all duration-200 hover:bg-[#f3f8fb]"
-                  aria-label="Share author profile"
+                  onClick={() => setShowDotsMenu((s) => !s)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#dbe7ef] bg-white text-gray-600 transition-all duration-200 hover:border-[#4B97C9] hover:text-[#1B4965]"
+                  aria-label="More options"
                 >
-                  {showCopied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                  <MoreVertical className="h-4 w-4" />
                 </button>
+                {showDotsMenu && (
+                  <div className="absolute right-0 top-full mt-2 z-30 min-w-[180px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.href)
+                        setShowCopied(true)
+                        setShowDotsMenu(false)
+                        setTimeout(() => setShowCopied(false), 2000)
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      {showCopied ? <Check className="h-4 w-4 text-green-500" /> : <Link2 className="h-4 w-4 text-gray-400" />}
+                      {showCopied ? 'Copied!' : 'Copy link'}
+                    </button>
+                    <button
+                      onClick={() => { handleShareProfile(); setShowDotsMenu(false) }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Share2 className="h-4 w-4 text-gray-400" />
+                      Share
+                    </button>
+                    {!isOwnProfile && routeAuthorId && routeAuthorId !== 'guest' && (
+                      <>
+                        <div className="my-1 border-t border-gray-100" />
+                        {isFollowing ? (
+                          <button
+                            onClick={() => { handleUnfollow(); setShowDotsMenu(false) }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            <UserPlus className="h-4 w-4 rotate-180" />
+                            Unfollow
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => { handleFollow(); setShowDotsMenu(false) }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-[#1B4965] hover:bg-[#f0f7fc] transition-colors"
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            Follow
+                          </button>
+                        )}
+                        <div className="my-1 border-t border-gray-100" />
+                        <button
+                          onClick={() => setShowDotsMenu(false)}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <Flag className="h-4 w-4" />
+                          Report
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Bio */}
-            <p className="mb-5 text-[15px] leading-relaxed text-gray-700">
-              {aboutText}
-            </p>
+            {/* Name + handle */}
+            <div className="mb-3 mt-10 sm:mt-14">
+              <h1 className="text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">{resolvedAuthor.name}</h1>
+              {handle && <p className="mt-0.5 text-sm font-medium text-gray-400">{handle}</p>}
+            </div>
 
-            {/* Stats Row */}
-            <div className="flex flex-wrap gap-4 text-sm border-t border-gray-100 pt-4">
-              <div className="flex items-center gap-1.5">
-                <Users className="h-4 w-4 text-[#4B97C9]" />
-                <span className="font-semibold text-gray-900">{formatCompactNumber(authorStats.followers)}</span>
+            {/* Bio */}
+            {aboutText && (
+              <p className="mb-4 max-w-2xl text-[15px] leading-relaxed text-gray-600">{aboutText}</p>
+            )}
+
+            {/* Follower / Following counts */}
+            <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-4 text-sm">
+              <button className="group flex items-center gap-1.5 transition-colors hover:text-[#1B4965]">
+                <span className="font-bold text-gray-900 group-hover:text-[#1B4965]">{formatCompactNumber(authorStats.followers)}</span>
                 <span className="text-gray-500">followers</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <UserRound className="h-4 w-4 text-[#4B97C9]" />
-                <span className="font-semibold text-gray-900">{formatCompactNumber(authorStats.following)}</span>
+              </button>
+              <span className="text-gray-200">·</span>
+              <button className="group flex items-center gap-1.5 transition-colors hover:text-[#1B4965]">
+                <span className="font-bold text-gray-900 group-hover:text-[#1B4965]">{formatCompactNumber(authorStats.following)}</span>
                 <span className="text-gray-500">following</span>
-              </div>
+              </button>
               {resolvedAuthor.email && (
-                <a
-                  href={`mailto:${resolvedAuthor.email}`}
-                  className="text-gray-600 transition-colors hover:text-[#1B4965] hover:underline"
-                >
-                  {resolvedAuthor.email}
-                </a>
+                <>
+                  <span className="text-gray-200">·</span>
+                  <a
+                    href={`mailto:${resolvedAuthor.email}`}
+                    className="text-gray-500 transition-colors hover:text-[#1B4965] hover:underline"
+                  >
+                    {resolvedAuthor.email}
+                  </a>
+                </>
               )}
             </div>
           </div>
