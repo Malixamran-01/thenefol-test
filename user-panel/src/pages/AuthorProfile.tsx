@@ -305,7 +305,7 @@ export default function AuthorProfile() {
   const [showUnfollowMenu, setShowUnfollowMenu] = useState(false)
   const [showCopied, setShowCopied] = useState(false)
   const [realFollowers, setRealFollowers] = useState(0)
-  const [realSubscribers, setRealSubscribers] = useState(0)
+  const [realFollowing, setRealFollowing] = useState(0)
   const [activities, setActivities] = useState<any[]>([])
   const [loadingActivities, setLoadingActivities] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -416,7 +416,7 @@ export default function AuthorProfile() {
       try {
         const stats = await blogActivityAPI.getAuthorStats(effectiveAuthorId)
         setRealFollowers(stats.followers || 0)
-        setRealSubscribers(stats.subscribers || 0)
+        setRealFollowing(stats.following ?? 0)
         if (reduxFollowKey) {
           dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: stats.isFollowing ?? false }))
         }
@@ -547,9 +547,8 @@ export default function AuthorProfile() {
       posts.reduce((sum, post) => sum + (post.views_count ?? 0), 0) ||
       posts.reduce((sum, post) => sum + getReadingTime(post.content, post.excerpt) * 125, 0)
 
-    // Use real followers/subscribers if available, otherwise calculate
     const followers = realFollowers > 0 ? realFollowers : Math.max(85, totalPosts * 210 + totalLikes * 2)
-    const subscribers = realSubscribers > 0 ? realSubscribers : Math.max(30, Math.round(followers * 0.36))
+    const following = realFollowing
 
     return {
       posts: totalPosts,
@@ -557,9 +556,9 @@ export default function AuthorProfile() {
       comments: totalComments,
       reads: totalReads,
       followers,
-      subscribers
+      following
     }
-  }, [posts, realFollowers, realSubscribers])
+  }, [posts, realFollowers, realFollowing])
 
   const featuredCategories = useMemo(() => {
     const categories = posts.flatMap((post) => parseCategories(post.categories))
@@ -850,8 +849,8 @@ export default function AuthorProfile() {
               </div>
               <div className="flex items-center gap-1.5">
                 <UserRound className="h-4 w-4 text-[#4B97C9]" />
-                <span className="font-semibold text-gray-900">{formatCompactNumber(authorStats.subscribers)}</span>
-                <span className="text-gray-500">subscribers</span>
+                <span className="font-semibold text-gray-900">{formatCompactNumber(authorStats.following)}</span>
+                <span className="text-gray-500">following</span>
               </div>
               {resolvedAuthor.email && (
                 <a
@@ -1131,11 +1130,11 @@ export default function AuthorProfile() {
                   <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
                     <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Community</div>
                     <div className="text-lg font-bold text-[#1B4965]">
-                      {formatCompactNumber(authorStats.followers + authorStats.subscribers)}
+                      {formatCompactNumber(authorStats.followers + authorStats.following)}
                     </div>
                     <p className="mt-1 text-xs text-gray-600">
-                      {formatCompactNumber(authorStats.followers)} followers • {formatCompactNumber(authorStats.subscribers)}{' '}
-                      subscribers
+                      {formatCompactNumber(authorStats.followers)} followers • {formatCompactNumber(authorStats.following)}{' '}
+                      following
                     </p>
                   </div>
                 </div>

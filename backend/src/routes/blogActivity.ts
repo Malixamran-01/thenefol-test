@@ -237,6 +237,23 @@ router.get('/authors/:authorId/stats', async (req, res) => {
     }
     const userId = getUserIdFromToken(req)
 
+    // Get author's user_id (for following_count: how many authors this person follows)
+    const { rows: authorUserRows } = await pool.query(
+      `SELECT user_id FROM author_profiles WHERE id = $1 LIMIT 1`,
+      [resolvedId]
+    )
+    const authorUserId = authorUserRows[0]?.user_id ?? null
+
+    // Get following count: how many authors does this user follow?
+    let followingCount = 0
+    if (authorUserId) {
+      const { rows: followingRows } = await pool.query(
+        `SELECT COUNT(*)::integer as count FROM author_followers WHERE follower_user_id = $1`,
+        [authorUserId]
+      )
+      followingCount = followingRows[0]?.count ?? 0
+    }
+
     // Get cached stats
     const { rows: statsRows } = await pool.query(
       `SELECT followers_count, subscribers_count, posts_count, total_views, total_likes
@@ -273,6 +290,7 @@ router.get('/authors/:authorId/stats', async (req, res) => {
     res.json({
       followers: stats.followers_count,
       subscribers: stats.subscribers_count,
+      following: followingCount,
       posts: stats.posts_count,
       views: stats.total_views,
       likes: stats.total_likes,
