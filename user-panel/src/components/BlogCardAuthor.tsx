@@ -27,6 +27,7 @@ export function BlogCardAuthor({
   const menuRef = useRef<HTMLDivElement>(null)
 
   const effectiveAuthorId = (authorId != null ? String(authorId) : null) || authorUniqueUserId || null
+  const reduxFollowKey = (authorId != null ? String(authorId) : null) || authorUniqueUserId || null
   const isOwnProfile = Boolean(
     isAuthenticated &&
     user?.id != null &&
@@ -34,13 +35,13 @@ export function BlogCardAuthor({
     (String(user.id) === String(authorId) || String(user.unique_user_id) === String(authorUniqueUserId))
   )
 
-  const isFollowingFromRedux = effectiveAuthorId
-    ? useSelector((s: RootState) => s.follow.byAuthorId[effectiveAuthorId])
+  const isFollowingFromRedux = reduxFollowKey
+    ? useSelector((s: RootState) => s.follow.byAuthorId[reduxFollowKey])
     : null
   const [isFollowingLocal, setIsFollowingLocal] = useState<boolean | null>(isFollowingFromRedux)
   const isFollowing = isFollowingFromRedux ?? isFollowingLocal ?? false
 
-  const linkAuthorId = authorUniqueUserId || (authorId != null ? String(authorId) : null)
+  const linkAuthorId = (authorId != null ? String(authorId) : null) || authorUniqueUserId || null
   const authorProfileUrl = linkAuthorId ? `#/user/author/${linkAuthorId}` : null
 
   const handleAuthorClick = () => {
@@ -62,14 +63,14 @@ export function BlogCardAuthor({
       .then((stats) => {
         if (!cancelled) {
           setHasProfile(true)
-          dispatch(setFollowStatus({ authorId: effectiveAuthorId!, isFollowing: stats.isFollowing ?? false }))
+          if (reduxFollowKey) dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: stats.isFollowing ?? false }))
         }
       })
       .catch(() => {
         if (!cancelled) setHasProfile(false)
       })
     return () => { cancelled = true }
-  }, [effectiveAuthorId, isAuthenticated, isOwnProfile, dispatch])
+  }, [effectiveAuthorId, isAuthenticated, isOwnProfile, reduxFollowKey, dispatch])
 
   useEffect(() => {
     setIsFollowingLocal(isFollowingFromRedux)
@@ -95,7 +96,7 @@ export function BlogCardAuthor({
     setLoading(true)
     try {
       await blogActivityAPI.followAuthor(effectiveAuthorId)
-      dispatch(setFollowStatus({ authorId: effectiveAuthorId, isFollowing: true }))
+      if (reduxFollowKey) dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: true }))
     } catch {
       // Maybe author has no profile
     } finally {
@@ -109,10 +110,10 @@ export function BlogCardAuthor({
     setShowUnfollowMenu(false)
     try {
       await blogActivityAPI.unfollowAuthor(effectiveAuthorId)
-      dispatch(setFollowStatus({ authorId: effectiveAuthorId, isFollowing: false }))
+      if (reduxFollowKey) dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: false }))
     } catch {
       // Fallback
-      dispatch(setFollowStatus({ authorId: effectiveAuthorId, isFollowing: false }))
+      if (reduxFollowKey) dispatch(setFollowStatus({ authorId: reduxFollowKey, isFollowing: false }))
     } finally {
       setLoading(false)
     }

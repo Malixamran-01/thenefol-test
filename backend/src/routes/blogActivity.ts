@@ -19,14 +19,19 @@ const getUserIdFromToken = (req: express.Request): string | null => {
   return null
 }
 
-// Resolve author_profiles.id from identifier (can be author id or user_id)
+// Resolve author_profiles.id from identifier (can be author id, user_id, username, or unique_user_id)
 const resolveAuthorId = async (identifier: string): Promise<number | null> => {
   const isNumeric = /^\d+$/.test(identifier)
+  const usernameClean = identifier.startsWith('@') ? identifier.slice(1) : identifier
   const { rows } = await pool.query(
     `SELECT id FROM author_profiles 
-     WHERE status != 'deleted' AND ${isNumeric ? '(id = $1::integer OR user_id = $1::integer)' : 'username = $1'}
+     WHERE status != 'deleted' AND ${
+       isNumeric
+         ? '(id = $1::integer OR user_id = $1::integer)'
+         : '(username = $1 OR username = $2 OR unique_user_id = $1)'
+     }
      LIMIT 1`,
-    [identifier]
+    isNumeric ? [identifier] : [identifier, usernameClean]
   )
   return rows[0]?.id ?? null
 }
@@ -596,6 +601,7 @@ router.get('/authors/:identifier', async (req, res) => {
     
     const { identifier } = req.params
     const isNumeric = /^\d+$/.test(identifier)
+    const usernameClean = identifier.startsWith('@') ? identifier.slice(1) : identifier
 
     const { rows } = await pool.query(
       `SELECT 
@@ -610,9 +616,9 @@ router.get('/authors/:identifier', async (req, res) => {
        FROM author_profiles ap
        LEFT JOIN users u ON ap.user_id = u.id
        LEFT JOIN author_stats ast ON ap.id = ast.author_id
-       WHERE ${isNumeric ? '(ap.id = $1::integer OR ap.user_id = $1::integer)' : 'ap.username = $1'}
+       WHERE ${isNumeric ? '(ap.id = $1::integer OR ap.user_id = $1::integer)' : '(ap.username = $1 OR ap.username = $2 OR ap.unique_user_id = $1)'}
          AND ap.status != 'deleted'`,
-      [identifier]
+      isNumeric ? [identifier] : [identifier, usernameClean]
     )
 
     if (rows.length === 0) {
