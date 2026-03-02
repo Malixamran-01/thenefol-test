@@ -755,17 +755,21 @@ export default function AuthorProfile() {
 
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
-      <div className="mx-auto w-full max-w-5xl px-4 pt-6 sm:pt-8">
+      {/* Back button — sits above the page card */}
+      <div className="mx-auto w-full max-w-5xl px-4 pt-5 sm:pt-7">
         <button
           onClick={goBack}
-          className="mb-5 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
+          className="mb-4 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
           style={{ color: '#1B4965' }}
         >
           <ArrowLeft className="h-4 w-4" />
           {backLabel}
         </button>
+      </div>
 
-        <section className="overflow-hidden rounded-2xl border border-[#dbe7ef] bg-white shadow-sm">
+      {/* ── Single unified profile page ── */}
+      <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-sm">
+        <section className="overflow-hidden">
           {/* ── Cover Banner ── */}
           <div className="relative h-52 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64">
             {coverImage ? (
@@ -985,104 +989,73 @@ export default function AuthorProfile() {
               <p className="mb-4 max-w-2xl text-[15px] leading-relaxed text-gray-600">{aboutText}</p>
             )}
 
-            {/* Follower / Following counts */}
-            <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-4 text-sm">
-              <button className="group flex items-center gap-1.5 transition-colors hover:text-[#1B4965]">
-                <span className="font-bold text-gray-900 group-hover:text-[#1B4965]">{formatCompactNumber(authorStats.followers)}</span>
+            {/* Stats bar: followers · following · posts · reads */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-gray-100 pt-4 text-sm">
+              <span className="flex items-center gap-1">
+                <span className="font-bold text-gray-900">{formatCompactNumber(authorStats.followers)}</span>
                 <span className="text-gray-500">followers</span>
-              </button>
-              <span className="text-gray-200">·</span>
-              <button className="group flex items-center gap-1.5 transition-colors hover:text-[#1B4965]">
-                <span className="font-bold text-gray-900 group-hover:text-[#1B4965]">{formatCompactNumber(authorStats.following)}</span>
+              </span>
+              <span className="text-gray-300">·</span>
+              <span className="flex items-center gap-1">
+                <span className="font-bold text-gray-900">{formatCompactNumber(authorStats.following)}</span>
                 <span className="text-gray-500">following</span>
-              </button>
-              {resolvedAuthor.email && (
+              </span>
+              <span className="text-gray-300">·</span>
+              <span className="flex items-center gap-1">
+                <span className="font-bold text-gray-900">{formatCompactNumber(authorStats.posts)}</span>
+                <span className="text-gray-500">posts</span>
+              </span>
+              {authorStats.reads > 0 && (
                 <>
-                  <span className="text-gray-200">·</span>
-                  <a
-                    href={`mailto:${resolvedAuthor.email}`}
-                    className="text-gray-500 transition-colors hover:text-[#1B4965] hover:underline"
-                  >
-                    {resolvedAuthor.email}
-                  </a>
+                  <span className="text-gray-300">·</span>
+                  <span className="flex items-center gap-1">
+                    <span className="font-bold text-gray-900">{formatCompactNumber(authorStats.reads)}</span>
+                    <span className="text-gray-500">reads</span>
+                  </span>
                 </>
               )}
             </div>
           </div>
         </section>
 
-        <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: 'Posts', value: formatCompactNumber(authorStats.posts), icon: UserRound },
-            { label: 'Total Likes', value: formatCompactNumber(authorStats.likes), icon: Heart },
-            { label: 'Comments', value: formatCompactNumber(authorStats.comments), icon: MessageCircle },
-            { label: 'Reads', value: formatCompactNumber(authorStats.reads), icon: Users }
-          ].map((item) => (
-            <article
-              key={item.label}
-              className="rounded-xl border border-[#dbe7ef] bg-white p-5 text-center shadow-sm transition-shadow hover:shadow-md"
-            >
-              <item.icon className="mx-auto mb-2 h-5 w-5 text-[#4B97C9]" />
-              <div className="text-3xl font-bold text-[#1B4965]">{item.value}</div>
-              <div className="mt-1 text-xs font-medium uppercase tracking-wider text-gray-500">{item.label}</div>
-            </article>
-          ))}
-        </section>
-
-        <section className="mt-5 overflow-hidden rounded-2xl border border-[#dbe7ef] bg-white shadow-sm">
-          {/* Tabs Header */}
-          <div className="border-b border-[#e6eff5]">
-            <div className="flex items-center justify-between px-5 py-4 sm:px-8">
-              <div className="flex items-center gap-1">
-                {(['activity', 'posts', 'about'] as TabType[]).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition-all duration-200 ${
-                      activeTab === tab
-                        ? 'bg-[#1B4965] text-white shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-[#1B4965]'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              {activeTab === 'posts' && (
-                <div className="hidden items-center gap-2 sm:flex">
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    className="h-9 w-48 rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
-                    placeholder="Search posts..."
-                  />
-                  <select
-                    value={sortBy}
-                    onChange={(event) => setSortBy(event.target.value as SortType)}
-                    className="h-9 rounded-lg border border-[#dbe7ef] bg-white px-3 text-sm text-gray-700 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
-                  >
-                    <option value="newest">Newest</option>
-                    <option value="popular">Popular</option>
-                    <option value="oldest">Oldest</option>
-                  </select>
-                </div>
-              )}
+        {/* ── Flat underline tab bar ── */}
+        <div className="border-b border-[#e8f0f5] px-5 sm:px-8">
+          <div className="flex items-center justify-between">
+            <div className="flex">
+              {(['activity', 'posts', 'about'] as TabType[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`relative px-4 py-4 text-sm font-semibold capitalize transition-colors duration-200 ${
+                    activeTab === tab
+                      ? 'text-[#1B4965]'
+                      : 'text-gray-400 hover:text-gray-700'
+                  }`}
+                >
+                  {tab}
+                  {tab === 'posts' && posts.length > 0 && (
+                    <span className="ml-1.5 rounded-full bg-[#edf4f9] px-1.5 py-0.5 text-[10px] font-bold text-[#4B97C9]">
+                      {posts.length}
+                    </span>
+                  )}
+                  {activeTab === tab && (
+                    <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-t-full bg-[#1B4965]" />
+                  )}
+                </button>
+              ))}
             </div>
-
-            {/* Mobile Search/Sort for Posts Tab */}
             {activeTab === 'posts' && (
-              <div className="flex flex-col gap-2 border-t border-[#e6eff5] px-5 py-3 sm:hidden">
+              <div className="hidden items-center gap-2 sm:flex">
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="h-9 w-full rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                  className="h-8 w-44 rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
                   placeholder="Search posts..."
                 />
                 <select
                   value={sortBy}
                   onChange={(event) => setSortBy(event.target.value as SortType)}
-                  className="h-9 w-full rounded-lg border border-[#dbe7ef] bg-white px-3 text-sm text-gray-700 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                  className="h-8 rounded-lg border border-[#dbe7ef] bg-white px-2 text-sm text-gray-700 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
                 >
                   <option value="newest">Newest</option>
                   <option value="popular">Popular</option>
@@ -1091,18 +1064,38 @@ export default function AuthorProfile() {
               </div>
             )}
           </div>
+          {activeTab === 'posts' && (
+            <div className="flex flex-col gap-2 pb-3 sm:hidden">
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="h-9 w-full rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                placeholder="Search posts..."
+              />
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as SortType)}
+                className="h-9 w-full rounded-lg border border-[#dbe7ef] bg-white px-3 text-sm text-gray-700 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+              >
+                <option value="newest">Newest</option>
+                <option value="popular">Popular</option>
+                <option value="oldest">Oldest</option>
+              </select>
+            </div>
+          )}
+        </div>
 
-          {/* Tab Content */}
-          {loading ? (
-            <div className="px-6">
-              <LoadingSpinner size="md" message="Loading author profile..." />
-            </div>
-          ) : error ? (
-            <div className="px-6 py-16 text-center">
-              <p className="text-sm font-medium text-red-600">{error}</p>
-            </div>
-          ) : activeTab === 'activity' ? (
-            <div className="space-y-3 px-5 py-6 sm:px-8">
+        {/* Tab Content — flows directly in the same white page */}
+        {loading ? (
+          <div className="px-6 py-10">
+            <LoadingSpinner size="md" message="Loading author profile..." />
+          </div>
+        ) : error ? (
+          <div className="px-6 py-16 text-center">
+            <p className="text-sm font-medium text-red-600">{error}</p>
+          </div>
+        ) : activeTab === 'activity' ? (
+          <div className="space-y-3 px-5 py-6 sm:px-8">
               {activityFeed.length === 0 ? (
                 <div className="rounded-xl bg-gray-50 p-8 text-center">
                   <Sparkles className="mx-auto mb-3 h-10 w-10 text-gray-400" />
@@ -1128,9 +1121,9 @@ export default function AuthorProfile() {
                   </article>
                 ))
               )}
-            </div>
-          ) : activeTab === 'posts' ? (
-            <div className="space-y-5 px-5 py-6 sm:px-8">
+          </div>
+        ) : activeTab === 'posts' ? (
+          <div className="space-y-5 px-5 py-6 sm:px-8">
               {filteredPosts.length === 0 ? (
                 <div className="rounded-xl bg-gray-50 p-8 text-center">
                   <MessageCircle className="mx-auto mb-3 h-10 w-10 text-gray-400" />
@@ -1211,114 +1204,111 @@ export default function AuthorProfile() {
                   )
                 })
               )}
+          </div>
+        ) : (
+          <div className="px-5 py-6 sm:px-8">
+            <div className="mb-6 flex items-start gap-4">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-white">
+                <UserRound className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">About {resolvedAuthor.name}</h3>
+                <p className="mt-3 text-[15px] leading-relaxed text-gray-700">{aboutText}</p>
+              </div>
             </div>
-          ) : (
-            <div className="px-5 py-6 sm:px-8">
-              <div className="rounded-xl border border-[#e6eff5] bg-gradient-to-br from-white to-[#fbfdff] p-6 sm:p-8">
-                <div className="mb-6 flex items-start gap-4">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-white">
-                    <UserRound className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">About {resolvedAuthor.name}</h3>
-                    <p className="mt-3 text-[15px] leading-relaxed text-gray-700">{aboutText}</p>
-                  </div>
-                </div>
 
-                {hasAuthorProfile && (authorProfile?.writing_languages?.length || authorProfile?.location || authorProfile?.website || (authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0)) ? (
-                  <div className="mt-6 space-y-4">
-                    {authorProfile?.writing_languages?.length ? (
-                      <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Languages</div>
-                        <div className="flex flex-wrap gap-2">
-                          {authorProfile.writing_languages.map((lang) => (
-                            <span key={lang} className="rounded-full bg-[#f0f7fc] px-3 py-1 text-sm font-medium text-[#1B4965]">{lang}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {authorProfile?.location ? (
-                      <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Location</div>
-                        <p className="text-sm font-medium text-gray-800">{authorProfile.location}</p>
-                      </div>
-                    ) : null}
-                    {authorProfile?.website ? (
-                      <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Website</div>
-                        <a href={authorProfile.website.startsWith('http') ? authorProfile.website : `https://${authorProfile.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#4B97C9] hover:underline">{authorProfile.website}</a>
-                      </div>
-                    ) : null}
-                    {authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0 ? (
-                      <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Connect</div>
-                        <div className="flex flex-wrap gap-3">
-                          {Object.entries(authorProfile.social_links).filter(([, url]) => url).map(([platform, url]) => (
-                            <a key={platform} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium capitalize text-[#4B97C9] hover:underline">{platform}</a>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Publishing cadence
-                    </div>
-                    <div className="text-lg font-bold text-[#1B4965]">
-                      {authorStats.posts > 8 ? 'Weekly' : authorStats.posts > 3 ? 'Bi-weekly' : 'Occasional'}
-                    </div>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {authorStats.posts} {authorStats.posts === 1 ? 'post' : 'posts'} published
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Community</div>
-                    <div className="text-lg font-bold text-[#1B4965]">
-                      {formatCompactNumber(authorStats.followers + authorStats.following)}
-                    </div>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {formatCompactNumber(authorStats.followers)} followers • {formatCompactNumber(authorStats.following)}{' '}
-                      following
-                    </p>
-                  </div>
-                </div>
-
-                {((hasAuthorProfile && authorProfile?.writing_categories?.length) ? authorProfile!.writing_categories! : featuredCategories).length > 0 && (
-                  <div className="mt-6 rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
-                    <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      {hasAuthorProfile && authorProfile?.writing_categories?.length ? 'Writing interests' : 'Popular topics'}
-                    </div>
+            {hasAuthorProfile && (authorProfile?.writing_languages?.length || authorProfile?.location || authorProfile?.website || (authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0)) ? (
+              <div className="mt-6 space-y-0 divide-y divide-[#f0f5f8]">
+                {authorProfile?.writing_languages?.length ? (
+                  <div className="py-4">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Languages</div>
                     <div className="flex flex-wrap gap-2">
-                      {(hasAuthorProfile && authorProfile?.writing_categories?.length ? authorProfile.writing_categories : featuredCategories).map((topic) => (
-                        <span
-                          key={topic}
-                          className="rounded-full border-2 border-[#dce9f2] bg-gradient-to-r from-white to-[#f8fbfc] px-4 py-2 text-sm font-semibold capitalize text-[#1B4965] transition-all duration-200 hover:border-[#4B97C9] hover:shadow-sm"
-                        >
-                          {topic}
-                        </span>
+                      {authorProfile.writing_languages.map((lang) => (
+                        <span key={lang} className="rounded-full bg-[#f0f7fc] px-3 py-1 text-sm font-medium text-[#1B4965]">{lang}</span>
                       ))}
                     </div>
                   </div>
-                )}
-
-                {resolvedAuthor.email && (
-                  <div className="mt-6 rounded-xl border border-[#e6eff5] bg-white p-5 shadow-sm">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Contact</div>
-                    <a
-                      href={`mailto:${resolvedAuthor.email}`}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-[#4B97C9] transition-colors hover:text-[#1B4965] hover:underline"
-                    >
-                      <span>{resolvedAuthor.email}</span>
-                    </a>
+                ) : null}
+                {authorProfile?.location ? (
+                  <div className="py-4">
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Location</div>
+                    <p className="text-sm font-medium text-gray-700">{authorProfile.location}</p>
                   </div>
-                )}
+                ) : null}
+                {authorProfile?.website ? (
+                  <div className="py-4">
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Website</div>
+                    <a href={authorProfile.website.startsWith('http') ? authorProfile.website : `https://${authorProfile.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#4B97C9] hover:underline">{authorProfile.website}</a>
+                  </div>
+                ) : null}
+                {authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0 ? (
+                  <div className="py-4">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Connect</div>
+                    <div className="flex flex-wrap gap-3">
+                      {Object.entries(authorProfile.social_links).filter(([, url]) => url).map(([platform, url]) => (
+                        <a key={platform} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium capitalize text-[#4B97C9] hover:underline">{platform}</a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-[#e6eff5] bg-[#f8fbfd] p-5">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  Publishing cadence
+                </div>
+                <div className="text-lg font-bold text-[#1B4965]">
+                  {authorStats.posts > 8 ? 'Weekly' : authorStats.posts > 3 ? 'Bi-weekly' : 'Occasional'}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {authorStats.posts} {authorStats.posts === 1 ? 'post' : 'posts'} published
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#e6eff5] bg-[#f8fbfd] p-5">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Community</div>
+                <div className="text-lg font-bold text-[#1B4965]">
+                  {formatCompactNumber(authorStats.followers + authorStats.following)}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {formatCompactNumber(authorStats.followers)} followers • {formatCompactNumber(authorStats.following)}{' '}
+                  following
+                </p>
               </div>
             </div>
-          )}
-        </section>
+
+            {((hasAuthorProfile && authorProfile?.writing_categories?.length) ? authorProfile!.writing_categories! : featuredCategories).length > 0 && (
+              <div className="mt-6">
+                <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  {hasAuthorProfile && authorProfile?.writing_categories?.length ? 'Writing interests' : 'Popular topics'}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(hasAuthorProfile && authorProfile?.writing_categories?.length ? authorProfile.writing_categories : featuredCategories).map((topic) => (
+                    <span
+                      key={topic}
+                      className="rounded-full border border-[#dce9f2] bg-[#f0f7fc] px-4 py-1.5 text-sm font-medium capitalize text-[#1B4965] transition-all duration-200 hover:border-[#4B97C9]"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {resolvedAuthor.email && (
+              <div className="mt-6 border-t border-[#f0f5f8] pt-5">
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Contact</div>
+                <a
+                  href={`mailto:${resolvedAuthor.email}`}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-[#4B97C9] transition-colors hover:text-[#1B4965] hover:underline"
+                >
+                  <span>{resolvedAuthor.email}</span>
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Edit Profile Modal */}
