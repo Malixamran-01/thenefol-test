@@ -136,6 +136,8 @@ export default function BlogRequestForm() {
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
   const [imageMenuPos, setImageMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
   const [showImageMenu, setShowImageMenu] = useState(false)
+  const [imageOverlayRect, setImageOverlayRect] = useState<{ top: number; right: number } | null>(null)
+  const imageOverlayRef = useRef<HTMLDivElement>(null)
   const [imageCaption, setImageCaption] = useState('')
   const [imageAltText, setImageAltText] = useState('')
   const [showCaptionModal, setShowCaptionModal] = useState(false)
@@ -248,20 +250,33 @@ export default function BlogRequestForm() {
     return () => document.removeEventListener('mousedown', handler)
   }, [showToolbarOverflow])
 
+  const clearImageSelection = useCallback(() => {
+    setSelectedImage((prev) => {
+      if (prev) prev.classList.remove('editor-image-selected')
+      return null
+    })
+    setShowImageMenu(false)
+    setImageOverlayRect(null)
+  }, [])
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node
       const clickedImage = selectedImage?.contains(target)
       const clickedMenu = imageMenuRef.current?.contains(target)
-      if (showImageMenu && selectedImage && !clickedImage && !clickedMenu) {
-        setShowImageMenu(false)
-        setSelectedImage(null)
+      const clickedOverlay = imageOverlayRef.current?.contains(target)
+      if (selectedImage && !clickedImage && !clickedMenu && !clickedOverlay) {
+        clearImageSelection()
       }
     }
     const handleScroll = () => {
-      if (showImageMenu) { setShowImageMenu(false); setSelectedImage(null) }
+      if (selectedImage) {
+        const rect = selectedImage.getBoundingClientRect()
+        setImageOverlayRect({ top: rect.top, right: rect.right })
+      }
+      if (showImageMenu) setShowImageMenu(false)
     }
-    if (showImageMenu) {
+    if (selectedImage || showImageMenu) {
       document.addEventListener('mousedown', handleClickOutside)
       scrollContainerRef.current?.addEventListener('scroll', handleScroll)
     }
@@ -269,7 +284,7 @@ export default function BlogRequestForm() {
       document.removeEventListener('mousedown', handleClickOutside)
       scrollContainerRef.current?.removeEventListener('scroll', handleScroll)
     }
-  }, [showImageMenu, selectedImage])
+  }, [showImageMenu, selectedImage, clearImageSelection])
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -735,18 +750,35 @@ export default function BlogRequestForm() {
     input.click()
   }
 
-  const handleImageClick = (img: HTMLImageElement, e: MouseEvent) => {
+  useEffect(() => {
+    if (selectedImage) {
+      const rect = selectedImage.getBoundingClientRect()
+      setImageOverlayRect({ top: rect.top, right: rect.right })
+    } else {
+      setImageOverlayRect(null)
+    }
+  }, [selectedImage])
+
+  const handleImageClick = (img: HTMLImageElement, _e: MouseEvent) => {
+    if (selectedImage === img) return
+    if (selectedImage) selectedImage.classList.remove('editor-image-selected')
     setSelectedImage(img)
-    const scrollContainer = scrollContainerRef.current
-    if (scrollContainer) {
-      const containerRect = scrollContainer.getBoundingClientRect()
-      const menuTop = e.clientY - containerRect.top + scrollContainer.scrollTop
-      const menuLeft = e.clientX - containerRect.left + scrollContainer.scrollLeft
-      setImageMenuPos({ top: Math.min(menuTop, scrollContainer.scrollHeight - 300), left: Math.min(menuLeft, scrollContainer.clientWidth - 220) })
-    } else setImageMenuPos({ top: e.clientY, left: e.clientX })
-    setShowImageMenu(true)
+    img.classList.add('editor-image-selected')
     setImageCaption(img.getAttribute('data-caption') || '')
     setImageAltText(img.getAttribute('data-alt') || img.alt)
+    setShowImageMenu(false)
+  }
+
+  const openImageOptionsMenu = () => {
+    if (!selectedImage) return
+    const rect = selectedImage.getBoundingClientRect()
+    const menuWidth = 210
+    const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 16))
+    setImageMenuPos({
+      top: rect.top + 40,
+      left,
+    })
+    setShowImageMenu(true)
   }
 
   const deleteImage = () => {
@@ -756,8 +788,7 @@ export default function BlogRequestForm() {
       const caption = selectedImage.nextElementSibling
       if (caption?.classList?.contains('image-caption')) caption.parentNode?.removeChild(caption)
       selectedImage.parentNode.removeChild(selectedImage)
-      setShowImageMenu(false)
-      setSelectedImage(null)
+      clearImageSelection()
       handleEditorInput()
     }
   }
@@ -849,8 +880,6 @@ export default function BlogRequestForm() {
         img.setAttribute('data-alt', filename)
         img.setAttribute('data-width-style', 'normal')
         img.addEventListener('click', (e) => { e.stopPropagation(); handleImageClick(img, e as MouseEvent) })
-        img.addEventListener('mouseenter', () => { img.style.borderColor = '#4B97C9' })
-        img.addEventListener('mouseleave', () => { img.style.borderColor = 'transparent' })
         imageContainer.appendChild(img)
         const selection = window.getSelection()
         if (selection && savedSelectionRef.current && editorRef.current.contains(savedSelectionRef.current.commonAncestorContainer)) {
@@ -1175,6 +1204,7 @@ export default function BlogRequestForm() {
 .editor-content a { color: #4B97C9; text-decoration: underline; word-break: break-all; }
 .editor-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
 .editor-content img:hover { border-color: #4B97C9; }
+.editor-content img.editor-image-selected { border-color: rgb(75,151,201) !important; box-shadow: 0 0 0 2px rgb(75,151,201); }
 .editor-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; max-width: 100%; }
 .editor-content .youtube-embed-wrapper { position: relative; display: flex; justify-content: center; align-items: center; margin: 20px auto; width: 100%; max-width: 100%; }
 .editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 100%; height: auto; aspect-ratio: 16/9; border: 0; border-radius: 8px; }
@@ -1523,11 +1553,30 @@ export default function BlogRequestForm() {
         </div>
       )}
 
+      {/* Selected Image 3-dot overlay */}
+      {selectedImage && imageOverlayRect && (
+        <div
+          ref={imageOverlayRef}
+          className="fixed z-[55] pointer-events-none"
+          style={{ top: imageOverlayRect.top, right: window.innerWidth - imageOverlayRect.right }}
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); openImageOptionsMenu() }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-md border border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-colors -mt-1 -mr-1"
+            title="Image options"
+          >
+            <DotsThree size={18} weight="bold" />
+          </button>
+        </div>
+      )}
+
       {/* Image Context Menu */}
       {showImageMenu && (
         <>
           <div className="fixed inset-0 z-[50]" onClick={() => setShowImageMenu(false)} />
-          <div ref={imageMenuRef} className="absolute z-[60] bg-white rounded-lg shadow-xl py-2 min-w-[180px] sm:min-w-[200px] border border-gray-200" style={{ top: imageMenuPos.top, left: imageMenuPos.left }}>
+          <div ref={imageMenuRef} className="fixed z-[60] bg-white rounded-lg shadow-xl py-2 min-w-[180px] sm:min-w-[200px] border border-gray-200" style={{ top: imageMenuPos.top, left: imageMenuPos.left }}>
             {[
               { icon: <PencilSimple size={15} className="text-gray-700" />, label: 'Edit image', onClick: () => { setShowImageMenu(false); openImageEditor() } },
               { icon: <FileText size={15} className="text-gray-700" />, label: 'Edit caption', onClick: () => { setShowImageMenu(false); setShowCaptionModal(true) } },
