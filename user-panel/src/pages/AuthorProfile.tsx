@@ -408,9 +408,9 @@ export default function AuthorProfile() {
     fetchUserSummary()
   }, [routeAuthorId, authorProfile])
 
-  // Fetch author stats (followers, subscribers, follow status) - only for users with author profile
+  // Fetch author stats (followers, subscribers, follow status) when we have an author identifier
   useEffect(() => {
-    if (!hasAuthorProfile || !effectiveAuthorId || effectiveAuthorId === 'guest') return
+    if (!effectiveAuthorId || effectiveAuthorId === 'guest') return
     
     const fetchAuthorStats = async () => {
       try {
@@ -426,7 +426,7 @@ export default function AuthorProfile() {
     }
 
     fetchAuthorStats()
-  }, [effectiveAuthorId, hasAuthorProfile, reduxFollowKey, dispatch])
+  }, [effectiveAuthorId, reduxFollowKey, dispatch])
 
   useEffect(() => {
     const fetchAuthorPosts = async () => {
@@ -792,7 +792,7 @@ export default function AuthorProfile() {
                     <Pencil className="h-4 w-4" />
                     Edit Profile
                   </button>
-                ) : hasAuthorProfile ? (
+                ) : !isOwnProfile && routeAuthorId && routeAuthorId !== 'guest' ? (
                   <div className="relative" ref={unfollowMenuRef}>
                     {isFollowing ? (
                       <>
