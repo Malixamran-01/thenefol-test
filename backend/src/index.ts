@@ -28,7 +28,7 @@ import * as posRoutes from './routes/pos'
 import * as cartRoutes from './routes/cart'
 import createCMSRouter from './routes/cms'
 import blogRouter, { initBlogRouter, serveBlogMetaPage, cleanupOldDrafts } from './routes/blog'
-import blogActivityRouter, { initBlogActivityRouter } from './routes/blogActivity'
+import blogActivityRouter, { initBlogActivityRouter, serveAuthorMetaPage } from './routes/blogActivity'
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
@@ -787,6 +787,7 @@ app.use('/api/cms', createCMSRouter(pool, io))
 initBlogRouter(pool)
 // Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.) - path-based URL
 app.get('/blog/:id', serveBlogMetaPage)
+app.get('/author/:id', serveAuthorMetaPage)
 app.use('/api/blog', blogRouter)
 
 // Initialize blog activity router (follows, subscriptions, feed)

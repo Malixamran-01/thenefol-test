@@ -35,6 +35,7 @@ interface UserSummaryData {
 interface AuthorProfileData {
   id: number
   user_id: number
+  unique_user_id?: string
   username: string
   display_name: string
   pen_name?: string
@@ -614,6 +615,52 @@ export default function AuthorProfile() {
     return `${resolvedAuthor.name} writes on NEFOL covering ${topics}. With ${authorStats.posts} published ${authorStats.posts === 1 ? 'post' : 'posts'}, this profile highlights their writing and reader engagement.`
   }, [authorProfile?.bio, authorStats.posts, featuredCategories, hasAuthorProfile, posts.length, resolvedAuthor.name, userSummary?.bio])
 
+  // Open Graph meta tags for when profile is shared (client-side fallback for JS crawlers)
+  useEffect(() => {
+    if (!resolvedAuthor?.name || !effectiveAuthorId || effectiveAuthorId === 'guest') return
+    const shareAuthorId = (hasAuthorProfile && authorProfile?.unique_user_id) ? authorProfile.unique_user_id : effectiveAuthorId
+    const base = getApiBase().replace(/\/$/, '')
+    const canonicalUrl = `${base}/author/${encodeURIComponent(String(shareAuthorId))}`
+    const ogImage = profileImage || coverImage || ''
+    const description = (aboutText || '').replace(/<[^>]*>/g, '').slice(0, 200)
+
+    const setMeta = (key: string, value: string, attr: 'name' | 'property' = 'name') => {
+      let tag = document.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null
+      if (!tag) {
+        tag = document.createElement('meta')
+        tag.setAttribute(attr, key)
+        document.head.appendChild(tag)
+      }
+      tag.setAttribute('content', value)
+    }
+
+    document.title = `${resolvedAuthor.name} | NEFOL Author`
+    setMeta('description', description || `${resolvedAuthor.name}'s profile on NEFOL`)
+    setMeta('og:title', `${resolvedAuthor.name}`, 'property')
+    setMeta('og:description', description || `${resolvedAuthor.name}'s profile on NEFOL`, 'property')
+    setMeta('og:url', canonicalUrl, 'property')
+    setMeta('og:type', 'profile', 'property')
+    setMeta('og:site_name', 'The Nefol', 'property')
+    if (ogImage) {
+      setMeta('og:image', ogImage, 'property')
+      setMeta('og:image:width', '400', 'property')
+      setMeta('og:image:height', '400', 'property')
+    }
+    setMeta('profile:username', handle, 'property')
+    setMeta('twitter:card', ogImage ? 'summary_large_image' : 'summary', 'name')
+    setMeta('twitter:title', `${resolvedAuthor.name}`, 'name')
+    setMeta('twitter:description', description || `${resolvedAuthor.name}'s profile on NEFOL`, 'name')
+    if (ogImage) setMeta('twitter:image', ogImage, 'name')
+
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null
+    if (!canonical) {
+      canonical = document.createElement('link')
+      canonical.setAttribute('rel', 'canonical')
+      document.head.appendChild(canonical)
+    }
+    canonical.setAttribute('href', canonicalUrl)
+  }, [resolvedAuthor?.name, effectiveAuthorId, hasAuthorProfile, authorProfile?.unique_user_id, aboutText, profileImage, coverImage, handle])
+
   const ensureAuthForAction = () => {
     if (isAuthenticated) return true
     sessionStorage.setItem('post_login_redirect', window.location.hash)
@@ -664,12 +711,15 @@ export default function AuthorProfile() {
   }
 
   const handleShareProfile = async () => {
-    const shareUrl = window.location.href
+    const shareAuthorId = (hasAuthorProfile && authorProfile?.unique_user_id)
+      ? authorProfile.unique_user_id
+      : effectiveAuthorId
+    const shareUrl = `${getApiBase()}/author/${encodeURIComponent(String(shareAuthorId))}`
     try {
       if (navigator.share) {
         await navigator.share({
           title: `${resolvedAuthor.name} on NEFOL`,
-          text: `Read ${resolvedAuthor.name}'s latest posts on NEFOL.`,
+          text: `${resolvedAuthor.name}'s profile on NEFOL. ${aboutText ? aboutText.slice(0, 100) + '...' : ''}`,
           url: shareUrl
         })
       } else if (navigator.clipboard) {

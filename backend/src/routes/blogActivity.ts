@@ -837,4 +837,95 @@ router.post('/authors/cleanup-deleted', async (req, res) => {
   }
 })
 
+function escapeHtml(s: string) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+// Server-rendered meta page for author profile sharing (WhatsApp, Facebook, etc.)
+// Crawlers don't run JS - they need meta tags in the initial HTML
+export async function serveAuthorMetaPage(req: express.Request, res: express.Response) {
+  try {
+    if (!pool) {
+      return res.status(500).send('Server error')
+    }
+    const identifier = req.params.id
+    const isNumeric = /^\d+$/.test(identifier)
+    const usernameClean = identifier.startsWith('@') ? identifier.slice(1) : identifier
+
+    const { rows } = await pool.query(
+      `SELECT 
+        ap.id, ap.username, ap.display_name, ap.bio, ap.profile_image, ap.cover_image, ap.unique_user_id
+       FROM author_profiles ap
+       WHERE ap.status != 'deleted'
+         AND (
+           ${isNumeric ? 'ap.id = $1::integer OR ap.user_id = $1::integer' : '(ap.username = $1 OR ap.username = $2 OR ap.unique_user_id = $1)'}
+         )`,
+      isNumeric ? [identifier] : [identifier, usernameClean]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).send('Author not found')
+    }
+
+    const author = rows[0]
+    const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http')
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'thenefol.com'
+    const baseUrl = `${protocol}://${host}`
+    const toAbsolute = (url: string | null | undefined) => {
+      if (!url) return ''
+      if (url.startsWith('http')) return url
+      return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+    }
+
+    const displayName = author.display_name || author.username || 'Author'
+    const username = author.username?.startsWith('@') ? author.username : `@${author.username || ''}`
+    const bio = (author.bio || '').replace(/<[^>]*>/g, '').trim().slice(0, 200)
+    const ogImage = toAbsolute(author.profile_image || author.cover_image || null)
+    const authorId = author.unique_user_id || String(author.id)
+    const pageUrl = `${baseUrl}/author/${encodeURIComponent(authorId)}`
+    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+    const spaUrl = `${frontendBase}/#/user/author/${encodeURIComponent(authorId)}`
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(displayName)} | NEFOL Author</title>
+  <meta name="description" content="${escapeHtml(bio || `${displayName}'s profile on NEFOL`)}">
+  <meta property="og:type" content="profile">
+  <meta property="og:title" content="${escapeHtml(displayName)}">
+  <meta property="og:description" content="${escapeHtml(bio || `${displayName}'s profile on NEFOL`)}">
+  <meta property="og:url" content="${escapeHtml(pageUrl)}">
+  <meta property="og:site_name" content="The Nefol">
+  ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}
+  <meta property="og:image:width" content="400">
+  <meta property="og:image:height" content="400">
+  <meta property="profile:username" content="${escapeHtml(username)}">
+  <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}">
+  <meta name="twitter:title" content="${escapeHtml(displayName)}">
+  <meta name="twitter:description" content="${escapeHtml(bio || `${displayName}'s profile on NEFOL`)}">
+  ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}">` : ''}
+  <link rel="canonical" href="${escapeHtml(pageUrl)}">
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(spaUrl)}">
+  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>
+</head>
+<body>
+  <p>Redirecting to <a href="${escapeHtml(spaUrl)}">${escapeHtml(displayName)}</a>...</p>
+</body>
+</html>`
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.send(html)
+  } catch (err) {
+    console.error('Author meta page error:', err)
+    res.status(500).send('Server error')
+  }
+}
+
 export default router
