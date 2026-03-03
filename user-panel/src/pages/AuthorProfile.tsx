@@ -824,15 +824,14 @@ export default function AuthorProfile() {
 
           {/* ── Profile Body ── */}
           <div className="relative px-4 pb-6 sm:px-8 sm:pb-7">
-            {/* Mobile: avatar + name/handle + buttons in one row; Desktop: avatar absolute, rest below */}
-            <div className="flex items-start gap-3 pt-3 sm:pt-0 sm:gap-0">
-              {/* Avatar — inline on mobile, absolute overlap on desktop */}
-              <div className="relative shrink-0 sm:absolute sm:-top-18 sm:left-8">
-                <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-white bg-white shadow-lg sm:h-36 sm:w-36 sm:border-[5px] sm:shadow-xl">
+            {/* Avatar — overlaps the cover, smaller on mobile */}
+            <div className="absolute -top-12 left-4 sm:-top-18 sm:left-8">
+              <div className="relative">
+                <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white bg-white shadow-lg sm:h-36 sm:w-36 sm:border-[5px] sm:shadow-xl">
                   {profileImage ? (
                     <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-2xl font-bold text-white sm:text-5xl">
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-4xl font-bold text-white sm:text-5xl">
                       {resolvedAuthor.name?.charAt(0)?.toUpperCase() || 'A'}
                     </div>
                   )}
@@ -844,7 +843,7 @@ export default function AuthorProfile() {
                     className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/0 transition-all hover:bg-black/30"
                     title="Change photo"
                   >
-                    <Upload className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100 sm:h-6 sm:w-6" />
+                    <Upload className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100" />
                     <input
                       id="avatar-upload"
                       type="file"
@@ -864,15 +863,10 @@ export default function AuthorProfile() {
                   </label>
                 )}
               </div>
+            </div>
 
-              {/* Name + handle + action buttons — same row on mobile, stacked on desktop */}
-              <div className="flex min-w-0 flex-1 flex-row items-start justify-between gap-2 sm:flex-col sm:pt-3 sm:pb-5">
-                <div className="min-w-0 flex-1 sm:order-2 sm:mt-14 sm:flex-none">
-                  <h1 className="truncate text-lg font-bold leading-tight text-gray-900 sm:text-3xl">{resolvedAuthor.name}</h1>
-                  {handle && <p className="mt-0.5 truncate text-xs font-medium text-gray-400 sm:text-sm">{handle}</p>}
-                </div>
-                {/* Action buttons — right of name on mobile, top-right row on desktop */}
-                <div className="flex shrink-0 items-center gap-2 sm:order-1 sm:w-full sm:justify-end">
+            {/* Action bar — top-right of the profile body */}
+            <div className="flex items-center justify-end gap-2 pt-3 pb-5">
               {isOwnProfile ? (
                 <button
                   onClick={() => setShowEditModal(true)}
@@ -983,8 +977,12 @@ export default function AuthorProfile() {
                   </div>
                 )}
               </div>
-                </div>
-              </div>
+            </div>
+
+            {/* Name + handle */}
+            <div className="mb-2 mt-8 sm:mb-3 sm:mt-14">
+              <h1 className="text-xl font-bold leading-tight text-gray-900 sm:text-3xl">{resolvedAuthor.name}</h1>
+              {handle && <p className="mt-0.5 text-xs font-medium text-gray-400 sm:text-sm">{handle}</p>}
             </div>
 
             {/* Bio */}
