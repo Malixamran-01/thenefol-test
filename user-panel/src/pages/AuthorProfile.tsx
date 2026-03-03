@@ -310,6 +310,7 @@ export default function AuthorProfile() {
   const [showUnfollowMenu, setShowUnfollowMenu] = useState(false)
   const [showDotsMenu, setShowDotsMenu] = useState(false)
   const [showCopied, setShowCopied] = useState(false)
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [realFollowers, setRealFollowers] = useState(0)
   const [realFollowing, setRealFollowing] = useState(0)
   const [activities, setActivities] = useState<any[]>([])
@@ -753,6 +754,14 @@ export default function AuthorProfile() {
     return () => document.removeEventListener('mousedown', handler)
   }, [showDotsMenu])
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxImage(null)
+    }
+    if (lightboxImage) document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [lightboxImage])
+
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
       {/* Back button — sits above the page card */}
@@ -771,7 +780,12 @@ export default function AuthorProfile() {
       <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-xl bg-white shadow-sm sm:rounded-2xl">
         <section className="overflow-hidden">
           {/* ── Cover Banner ── */}
-          <div className="relative h-40 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64">
+          <div
+            className={`relative h-40 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64 ${coverImage ? 'cursor-zoom-in' : ''}`}
+            onClick={() => coverImage && setLightboxImage(coverImage)}
+            role={coverImage ? 'button' : undefined}
+            aria-label={coverImage ? 'View cover image' : undefined}
+          >
             {coverImage ? (
               <img src={coverImage} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -792,75 +806,25 @@ export default function AuthorProfile() {
               </div>
             )}
             {/* Bottom gradient fade */}
-            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent" />
-
-            {/* Upload cover (own profile) */}
-            {isOwnProfile && hasAuthorProfile && (
-              <label
-                htmlFor="cover-upload"
-                className="absolute bottom-3 right-3 flex cursor-pointer items-center gap-1.5 rounded-lg bg-black/40 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-all hover:bg-black/60"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                Edit cover
-                <input
-                  id="cover-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (!file || !authorProfile) return
-                    try {
-                      const url = await uploadAuthorCoverImage(file)
-                      setAuthorProfile((prev) => prev ? { ...prev, cover_image: url } : prev)
-                    } catch {
-                      /* no-op */
-                    }
-                  }}
-                />
-              </label>
-            )}
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
           </div>
 
           {/* ── Profile Body ── */}
           <div className="relative px-4 pb-6 sm:px-8 sm:pb-7">
-            {/* Avatar — overlaps the cover, smaller on mobile */}
+            {/* Avatar — overlaps the cover, smaller on mobile. Click to view full image */}
             <div className="absolute -top-12 left-4 sm:-top-18 sm:left-8">
-              <div className="relative">
-                <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white bg-white shadow-lg sm:h-36 sm:w-36 sm:border-[5px] sm:shadow-xl">
-                  {profileImage ? (
-                    <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-4xl font-bold text-white sm:text-5xl">
-                      {resolvedAuthor.name?.charAt(0)?.toUpperCase() || 'A'}
-                    </div>
-                  )}
-                </div>
-                {/* Upload avatar (own profile) */}
-                {isOwnProfile && hasAuthorProfile && (
-                  <label
-                    htmlFor="avatar-upload"
-                    className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/0 transition-all hover:bg-black/30"
-                    title="Change photo"
-                  >
-                    <Upload className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100" />
-                    <input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0]
-                        if (!file || !authorProfile) return
-                        try {
-                          const url = await uploadAuthorProfileImage(file)
-                          setAuthorProfile((prev) => prev ? { ...prev, profile_image: url } : prev)
-                        } catch {
-                          /* no-op */
-                        }
-                      }}
-                    />
-                  </label>
+              <div
+                className={`h-20 w-20 overflow-hidden rounded-full border-4 border-white bg-white shadow-lg sm:h-36 sm:w-36 sm:border-[5px] sm:shadow-xl ${profileImage ? 'cursor-zoom-in' : ''}`}
+                onClick={() => profileImage && setLightboxImage(profileImage)}
+                role={profileImage ? 'button' : undefined}
+                aria-label={profileImage ? 'View profile picture' : undefined}
+              >
+                {profileImage ? (
+                  <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-4xl font-bold text-white sm:text-5xl">
+                    {resolvedAuthor.name?.charAt(0)?.toUpperCase() || 'A'}
+                  </div>
                 )}
               </div>
             </div>
@@ -1306,6 +1270,31 @@ export default function AuthorProfile() {
           </div>
         )}
       </div>
+
+      {/* Full image lightbox */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setLightboxImage(null)}
+          role="button"
+          tabIndex={0}
+          aria-label="Close image view"
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Full size view"
+            className="max-h-[90vh] max-w-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Edit Profile Modal */}
       {showEditModal && authorProfile && (
