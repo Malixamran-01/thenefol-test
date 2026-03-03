@@ -756,22 +756,22 @@ export default function AuthorProfile() {
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
       {/* Back button — sits above the page card */}
-      <div className="mx-auto w-full max-w-5xl px-4 pt-5 sm:pt-7">
+      <div className="mx-auto w-full max-w-5xl px-3 pt-4 sm:px-4 sm:pt-7">
         <button
           onClick={goBack}
-          className="mb-4 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
+          className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium transition-colors hover:opacity-80 sm:mb-4 sm:gap-2 sm:text-sm"
           style={{ color: '#1B4965' }}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           {backLabel}
         </button>
       </div>
 
       {/* ── Single unified profile page ── */}
-      <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-sm">
+      <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-xl bg-white shadow-sm sm:rounded-2xl">
         <section className="overflow-hidden">
           {/* ── Cover Banner ── */}
-          <div className="relative h-52 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64">
+          <div className="relative h-40 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64">
             {coverImage ? (
               <img src={coverImage} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -823,11 +823,11 @@ export default function AuthorProfile() {
           </div>
 
           {/* ── Profile Body ── */}
-          <div className="relative px-5 pb-7 sm:px-8">
-            {/* Avatar — overlaps the cover */}
-            <div className="absolute -top-14 left-5 sm:-top-18 sm:left-8">
+          <div className="relative px-4 pb-6 sm:px-8 sm:pb-7">
+            {/* Avatar — overlaps the cover, smaller on mobile */}
+            <div className="absolute -top-12 left-4 sm:-top-18 sm:left-8">
               <div className="relative">
-                <div className="h-28 w-28 overflow-hidden rounded-full border-[5px] border-white bg-white shadow-xl sm:h-36 sm:w-36">
+                <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white bg-white shadow-lg sm:h-36 sm:w-36 sm:border-[5px] sm:shadow-xl">
                   {profileImage ? (
                     <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
                   ) : (
@@ -870,10 +870,11 @@ export default function AuthorProfile() {
               {isOwnProfile ? (
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-[#1B4965] px-5 py-2 text-sm font-semibold text-[#1B4965] transition-all duration-200 hover:bg-[#1B4965] hover:text-white"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[#1B4965] text-[#1B4965] transition-all duration-200 hover:bg-[#1B4965] hover:text-white sm:h-auto sm:w-auto sm:gap-2 sm:rounded-full sm:px-5 sm:py-2 sm:text-sm sm:font-semibold"
+                  aria-label="Edit profile"
                 >
-                  <Pencil className="h-4 w-4" />
-                  Edit profile
+                  <Pencil className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Edit profile</span>
                 </button>
               ) : !isOwnProfile && routeAuthorId && routeAuthorId !== 'guest' ? (
                 <>
@@ -883,10 +884,10 @@ export default function AuthorProfile() {
                       <>
                         <button
                           onClick={() => setShowUnfollowMenu((s) => !s)}
-                          className="inline-flex items-center gap-1.5 rounded-full border-2 border-[#1B4965] bg-[#1B4965] px-6 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#163d57]"
+                          className="inline-flex items-center gap-1 rounded-full border-2 border-[#1B4965] bg-[#1B4965] px-4 py-1.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#163d57] sm:gap-1.5 sm:px-6 sm:py-2"
                         >
                           Following
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                         {showUnfollowMenu && (
                           <div className="absolute left-0 top-full mt-2 z-30 min-w-[150px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
@@ -903,9 +904,9 @@ export default function AuthorProfile() {
                     ) : (
                       <button
                         onClick={handleFollow}
-                        className="inline-flex items-center gap-1.5 rounded-full border-2 border-[#4B97C9] bg-[#4B97C9] px-6 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#3a82b0]"
+                        className="inline-flex items-center gap-1 rounded-full border-2 border-[#4B97C9] bg-[#4B97C9] px-4 py-1.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#3a82b0] sm:gap-1.5 sm:px-6 sm:py-2"
                       >
-                        <UserPlus className="h-4 w-4" />
+                        <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Follow
                       </button>
                     )}
@@ -914,10 +915,10 @@ export default function AuthorProfile() {
               ) : null}
 
               {/* 3-dot menu */}
-              <div className="relative" ref={dotsMenuRef}>
+              <div className="relative shrink-0" ref={dotsMenuRef}>
                 <button
                   onClick={() => setShowDotsMenu((s) => !s)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#dbe7ef] bg-white text-gray-600 transition-all duration-200 hover:border-[#4B97C9] hover:text-[#1B4965]"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#dbe7ef] bg-white text-gray-600 transition-all duration-200 hover:border-[#4B97C9] hover:text-[#1B4965] sm:h-10 sm:w-10"
                   aria-label="More options"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -979,54 +980,49 @@ export default function AuthorProfile() {
             </div>
 
             {/* Name + handle */}
-            <div className="mb-3 mt-10 sm:mt-14">
-              <h1 className="text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">{resolvedAuthor.name}</h1>
-              {handle && <p className="mt-0.5 text-sm font-medium text-gray-400">{handle}</p>}
+            <div className="mb-2 mt-8 sm:mb-3 sm:mt-14">
+              <h1 className="text-xl font-bold leading-tight text-gray-900 sm:text-3xl">{resolvedAuthor.name}</h1>
+              {handle && <p className="mt-0.5 text-xs font-medium text-gray-400 sm:text-sm">{handle}</p>}
             </div>
 
             {/* Bio */}
             {aboutText && (
-              <p className="mb-4 max-w-2xl text-[15px] leading-relaxed text-gray-600">{aboutText}</p>
+              <p className="mb-3 max-w-2xl text-[13px] leading-relaxed text-gray-600 sm:mb-4 sm:text-[15px]">{aboutText}</p>
             )}
 
-            {/* Stats bar: followers · following · posts · reads */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-gray-100 pt-4 text-sm">
-              <span className="flex items-center gap-1">
-                <span className="font-bold text-gray-900">{formatCompactNumber(authorStats.followers)}</span>
-                <span className="text-gray-500">followers</span>
-              </span>
-              <span className="text-gray-300">·</span>
-              <span className="flex items-center gap-1">
-                <span className="font-bold text-gray-900">{formatCompactNumber(authorStats.following)}</span>
-                <span className="text-gray-500">following</span>
-              </span>
-              <span className="text-gray-300">·</span>
-              <span className="flex items-center gap-1">
-                <span className="font-bold text-gray-900">{formatCompactNumber(authorStats.posts)}</span>
-                <span className="text-gray-500">posts</span>
-              </span>
-              {authorStats.reads > 0 && (
-                <>
-                  <span className="text-gray-300">·</span>
-                  <span className="flex items-center gap-1">
-                    <span className="font-bold text-gray-900">{formatCompactNumber(authorStats.reads)}</span>
-                    <span className="text-gray-500">reads</span>
-                  </span>
-                </>
-              )}
+            {/* Stats — compact Instagram-style on mobile, inline on desktop */}
+            <div className="border-t border-gray-100 pt-4">
+              <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-0">
+                <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
+                  <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.posts)}</span>
+                  <span className="text-[11px] text-gray-500 sm:text-sm">posts</span>
+                </div>
+                <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
+                  <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.followers)}</span>
+                  <span className="text-[11px] text-gray-500 sm:text-sm">followers</span>
+                </div>
+                <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
+                  <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.following)}</span>
+                  <span className="text-[11px] text-gray-500 sm:text-sm">following</span>
+                </div>
+                <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
+                  <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.reads)}</span>
+                  <span className="text-[11px] text-gray-500 sm:text-sm">reads</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         {/* ── Flat underline tab bar ── */}
-        <div className="border-b border-[#e8f0f5] px-5 sm:px-8">
+        <div className="border-b border-[#e8f0f5] px-4 sm:px-8">
           <div className="flex items-center justify-between">
             <div className="flex">
               {(['activity', 'posts', 'about'] as TabType[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`relative px-4 py-4 text-sm font-semibold capitalize transition-colors duration-200 ${
+                  className={`relative px-3 py-3 text-xs font-semibold capitalize transition-colors duration-200 sm:px-4 sm:py-4 sm:text-sm ${
                     activeTab === tab
                       ? 'text-[#1B4965]'
                       : 'text-gray-400 hover:text-gray-700'
@@ -1034,7 +1030,7 @@ export default function AuthorProfile() {
                 >
                   {tab}
                   {tab === 'posts' && posts.length > 0 && (
-                    <span className="ml-1.5 rounded-full bg-[#edf4f9] px-1.5 py-0.5 text-[10px] font-bold text-[#4B97C9]">
+                    <span className="ml-1 rounded-full bg-[#edf4f9] px-1 py-px text-[10px] font-bold text-[#4B97C9] sm:ml-1.5 sm:px-1.5 sm:py-0.5">
                       {posts.length}
                     </span>
                   )}
@@ -1095,9 +1091,9 @@ export default function AuthorProfile() {
             <p className="text-sm font-medium text-red-600">{error}</p>
           </div>
         ) : activeTab === 'activity' ? (
-          <div className="space-y-3 px-5 py-6 sm:px-8">
+          <div className="space-y-3 px-4 py-4 sm:px-8 sm:py-6">
               {activityFeed.length === 0 ? (
-                <div className="rounded-xl bg-gray-50 p-8 text-center">
+                <div className="rounded-lg bg-gray-50 p-6 text-center sm:rounded-xl sm:p-8">
                   <Sparkles className="mx-auto mb-3 h-10 w-10 text-gray-400" />
                   <p className="text-sm font-medium text-gray-600">No activity yet</p>
                   <p className="mt-1 text-xs text-gray-500">Posts from this author will appear here.</p>
@@ -1106,7 +1102,7 @@ export default function AuthorProfile() {
                 activityFeed.map((item) => (
                   <article
                     key={item.id}
-                    className="rounded-xl border border-[#e7f0f5] bg-gradient-to-br from-white to-[#fbfdff] p-5 transition-shadow hover:shadow-md"
+                    className="rounded-lg border border-[#e7f0f5] bg-gradient-to-br from-white to-[#fbfdff] p-4 transition-shadow hover:shadow-md sm:rounded-xl sm:p-5"
                   >
                     <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#4B97C9]/10 px-3 py-1 text-xs font-semibold text-[#4B97C9]">
                       <Sparkles className="h-3.5 w-3.5" />
@@ -1123,9 +1119,9 @@ export default function AuthorProfile() {
               )}
           </div>
         ) : activeTab === 'posts' ? (
-          <div className="space-y-5 px-5 py-6 sm:px-8">
+          <div className="space-y-4 px-4 py-4 sm:space-y-5 sm:px-8 sm:py-6">
               {filteredPosts.length === 0 ? (
-                <div className="rounded-xl bg-gray-50 p-8 text-center">
+                <div className="rounded-lg bg-gray-50 p-6 text-center sm:rounded-xl sm:p-8">
                   <MessageCircle className="mx-auto mb-3 h-10 w-10 text-gray-400" />
                   <p className="text-sm font-medium text-gray-600">No posts found</p>
                   <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filters.</p>
@@ -1137,11 +1133,11 @@ export default function AuthorProfile() {
                   return (
                     <article
                       key={post.id}
-                      className="group overflow-hidden rounded-xl border border-[#e6eff5] bg-white transition-all duration-200 hover:border-[#4B97C9]/40 hover:shadow-lg"
+                      className="group overflow-hidden rounded-lg border border-[#e6eff5] bg-white transition-all duration-200 hover:border-[#4B97C9]/40 hover:shadow-lg sm:rounded-xl"
                     >
                       <div className="flex flex-col sm:flex-row">
                         {cover && (
-                          <div className="h-48 w-full overflow-hidden bg-[#edf3f8] sm:h-auto sm:w-56">
+                          <div className="h-36 w-full shrink-0 overflow-hidden bg-[#edf3f8] sm:h-auto sm:w-56">
                             <img
                               src={cover}
                               alt={post.title}
@@ -1149,12 +1145,12 @@ export default function AuthorProfile() {
                             />
                           </div>
                         )}
-                        <div className="flex flex-1 flex-col justify-between p-5 sm:p-6">
+                        <div className="flex flex-1 flex-col justify-between p-4 sm:p-6">
                           <div>
-                            <h3 className="text-xl font-bold leading-snug text-gray-900 group-hover:text-[#1B4965]">
+                            <h3 className="text-base font-bold leading-snug text-gray-900 group-hover:text-[#1B4965] sm:text-xl">
                               {post.title}
                             </h3>
-                            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-600">{post.excerpt}</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-600 sm:mt-2 sm:text-sm">{post.excerpt}</p>
 
                             {categories.length > 0 && (
                               <div className="mt-3 flex flex-wrap gap-2">
@@ -1206,7 +1202,7 @@ export default function AuthorProfile() {
               )}
           </div>
         ) : (
-          <div className="px-5 py-6 sm:px-8">
+          <div className="px-4 py-4 sm:px-8 sm:py-6">
             <div className="mb-6 flex items-start gap-4">
               <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-white">
                 <UserRound className="h-6 w-6" />
