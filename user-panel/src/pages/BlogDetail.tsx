@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, ArrowLeft, X, MessageCircle, ThumbsUp, Share2 } from 'lucide-react'
+import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHorizontal } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { useBlogBack } from '../hooks/useBlogBack'
@@ -332,6 +332,11 @@ export default function BlogDetail() {
     })
   }
 
+  const formatPostTime = (dateString: string) => {
+    const d = new Date(dateString)
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' at ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  }
+
   const fetchLikes = async () => {
     if (!post) return
     try {
@@ -567,58 +572,72 @@ export default function BlogDetail() {
     const indentLevel = Math.min(depth, 8)
     const marginLeft = indentLevel * 16 // 16px per level for tighter nesting
     
+    const formatCommentDate = (dateStr: string) =>
+      new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+
     return (
-      <div key={comment.id} className="mb-3">
-        <div 
-          className={`rounded-lg border border-gray-200 bg-white p-3 hover:border-gray-300 transition-colors shadow-sm ${depth > 0 ? 'ml-6' : ''}`}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-gray-900">
-                {comment.author_name || 'User'}
-                {post?.user_id && String(comment.user_id || '') === String(post.user_id) && (
-                  <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                    Author
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-gray-500">
-                {new Date(comment.created_at).toLocaleString()}
-              </div>
+      <div key={comment.id} className="border-b border-gray-100 last:border-b-0 py-4 first:pt-0">
+        <div className={`flex gap-3 ${depth > 0 ? 'ml-6' : ''}`}>
+          <div className="flex-shrink-0">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-700" style={{ backgroundColor: '#E8F4F8' }}>
+              {(comment.author_name || 'U').charAt(0).toUpperCase()}
             </div>
-            {isAuthenticated && String(comment.user_id || '') === String(user?.id || '') && (
-              <div className="relative">
-                <button
-                  onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)}
-                  className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
-                >
-                  ⋯
-                </button>
-                {openMenuId === comment.id && (
-                  <div className="absolute right-0 mt-2 w-28 rounded-md border border-gray-200 bg-white shadow-lg z-10">
-                    <button
-                      onClick={() => {
-                        setActiveEditId(comment.id)
-                        setEditText(prev => ({ ...prev, [comment.id]: comment.content }))
-                        setOpenMenuId(null)
-                      }}
-                      className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setOpenMenuId(null)
-                        deleteComment(comment.id)
-                      }}
-                      className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-semibold text-gray-900">
+                  {comment.author_name || 'User'}
+                  {post?.user_id && String(comment.user_id || '') === String(post.user_id) && (
+                    <span className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}>
+                      Author
+                    </span>
+                  )}
+                </span>
+                <span className="text-xs text-gray-500 ml-2">{formatCommentDate(comment.created_at)}</span>
               </div>
-            )}
+              {isAuthenticated && String(comment.user_id || '') === String(user?.id || '') && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <div className="relative">
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)}
+                      className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    {openMenuId === comment.id && (
+                      <div className="absolute right-0 mt-2 w-28 rounded-md border border-gray-200 bg-white shadow-lg z-10">
+                        <button
+                          onClick={() => {
+                            setActiveEditId(comment.id)
+                            setEditText(prev => ({ ...prev, [comment.id]: comment.content }))
+                            setOpenMenuId(null)
+                          }}
+                          className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null)
+                            deleteComment(comment.id)
+                          }}
+                          className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-gray-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => deleteComment(comment.id)}
+                    className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    title="Delete"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
           </div>
 
           {!isEditing ? (
@@ -658,29 +677,34 @@ export default function BlogDetail() {
             </div>
           )}
 
-          <div className="mt-3 flex items-center gap-4 text-xs text-gray-600">
+          <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
             <button
               onClick={() => toggleCommentLike(comment.id, !!comment.liked)}
-              className="inline-flex items-center gap-1 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors"
             >
-              <ThumbsUp className={`w-3 h-3 ${comment.liked ? 'text-blue-600 fill-current' : 'text-gray-500'}`} />
-              {comment.like_count || 0}
+              <Heart className={`w-4 h-4 ${comment.liked ? 'text-red-500 fill-current' : ''}`} />
             </button>
             <button
               onClick={() => setActiveReplyId(activeReplyId === comment.id ? null : comment.id)}
-              className="hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors"
             >
-              Reply
+              <MessageCircle className="w-4 h-4" />
+            </button>
+            <button className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors opacity-60 cursor-default">
+              <Repeat2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleShare()}
+              className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
             </button>
             {replies.length > 0 && (
               <button
                 onClick={() => toggleReplies(comment.id)}
-                className="hover:text-gray-900 transition-colors inline-flex items-center gap-1"
+                className="ml-2 hover:text-gray-900 transition-colors text-xs"
               >
-                {isExpanded ? 'Hide replies' : 'Show replies'}
-                <span className="ml-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700">
-                  {replies.length}
-                </span>
+                {isExpanded ? 'Hide replies' : 'Show replies'} ({replies.length})
               </button>
             )}
           </div>
@@ -1090,18 +1114,39 @@ export default function BlogDetail() {
           )}
         </div>
 
-        {/* Likes */}
-        <div className="mt-10 flex items-center gap-3">
-          <button
-            onClick={handleLikeToggle}
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              liked ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            <ThumbsUp className="w-4 h-4" />
-            {liked ? 'Liked' : 'Like'}
-          </button>
-          <span className="text-sm text-gray-600">{likesCount} likes</span>
+        {/* Post interactions - Likes, Replies, Restacks, Share */}
+        <div className="mt-10 pt-6 border-t border-gray-100">
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <button
+              onClick={handleLikeToggle}
+              className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+            >
+              <Heart className={`w-4 h-4 ${liked ? 'text-red-500 fill-current' : 'text-gray-500'}`} />
+              <span>{likesCount}</span>
+            </button>
+            <span className="inline-flex items-center gap-1.5 text-gray-500">
+              <MessageCircle className="w-4 h-4" />
+              <span>{comments.length}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-gray-500">
+              <Repeat2 className="w-4 h-4" />
+              <span>0</span>
+            </span>
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-gray-500">
+              {likesCount} Likes · {comments.length} Replies · 0 Restacks
+            </span>
+            <span className="text-xs text-gray-500">
+              {formatPostTime(post.created_at)}
+            </span>
+          </div>
         </div>
 
         {/* Comments */}
@@ -1132,22 +1177,33 @@ export default function BlogDetail() {
             </div>
             </div>
 
-          <div className="mb-6">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => submitComment()}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                disabled={!isAuthenticated || !commentText.trim()}
-              >
-                Post Comment
-              </button>
+          <div className="mb-6 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-700" style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}>
+                {isAuthenticated && user?.name ? (user.name).charAt(0).toUpperCase() : '?'}
+              </div>
               <input
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                placeholder={isAuthenticated ? 'Add a comment…' : 'Sign in to comment'}
+                className="flex-1 rounded-xl px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:outline-none placeholder:text-gray-400"
+                placeholder={isAuthenticated ? 'Leave a reply...' : 'Sign in to leave a reply'}
                 disabled={!isAuthenticated}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey && isAuthenticated && commentText.trim()) {
+                    submitComment()
+                  }
+                }}
               />
+              <button
+                onClick={() => submitComment()}
+                className="rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 transition-colors flex-shrink-0"
+                style={{ backgroundColor: '#1B4965' }}
+                onMouseEnter={(e) => { if (isAuthenticated && commentText.trim()) e.currentTarget.style.backgroundColor = '#2c5f7d' }}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1B4965'}
+                disabled={!isAuthenticated || !commentText.trim()}
+              >
+                Post
+              </button>
             </div>
           </div>
 
