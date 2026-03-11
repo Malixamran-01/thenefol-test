@@ -572,7 +572,7 @@ export default function BlogDetail() {
       new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
     return (
-      <div key={comment.id} className="border-b border-gray-100 last:border-b-0 py-4 first:pt-0">
+      <div key={comment.id} className="border-b border-gray-100 last:border-b-0 py-5 first:pt-0">
         <div className={`flex gap-3 ${depth > 0 ? 'ml-6' : ''}`}>
           <div className="flex-shrink-0">
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-700" style={{ backgroundColor: '#E8F4F8' }}>
@@ -673,32 +673,32 @@ export default function BlogDetail() {
             </div>
           )}
 
-          <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+          <div className="mt-4 flex items-center gap-5 text-gray-500">
             <button
               onClick={() => toggleCommentLike(comment.id, !!comment.liked)}
-              className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-2 hover:text-gray-800 transition-colors"
             >
-              <Heart className={`w-4 h-4 ${comment.liked ? 'text-red-500 fill-current' : ''}`} />
+              <Heart className={`w-[17px] h-[17px] ${comment.liked ? 'text-red-500 fill-current' : ''}`} />
             </button>
             <button
               onClick={() => setActiveReplyId(activeReplyId === comment.id ? null : comment.id)}
-              className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-2 hover:text-gray-800 transition-colors"
             >
-              <MessageCircle className="w-4 h-4" />
+              <MessageCircle className="w-[17px] h-[17px]" />
             </button>
-            <button className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors opacity-60 cursor-default">
-              <Repeat2 className="w-4 h-4" />
+            <button className="inline-flex items-center gap-2 opacity-50 cursor-default">
+              <Repeat2 className="w-[17px] h-[17px]" />
             </button>
             <button
               onClick={() => handleShare()}
-              className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-2 hover:text-gray-800 transition-colors"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-[17px] h-[17px]" />
             </button>
             {replies.length > 0 && (
               <button
                 onClick={() => toggleReplies(comment.id)}
-                className="ml-2 hover:text-gray-900 transition-colors text-xs"
+                className="ml-2 text-xs hover:text-gray-800 transition-colors"
               >
                 {isExpanded ? 'Hide replies' : 'Show replies'} ({replies.length})
               </button>
@@ -1022,6 +1022,20 @@ export default function BlogDetail() {
           <div>{readingTime}</div>
         </div>
 
+        {/* Categories — shown below title/author */}
+        {categories.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {categories.map(category => (
+              <span
+                key={category}
+                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700"
+              >
+                {category}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Detail Image (appears below title) */}
         {post.detail_image && (
           <div className="mt-8 overflow-hidden rounded-2xl bg-gray-100">
@@ -1112,35 +1126,35 @@ export default function BlogDetail() {
         </div>
 
         {/* Post interactions - Likes, Replies, Restacks, Share */}
-        <div className="mt-10 pt-6 border-t border-gray-100">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
+        <div className="mt-10 pt-5 pb-5 border-t border-b border-gray-100">
+          <div className="flex items-center gap-6 text-sm text-gray-600">
             <button
               onClick={handleLikeToggle}
-              className="inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-2 hover:text-gray-900 transition-colors"
             >
-              <Heart className={`w-4 h-4 ${liked ? 'text-red-500 fill-current' : 'text-gray-500'}`} />
+              <Heart className={`w-[18px] h-[18px] ${liked ? 'text-red-500 fill-current' : 'text-gray-500'}`} />
               <span>{likesCount}</span>
             </button>
-            <span className="inline-flex items-center gap-1.5 text-gray-500">
-              <MessageCircle className="w-4 h-4" />
+            <span className="inline-flex items-center gap-2 text-gray-500">
+              <MessageCircle className="w-[18px] h-[18px]" />
               <span>{comments.length}</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 text-gray-500">
-              <Repeat2 className="w-4 h-4" />
+            <span className="inline-flex items-center gap-2 text-gray-500">
+              <Repeat2 className="w-[18px] h-[18px]" />
               <span>0</span>
             </span>
             <button
               onClick={handleShare}
-              className="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors ml-auto"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-[18px] h-[18px]" />
             </button>
           </div>
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-xs text-gray-500">
+          <div className="flex items-center justify-between mt-3">
+            <span className="text-xs text-gray-400">
               {likesCount} Likes · {comments.length} Replies · 0 Restacks
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               {formatPostTime(post.created_at)}
             </span>
           </div>
@@ -1154,7 +1168,7 @@ export default function BlogDetail() {
             </div>
           ) : (
           <div>
-            <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2 mb-5">
             <MessageCircle className="w-4 h-4 text-gray-600" />
             <h2 className="text-lg font-semibold text-gray-900">Comments</h2>
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
@@ -1172,9 +1186,9 @@ export default function BlogDetail() {
                 <option value="replies">Most Replies</option>
               </select>
             </div>
-            </div>
+          </div>
 
-          <div className="mb-6 pt-4 border-t border-gray-100">
+          <div className="mb-8 pb-6 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-700" style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}>
                 {isAuthenticated && user?.name ? (user.name).charAt(0).toUpperCase() : '?'}
@@ -1216,20 +1230,6 @@ export default function BlogDetail() {
           </div>
           )}
         </div>
-
-        {/* Categories */}
-        {categories.length > 0 && (
-          <div className="mt-10 flex flex-wrap gap-2">
-            {categories.map(category => (
-              <span
-                key={category}
-                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700"
-              >
-                {category}
-              </span>
-            ))}
-          </div>
-        )}
 
         {/* Footer Actions */}
         <div className="mt-12 flex items-center justify-center gap-4">
