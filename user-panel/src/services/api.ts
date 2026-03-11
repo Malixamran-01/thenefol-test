@@ -911,6 +911,29 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  async getPostReposts(postId: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/reposts`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async repostPost(postId: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/repost`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async unrepostPost(postId: string) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/unrepost`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
   async getPersonalizedFeed(limit: number = 30, offset: number = 0) {
     const response = await fetch(
       `${getApiBaseUrl()}/api/blog/feed?limit=${limit}&offset=${offset}`,

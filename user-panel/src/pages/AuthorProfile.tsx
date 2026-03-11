@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react'
 import {
   ArrowLeft,
+  BookOpen,
   Calendar,
   Check,
   ChevronDown,
@@ -11,6 +12,7 @@ import {
   MessageCircle,
   MoreVertical,
   Pencil,
+  Repeat2,
   Share2,
   Sparkles,
   Upload,
@@ -497,14 +499,14 @@ export default function AuthorProfile() {
     fetchAuthorPosts()
   }, [authorSeed, routeAuthorId])
 
-  // Fetch real author activities - only for users with author profile
+  // Fetch real author activities
   useEffect(() => {
-    if (!hasAuthorProfile || !effectiveAuthorId || effectiveAuthorId === 'guest' || activeTab !== 'activity') return
+    if (!effectiveAuthorId || effectiveAuthorId === 'guest' || activeTab !== 'activity') return
     
     const fetchActivities = async () => {
       setLoadingActivities(true)
       try {
-        const data = await blogActivityAPI.getAuthorActivity(effectiveAuthorId, 10, 0)
+        const data = await blogActivityAPI.getAuthorActivity(effectiveAuthorId, 20, 0)
         setActivities(data)
       } catch (err) {
         console.error('Error fetching activities:', err)
@@ -515,7 +517,7 @@ export default function AuthorProfile() {
     }
 
     fetchActivities()
-  }, [effectiveAuthorId, activeTab, hasAuthorProfile])
+  }, [effectiveAuthorId, activeTab])
 
   const resolvedAuthor = useMemo(() => {
     // Author profile: use author_profiles table data
@@ -956,7 +958,7 @@ export default function AuthorProfile() {
             )}
 
             {/* Stats — compact Instagram-style on mobile, inline on desktop */}
-            <div className="border-t border-gray-100 pt-4">
+            <div className="border-t border-gray-100/50 pt-4">
               <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-0">
                 <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
                   <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.posts)}</span>
@@ -980,7 +982,7 @@ export default function AuthorProfile() {
         </section>
 
         {/* ── Flat underline tab bar ── */}
-        <div className="border-b border-[#e8f0f5] px-4 sm:px-8">
+        <div className="border-b border-[#e8f0f5]/60 px-4 sm:px-8">
           <div className="flex items-center justify-between">
             <div className="flex">
               {(['activity', 'posts', 'about'] as TabType[]).map((tab) => (
@@ -1059,31 +1061,76 @@ export default function AuthorProfile() {
             <p className="text-sm font-medium text-red-600">{error}</p>
           </div>
         ) : activeTab === 'activity' ? (
-          <div className="space-y-3 px-4 py-4 sm:px-8 sm:py-6">
-              {activityFeed.length === 0 ? (
-                <div className="rounded-lg bg-gray-50 p-6 text-center sm:rounded-xl sm:p-8">
-                  <Sparkles className="mx-auto mb-3 h-10 w-10 text-gray-400" />
-                  <p className="text-sm font-medium text-gray-600">No activity yet</p>
-                  <p className="mt-1 text-xs text-gray-500">Posts from this author will appear here.</p>
+          <div className="space-y-0 px-4 py-4 sm:px-8 sm:py-6">
+              {loadingActivities ? (
+                <div className="py-10 text-center">
+                  <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="rounded-xl bg-gray-50 p-8 text-center">
+                  <Sparkles className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-500">No activity yet</p>
+                  <p className="mt-1 text-xs text-gray-400">Posts, likes, and reposts from this author will appear here.</p>
                 </div>
               ) : (
-                activityFeed.map((item) => (
-                  <article
-                    key={item.id}
-                    className="rounded-lg border border-[#e7f0f5] bg-gradient-to-br from-white to-[#fbfdff] p-4 transition-shadow hover:shadow-md sm:rounded-xl sm:p-5"
-                  >
-                    <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#4B97C9]/10 px-3 py-1 text-xs font-semibold text-[#4B97C9]">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Latest activity
-                    </div>
-                    <h3 className="text-base font-semibold leading-snug text-gray-900">{item.headline}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-600">{item.summary}</p>
-                    <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
-                      <Calendar className="h-3.5 w-3.5" />
-                      {item.date}
-                    </div>
-                  </article>
-                ))
+                activities.map((item: any, idx: number) => {
+                  const isPublished = item.activity_type === 'published_post'
+                  const isLiked = item.activity_type === 'liked_post'
+                  const isCommented = item.activity_type === 'commented_on_post'
+                  const isReposted = item.activity_type === 'reposted_post'
+                  const cover = item.cover_image
+                    ? (item.cover_image.startsWith('/uploads/') ? `${getApiBase()}${item.cover_image}` : item.cover_image)
+                    : null
+
+                  const badgeConfig = isPublished
+                    ? { label: 'Published a post', icon: <BookOpen className="h-3.5 w-3.5" />, color: 'bg-[#4B97C9]/10 text-[#1B4965]' }
+                    : isLiked
+                    ? { label: 'Liked a post', icon: <Heart className="h-3.5 w-3.5" />, color: 'bg-red-50 text-red-500' }
+                    : isCommented
+                    ? { label: 'Commented on a post', icon: <MessageCircle className="h-3.5 w-3.5" />, color: 'bg-purple-50 text-purple-600' }
+                    : isReposted
+                    ? { label: 'Reposted', icon: <Repeat2 className="h-3.5 w-3.5" />, color: 'bg-green-50 text-green-600' }
+                    : { label: 'Activity', icon: <Sparkles className="h-3.5 w-3.5" />, color: 'bg-gray-100 text-gray-500' }
+
+                  return (
+                    <a
+                      key={`${item.activity_type}-${item.post_id}-${idx}`}
+                      href={`#/user/blog/${item.post_id}`}
+                      className="flex items-start gap-3 border-b border-gray-100/50 py-4 transition-colors hover:bg-gray-50/50 first:pt-0 last:border-0"
+                    >
+                      {cover ? (
+                        <img
+                          src={cover}
+                          alt=""
+                          className="h-14 w-14 flex-shrink-0 rounded-lg object-cover sm:h-16 sm:w-16"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg bg-[#edf4f9] sm:h-16 sm:w-16">
+                          <BookOpen className="h-5 w-5 text-[#4B97C9]/50" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className={`mb-1 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeConfig.color}`}>
+                          {badgeConfig.icon}
+                          {badgeConfig.label}
+                        </div>
+                        <h3 className="truncate text-sm font-semibold text-gray-900 leading-snug">
+                          {item.post_title}
+                        </h3>
+                        {isCommented && item.comment_content && (
+                          <p className="mt-0.5 line-clamp-1 text-xs text-gray-500 italic">"{item.comment_content}"</p>
+                        )}
+                        {!isCommented && item.post_excerpt && (
+                          <p className="mt-0.5 line-clamp-1 text-xs text-gray-400">{item.post_excerpt}</p>
+                        )}
+                        <div className="mt-1.5 flex items-center gap-1 text-[11px] text-gray-400">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(item.activity_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </div>
+                      </div>
+                    </a>
+                  )
+                })
               )}
           </div>
         ) : activeTab === 'posts' ? (
@@ -1182,7 +1229,7 @@ export default function AuthorProfile() {
             </div>
 
             {hasAuthorProfile && (authorProfile?.writing_languages?.length || authorProfile?.location || authorProfile?.website || (authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0)) ? (
-              <div className="mt-6 space-y-0 divide-y divide-[#f0f5f8]">
+              <div className="mt-6 space-y-0 divide-y divide-[#f0f5f8]/50">
                 {authorProfile?.writing_languages?.length ? (
                   <div className="py-4">
                     <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Languages</div>

@@ -397,11 +397,36 @@ router.get('/authors/:authorId/activity', async (req, res) => {
       [resolvedId, limit, offset]
     )
 
+    // Get author's reposted posts
+    const { rows: repostedPosts } = await pool.query(
+      `SELECT 
+        'reposted_post' as activity_type,
+        bp.id as post_id,
+        bp.title as post_title,
+        bp.excerpt as post_excerpt,
+        bp.cover_image,
+        bp.author_name as post_author_name,
+        bp.author_email as post_author_email,
+        ap.id as post_author_id,
+        bpr.created_at as activity_date
+       FROM blog_post_reposts bpr
+       JOIN blog_posts bp ON bpr.post_id = bp.id::text
+       LEFT JOIN author_profiles ap ON bp.author_id = ap.id
+       WHERE bpr.user_id = $1 
+         AND bp.status = 'approved'
+         AND bp.is_active = true
+         AND bp.is_deleted = false
+       ORDER BY bpr.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userIdOfAuthor, limit, offset]
+    )
+
     // Combine all activities and sort by date
     const allActivities = [
       ...likedPosts,
       ...commentedPosts,
-      ...publishedPosts
+      ...publishedPosts,
+      ...repostedPosts
     ].sort((a, b) => new Date(b.activity_date).getTime() - new Date(a.activity_date).getTime())
       .slice(0, limit)
 

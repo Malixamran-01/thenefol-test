@@ -59,6 +59,8 @@ export default function BlogDetail() {
   const [error, setError] = useState('')
   const [likesCount, setLikesCount] = useState(0)
   const [liked, setLiked] = useState(false)
+  const [repostsCount, setRepostsCount] = useState(0)
+  const [reposted, setReposted] = useState(false)
   const [comments, setComments] = useState<BlogComment[]>([])
   const [commentText, setCommentText] = useState('')
   const [replyText, setReplyText] = useState<Record<string, string>>({})
@@ -133,6 +135,7 @@ export default function BlogDetail() {
   useEffect(() => {
     if (!post) return
     fetchLikes()
+    fetchReposts()
     fetchComments()
   }, [post, commentSort])
 
@@ -360,6 +363,28 @@ export default function BlogDetail() {
     }
   }
 
+  const fetchReposts = async () => {
+    if (!post) return
+    try {
+      const apiBase = getApiBase()
+      const token = localStorage.getItem('token')
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/reposts`, { headers })
+      if (response.ok) {
+        const data = await response.json()
+        setRepostsCount(data.count || 0)
+        setReposted(!!data.reposted)
+      } else {
+        setRepostsCount(0)
+        setReposted(false)
+      }
+    } catch {
+      setRepostsCount(0)
+      setReposted(false)
+    }
+  }
+
   const fetchComments = async () => {
     if (!post) return
     try {
@@ -398,6 +423,33 @@ export default function BlogDetail() {
       }
     } catch (err) {
       console.error('Failed to toggle like:', err)
+    }
+  }
+
+  const handleRepostToggle = async () => {
+    if (!post) return
+    if (!isAuthenticated) {
+      sessionStorage.setItem('post_login_redirect', window.location.hash)
+      window.location.hash = '#/user/login'
+      return
+    }
+    try {
+      const apiBase = getApiBase()
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/${reposted ? 'unrepost' : 'repost'}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setRepostsCount(data.count || 0)
+        setReposted(!reposted)
+      }
+    } catch (err) {
+      console.error('Failed to toggle repost:', err)
     }
   }
 
@@ -1055,10 +1107,13 @@ export default function BlogDetail() {
               <MessageCircle className="w-[18px] h-[18px]" />
               <span>{comments.length}</span>
             </span>
-            <span className="inline-flex items-center gap-2 text-gray-500">
-              <Repeat2 className="w-[18px] h-[18px]" />
-              <span>0</span>
-            </span>
+            <button
+              onClick={handleRepostToggle}
+              className="inline-flex items-center gap-2 hover:text-gray-900 transition-colors"
+            >
+              <Repeat2 className={`w-[18px] h-[18px] ${reposted ? 'text-green-500' : 'text-gray-500'}`} />
+              <span>{repostsCount}</span>
+            </button>
             {/* Share button — opens full share menu */}
             <div className="relative share-menu-container ml-auto">
               <button
@@ -1098,7 +1153,7 @@ export default function BlogDetail() {
           </div>
           <div className="flex items-center justify-between mt-3">
             <span className="text-xs text-gray-400">
-              {likesCount} Likes · {comments.length} Replies · 0 Restacks
+              {likesCount} Likes · {comments.length} Replies · {repostsCount} Restacks
             </span>
             <span className="text-xs text-gray-400">
               {formatPostTime(post.created_at)}

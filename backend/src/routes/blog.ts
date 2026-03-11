@@ -48,6 +48,16 @@ let pool: Pool
 // Initialize database connection
 export function initBlogRouter(databasePool: Pool) {
   pool = databasePool
+  // Ensure reposts table exists
+  databasePool.query(`
+    CREATE TABLE IF NOT EXISTS blog_post_reposts (
+      id SERIAL PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (post_id, user_id)
+    )
+  `).catch((err: Error) => console.error('Error creating blog_post_reposts table:', err))
 }
 
 const getUserIdFromToken = (req: express.Request): string | null => {
@@ -1507,6 +1517,71 @@ router.post('/posts/:id/unlike', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error unliking post:', error)
     res.status(500).json({ message: 'Failed to unlike post' })
+  }
+})
+
+// Reposts
+router.get('/posts/:id/reposts', async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const postId = req.params.id
+    const userId = getUserIdFromToken(req)
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_reposts WHERE post_id = $1`,
+      [postId]
+    )
+    const { rows: repostedRows } = userId
+      ? await pool.query(
+          `SELECT 1 FROM blog_post_reposts WHERE post_id = $1 AND user_id = $2 LIMIT 1`,
+          [postId, userId]
+        )
+      : { rows: [] }
+    res.json({ count: countRows[0]?.count || 0, reposted: repostedRows.length > 0 })
+  } catch (error) {
+    console.error('Error fetching reposts:', error)
+    res.status(500).json({ message: 'Failed to fetch reposts' })
+  }
+})
+
+router.post('/posts/:id/repost', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const postId = req.params.id
+    const userId = req.userId
+    await pool.query(
+      `INSERT INTO blog_post_reposts (post_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (post_id, user_id) DO NOTHING`,
+      [postId, userId]
+    )
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_reposts WHERE post_id = $1`,
+      [postId]
+    )
+    res.json({ count: rows[0]?.count || 0 })
+  } catch (error) {
+    console.error('Error reposting:', error)
+    res.status(500).json({ message: 'Failed to repost' })
+  }
+})
+
+router.post('/posts/:id/unrepost', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const postId = req.params.id
+    const userId = req.userId
+    await pool.query(
+      `DELETE FROM blog_post_reposts WHERE post_id = $1 AND user_id = $2`,
+      [postId, userId]
+    )
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_reposts WHERE post_id = $1`,
+      [postId]
+    )
+    res.json({ count: rows[0]?.count || 0 })
+  } catch (error) {
+    console.error('Error unreposting:', error)
+    res.status(500).json({ message: 'Failed to unrepost' })
   }
 })
 
