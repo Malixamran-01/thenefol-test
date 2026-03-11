@@ -958,7 +958,7 @@ export default function AuthorProfile() {
             )}
 
             {/* Stats — compact Instagram-style on mobile, inline on desktop */}
-            <div className="border-t border-gray-100/50 pt-4">
+            <div className="border-t border-gray-200 pt-4">
               <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-0">
                 <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
                   <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.posts)}</span>
@@ -982,7 +982,7 @@ export default function AuthorProfile() {
         </section>
 
         {/* ── Flat underline tab bar ── */}
-        <div className="border-b border-[#e8f0f5]/60 px-4 sm:px-8">
+        <div className="border-b border-[#b8cdd9] px-4 sm:px-8">
           <div className="flex items-center justify-between">
             <div className="flex">
               {(['activity', 'posts', 'about'] as TabType[]).map((tab) => (
@@ -1063,8 +1063,8 @@ export default function AuthorProfile() {
         ) : activeTab === 'activity' ? (
           <div className="space-y-0 px-4 py-4 sm:px-8 sm:py-6">
               {loadingActivities ? (
-                <div className="py-10 text-center">
-                  <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                <div className="py-6">
+                  <LoadingSpinner size="md" message="Loading activity..." />
                 </div>
               ) : activities.length === 0 ? (
                 <div className="rounded-xl bg-gray-50 p-8 text-center">
@@ -1096,7 +1096,7 @@ export default function AuthorProfile() {
                     <a
                       key={`${item.activity_type}-${item.post_id}-${idx}`}
                       href={`#/user/blog/${item.post_id}`}
-                      className="flex items-start gap-3 border-b border-gray-100/50 py-4 transition-colors hover:bg-gray-50/50 first:pt-0 last:border-0"
+                      className="flex items-start gap-3 border-b border-gray-200 py-4 transition-colors hover:bg-gray-50/50 first:pt-0 last:border-0"
                     >
                       {cover ? (
                         <img
@@ -1229,7 +1229,7 @@ export default function AuthorProfile() {
             </div>
 
             {hasAuthorProfile && (authorProfile?.writing_languages?.length || authorProfile?.location || authorProfile?.website || (authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0)) ? (
-              <div className="mt-6 space-y-0 divide-y divide-[#f0f5f8]/50">
+              <div className="mt-6 space-y-0 divide-y divide-[#c8d8e4]">
                 {authorProfile?.writing_languages?.length ? (
                   <div className="py-4">
                     <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Languages</div>
