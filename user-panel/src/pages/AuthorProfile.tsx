@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import CustomSelect from '../components/CustomSelect'
 import { useBlogBack } from '../hooks/useBlogBack'
 import { useDispatch, useSelector } from 'react-redux'
 import { blogActivityAPI, uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
@@ -1012,15 +1013,16 @@ export default function AuthorProfile() {
                   className="h-8 w-44 rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
                   placeholder="Search posts..."
                 />
-                <select
+                <CustomSelect
                   value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value as SortType)}
-                  className="h-8 rounded-lg border border-[#dbe7ef] bg-white px-2 text-sm text-gray-700 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="popular">Popular</option>
-                  <option value="oldest">Oldest</option>
-                </select>
+                  onChange={(v) => setSortBy(v as SortType)}
+                  options={[
+                    { value: 'newest', label: 'Newest' },
+                    { value: 'popular', label: 'Popular' },
+                    { value: 'oldest', label: 'Oldest' },
+                  ]}
+                  align="right"
+                />
               </div>
             )}
           </div>
@@ -1032,15 +1034,17 @@ export default function AuthorProfile() {
                 className="h-9 w-full rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
                 placeholder="Search posts..."
               />
-              <select
+              <CustomSelect
                 value={sortBy}
-                onChange={(event) => setSortBy(event.target.value as SortType)}
-                className="h-9 w-full rounded-lg border border-[#dbe7ef] bg-white px-3 text-sm text-gray-700 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
-              >
-                <option value="newest">Newest</option>
-                <option value="popular">Popular</option>
-                <option value="oldest">Oldest</option>
-              </select>
+                onChange={(v) => setSortBy(v as SortType)}
+                options={[
+                  { value: 'newest', label: 'Newest' },
+                  { value: 'popular', label: 'Popular' },
+                  { value: 'oldest', label: 'Oldest' },
+                ]}
+                align="left"
+                className="w-full"
+              />
             </div>
           )}
         </div>

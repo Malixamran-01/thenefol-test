@@ -7,6 +7,7 @@ import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 import { authorAPI } from '../services/authorAPI'
 import AuthorPromptModal from '../components/AuthorPromptModal'
 import { BlogCardAuthor } from '../components/BlogCardAuthor'
+import CustomSelect from '../components/CustomSelect'
 
 interface BlogPost {
   id: string
@@ -370,18 +371,13 @@ export default function Blog() {
               ))}
             </div>
             <div className="w-full sm:hidden">
-              <select
+              <CustomSelect
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full h-12 rounded-full border border-[#DCE6EE] px-4 text-sm focus:border-[#1B4965] focus:outline-none focus:ring-2 focus:ring-blue-200"
-                style={{ color: '#1B4965' }}
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === 'All' ? 'All' : formatCategoryLabel(category)}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedCategory}
+                options={categories.map(c => ({ value: c, label: c === 'All' ? 'All' : formatCategoryLabel(c) }))}
+                align="left"
+                className="w-full"
+              />
             </div>
           </div>
         </div>
