@@ -568,10 +568,6 @@ export default function BlogDetail() {
       ? `${comment.content.slice(0, 220)}...`
       : comment.content
     
-    // Calculate indentation based on depth (max 8 levels deep for visual clarity)
-    const indentLevel = Math.min(depth, 8)
-    const marginLeft = indentLevel * 16 // 16px per level for tighter nesting
-    
     const formatCommentDate = (dateStr: string) =>
       new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
@@ -707,6 +703,7 @@ export default function BlogDetail() {
                 {isExpanded ? 'Hide replies' : 'Show replies'} ({replies.length})
               </button>
             )}
+          </div>
           </div>
         </div>
 
