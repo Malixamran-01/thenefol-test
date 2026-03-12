@@ -1082,53 +1082,55 @@ export default function AuthorProfile() {
                     ? (item.cover_image.startsWith('/uploads/') ? `${getApiBase()}${item.cover_image}` : item.cover_image)
                     : null
 
-                  const badgeConfig = isPublished
-                    ? { label: 'Published a post', icon: <BookOpen className="h-3.5 w-3.5" />, color: 'bg-[#4B97C9]/10 text-[#1B4965]' }
+                  const actionLabel = isPublished
+                    ? { text: 'published', icon: <BookOpen className="h-3.5 w-3.5" /> }
                     : isLiked
-                    ? { label: 'Liked a post', icon: <Heart className="h-3.5 w-3.5" />, color: 'bg-red-50 text-red-500' }
+                    ? { text: 'liked', icon: <Heart className="h-3.5 w-3.5" /> }
                     : isCommented
-                    ? { label: 'Commented on a post', icon: <MessageCircle className="h-3.5 w-3.5" />, color: 'bg-purple-50 text-purple-600' }
+                    ? { text: 'commented', icon: <MessageCircle className="h-3.5 w-3.5" /> }
                     : isReposted
-                    ? { label: 'Reposted', icon: <Repeat2 className="h-3.5 w-3.5" />, color: 'bg-green-50 text-green-600' }
-                    : { label: 'Activity', icon: <Sparkles className="h-3.5 w-3.5" />, color: 'bg-gray-100 text-gray-500' }
+                    ? { text: 'reposted', icon: <Repeat2 className="h-3.5 w-3.5" /> }
+                    : { text: 'activity', icon: <Sparkles className="h-3.5 w-3.5" /> }
 
                   return (
-                    <a
-                      key={`${item.activity_type}-${item.post_id}-${idx}`}
-                      href={`#/user/blog/${item.post_id}`}
-                      className="flex items-start gap-3 border-b border-gray-200 py-4 transition-colors hover:bg-gray-50/50 first:pt-0 last:border-0"
-                    >
-                      {cover ? (
-                        <img
-                          src={cover}
-                          alt=""
-                          className="h-14 w-14 flex-shrink-0 rounded-lg object-cover sm:h-16 sm:w-16"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg bg-[#edf4f9] sm:h-16 sm:w-16">
-                          <BookOpen className="h-5 w-5 text-[#4B97C9]/50" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className={`mb-1 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeConfig.color}`}>
-                          {badgeConfig.icon}
-                          {badgeConfig.label}
-                        </div>
-                        <h3 className="truncate text-sm font-semibold text-gray-900 leading-snug">
-                          {item.post_title}
-                        </h3>
-                        {isCommented && item.comment_content && (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-gray-500 italic">"{item.comment_content}"</p>
-                        )}
-                        {!isCommented && item.post_excerpt && (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-gray-400">{item.post_excerpt}</p>
-                        )}
-                        <div className="mt-1.5 flex items-center gap-1 text-[11px] text-gray-400">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(item.activity_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </div>
+                    <div key={`${item.activity_type}-${item.post_id}-${idx}`} className="border-b border-gray-200 py-4 last:border-0">
+                      {/* Minimal action label row */}
+                      <div className="mb-2.5 flex items-center gap-1.5 text-[12px] text-gray-400">
+                        <span className="text-gray-400">{actionLabel.icon}</span>
+                        <span className="font-medium text-gray-500">{actionLabel.text}</span>
                       </div>
-                    </a>
+
+                      {/* Post card */}
+                      <a
+                        href={`#/user/blog/${item.post_id}`}
+                        className="flex items-start gap-3 rounded-xl p-2 -mx-2 transition-colors hover:bg-[#f4f9fc]"
+                      >
+                        {cover ? (
+                          <img
+                            src={cover}
+                            alt=""
+                            className="h-16 w-16 flex-shrink-0 rounded-lg object-cover sm:h-[72px] sm:w-[72px]"
+                          />
+                        ) : (
+                          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-[#edf4f9] sm:h-[72px] sm:w-[72px]">
+                            <BookOpen className="h-5 w-5 text-[#4B97C9]/40" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 leading-snug">
+                            {item.post_title}
+                          </h3>
+                          {isCommented && item.comment_content ? (
+                            <p className="mt-1 line-clamp-1 text-xs text-gray-500 italic">"{item.comment_content}"</p>
+                          ) : item.post_excerpt ? (
+                            <p className="mt-1 line-clamp-1 text-xs text-gray-400">{item.post_excerpt}</p>
+                          ) : null}
+                          <p className="mt-1.5 text-[11px] text-gray-400">
+                            {new Date(item.activity_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        </div>
+                      </a>
+                    </div>
                   )
                 })
               )}
