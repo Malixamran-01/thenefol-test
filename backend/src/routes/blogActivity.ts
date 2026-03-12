@@ -388,11 +388,11 @@ router.get('/authors/:authorId/activity', async (req, res) => {
       [userIdOfAuthor, limit, offset]
     )
 
-    // Get author's published posts
+    // Get author's published posts — match by author_id OR user_id (older posts may lack author_id)
     const { rows: publishedPosts } = await pool.query(
       `SELECT 
         'published_post' as activity_type,
-        bp.id as post_id,
+        bp.id::text as post_id,
         bp.title as post_title,
         bp.excerpt as post_excerpt,
         bp.cover_image,
@@ -401,14 +401,15 @@ router.get('/authors/:authorId/activity', async (req, res) => {
         bp.author_id as post_author_id,
         bp.created_at as activity_date
        FROM blog_posts bp
-       WHERE bp.author_id = $1 
+       WHERE (bp.author_id = $1 OR bp.user_id = $2::integer)
          AND bp.status = 'approved'
          AND bp.is_active = true
          AND bp.is_deleted = false
        ORDER BY bp.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [resolvedId, limit, offset]
+       LIMIT $3 OFFSET $4`,
+      [resolvedId, userIdOfAuthor, limit, offset]
     )
+    console.log(`[activity] resolvedId=${resolvedId} userIdOfAuthor=${userIdOfAuthor} publishedPosts=${publishedPosts.length}`)
 
     // Get author's reposted posts (wrapped in try/catch so it won't break other activity types)
     let repostedPosts: any[] = []
@@ -416,7 +417,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
       const { rows } = await pool.query(
         `SELECT 
           'reposted_post' as activity_type,
-          bp.id as post_id,
+          bp.id::text as post_id,
           bp.title as post_title,
           bp.excerpt as post_excerpt,
           bp.cover_image,
@@ -428,16 +429,15 @@ router.get('/authors/:authorId/activity', async (req, res) => {
          JOIN blog_posts bp ON bpr.post_id = bp.id::text
          LEFT JOIN author_profiles ap ON bp.author_id = ap.id
          WHERE bpr.user_id = $1::integer
-           AND bp.status = 'approved'
-           AND bp.is_active = true
            AND bp.is_deleted = false
          ORDER BY bpr.created_at DESC
          LIMIT $2 OFFSET $3`,
         [userIdOfAuthor, limit, offset]
       )
       repostedPosts = rows
+      console.log(`[activity] repostedPosts for user ${userIdOfAuthor}:`, repostedPosts.length)
     } catch (err) {
-      console.error('Error fetching reposted posts (table may not exist yet):', err)
+      console.error('[activity] Error fetching reposted posts:', err)
     }
 
     // Combine all activities and sort by date
@@ -449,6 +449,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     ].sort((a, b) => new Date(b.activity_date).getTime() - new Date(a.activity_date).getTime())
       .slice(0, limit)
 
+    console.log(`[activity] total combined activities: ${allActivities.length} (liked=${likedPosts.length} commented=${commentedPosts.length} published=${publishedPosts.length} reposted=${repostedPosts.length})`)
     res.json(allActivities)
   } catch (error) {
     console.error('Error fetching author activity:', error)
