@@ -336,7 +336,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     if (authorRows.length === 0) {
       return res.json([])
     }
-    const userIdOfAuthor = parseInt(String(authorRows[0].user_id), 10)
+    const userIdOfAuthor = String(authorRows[0].user_id)
 
     // Get author's liked posts
     const { rows: likedPosts } = await pool.query(
@@ -351,9 +351,9 @@ router.get('/authors/:authorId/activity', async (req, res) => {
         ap.id as post_author_id,
         bpl.created_at as activity_date
        FROM blog_post_likes bpl
-       JOIN blog_posts bp ON bpl.post_id = bp.id::text
-       LEFT JOIN author_profiles ap ON bp.author_id = ap.id
-       WHERE bpl.user_id = $1::integer
+       JOIN blog_posts bp ON bpl.post_id::text = bp.id::text
+       LEFT JOIN author_profiles ap ON bp.author_id::text = ap.id::text
+       WHERE bpl.user_id::text = $1
          AND bp.status = 'approved'
          AND bp.is_active = true
          AND bp.is_deleted = false
@@ -376,9 +376,9 @@ router.get('/authors/:authorId/activity', async (req, res) => {
         bc.content as comment_content,
         bc.created_at as activity_date
        FROM blog_comments bc
-       JOIN blog_posts bp ON bc.post_id = bp.id::text
-       LEFT JOIN author_profiles ap ON bp.author_id = ap.id
-       WHERE bc.user_id = $1::integer
+       JOIN blog_posts bp ON bc.post_id::text = bp.id::text
+       LEFT JOIN author_profiles ap ON bp.author_id::text = ap.id::text
+       WHERE bc.user_id::text = $1
          AND bc.is_deleted = false
          AND bp.status = 'approved'
          AND bp.is_active = true
@@ -401,13 +401,13 @@ router.get('/authors/:authorId/activity', async (req, res) => {
         bp.author_id as post_author_id,
         bp.created_at as activity_date
        FROM blog_posts bp
-       WHERE (bp.author_id = $1 OR bp.user_id::text = $2::text)
+       WHERE (bp.author_id::text = $1 OR bp.user_id::text = $1)
          AND bp.status = 'approved'
          AND bp.is_active = true
          AND bp.is_deleted = false
        ORDER BY bp.created_at DESC
-       LIMIT $3 OFFSET $4`,
-      [resolvedId, userIdOfAuthor, limit, offset]
+       LIMIT $2 OFFSET $3`,
+      [userIdOfAuthor, limit, offset]
     )
     console.log(`[activity] resolvedId=${resolvedId} userIdOfAuthor=${userIdOfAuthor} publishedPosts=${publishedPosts.length}`)
 
@@ -426,9 +426,9 @@ router.get('/authors/:authorId/activity', async (req, res) => {
           ap.id as post_author_id,
           bpr.created_at as activity_date
          FROM blog_post_reposts bpr
-         JOIN blog_posts bp ON bpr.post_id = bp.id::text
-         LEFT JOIN author_profiles ap ON bp.author_id = ap.id
-         WHERE bpr.user_id = $1::integer
+         JOIN blog_posts bp ON bpr.post_id::text = bp.id::text
+         LEFT JOIN author_profiles ap ON bp.author_id::text = ap.id::text
+         WHERE bpr.user_id::text = $1
            AND bp.is_deleted = false
          ORDER BY bpr.created_at DESC
          LIMIT $2 OFFSET $3`,
