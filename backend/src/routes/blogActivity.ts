@@ -336,13 +336,13 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     if (authorRows.length === 0) {
       return res.json([])
     }
-    const userIdOfAuthor = String(authorRows[0].user_id)
+    const userIdOfAuthor = parseInt(String(authorRows[0].user_id), 10)
 
     // Get author's liked posts
     const { rows: likedPosts } = await pool.query(
       `SELECT 
         'liked_post' as activity_type,
-        bp.id as post_id,
+        bp.id::text as post_id,
         bp.title as post_title,
         bp.excerpt as post_excerpt,
         bp.cover_image,
@@ -353,7 +353,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
        FROM blog_post_likes bpl
        JOIN blog_posts bp ON bpl.post_id = bp.id::text
        LEFT JOIN author_profiles ap ON bp.author_id = ap.id
-       WHERE bpl.user_id = $1 
+       WHERE bpl.user_id = $1::integer
          AND bp.status = 'approved'
          AND bp.is_active = true
          AND bp.is_deleted = false
@@ -366,7 +366,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     const { rows: commentedPosts } = await pool.query(
       `SELECT DISTINCT ON (bp.id)
         'commented_on_post' as activity_type,
-        bp.id as post_id,
+        bp.id::text as post_id,
         bp.title as post_title,
         bp.excerpt as post_excerpt,
         bp.cover_image,
@@ -378,7 +378,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
        FROM blog_comments bc
        JOIN blog_posts bp ON bc.post_id = bp.id::text
        LEFT JOIN author_profiles ap ON bp.author_id = ap.id
-       WHERE bc.user_id = $1 
+       WHERE bc.user_id = $1::integer
          AND bc.is_deleted = false
          AND bp.status = 'approved'
          AND bp.is_active = true
@@ -401,7 +401,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
         bp.author_id as post_author_id,
         bp.created_at as activity_date
        FROM blog_posts bp
-       WHERE (bp.author_id = $1 OR bp.user_id = $2::integer)
+       WHERE (bp.author_id = $1 OR bp.user_id::text = $2::text)
          AND bp.status = 'approved'
          AND bp.is_active = true
          AND bp.is_deleted = false
