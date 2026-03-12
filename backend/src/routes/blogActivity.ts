@@ -7,6 +7,16 @@ let pool: Pool
 
 export function initBlogActivityRouter(databasePool: Pool) {
   pool = databasePool
+  // Ensure reposts table exists (also created in blog.ts, but guard here too)
+  databasePool.query(`
+    CREATE TABLE IF NOT EXISTS blog_post_reposts (
+      id SERIAL PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (post_id, user_id)
+    )
+  `).catch((err: Error) => console.error('Error ensuring blog_post_reposts table:', err))
 }
 
 const getUserIdFromToken = (req: express.Request): string | null => {
@@ -320,9 +330,12 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     }
 
     const { rows: authorRows } = await pool.query(
-      `SELECT user_id FROM author_profiles WHERE id = $1 AND status = 'active'`,
+      `SELECT user_id FROM author_profiles WHERE id = $1 AND status != 'deleted'`,
       [resolvedId]
     )
+    if (authorRows.length === 0) {
+      return res.json([])
+    }
     const userIdOfAuthor = String(authorRows[0].user_id)
 
     // Get author's liked posts
@@ -397,29 +410,35 @@ router.get('/authors/:authorId/activity', async (req, res) => {
       [resolvedId, limit, offset]
     )
 
-    // Get author's reposted posts
-    const { rows: repostedPosts } = await pool.query(
-      `SELECT 
-        'reposted_post' as activity_type,
-        bp.id as post_id,
-        bp.title as post_title,
-        bp.excerpt as post_excerpt,
-        bp.cover_image,
-        bp.author_name as post_author_name,
-        bp.author_email as post_author_email,
-        ap.id as post_author_id,
-        bpr.created_at as activity_date
-       FROM blog_post_reposts bpr
-       JOIN blog_posts bp ON bpr.post_id = bp.id::text
-       LEFT JOIN author_profiles ap ON bp.author_id = ap.id
-       WHERE bpr.user_id = $1 
-         AND bp.status = 'approved'
-         AND bp.is_active = true
-         AND bp.is_deleted = false
-       ORDER BY bpr.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [userIdOfAuthor, limit, offset]
-    )
+    // Get author's reposted posts (wrapped in try/catch so it won't break other activity types)
+    let repostedPosts: any[] = []
+    try {
+      const { rows } = await pool.query(
+        `SELECT 
+          'reposted_post' as activity_type,
+          bp.id as post_id,
+          bp.title as post_title,
+          bp.excerpt as post_excerpt,
+          bp.cover_image,
+          bp.author_name as post_author_name,
+          bp.author_email as post_author_email,
+          ap.id as post_author_id,
+          bpr.created_at as activity_date
+         FROM blog_post_reposts bpr
+         JOIN blog_posts bp ON bpr.post_id = bp.id::text
+         LEFT JOIN author_profiles ap ON bp.author_id = ap.id
+         WHERE bpr.user_id = $1::integer
+           AND bp.status = 'approved'
+           AND bp.is_active = true
+           AND bp.is_deleted = false
+         ORDER BY bpr.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [userIdOfAuthor, limit, offset]
+      )
+      repostedPosts = rows
+    } catch (err) {
+      console.error('Error fetching reposted posts (table may not exist yet):', err)
+    }
 
     // Combine all activities and sort by date
     const allActivities = [

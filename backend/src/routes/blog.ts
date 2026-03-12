@@ -1548,9 +1548,19 @@ router.post('/posts/:id/repost', authenticateToken, async (req, res) => {
     if (!pool) return res.status(500).json({ message: 'Database not initialized' })
     const postId = req.params.id
     const userId = req.userId
+    // Ensure table exists before first insert
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS blog_post_reposts (
+        id SERIAL PRIMARY KEY,
+        post_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (post_id, user_id)
+      )
+    `)
     await pool.query(
       `INSERT INTO blog_post_reposts (post_id, user_id)
-       VALUES ($1, $2)
+       VALUES ($1, $2::integer)
        ON CONFLICT (post_id, user_id) DO NOTHING`,
       [postId, userId]
     )
