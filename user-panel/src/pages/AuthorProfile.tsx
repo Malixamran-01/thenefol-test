@@ -320,6 +320,12 @@ export default function AuthorProfile() {
   const [loadingActivities, setLoadingActivities] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
 
+  // Followers/Following/Subscribers modal
+  const [showSocialModal, setShowSocialModal] = useState(false)
+  const [socialModalTab, setSocialModalTab] = useState<'followers' | 'following' | 'subscribers'>('followers')
+  const [socialList, setSocialList] = useState<any[]>([])
+  const [loadingSocial, setLoadingSocial] = useState(false)
+
   useEffect(() => {
     const raw = sessionStorage.getItem('blog_author_profile')
     if (raw) {
@@ -713,6 +719,48 @@ export default function AuthorProfile() {
     }
   }
 
+  const openSocialModal = async (tab: 'followers' | 'following' | 'subscribers') => {
+    setSocialModalTab(tab)
+    setShowSocialModal(true)
+    setLoadingSocial(true)
+    setSocialList([])
+    try {
+      const id = effectiveAuthorId
+      if (!id || id === 'guest') return
+      let data: any[]
+      if (tab === 'followers') data = await blogActivityAPI.getAuthorFollowers(String(id))
+      else if (tab === 'following') data = await blogActivityAPI.getAuthorFollowing(String(id))
+      else data = await blogActivityAPI.getAuthorSubscribers(String(id))
+      setSocialList(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Error fetching social list:', err)
+      setSocialList([])
+    } finally {
+      setLoadingSocial(false)
+    }
+  }
+
+  const switchSocialTab = async (tab: 'followers' | 'following' | 'subscribers') => {
+    if (tab === socialModalTab) return
+    setSocialModalTab(tab)
+    setLoadingSocial(true)
+    setSocialList([])
+    try {
+      const id = effectiveAuthorId
+      if (!id || id === 'guest') return
+      let data: any[]
+      if (tab === 'followers') data = await blogActivityAPI.getAuthorFollowers(String(id))
+      else if (tab === 'following') data = await blogActivityAPI.getAuthorFollowing(String(id))
+      else data = await blogActivityAPI.getAuthorSubscribers(String(id))
+      setSocialList(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Error fetching social list:', err)
+      setSocialList([])
+    } finally {
+      setLoadingSocial(false)
+    }
+  }
+
   const handleShareProfile = async () => {
     const shareAuthorId = (hasAuthorProfile && authorProfile?.unique_user_id)
       ? authorProfile.unique_user_id
@@ -759,11 +807,14 @@ export default function AuthorProfile() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLightboxImage(null)
+      if (e.key === 'Escape') {
+        setLightboxImage(null)
+        setShowSocialModal(false)
+      }
     }
-    if (lightboxImage) document.addEventListener('keydown', handler)
+    if (lightboxImage || showSocialModal) document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [lightboxImage])
+  }, [lightboxImage, showSocialModal])
 
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
@@ -964,14 +1015,20 @@ export default function AuthorProfile() {
                   <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.posts)}</span>
                   <span className="text-[11px] text-gray-500 sm:text-sm">posts</span>
                 </div>
-                <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
+                <button
+                  onClick={() => openSocialModal('followers')}
+                  className="flex flex-col items-center transition-opacity hover:opacity-70 sm:flex-row sm:items-baseline sm:gap-1"
+                >
                   <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.followers)}</span>
                   <span className="text-[11px] text-gray-500 sm:text-sm">followers</span>
-                </div>
-                <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
+                </button>
+                <button
+                  onClick={() => openSocialModal('following')}
+                  className="flex flex-col items-center transition-opacity hover:opacity-70 sm:flex-row sm:items-baseline sm:gap-1"
+                >
                   <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.following)}</span>
                   <span className="text-[11px] text-gray-500 sm:text-sm">following</span>
-                </div>
+                </button>
                 <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:gap-1">
                   <span className="text-base font-bold text-gray-900 sm:text-sm">{formatCompactNumber(authorStats.reads)}</span>
                   <span className="text-[11px] text-gray-500 sm:text-sm">reads</span>
@@ -1360,6 +1417,122 @@ export default function AuthorProfile() {
             setShowEditModal(false)
           }}
         />
+      )}
+
+      {/* Followers / Following / Subscribers Modal */}
+      {showSocialModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3 backdrop-blur-sm"
+          onClick={() => setShowSocialModal(false)}
+        >
+          <div
+            className="relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            style={{ maxHeight: '85vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <h2 className="text-base font-bold text-gray-900">{resolvedAuthor.name}</h2>
+              <button
+                onClick={() => setShowSocialModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-100">
+              {(['subscribers', 'followers', 'following'] as const).map((tab) => {
+                const count = tab === 'followers'
+                  ? authorStats.followers
+                  : tab === 'following'
+                  ? authorStats.following
+                  : null
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => switchSocialTab(tab)}
+                    className={`flex-1 py-3 text-[13px] font-semibold capitalize transition-colors ${
+                      socialModalTab === tab
+                        ? 'border-b-2 border-[#1B4965] text-[#1B4965]'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    {count !== null ? `${tab.charAt(0).toUpperCase() + tab.slice(1)} (${formatCompactNumber(count)})` : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingSocial ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                </div>
+              ) : socialList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Users className="mb-3 h-10 w-10 text-gray-200" />
+                  <p className="text-sm font-medium text-gray-400">No {socialModalTab} yet</p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-gray-50 px-1 py-1">
+                  {socialList.map((person: any, idx: number) => {
+                    const profileId = person.author_profile_id
+                    const displayName = person.display_name || person.pen_name || person.username || 'User'
+                    const tagline = person.bio
+                      ? person.bio.replace(/<[^>]*>/g, '').slice(0, 60)
+                      : person.username ? `@${person.username}` : null
+                    const avatar = person.profile_image
+                      ? (person.profile_image.startsWith('/uploads/')
+                          ? `${getApiBase()}${person.profile_image}`
+                          : person.profile_image)
+                      : null
+                    const initials = displayName.slice(0, 2).toUpperCase()
+
+                    const handlePersonClick = () => {
+                      if (!profileId) return
+                      setShowSocialModal(false)
+                      window.location.hash = `#/user/author/${profileId}`
+                    }
+
+                    return (
+                      <li key={idx}>
+                        <button
+                          onClick={handlePersonClick}
+                          disabled={!profileId}
+                          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-[#f4f9fc] disabled:cursor-default disabled:opacity-60"
+                        >
+                          {/* Avatar */}
+                          {avatar ? (
+                            <img
+                              src={avatar}
+                              alt={displayName}
+                              className="h-11 w-11 flex-shrink-0 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[13px] font-bold text-[#1B4965]">
+                              {initials}
+                            </div>
+                          )}
+
+                          {/* Info */}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[14px] font-semibold text-gray-900">{displayName}</p>
+                            {tagline && (
+                              <p className="truncate text-[12px] text-gray-400">{tagline}</p>
+                            )}
+                          </div>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </main>
   )

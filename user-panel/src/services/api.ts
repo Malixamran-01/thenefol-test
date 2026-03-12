@@ -903,6 +903,30 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  async getAuthorFollowers(authorId: string, limit = 50, offset = 0) {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/authors/${authorId}/followers?limit=${limit}&offset=${offset}`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  async getAuthorFollowing(authorId: string, limit = 50, offset = 0) {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/authors/${authorId}/following?limit=${limit}&offset=${offset}`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  async getAuthorSubscribers(authorId: string, limit = 50, offset = 0) {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/authors/${authorId}/subscribers?limit=${limit}&offset=${offset}`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
   async getAuthorActivity(authorId: string, limit: number = 20, offset: number = 0) {
     const response = await fetch(
       `${getApiBaseUrl()}/api/blog/authors/${authorId}/activity?limit=${limit}&offset=${offset}`,

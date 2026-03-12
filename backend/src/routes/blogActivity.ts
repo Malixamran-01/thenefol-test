@@ -233,6 +233,123 @@ router.delete('/authors/:authorId/subscribe', authenticateToken, async (req, res
   }
 })
 
+// Get list of followers for an author
+router.get('/authors/:authorId/followers', async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const { authorId } = req.params
+    const limit = parseInt(req.query.limit as string) || 50
+    const offset = parseInt(req.query.offset as string) || 0
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) return res.status(404).json({ message: 'Author not found' })
+
+    const { rows } = await pool.query(
+      `SELECT
+         af.follower_user_id,
+         ap.id          AS author_profile_id,
+         ap.username,
+         ap.display_name,
+         ap.pen_name,
+         ap.profile_image,
+         ap.bio,
+         af.created_at
+       FROM author_followers af
+       LEFT JOIN author_profiles ap
+         ON ap.user_id::text = af.follower_user_id::text
+         AND ap.status != 'deleted'
+       WHERE af.author_id = $1
+       ORDER BY af.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [resolvedId, limit, offset]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching followers:', error)
+    res.status(500).json({ message: 'Failed to fetch followers' })
+  }
+})
+
+// Get list of authors that this author follows
+router.get('/authors/:authorId/following', async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const { authorId } = req.params
+    const limit = parseInt(req.query.limit as string) || 50
+    const offset = parseInt(req.query.offset as string) || 0
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) return res.status(404).json({ message: 'Author not found' })
+
+    // Get this author's user_id first
+    const { rows: authorRows } = await pool.query(
+      `SELECT user_id FROM author_profiles WHERE id = $1 LIMIT 1`,
+      [resolvedId]
+    )
+    if (authorRows.length === 0) return res.json([])
+    const authorUserId = authorRows[0].user_id
+
+    const { rows } = await pool.query(
+      `SELECT
+         af.author_id,
+         ap.id          AS author_profile_id,
+         ap.username,
+         ap.display_name,
+         ap.pen_name,
+         ap.profile_image,
+         ap.bio,
+         af.created_at
+       FROM author_followers af
+       JOIN author_profiles ap
+         ON ap.id = af.author_id
+         AND ap.status != 'deleted'
+       WHERE af.follower_user_id::text = $1::text
+       ORDER BY af.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [authorUserId, limit, offset]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching following:', error)
+    res.status(500).json({ message: 'Failed to fetch following' })
+  }
+})
+
+// Get list of subscribers for an author
+router.get('/authors/:authorId/subscribers', async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const { authorId } = req.params
+    const limit = parseInt(req.query.limit as string) || 50
+    const offset = parseInt(req.query.offset as string) || 0
+    const resolvedId = await resolveAuthorId(authorId)
+    if (resolvedId == null) return res.status(404).json({ message: 'Author not found' })
+
+    const { rows } = await pool.query(
+      `SELECT
+         asub.user_id,
+         ap.id          AS author_profile_id,
+         ap.username,
+         ap.display_name,
+         ap.pen_name,
+         ap.profile_image,
+         ap.bio,
+         asub.subscribed_at AS created_at
+       FROM author_subscriptions asub
+       LEFT JOIN author_profiles ap
+         ON ap.user_id::text = asub.user_id::text
+         AND ap.status != 'deleted'
+       WHERE asub.author_id = $1
+         AND asub.status = 'active'
+       ORDER BY asub.subscribed_at DESC
+       LIMIT $2 OFFSET $3`,
+      [resolvedId, limit, offset]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching subscribers:', error)
+    res.status(500).json({ message: 'Failed to fetch subscribers' })
+  }
+})
+
 // Get author stats (followers, subscribers)
 router.get('/authors/:authorId/stats', async (req, res) => {
   try {
