@@ -9,9 +9,13 @@ import {
   Menu,
   X,
   PenLine,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
+
+// ─── Nav config ───────────────────────────────────────────────────────────────
 
 interface NavItem {
   id: string
@@ -19,51 +23,57 @@ interface NavItem {
   icon: React.ReactNode
   href: string
   matchPrefix?: string
+  placeholder?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
   {
     id: 'home',
     label: 'Home',
-    icon: <Home className="h-[22px] w-[22px]" />,
+    icon: <Home strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/',
   },
   {
     id: 'blog',
     label: 'Blog',
-    icon: <BookOpen className="h-[22px] w-[22px]" />,
+    icon: <BookOpen strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog',
     matchPrefix: '#/user/blog',
   },
   {
     id: 'notifications',
     label: 'Activity',
-    icon: <Bell className="h-[22px] w-[22px]" />,
+    icon: <Bell strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/activity',
     matchPrefix: '#/user/blog/activity',
   },
   {
     id: 'profile',
     label: 'Profile',
-    icon: <User className="h-[22px] w-[22px]" />,
+    icon: <User strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/author-profile',
     matchPrefix: '#/user/author',
+    placeholder: true,
   },
   {
     id: 'explore',
     label: 'Explore',
-    icon: <Compass className="h-[22px] w-[22px]" />,
+    icon: <Compass strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/explore',
     matchPrefix: '#/user/blog/explore',
+    placeholder: true,
   },
   {
     id: 'dashboard',
     label: 'Dashboard',
-    icon: <LayoutDashboard className="h-[22px] w-[22px]" />,
+    icon: <LayoutDashboard strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/dashboard',
     matchPrefix: '#/user/blog/dashboard',
+    placeholder: true,
   },
 ]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function useCurrentHash() {
   const [hash, setHash] = useState(window.location.hash || '#/user/')
@@ -75,33 +85,44 @@ function useCurrentHash() {
   return hash
 }
 
-function SidePanelNav({ onClose, unreadCount }: { onClose?: () => void; unreadCount: number }) {
+function isItemActive(item: NavItem, hash: string): boolean {
+  if (item.id === 'home') return hash === '#/user/' || hash === '#/user'
+  if (item.id === 'blog') {
+    return (
+      hash === '#/user/blog' ||
+      (hash.startsWith('#/user/blog/') &&
+        !hash.startsWith('#/user/blog/activity') &&
+        !hash.startsWith('#/user/blog/explore') &&
+        !hash.startsWith('#/user/blog/dashboard') &&
+        !hash.startsWith('#/user/blog/author-profile'))
+    )
+  }
+  if (item.matchPrefix) return hash.startsWith(item.matchPrefix)
+  return hash === item.href
+}
+
+// ─── Nav (used in both desktop sidebar and mobile drawer) ────────────────────
+
+interface SidePanelNavProps {
+  collapsed: boolean
+  unreadCount: number
+  onClose?: () => void
+  onToggleCollapse?: () => void
+  showCollapseButton?: boolean
+}
+
+function SidePanelNav({
+  collapsed,
+  unreadCount,
+  onClose,
+  onToggleCollapse,
+  showCollapseButton = false,
+}: SidePanelNavProps) {
   const hash = useCurrentHash()
   const { isAuthenticated } = useAuth()
 
-  const isActive = (item: NavItem) => {
-    if (item.id === 'home') {
-      return hash === '#/user/' || hash === '#/user'
-    }
-    // Blog: active only on exact blog home, not on sub-paths like /activity
-    if (item.id === 'blog') {
-      return (
-        hash === '#/user/blog' ||
-        (hash.startsWith('#/user/blog/') &&
-          !hash.startsWith('#/user/blog/activity') &&
-          !hash.startsWith('#/user/blog/explore') &&
-          !hash.startsWith('#/user/blog/dashboard'))
-      )
-    }
-    if (item.matchPrefix) {
-      return hash.startsWith(item.matchPrefix)
-    }
-    return hash === item.href
-  }
-
   const handleNav = (item: NavItem, e: React.MouseEvent) => {
-    // Placeholder items — not yet implemented
-    if (['explore', 'dashboard', 'profile'].includes(item.id)) {
+    if (item.placeholder) {
       e.preventDefault()
       return
     }
@@ -110,100 +131,205 @@ function SidePanelNav({ onClose, unreadCount }: { onClose?: () => void; unreadCo
 
   return (
     <div className="flex h-full flex-col">
-      {/* Logo */}
-      <div className="flex h-16 flex-shrink-0 items-center px-5">
-        <a href="#/user/blog" className="flex items-center gap-2" onClick={onClose}>
-          <img
-            src="/IMAGES/NEFOL icon.png"
-            alt="NEFOL"
-            className="h-8 w-auto object-contain"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-          <span className="text-[15px] font-semibold tracking-wide text-[#1B4965]">NEFOL</span>
-        </a>
+
+      {/* ── Logo row ────────────────────────────────────────── */}
+      <div
+        className={`flex h-[60px] flex-shrink-0 items-center border-b border-gray-100 ${
+          collapsed ? 'justify-center px-0' : 'justify-between px-5'
+        }`}
+      >
+        {!collapsed && (
+          <a
+            href="#/user/blog"
+            className="flex items-center gap-2.5 min-w-0"
+            onClick={onClose}
+          >
+            <img
+              src="/IMAGES/NEFOL icon.png"
+              alt="NEFOL"
+              className="h-7 w-auto flex-shrink-0 object-contain"
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+            <span className="truncate text-[15px] font-bold tracking-wide text-[#1B4965]">
+              NEFOL
+            </span>
+          </a>
+        )}
+
+        {collapsed && (
+          <a href="#/user/blog" onClick={onClose}>
+            <img
+              src="/IMAGES/NEFOL icon.png"
+              alt="NEFOL"
+              className="h-7 w-auto object-contain"
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+          </a>
+        )}
+
+        {/* Collapse toggle */}
+        {showCollapseButton && (
+          <button
+            onClick={onToggleCollapse}
+            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 ${
+              collapsed ? 'mt-0' : ''
+            }`}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Nav items */}
-      <nav className="flex-1 space-y-0.5 px-2 py-2">
+      {/* ── Nav items ────────────────────────────────────────── */}
+      <nav className="flex-1 py-3">
         {NAV_ITEMS.map((item) => {
-          const active = isActive(item)
-          const isPlaceholder = ['explore', 'dashboard', 'profile'].includes(item.id)
+          const active = isItemActive(item, hash)
           const showBadge = item.id === 'notifications' && unreadCount > 0
+
           return (
             <a
               key={item.id}
               href={item.href}
               onClick={(e) => handleNav(item, e)}
-              title={isPlaceholder ? `${item.label} — coming soon` : item.label}
-              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium transition-all duration-150 ${
-                active
-                  ? 'bg-[#edf4f9] text-[#1B4965]'
-                  : isPlaceholder
-                  ? 'cursor-not-allowed text-gray-300'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              title={item.placeholder ? `${item.label} — coming soon` : item.label}
+              className={`group relative flex items-center transition-colors duration-150 ${
+                collapsed ? 'justify-center px-0 py-3' : 'gap-3 py-2.5 pr-4'
+              } ${
+                item.placeholder
+                  ? 'cursor-not-allowed'
+                  : 'cursor-pointer'
               }`}
             >
-              {/* Icon — wrap in relative for badge */}
-              <span className="relative flex-shrink-0">
+              {/* Left accent bar */}
+              <span
+                className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-150 ${
+                  active ? 'h-6 bg-[#1B4965]' : 'h-0 bg-transparent'
+                }`}
+              />
+
+              {/* Collapsed: icon centered, no left padding offset needed */}
+              {/* Expanded: icon with left padding to match accent bar */}
+              <span
+                className={`relative flex-shrink-0 ${collapsed ? '' : 'pl-5'}`}
+              >
                 <span
-                  className={`transition-colors ${
-                    active ? 'text-[#1B4965]' : isPlaceholder ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-600'
+                  className={`block transition-colors duration-150 ${
+                    active
+                      ? 'text-[#1B4965]'
+                      : item.placeholder
+                      ? 'text-gray-300'
+                      : 'text-gray-400 group-hover:text-gray-700'
                   }`}
                 >
                   {item.icon}
                 </span>
+
+                {/* Badge on icon (always shown when badge exists) */}
                 {showBadge && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
+                  <span className="absolute -right-1.5 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </span>
 
-              <span className="flex-1">{item.label}</span>
+              {/* Label + trailing badge (expanded only) */}
+              {!collapsed && (
+                <>
+                  <span
+                    className={`flex-1 text-[14px] font-medium transition-colors duration-150 ${
+                      active
+                        ? 'text-[#1B4965]'
+                        : item.placeholder
+                        ? 'text-gray-300'
+                        : 'text-gray-600 group-hover:text-gray-900'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
 
-              {/* Unread count next to label (only when sidebar is not collapsed) */}
-              {showBadge && (
-                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
+                  {/* Trailing unread count */}
+                  {showBadge && (
+                    <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
 
-              {isPlaceholder && (
-                <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
-                  soon
-                </span>
+                  {/* "soon" pill */}
+                  {item.placeholder && (
+                    <span className="text-[11px] text-gray-300">soon</span>
+                  )}
+                </>
               )}
             </a>
           )
         })}
       </nav>
 
-      {/* Bottom — Create button */}
-      <div className="flex-shrink-0 border-t border-gray-100 p-3">
-        <a
-          href={isAuthenticated ? '#/user/blog/request?new=1' : '#/user/login'}
-          onClick={onClose}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1B4965] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#163d54]"
-        >
-          <PenLine className="h-4 w-4" />
-          Write
-        </a>
+      {/* ── Write button ─────────────────────────────────────── */}
+      <div className={`flex-shrink-0 border-t border-gray-100 p-3 ${collapsed ? 'flex justify-center' : ''}`}>
+        {collapsed ? (
+          <a
+            href={isAuthenticated ? '#/user/blog/request?new=1' : '#/user/login'}
+            onClick={onClose}
+            title="Write"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B4965] text-white transition-colors hover:bg-[#163d54]"
+          >
+            <PenLine className="h-4 w-4" />
+          </a>
+        ) : (
+          <a
+            href={isAuthenticated ? '#/user/blog/request?new=1' : '#/user/login'}
+            onClick={onClose}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1B4965] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#163d54]"
+          >
+            <PenLine className="h-3.5 w-3.5" />
+            Write
+          </a>
+        )}
       </div>
     </div>
   )
 }
 
+// ─── Layout ───────────────────────────────────────────────────────────────────
+
 interface BlogLayoutProps {
   children: React.ReactNode
 }
 
+const SIDEBAR_EXPANDED_W = 220
+const SIDEBAR_COLLAPSED_W = 68
+
 export default function BlogLayout({ children }: BlogLayoutProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
   const { isAuthenticated } = useAuth()
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  // Persist collapse state
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('blog-sidebar-collapsed') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const toggleCollapse = () => {
+    setCollapsed((c) => {
+      const next = !c
+      try { localStorage.setItem('blog-sidebar-collapsed', String(next)) } catch { /**/ }
+      return next
+    })
+  }
+
+  // ── Unread polling ──────────────────────────────────────────────────────────
 
   const fetchUnread = useCallback(async () => {
     if (!isAuthenticated) return
@@ -213,7 +339,6 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
     } catch { /* silent */ }
   }, [isAuthenticated])
 
-  // Poll unread count every 30s
   useEffect(() => {
     if (!isAuthenticated) return
     fetchUnread()
@@ -221,43 +346,63 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [isAuthenticated, fetchUnread])
 
-  // Reset badge when user opens activity page (page dispatches 'blog-notifications-read-all')
   useEffect(() => {
     const handler = () => setUnreadCount(0)
     window.addEventListener('blog-notifications-read-all', handler)
     return () => window.removeEventListener('blog-notifications-read-all', handler)
   }, [])
 
-  // Close mobile menu on route change
+  // ── Mobile menu ────────────────────────────────────────────────────────────
+
   useEffect(() => {
     const handler = () => setMobileMenuOpen(false)
     window.addEventListener('hashchange', handler)
     return () => window.removeEventListener('hashchange', handler)
   }, [])
 
-  // Lock body scroll when mobile menu open
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [mobileMenuOpen])
 
-  return (
-    <div className="flex min-h-screen bg-[#F4F9F9]">
+  const sidebarW = collapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W
 
-      {/* ── Desktop side panel ───────────────────────────── */}
-      <aside className="hidden lg:flex lg:w-60 lg:flex-shrink-0 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 border-r border-gray-200 bg-white">
-        <SidePanelNav unreadCount={unreadCount} />
+  return (
+    <div className="flex min-h-screen bg-white">
+
+      {/* ── Desktop fixed sidebar ────────────────────────────── */}
+      <aside
+        className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 bg-white border-r border-gray-100 overflow-hidden"
+        style={{ width: sidebarW, transition: 'width 200ms ease' }}
+      >
+        <SidePanelNav
+          collapsed={collapsed}
+          unreadCount={unreadCount}
+          onToggleCollapse={toggleCollapse}
+          showCollapseButton
+        />
       </aside>
 
-      {/* ── Mobile: top bar with hamburger ───────────────── */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
+      {/*
+        Invisible spacer — participates in normal flex flow so main gets pushed right.
+        Must mirror the sidebar's width + transition exactly.
+      */}
+      <div
+        aria-hidden
+        className="hidden lg:block flex-shrink-0"
+        style={{ width: sidebarW, transition: 'width 200ms ease' }}
+      />
+
+      {/* ── Mobile top bar ──────────────────────────────────── */}
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4 lg:hidden">
         <button
           onClick={() => setMobileMenuOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50"
           aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
         </button>
+
         <a href="#/user/blog" className="flex items-center gap-2">
           <img
             src="/IMAGES/NEFOL icon.png"
@@ -265,49 +410,56 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
             className="h-7 w-auto object-contain"
             onError={(e) => { e.currentTarget.style.display = 'none' }}
           />
-          <span className="text-[14px] font-semibold tracking-wide text-[#1B4965]">NEFOL</span>
+          <span className="text-[14px] font-bold tracking-wide text-[#1B4965]">NEFOL</span>
         </a>
-        {/* Spacer to keep logo centered */}
-        <div className="h-9 w-9" />
+
+        <a
+          href="#/user/blog/activity"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
+        >
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </a>
       </div>
 
-      {/* ── Mobile slide-in drawer ────────────────────────── */}
+      {/* ── Mobile drawer ───────────────────────────────────── */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 z-50 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-
-          {/* Drawer */}
+          <div className="absolute inset-0 bg-black/25 backdrop-blur-[2px]" />
           <div
-            className="absolute inset-y-0 left-0 flex w-64 flex-col bg-white shadow-2xl"
+            className="absolute inset-y-0 left-0 flex w-[220px] flex-col bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
-            <div className="flex h-14 flex-shrink-0 items-center justify-between px-4 border-b border-gray-100">
-              <span className="text-[14px] font-semibold text-[#1B4965]">Menu</span>
+            <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-100 px-4">
+              <span className="text-[14px] font-bold text-[#1B4965]">NEFOL</span>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <SidePanelNav onClose={() => setMobileMenuOpen(false)} unreadCount={unreadCount} />
+              <SidePanelNav
+                collapsed={false}
+                unreadCount={unreadCount}
+                onClose={() => setMobileMenuOpen(false)}
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Main content ─────────────────────────────────── */}
-      <main className="flex-1 lg:ml-60">
-        {/* Push content below mobile top bar */}
-        <div className="pt-14 lg:pt-0">
-          {children}
-        </div>
+      {/* ── Main content ────────────────────────────────────── */}
+      <main className="flex-1 min-w-0 pt-14 lg:pt-0">
+        {children}
       </main>
     </div>
   )
