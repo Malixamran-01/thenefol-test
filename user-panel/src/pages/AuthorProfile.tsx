@@ -844,11 +844,11 @@ export default function AuthorProfile() {
       </div>
 
       {/* ── Single unified profile page ── */}
-      <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-xl bg-white shadow-sm sm:rounded-2xl">
-        <section className="overflow-hidden">
+      <div className="mx-auto w-full max-w-5xl">
+        <section>
           {/* ── Cover Banner ── */}
           <div
-            className={`relative h-40 w-full overflow-hidden bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64 ${coverImage ? 'cursor-zoom-in' : ''}`}
+            className={`relative h-40 w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64 sm:rounded-2xl ${coverImage ? 'cursor-zoom-in' : ''}`}
             onClick={() => coverImage && setLightboxImage(coverImage)}
             role={coverImage ? 'button' : undefined}
             aria-label={coverImage ? 'View cover image' : undefined}
@@ -1121,7 +1121,7 @@ export default function AuthorProfile() {
           )}
         </div>
 
-        {/* Tab Content — flows directly in the same white page */}
+        {/* Tab Content */}
         {loading ? (
           <div className="px-6 py-10">
             <LoadingSpinner size="md" message="Loading author profile..." />
