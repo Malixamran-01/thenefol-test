@@ -903,6 +903,39 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  // ── Notifications ──────────────────────────────────────────────────────────
+  async getNotifications(limit = 30, offset = 0) {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/notifications?limit=${limit}&offset=${offset}`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  async getUnreadNotificationCount() {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/notifications/unread-count`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  async markAllNotificationsRead() {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/notifications/read-all`,
+      { method: 'POST', headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  async markNotificationRead(id: number) {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/notifications/${id}/read`,
+      { method: 'POST', headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
   async getAuthorFollowers(authorId: string, limit = 50, offset = 0) {
     const response = await fetch(
       `${getApiBaseUrl()}/api/blog/authors/${authorId}/followers?limit=${limit}&offset=${offset}`,

@@ -6,6 +6,7 @@ import crypto from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
+import { createNotification, resolveActor } from './blogNotifications'
 
 const DRAFT_SAVE_RATE_LIMIT_MS = 30_000
 const VERSION_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes - create version snapshot
@@ -1478,7 +1479,7 @@ router.post('/posts/:id/like', authenticateToken, async (req, res) => {
     const postId = req.params.id
     const userId = req.userId
 
-    await pool.query(
+    const { rowCount } = await pool.query(
       `INSERT INTO blog_post_likes (post_id, user_id)
        VALUES ($1, $2)
        ON CONFLICT (post_id, user_id) DO NOTHING`,
@@ -1490,6 +1491,32 @@ router.post('/posts/:id/like', authenticateToken, async (req, res) => {
       [postId]
     )
     res.json({ count: rows[0]?.count || 0 })
+
+    // Fire notification only on a new like (not duplicate)
+    if (rowCount && rowCount > 0) {
+      try {
+        const { rows: postRows } = await pool.query(
+          `SELECT bp.title, ap.user_id AS author_user_id
+           FROM blog_posts bp
+           LEFT JOIN author_profiles ap ON ap.id::text = bp.author_id::text
+           WHERE bp.id = $1 LIMIT 1`,
+          [postId]
+        )
+        if (postRows.length > 0) {
+          const actor = await resolveActor(pool, userId)
+          await createNotification({
+            pool,
+            recipientUserId: postRows[0].author_user_id,
+            actorUserId: userId,
+            actorName: actor.name,
+            actorAvatar: actor.avatar,
+            type: 'post_liked',
+            postId,
+            postTitle: postRows[0].title,
+          })
+        }
+      } catch { /* notification failure should not break the response */ }
+    }
   } catch (error) {
     console.error('Error liking post:', error)
     res.status(500).json({ message: 'Failed to like post' })
@@ -1558,7 +1585,7 @@ router.post('/posts/:id/repost', authenticateToken, async (req, res) => {
         UNIQUE (post_id, user_id)
       )
     `)
-    await pool.query(
+    const { rowCount } = await pool.query(
       `INSERT INTO blog_post_reposts (post_id, user_id)
        VALUES ($1, $2::integer)
        ON CONFLICT (post_id, user_id) DO NOTHING`,
@@ -1569,6 +1596,31 @@ router.post('/posts/:id/repost', authenticateToken, async (req, res) => {
       [postId]
     )
     res.json({ count: rows[0]?.count || 0 })
+
+    if (rowCount && rowCount > 0) {
+      try {
+        const { rows: postRows } = await pool.query(
+          `SELECT bp.title, ap.user_id AS author_user_id
+           FROM blog_posts bp
+           LEFT JOIN author_profiles ap ON ap.id::text = bp.author_id::text
+           WHERE bp.id = $1 LIMIT 1`,
+          [postId]
+        )
+        if (postRows.length > 0) {
+          const actor = await resolveActor(pool, userId)
+          await createNotification({
+            pool,
+            recipientUserId: postRows[0].author_user_id,
+            actorUserId: userId,
+            actorName: actor.name,
+            actorAvatar: actor.avatar,
+            type: 'post_reposted',
+            postId,
+            postTitle: postRows[0].title,
+          })
+        }
+      } catch { /* notification failure should not break the response */ }
+    }
   } catch (error) {
     console.error('Error reposting:', error)
     res.status(500).json({ message: 'Failed to repost' })
@@ -1703,7 +1755,59 @@ router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
        RETURNING *`,
       [postId, parent_id || null, ancestors, userId, author_name || null, (author_id != null ? '' : author_email) || null, content]
     )
-    res.json(rows[0])
+    const newComment = rows[0]
+    res.json(newComment)
+
+    // Fire notification after response
+    try {
+      const actor = await resolveActor(pool, userId)
+      const excerpt = String(content).replace(/<[^>]*>/g, '').slice(0, 80)
+
+      // Notify the post author
+      const { rows: postRows } = await pool.query(
+        `SELECT bp.title, ap.user_id AS author_user_id
+         FROM blog_posts bp
+         LEFT JOIN author_profiles ap ON ap.id::text = bp.author_id::text
+         WHERE bp.id = $1 LIMIT 1`,
+        [postId]
+      )
+      if (postRows.length > 0) {
+        await createNotification({
+          pool,
+          recipientUserId: postRows[0].author_user_id,
+          actorUserId: userId,
+          actorName: actor.name,
+          actorAvatar: actor.avatar,
+          type: parent_id ? 'comment_replied' : 'post_commented',
+          postId,
+          postTitle: postRows[0].title,
+          commentId: newComment.id,
+          commentExcerpt: excerpt,
+        })
+      }
+
+      // If it's a reply, also notify the parent comment author
+      if (parent_id) {
+        const { rows: parentRows } = await pool.query(
+          `SELECT user_id FROM blog_comments WHERE id = $1 LIMIT 1`,
+          [parent_id]
+        )
+        if (parentRows.length > 0 && parentRows[0].user_id) {
+          await createNotification({
+            pool,
+            recipientUserId: parentRows[0].user_id,
+            actorUserId: userId,
+            actorName: actor.name,
+            actorAvatar: actor.avatar,
+            type: 'comment_replied',
+            postId,
+            postTitle: postRows[0]?.title ?? null,
+            commentId: newComment.id,
+            commentExcerpt: excerpt,
+          })
+        }
+      }
+    } catch { /* notification failure should not break the response */ }
   } catch (error) {
     console.error('Error creating comment:', error)
     res.status(500).json({ message: 'Failed to create comment' })
@@ -1719,7 +1823,7 @@ router.post('/comments/:id/like', authenticateToken, async (req, res) => {
     const commentId = req.params.id
     const userId = req.userId
 
-    await pool.query(
+    const { rowCount } = await pool.query(
       `INSERT INTO blog_comment_likes (comment_id, user_id)
        VALUES ($1, $2)
        ON CONFLICT (comment_id, user_id) DO NOTHING`,
@@ -1731,6 +1835,34 @@ router.post('/comments/:id/like', authenticateToken, async (req, res) => {
       [commentId]
     )
     res.json({ count: rows[0]?.count || 0 })
+
+    if (rowCount && rowCount > 0) {
+      try {
+        const { rows: commentRows } = await pool.query(
+          `SELECT bc.user_id AS comment_author_user_id, bc.content, bc.post_id,
+                  bp.title AS post_title
+           FROM blog_comments bc
+           JOIN blog_posts bp ON bp.id::text = bc.post_id::text
+           WHERE bc.id = $1 LIMIT 1`,
+          [commentId]
+        )
+        if (commentRows.length > 0) {
+          const actor = await resolveActor(pool, userId)
+          await createNotification({
+            pool,
+            recipientUserId: commentRows[0].comment_author_user_id,
+            actorUserId: userId,
+            actorName: actor.name,
+            actorAvatar: actor.avatar,
+            type: 'comment_liked',
+            postId: commentRows[0].post_id,
+            postTitle: commentRows[0].post_title,
+            commentId: parseInt(commentId),
+            commentExcerpt: String(commentRows[0].content || '').replace(/<[^>]*>/g, '').slice(0, 80),
+          })
+        }
+      } catch { /* notification failure should not break the response */ }
+    }
   } catch (error) {
     console.error('Error liking comment:', error)
     res.status(500).json({ message: 'Failed to like comment' })

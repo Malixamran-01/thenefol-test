@@ -29,6 +29,7 @@ import * as cartRoutes from './routes/cart'
 import createCMSRouter from './routes/cms'
 import blogRouter, { initBlogRouter, serveBlogMetaPage, cleanupOldDrafts } from './routes/blog'
 import blogActivityRouter, { initBlogActivityRouter, serveAuthorMetaPage } from './routes/blogActivity'
+import blogNotificationsRouter, { initBlogNotificationsRouter } from './routes/blogNotifications'
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
@@ -793,6 +794,10 @@ app.use('/api/blog', blogRouter)
 // Initialize blog activity router (follows, subscriptions, feed)
 initBlogActivityRouter(pool)
 app.use('/api/blog', blogActivityRouter)
+
+// Initialize blog notifications router
+initBlogNotificationsRouter(pool)
+app.use('/api/blog', blogNotificationsRouter)
 
 // Initialize role-based access control
 initRoleCheck(pool)

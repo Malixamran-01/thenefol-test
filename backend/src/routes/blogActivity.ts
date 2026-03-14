@@ -1,6 +1,7 @@
 import express from 'express'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
+import { createNotification, resolveActor } from './blogNotifications'
 
 const router = express.Router()
 let pool: Pool
@@ -95,6 +96,25 @@ router.post('/authors/:authorId/follow', authenticateToken, async (req, res) => 
       message: 'Author followed successfully',
       followerCount: rows[0]?.followers_count || 0 
     })
+
+    // Notify the author being followed
+    try {
+      const { rows: authorRows } = await pool.query(
+        `SELECT user_id FROM author_profiles WHERE id = $1 LIMIT 1`,
+        [resolvedId]
+      )
+      if (authorRows.length > 0) {
+        const actor = await resolveActor(pool, userId)
+        await createNotification({
+          pool,
+          recipientUserId: authorRows[0].user_id,
+          actorUserId: userId,
+          actorName: actor.name,
+          actorAvatar: actor.avatar,
+          type: 'followed',
+        })
+      }
+    } catch { /* notification failure should not break the response */ }
   } catch (error) {
     console.error('Error following author:', error)
     res.status(500).json({ message: 'Failed to follow author' })
@@ -190,6 +210,25 @@ router.post('/authors/:authorId/subscribe', authenticateToken, async (req, res) 
       message: 'Subscribed to author successfully',
       subscriberCount: rows[0]?.subscribers_count || 0 
     })
+
+    // Notify the author being subscribed to
+    try {
+      const { rows: authorRows } = await pool.query(
+        `SELECT user_id FROM author_profiles WHERE id = $1 LIMIT 1`,
+        [resolvedId]
+      )
+      if (authorRows.length > 0) {
+        const actor = await resolveActor(pool, userId)
+        await createNotification({
+          pool,
+          recipientUserId: authorRows[0].user_id,
+          actorUserId: userId,
+          actorName: actor.name,
+          actorAvatar: actor.avatar,
+          type: 'subscribed',
+        })
+      }
+    } catch { /* notification failure should not break the response */ }
   } catch (error) {
     console.error('Error subscribing to author:', error)
     res.status(500).json({ message: 'Failed to subscribe to author' })
