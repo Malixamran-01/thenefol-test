@@ -1036,7 +1036,10 @@ function RouterView({ affiliateId }: RouterViewProps) {
   if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout><BlogActivityPage /></BlogLayout>
   if (pathWithoutQuery === '/user/blog/my-blogs') return RequiredAuth(<BlogLayout><MyBlogsPage /></BlogLayout>)
   if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogLayout><BlogDetail /></BlogLayout>
-  if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <BlogLayout><AuthorProfile /></BlogLayout>
+  if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') {
+    const authorId = pathWithoutQuery.replace('/user/author/', '')
+    return <BlogLayout><AuthorProfile key={authorId} /></BlogLayout>
+  }
   if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />
   if (lower.startsWith('/user/confirmation')) return <Confirmation />
   if (lower.startsWith('/user/order/')) return <OrderDetails />
