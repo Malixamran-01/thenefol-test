@@ -11,9 +11,11 @@ import {
   PenLine,
   ChevronLeft,
   ChevronRight,
+  ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
+import { getApiBase } from '../utils/apiBase'
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -98,6 +100,7 @@ interface SidePanelNavProps {
   onClose?: () => void
   onToggleCollapse?: () => void
   showCollapseButton?: boolean
+  showStoreLink?: boolean
 }
 
 function SidePanelNav({
@@ -106,6 +109,7 @@ function SidePanelNav({
   onClose,
   onToggleCollapse,
   showCollapseButton = false,
+  showStoreLink = false,
 }: SidePanelNavProps) {
   const hash = useCurrentHash()
   const { isAuthenticated, user } = useAuth()
@@ -271,6 +275,20 @@ function SidePanelNav({
         })}
       </nav>
 
+      {/* ── Back to store (mobile drawer only) ──────────────── */}
+      {showStoreLink && !collapsed && (
+        <div className="flex-shrink-0 border-t border-gray-200/70 px-5 py-3">
+          <a
+            href="#/user/"
+            onClick={onClose}
+            className="flex items-center gap-2 text-[13px] text-gray-400 transition-colors hover:text-gray-700"
+          >
+            <ShoppingBag className="h-4 w-4 flex-shrink-0" />
+            Back to NEFOL Store
+          </a>
+        </div>
+      )}
+
       {/* ── Write button ─────────────────────────────────────── */}
       <div className={`flex-shrink-0 border-t border-gray-200/70 p-3 ${collapsed ? 'flex justify-center' : ''}`}>
         {collapsed ? (
@@ -307,7 +325,7 @@ const SIDEBAR_EXPANDED_W = 220
 const SIDEBAR_COLLAPSED_W = 68
 
 export default function BlogLayout({ children }: BlogLayoutProps) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -438,27 +456,61 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
         >
           <div className="absolute inset-0 bg-black/25 backdrop-blur-[2px]" />
           <div
-            className="absolute inset-y-0 left-0 flex w-[220px] flex-col shadow-xl"
+            className="absolute inset-y-0 left-0 flex w-[240px] flex-col shadow-xl"
             style={{ backgroundColor: '#F4F9F9' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-200/70 px-4">
-              <span className="text-[14px] tracking-wide text-[#1B4965] leading-none">
-                <span className="font-bold">NEFOL</span>{' '}
-                <span className="font-normal opacity-70">Social</span>
-              </span>
+            {/* ── User identity header ─────────────────────── */}
+            <div className="relative flex-shrink-0 px-5 pt-6 pb-4 border-b border-gray-200/70">
+              {/* Close */}
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
+                className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200/60 transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
+
+              {isAuthenticated && user ? (
+                <>
+                  {/* Avatar */}
+                  {user.profile_photo ? (
+                    <img
+                      src={user.profile_photo.startsWith('/uploads/') ? `${getApiBase()}${user.profile_photo}` : user.profile_photo}
+                      alt={user.name}
+                      className="h-12 w-12 rounded-full object-cover mb-3 border-2 border-white shadow-sm"
+                    />
+                  ) : (
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-lg font-bold text-white shadow-sm">
+                      {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <p className="text-[15px] font-semibold text-gray-900 leading-tight">{user.name}</p>
+                  <p className="text-[12px] text-gray-400 mt-0.5">NEFOL Social</p>
+                </>
+              ) : (
+                <>
+                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-gray-200">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <a
+                    href="#/user/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-[14px] font-semibold text-[#1B4965]"
+                  >
+                    Sign in
+                  </a>
+                  <p className="text-[12px] text-gray-400 mt-0.5">to access your account</p>
+                </>
+              )}
             </div>
-            <div className="flex-1 overflow-y-auto">
+
+            {/* ── Nav items + store link ────────────────────── */}
+            <div className="flex-1 overflow-y-auto flex flex-col">
               <SidePanelNav
                 collapsed={false}
                 unreadCount={unreadCount}
                 onClose={() => setMobileMenuOpen(false)}
+                showStoreLink
               />
             </div>
           </div>
