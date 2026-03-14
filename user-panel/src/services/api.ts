@@ -996,6 +996,13 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  async getMyPosts() {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/my`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
   async getPostReposts(postId: string) {
     const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/reposts`, {
       headers: getAuthHeaders()

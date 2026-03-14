@@ -1017,6 +1017,27 @@ router.delete('/drafts/:id', authenticateToken, async (req, res) => {
   }
 })
 
+// Get current user's posts (published, pending, rejected) - authenticated
+router.get('/posts/my', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+
+    const { rows } = await pool.query(
+      `SELECT p.*, u.unique_user_id as author_unique_user_id
+       FROM blog_posts p
+       LEFT JOIN users u ON p.user_id = u.id
+       WHERE p.user_id = $1 AND p.is_deleted = false
+       ORDER BY p.created_at DESC`,
+      [userId]
+    )
+    res.json(rows.map((r: any) => ({ ...r, author_id: r.user_id, author_unique_user_id: r.author_unique_user_id })))
+  } catch (error) {
+    console.error('Error fetching my blog posts:', error)
+    res.status(500).json({ message: 'Failed to fetch your posts' })
+  }
+})
+
 // Get all blog posts (approved only for public)
 router.get('/posts', async (req, res) => {
   try {

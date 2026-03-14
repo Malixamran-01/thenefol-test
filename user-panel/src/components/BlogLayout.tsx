@@ -39,8 +39,8 @@ const NAV_ITEMS: NavItem[] = [
     id: 'my-blogs',
     label: 'My Blogs',
     icon: <FileText strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/blog/my-blogs', // resolved dynamically in handler
-    matchPrefix: '#/user/author',
+    href: '#/user/blog/my-blogs',
+    matchPrefix: '#/user/blog/my-blogs',
   },
   {
     id: 'notifications',
@@ -53,8 +53,8 @@ const NAV_ITEMS: NavItem[] = [
     id: 'profile',
     label: 'Profile',
     icon: <User strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/blog/profile',
-    placeholder: true,
+    href: '#/user/author', // resolved dynamically in handler
+    matchPrefix: '#/user/author',
   },
   {
     id: 'explore',
@@ -87,7 +87,7 @@ function useCurrentHash() {
 function isItemActive(item: NavItem, hash: string): boolean {
   if (item.placeholder) return false
   if (item.id === 'home') return hash === '#/user/blog'
-  if (item.id === 'my-blogs') return hash.startsWith('#/user/author')
+  if (item.id === 'my-blogs') return hash.startsWith('#/user/blog/my-blogs')
   if (item.matchPrefix) return hash.startsWith(item.matchPrefix)
   return hash === item.href
 }
@@ -126,7 +126,7 @@ function SidePanelNav({
       if (!isAuthenticated) {
         window.location.hash = '#/user/login'
       } else {
-        window.location.hash = `#/user/author/${user?.id}`
+        window.location.hash = '#/user/blog/my-blogs'
       }
       if (onClose) onClose()
       return
