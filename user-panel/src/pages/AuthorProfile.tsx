@@ -814,14 +814,19 @@ export default function AuthorProfile() {
     return () => document.removeEventListener('keydown', handler)
   }, [lightboxImage, showSocialModal])
 
-  // Lock body scroll when social modal or lightbox is open
+  // Lock scroll on both html + body when social modal or lightbox is open
   useEffect(() => {
     if (showSocialModal || lightboxImage) {
       document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
     }
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
   }, [showSocialModal, lightboxImage])
 
   return (
@@ -1435,7 +1440,7 @@ export default function AuthorProfile() {
         >
           <div
             className="flex w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-w-md sm:rounded-2xl"
-            style={{ height: '520px', maxHeight: '85vh' }}
+            style={{ height: '520px', maxHeight: '85vh', overscrollBehavior: 'contain' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Pinned header */}
@@ -1470,7 +1475,7 @@ export default function AuthorProfile() {
             </div>
 
             {/* Scrollable list — only this part scrolls */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto" style={{ overscrollBehavior: 'contain' }}>
               {loadingSocial ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
@@ -1487,9 +1492,7 @@ export default function AuthorProfile() {
                   {socialList.map((person: any, idx: number) => {
                     const profileId = person.author_profile_id
                     const displayName = person.display_name || person.pen_name || person.username || 'User'
-                    const tagline = person.bio
-                      ? person.bio.replace(/<[^>]*>/g, '').slice(0, 60)
-                      : person.username ? `@${person.username}` : null
+                    const tagline = person.username ? `@${person.username}` : null
                     const avatar = person.profile_image
                       ? (person.profile_image.startsWith('/uploads/')
                           ? `${getApiBase()}${person.profile_image}`
