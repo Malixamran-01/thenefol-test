@@ -936,6 +936,34 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  async getMuteStatus() {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/notifications/mute-status`,
+      { headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
+  async muteNotifications(duration: '1h' | '3h' | '8h' | '1d' | '1w' | 'forever') {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/notifications/mute`,
+      {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration }),
+      }
+    )
+    return handleResponse(response)
+  },
+
+  async unmuteNotifications() {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/blog/notifications/unmute`,
+      { method: 'POST', headers: getAuthHeaders() }
+    )
+    return handleResponse(response)
+  },
+
   async getAuthorFollowers(authorId: string, limit = 50, offset = 0) {
     const response = await fetch(
       `${getApiBaseUrl()}/api/blog/authors/${authorId}/followers?limit=${limit}&offset=${offset}`,

@@ -10,6 +10,7 @@ import { CartProvider } from './contexts/CartContext'
 import { userSocketService } from './services/socket'
 import LiveChatWidget from './components/LiveChatWidget'
 import BlogFAB from './components/BlogFAB'
+import BlogLayout from './components/BlogLayout'
 import SmoothScroll from './components/SmoothScroll'
 import SearchButton from './components/SearchButton'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
@@ -83,6 +84,14 @@ function AppContent() {
   }, [])
 
   const isEditorPage = currentPath === '/user/blog/edit-image' || currentPath === '/user/blog/request'
+
+  // Blog layout routes — show side panel, hide e-commerce header/footer/bottom-nav
+  const isBlogLayoutRoute =
+    currentPath === '/user/blog' ||
+    (currentPath.startsWith('/user/blog/') &&
+      currentPath !== '/user/blog/request' &&
+      currentPath !== '/user/blog/edit-image') ||
+    (currentPath.startsWith('/user/author/') && currentPath !== '/user/author/onboarding')
 
   // Capture referral parameter from URL
   useEffect(() => {
@@ -246,6 +255,11 @@ function AppContent() {
       {showSplash ? (
         <SplashScreen onComplete={handleSplashComplete} />
       ) : isEditorPage ? (
+        <Suspense fallback={<PageLoader />}>
+          <RouterView affiliateId={affiliateId} />
+        </Suspense>
+      ) : isBlogLayoutRoute ? (
+        /* ── Blog section: side panel layout, no e-commerce chrome ── */
         <Suspense fallback={<PageLoader />}>
           <RouterView affiliateId={affiliateId} />
         </Suspense>
@@ -935,6 +949,7 @@ const Ingredients = lazy(() => import('./pages/Ingredients'))
 const IngredientDetail = lazy(() => import('./pages/IngredientDetail'))
 const Blog = lazy(() => import('./pages/Blog'))
 const BlogDetail = lazy(() => import('./pages/BlogDetail'))
+const BlogActivityPage = lazy(() => import('./pages/BlogActivityPage'))
 const BlogRequestForm = lazy(() => import('./pages/BlogRequestForm'))
 const ImageEditorPage = lazy(() => import('./pages/ImageEditorPage'))
 const Contact = lazy(() => import('./pages/Contact'))
@@ -1017,8 +1032,9 @@ function RouterView({ affiliateId }: RouterViewProps) {
   if (lower.startsWith('/user/product/')) return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
-  if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogDetail />
-  if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <AuthorProfile />
+  if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout><BlogActivityPage /></BlogLayout>
+  if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogLayout><BlogDetail /></BlogLayout>
+  if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <BlogLayout><AuthorProfile /></BlogLayout>
   if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />
   if (lower.startsWith('/user/confirmation')) return <Confirmation />
   if (lower.startsWith('/user/order/')) return <OrderDetails />
@@ -1032,7 +1048,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/shop': return <Shop />
     case '/user/skincare': return <Skincare />
     case '/user/ingredients': return <Ingredients />
-    case '/user/blog': return <Blog />
+    case '/user/blog': return <BlogLayout><Blog /></BlogLayout>
     case '/user/blog/request': return RequiredAuth(<BlogRequestForm />)
     case '/user/author/onboarding': return RequiredAuth(<AuthorOnboarding />)
     case '/user/contact': return <Contact />

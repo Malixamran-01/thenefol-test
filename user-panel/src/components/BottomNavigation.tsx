@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Home, Search, ShoppingCart, Grid3x3, Heart, User, Bell } from 'lucide-react'
+import { Home, Search, ShoppingCart, Grid3x3, Heart, User } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { useWishlist } from '../contexts/WishlistContext'
 import { useAuth } from '../contexts/AuthContext'
-import BlogNotificationBell from './BlogNotificationBell'
 
 export default function BottomNavigation() {
   const { items: cartItems } = useCart()
@@ -78,6 +77,9 @@ export default function BottomNavigation() {
   ]
 
   const isBlogRoute = currentPath.startsWith('#/user/blog') || currentPath.startsWith('#/user/author')
+
+  // Hide entirely on blog layout routes — side panel handles navigation there
+  if (isBlogRoute) return null
 
   return (
     <>
@@ -187,13 +189,6 @@ export default function BottomNavigation() {
           }
         }
       `}</style>
-      {/* Notification bell — fixed top-right on blog routes */}
-      {isBlogRoute && (
-        <div className="fixed right-4 top-4 z-50">
-          <BlogNotificationBell />
-        </div>
-      )}
-
       <nav className="bottom-nav">
         <div className="bottom-nav-content">
           {navItems.map((item) => {
