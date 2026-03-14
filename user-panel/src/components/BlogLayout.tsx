@@ -134,7 +134,7 @@ function SidePanelNav({
 
       {/* ── Logo row ────────────────────────────────────────── */}
       <div
-        className={`flex h-[60px] flex-shrink-0 items-center border-b border-gray-100 ${
+        className={`flex h-[60px] flex-shrink-0 items-center border-b border-gray-200/70 ${
           collapsed ? 'justify-center px-0' : 'justify-between px-5'
         }`}
       >
@@ -171,7 +171,7 @@ function SidePanelNav({
         {showCollapseButton && (
           <button
             onClick={onToggleCollapse}
-            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 ${
+            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-300/40 hover:text-gray-700 ${
               collapsed ? 'mt-0' : ''
             }`}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -202,7 +202,7 @@ function SidePanelNav({
               } ${
                 item.placeholder
                   ? 'cursor-not-allowed'
-                  : 'cursor-pointer'
+                  : 'cursor-pointer hover:bg-gray-900/[0.04]'
               }`}
             >
               {/* Left accent bar */}
@@ -271,7 +271,7 @@ function SidePanelNav({
       </nav>
 
       {/* ── Write button ─────────────────────────────────────── */}
-      <div className={`flex-shrink-0 border-t border-gray-100 p-3 ${collapsed ? 'flex justify-center' : ''}`}>
+      <div className={`flex-shrink-0 border-t border-gray-200/70 p-3 ${collapsed ? 'flex justify-center' : ''}`}>
         {collapsed ? (
           <a
             href={isAuthenticated ? '#/user/blog/request?new=1' : '#/user/login'}
@@ -368,12 +368,12 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
   const sidebarW = collapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen" style={{ backgroundColor: '#F4F9F9' }}>
 
       {/* ── Desktop fixed sidebar ────────────────────────────── */}
       <aside
-        className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 bg-white border-r border-gray-100 overflow-hidden"
-        style={{ width: sidebarW, transition: 'width 200ms ease' }}
+        className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 border-r border-gray-200/70 overflow-hidden"
+        style={{ width: sidebarW, transition: 'width 200ms ease', backgroundColor: '#F4F9F9' }}
       >
         <SidePanelNav
           collapsed={collapsed}
@@ -394,7 +394,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
       />
 
       {/* ── Mobile top bar ──────────────────────────────────── */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4 lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200/70 px-4 lg:hidden" style={{ backgroundColor: '#F4F9F9' }}>
         <button
           onClick={() => setMobileMenuOpen(true)}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50"
@@ -434,10 +434,11 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
         >
           <div className="absolute inset-0 bg-black/25 backdrop-blur-[2px]" />
           <div
-            className="absolute inset-y-0 left-0 flex w-[220px] flex-col bg-white shadow-xl"
+            className="absolute inset-y-0 left-0 flex w-[220px] flex-col shadow-xl"
+            style={{ backgroundColor: '#F4F9F9' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-100 px-4">
+            <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-200/70 px-4">
               <span className="text-[14px] font-bold text-[#1B4965]">NEFOL</span>
               <button
                 onClick={() => setMobileMenuOpen(false)}

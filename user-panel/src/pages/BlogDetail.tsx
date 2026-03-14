@@ -948,7 +948,7 @@ export default function BlogDetail() {
   const readingTime = getReadingTime(post.content || '')
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen" style={{ backgroundColor: '#F4F9F9' }}>
       <div className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:pt-10">
         {/* Header — back button only */}
         <div className="mb-8">
