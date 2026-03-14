@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Home,
-  BookOpen,
+  FileText,
   Bell,
   User,
   Compass,
@@ -31,14 +31,14 @@ const NAV_ITEMS: NavItem[] = [
     id: 'home',
     label: 'Home',
     icon: <Home strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/',
+    href: '#/user/blog',
   },
   {
-    id: 'blog',
-    label: 'Blog',
-    icon: <BookOpen strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/blog',
-    matchPrefix: '#/user/blog',
+    id: 'my-blogs',
+    label: 'My Blogs',
+    icon: <FileText strokeWidth={1.75} className="h-5 w-5" />,
+    href: '#/user/blog/my-blogs', // resolved dynamically in handler
+    matchPrefix: '#/user/author',
   },
   {
     id: 'notifications',
@@ -51,8 +51,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'profile',
     label: 'Profile',
     icon: <User strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/blog/author-profile',
-    matchPrefix: '#/user/author',
+    href: '#/user/blog/profile',
     placeholder: true,
   },
   {
@@ -60,7 +59,6 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Explore',
     icon: <Compass strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/explore',
-    matchPrefix: '#/user/blog/explore',
     placeholder: true,
   },
   {
@@ -68,7 +66,6 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Dashboard',
     icon: <LayoutDashboard strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/dashboard',
-    matchPrefix: '#/user/blog/dashboard',
     placeholder: true,
   },
 ]
@@ -86,17 +83,9 @@ function useCurrentHash() {
 }
 
 function isItemActive(item: NavItem, hash: string): boolean {
-  if (item.id === 'home') return hash === '#/user/' || hash === '#/user'
-  if (item.id === 'blog') {
-    return (
-      hash === '#/user/blog' ||
-      (hash.startsWith('#/user/blog/') &&
-        !hash.startsWith('#/user/blog/activity') &&
-        !hash.startsWith('#/user/blog/explore') &&
-        !hash.startsWith('#/user/blog/dashboard') &&
-        !hash.startsWith('#/user/blog/author-profile'))
-    )
-  }
+  if (item.placeholder) return false
+  if (item.id === 'home') return hash === '#/user/blog'
+  if (item.id === 'my-blogs') return hash.startsWith('#/user/author')
   if (item.matchPrefix) return hash.startsWith(item.matchPrefix)
   return hash === item.href
 }
@@ -119,11 +108,21 @@ function SidePanelNav({
   showCollapseButton = false,
 }: SidePanelNavProps) {
   const hash = useCurrentHash()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
 
   const handleNav = (item: NavItem, e: React.MouseEvent) => {
     if (item.placeholder) {
       e.preventDefault()
+      return
+    }
+    if (item.id === 'my-blogs') {
+      e.preventDefault()
+      if (!isAuthenticated) {
+        window.location.hash = '#/user/login'
+      } else {
+        window.location.hash = `#/user/author/${user?.id}`
+      }
+      if (onClose) onClose()
       return
     }
     if (onClose) onClose()
@@ -140,9 +139,10 @@ function SidePanelNav({
       >
         {!collapsed && (
           <a
-            href="#/user/blog"
+            href="#/user/"
             className="flex items-center gap-2.5 min-w-0"
             onClick={onClose}
+            title="Go to NEFOL Store"
           >
             <img
               src="/IMAGES/NEFOL icon.png"
@@ -150,14 +150,15 @@ function SidePanelNav({
               className="h-7 w-auto flex-shrink-0 object-contain"
               onError={(e) => { e.currentTarget.style.display = 'none' }}
             />
-            <span className="truncate text-[15px] font-bold tracking-wide text-[#1B4965]">
-              NEFOL
+            <span className="truncate text-[15px] tracking-wide text-[#1B4965] leading-none">
+              <span className="font-bold">NEFOL</span>{' '}
+              <span className="font-normal opacity-70">Store</span>
             </span>
           </a>
         )}
 
         {collapsed && (
-          <a href="#/user/blog" onClick={onClose}>
+          <a href="#/user/" onClick={onClose} title="NEFOL Store">
             <img
               src="/IMAGES/NEFOL icon.png"
               alt="NEFOL"
@@ -410,7 +411,10 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
             className="h-7 w-auto object-contain"
             onError={(e) => { e.currentTarget.style.display = 'none' }}
           />
-          <span className="text-[14px] font-bold tracking-wide text-[#1B4965]">NEFOL</span>
+          <span className="text-[14px] tracking-wide text-[#1B4965] leading-none">
+            <span className="font-bold">NEFOL</span>{' '}
+            <span className="font-normal opacity-70">Social</span>
+          </span>
         </a>
 
         <a
@@ -439,7 +443,10 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-200/70 px-4">
-              <span className="text-[14px] font-bold text-[#1B4965]">NEFOL</span>
+              <span className="text-[14px] tracking-wide text-[#1B4965] leading-none">
+                <span className="font-bold">NEFOL</span>{' '}
+                <span className="font-normal opacity-70">Social</span>
+              </span>
               <button
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"

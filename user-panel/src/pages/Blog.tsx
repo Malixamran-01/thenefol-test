@@ -326,10 +326,12 @@ export default function Blog() {
   return (
     <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
       <div className="mx-auto max-w-7xl px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-serif mb-4" style={{color: '#1B4965'}}>BLOG</h1>
-          <p className="text-lg font-light max-w-2xl mx-auto mb-6" style={{color: '#9DB4C0'}}>
-            Discover the latest insights on natural skincare, beauty tips, and the science behind our ingredients.
+        <div className="text-center mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight" style={{color: '#1B4965'}}>
+            NEFOL <span className="font-light">Social</span>
+          </h1>
+          <p className="text-base sm:text-lg font-light max-w-xl mx-auto" style={{color: '#9DB4C0'}}>
+            Share your thoughts, stories, and ideas with the NEFOL community.
           </p>
         </div>
 
