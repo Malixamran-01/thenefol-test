@@ -53,7 +53,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'profile',
     label: 'Profile',
     icon: <User strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/blog/profile', // resolved dynamically in handler
+    href: '#/user/login', // resolved dynamically in handler and render
     matchPrefix: '#/user/author',
   },
   {
@@ -84,11 +84,15 @@ function useCurrentHash() {
   return hash
 }
 
-function isItemActive(item: NavItem, hash: string): boolean {
+function isItemActive(item: NavItem, hash: string, currentUserId?: number): boolean {
   if (item.placeholder) return false
   if (item.id === 'home') return hash === '#/user/blog'
   if (item.id === 'my-blogs') return hash.startsWith('#/user/blog/my-blogs')
-  if (item.id === 'profile') return hash.startsWith('#/user/author')
+  if (item.id === 'profile') {
+    if (currentUserId == null) return false
+    const idFromHash = hash.replace(/^#\/user\/author\//, '').split('/')[0].split('?')[0]
+    return idFromHash === String(currentUserId)
+  }
   if (item.matchPrefix) return hash.startsWith(item.matchPrefix)
   return hash === item.href
 }
@@ -136,13 +140,20 @@ function SidePanelNav({
       e.preventDefault()
       if (!isAuthenticated) {
         window.location.hash = '#/user/login'
-      } else {
-        window.location.hash = `#/user/author/${user?.id}`
+      } else if (user?.id) {
+        window.location.hash = `#/user/author/${user.id}`
       }
       if (onClose) onClose()
       return
     }
     if (onClose) onClose()
+  }
+
+  const getItemHref = (item: NavItem) => {
+    if (item.id === 'profile') {
+      return isAuthenticated && user?.id ? `#/user/author/${user.id}` : '#/user/login'
+    }
+    return item.href
   }
 
   return (
@@ -206,13 +217,17 @@ function SidePanelNav({
       {/* ── Nav items ────────────────────────────────────────── */}
       <nav className="flex-1 py-3">
         {NAV_ITEMS.map((item) => {
-          const active = isItemActive(item, hash)
+          const active = isItemActive(item, hash, user?.id)
           const showBadge = item.id === 'notifications' && unreadCount > 0
+
+          const effectiveHref = item.id === 'profile'
+            ? (isAuthenticated && user ? `#/user/author/${user.id}` : '#/user/login')
+            : item.href
 
           return (
             <a
               key={item.id}
-              href={item.href}
+              href={effectiveHref}
               onClick={(e) => handleNav(item, e)}
               title={item.placeholder ? `${item.label} — coming soon` : item.label}
               className={`group relative flex items-center transition-colors duration-150 ${
