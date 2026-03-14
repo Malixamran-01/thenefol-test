@@ -100,6 +100,7 @@ interface SidePanelNavProps {
   onClose?: () => void
   onToggleCollapse?: () => void
   showCollapseButton?: boolean
+  showLogoRow?: boolean
   showStoreLink?: boolean
 }
 
@@ -109,6 +110,7 @@ function SidePanelNav({
   onClose,
   onToggleCollapse,
   showCollapseButton = false,
+  showLogoRow = true,
   showStoreLink = false,
 }: SidePanelNavProps) {
   const hash = useCurrentHash()
@@ -135,60 +137,60 @@ function SidePanelNav({
   return (
     <div className="flex h-full flex-col">
 
-      {/* ── Logo row ────────────────────────────────────────── */}
-      <div
-        className={`flex h-[60px] flex-shrink-0 items-center border-b border-gray-200/70 ${
-          collapsed ? 'justify-center px-0' : 'justify-between px-5'
-        }`}
-      >
-        {!collapsed && (
-          <a
-            href="#/user/"
-            className="flex items-center gap-2.5 min-w-0"
-            onClick={onClose}
-            title="Go to NEFOL Store"
-          >
-            <img
-              src="/IMAGES/NEFOL icon.png"
-              alt="NEFOL"
-              className="h-7 w-auto flex-shrink-0 object-contain"
-              onError={(e) => { e.currentTarget.style.display = 'none' }}
-            />
-            <span className="truncate text-[15px] tracking-wide text-[#1B4965] leading-none">
-              <span className="font-bold">NEFOL</span>{' '}
-              <span className="font-normal opacity-70">Store</span>
-            </span>
-          </a>
-        )}
+      {/* ── Logo row (desktop sidebar only) ─────────────────── */}
+      {showLogoRow && (
+        <div
+          className={`flex h-[60px] flex-shrink-0 items-center border-b border-gray-200/70 ${
+            collapsed ? 'justify-center px-0' : 'justify-between px-5'
+          }`}
+        >
+          {!collapsed && (
+            <a
+              href="#/user/blog"
+              className="flex items-center gap-2.5 min-w-0"
+              onClick={onClose}
+              title="NEFOL Social"
+            >
+              <img
+                src="/IMAGES/NEFOL icon.png"
+                alt="NEFOL"
+                className="h-7 w-auto flex-shrink-0 object-contain"
+                onError={(e) => { e.currentTarget.style.display = 'none' }}
+              />
+              <span className="truncate text-[15px] tracking-wide text-[#1B4965] leading-none">
+                <span className="font-bold">NEFOL</span>{' '}
+                <span className="font-normal opacity-70">Social</span>
+              </span>
+            </a>
+          )}
 
-        {collapsed && (
-          <a href="#/user/" onClick={onClose} title="NEFOL Store">
-            <img
-              src="/IMAGES/NEFOL icon.png"
-              alt="NEFOL"
-              className="h-7 w-auto object-contain"
-              onError={(e) => { e.currentTarget.style.display = 'none' }}
-            />
-          </a>
-        )}
+          {collapsed && (
+            <a href="#/user/blog" onClick={onClose} title="NEFOL Social">
+              <img
+                src="/IMAGES/NEFOL icon.png"
+                alt="NEFOL"
+                className="h-7 w-auto object-contain"
+                onError={(e) => { e.currentTarget.style.display = 'none' }}
+              />
+            </a>
+          )}
 
-        {/* Collapse toggle */}
-        {showCollapseButton && (
-          <button
-            onClick={onToggleCollapse}
-            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-300/40 hover:text-gray-700 ${
-              collapsed ? 'mt-0' : ''
-            }`}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button>
-        )}
-      </div>
+          {/* Collapse toggle */}
+          {showCollapseButton && (
+            <button
+              onClick={onToggleCollapse}
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-300/40 hover:text-gray-700"
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {collapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Nav items ────────────────────────────────────────── */}
       <nav className="flex-1 py-3">
@@ -275,17 +277,28 @@ function SidePanelNav({
         })}
       </nav>
 
-      {/* ── Back to store (mobile drawer only) ──────────────── */}
-      {showStoreLink && !collapsed && (
-        <div className="flex-shrink-0 border-t border-gray-200/70 px-5 py-3">
-          <a
-            href="#/user/"
-            onClick={onClose}
-            className="flex items-center gap-2 text-[13px] text-gray-400 transition-colors hover:text-gray-700"
-          >
-            <ShoppingBag className="h-4 w-4 flex-shrink-0" />
-            Back to NEFOL Store
-          </a>
+      {/* ── Back to NEFOL Store ──────────────────────────────── */}
+      {showStoreLink && (
+        <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center p-3' : 'px-5 py-3'}`}>
+          {collapsed ? (
+            <a
+              href="#/user/"
+              onClick={onClose}
+              title="Back to NEFOL Store"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+            >
+              <ShoppingBag className="h-[18px] w-[18px]" />
+            </a>
+          ) : (
+            <a
+              href="#/user/"
+              onClick={onClose}
+              className="flex items-center gap-2 text-[13px] text-gray-400 transition-colors hover:text-gray-700"
+            >
+              <ShoppingBag className="h-4 w-4 flex-shrink-0" />
+              Back to NEFOL Store
+            </a>
+          )}
         </div>
       )}
 
@@ -399,6 +412,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
           unreadCount={unreadCount}
           onToggleCollapse={toggleCollapse}
           showCollapseButton
+          showStoreLink
         />
       </aside>
 
@@ -510,6 +524,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
                 collapsed={false}
                 unreadCount={unreadCount}
                 onClose={() => setMobileMenuOpen(false)}
+                showLogoRow={false}
                 showStoreLink
               />
             </div>
