@@ -53,6 +53,7 @@ const Combos = lazy(() => import('./pages/Combos'))
 const Cart = lazy(() => import('./pages/Cart'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'))
+const MyBlogsPage = lazy(() => import('./pages/MyBlogsPage'))
 
 function AppContent() {
   const { items: cartItems } = useCart()
