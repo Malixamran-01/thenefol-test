@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { FileText, Pencil, Trash2, Eye, PenLine, BookOpen, Clock } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
+import { authorAPI } from '../services/authorAPI'
 import { clearLocalDraft, getLocalDraft } from '../utils/blogDraft'
+import AuthorPromptModal from '../components/AuthorPromptModal'
 
 interface BlogPost {
   id: string
@@ -46,6 +48,7 @@ export default function MyBlogsPage() {
   const [draftsLoading, setDraftsLoading] = useState(true)
   const [deletingDraftId, setDeletingDraftId] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const [showAuthorPrompt, setShowAuthorPrompt] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -112,6 +115,23 @@ export default function MyBlogsPage() {
     window.location.hash = `#/user/blog/request?draft=${draftId}`
   }
 
+  const handleWriteClick = useCallback(async () => {
+    try {
+      const eligibility = await authorAPI.checkEligibility()
+      const canSubmit =
+        Boolean(eligibility.hasAuthorRole) &&
+        Boolean(eligibility.hasAuthorProfile) &&
+        Boolean(eligibility.onboardingCompleted)
+      if (canSubmit) {
+        window.location.hash = '#/user/blog/request?new=1'
+      } else {
+        setShowAuthorPrompt(true)
+      }
+    } catch {
+      setShowAuthorPrompt(true)
+    }
+  }, [])
+
   const handleDeleteDraft = async (draftId: number) => {
     if (!window.confirm('Delete this draft permanently? This cannot be undone.')) return
     const token = localStorage.getItem('token')
@@ -166,14 +186,15 @@ export default function MyBlogsPage() {
               <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               <p className="text-gray-500 mb-2">No published posts yet</p>
               <p className="text-sm text-gray-400 mb-4">Write your first post to see it here</p>
-              <a
-                href="#/user/blog/request?new=1"
+              <button
+                type="button"
+                onClick={handleWriteClick}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-colors"
                 style={{ backgroundColor: '#1B4965' }}
               >
                 <PenLine className="h-4 w-4" />
                 Write
-              </a>
+              </button>
             </div>
           ) : (
             <ul className="space-y-3">
@@ -253,14 +274,15 @@ export default function MyBlogsPage() {
               <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               <p className="text-gray-500 mb-2">No drafts yet</p>
               <p className="text-sm text-gray-400 mb-4">Start writing to save drafts automatically</p>
-              <a
-                href="#/user/blog/request?new=1"
+              <button
+                type="button"
+                onClick={handleWriteClick}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-colors"
                 style={{ backgroundColor: '#1B4965' }}
               >
                 <PenLine className="h-4 w-4" />
                 Write
-              </a>
+              </button>
             </div>
           ) : (
             <ul className="space-y-3">
@@ -317,6 +339,11 @@ export default function MyBlogsPage() {
           )}
         </section>
       </div>
+
+      <AuthorPromptModal
+        isOpen={showAuthorPrompt}
+        onClose={() => setShowAuthorPrompt(false)}
+      />
     </main>
   )
 }
