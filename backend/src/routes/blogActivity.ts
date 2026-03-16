@@ -272,6 +272,192 @@ router.delete('/authors/:authorId/subscribe', authenticateToken, async (req, res
   }
 })
 
+// Get current user's following (works for both authors and non-authors; uses user_id so follows persist across onboarding)
+router.get('/authors/me/following', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const userId = req.userId
+    if (!userId) return res.status(401).json({ message: 'Authentication required' })
+    const limit = parseInt(req.query.limit as string) || 50
+    const offset = parseInt(req.query.offset as string) || 0
+
+    const { rows } = await pool.query(
+      `SELECT
+         af.author_id,
+         ap.id          AS author_profile_id,
+         ap.username,
+         ap.display_name,
+         ap.pen_name,
+         ap.profile_image,
+         ap.bio,
+         af.created_at
+       FROM author_followers af
+       JOIN author_profiles ap
+         ON ap.id = af.author_id
+         AND ap.status != 'deleted'
+       WHERE af.follower_user_id = $1::integer
+       ORDER BY af.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching my following:', error)
+    res.status(500).json({ message: 'Failed to fetch following' })
+  }
+})
+
+// Get current user's stats (works for both authors and non-authors; following count uses user_id)
+router.get('/authors/me/stats', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const userId = req.userId
+    if (!userId) return res.status(401).json({ message: 'Authentication required' })
+
+    // Check if user has author profile
+    const { rows: authorRows } = await pool.query(
+      `SELECT id FROM author_profiles WHERE user_id = $1::integer AND status != 'deleted' LIMIT 1`,
+      [userId]
+    )
+    const hasAuthorProfile = authorRows.length > 0
+    const authorProfileId = authorRows[0]?.id ?? null
+
+    // Following count: always from author_followers by user_id (persists across onboarding)
+    const { rows: followingRows } = await pool.query(
+      `SELECT COUNT(*)::integer as count FROM author_followers WHERE follower_user_id = $1::integer`,
+      [userId]
+    )
+    const followingCount = followingRows[0]?.count ?? 0
+
+    let followersCount = 0
+    let subscribersCount = 0
+    let postsCount = 0
+    let totalViews = 0
+    let totalLikes = 0
+
+    if (hasAuthorProfile && authorProfileId) {
+      const { rows: statsRows } = await pool.query(
+        `SELECT followers_count, subscribers_count, posts_count, total_views, total_likes
+         FROM author_stats WHERE author_id = $1`,
+        [authorProfileId]
+      )
+      const s = statsRows[0]
+      followersCount = s?.followers_count ?? 0
+      subscribersCount = s?.subscribers_count ?? 0
+      postsCount = s?.posts_count ?? 0
+      totalViews = s?.total_views ?? 0
+      totalLikes = s?.total_likes ?? 0
+    }
+
+    res.json({
+      followers: followersCount,
+      subscribers: subscribersCount,
+      following: followingCount,
+      posts: postsCount,
+      views: totalViews,
+      likes: totalLikes,
+      isFollowing: false,
+      isSubscribed: false
+    })
+  } catch (error) {
+    console.error('Error fetching my stats:', error)
+    res.status(500).json({ message: 'Failed to fetch stats' })
+  }
+})
+
+// Get current user's stats and following by user_id (works for both authors and non-authors)
+// Must be before /authors/:authorId/... so /authors/me/stats and /authors/me/following match
+router.get('/authors/me/stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const authorUserId = parseInt(userId, 10)
+    if (isNaN(authorUserId)) return res.status(400).json({ message: 'Invalid user' })
+
+    // Following count: always from author_followers by user_id (persists across author profile creation)
+    const { rows: followingRows } = await pool.query(
+      `SELECT COUNT(*)::integer as count FROM author_followers WHERE follower_user_id = $1`,
+      [authorUserId]
+    )
+    const followingCount = followingRows[0]?.count ?? 0
+
+    // If user has author profile, return full stats
+    const { rows: apRows } = await pool.query(
+      `SELECT id FROM author_profiles WHERE user_id = $1 AND status != 'deleted' LIMIT 1`,
+      [authorUserId]
+    )
+    if (apRows.length > 0) {
+      const resolvedId = apRows[0].id
+      const { rows: statsRows } = await pool.query(
+        `SELECT followers_count, subscribers_count, posts_count, total_views, total_likes
+         FROM author_stats WHERE author_id = $1`,
+        [resolvedId]
+      )
+      const stats = statsRows[0] || {}
+      return res.json({
+        followers: stats.followers_count ?? 0,
+        subscribers: stats.subscribers_count ?? 0,
+        following: followingCount,
+        posts: stats.posts_count ?? 0,
+        views: stats.total_views ?? 0,
+        likes: stats.total_likes ?? 0,
+        isFollowing: false,
+        isSubscribed: false
+      })
+    }
+
+    // No author profile: return following count only (non-authors)
+    res.json({
+      followers: 0,
+      subscribers: 0,
+      following: followingCount,
+      posts: 0,
+      views: 0,
+      likes: 0,
+      isFollowing: false,
+      isSubscribed: false
+    })
+  } catch (error) {
+    console.error('Error fetching my stats:', error)
+    res.status(500).json({ message: 'Failed to fetch stats' })
+  }
+})
+
+router.get('/authors/me/following', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+    const authorUserId = parseInt(userId, 10)
+    if (isNaN(authorUserId)) return res.json([])
+
+    const limit = parseInt(req.query.limit as string) || 50
+    const offset = parseInt(req.query.offset as string) || 0
+    const { rows } = await pool.query(
+      `SELECT
+         af.author_id,
+         ap.id          AS author_profile_id,
+         ap.username,
+         ap.display_name,
+         ap.pen_name,
+         ap.profile_image,
+         ap.bio,
+         af.created_at
+       FROM author_followers af
+       JOIN author_profiles ap
+         ON ap.id = af.author_id
+         AND ap.status != 'deleted'
+       WHERE af.follower_user_id = $1
+       ORDER BY af.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [authorUserId, limit, offset]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching my following:', error)
+    res.status(500).json({ message: 'Failed to fetch following' })
+  }
+})
+
 // Get list of followers for an author
 router.get('/authors/:authorId/followers', async (req, res) => {
   try {
@@ -839,6 +1025,102 @@ router.get('/authors/me', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching my author profile:', error)
     res.status(500).json({ message: 'Failed to fetch profile' })
+  }
+})
+
+// Get current user's stats (works for both authors and non-authors - uses user_id for following count)
+router.get('/authors/me/stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+    const userIdInt = parseInt(userId, 10)
+
+    // Check if user has author profile
+    const { rows: profileRows } = await pool.query(
+      `SELECT id FROM author_profiles WHERE user_id = $1::integer AND status != 'deleted' LIMIT 1`,
+      [userId]
+    )
+
+    let followersCount = 0
+    let subscribersCount = 0
+    let postsCount = 0
+    let totalViews = 0
+    let totalLikes = 0
+
+    if (profileRows.length > 0) {
+      const authorId = profileRows[0].id
+      const { rows: statsRows } = await pool.query(
+        `SELECT followers_count, subscribers_count, posts_count, total_views, total_likes
+         FROM author_stats WHERE author_id = $1`,
+        [authorId]
+      )
+      if (statsRows[0]) {
+        followersCount = statsRows[0].followers_count ?? 0
+        subscribersCount = statsRows[0].subscribers_count ?? 0
+        postsCount = statsRows[0].posts_count ?? 0
+        totalViews = statsRows[0].total_views ?? 0
+        totalLikes = statsRows[0].total_likes ?? 0
+      }
+    }
+
+    // Following count: always from author_followers by user_id (same for authors and non-authors)
+    const { rows: followingRows } = await pool.query(
+      `SELECT COUNT(*)::integer as count FROM author_followers WHERE follower_user_id = $1`,
+      [userIdInt]
+    )
+    const followingCount = followingRows[0]?.count ?? 0
+
+    res.json({
+      followers: followersCount,
+      subscribers: subscribersCount,
+      following: followingCount,
+      posts: postsCount,
+      views: totalViews,
+      likes: totalLikes,
+      isFollowing: false,
+      isSubscribed: false
+    })
+  } catch (error) {
+    console.error('Error fetching my stats:', error)
+    res.status(500).json({ message: 'Failed to fetch stats' })
+  }
+})
+
+// Get current user's following list (works for both authors and non-authors - uses user_id)
+router.get('/authors/me/following', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+    const limit = parseInt(req.query.limit as string) || 50
+    const offset = parseInt(req.query.offset as string) || 0
+
+    const { rows } = await pool.query(
+      `SELECT
+         af.author_id,
+         ap.id          AS author_profile_id,
+         ap.username,
+         ap.display_name,
+         ap.pen_name,
+         ap.profile_image,
+         ap.bio,
+         af.created_at
+       FROM author_followers af
+       JOIN author_profiles ap
+         ON ap.id = af.author_id
+         AND ap.status != 'deleted'
+       WHERE af.follower_user_id = $1::integer
+       ORDER BY af.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching my following:', error)
+    res.status(500).json({ message: 'Failed to fetch following' })
   }
 })
 

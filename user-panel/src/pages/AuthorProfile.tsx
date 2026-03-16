@@ -446,12 +446,14 @@ export default function AuthorProfile() {
   }, [routeAuthorId, authorProfile])
 
   // Fetch author stats (followers, subscribers, follow status) when we have an author identifier
+  // Use "me" for own profile so we always use user_id-based lookup (preserves following across author onboarding)
+  const statsAuthorId = routeAuthorId === 'me' && isAuthenticated ? 'me' : effectiveAuthorId
   useEffect(() => {
-    if (!effectiveAuthorId || effectiveAuthorId === 'guest') return
+    if (!statsAuthorId || statsAuthorId === 'guest') return
     
     const fetchAuthorStats = async () => {
       try {
-        const stats = await blogActivityAPI.getAuthorStats(effectiveAuthorId)
+        const stats = await blogActivityAPI.getAuthorStats(statsAuthorId)
         setRealFollowers(stats.followers || 0)
         setRealFollowing(stats.following ?? 0)
         if (reduxFollowKey) {
@@ -463,7 +465,7 @@ export default function AuthorProfile() {
     }
 
     fetchAuthorStats()
-  }, [effectiveAuthorId, reduxFollowKey, dispatch])
+  }, [statsAuthorId, reduxFollowKey, dispatch])
 
   useEffect(() => {
     const fetchAuthorPosts = async () => {
@@ -745,7 +747,8 @@ export default function AuthorProfile() {
     setLoadingSocial(true)
     setSocialList([])
     try {
-      const id = effectiveAuthorId
+      // Use statsAuthorId ('me') for following to preserve user_id-based lookup across author onboarding
+      const id = tab === 'following' ? statsAuthorId : effectiveAuthorId
       if (!id || id === 'guest') return
       const data = tab === 'followers'
         ? await blogActivityAPI.getAuthorFollowers(String(id))
@@ -765,7 +768,7 @@ export default function AuthorProfile() {
     setLoadingSocial(true)
     setSocialList([])
     try {
-      const id = effectiveAuthorId
+      const id = tab === 'following' ? statsAuthorId : effectiveAuthorId
       if (!id || id === 'guest') return
       const data = tab === 'followers'
         ? await blogActivityAPI.getAuthorFollowers(String(id))
