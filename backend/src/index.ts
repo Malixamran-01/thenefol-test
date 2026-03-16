@@ -795,8 +795,7 @@ app.use('/api/blog', blogRouter)
 initBlogActivityRouter(pool)
 app.use('/api/blog', blogActivityRouter)
 
-// Initialize blog notifications router
-initBlogNotificationsRouter(pool)
+// Initialize blog notifications router (tables created in ensureSchema before server starts)
 app.use('/api/blog', blogNotificationsRouter)
 
 // Initialize role-based access control
@@ -5101,6 +5100,10 @@ if (fs.existsSync(indexPath)) {
 const port = Number(process.env.PORT || 2000)
 ensureSchema(pool)
   .then(async () => {
+    // Initialize blog notifications tables (for Activity tab)
+    await initBlogNotificationsRouter(pool)
+    console.log('✅ Blog notifications tables ready')
+
     // Initialize user activity tracking tables
     await createUserActivityTables(pool)
     console.log('✅ User activity tracking initialized')

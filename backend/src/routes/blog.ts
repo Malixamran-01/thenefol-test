@@ -1517,17 +1517,17 @@ router.post('/posts/:id/like', authenticateToken, async (req, res) => {
     if (rowCount && rowCount > 0) {
       try {
         const { rows: postRows } = await pool.query(
-          `SELECT bp.title, ap.user_id AS author_user_id
+          `SELECT bp.title, COALESCE(ap.user_id, bp.user_id) AS recipient_user_id
            FROM blog_posts bp
            LEFT JOIN author_profiles ap ON ap.id::text = bp.author_id::text
            WHERE bp.id = $1 LIMIT 1`,
           [postId]
         )
-        if (postRows.length > 0) {
+        if (postRows.length > 0 && postRows[0].recipient_user_id) {
           const actor = await resolveActor(pool, userId)
           await createNotification({
             pool,
-            recipientUserId: postRows[0].author_user_id,
+            recipientUserId: postRows[0].recipient_user_id,
             actorUserId: userId,
             actorName: actor.name,
             actorAvatar: actor.avatar,
@@ -1621,17 +1621,17 @@ router.post('/posts/:id/repost', authenticateToken, async (req, res) => {
     if (rowCount && rowCount > 0) {
       try {
         const { rows: postRows } = await pool.query(
-          `SELECT bp.title, ap.user_id AS author_user_id
+          `SELECT bp.title, COALESCE(ap.user_id, bp.user_id) AS recipient_user_id
            FROM blog_posts bp
            LEFT JOIN author_profiles ap ON ap.id::text = bp.author_id::text
            WHERE bp.id = $1 LIMIT 1`,
           [postId]
         )
-        if (postRows.length > 0) {
+        if (postRows.length > 0 && postRows[0].recipient_user_id) {
           const actor = await resolveActor(pool, userId)
           await createNotification({
             pool,
-            recipientUserId: postRows[0].author_user_id,
+            recipientUserId: postRows[0].recipient_user_id,
             actorUserId: userId,
             actorName: actor.name,
             actorAvatar: actor.avatar,
@@ -1786,16 +1786,16 @@ router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
 
       // Notify the post author
       const { rows: postRows } = await pool.query(
-        `SELECT bp.title, ap.user_id AS author_user_id
+        `SELECT bp.title, COALESCE(ap.user_id, bp.user_id) AS recipient_user_id
          FROM blog_posts bp
          LEFT JOIN author_profiles ap ON ap.id::text = bp.author_id::text
          WHERE bp.id = $1 LIMIT 1`,
         [postId]
       )
-      if (postRows.length > 0) {
+      if (postRows.length > 0 && postRows[0].recipient_user_id) {
         await createNotification({
           pool,
-          recipientUserId: postRows[0].author_user_id,
+          recipientUserId: postRows[0].recipient_user_id,
           actorUserId: userId,
           actorName: actor.name,
           actorAvatar: actor.avatar,

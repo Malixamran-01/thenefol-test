@@ -5,38 +5,39 @@ import { authenticateToken } from '../utils/apiHelpers'
 const router = express.Router()
 let pool: Pool
 
-export function initBlogNotificationsRouter(databasePool: Pool) {
+export async function initBlogNotificationsRouter(databasePool: Pool) {
   pool = databasePool
 
-  databasePool.query(`
-    CREATE TABLE IF NOT EXISTS blog_notifications (
-      id          SERIAL PRIMARY KEY,
-      recipient_user_id INTEGER NOT NULL,
-      actor_user_id     INTEGER,
-      actor_name        TEXT,
-      actor_avatar      TEXT,
-      type              TEXT NOT NULL,
-      post_id           TEXT,
-      post_title        TEXT,
-      comment_id        INTEGER,
-      comment_excerpt   TEXT,
-      is_read           BOOLEAN DEFAULT FALSE,
-      created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `).catch((err: Error) => console.error('Error creating blog_notifications table:', err))
-
-  databasePool.query(`
-    CREATE INDEX IF NOT EXISTS idx_blog_notifs_recipient
-    ON blog_notifications(recipient_user_id, created_at DESC)
-  `).catch(() => {/* index may already exist */})
-
-  // Per-user notification mute preferences
-  databasePool.query(`
-    CREATE TABLE IF NOT EXISTS blog_notification_preferences (
-      user_id     INTEGER PRIMARY KEY,
-      muted_until TIMESTAMPTZ
-    )
-  `).catch((err: Error) => console.error('Error creating blog_notification_preferences table:', err))
+  try {
+    await databasePool.query(`
+      CREATE TABLE IF NOT EXISTS blog_notifications (
+        id          SERIAL PRIMARY KEY,
+        recipient_user_id INTEGER NOT NULL,
+        actor_user_id     INTEGER,
+        actor_name        TEXT,
+        actor_avatar      TEXT,
+        type              TEXT NOT NULL,
+        post_id           TEXT,
+        post_title        TEXT,
+        comment_id        INTEGER,
+        comment_excerpt   TEXT,
+        is_read           BOOLEAN DEFAULT FALSE,
+        created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    await databasePool.query(`
+      CREATE INDEX IF NOT EXISTS idx_blog_notifs_recipient
+      ON blog_notifications(recipient_user_id, created_at DESC)
+    `)
+    await databasePool.query(`
+      CREATE TABLE IF NOT EXISTS blog_notification_preferences (
+        user_id     INTEGER PRIMARY KEY,
+        muted_until TIMESTAMPTZ
+      )
+    `)
+  } catch (err) {
+    console.error('Error creating blog_notifications tables:', err)
+  }
 }
 
 // ─── Helper exported to blog.ts / blogActivity.ts ────────────────────────────
@@ -101,17 +102,30 @@ export async function resolveActor(
 ): Promise<{ name: string | null; avatar: string | null }> {
   if (!userId) return { name: null, avatar: null }
   try {
-    const { rows } = await pool.query(
+    // Try author_profiles first (for authors)
+    const { rows: authorRows } = await pool.query(
       `SELECT display_name, pen_name, username, profile_image
        FROM author_profiles
        WHERE user_id::text = $1::text
        LIMIT 1`,
       [userId]
     )
-    const row = rows[0]
+    const authorRow = authorRows[0]
+    if (authorRow) {
+      return {
+        name: authorRow.display_name || authorRow.pen_name || authorRow.username || null,
+        avatar: authorRow.profile_image || null,
+      }
+    }
+    // Fall back to users table for non-authors
+    const { rows: userRows } = await pool.query(
+      `SELECT name, profile_photo FROM users WHERE id = $1::integer LIMIT 1`,
+      [userId]
+    )
+    const userRow = userRows[0]
     return {
-      name: row?.display_name || row?.pen_name || row?.username || null,
-      avatar: row?.profile_image || null,
+      name: userRow?.name || null,
+      avatar: userRow?.profile_photo || null,
     }
   } catch {
     return { name: null, avatar: null }

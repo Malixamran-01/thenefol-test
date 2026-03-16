@@ -422,6 +422,29 @@ async function runMigration() {
         unique(post_id, user_id)
       );
 
+      -- Blog Notifications (likes, comments, follows, etc.)
+      CREATE TABLE IF NOT EXISTS blog_notifications (
+        id serial primary key,
+        recipient_user_id integer not null,
+        actor_user_id integer,
+        actor_name text,
+        actor_avatar text,
+        type text not null,
+        post_id text,
+        post_title text,
+        comment_id integer,
+        comment_excerpt text,
+        is_read boolean default false,
+        created_at timestamptz default now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_blog_notifs_recipient ON blog_notifications(recipient_user_id, created_at DESC);
+
+      -- Blog notification mute preferences
+      CREATE TABLE IF NOT EXISTS blog_notification_preferences (
+        user_id integer primary key,
+        muted_until timestamptz
+      );
+
       -- Author Followers (Social graph - lightweight)
       CREATE TABLE IF NOT EXISTS author_followers (
         id serial primary key,
