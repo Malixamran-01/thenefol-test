@@ -811,6 +811,37 @@ router.get('/authors/suggestions', authenticateToken, async (req, res) => {
 
 // ==================== AUTHOR PROFILE CRUD ====================
 
+// Get current user's own author profile (authenticated) - used for Profile tab navigation
+router.get('/authors/me', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+    const { rows } = await pool.query(
+      `SELECT ap.*, u.email as user_email, u.name as user_name,
+        COALESCE(ast.followers_count, 0) as followers_count,
+        COALESCE(ast.subscribers_count, 0) as subscribers_count,
+        COALESCE(ast.posts_count, 0) as posts_count,
+        COALESCE(ast.total_views, 0) as total_views,
+        COALESCE(ast.total_likes, 0) as total_likes
+       FROM author_profiles ap
+       LEFT JOIN users u ON ap.user_id = u.id
+       LEFT JOIN author_stats ast ON ap.id = ast.author_id
+       WHERE ap.user_id = $1::integer AND ap.status != 'deleted'
+       LIMIT 1`,
+      [userId]
+    )
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'No author profile found' })
+    }
+    res.json(rows[0])
+  } catch (error) {
+    console.error('Error fetching my author profile:', error)
+    res.status(500).json({ message: 'Failed to fetch profile' })
+  }
+})
+
 // Get author by username or ID
 router.get('/authors/:identifier', async (req, res) => {
   try {

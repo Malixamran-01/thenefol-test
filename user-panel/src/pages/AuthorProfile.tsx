@@ -376,8 +376,9 @@ export default function AuthorProfile() {
   const currentUserId = user?.id != null ? String(user.id) : null
   const isOwnProfile = Boolean(
     isAuthenticated &&
-    currentUserId &&
-    (hasAuthorProfile ? String(authorProfile!.user_id) === currentUserId : (routeAuthorId && /^\d+$/.test(routeAuthorId) && routeAuthorId === currentUserId))
+    (routeAuthorId === 'me' ||
+      (currentUserId &&
+        (hasAuthorProfile ? String(authorProfile!.user_id) === currentUserId : (routeAuthorId && /^\d+$/.test(routeAuthorId) && routeAuthorId === currentUserId))))
   )
 
   // Fetch full author profile from author_profiles (has onboarding data: bio, categories, location, etc.)
@@ -391,13 +392,17 @@ export default function AuthorProfile() {
       try {
         const profile = await blogActivityAPI.getAuthor(routeAuthorId)
         setAuthorProfile(profile)
-      } catch {
+      } catch (err) {
         setAuthorProfile(null)
+        // When viewing "me" and no author profile exists, redirect to onboarding
+        if (routeAuthorId === 'me' && isAuthenticated) {
+          window.location.hash = '#/user/author/onboarding'
+        }
       }
     }
 
     fetchAuthorProfile()
-  }, [routeAuthorId])
+  }, [routeAuthorId, isAuthenticated])
 
   // Fallback: fetch user summary when no author profile (e.g. user with no author_profiles row)
   useEffect(() => {

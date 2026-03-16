@@ -89,8 +89,9 @@ function isItemActive(item: NavItem, hash: string, currentUserId?: number): bool
   if (item.id === 'home') return hash === '#/user/blog'
   if (item.id === 'my-blogs') return hash.startsWith('#/user/blog/my-blogs')
   if (item.id === 'profile') {
-    if (currentUserId == null) return false
     const idFromHash = hash.replace(/^#\/user\/author\//, '').split('/')[0].split('?')[0]
+    if (idFromHash === 'me') return true
+    if (currentUserId == null) return false
     return idFromHash === String(currentUserId)
   }
   if (item.matchPrefix) return hash.startsWith(item.matchPrefix)
@@ -140,9 +141,9 @@ function SidePanelNav({
       e.preventDefault()
       if (!isAuthenticated) {
         window.location.hash = '#/user/login'
-      } else if (user?.id) {
+      } else {
         sessionStorage.removeItem('blog_author_profile')
-        window.location.hash = `#/user/author/${user.id}`
+        window.location.hash = '#/user/author/me'
       }
       if (onClose) onClose()
       return
@@ -152,7 +153,7 @@ function SidePanelNav({
 
   const getItemHref = (item: NavItem) => {
     if (item.id === 'profile') {
-      return isAuthenticated && user?.id ? `#/user/author/${user.id}` : '#/user/login'
+      return isAuthenticated ? '#/user/author/me' : '#/user/login'
     }
     return item.href
   }
@@ -222,7 +223,7 @@ function SidePanelNav({
           const showBadge = item.id === 'notifications' && unreadCount > 0
 
           const effectiveHref = item.id === 'profile'
-            ? (isAuthenticated && user ? `#/user/author/${user.id}` : '#/user/login')
+            ? (isAuthenticated ? '#/user/author/me' : '#/user/login')
             : item.href
 
           return (
