@@ -11,7 +11,6 @@ import {
   PenLine,
   ChevronLeft,
   ChevronRight,
-  ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
@@ -329,17 +328,17 @@ function SidePanelNav({
               href="#/user/"
               onClick={onClose}
               title="Back to NEFOL Store"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1B4965] text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg"
             >
-              <ShoppingBag className="h-[18px] w-[18px]" />
+              <img src="/IMAGES/NEFOL icon.png" alt="" className="h-5 w-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             </a>
           ) : (
             <a
               href="#/user/"
               onClick={onClose}
-              className="flex items-center gap-2 text-[13px] text-gray-400 transition-colors hover:text-gray-700"
+              className="flex items-center gap-2.5 rounded-lg bg-[#1B4965] px-4 py-3 text-[15px] font-bold text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg -mx-1"
             >
-              <ShoppingBag className="h-4 w-4 flex-shrink-0" />
+              <img src="/IMAGES/NEFOL icon.png" alt="" className="h-5 w-5 flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
               Back to NEFOL Store
             </a>
           )}
