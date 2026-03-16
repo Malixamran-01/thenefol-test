@@ -48,8 +48,11 @@ const AuthorOnboarding = () => {
 
   const categories = ['Tech', 'Mental health', 'Diaries', 'Business', 'Poetry', 'Lifestyle', 'Health', 'Travel']
   const languages = ['English', 'Urdu', 'Hindi', 'Arabic', 'Spanish', 'French']
-  const navigateToBlogRequest = () => {
-    window.location.hash = '#/user/blog/request?new=1'
+
+  const navigateAfterOnboarding = () => {
+    const returnTo = sessionStorage.getItem('author_onboarding_return')
+    sessionStorage.removeItem('author_onboarding_return')
+    window.location.hash = returnTo || '#/user/blog/request?new=1'
   }
 
   const steps: OnboardingStep[] = [
@@ -68,7 +71,7 @@ const AuthorOnboarding = () => {
     try {
       const progress = await authorAPI.getProgress()
       if (progress.onboardingCompleted) {
-        navigateToBlogRequest()
+        navigateAfterOnboarding()
       } else if (progress.started) {
         setCurrentStep(progress.currentStep)
         const step1 = (progress as any).step1Data
@@ -203,7 +206,7 @@ const AuthorOnboarding = () => {
       await authorAPI.completeOnboarding()
       setSuccess('🎉 Your author profile is ready!')
       setTimeout(() => {
-        navigateToBlogRequest()
+        navigateAfterOnboarding()
       }, 2000)
     } catch (err: any) {
       setError(err.message || 'Failed to complete onboarding')

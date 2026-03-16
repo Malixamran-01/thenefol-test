@@ -396,6 +396,7 @@ export default function AuthorProfile() {
         setAuthorProfile(null)
         // When viewing "me" and no author profile exists, redirect to onboarding
         if (routeAuthorId === 'me' && isAuthenticated) {
+          sessionStorage.setItem('author_onboarding_return', '#/user/author/me')
           window.location.hash = '#/user/author/onboarding'
         }
       }

@@ -10,6 +10,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
   if (!isOpen) return null
 
   const handleCreateProfile = () => {
+    sessionStorage.setItem('author_onboarding_return', '#/user/blog/request?new=1')
     window.location.hash = '#/user/author/onboarding'
   }
 
