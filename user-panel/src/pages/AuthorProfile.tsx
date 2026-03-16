@@ -326,22 +326,36 @@ export default function AuthorProfile() {
   const [socialList, setSocialList] = useState<any[]>([])
   const [loadingSocial, setLoadingSocial] = useState(false)
 
+  const [currentHash, setCurrentHash] = useState(() => window.location.hash || '')
+
   useEffect(() => {
-    const raw = sessionStorage.getItem('blog_author_profile')
-    if (raw) {
-      try {
-        setAuthorSeed(JSON.parse(raw) as AuthorSeedData)
-      } catch {
-        setAuthorSeed(null)
-      }
-    }
+    const handler = () => setCurrentHash(window.location.hash || '')
+    window.addEventListener('hashchange', handler)
+    return () => window.removeEventListener('hashchange', handler)
   }, [])
 
   const routeAuthorId = useMemo(() => {
-    const hash = window.location.hash || ''
-    const match = hash.match(/^#\/user\/author\/([^/?#]+)/)
+    const match = (currentHash || '').match(/^#\/user\/author\/([^/?#]+)/)
     return match?.[1] || ''
-  }, [])
+  }, [currentHash])
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem('blog_author_profile')
+    if (raw && routeAuthorId) {
+      try {
+        const parsed = JSON.parse(raw) as AuthorSeedData
+        if (normalize(String(parsed.id)) === normalize(routeAuthorId)) {
+          setAuthorSeed(parsed)
+        } else {
+          setAuthorSeed(null)
+        }
+      } catch {
+        setAuthorSeed(null)
+      }
+    } else {
+      setAuthorSeed(null)
+    }
+  }, [routeAuthorId])
 
   const authorKey = useMemo(() => {
     const stableId = normalize(authorSeed?.id || routeAuthorId)

@@ -141,6 +141,7 @@ function SidePanelNav({
       if (!isAuthenticated) {
         window.location.hash = '#/user/login'
       } else if (user?.id) {
+        sessionStorage.removeItem('blog_author_profile')
         window.location.hash = `#/user/author/${user.id}`
       }
       if (onClose) onClose()
