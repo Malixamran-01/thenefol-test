@@ -91,7 +91,7 @@ function AppContent() {
     (currentPath.startsWith('/user/blog/') &&
       currentPath !== '/user/blog/request' &&
       currentPath !== '/user/blog/edit-image') ||
-    (currentPath.startsWith('/user/author/') && currentPath !== '/user/author/onboarding')
+    currentPath.startsWith('/user/author/')
 
   // Capture referral parameter from URL
   useEffect(() => {
@@ -1037,6 +1037,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
   if (pathWithoutQuery === '/user/blog/my-blogs') return RequiredAuth(<BlogLayout><MyBlogsPage /></BlogLayout>)
   if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogLayout><BlogDetail /></BlogLayout>
   if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <BlogLayout><AuthorProfile /></BlogLayout>
+  if (pathWithoutQuery === '/user/author/onboarding') return RequiredAuth(<BlogLayout><AuthorOnboarding /></BlogLayout>)
   if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />
   if (lower.startsWith('/user/confirmation')) return <Confirmation />
   if (lower.startsWith('/user/order/')) return <OrderDetails />
@@ -1052,7 +1053,6 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/ingredients': return <Ingredients />
     case '/user/blog': return <BlogLayout><Blog /></BlogLayout>
     case '/user/blog/request': return RequiredAuth(<BlogRequestForm />)
-    case '/user/author/onboarding': return RequiredAuth(<AuthorOnboarding />)
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
     case '/user/affiliate':
