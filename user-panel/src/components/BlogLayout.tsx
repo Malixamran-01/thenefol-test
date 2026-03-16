@@ -15,7 +15,9 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
+import { authorAPI } from '../services/authorAPI'
 import { getApiBase } from '../utils/apiBase'
+import AuthorPromptModal from './AuthorPromptModal'
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -108,6 +110,7 @@ interface SidePanelNavProps {
   showCollapseButton?: boolean
   showLogoRow?: boolean
   showStoreLink?: boolean
+  onWriteClick?: (e: React.MouseEvent) => void | Promise<void>
 }
 
 function SidePanelNav({
@@ -118,6 +121,7 @@ function SidePanelNav({
   showCollapseButton = false,
   showLogoRow = true,
   showStoreLink = false,
+  onWriteClick,
 }: SidePanelNavProps) {
   const hash = useCurrentHash()
   const { isAuthenticated, user } = useAuth()
@@ -156,6 +160,18 @@ function SidePanelNav({
       return isAuthenticated ? '#/user/author/me' : '#/user/login'
     }
     return item.href
+  }
+
+  const handleWriteClick = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (onClose) onClose()
+    if (onWriteClick) {
+      onWriteClick(e)
+    } else if (isAuthenticated) {
+      window.location.hash = '#/user/blog/request?new=1'
+    } else {
+      window.location.hash = '#/user/login'
+    }
   }
 
   return (
@@ -335,7 +351,7 @@ function SidePanelNav({
         {collapsed ? (
           <a
             href={isAuthenticated ? '#/user/blog/request?new=1' : '#/user/login'}
-            onClick={onClose}
+            onClick={handleWriteClick}
             title="Write"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B4965] text-white transition-colors hover:bg-[#163d54]"
           >
@@ -344,7 +360,7 @@ function SidePanelNav({
         ) : (
           <a
             href={isAuthenticated ? '#/user/blog/request?new=1' : '#/user/login'}
-            onClick={onClose}
+            onClick={handleWriteClick}
             className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1B4965] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#163d54]"
           >
             <PenLine className="h-3.5 w-3.5" />
@@ -371,6 +387,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showAuthorPrompt, setShowAuthorPrompt] = useState(false)
 
   // Persist collapse state
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -427,6 +444,27 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
 
   const sidebarW = collapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_EXPANDED_W
 
+  const handleWriteClick = useCallback(async (_e: React.MouseEvent) => {
+    if (!isAuthenticated) {
+      window.location.hash = '#/user/login'
+      return
+    }
+    try {
+      const eligibility = await authorAPI.checkEligibility()
+      const canSubmitDirectly =
+        Boolean(eligibility.hasAuthorRole) &&
+        Boolean(eligibility.hasAuthorProfile) &&
+        Boolean(eligibility.onboardingCompleted)
+      if (canSubmitDirectly) {
+        window.location.hash = '#/user/blog/request?new=1'
+      } else {
+        setShowAuthorPrompt(true)
+      }
+    } catch {
+      setShowAuthorPrompt(true)
+    }
+  }, [isAuthenticated])
+
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: '#F4F9F9' }}>
 
@@ -441,6 +479,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
           onToggleCollapse={toggleCollapse}
           showCollapseButton
           showStoreLink
+          onWriteClick={handleWriteClick}
         />
       </aside>
 
@@ -554,6 +593,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
                 onClose={() => setMobileMenuOpen(false)}
                 showLogoRow={false}
                 showStoreLink
+                onWriteClick={handleWriteClick}
               />
             </div>
           </div>
@@ -564,6 +604,11 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
       <main className="flex-1 min-w-0 pt-14 lg:pt-0">
         {children}
       </main>
+
+      <AuthorPromptModal
+        isOpen={showAuthorPrompt}
+        onClose={() => setShowAuthorPrompt(false)}
+      />
     </div>
   )
 }
