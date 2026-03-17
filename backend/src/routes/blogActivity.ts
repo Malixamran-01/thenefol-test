@@ -73,13 +73,15 @@ router.post('/authors/:authorId/follow', authenticateToken, async (req, res) => 
       return res.status(400).json({ message: 'Cannot follow yourself' })
     }
 
-    // Add follower
-    await pool.query(
+    // Add follower (check if actually inserted to avoid duplicate notifications)
+    const insertResult = await pool.query(
       `INSERT INTO author_followers (author_id, follower_user_id, created_at)
        VALUES ($1, $2::integer, CURRENT_TIMESTAMP)
-       ON CONFLICT (author_id, follower_user_id) DO NOTHING`,
+       ON CONFLICT (author_id, follower_user_id) DO NOTHING
+       RETURNING 1`,
       [resolvedId, userId]
     )
+    const wasNewFollow = (insertResult.rowCount ?? 0) > 0
 
     // Log activity (optional - blog_activities may lack author_id in older schemas)
     try {
@@ -96,29 +98,33 @@ router.post('/authors/:authorId/follow', authenticateToken, async (req, res) => 
       [resolvedId]
     )
 
+    // Notify the author being followed only when it's a new follow (before response so it completes)
+    if (wasNewFollow) {
+      try {
+        const { rows: authorRows } = await pool.query(
+          `SELECT user_id FROM author_profiles WHERE id = $1 AND status != 'deleted' LIMIT 1`,
+          [resolvedId]
+        )
+        if (authorRows.length > 0) {
+          const actor = await resolveActor(pool, userId)
+          await createNotification({
+            pool,
+            recipientUserId: authorRows[0].user_id,
+            actorUserId: userId,
+            actorName: actor.name,
+            actorAvatar: actor.avatar,
+            type: 'followed',
+          })
+        }
+      } catch (err) {
+        console.error('[follow] Error creating follow notification:', err)
+      }
+    }
+
     res.json({ 
       message: 'Author followed successfully',
       followerCount: rows[0]?.followers_count || 0 
     })
-
-    // Notify the author being followed
-    try {
-      const { rows: authorRows } = await pool.query(
-        `SELECT user_id FROM author_profiles WHERE id = $1 LIMIT 1`,
-        [resolvedId]
-      )
-      if (authorRows.length > 0) {
-        const actor = await resolveActor(pool, userId)
-        await createNotification({
-          pool,
-          recipientUserId: authorRows[0].user_id,
-          actorUserId: userId,
-          actorName: actor.name,
-          actorAvatar: actor.avatar,
-          type: 'followed',
-        })
-      }
-    } catch { /* notification failure should not break the response */ }
   } catch (error) {
     console.error('Error following author:', error)
     res.status(500).json({ message: 'Failed to follow author' })
@@ -210,15 +216,10 @@ router.post('/authors/:authorId/subscribe', authenticateToken, async (req, res) 
       [resolvedId]
     )
 
-    res.json({ 
-      message: 'Subscribed to author successfully',
-      subscriberCount: rows[0]?.subscribers_count || 0 
-    })
-
-    // Notify the author being subscribed to
+    // Notify the author being subscribed to (before response so it completes)
     try {
       const { rows: authorRows } = await pool.query(
-        `SELECT user_id FROM author_profiles WHERE id = $1 LIMIT 1`,
+        `SELECT user_id FROM author_profiles WHERE id = $1 AND status != 'deleted' LIMIT 1`,
         [resolvedId]
       )
       if (authorRows.length > 0) {
@@ -232,7 +233,14 @@ router.post('/authors/:authorId/subscribe', authenticateToken, async (req, res) 
           type: 'subscribed',
         })
       }
-    } catch { /* notification failure should not break the response */ }
+    } catch (err) {
+      console.error('[subscribe] Error creating subscription notification:', err)
+    }
+
+    res.json({ 
+      message: 'Subscribed to author successfully',
+      subscriberCount: rows[0]?.subscribers_count || 0 
+    })
   } catch (error) {
     console.error('Error subscribing to author:', error)
     res.status(500).json({ message: 'Failed to subscribe to author' })
