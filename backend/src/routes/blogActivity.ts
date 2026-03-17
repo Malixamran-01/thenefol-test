@@ -31,6 +31,7 @@ const getUserIdFromToken = (req: express.Request): string | null => {
 }
 
 // Resolve author_profiles.id from identifier (can be author id, user_id, username, or unique_user_id)
+// ORDER BY id ASC ensures canonical id when duplicate profiles exist for same user (e.g. id=1 and id=4)
 const resolveAuthorId = async (identifier: string): Promise<number | null> => {
   const isNumeric = /^\d+$/.test(identifier)
   const usernameClean = identifier.startsWith('@') ? identifier.slice(1) : identifier
@@ -41,6 +42,7 @@ const resolveAuthorId = async (identifier: string): Promise<number | null> => {
          ? '(id = $1::integer OR user_id = $1::integer)'
          : '(username = $1 OR username = $2 OR unique_user_id = $1)'
      }
+     ORDER BY id ASC
      LIMIT 1`,
     isNumeric ? [identifier] : [identifier, usernameClean]
   )
@@ -273,6 +275,7 @@ router.delete('/authors/:authorId/subscribe', authenticateToken, async (req, res
 })
 
 // Get current user's following (works for both authors and non-authors; uses user_id so follows persist across onboarding)
+// Exclude self from list (ap.user_id != userId) - you cannot follow your own profile
 router.get('/authors/me/following', authenticateToken, async (req, res) => {
   try {
     if (!pool) return res.status(500).json({ message: 'Database not initialized' })
@@ -295,6 +298,7 @@ router.get('/authors/me/following', authenticateToken, async (req, res) => {
        JOIN author_profiles ap
          ON ap.id = af.author_id
          AND ap.status != 'deleted'
+         AND ap.user_id != $1::integer
        WHERE af.follower_user_id = $1::integer
        ORDER BY af.created_at DESC
        LIMIT $2 OFFSET $3`,
@@ -480,7 +484,7 @@ router.get('/authors/:authorId/followers', async (req, res) => {
          af.created_at
        FROM author_followers af
        LEFT JOIN author_profiles ap
-         ON ap.user_id::text = af.follower_user_id::text
+         ON ap.user_id = af.follower_user_id
          AND ap.status != 'deleted'
        WHERE af.author_id = $1
        ORDER BY af.created_at DESC
@@ -526,7 +530,8 @@ router.get('/authors/:authorId/following', async (req, res) => {
        JOIN author_profiles ap
          ON ap.id = af.author_id
          AND ap.status != 'deleted'
-       WHERE af.follower_user_id::text = $1::text
+         AND ap.user_id != $1
+       WHERE af.follower_user_id = $1::integer
        ORDER BY af.created_at DESC
        LIMIT $2 OFFSET $3`,
       [authorUserId, limit, offset]
@@ -616,17 +621,21 @@ router.get('/authors/:authorId/stats', async (req, res) => {
     let isFollowing = false
     let isSubscribed = false
 
-    if (userId) {
+    if (userId && authorUserId) {
+      // Check if viewer follows ANY of this author's profiles (handles duplicate author_profiles)
       const { rows: followingRows } = await pool.query(
-        `SELECT 1 FROM author_followers WHERE author_id = $1 AND follower_user_id = $2::integer LIMIT 1`,
-        [resolvedId, userId]
+        `SELECT 1 FROM author_followers af
+         JOIN author_profiles ap ON ap.id = af.author_id
+         WHERE ap.user_id = $1::integer AND af.follower_user_id = $2::integer LIMIT 1`,
+        [authorUserId, userId]
       )
       isFollowing = followingRows.length > 0
 
       const { rows: subscribedRows } = await pool.query(
-        `SELECT 1 FROM author_subscriptions 
-         WHERE author_id = $1 AND user_id = $2::integer AND status = 'active' LIMIT 1`,
-        [resolvedId, userId]
+        `SELECT 1 FROM author_subscriptions asub
+         JOIN author_profiles ap ON ap.id = asub.author_id
+         WHERE ap.user_id = $1::integer AND asub.user_id = $2::integer AND asub.status = 'active' LIMIT 1`,
+        [authorUserId, userId]
       )
       isSubscribed = subscribedRows.length > 0
     }
@@ -1149,7 +1158,9 @@ router.get('/authors/:identifier', async (req, res) => {
        LEFT JOIN users u ON ap.user_id = u.id
        LEFT JOIN author_stats ast ON ap.id = ast.author_id
        WHERE ${isNumeric ? '(ap.id = $1::integer OR ap.user_id = $1::integer)' : '(ap.username = $1 OR ap.username = $2 OR ap.unique_user_id = $1)'}
-         AND ap.status != 'deleted'`,
+         AND ap.status != 'deleted'
+       ORDER BY ap.id ASC
+       LIMIT 1`,
       isNumeric ? [identifier] : [identifier, usernameClean]
     )
 
