@@ -62,7 +62,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Explore',
     icon: <Compass strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/explore',
-    placeholder: true,
+    matchPrefix: '#/user/blog/explore',
   },
   {
     id: 'dashboard',

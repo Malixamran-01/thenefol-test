@@ -1045,18 +1045,75 @@ router.get('/posts', async (req, res) => {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
+    const q        = (req.query.q        as string | undefined)?.trim()
+    const category = (req.query.category as string | undefined)?.trim()
+    const tag      = (req.query.tag      as string | undefined)?.trim()
+    const sort     = (req.query.sort     as string | undefined) || 'latest'
+    const featured = req.query.featured === '1'
+    const limit    = Math.min(parseInt(req.query.limit  as string) || 20, 100)
+    const offset   = parseInt(req.query.offset as string) || 0
+
+    const conditions: string[] = [
+      `p.status = 'approved'`,
+      `p.is_active = true`,
+      `p.is_archived = false`,
+      `p.is_deleted = false`,
+    ]
+    const params: any[] = []
+
+    if (q) {
+      params.push(`%${q.toLowerCase()}%`)
+      const n = params.length
+      conditions.push(`(LOWER(p.title) LIKE $${n} OR LOWER(p.excerpt) LIKE $${n} OR LOWER(p.author_name) LIKE $${n})`)
+    }
+    if (category) {
+      params.push(category.toLowerCase())
+      const n = params.length
+      conditions.push(`(
+        (p.categories::jsonb @> to_jsonb($${n}::text))
+        OR EXISTS (
+          SELECT 1 FROM jsonb_array_elements_text(
+            CASE WHEN jsonb_typeof(p.categories::jsonb) = 'array' THEN p.categories::jsonb ELSE '[]'::jsonb END
+          ) AS c WHERE LOWER(c) = $${n}
+        )
+      )`)
+    }
+    if (tag) {
+      params.push(tag.toLowerCase())
+      const n = params.length
+      conditions.push(`EXISTS (
+        SELECT 1 FROM jsonb_array_elements_text(
+          CASE WHEN p.meta_keywords IS NOT NULL AND jsonb_typeof(p.meta_keywords::jsonb) = 'array'
+               THEN p.meta_keywords::jsonb ELSE '[]'::jsonb END
+        ) AS t WHERE LOWER(t) = $${n}
+      )`)
+    }
+    if (featured) {
+      conditions.push(`p.featured = true`)
+    }
+
+    const orderBy = sort === 'popular'
+      ? 'COALESCE(p.likes_count, 0) DESC, COALESCE(p.comments_count, 0) DESC, p.created_at DESC'
+      : sort === 'featured'
+      ? 'p.featured DESC NULLS LAST, p.created_at DESC'
+      : 'p.created_at DESC'
+
+    params.push(limit, offset)
+    const limitN  = params.length - 1
+    const offsetN = params.length
+
     const { rows } = await pool.query(`
-      SELECT p.*, u.unique_user_id as author_unique_user_id
+      SELECT p.*, u.unique_user_id as author_unique_user_id,
+        COALESCE(p.likes_count,    (SELECT COUNT(*) FROM blog_post_likes    WHERE post_id = p.id)) AS likes_count,
+        COALESCE(p.comments_count, (SELECT COUNT(*) FROM blog_comments      WHERE post_id = p.id AND is_deleted = false)) AS comments_count
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.status = 'approved' 
-        AND p.is_active = true
-        AND p.is_archived = false
-        AND p.is_deleted = false
-      ORDER BY p.created_at DESC
-    `)
-    
-    res.json(rows.map((r: any) => ({ ...r, author_id: r.user_id, author_unique_user_id: r.author_unique_user_id })))
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY ${orderBy}
+      LIMIT $${limitN} OFFSET $${offsetN}
+    `, params)
+
+    res.json(rows.map((r: any) => ({ ...r, author_id: r.user_id })))
   } catch (error) {
     console.error('Error fetching blog posts:', error)
     res.status(500).json({ message: 'Failed to fetch blog posts' })

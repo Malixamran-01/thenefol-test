@@ -970,6 +970,52 @@ router.get('/feed', authenticateToken, async (req, res) => {
   }
 })
 
+// Search authors by keyword (public, no auth required)
+router.get('/authors/search', async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const q      = ((req.query.q as string) || '').trim()
+    const limit  = Math.min(parseInt(req.query.limit  as string) || 20, 50)
+    const offset = parseInt(req.query.offset as string) || 0
+    const params: any[] = []
+    let whereExtra = ''
+    if (q) {
+      params.push(`%${q.toLowerCase()}%`)
+      whereExtra = ` AND (LOWER(ap.display_name) LIKE $1 OR LOWER(ap.pen_name) LIKE $1 OR LOWER(ap.username) LIKE $1 OR LOWER(ap.bio) LIKE $1)`
+    }
+    params.push(limit, offset)
+    const limitN  = params.length - 1
+    const offsetN = params.length
+    const { rows } = await pool.query(
+      `SELECT
+         ap.id as author_id,
+         COALESCE(ap.display_name, ap.pen_name, ap.username) as author_name,
+         ap.username as author_handle,
+         ap.bio,
+         ap.profile_image,
+         ap.writing_categories,
+         ap.location,
+         COALESCE(ast.followers_count,    0) as follower_count,
+         COALESCE(ast.subscribers_count,  0) as subscriber_count,
+         COALESCE(ast.posts_count,        0) as post_count,
+         COALESCE(ast.total_likes,        0) as total_likes
+       FROM author_profiles ap
+       LEFT JOIN author_stats ast ON ap.id = ast.author_id
+       WHERE ap.status = 'active'${whereExtra}
+       ORDER BY
+         COALESCE(ast.followers_count, 0) DESC,
+         COALESCE(ast.total_likes,     0) DESC,
+         COALESCE(ast.posts_count,     0) DESC
+       LIMIT $${limitN} OFFSET $${offsetN}`,
+      params
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error searching authors:', error)
+    res.status(500).json({ message: 'Failed to search authors' })
+  }
+})
+
 // Get suggested authors to follow (based on shared interests, popular authors, etc.)
 router.get('/authors/suggestions', authenticateToken, async (req, res) => {
   try {

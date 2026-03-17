@@ -1026,6 +1026,37 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  async searchPosts(params: {
+    q?: string
+    category?: string
+    tag?: string
+    sort?: 'latest' | 'popular' | 'featured'
+    featured?: boolean
+    limit?: number
+    offset?: number
+  } = {}) {
+    const qs = new URLSearchParams()
+    if (params.q)        qs.set('q',        params.q)
+    if (params.category) qs.set('category', params.category)
+    if (params.tag)      qs.set('tag',      params.tag)
+    if (params.sort)     qs.set('sort',     params.sort)
+    if (params.featured) qs.set('featured', '1')
+    qs.set('limit',  String(params.limit  ?? 20))
+    qs.set('offset', String(params.offset ?? 0))
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts?${qs}`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
+  async searchAuthors(q: string = '', limit: number = 20, offset: number = 0) {
+    const qs = new URLSearchParams({ q, limit: String(limit), offset: String(offset) })
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/authors/search?${qs}`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
   async getPersonalizedFeed(limit: number = 30, offset: number = 0) {
     const response = await fetch(
       `${getApiBaseUrl()}/api/blog/feed?limit=${limit}&offset=${offset}`,
