@@ -1067,33 +1067,21 @@ router.get('/posts', async (req, res) => {
       conditions.push(`(LOWER(p.title) LIKE $${n} OR LOWER(p.excerpt) LIKE $${n} OR LOWER(p.author_name) LIKE $${n})`)
     }
     if (category) {
-      params.push(category.toLowerCase())
+      params.push(`%${category.toLowerCase()}%`)
       const n = params.length
-      conditions.push(`(
-        (p.categories::jsonb @> to_jsonb($${n}::text))
-        OR EXISTS (
-          SELECT 1 FROM jsonb_array_elements_text(
-            CASE WHEN jsonb_typeof(p.categories::jsonb) = 'array' THEN p.categories::jsonb ELSE '[]'::jsonb END
-          ) AS c WHERE LOWER(c) = $${n}
-        )
-      )`)
+      conditions.push(`LOWER(p.categories::text) LIKE $${n}`)
     }
     if (tag) {
-      params.push(tag.toLowerCase())
+      params.push(`%${tag.toLowerCase()}%`)
       const n = params.length
-      conditions.push(`EXISTS (
-        SELECT 1 FROM jsonb_array_elements_text(
-          CASE WHEN p.meta_keywords IS NOT NULL AND jsonb_typeof(p.meta_keywords::jsonb) = 'array'
-               THEN p.meta_keywords::jsonb ELSE '[]'::jsonb END
-        ) AS t WHERE LOWER(t) = $${n}
-      )`)
+      conditions.push(`LOWER(p.meta_keywords::text) LIKE $${n}`)
     }
     if (featured) {
       conditions.push(`p.featured = true`)
     }
 
     const orderBy = sort === 'popular'
-      ? 'COALESCE(p.likes_count, 0) DESC, COALESCE(p.comments_count, 0) DESC, p.created_at DESC'
+      ? '(SELECT COUNT(*) FROM blog_post_likes WHERE post_id = p.id) DESC, (SELECT COUNT(*) FROM blog_comments WHERE post_id = p.id) DESC, p.created_at DESC'
       : sort === 'featured'
       ? 'p.featured DESC NULLS LAST, p.created_at DESC'
       : 'p.created_at DESC'
@@ -1104,8 +1092,8 @@ router.get('/posts', async (req, res) => {
 
     const { rows } = await pool.query(`
       SELECT p.*, u.unique_user_id as author_unique_user_id,
-        COALESCE(p.likes_count,    (SELECT COUNT(*) FROM blog_post_likes    WHERE post_id = p.id)) AS likes_count,
-        COALESCE(p.comments_count, (SELECT COUNT(*) FROM blog_comments      WHERE post_id = p.id AND is_deleted = false)) AS comments_count
+        (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id)                        AS likes_count,
+        (SELECT COUNT(*)::int FROM blog_comments    WHERE post_id = p.id AND is_deleted = false) AS comments_count
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
       WHERE ${conditions.join(' AND ')}

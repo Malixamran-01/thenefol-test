@@ -353,9 +353,9 @@ export default function BlogExplorePage() {
 
   // ── Fetch posts ────────────────────────────────────────────────────────────
 
-  const fetchPosts = useCallback(async (reset = false) => {
+  const fetchPosts = useCallback(async (reset = false, overrideOffset?: number) => {
     setLoadingPosts(true)
-    const offset = reset ? 0 : postOffset
+    const offset = reset ? 0 : (overrideOffset ?? postOffset)
     try {
       const data: Post[] = await blogActivityAPI.searchPosts({
         q: debouncedQuery || undefined,
@@ -369,22 +369,26 @@ export default function BlogExplorePage() {
       setPosts((prev) => reset ? list : [...prev, ...list])
       setHasMorePosts(list.length === PAGE_SIZE)
       setPostOffset(offset + list.length)
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error('[Explore] fetchPosts error:', err)
+    }
     finally { setLoadingPosts(false) }
   }, [debouncedQuery, category, activeTag, sort, postOffset])
 
   // ── Fetch authors ──────────────────────────────────────────────────────────
 
-  const fetchAuthors = useCallback(async (reset = false) => {
+  const fetchAuthors = useCallback(async (reset = false, overrideOffset?: number) => {
     setLoadingAuthors(true)
-    const offset = reset ? 0 : authorOffset
+    const offset = reset ? 0 : (overrideOffset ?? authorOffset)
     try {
       const data: Author[] = await blogActivityAPI.searchAuthors(debouncedQuery || '', PAGE_SIZE, offset)
       const list = Array.isArray(data) ? data : []
       setAuthors((prev) => reset ? list : [...prev, ...list])
       setHasMoreAuthors(list.length === PAGE_SIZE)
       setAuthorOffset(offset + list.length)
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error('[Explore] fetchAuthors error:', err)
+    }
     finally { setLoadingAuthors(false) }
   }, [debouncedQuery, authorOffset])
 
@@ -461,17 +465,20 @@ export default function BlogExplorePage() {
   }, [])
 
   // ── Re-fetch when search/filter changes ────────────────────────────────────
+  // We pass overrideOffset=0 so we never rely on the stale postOffset/authorOffset state
 
   useEffect(() => {
     if (activeTab === 'posts') {
-      setPostOffset(0)
       setPosts([])
-      fetchPosts(true)
+      setPostOffset(0)
+      setHasMorePosts(true)
+      fetchPosts(true, 0)
     }
     if (activeTab === 'authors') {
-      setAuthorOffset(0)
       setAuthors([])
-      fetchAuthors(true)
+      setAuthorOffset(0)
+      setHasMoreAuthors(true)
+      fetchAuthors(true, 0)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, category, activeTag, sort, activeTab])
