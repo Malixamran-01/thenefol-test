@@ -632,6 +632,14 @@ async function runMigration() {
           unique_user_id = u.unique_user_id
         FROM users u
         WHERE ap.user_id = u.id AND (ap.email IS NULL OR ap.unique_user_id IS NULL);
+
+        -- Add author_id to blog_activities if it doesn't exist (older schemas may lack it)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blog_activities' AND column_name = 'author_id'
+        ) THEN
+          ALTER TABLE blog_activities ADD COLUMN author_id integer references author_profiles(id) on delete set null;
+        END IF;
       END $$;
     `);
     

@@ -81,12 +81,14 @@ router.post('/authors/:authorId/follow', authenticateToken, async (req, res) => 
       [resolvedId, userId]
     )
 
-    // Log activity
-    await pool.query(
-      `INSERT INTO blog_activities (user_id, author_id, activity_type, created_at)
-       VALUES ($1::integer, $2, 'follow', CURRENT_TIMESTAMP)`,
-      [userId, resolvedId]
-    )
+    // Log activity (optional - blog_activities may lack author_id in older schemas)
+    try {
+      await pool.query(
+        `INSERT INTO blog_activities (user_id, author_id, activity_type, created_at)
+         VALUES ($1::integer, $2, 'follow', CURRENT_TIMESTAMP)`,
+        [userId, resolvedId]
+      )
+    } catch { /* activity logging failure should not break follow */ }
 
     // Get updated count from cached stats
     const { rows } = await pool.query(
