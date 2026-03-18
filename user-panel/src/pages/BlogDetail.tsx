@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHorizontal } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { useBlogBack } from '../hooks/useBlogBack'
+import { blogActivityAPI } from '../services/api'
 
 interface BlogPost {
   id: string
@@ -138,6 +139,18 @@ export default function BlogDetail() {
     fetchReposts()
     fetchComments()
   }, [post, commentSort])
+
+  // Record a "read" after 2 minutes — once per session per post
+  useEffect(() => {
+    if (!post?.id) return
+    const key = `read_${post.id}`
+    if (sessionStorage.getItem(key)) return
+    const timer = setTimeout(() => {
+      sessionStorage.setItem(key, '1')
+      blogActivityAPI.recordPostRead(post.id)
+    }, 2 * 60 * 1000) // 2 minutes
+    return () => clearTimeout(timer)
+  }, [post?.id])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

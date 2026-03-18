@@ -1033,6 +1033,18 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  async recordProfileView(authorId: string | number) {
+    try {
+      await fetch(`${getApiBaseUrl()}/api/blog/authors/${authorId}/view`, { method: 'POST' })
+    } catch { /* fire-and-forget */ }
+  },
+
+  async recordPostRead(postId: string | number) {
+    try {
+      await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/read`, { method: 'POST' })
+    } catch { /* fire-and-forget */ }
+  },
+
   async searchPosts(params: {
     q?: string
     category?: string

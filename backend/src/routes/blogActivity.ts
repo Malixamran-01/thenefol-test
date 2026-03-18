@@ -1554,28 +1554,31 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     const authorId = author?.id ?? null
 
     // ── Aggregate stats ────────────────────────────────────────────────────────
-    const [followingRes, statsRes, likesRes, viewsRes, commentsRes] = await Promise.all([
+    const [followingRes, statsRes, likesRes, viewsRes, commentsRes, readsRes] = await Promise.all([
       pool.query(`SELECT COUNT(*)::int AS cnt FROM author_followers WHERE follower_user_id = $1::integer`, [userId]),
-      authorId ? pool.query(`SELECT followers_count, subscribers_count, posts_count FROM author_stats WHERE author_id = $1`, [authorId]) : Promise.resolve({ rows: [] }),
+      authorId ? pool.query(`SELECT followers_count, subscribers_count, posts_count, COALESCE(profile_views,0)::int AS profile_views FROM author_stats WHERE author_id = $1`, [authorId]) : Promise.resolve({ rows: [] }),
       pool.query(`SELECT COUNT(*)::int AS cnt FROM blog_post_likes bpl JOIN blog_posts bp ON bp.id = bpl.post_id WHERE bp.user_id = $1::integer AND bp.is_deleted = false`, [userId]),
       pool.query(`SELECT COALESCE(SUM(views_count), 0)::int AS total FROM blog_posts WHERE user_id = $1::integer AND is_deleted = false`, [userId]),
       pool.query(`SELECT COUNT(*)::int AS cnt FROM blog_comments bc JOIN blog_posts bp ON bp.id = bc.post_id WHERE bp.user_id = $1::integer AND bp.is_deleted = false`, [userId]),
+      pool.query(`SELECT COALESCE(SUM(reads_count), 0)::int AS total FROM blog_posts WHERE user_id = $1::integer AND is_deleted = false`, [userId]),
     ])
     const s = statsRes.rows[0]
     const stats = {
-      followers:   s?.followers_count   ?? 0,
-      subscribers: s?.subscribers_count ?? 0,
-      following:   followingRes.rows[0]?.cnt ?? 0,
-      posts:       s?.posts_count       ?? 0,
-      views:       viewsRes.rows[0]?.total  ?? 0,
-      likes:       likesRes.rows[0]?.cnt    ?? 0,
-      comments:    commentsRes.rows[0]?.cnt ?? 0,
+      followers:     s?.followers_count   ?? 0,
+      subscribers:   s?.subscribers_count ?? 0,
+      following:     followingRes.rows[0]?.cnt ?? 0,
+      posts:         s?.posts_count       ?? 0,
+      views:         viewsRes.rows[0]?.total  ?? 0,
+      likes:         likesRes.rows[0]?.cnt    ?? 0,
+      comments:      commentsRes.rows[0]?.cnt ?? 0,
+      reads:         readsRes.rows[0]?.total  ?? 0,
+      profileViews:  s?.profile_views     ?? 0,
     }
 
     // ── All posts with per-post engagement ────────────────────────────────────
     const { rows: posts } = await pool.query(
       `SELECT p.id, p.title, p.excerpt, p.cover_image, p.status, p.featured,
-              p.categories, p.views_count,
+              p.categories, p.views_count, COALESCE(p.reads_count, 0)::int AS reads_count,
               p.created_at, p.updated_at,
               (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id)                AS likes_count,
               (SELECT COUNT(*)::int FROM blog_comments    WHERE post_id = p.id)                AS comments_count,
@@ -1658,6 +1661,51 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Error fetching dashboard:', err)
     res.status(500).json({ message: 'Failed to fetch dashboard' })
+  }
+})
+
+// ── POST /authors/:authorId/view — record a profile view ─────────────────────
+// Public (no auth required). Frontend deduplicates per-session via localStorage.
+router.post('/authors/:authorId/view', async (req, res) => {
+  if (!pool) return res.status(500).json({ message: 'DB not initialized' })
+  const { authorId } = req.params
+  const resolvedId = await resolveAuthorId(authorId)
+  if (resolvedId == null) return res.status(404).json({ message: 'Author not found' })
+
+  try {
+    // Upsert author_stats row and increment profile_views atomically
+    await pool.query(
+      `INSERT INTO author_stats (author_id, profile_views)
+       VALUES ($1, 1)
+       ON CONFLICT (author_id) DO UPDATE
+         SET profile_views = COALESCE(author_stats.profile_views, 0) + 1`,
+      [resolvedId]
+    )
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[profile view]', err)
+    res.status(500).json({ message: 'Failed to record profile view' })
+  }
+})
+
+// ── POST /posts/:postId/read — record a blog read (≥2 min on page) ───────────
+// Public. Frontend deduplicates per-session via localStorage.
+router.post('/posts/:postId/read', async (req, res) => {
+  if (!pool) return res.status(500).json({ message: 'DB not initialized' })
+  const postId = parseInt(req.params.postId, 10)
+  if (isNaN(postId)) return res.status(400).json({ message: 'Invalid post ID' })
+
+  try {
+    const { rowCount } = await pool.query(
+      `UPDATE blog_posts SET reads_count = COALESCE(reads_count, 0) + 1
+       WHERE id = $1 AND is_deleted = false`,
+      [postId]
+    )
+    if (!rowCount) return res.status(404).json({ message: 'Post not found' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[post read]', err)
+    res.status(500).json({ message: 'Failed to record read' })
   }
 })
 

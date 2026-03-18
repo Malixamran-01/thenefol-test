@@ -405,6 +405,15 @@ export default function AuthorProfile() {
     fetchAuthorProfile()
   }, [routeAuthorId, isAuthenticated])
 
+  // Record profile view once per session per author, only for visitors (not own profile)
+  useEffect(() => {
+    if (!authorProfile?.id || isOwnProfile) return
+    const key = `pv_${authorProfile.id}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+    blogActivityAPI.recordProfileView(authorProfile.id)
+  }, [authorProfile?.id, isOwnProfile])
+
   // Fallback: fetch user summary when no author profile (e.g. user with no author_profiles row)
   useEffect(() => {
     const fetchUserSummary = async () => {

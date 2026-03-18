@@ -42,7 +42,7 @@ interface AuthorProfile {
 }
 interface Stats {
   followers: number; subscribers: number; following: number; posts: number
-  views: number; likes: number; comments: number
+  views: number; likes: number; comments: number; reads: number; profileViews: number
 }
 interface Post {
   id: number; title: string; excerpt: string | null; cover_image: string | null
@@ -381,9 +381,10 @@ export default function CreatorDashboard() {
           {/* ── Stats grid ─────────────────────────────────────────────────── */}
           <section>
             <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">Overview</p>
+            {/* Row 1: big accent + Followers + Profile Views */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {/* Likes — accent */}
-              <div className="col-span-2 flex items-center justify-between rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#2a6f9e] p-5 shadow-sm sm:col-span-2">
+              {/* Likes — accent card spanning 2 cols */}
+              <div className="col-span-2 flex items-center justify-between rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#2a6f9e] p-5 shadow-sm">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-200">Total Likes</p>
                   <p className="mt-1 text-5xl font-black text-white">{fmt(stats.likes)}</p>
@@ -398,7 +399,7 @@ export default function CreatorDashboard() {
 
               <div className="flex flex-col justify-between rounded-2xl border border-[#e8eef4] bg-white p-5 shadow-sm">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50">
-                  <UserPlus className="h-4.5 w-4.5 text-purple-600" strokeWidth={1.75} />
+                  <UserPlus className="h-4 w-4 text-purple-600" strokeWidth={1.75} />
                 </div>
                 <div className="mt-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Followers</p>
@@ -407,24 +408,25 @@ export default function CreatorDashboard() {
               </div>
 
               <div className="flex flex-col justify-between rounded-2xl border border-[#e8eef4] bg-white p-5 shadow-sm">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#edf4f9]">
-                  <Users className="h-4.5 w-4.5 text-[#1B4965]" strokeWidth={1.75} />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50">
+                  <Eye className="h-4 w-4 text-sky-500" strokeWidth={1.75} />
                 </div>
                 <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Subscribers</p>
-                  <p className="text-3xl font-black text-gray-900">{fmt(stats.subscribers)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Profile Views</p>
+                  <p className="text-3xl font-black text-gray-900">{fmt(stats.profileViews)}</p>
                 </div>
               </div>
             </div>
 
+            {/* Row 2: secondary stats */}
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { label: 'Comments',  value: stats.comments,  icon: <MessageCircle className="h-4 w-4 text-[#4B97C9]" />,    bg: 'bg-[#edf4f9]' },
-                { label: 'Total Views', value: stats.views,  icon: <Eye className="h-4 w-4 text-amber-500" />,               bg: 'bg-amber-50' },
-                { label: 'Published', value: approvedCount,   icon: <BookOpen className="h-4 w-4 text-emerald-600" />,        bg: 'bg-emerald-50',
+                { label: 'Blog Reads',  value: stats.reads,    icon: <BookOpen className="h-4 w-4 text-emerald-600" />,     bg: 'bg-emerald-50',
+                  sub: '2 min+ on page' },
+                { label: 'Total Views', value: stats.views,    icon: <Eye className="h-4 w-4 text-amber-500" />,            bg: 'bg-amber-50' },
+                { label: 'Comments',    value: stats.comments, icon: <MessageCircle className="h-4 w-4 text-[#4B97C9]" />,  bg: 'bg-[#edf4f9]' },
+                { label: 'Published',   value: approvedCount,  icon: <Sparkles className="h-4 w-4 text-orange-500" />,      bg: 'bg-orange-50',
                   sub: pendingCount > 0 ? `${pendingCount} pending` : undefined },
-                { label: 'Engagement', value: stats.likes + stats.comments, icon: <Zap className="h-4 w-4 text-orange-500" />, bg: 'bg-orange-50',
-                  sub: 'likes + comments' },
               ].map(({ label, value, icon, bg, sub }) => (
                 <div key={label} className="flex items-center gap-3 rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-sm">
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${bg}`}>{icon}</div>
