@@ -14,7 +14,7 @@ import {
   Pencil,
   Repeat2,
   Share2,
-  Sparkles,
+  Activity,
   Upload,
   UserRound,
   Users,
@@ -1170,7 +1170,7 @@ export default function AuthorProfile() {
                 </div>
               ) : activities.length === 0 ? (
                 <div className="rounded-xl bg-gray-50 p-8 text-center">
-                  <Sparkles className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <Activity className="mx-auto mb-3 h-10 w-10 text-gray-300" />
                   <p className="text-sm font-medium text-gray-500">No activity yet</p>
                   <p className="mt-1 text-xs text-gray-400">Posts, likes, and reposts from this author will appear here.</p>
                 </div>
@@ -1192,7 +1192,7 @@ export default function AuthorProfile() {
                     ? { text: 'commented', icon: <MessageCircle className="h-3.5 w-3.5" /> }
                     : isReposted
                     ? { text: 'reposted', icon: <Repeat2 className="h-3.5 w-3.5" /> }
-                    : { text: 'activity', icon: <Sparkles className="h-3.5 w-3.5" /> }
+                    : { text: 'activity', icon: <Activity className="h-3.5 w-3.5" /> }
 
                   return (
                     <div key={`${item.activity_type}-${item.post_id}-${idx}`} className="border-b border-gray-200 py-4 last:border-0">

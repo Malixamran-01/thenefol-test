@@ -1,5 +1,5 @@
 import React from 'react'
-import { Sparkles, X, ChevronRight } from 'lucide-react'
+import { PenLine, X, ChevronRight } from 'lucide-react'
 
 interface AuthorPromptModalProps {
   isOpen: boolean
@@ -33,7 +33,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
         {/* Icon */}
         <div className="mb-6 flex justify-center">
           <div className="rounded-full bg-gradient-to-r from-[#4B97C9] to-[#1B4965] p-4">
-            <Sparkles className="h-10 w-10 text-white" />
+            <PenLine className="h-10 w-10 text-white" />
           </div>
         </div>
 

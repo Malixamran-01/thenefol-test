@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Check, ChevronRight, Sparkles, User, BookOpen, Share2, Settings, Loader2, Upload, X } from 'lucide-react'
+import { Check, ChevronRight, PenLine, User, BookOpen, Share2, Settings, Loader2, Upload, X } from 'lucide-react'
 import { authorAPI } from '../services/authorAPI'
 import { uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -238,7 +238,7 @@ const AuthorOnboarding = () => {
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
             <div className="rounded-full bg-gradient-to-r from-[#4B97C9] to-[#1B4965] p-3">
-              <Sparkles className="h-8 w-8 text-white" />
+              <PenLine className="h-8 w-8 text-white" />
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Become an Author</h1>
@@ -811,7 +811,7 @@ const AuthorOnboarding = () => {
                   ) : (
                     <>
                       Activate Author Profile
-                      <Sparkles className="h-5 w-5" />
+                      <Check className="h-5 w-5" />
                     </>
                   )}
                 </button>

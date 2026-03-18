@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   ArrowUpRight,
+  CheckCircle2,
+  Compass,
   BarChart3,
   Bell,
   BookOpen,
@@ -16,7 +18,6 @@ import {
   MessageCircle,
   PenLine,
   Repeat2,
-  Sparkles,
   Star,
   TrendingUp,
   UserPlus,
@@ -424,7 +425,7 @@ export default function CreatorDashboard() {
                 { label: 'Blog Reads',  value: stats.reads,    icon: <BookOpen className="h-4 w-4 text-emerald-600" />,     bg: 'bg-emerald-50'},
                 { label: 'Total Views', value: stats.views,    icon: <Eye className="h-4 w-4 text-amber-500" />,            bg: 'bg-amber-50' },
                 { label: 'Comments',    value: stats.comments, icon: <MessageCircle className="h-4 w-4 text-[#4B97C9]" />,  bg: 'bg-[#edf4f9]' },
-                { label: 'Published',   value: approvedCount,  icon: <Sparkles className="h-4 w-4 text-orange-500" />,      bg: 'bg-orange-50',
+                { label: 'Published',   value: approvedCount,  icon: <CheckCircle2 className="h-4 w-4 text-orange-500" />, bg: 'bg-orange-50',
                   sub: pendingCount > 0 ? `${pendingCount} pending` : undefined },
               ].map(({ label, value, icon, bg, sub }) => (
                 <div key={label} className="flex items-center gap-3 rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-sm">
@@ -481,7 +482,7 @@ export default function CreatorDashboard() {
               </h2>
               {topPosts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-14 text-center">
-                  <Sparkles className="mb-2 h-10 w-10 text-gray-200" />
+                  <FileText className="mb-2 h-10 w-10 text-gray-200" />
                   <p className="text-sm text-gray-400">No published posts yet</p>
                   <a href="#/user/blog/request" className="mt-3 text-[12px] font-semibold text-[#4B97C9] hover:underline">Write your first post →</a>
                 </div>
@@ -699,7 +700,7 @@ export default function CreatorDashboard() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {([
                 { href: '#/user/blog/request', icon: <PenLine className="h-5 w-5" />,  label: 'Write Post',    sub: 'Start a new draft',     dark: true },
-                { href: '#/user/blog/explore', icon: <Sparkles className="h-5 w-5" />, label: 'Explore',       sub: 'Find new readers',      dark: false },
+                { href: '#/user/blog/explore', icon: <Compass className="h-5 w-5" />, label: 'Explore',       sub: 'Find new readers',      dark: false },
                 { href: '#/user/blog/activity',icon: <Bell className="h-5 w-5" />,     label: 'Activity',      sub: 'Notifications',         dark: false },
                 { href: '#/user/author/me',    icon: <Eye className="h-5 w-5" />,      label: 'View Profile',  sub: 'See your public page',  dark: false },
               ]).map(({ href, icon, label, sub, dark }) => (

@@ -16,7 +16,7 @@ import {
   X,
   ChevronRight,
   TrendingUp,
-  Sparkles,
+  Clock,
   Star,
   MapPin,
 } from 'lucide-react'
@@ -674,7 +674,7 @@ export default function BlogExplorePage() {
               {!isSearching && (
                 <>
                   <div className="mb-3 flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-[#4B97C9]" />
+                    <Clock className="h-4 w-4 text-[#4B97C9]" />
                     <h2 className="text-sm font-semibold text-gray-700">Latest Posts</h2>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
