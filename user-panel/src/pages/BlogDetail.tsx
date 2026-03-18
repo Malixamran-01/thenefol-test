@@ -140,15 +140,21 @@ export default function BlogDetail() {
     fetchComments()
   }, [post, commentSort])
 
-  // Record a "read" after 2 minutes — once per session per post
+  // Record a "read" once the user has spent at least as long as the post's
+  // estimated read time (word count ÷ 200 wpm). Minimum 30 s, max 10 min.
   useEffect(() => {
     if (!post?.id) return
     const key = `read_${post.id}`
     if (sessionStorage.getItem(key)) return
+
+    const wordCount = (post.content ?? '').trim().split(/\s+/).filter(Boolean).length
+    const readMinutes = Math.max(0.5, Math.min(wordCount / 200, 10))
+    const threshold = readMinutes * 60 * 1000
+
     const timer = setTimeout(() => {
       sessionStorage.setItem(key, '1')
       blogActivityAPI.recordPostRead(post.id)
-    }, 2 * 60 * 1000) // 2 minutes
+    }, threshold)
     return () => clearTimeout(timer)
   }, [post?.id])
 

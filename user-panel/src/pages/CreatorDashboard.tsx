@@ -421,8 +421,7 @@ export default function CreatorDashboard() {
             {/* Row 2: secondary stats */}
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { label: 'Blog Reads',  value: stats.reads,    icon: <BookOpen className="h-4 w-4 text-emerald-600" />,     bg: 'bg-emerald-50',
-                  sub: '2 min+ on page' },
+                { label: 'Blog Reads',  value: stats.reads,    icon: <BookOpen className="h-4 w-4 text-emerald-600" />,     bg: 'bg-emerald-50'},
                 { label: 'Total Views', value: stats.views,    icon: <Eye className="h-4 w-4 text-amber-500" />,            bg: 'bg-amber-50' },
                 { label: 'Comments',    value: stats.comments, icon: <MessageCircle className="h-4 w-4 text-[#4B97C9]" />,  bg: 'bg-[#edf4f9]' },
                 { label: 'Published',   value: approvedCount,  icon: <Sparkles className="h-4 w-4 text-orange-500" />,      bg: 'bg-orange-50',
