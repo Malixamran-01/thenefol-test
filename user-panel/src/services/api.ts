@@ -1026,6 +1026,13 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  async getDashboard() {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/dashboard`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
   async searchPosts(params: {
     q?: string
     category?: string

@@ -69,7 +69,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Dashboard',
     icon: <LayoutDashboard strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/dashboard',
-    placeholder: true,
+    matchPrefix: '#/user/blog/dashboard',
   },
 ]
 

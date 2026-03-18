@@ -1533,4 +1533,132 @@ export async function serveAuthorMetaPage(req: express.Request, res: express.Res
   }
 }
 
+// ══ Creator Dashboard ══════════════════════════════════════════════════════════
+// GET /api/blog/dashboard  — single endpoint that powers the full dashboard
+router.get('/dashboard', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'DB not initialized' })
+    const userId = req.userId
+    if (!userId) return res.status(401).json({ message: 'Authentication required' })
+
+    // ── Author profile ─────────────────────────────────────────────────────────
+    const { rows: apRows } = await pool.query(
+      `SELECT ap.*, u.email AS user_email
+       FROM author_profiles ap
+       LEFT JOIN users u ON u.id = ap.user_id
+       WHERE ap.user_id = $1::integer AND ap.status != 'deleted'
+       ORDER BY ap.id ASC LIMIT 1`,
+      [userId]
+    )
+    const author = apRows[0] ?? null
+    const authorId = author?.id ?? null
+
+    // ── Aggregate stats ────────────────────────────────────────────────────────
+    const [followingRes, statsRes, likesRes, viewsRes, commentsRes] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS cnt FROM author_followers WHERE follower_user_id = $1::integer`, [userId]),
+      authorId ? pool.query(`SELECT followers_count, subscribers_count, posts_count FROM author_stats WHERE author_id = $1`, [authorId]) : Promise.resolve({ rows: [] }),
+      pool.query(`SELECT COUNT(*)::int AS cnt FROM blog_post_likes bpl JOIN blog_posts bp ON bp.id = bpl.post_id WHERE bp.user_id = $1::integer AND bp.is_deleted = false`, [userId]),
+      pool.query(`SELECT COALESCE(SUM(views_count), 0)::int AS total FROM blog_posts WHERE user_id = $1::integer AND is_deleted = false`, [userId]),
+      pool.query(`SELECT COUNT(*)::int AS cnt FROM blog_comments bc JOIN blog_posts bp ON bp.id = bc.post_id WHERE bp.user_id = $1::integer AND bp.is_deleted = false`, [userId]),
+    ])
+    const s = statsRes.rows[0]
+    const stats = {
+      followers:   s?.followers_count   ?? 0,
+      subscribers: s?.subscribers_count ?? 0,
+      following:   followingRes.rows[0]?.cnt ?? 0,
+      posts:       s?.posts_count       ?? 0,
+      views:       viewsRes.rows[0]?.total  ?? 0,
+      likes:       likesRes.rows[0]?.cnt    ?? 0,
+      comments:    commentsRes.rows[0]?.cnt ?? 0,
+    }
+
+    // ── All posts with per-post engagement ────────────────────────────────────
+    const { rows: posts } = await pool.query(
+      `SELECT p.id, p.title, p.excerpt, p.cover_image, p.status, p.featured,
+              p.categories, p.views_count,
+              p.created_at, p.updated_at,
+              (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id)                AS likes_count,
+              (SELECT COUNT(*)::int FROM blog_comments    WHERE post_id = p.id)                AS comments_count,
+              (SELECT COUNT(*)::int FROM blog_post_reposts WHERE post_id::text = p.id::text)   AS reposts_count
+       FROM blog_posts p
+       WHERE p.user_id = $1::integer AND p.is_deleted = false
+       ORDER BY p.created_at DESC`,
+      [userId]
+    )
+
+    // ── Recent drafts ─────────────────────────────────────────────────────────
+    const { rows: drafts } = await pool.query(
+      `SELECT id, title, status, updated_at
+       FROM blog_drafts
+       WHERE user_id = $1::integer AND status != 'discarded'
+       ORDER BY updated_at DESC LIMIT 5`,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
+    // ── Monthly post stats (last 12 months) ───────────────────────────────────
+    const { rows: monthlyPosts } = await pool.query(
+      `SELECT to_char(date_trunc('month', p.created_at), 'Mon ''YY') AS month,
+              date_trunc('month', p.created_at)                       AS month_date,
+              COUNT(*)::int                                            AS post_count,
+              COALESCE(SUM(p.views_count), 0)::int                   AS views
+       FROM blog_posts p
+       WHERE p.user_id = $1::integer AND p.is_deleted = false
+         AND p.created_at >= NOW() - INTERVAL '12 months'
+       GROUP BY month_date, month
+       ORDER BY month_date ASC`,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
+    // ── Monthly likes received (last 12 months) ───────────────────────────────
+    const { rows: monthlyLikes } = await pool.query(
+      `SELECT to_char(date_trunc('month', bpl.created_at), 'Mon ''YY') AS month,
+              date_trunc('month', bpl.created_at)                       AS month_date,
+              COUNT(*)::int                                              AS likes
+       FROM blog_post_likes bpl
+       JOIN blog_posts bp ON bp.id = bpl.post_id
+       WHERE bp.user_id = $1::integer AND bp.is_deleted = false
+         AND bpl.created_at >= NOW() - INTERVAL '12 months'
+       GROUP BY month_date, month
+       ORDER BY month_date ASC`,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
+    // ── Monthly new followers (last 12 months) ────────────────────────────────
+    const followersMonthly = authorId ? await pool.query(
+      `SELECT to_char(date_trunc('month', af.created_at), 'Mon ''YY') AS month,
+              date_trunc('month', af.created_at)                       AS month_date,
+              COUNT(*)::int                                             AS new_followers
+       FROM author_followers af
+       WHERE af.author_id = $1
+         AND af.created_at >= NOW() - INTERVAL '12 months'
+       GROUP BY month_date, month
+       ORDER BY month_date ASC`,
+      [authorId]
+    ).catch(() => ({ rows: [] })) : { rows: [] }
+
+    // ── Recent activity feed ──────────────────────────────────────────────────
+    const { rows: recentActivity } = await pool.query(
+      `SELECT id, actor_name, actor_avatar, type, post_id, post_title, comment_excerpt, is_read, created_at
+       FROM blog_notifications
+       WHERE recipient_user_id = $1::integer
+       ORDER BY created_at DESC LIMIT 15`,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
+    res.json({
+      author,
+      stats,
+      posts,
+      drafts,
+      monthlyPosts,
+      monthlyLikes,
+      monthlyFollowers: followersMonthly.rows,
+      recentActivity,
+    })
+  } catch (err) {
+    console.error('Error fetching dashboard:', err)
+    res.status(500).json({ message: 'Failed to fetch dashboard' })
+  }
+})
+
 export default router

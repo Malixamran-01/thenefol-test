@@ -951,6 +951,7 @@ const Blog = lazy(() => import('./pages/Blog'))
 const BlogDetail = lazy(() => import('./pages/BlogDetail'))
 const BlogActivityPage = lazy(() => import('./pages/BlogActivityPage'))
 const BlogExplorePage = lazy(() => import('./pages/BlogExplorePage'))
+const CreatorDashboard = lazy(() => import('./pages/CreatorDashboard'))
 const MyBlogsPage = lazy(() => import('./pages/MyBlogsPage'))
 const BlogRequestForm = lazy(() => import('./pages/BlogRequestForm'))
 const ImageEditorPage = lazy(() => import('./pages/ImageEditorPage'))
@@ -1036,6 +1037,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
   if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout><BlogActivityPage /></BlogLayout>
   if (pathWithoutQuery === '/user/blog/explore') return <BlogLayout><BlogExplorePage /></BlogLayout>
+  if (pathWithoutQuery === '/user/blog/dashboard') return <BlogLayout><CreatorDashboard /></BlogLayout>
   if (pathWithoutQuery === '/user/blog/my-blogs') return RequiredAuth(<BlogLayout><MyBlogsPage /></BlogLayout>)
   if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogLayout><BlogDetail /></BlogLayout>
   if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <BlogLayout><AuthorProfile /></BlogLayout>
