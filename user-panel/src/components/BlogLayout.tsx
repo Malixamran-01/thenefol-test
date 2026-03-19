@@ -141,6 +141,7 @@ function SidePanelNav({
     if (item.id === 'my-blogs') {
       e.preventDefault()
       if (!isAuthenticated) {
+        sessionStorage.setItem('post_login_redirect', window.location.hash)
         window.location.hash = '#/user/login'
       } else {
         window.location.hash = '#/user/blog/my-blogs'
@@ -151,6 +152,7 @@ function SidePanelNav({
     if (item.id === 'profile') {
       e.preventDefault()
       if (!isAuthenticated) {
+        sessionStorage.setItem('post_login_redirect', window.location.hash)
         window.location.hash = '#/user/login'
       } else {
         sessionStorage.removeItem('blog_author_profile')
@@ -177,6 +179,7 @@ function SidePanelNav({
     } else if (isAuthenticated) {
       window.location.hash = '#/user/blog/request?new=1'
     } else {
+      sessionStorage.setItem('post_login_redirect', window.location.hash)
       window.location.hash = '#/user/login'
     }
   }
@@ -328,31 +331,7 @@ function SidePanelNav({
         })}
       </nav>
 
-      {/* ── Sign In / Sign Out ───────────────────────────────── */}
-      <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center py-2' : 'px-5 py-2'}`}>
-        {isAuthenticated ? (
-          <button
-            onClick={handleSignOut}
-            className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-[14px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 ${collapsed ? 'justify-center px-0' : ''}`}
-            title="Sign out"
-          >
-            <LogOut className="h-5 w-5 flex-shrink-0 text-gray-400" />
-            {!collapsed && <span>Sign out</span>}
-          </button>
-        ) : (
-          <a
-            href="#/user/login"
-            onClick={() => onClose?.()}
-            className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-[14px] font-medium text-[#1B4965] transition-colors hover:bg-gray-100 ${collapsed ? 'justify-center px-0' : ''}`}
-            title="Sign in"
-          >
-            <LogIn className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>Sign in</span>}
-          </a>
-        )}
-      </div>
-
-      {/* ── Back to NEFOL Store ──────────────────────────────── */}
+      {/* ── Back to NEFOL Store (below nav) ───────────────────── */}
       {showStoreLink && (
         <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center p-3' : 'px-5 py-3'}`}>
           {collapsed ? (
@@ -396,6 +375,33 @@ function SidePanelNav({
           >
             <PenLine className="h-3.5 w-3.5" />
             Write
+          </a>
+        )}
+      </div>
+
+      {/* ── Sign In / Sign Out (bottom) ──────────────────────── */}
+      <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center py-2' : 'px-5 py-2'}`}>
+        {isAuthenticated ? (
+          <button
+            onClick={handleSignOut}
+            className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-[14px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 ${collapsed ? 'justify-center px-0' : ''}`}
+            title="Sign out"
+          >
+            <LogOut className="h-5 w-5 flex-shrink-0 text-gray-400" />
+            {!collapsed && <span>Sign out</span>}
+          </button>
+        ) : (
+          <a
+            href="#/user/login"
+            onClick={() => {
+              sessionStorage.setItem('post_login_redirect', window.location.hash)
+              onClose?.()
+            }}
+            className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-[14px] font-medium text-[#1B4965] transition-colors hover:bg-gray-100 ${collapsed ? 'justify-center px-0' : ''}`}
+            title="Sign in"
+          >
+            <LogIn className="h-5 w-5 flex-shrink-0" />
+            {!collapsed && <span>Sign in</span>}
           </a>
         )}
       </div>
@@ -477,6 +483,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
 
   const handleWriteClick = useCallback(async (_e: React.MouseEvent) => {
     if (!isAuthenticated) {
+      sessionStorage.setItem('post_login_redirect', window.location.hash)
       window.location.hash = '#/user/login'
       return
     }
