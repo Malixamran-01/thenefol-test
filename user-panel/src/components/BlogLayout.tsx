@@ -125,7 +125,13 @@ function SidePanelNav({
   onWriteClick,
 }: SidePanelNavProps) {
   const hash = useCurrentHash()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, logout } = useAuth()
+
+  const handleSignOut = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (onClose) onClose()
+    logout()
+  }
 
   const handleNav = (item: NavItem, e: React.MouseEvent) => {
     if (item.placeholder) {
@@ -321,6 +327,30 @@ function SidePanelNav({
           )
         })}
       </nav>
+
+      {/* ── Sign In / Sign Out ───────────────────────────────── */}
+      <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center py-2' : 'px-5 py-2'}`}>
+        {isAuthenticated ? (
+          <button
+            onClick={handleSignOut}
+            className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-[14px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 ${collapsed ? 'justify-center px-0' : ''}`}
+            title="Sign out"
+          >
+            <LogOut className="h-5 w-5 flex-shrink-0 text-gray-400" />
+            {!collapsed && <span>Sign out</span>}
+          </button>
+        ) : (
+          <a
+            href="#/user/login"
+            onClick={() => onClose?.()}
+            className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-[14px] font-medium text-[#1B4965] transition-colors hover:bg-gray-100 ${collapsed ? 'justify-center px-0' : ''}`}
+            title="Sign in"
+          >
+            <LogIn className="h-5 w-5 flex-shrink-0" />
+            {!collapsed && <span>Sign in</span>}
+          </a>
+        )}
+      </div>
 
       {/* ── Back to NEFOL Store ──────────────────────────────── */}
       {showStoreLink && (
