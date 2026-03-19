@@ -1085,6 +1085,8 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/blog/request': return RequiredAuth(<BlogRequestForm />)
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
+    case '/user/collab':
+      return <Collab />
     case '/user/affiliate':
   return RequiredAuth(<Affiliate />)
 

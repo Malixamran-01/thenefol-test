@@ -188,19 +188,7 @@ export default function Cart() {
                             className="w-24 h-24 object-cover rounded-lg border shadow-sm hover:shadow-md transition-shadow"
                             style={{borderColor: '#D0E8F2'}}
                             onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                            // Try fallback images if main image fails
-                              if (!target.dataset.fallbackAttempted) {
-                                target.dataset.fallbackAttempted = 'true'
-                                if (target.src.includes('/IMAGES/BANNER (1).')) {
-                                  target.src = '/IMAGES/face.webp'
-                                } else if (target.src.includes('/IMAGES/face.')) {
-                                  target.src = '/IMAGES/body.webp'
-                                } else {
-                                // Last resort fallback
-                                target.src = '/IMAGES/BANNER (1).webp'
-                              }
-                              }
+                              e.currentTarget.style.display = 'none'
                             }}
                           />
                       </div>

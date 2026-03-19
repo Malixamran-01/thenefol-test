@@ -1277,7 +1277,7 @@ export default function Home() {
                   className="block w-full h-full object-contain"
                   style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/IMAGES/body.webp'
+                    e.currentTarget.style.display = 'none'
                   }}
                 />
               </div>
@@ -1302,7 +1302,7 @@ export default function Home() {
                   className="block w-full h-full object-contain"
                   style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/IMAGES/face.webp'
+                    e.currentTarget.style.display = 'none'
                   }}
                 />
               </div>
@@ -1327,7 +1327,7 @@ export default function Home() {
                   className="block w-full h-full object-contain"
                   style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/IMAGES/hair.webp'
+                    e.currentTarget.style.display = 'none'
                   }}
                 />
               </div>
@@ -1352,7 +1352,7 @@ export default function Home() {
                   className="block w-full h-full object-contain"
                   style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
                   onError={(e) => {
-                    e.currentTarget.src = '/IMAGES/combo.webp'
+                    e.currentTarget.style.display = 'none'
                   }}
                 />
               </div>
@@ -1791,7 +1791,7 @@ export default function Home() {
                       className="w-full h-full object-contain transform transition-transform duration-500 group-hover:scale-110 rounded-xl"
                       style={{ filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.15))' }}
                       onError={(e) => {
-                        e.currentTarget.src = '/IMAGES/blue pea.webp'
+                        e.currentTarget.style.display = 'none'
                       }}
                     />
                   </div>

@@ -156,8 +156,7 @@ export default function Body() {
                           loading="lazy"
                           style={{ aspectRatio: '1 / 1' }}
                           onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.src = '/IMAGES/BANNER (1).webp'
+                            e.currentTarget.style.display = 'none'
                           }}
                         />
                       )}
