@@ -16,6 +16,7 @@ import SearchButton from './components/SearchButton'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import BottomNavigation from './components/BottomNavigation'
 import SwipeNavigation from './components/SwipeNavigation'
+import JoinUsModal from './components/JoinUsModal'
 
 // Lazy load all pages for code splitting
 const LoginPage = lazy(() => import('./pages/Login'))
@@ -60,6 +61,7 @@ function AppContent() {
   const { user, isAuthenticated, logout } = useAuth()
   const [showSplash, setShowSplash] = useState(true)
   const [showSearch, setShowSearch] = useState(false)
+  const [showJoinUs, setShowJoinUs] = useState(false)
   const [showWishlist, setShowWishlist] = useState(false)
   const [showCart, setShowCart] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -732,17 +734,15 @@ function AppContent() {
                 <li><a href="#/user/faq" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>FAQ</a></li>
                 <li><a href="#/user/blog" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Blogs</a></li>
                 <li>
-  <a
-    href="#/user/affiliate-partner"
-    onClick={() => {
-      sessionStorage.setItem('affiliate_referrer', 'home')
-    }}
-    className="text-xs sm:text-sm font-light transition-colors hover:opacity-80"
-    style={{ color: 'var(--color-text-secondary-on-teal)' }}
-  >
-    Affiliate Program
-  </a>
-</li>
+                  <button
+                    type="button"
+                    onClick={() => setShowJoinUs(true)}
+                    className="text-xs sm:text-sm font-light transition-colors hover:opacity-80 text-left"
+                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  >
+                    Join Us
+                  </button>
+                </li>
 
                 <li><a href="#/user/contact" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Contact Us</a></li>
               </ul>
@@ -921,6 +921,12 @@ function AppContent() {
         </div>
       )}
 
+      {/* Join Us modal — Collab vs Affiliate */}
+      <JoinUsModal
+        isOpen={showJoinUs}
+        onClose={() => setShowJoinUs(false)}
+      />
+
           {(() => {
             const isBlogPage = currentPath === '/user/blog' || currentPath.startsWith('/user/blog/')
             const isBlogRequestForm = currentPath === '/user/blog/request'
@@ -960,6 +966,7 @@ const ProductPage = lazy(() => import('./pages/Product'))
 const CategoryPage = lazy(() => import('./pages/Category'))
 const Affiliate = lazy(() => import('./pages/Affiliate'))
 const AffiliatePartner = lazy(() => import('./pages/AffiliatePartner'))
+const Collab = lazy(() => import('./pages/Collab'))
 const ReferralHistory = lazy(() => import('./pages/ReferralHistory'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Checkout = lazy(() => import('./pages/Checkout'))

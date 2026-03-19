@@ -33,6 +33,7 @@ import blogNotificationsRouter, { initBlogNotificationsRouter } from './routes/b
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
+import collabRouter from './routes/collab'
 import * as searchRoutes from './routes/search'
 import * as marketingRoutes from './routes/marketing'
 import * as whatsappWebhookRoutes from './routes/whatsappWebhook'
@@ -833,6 +834,9 @@ app.put('/api/admin/affiliate-commission-settings', (req: any, res) => {
 })
 app.get('/api/affiliate/commission-settings', affiliateRoutes.getAffiliateCommissionForUsers.bind(null, pool))
 app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarketingMaterials.bind(null, pool))
+
+// ==================== COLLAB (Collab → Affiliate progression) ====================
+app.use('/api/collab', collabRouter(pool))
 
 // ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
 // Frontend expects these endpoints; return empty lists for now so UI works without errors
