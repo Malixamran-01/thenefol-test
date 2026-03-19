@@ -11,6 +11,8 @@ import {
   PenLine,
   ChevronLeft,
   ChevronRight,
+  LogIn,
+  LogOut,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
