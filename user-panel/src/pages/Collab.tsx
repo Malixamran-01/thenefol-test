@@ -48,8 +48,15 @@ export default function Collab() {
         })
         if (res.ok) {
           const data = await res.json()
-          setStatus(data)
-          setSubmitted(data?.hasApplication ?? false)
+          setStatus({
+            hasApplication: !!data.id,
+            hasReel: (data.total_views ?? 0) > 0 || (data.total_likes ?? 0) > 0,
+            totalViews: data.total_views ?? 0,
+            totalLikes: data.total_likes ?? 0,
+            progressPercent: data.progress ?? 0,
+            affiliateUnlocked: !!data.affiliate_unlocked,
+          })
+          setSubmitted(!!data.id)
         }
       } catch (e) {
         console.error('Collab status fetch failed:', e)
@@ -126,9 +133,9 @@ export default function Collab() {
             ? {
                 ...s,
                 hasReel: true,
-                totalViews: data.views ?? s.totalViews,
-                totalLikes: data.likes ?? s.totalLikes,
-                progressPercent: data.progressPercent ?? s.progressPercent,
+                totalViews: data.total_views ?? s.totalViews,
+                totalLikes: data.total_likes ?? s.totalLikes,
+                progressPercent: data.progress ?? s.progressPercent,
               }
             : null
         )
@@ -324,10 +331,10 @@ export default function Collab() {
                     {submittingReel ? 'Verifying...' : 'Submit Reel'}
                   </button>
                 </form>
-                {((status?.totalViews ?? status?.total_views ?? 0) > 0 || (status?.totalLikes ?? status?.total_likes ?? 0) > 0) && (
+                {((status?.totalViews ?? 0) > 0 || (status?.totalLikes ?? 0) > 0) && (
                   <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--color-nav-bg)', color: 'var(--color-text-on-nav)' }}>
                     <p className="text-sm font-medium">
-                      Views: {status?.totalViews ?? status?.total_views ?? 0} · Likes: {status?.totalLikes ?? status?.total_likes ?? 0}
+                      Views: {status?.totalViews ?? 0} · Likes: {status?.totalLikes ?? 0}
                     </p>
                   </div>
                 )}

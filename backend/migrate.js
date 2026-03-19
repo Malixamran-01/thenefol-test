@@ -555,6 +555,38 @@ async function runMigration() {
         created_at timestamptz default now(),
         unique(user_id, product_id)
       );
+
+      -- Collab applications (Instagram collab flow → progress toward Affiliate)
+      CREATE TABLE IF NOT EXISTS collab_applications (
+        id serial primary key,
+        user_id integer references users(id) on delete set null,
+        email varchar(255) not null,
+        name varchar(255) not null,
+        phone varchar(50),
+        instagram varchar(255),
+        youtube varchar(255),
+        facebook varchar(255),
+        followers varchar(100),
+        message text,
+        agree_terms boolean default false,
+        status varchar(50) default 'pending',
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+      );
+
+      -- Collab reels (submitted reel links with views/likes for progress)
+      CREATE TABLE IF NOT EXISTS collab_reels (
+        id serial primary key,
+        collab_application_id integer not null references collab_applications(id) on delete cascade,
+        reel_url text not null,
+        instagram_username varchar(255),
+        views_count integer default 0,
+        likes_count integer default 0,
+        verified boolean default false,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now(),
+        unique(collab_application_id, reel_url)
+      );
     `);
 
     console.log('📝 Step 2: Adding missing columns and foreign keys...');
@@ -686,6 +718,9 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_cms_pages_slug ON cms_pages(slug);
       CREATE INDEX IF NOT EXISTS idx_cms_sections_page_id ON cms_sections(page_id);
       CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
+      CREATE INDEX IF NOT EXISTS idx_collab_applications_email ON collab_applications(email);
+      CREATE INDEX IF NOT EXISTS idx_collab_applications_user_id ON collab_applications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_collab_reels_application ON collab_reels(collab_application_id);
     `);
 
     console.log('📝 Step 4: Creating indexes for new columns...');
