@@ -153,19 +153,30 @@ export default function Collab() {
   const progress = status?.progressPercent ?? 0
   const affiliateUnlocked = status?.affiliateUnlocked ?? false
 
+  const pageBg = '#F7F5F2' // Warm off-white
+  const cardBg = '#FFFFFF'
+  const cardShadow = '0 2px 12px rgba(14, 39, 48, 0.06)'
+  const borderColor = '#E8E4DE'
+  const textPrimary = '#1a1a1a'
+  const textMuted = '#6b7280'
+  const accent = '#4B97C9'
+  const inputBg = '#FFFFFF'
+  const inputBorder = '#E5E2DC'
+  const inputFocus = '#4B97C9'
+
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen py-16 px-4" style={{ backgroundColor: 'var(--color-page-bg)' }}>
+      <main className="min-h-screen py-16 px-4" style={{ backgroundColor: pageBg, fontFamily: 'var(--font-body-family)' }}>
         <div className="mx-auto max-w-lg text-center">
-          <h1 className="text-2xl font-bold mb-4">Sign in to apply for Collab</h1>
-          <p className="mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+          <h1 className="text-2xl font-bold mb-4" style={{ color: textPrimary }}>Sign in to apply for Collab</h1>
+          <p className="mb-6" style={{ color: textMuted }}>
             You need to be signed in to join our creator collab program.
           </p>
           <a
             href="#/user/login"
             onClick={() => sessionStorage.setItem('post_login_redirect', '#/user/collab')}
-            className="inline-block rounded-lg px-6 py-3 font-semibold"
-            style={{ backgroundColor: 'var(--color-button-primary-bg)', color: 'var(--color-button-primary-text)' }}
+            className="inline-block rounded-xl px-6 py-3 font-semibold transition-opacity hover:opacity-90"
+            style={{ backgroundColor: accent, color: '#fff' }}
           >
             Sign in
           </a>
@@ -175,66 +186,77 @@ export default function Collab() {
   }
 
   return (
-    <main className="min-h-screen py-12 px-4" style={{ backgroundColor: 'var(--color-page-bg)' }}>
+    <main className="min-h-screen py-12 px-4 sm:py-16" style={{ backgroundColor: pageBg, fontFamily: 'var(--font-body-family)' }}>
       <div className="mx-auto max-w-2xl">
-        <a href="#/user/" className="inline-flex items-center gap-2 text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+        <a
+          href="#/user/"
+          className="inline-flex items-center gap-2 text-sm mb-8 transition-colors hover:opacity-80"
+          style={{ color: textMuted }}
+        >
           <ArrowLeft className="h-4 w-4" />
           Back to Home
         </a>
 
-        <h1 className="text-3xl font-bold mb-2">Creator Collab Program</h1>
-        <p className="mb-8" style={{ color: 'var(--color-text-secondary)' }}>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight" style={{ color: textPrimary, fontFamily: 'var(--font-heading-family)' }}>
+          Creator Collab Program
+        </h1>
+        <p className="mb-10 text-base sm:text-lg leading-relaxed" style={{ color: textMuted }}>
           Fill out your info, create a reel with our products, and add the link. As views and likes grow, you unlock the Affiliate Program.
         </p>
 
         {loading ? (
-          <div className="py-12 text-center" style={{ color: 'var(--color-text-secondary)' }}>Loading...</div>
+          <div className="py-16 text-center" style={{ color: textMuted }}>Loading...</div>
         ) : (
           <>
             {/* Collab form */}
             {showForm && (
-              <section className="mb-10 p-6 rounded-xl border" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card-bg)' }}>
-                <h2 className="text-xl font-semibold mb-4">Step 1 — Your details</h2>
+              <section
+                className="mb-8 p-6 sm:p-8 rounded-2xl"
+                style={{ backgroundColor: cardBg, boxShadow: cardShadow, border: `1px solid ${borderColor}` }}
+              >
+                <h2 className="text-lg font-semibold mb-6" style={{ color: textPrimary, letterSpacing: '0.02em' }}>
+                  Step 1 — Your details
+                </h2>
                 {!submitted ? (
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Name *</label>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>Name *</label>
                       <input
                         type="text"
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
                         required
-                        className="w-full rounded-lg border px-4 py-2"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0"
+                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Email *</label>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>Email *</label>
                       <input
                         type="email"
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
                         required
-                        className="w-full rounded-lg border px-4 py-2"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0"
+                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Phone *</label>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>Phone *</label>
                       <input
                         type="tel"
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
                         required
-                        className="w-full rounded-lg border px-4 py-2"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0"
+                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Instagram handle *</label>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>Instagram handle *</label>
                       <input
                         type="text"
                         name="instagram"
@@ -242,56 +264,58 @@ export default function Collab() {
                         value={formData.instagram}
                         onChange={handleInputChange}
                         required
-                        className="w-full rounded-lg border px-4 py-2"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
+                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Follower count (approx)</label>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>Follower count (approx)</label>
                       <input
                         type="text"
                         name="followers"
                         placeholder="e.g. 5000"
                         value={formData.followers}
                         onChange={handleInputChange}
-                        className="w-full rounded-lg border px-4 py-2"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
+                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Primary platform</label>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>Primary platform</label>
                       <input
                         type="text"
                         name="platform"
                         placeholder="e.g. Reels, Stories"
                         value={formData.platform}
                         onChange={handleInputChange}
-                        className="w-full rounded-lg border px-4 py-2"
-                        style={{ borderColor: 'var(--color-border)' }}
+                        className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
+                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                       />
                     </div>
-                    <label className="flex items-start gap-2">
+                    <label className="flex items-start gap-3 cursor-pointer group">
                       <input
                         type="checkbox"
                         name="agreeTerms"
                         checked={formData.agreeTerms}
                         onChange={handleInputChange}
-                        className="mt-1"
+                        className="mt-1 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9]"
                       />
-                      <span className="text-sm">I agree to be contacted for collab on Instagram and to create content featuring NEFOL products.</span>
+                      <span className="text-sm leading-relaxed" style={{ color: textMuted }}>
+                        I agree to be contacted for collab on Instagram and to create content featuring NEFOL products.
+                      </span>
                     </label>
                     <button
                       type="submit"
-                      className="w-full rounded-lg px-4 py-3 font-semibold"
-                      style={{ backgroundColor: 'var(--color-button-primary-bg)', color: 'var(--color-button-primary-text)' }}
+                      className="w-full rounded-xl px-4 py-3.5 font-semibold text-[15px] transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: accent, color: '#fff' }}
                     >
                       Submit Collab Application
                     </button>
                   </form>
                 ) : (
-                  <div className="flex items-center gap-2 text-green-600">
-                    <CheckCircle className="h-5 w-5" />
-                    <span>Application submitted. Next: add your reel link below.</span>
+                  <div className="flex items-center gap-3 py-1">
+                    <CheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+                    <span className="text-[15px]" style={{ color: textPrimary }}>Application submitted. Next: add your reel link below.</span>
                   </div>
                 )}
               </section>
@@ -299,12 +323,15 @@ export default function Collab() {
 
             {/* Reel submission */}
             {submitted && (
-              <section className="mb-10 p-6 rounded-xl border" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card-bg)' }}>
-                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                  <Video className="h-5 w-5" />
+              <section
+                className="mb-8 p-6 sm:p-8 rounded-2xl"
+                style={{ backgroundColor: cardBg, boxShadow: cardShadow, border: `1px solid ${borderColor}` }}
+              >
+                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2" style={{ color: textPrimary, letterSpacing: '0.02em' }}>
+                  <Video className="h-5 w-5" style={{ color: accent }} />
                   Step 2 — Add your reel link
                 </h2>
-                <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                <p className="text-sm mb-5 leading-relaxed" style={{ color: textMuted }}>
                   Create a reel with NEFOL products and paste the Instagram reel URL below. We verify it matches your registered account and track views and likes.
                 </p>
                 <form onSubmit={handleReelSubmit} className="space-y-3">
@@ -313,26 +340,26 @@ export default function Collab() {
                     placeholder="https://www.instagram.com/reel/..."
                     value={reelLink}
                     onChange={(e) => setReelLink(e.target.value)}
-                    className="w-full rounded-lg border px-4 py-2"
-                    style={{ borderColor: 'var(--color-border)' }}
+                    className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
+                    style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                   />
                   {reelError && (
-                    <p className="text-sm text-red-600 flex items-center gap-1">
-                      <X className="h-4 w-4" />
+                    <p className="text-sm text-red-600 flex items-center gap-2">
+                      <X className="h-4 w-4 flex-shrink-0" />
                       {reelError}
                     </p>
                   )}
                   <button
                     type="submit"
                     disabled={submittingReel}
-                    className="rounded-lg px-4 py-2 font-medium disabled:opacity-50"
-                    style={{ backgroundColor: 'var(--color-button-primary-bg)', color: 'var(--color-button-primary-text)' }}
+                    className="rounded-xl px-5 py-2.5 font-medium text-[15px] disabled:opacity-50 transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: accent, color: '#fff' }}
                   >
                     {submittingReel ? 'Verifying...' : 'Submit Reel'}
                   </button>
                 </form>
                 {((status?.totalViews ?? 0) > 0 || (status?.totalLikes ?? 0) > 0) && (
-                  <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--color-nav-bg)', color: 'var(--color-text-on-nav)' }}>
+                  <div className="mt-5 p-4 rounded-xl" style={{ backgroundColor: '#0E2730', color: '#fff' }}>
                     <p className="text-sm font-medium">
                       Views: {status?.totalViews ?? 0} · Likes: {status?.totalLikes ?? 0}
                     </p>
@@ -342,21 +369,24 @@ export default function Collab() {
             )}
 
             {/* Progress to Affiliate */}
-            <section className="p-6 rounded-xl border" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card-bg)' }}>
-              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                {affiliateUnlocked ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Lock className="h-5 w-5 text-amber-500" />}
+            <section
+              className="p-6 sm:p-8 rounded-2xl"
+              style={{ backgroundColor: cardBg, boxShadow: cardShadow, border: `1px solid ${borderColor}` }}
+            >
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: textPrimary, letterSpacing: '0.02em' }}>
+                {affiliateUnlocked ? <CheckCircle className="h-5 w-5 text-emerald-600" /> : <Lock className="h-5 w-5 text-amber-500" />}
                 Progress to Affiliate
               </h2>
-              <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-border)' }}>
+              <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: '#E8E4DE' }}>
                 <div
-                  className="h-full transition-all duration-500"
+                  className="h-full transition-all duration-500 rounded-full"
                   style={{
                     width: `${Math.min(100, progress)}%`,
-                    backgroundColor: affiliateUnlocked ? '#22c55e' : 'var(--color-button-primary-bg)',
+                    backgroundColor: affiliateUnlocked ? '#10b981' : accent,
                   }}
                 />
               </div>
-              <p className="text-sm mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+              <p className="text-sm mt-3 leading-relaxed" style={{ color: textMuted }}>
                 {affiliateUnlocked
                   ? 'Affiliate Program unlocked! You can now apply from Join Us.'
                   : `Reach ${AFFILIATE_VIEWS_THRESHOLD} views and ${AFFILIATE_LIKES_THRESHOLD} likes to unlock Affiliate.`}
@@ -365,8 +395,8 @@ export default function Collab() {
                 <a
                   href="#/user/affiliate-partner"
                   onClick={() => sessionStorage.setItem('affiliate_referrer', 'home')}
-                  className="inline-block mt-4 rounded-lg px-4 py-2 font-medium"
-                  style={{ backgroundColor: 'var(--color-button-primary-bg)', color: 'var(--color-button-primary-text)' }}
+                  className="inline-block mt-5 rounded-xl px-5 py-2.5 font-medium text-[15px] transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: accent, color: '#fff' }}
                 >
                   Go to Affiliate Partner
                 </a>
