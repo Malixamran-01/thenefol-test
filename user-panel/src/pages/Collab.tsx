@@ -324,9 +324,11 @@ export default function Collab() {
                     {submittingReel ? 'Verifying...' : 'Submit Reel'}
                   </button>
                 </form>
-                {(status?.totalViews > 0 || status?.totalLikes > 0) && (
+                {((status?.totalViews ?? status?.total_views ?? 0) > 0 || (status?.totalLikes ?? status?.total_likes ?? 0) > 0) && (
                   <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--color-nav-bg)', color: 'var(--color-text-on-nav)' }}>
-                    <p className="text-sm font-medium">Views: {status?.totalViews ?? 0} · Likes: {status?.totalLikes ?? 0}</p>
+                    <p className="text-sm font-medium">
+                      Views: {status?.totalViews ?? status?.total_views ?? 0} · Likes: {status?.totalLikes ?? status?.total_likes ?? 0}
+                    </p>
                   </div>
                 )}
               </section>

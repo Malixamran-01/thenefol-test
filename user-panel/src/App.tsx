@@ -17,6 +17,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt'
 import BottomNavigation from './components/BottomNavigation'
 import SwipeNavigation from './components/SwipeNavigation'
 import JoinUsModal from './components/JoinUsModal'
+import { getApiBase } from './utils/apiBase'
 
 // Lazy load all pages for code splitting
 const LoginPage = lazy(() => import('./pages/Login'))
@@ -62,6 +63,7 @@ function AppContent() {
   const [showSplash, setShowSplash] = useState(true)
   const [showSearch, setShowSearch] = useState(false)
   const [showJoinUs, setShowJoinUs] = useState(false)
+  const [affiliateUnlocked, setAffiliateUnlocked] = useState(false)
   const [showWishlist, setShowWishlist] = useState(false)
   const [showCart, setShowCart] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -84,6 +86,20 @@ function AppContent() {
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+
+  // Fetch affiliate unlocked status when Join Us modal opens (if user logged in)
+  useEffect(() => {
+    if (!showJoinUs || !isAuthenticated || !user?.email) {
+      if (!showJoinUs) setAffiliateUnlocked(false)
+      return
+    }
+    const controller = new AbortController()
+    fetch(`${getApiBase()}/api/collab/affiliate-unlocked?email=${encodeURIComponent(user.email)}`, { signal: controller.signal })
+      .then((r) => r.json())
+      .then((d) => setAffiliateUnlocked(!!d?.unlocked))
+      .catch(() => setAffiliateUnlocked(false))
+    return () => controller.abort()
+  }, [showJoinUs, isAuthenticated, user?.email])
 
   const isEditorPage = currentPath === '/user/blog/edit-image' || currentPath === '/user/blog/request'
 
@@ -925,6 +941,9 @@ function AppContent() {
       <JoinUsModal
         isOpen={showJoinUs}
         onClose={() => setShowJoinUs(false)}
+        onSelectCollab={() => { setShowJoinUs(false); window.location.hash = '#/user/collab' }}
+        onSelectAffiliate={() => { setShowJoinUs(false); sessionStorage.setItem('affiliate_referrer', 'home'); window.location.hash = '#/user/affiliate-partner' }}
+        affiliateUnlocked={affiliateUnlocked}
       />
 
           {(() => {
