@@ -27,17 +27,18 @@ function computeProgress(totalViews: number, totalLikes: number) {
   return { progress: Math.round(progress), affiliateUnlocked }
 }
 
-async function resolveUserId(pool: Pool, req: Request): Promise<{ userId: string | null; email: string | null }> {
+async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUserId: string | null; email: string | null }> {
   const token = req.headers.authorization?.replace('Bearer ', '').trim() || ''
   const parts = token.split('_')
-  
-  let userId: string | null = null
+
+  let uniqueUserId: string | null = null
   let email: string | null = null
 
   if (parts.length >= 3 && parts[0] === 'user' && parts[1] === 'token') {
-    userId = parts[2]
-    const userRes = await pool.query('SELECT email FROM users WHERE id = $1 LIMIT 1', [userId])
+    const numericId = parts[2]
+    const userRes = await pool.query('SELECT email, unique_user_id FROM users WHERE id = $1 LIMIT 1', [numericId])
     email = userRes.rows[0]?.email || null
+    uniqueUserId = userRes.rows[0]?.unique_user_id || null
   }
 
   // Fall back to query param email if no token
@@ -48,11 +49,11 @@ async function resolveUserId(pool: Pool, req: Request): Promise<{ userId: string
     }
   }
 
-  return { userId, email }
+  return { uniqueUserId, email }
 }
 
 async function resolveEmail(pool: Pool, req: Request): Promise<string | null> {
-  const { email } = await resolveUserId(pool, req)
+  const { email } = await resolveUniqueUserId(pool, req)
   return email
 }
 
@@ -75,20 +76,22 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       return res.status(400).json({ message: 'At least one Instagram handle is required' })
     }
 
-    // Extract user_id from auth token
+    // Extract unique_user_id from auth token
     const token = req.headers.authorization?.replace('Bearer ', '').trim() || ''
     const parts = token.split('_')
-    let userId: number | null = null
+    let uniqueUserId: string | null = null
     if (parts.length >= 3 && parts[0] === 'user' && parts[1] === 'token') {
-      userId = parseInt(parts[2], 10) || null
+      const numericId = parts[2]
+      const userRes = await pool.query('SELECT unique_user_id FROM users WHERE id = $1 LIMIT 1', [numericId])
+      uniqueUserId = userRes.rows[0]?.unique_user_id || null
     }
 
     const storedInstagram = handles.join(',')
     const { rows } = await pool.query(
-      `INSERT INTO collab_applications (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms, status, user_id)
+      `INSERT INTO collab_applications (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms, status, unique_user_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10)
        RETURNING id, email, status, created_at, instagram`,
-      [name, email, phone, storedInstagram, (youtube || '').trim() || null, (facebook || '').trim() || null, followers || null, message || null, !!agreeTerms, userId]
+      [name, email, phone, storedInstagram, (youtube || '').trim() || null, (facebook || '').trim() || null, followers || null, message || null, !!agreeTerms, uniqueUserId]
     )
 
     return res.status(201).json({
@@ -104,32 +107,31 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
   }
 }
 
-// Check collab status by user_id (primary) or email (fallback)
+// Check collab status by unique_user_id (primary) or email (fallback)
 export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
   try {
-    const { userId, email } = await resolveUserId(pool, req)
+    const { uniqueUserId, email } = await resolveUniqueUserId(pool, req)
 
-    if (!userId && !email) {
+    if (!uniqueUserId && !email) {
       return res.status(400).json({ message: 'Authentication required' })
     }
 
-    // Query by user_id first (most reliable), then fall back to email
     let rows: any[] = []
 
-    if (userId) {
+    if (uniqueUserId) {
       const result = await pool.query(
         `SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
                 (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_views,
                 (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_likes
          FROM collab_applications ca
-         WHERE ca.user_id = $1
+         WHERE ca.unique_user_id = $1
          ORDER BY ca.created_at DESC LIMIT 1`,
-        [userId]
+        [uniqueUserId]
       )
       rows = result.rows
     }
 
-    // Fall back to email if no result by user_id
+    // Fall back to email if no result by unique_user_id
     if (rows.length === 0 && email) {
       const result = await pool.query(
         `SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
@@ -142,11 +144,11 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
       )
       rows = result.rows
 
-      // If found by email and we have a userId, backfill the user_id
-      if (rows.length > 0 && userId) {
+      // Backfill unique_user_id on old records found by email
+      if (rows.length > 0 && uniqueUserId) {
         await pool.query(
-          `UPDATE collab_applications SET user_id = $1 WHERE id = $2 AND user_id IS NULL`,
-          [userId, rows[0].id]
+          `UPDATE collab_applications SET unique_user_id = $1 WHERE id = $2 AND unique_user_id IS NULL`,
+          [uniqueUserId, rows[0].id]
         )
       }
     }
@@ -424,28 +426,26 @@ export async function rejectCollabApplication(pool: Pool, req: Request, res: Res
   }
 }
 
-// Check if user has unlocked affiliate (by user_id or email - for Join Us modal)
+// Check if user has unlocked affiliate (by unique_user_id or email - for Join Us modal)
 export async function checkAffiliateUnlocked(pool: Pool, req: Request, res: Response) {
   try {
-    const { userId, email } = await resolveUserId(pool, req)
-
-    // Also accept email as query param for backward compat
+    const { uniqueUserId, email } = await resolveUniqueUserId(pool, req)
     const queryEmail = req.query?.email as string | undefined
     const resolvedEmail = email || queryEmail
 
-    if (!userId && !resolvedEmail) {
+    if (!uniqueUserId && !resolvedEmail) {
       return res.json({ unlocked: false })
     }
 
     let rows: any[] = []
 
-    if (userId) {
+    if (uniqueUserId) {
       const result = await pool.query(
         `SELECT COALESCE(SUM(cr.views_count), 0)::int AS v, COALESCE(SUM(cr.likes_count), 0)::int AS l
          FROM collab_applications ca
          LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
-         WHERE ca.user_id = $1`,
-        [userId]
+         WHERE ca.unique_user_id = $1`,
+        [uniqueUserId]
       )
       rows = result.rows
     }
@@ -463,8 +463,7 @@ export async function checkAffiliateUnlocked(pool: Pool, req: Request, res: Resp
 
     const v = rows[0]?.v || 0
     const l = rows[0]?.l || 0
-    const unlocked = v >= AFFILIATE_THRESHOLD_VIEWS && l >= AFFILIATE_THRESHOLD_LIKES
-    return res.json({ unlocked })
+    return res.json({ unlocked: v >= AFFILIATE_THRESHOLD_VIEWS && l >= AFFILIATE_THRESHOLD_LIKES })
   } catch (err) {
     console.error('Check affiliate unlocked:', err)
     return res.json({ unlocked: false })

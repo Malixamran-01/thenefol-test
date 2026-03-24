@@ -786,7 +786,7 @@ async function runMigration() {
           SELECT 1 FROM information_schema.columns
           WHERE table_name = 'collab_applications' AND column_name = 'user_id'
         ) THEN
-          ALTER TABLE collab_applications ADD COLUMN user_id integer REFERENCES users(id) ON DELETE SET NULL;
+          ALTER TABLE collab_applications ADD COLUMN unique_user_id text;
         END IF;
         END IF;
       END $$;
@@ -837,7 +837,7 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
       CREATE INDEX IF NOT EXISTS idx_collab_applications_email ON collab_applications(email);
       CREATE INDEX IF NOT EXISTS idx_collab_applications_email_lower ON collab_applications((LOWER(email)));
-      CREATE INDEX IF NOT EXISTS idx_collab_applications_user_id ON collab_applications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_collab_applications_unique_user_id ON collab_applications(unique_user_id);
       CREATE INDEX IF NOT EXISTS idx_collab_reels_application ON collab_reels(collab_application_id);
       CREATE UNIQUE INDEX IF NOT EXISTS uq_collab_reels_app_url ON collab_reels(collab_application_id, reel_url);
     `);
