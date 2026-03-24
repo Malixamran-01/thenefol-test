@@ -78,7 +78,11 @@ export default function Collab() {
             setInstagramHandles(handles)
             setReelInputs([{ reel_url: '', instagram_handle: handles[0] }])
           }
-          setSubmitted(!!data.id)
+          // If user already has an application, hide the form
+          if (data.id) {
+            setSubmitted(true)
+            setShowForm(false)
+          }
         }
       } catch (e) {
         console.error('Collab status fetch failed:', e)
@@ -129,9 +133,10 @@ export default function Collab() {
         const data = await res.json().catch(() => null)
         const appId = data?.application?.id
         setSubmitted(true)
+        setShowForm(false)
         setStatus((s) =>
           s
-            ? { ...s, id: appId || s.id, hasApplication: true, instagramHandles: normalizedHandles }
+            ? { ...s, id: appId || s.id, hasApplication: true, status: 'pending', instagramHandles: normalizedHandles }
             : {
                 id: appId,
                 status: 'pending',
@@ -300,6 +305,49 @@ export default function Collab() {
           <div className="py-16 text-center" style={{ color: textMuted }}>Loading...</div>
         ) : (
           <>
+            {/* Application status banner when form is hidden */}
+            {!showForm && status?.hasApplication && (
+              <section
+                className="mb-8 p-5 rounded-2xl flex items-start gap-4"
+                style={{
+                  backgroundColor: status.status === 'approved' ? '#f0fdf4' : status.status === 'rejected' ? '#fef2f2' : '#fff9eb',
+                  border: `1px solid ${status.status === 'approved' ? '#bbf7d0' : status.status === 'rejected' ? '#fecaca' : '#f5d48b'}`,
+                }}
+              >
+                {status.status === 'approved'
+                  ? <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-emerald-600" />
+                  : status.status === 'rejected'
+                    ? <X className="h-5 w-5 mt-0.5 flex-shrink-0 text-red-500" />
+                    : <Video className="h-5 w-5 mt-0.5 flex-shrink-0 text-amber-500" />
+                }
+                <div className="flex-1">
+                  <p className="font-semibold text-sm" style={{ color: status.status === 'approved' ? '#166534' : status.status === 'rejected' ? '#991b1b' : '#8a5a00' }}>
+                    {status.status === 'approved'
+                      ? 'Application Approved!'
+                      : status.status === 'rejected'
+                        ? 'Application Rejected'
+                        : 'Application Pending Review'}
+                  </p>
+                  <p className="text-sm mt-0.5" style={{ color: status.status === 'approved' ? '#166534' : status.status === 'rejected' ? '#991b1b' : '#8a5a00' }}>
+                    {status.status === 'approved'
+                      ? 'You can now submit your reel links below.'
+                      : status.status === 'rejected'
+                        ? 'Your application was rejected. You may re-apply below.'
+                        : 'We\'ll review your application and reach out on Instagram.'}
+                  </p>
+                  {status.status === 'rejected' && (
+                    <button
+                      onClick={() => { setShowForm(true); setSubmitted(false) }}
+                      className="mt-2 text-sm font-medium underline"
+                      style={{ color: '#991b1b' }}
+                    >
+                      Re-apply
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+
             {/* Collab form */}
             {showForm && (
               <section
