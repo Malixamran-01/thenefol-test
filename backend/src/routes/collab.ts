@@ -27,19 +27,33 @@ function computeProgress(totalViews: number, totalLikes: number) {
   return { progress: Math.round(progress), affiliateUnlocked }
 }
 
-async function resolveEmail(pool: Pool, req: Request): Promise<string | null> {
-  const queryEmail = req.query?.email
-  if (typeof queryEmail === 'string' && queryEmail.trim()) return queryEmail.trim()
-
+async function resolveUserId(pool: Pool, req: Request): Promise<{ userId: string | null; email: string | null }> {
   const token = req.headers.authorization?.replace('Bearer ', '').trim() || ''
   const parts = token.split('_')
+  
+  let userId: string | null = null
+  let email: string | null = null
+
   if (parts.length >= 3 && parts[0] === 'user' && parts[1] === 'token') {
-    const userId = parts[2]
+    userId = parts[2]
     const userRes = await pool.query('SELECT email FROM users WHERE id = $1 LIMIT 1', [userId])
-    return userRes.rows[0]?.email || null
+    email = userRes.rows[0]?.email || null
   }
 
-  return null
+  // Fall back to query param email if no token
+  if (!email) {
+    const queryEmail = req.query?.email
+    if (typeof queryEmail === 'string' && queryEmail.trim()) {
+      email = queryEmail.trim()
+    }
+  }
+
+  return { userId, email }
+}
+
+async function resolveEmail(pool: Pool, req: Request): Promise<string | null> {
+  const { email } = await resolveUserId(pool, req)
+  return email
 }
 
 // Submit collab application
@@ -61,12 +75,20 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       return res.status(400).json({ message: 'At least one Instagram handle is required' })
     }
 
+    // Extract user_id from auth token
+    const token = req.headers.authorization?.replace('Bearer ', '').trim() || ''
+    const parts = token.split('_')
+    let userId: number | null = null
+    if (parts.length >= 3 && parts[0] === 'user' && parts[1] === 'token') {
+      userId = parseInt(parts[2], 10) || null
+    }
+
     const storedInstagram = handles.join(',')
     const { rows } = await pool.query(
-      `INSERT INTO collab_applications (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
+      `INSERT INTO collab_applications (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms, status, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10)
        RETURNING id, email, status, created_at, instagram`,
-      [name, email, phone, storedInstagram, (youtube || '').trim() || null, (facebook || '').trim() || null, followers || null, message || null, !!agreeTerms]
+      [name, email, phone, storedInstagram, (youtube || '').trim() || null, (facebook || '').trim() || null, followers || null, message || null, !!agreeTerms, userId]
     )
 
     return res.status(201).json({
@@ -82,23 +104,52 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
   }
 }
 
-// Check collab status by email or auth token
+// Check collab status by user_id (primary) or email (fallback)
 export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
   try {
-    const email = await resolveEmail(pool, req)
-    if (!email) {
-      return res.status(400).json({ message: 'Email required' })
+    const { userId, email } = await resolveUserId(pool, req)
+
+    if (!userId && !email) {
+      return res.status(400).json({ message: 'Authentication required' })
     }
 
-    const { rows } = await pool.query(
-      `SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
-              (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_views,
-              (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_likes
-       FROM collab_applications ca
-       WHERE LOWER(ca.email) = LOWER($1)
-       ORDER BY ca.created_at DESC LIMIT 1`,
-      [email]
-    )
+    // Query by user_id first (most reliable), then fall back to email
+    let rows: any[] = []
+
+    if (userId) {
+      const result = await pool.query(
+        `SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
+                (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_views,
+                (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_likes
+         FROM collab_applications ca
+         WHERE ca.user_id = $1
+         ORDER BY ca.created_at DESC LIMIT 1`,
+        [userId]
+      )
+      rows = result.rows
+    }
+
+    // Fall back to email if no result by user_id
+    if (rows.length === 0 && email) {
+      const result = await pool.query(
+        `SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
+                (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_views,
+                (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_likes
+         FROM collab_applications ca
+         WHERE LOWER(ca.email) = LOWER($1)
+         ORDER BY ca.created_at DESC LIMIT 1`,
+        [email]
+      )
+      rows = result.rows
+
+      // If found by email and we have a userId, backfill the user_id
+      if (rows.length > 0 && userId) {
+        await pool.query(
+          `UPDATE collab_applications SET user_id = $1 WHERE id = $2 AND user_id IS NULL`,
+          [userId, rows[0].id]
+        )
+      }
+    }
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'No collab application found' })
@@ -373,21 +424,42 @@ export async function rejectCollabApplication(pool: Pool, req: Request, res: Res
   }
 }
 
-// Check if user has unlocked affiliate (by email - for Join Us modal)
+// Check if user has unlocked affiliate (by user_id or email - for Join Us modal)
 export async function checkAffiliateUnlocked(pool: Pool, req: Request, res: Response) {
   try {
-    const { email } = req.query
-    if (!email || typeof email !== 'string') {
+    const { userId, email } = await resolveUserId(pool, req)
+
+    // Also accept email as query param for backward compat
+    const queryEmail = req.query?.email as string | undefined
+    const resolvedEmail = email || queryEmail
+
+    if (!userId && !resolvedEmail) {
       return res.json({ unlocked: false })
     }
 
-    const { rows } = await pool.query(
-      `SELECT COALESCE(SUM(cr.views_count), 0)::int AS v, COALESCE(SUM(cr.likes_count), 0)::int AS l
-       FROM collab_applications ca
-       LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
-       WHERE LOWER(ca.email) = LOWER($1)`,
-      [email]
-    )
+    let rows: any[] = []
+
+    if (userId) {
+      const result = await pool.query(
+        `SELECT COALESCE(SUM(cr.views_count), 0)::int AS v, COALESCE(SUM(cr.likes_count), 0)::int AS l
+         FROM collab_applications ca
+         LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
+         WHERE ca.user_id = $1`,
+        [userId]
+      )
+      rows = result.rows
+    }
+
+    if ((!rows.length || (!rows[0]?.v && !rows[0]?.l)) && resolvedEmail) {
+      const result = await pool.query(
+        `SELECT COALESCE(SUM(cr.views_count), 0)::int AS v, COALESCE(SUM(cr.likes_count), 0)::int AS l
+         FROM collab_applications ca
+         LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
+         WHERE LOWER(ca.email) = LOWER($1)`,
+        [resolvedEmail]
+      )
+      rows = result.rows
+    }
 
     const v = rows[0]?.v || 0
     const l = rows[0]?.l || 0
