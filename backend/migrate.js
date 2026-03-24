@@ -672,6 +672,84 @@ async function runMigration() {
         ) THEN
           ALTER TABLE blog_activities ADD COLUMN author_id integer references author_profiles(id) on delete set null;
         END IF;
+
+        -- Collab: ensure latest columns exist for older production schemas
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'instagram'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN instagram varchar(255);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'youtube'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN youtube varchar(255);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'facebook'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN facebook varchar(255);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'followers'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN followers varchar(100);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'message'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN message text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'agree_terms'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN agree_terms boolean default false;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'status'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN status varchar(50) default 'pending';
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'instagram_username'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN instagram_username varchar(255);
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'views_count'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN views_count integer default 0;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'likes_count'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN likes_count integer default 0;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'verified'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN verified boolean default false;
+        END IF;
       END $$;
     `);
     
@@ -719,8 +797,10 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_cms_sections_page_id ON cms_sections(page_id);
       CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
       CREATE INDEX IF NOT EXISTS idx_collab_applications_email ON collab_applications(email);
+      CREATE INDEX IF NOT EXISTS idx_collab_applications_email_lower ON collab_applications((LOWER(email)));
       CREATE INDEX IF NOT EXISTS idx_collab_applications_user_id ON collab_applications(user_id);
       CREATE INDEX IF NOT EXISTS idx_collab_reels_application ON collab_reels(collab_application_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_collab_reels_app_url ON collab_reels(collab_application_id, reel_url);
     `);
 
     console.log('📝 Step 4: Creating indexes for new columns...');
