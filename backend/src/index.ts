@@ -33,7 +33,7 @@ import blogNotificationsRouter, { initBlogNotificationsRouter } from './routes/b
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
-import collabRouter from './routes/collab'
+import collabRouter, * as collabRoutes from './routes/collab'
 import * as searchRoutes from './routes/search'
 import * as marketingRoutes from './routes/marketing'
 import * as whatsappWebhookRoutes from './routes/whatsappWebhook'
@@ -837,6 +837,10 @@ app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarket
 
 // ==================== COLLAB (Collab → Affiliate progression) ====================
 app.use('/api/collab', collabRouter(pool))
+app.get('/api/admin/collab-applications', (req, res) => collabRoutes.getCollabApplications(pool, req, res))
+app.get('/api/admin/collab-applications/:id', (req, res) => collabRoutes.getCollabApplication(pool, req, res))
+app.put('/api/admin/collab-applications/:id/approve', (req, res) => collabRoutes.approveCollabApplication(pool, req, res))
+app.put('/api/admin/collab-applications/:id/reject', (req, res) => collabRoutes.rejectCollabApplication(pool, req, res))
 
 // ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
 // Frontend expects these endpoints; return empty lists for now so UI works without errors

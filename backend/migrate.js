@@ -570,6 +570,10 @@ async function runMigration() {
         message text,
         agree_terms boolean default false,
         status varchar(50) default 'pending',
+        admin_notes text,
+        rejection_reason text,
+        approved_at timestamptz,
+        rejected_at timestamptz,
         created_at timestamptz default now(),
         updated_at timestamptz default now()
       );
@@ -721,6 +725,34 @@ async function runMigration() {
           WHERE table_name = 'collab_applications' AND column_name = 'status'
         ) THEN
           ALTER TABLE collab_applications ADD COLUMN status varchar(50) default 'pending';
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'admin_notes'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN admin_notes text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'rejection_reason'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN rejection_reason text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'approved_at'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN approved_at timestamptz;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'rejected_at'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN rejected_at timestamptz;
         END IF;
 
         IF NOT EXISTS (

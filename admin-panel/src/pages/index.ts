@@ -38,6 +38,7 @@ export { default as CartCheckoutManagement } from './ecommerce/CartCheckoutManag
 // Affiliate Management Pages
 export { default as AffiliateManagement } from './AffiliateManagement'
 export { default as AffiliateRequests } from './AffiliateRequests'
+export { default as CollabRequests } from './CollabRequests'
 
 // System - Staff & Permissions
 export { default as Staff } from './system/Staff'

@@ -8,6 +8,7 @@ const AFFILIATE_LIKES_THRESHOLD = 100
 
 interface CollabStatus {
   id?: number
+  status?: 'pending' | 'approved' | 'rejected'
   hasApplication: boolean
   hasReel: boolean
   totalViews: number
@@ -64,6 +65,7 @@ export default function Collab() {
             : (data.instagram || '').split(',').map((h: string) => h.trim()).filter(Boolean)
           setStatus({
             id: data.id,
+            status: data.status,
             hasApplication: !!data.id,
             hasReel: (data.total_views ?? 0) > 0 || (data.total_likes ?? 0) > 0,
             totalViews: data.total_views ?? 0,
@@ -132,6 +134,7 @@ export default function Collab() {
             ? { ...s, id: appId || s.id, hasApplication: true, instagramHandles: normalizedHandles }
             : {
                 id: appId,
+                status: 'pending',
                 hasApplication: true,
                 hasReel: false,
                 totalViews: 0,
@@ -158,6 +161,10 @@ export default function Collab() {
     setReelError('')
     if (!status?.id) {
       setReelError('Please submit collab application first.')
+      return
+    }
+    if (!isApproved) {
+      setReelError('Your collab request is waiting for admin approval. You can submit reels once approved.')
       return
     }
     const payload = reelInputs
@@ -224,6 +231,7 @@ export default function Collab() {
 
   const progress = status?.progressPercent ?? 0
   const affiliateUnlocked = status?.affiliateUnlocked ?? false
+  const isApproved = status?.status === 'approved'
 
   const pageBg = '#F4F9F9'
   const cardBg = '#FFFFFF'
@@ -440,6 +448,13 @@ export default function Collab() {
                 className="mb-8 p-6 sm:p-8 rounded-2xl"
                 style={{ backgroundColor: cardBg, boxShadow: cardShadow, border: `1px solid ${borderColor}` }}
               >
+                {!isApproved && (
+                  <div className="mb-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: '#f5d48b', backgroundColor: '#fff9eb', color: '#8a5a00' }}>
+                    {status?.status === 'rejected'
+                      ? 'Your collab application was rejected by admin. Please update details and submit again.'
+                      : 'Waiting for admin approval. Reel tracking will start once your collab request is approved.'}
+                  </div>
+                )}
                 <h2 className="text-lg font-semibold mb-3 flex items-center gap-2" style={{ color: textPrimary, letterSpacing: '0.02em' }}>
                   <Video className="h-5 w-5" style={{ color: accent }} />
                   Step 2 — Add your reel links
@@ -453,6 +468,7 @@ export default function Collab() {
                       <select
                         value={row.instagram_handle}
                         onChange={(e) => updateReelInput(index, { instagram_handle: e.target.value })}
+                        disabled={!isApproved}
                         className="rounded-xl border px-3 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#4B97C9]"
                         style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                       >
@@ -468,6 +484,7 @@ export default function Collab() {
                         placeholder="https://www.instagram.com/reel/..."
                         value={row.reel_url}
                         onChange={(e) => updateReelInput(index, { reel_url: e.target.value })}
+                        disabled={!isApproved}
                         className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
                         style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
                       />
@@ -476,6 +493,7 @@ export default function Collab() {
                           <button
                             type="button"
                             onClick={() => removeReelInput(index)}
+                            disabled={!isApproved}
                             className="p-2 rounded-lg border hover:bg-gray-50"
                             style={{ borderColor: inputBorder, color: textMuted }}
                             aria-label="Remove reel input"
@@ -487,6 +505,7 @@ export default function Collab() {
                           <button
                             type="button"
                             onClick={addReelInput}
+                            disabled={!isApproved}
                             className="p-2 rounded-lg border hover:bg-gray-50"
                             style={{ borderColor: inputBorder, color: accent }}
                             aria-label="Add reel input"
@@ -505,11 +524,11 @@ export default function Collab() {
                   )}
                   <button
                     type="submit"
-                    disabled={submittingReel}
+                    disabled={submittingReel || !isApproved}
                     className="rounded-xl px-5 py-2.5 font-medium text-[15px] disabled:opacity-50 transition-opacity hover:opacity-90"
                     style={{ backgroundColor: accent, color: '#fff' }}
                   >
-                    {submittingReel ? 'Verifying...' : 'Submit Reel'}
+                    {!isApproved ? 'Waiting for Approval' : submittingReel ? 'Verifying...' : 'Submit Reel'}
                   </button>
                 </form>
                 {((status?.totalViews ?? 0) > 0 || (status?.totalLikes ?? 0) > 0) && (

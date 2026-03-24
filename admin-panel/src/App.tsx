@@ -12,6 +12,7 @@ import {
   Analytics, Marketing, MetaAds, WhatsAppSubscriptions, Discounts, FacebookInstagram, OnlineStore, GoogleYouTube, Forms,
   Invoice, InvoiceSettings, Tax, Returns, Payment, UserProfiles, UserNotifications, LoyaltyProgramManagement,
   StaticPagesManagement, CommunityManagement, CartCheckoutManagement, AffiliateManagement, AffiliateRequests,
+  CollabRequests,
   Staff, RolesPermissions, AuditLogs, AlertSettings, HomepageLayoutManager, ProductCollections, AccountSecurity,
   AdminManagement
 } from './pages'
@@ -235,6 +236,7 @@ export default function App() {
             <Route path="loyalty-program-management" element={<LoyaltyProgramManagement />} />
             <Route path="affiliate-program" element={<AffiliateManagement />} />
             <Route path="affiliate-requests" element={<AffiliateRequests />} />
+            <Route path="collab-requests" element={<CollabRequests />} />
             <Route path="cashback" element={<CashbackSystem />} />
             <Route path="live-chat" element={<LiveChat />} />
             <Route path="customer-segmentation" element={<CustomerSegmentation />} />

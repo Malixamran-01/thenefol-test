@@ -147,12 +147,15 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
       return res.status(400).json({ message: 'Collab ID required' })
     }
 
-    const { rows } = await pool.query('SELECT id, instagram FROM collab_applications WHERE id = $1', [collab_id])
+    const { rows } = await pool.query('SELECT id, instagram, status FROM collab_applications WHERE id = $1', [collab_id])
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Collab application not found' })
     }
 
     const app = rows[0]
+    if (String(app.status || 'pending').toLowerCase() !== 'approved') {
+      return res.status(403).json({ message: 'Collab request is pending admin approval. Reel tracking starts after approval.' })
+    }
     const allowedHandles = parseInstagramHandles(app.instagram)
     if (allowedHandles.length === 0) {
       return res.status(400).json({ message: 'No Instagram handles found for this collab application. Update your application first.' })
@@ -237,6 +240,136 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
   } catch (err) {
     console.error('Reel submission error:', err)
     return res.status(500).json({ message: 'Failed to submit reel' })
+  }
+}
+
+// ==================== ADMIN: Collab Management ====================
+export async function getCollabApplications(pool: Pool, req: Request, res: Response) {
+  try {
+    const { status = 'all', page = 1, limit = 20, search = '' } = req.query as Record<string, string>
+    const offset = (Number(page) - 1) * Number(limit)
+    const clauses: string[] = []
+    const params: any[] = []
+
+    if (status && status !== 'all') {
+      params.push(status)
+      clauses.push(`ca.status = $${params.length}`)
+    }
+
+    if (search?.trim()) {
+      params.push(`%${search.trim().toLowerCase()}%`)
+      clauses.push(`(
+        LOWER(ca.name) LIKE $${params.length}
+        OR LOWER(ca.email) LIKE $${params.length}
+        OR LOWER(COALESCE(ca.instagram, '')) LIKE $${params.length}
+      )`)
+    }
+
+    const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
+
+    params.push(Number(limit))
+    const limitParam = `$${params.length}`
+    params.push(offset)
+    const offsetParam = `$${params.length}`
+
+    const query = `
+      SELECT ca.*,
+             COALESCE(SUM(cr.views_count), 0)::int AS total_views,
+             COALESCE(SUM(cr.likes_count), 0)::int AS total_likes
+      FROM collab_applications ca
+      LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
+      ${whereSql}
+      GROUP BY ca.id
+      ORDER BY ca.created_at DESC
+      LIMIT ${limitParam} OFFSET ${offsetParam}
+    `
+
+    const rows = (await pool.query(query, params)).rows
+    const mapped = rows.map((r: any) => ({
+      ...r,
+      instagram_handles: parseInstagramHandles(r.instagram),
+    }))
+
+    const countParams = params.slice(0, params.length - 2)
+    const countWhere = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
+    const countRes = await pool.query(`SELECT COUNT(*)::int AS total FROM collab_applications ca ${countWhere}`, countParams)
+
+    return res.json({
+      applications: mapped,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: countRes.rows[0]?.total || 0,
+        pages: Math.ceil((countRes.rows[0]?.total || 0) / Number(limit)),
+      },
+    })
+  } catch (err) {
+    console.error('getCollabApplications error:', err)
+    return res.status(500).json({ message: 'Failed to fetch collab applications' })
+  }
+}
+
+export async function getCollabApplication(pool: Pool, req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    const appRes = await pool.query('SELECT * FROM collab_applications WHERE id = $1', [id])
+    if (appRes.rows.length === 0) return res.status(404).json({ message: 'Collab application not found' })
+
+    const reelsRes = await pool.query(
+      `SELECT id, reel_url, instagram_username, views_count, likes_count, verified, created_at
+       FROM collab_reels WHERE collab_application_id = $1 ORDER BY created_at DESC`,
+      [id]
+    )
+
+    return res.json({
+      ...appRes.rows[0],
+      instagram_handles: parseInstagramHandles(appRes.rows[0].instagram),
+      reels: reelsRes.rows,
+    })
+  } catch (err) {
+    console.error('getCollabApplication error:', err)
+    return res.status(500).json({ message: 'Failed to fetch collab application' })
+  }
+}
+
+export async function approveCollabApplication(pool: Pool, req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    const { adminNotes } = req.body || {}
+    const result = await pool.query(
+      `UPDATE collab_applications
+       SET status = 'approved', admin_notes = $1, approved_at = NOW(), updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [adminNotes || null, id]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Collab application not found' })
+    return res.json({ message: 'Collab application approved', application: result.rows[0] })
+  } catch (err) {
+    console.error('approveCollabApplication error:', err)
+    return res.status(500).json({ message: 'Failed to approve collab application' })
+  }
+}
+
+export async function rejectCollabApplication(pool: Pool, req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    const { rejectionReason } = req.body || {}
+    if (!rejectionReason || !String(rejectionReason).trim()) {
+      return res.status(400).json({ message: 'Rejection reason is required' })
+    }
+    const result = await pool.query(
+      `UPDATE collab_applications
+       SET status = 'rejected', rejection_reason = $1, rejected_at = NOW(), updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [String(rejectionReason).trim(), id]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Collab application not found' })
+    return res.json({ message: 'Collab application rejected', application: result.rows[0] })
+  } catch (err) {
+    console.error('rejectCollabApplication error:', err)
+    return res.status(500).json({ message: 'Failed to reject collab application' })
   }
 }
 
