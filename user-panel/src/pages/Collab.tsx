@@ -225,7 +225,7 @@ export default function Collab() {
   const progress = status?.progressPercent ?? 0
   const affiliateUnlocked = status?.affiliateUnlocked ?? false
 
-  const pageBg = 'var(--arctic-blue-background)'
+  const pageBg = '#F4F9F9'
   const cardBg = '#FFFFFF'
   const cardShadow = '0 2px 12px rgba(14, 39, 48, 0.06)'
   const borderColor = '#E8E4DE'
