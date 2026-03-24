@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Video, Lock, CheckCircle, X } from 'lucide-react'
+import { ArrowLeft, Video, Lock, CheckCircle, X, Plus, Trash2 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -7,29 +7,36 @@ const AFFILIATE_VIEWS_THRESHOLD = 1000
 const AFFILIATE_LIKES_THRESHOLD = 100
 
 interface CollabStatus {
+  id?: number
   hasApplication: boolean
   hasReel: boolean
   totalViews: number
   totalLikes: number
   progressPercent: number
   affiliateUnlocked: boolean
+  instagramHandles: string[]
+}
+
+interface ReelInput {
+  reel_url: string
+  instagram_handle: string
 }
 
 export default function Collab() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [showForm, setShowForm] = useState(true)
   const [submitted, setSubmitted] = useState(false)
   const [status, setStatus] = useState<CollabStatus | null>(null)
   const [loading, setLoading] = useState(true)
-  const [reelLink, setReelLink] = useState('')
+  const [reelInputs, setReelInputs] = useState<ReelInput[]>([{ reel_url: '', instagram_handle: '' }])
   const [submittingReel, setSubmittingReel] = useState(false)
   const [reelError, setReelError] = useState('')
+  const [instagramHandles, setInstagramHandles] = useState<string[]>([''])
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    instagram: '',
     followers: '',
     platform: '',
     agreeTerms: false,
@@ -42,20 +49,33 @@ export default function Collab() {
         return
       }
       try {
-        const res = await fetch(`${getApiBase()}/api/collab/status`, {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+        const token = localStorage.getItem('token')
+        const queryEmail = user?.email ? `?email=${encodeURIComponent(user.email)}` : ''
+        const res = await fetch(`${getApiBase()}/api/collab/status${queryEmail}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
         })
         if (res.ok) {
           const data = await res.json()
+          const handles = Array.isArray(data.instagram_handles)
+            ? data.instagram_handles
+            : (data.instagram || '').split(',').map((h: string) => h.trim()).filter(Boolean)
           setStatus({
+            id: data.id,
             hasApplication: !!data.id,
             hasReel: (data.total_views ?? 0) > 0 || (data.total_likes ?? 0) > 0,
             totalViews: data.total_views ?? 0,
             totalLikes: data.total_likes ?? 0,
             progressPercent: data.progress ?? 0,
             affiliateUnlocked: !!data.affiliate_unlocked,
+            instagramHandles: handles,
           })
+          if (handles.length > 0) {
+            setInstagramHandles(handles)
+            setReelInputs([{ reel_url: '', instagram_handle: handles[0] }])
+          }
           setSubmitted(!!data.id)
         }
       } catch (e) {
@@ -65,7 +85,7 @@ export default function Collab() {
       }
     }
     fetchStatus()
-  }, [isAuthenticated])
+  }, [isAuthenticated, user?.email])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -78,8 +98,11 @@ export default function Collab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name || !formData.email || !formData.phone || !formData.instagram) {
-      alert('Please fill required fields: Name, Email, Phone, Instagram handle.')
+    const normalizedHandles = instagramHandles
+      .map((h) => h.trim().replace(/^@/, '').toLowerCase())
+      .filter(Boolean)
+    if (!formData.name || !formData.email || !formData.phone || normalizedHandles.length === 0) {
+      alert('Please fill required fields: Name, Email, Phone, and at least one Instagram handle.')
       return
     }
     if (!formData.agreeTerms) {
@@ -87,15 +110,38 @@ export default function Collab() {
       return
     }
     try {
+      const token = localStorage.getItem('token')
       const res = await fetch(`${getApiBase()}/api/collab/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(formData),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          ...formData,
+          instagram: normalizedHandles[0],
+          instagram_handles: normalizedHandles,
+        }),
       })
       if (res.ok) {
+        const data = await res.json().catch(() => null)
+        const appId = data?.application?.id
         setSubmitted(true)
-        setStatus((s) => (s ? { ...s, hasApplication: true } : null))
+        setStatus((s) =>
+          s
+            ? { ...s, id: appId || s.id, hasApplication: true, instagramHandles: normalizedHandles }
+            : {
+                id: appId,
+                hasApplication: true,
+                hasReel: false,
+                totalViews: 0,
+                totalLikes: 0,
+                progressPercent: 0,
+                affiliateUnlocked: false,
+                instagramHandles: normalizedHandles,
+              }
+        )
+        setReelInputs([{ reel_url: '', instagram_handle: normalizedHandles[0] }])
         alert('Collab application submitted! We will reach out on Instagram soon. Next: create your reel and add the link below.')
       } else {
         const err = await res.json().catch(() => ({}))
@@ -110,21 +156,46 @@ export default function Collab() {
   const handleReelSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setReelError('')
-    if (!reelLink.trim()) {
-      setReelError('Please enter your reel link.')
+    if (!status?.id) {
+      setReelError('Please submit collab application first.')
       return
     }
-    if (!reelLink.includes('instagram.com') && !reelLink.includes('instagr.am')) {
-      setReelError('Please enter a valid Instagram reel URL.')
+    const payload = reelInputs
+      .map((r) => ({
+        reel_url: r.reel_url.trim(),
+        instagram_handle: r.instagram_handle.trim().replace(/^@/, '').toLowerCase(),
+      }))
+      .filter((r) => r.reel_url || r.instagram_handle)
+
+    if (payload.length === 0) {
+      setReelError('Please add at least one reel link.')
+      return
+    }
+
+    const invalid = payload.find((r) => !r.reel_url || !r.instagram_handle)
+    if (invalid) {
+      setReelError('Each reel row needs both a handle and reel URL.')
+      return
+    }
+
+    const badUrl = payload.find((r) => !r.reel_url.includes('instagram.com') && !r.reel_url.includes('instagr.am'))
+    if (badUrl) {
+      setReelError('All links must be valid Instagram reel URLs.')
       return
     }
     setSubmittingReel(true)
     try {
+      const token = localStorage.getItem('token')
       const res = await fetch(`${getApiBase()}/api/collab/submit-reel`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ reel_url: reelLink.trim() }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          collab_id: status.id,
+          reel_urls: payload,
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
@@ -139,7 +210,8 @@ export default function Collab() {
               }
             : null
         )
-        setReelLink('')
+        const defaultHandle = status.instagramHandles[0] || ''
+        setReelInputs([{ reel_url: '', instagram_handle: defaultHandle }])
       } else {
         setReelError(data?.message || 'Could not verify reel. Ensure it is from the same Instagram account you registered.')
       }
@@ -153,7 +225,7 @@ export default function Collab() {
   const progress = status?.progressPercent ?? 0
   const affiliateUnlocked = status?.affiliateUnlocked ?? false
 
-  const pageBg = '#F7F5F2' // Warm off-white
+  const pageBg = '#D0D5D8'
   const cardBg = '#FFFFFF'
   const cardShadow = '0 2px 12px rgba(14, 39, 48, 0.06)'
   const borderColor = '#E8E4DE'
@@ -162,7 +234,19 @@ export default function Collab() {
   const accent = '#4B97C9'
   const inputBg = '#FFFFFF'
   const inputBorder = '#E5E2DC'
-  const inputFocus = '#4B97C9'
+
+  const addInstagramHandle = () => setInstagramHandles((prev) => [...prev, ''])
+  const removeInstagramHandle = (index: number) =>
+    setInstagramHandles((prev) => prev.filter((_, idx) => idx !== index))
+  const updateInstagramHandle = (index: number, value: string) =>
+    setInstagramHandles((prev) => prev.map((item, idx) => (idx === index ? value : item)))
+
+  const addReelInput = () =>
+    setReelInputs((prev) => [...prev, { reel_url: '', instagram_handle: status?.instagramHandles?.[0] || '' }])
+  const removeReelInput = (index: number) =>
+    setReelInputs((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)))
+  const updateReelInput = (index: number, patch: Partial<ReelInput>) =>
+    setReelInputs((prev) => prev.map((row, idx) => (idx === index ? { ...row, ...patch } : row)))
 
   if (!isAuthenticated) {
     return (
@@ -256,17 +340,46 @@ export default function Collab() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>Instagram handle *</label>
-                      <input
-                        type="text"
-                        name="instagram"
-                        placeholder="@username"
-                        value={formData.instagram}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
-                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
-                      />
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>
+                        Instagram handle(s) *
+                      </label>
+                      <div className="space-y-2">
+                        {instagramHandles.map((handle, index) => (
+                          <div key={`handle-${index}`} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="@username"
+                              value={handle}
+                              onChange={(e) => updateInstagramHandle(index, e.target.value)}
+                              required={index === 0}
+                              className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
+                              style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
+                            />
+                            {instagramHandles.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeInstagramHandle(index)}
+                                className="p-2 rounded-lg border hover:bg-gray-50"
+                                style={{ borderColor: inputBorder, color: textMuted }}
+                                aria-label="Remove Instagram handle"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                            {index === instagramHandles.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={addInstagramHandle}
+                                className="p-2 rounded-lg border hover:bg-gray-50"
+                                style={{ borderColor: inputBorder, color: accent }}
+                                aria-label="Add Instagram handle"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1.5" style={{ color: textPrimary }}>Follower count (approx)</label>
@@ -329,20 +442,61 @@ export default function Collab() {
               >
                 <h2 className="text-lg font-semibold mb-3 flex items-center gap-2" style={{ color: textPrimary, letterSpacing: '0.02em' }}>
                   <Video className="h-5 w-5" style={{ color: accent }} />
-                  Step 2 — Add your reel link
+                  Step 2 — Add your reel links
                 </h2>
                 <p className="text-sm mb-5 leading-relaxed" style={{ color: textMuted }}>
-                  Create a reel with NEFOL products and paste the Instagram reel URL below. We verify it matches your registered account and track views and likes.
+                  Add one or multiple reel links. Each reel must map to one of your registered Instagram handles. Views and likes are compounded for affiliate milestones.
                 </p>
-                <form onSubmit={handleReelSubmit} className="space-y-3">
-                  <input
-                    type="url"
-                    placeholder="https://www.instagram.com/reel/..."
-                    value={reelLink}
-                    onChange={(e) => setReelLink(e.target.value)}
-                    className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
-                    style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
-                  />
+                <form onSubmit={handleReelSubmit} className="space-y-4">
+                  {reelInputs.map((row, index) => (
+                    <div key={`reel-${index}`} className="grid grid-cols-1 sm:grid-cols-[180px_1fr_auto] gap-2">
+                      <select
+                        value={row.instagram_handle}
+                        onChange={(e) => updateReelInput(index, { instagram_handle: e.target.value })}
+                        className="rounded-xl border px-3 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#4B97C9]"
+                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
+                      >
+                        <option value="">Select handle</option>
+                        {(status?.instagramHandles || []).map((handle) => (
+                          <option key={handle} value={handle}>
+                            @{handle}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="url"
+                        placeholder="https://www.instagram.com/reel/..."
+                        value={row.reel_url}
+                        onChange={(e) => updateReelInput(index, { reel_url: e.target.value })}
+                        className="w-full rounded-xl border px-4 py-3 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4B97C9] focus:ring-offset-0 placeholder:text-gray-400"
+                        style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textPrimary }}
+                      />
+                      <div className="flex items-center gap-2">
+                        {reelInputs.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeReelInput(index)}
+                            className="p-2 rounded-lg border hover:bg-gray-50"
+                            style={{ borderColor: inputBorder, color: textMuted }}
+                            aria-label="Remove reel input"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                        {index === reelInputs.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={addReelInput}
+                            className="p-2 rounded-lg border hover:bg-gray-50"
+                            style={{ borderColor: inputBorder, color: accent }}
+                            aria-label="Add reel input"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                   {reelError && (
                     <p className="text-sm text-red-600 flex items-center gap-2">
                       <X className="h-4 w-4 flex-shrink-0" />
@@ -361,7 +515,7 @@ export default function Collab() {
                 {((status?.totalViews ?? 0) > 0 || (status?.totalLikes ?? 0) > 0) && (
                   <div className="mt-5 p-4 rounded-xl" style={{ backgroundColor: '#0E2730', color: '#fff' }}>
                     <p className="text-sm font-medium">
-                      Views: {status?.totalViews ?? 0} · Likes: {status?.totalLikes ?? 0}
+                      Total Views: {status?.totalViews ?? 0}/{AFFILIATE_VIEWS_THRESHOLD} · Total Likes: {status?.totalLikes ?? 0}/{AFFILIATE_LIKES_THRESHOLD}
                     </p>
                   </div>
                 )}
@@ -389,7 +543,7 @@ export default function Collab() {
               <p className="text-sm mt-3 leading-relaxed" style={{ color: textMuted }}>
                 {affiliateUnlocked
                   ? 'Affiliate Program unlocked! You can now apply from Join Us.'
-                  : `Reach ${AFFILIATE_VIEWS_THRESHOLD} views and ${AFFILIATE_LIKES_THRESHOLD} likes to unlock Affiliate.`}
+                  : `Reach ${AFFILIATE_VIEWS_THRESHOLD} views and ${AFFILIATE_LIKES_THRESHOLD} likes to unlock Affiliate. Current: ${status?.totalViews ?? 0}/${AFFILIATE_VIEWS_THRESHOLD} views and ${status?.totalLikes ?? 0}/${AFFILIATE_LIKES_THRESHOLD} likes.`}
               </p>
               {affiliateUnlocked && (
                 <a
