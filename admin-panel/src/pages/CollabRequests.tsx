@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film } from 'lucide-react'
+import { CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film, Trash2, Star } from 'lucide-react'
 import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface CollabApplication {
@@ -10,6 +10,7 @@ interface CollabApplication {
   instagram?: string
   instagram_handles?: string[]
   followers?: string
+  unique_user_id?: string
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
   approved_at?: string
@@ -96,6 +97,29 @@ export default function CollabRequests() {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) return alert(data?.message || 'Failed to reject')
     setShowModal(false)
+    await fetchItems()
+  }
+
+  const promoteToAffiliate = async (item: CollabApplication) => {
+    if (!confirm(`Promote "${item.name}" directly to Affiliate? This will bypass the view/like thresholds.`)) return
+    const res = await fetch(`${apiBase}/admin/collab-applications/${item.id}/promote-affiliate`, {
+      method: 'PUT',
+      headers: authHeaders,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return alert(data?.message || 'Failed to promote')
+    alert('User promoted to Affiliate successfully!')
+    await fetchItems()
+  }
+
+  const deleteItem = async (item: CollabApplication) => {
+    if (!confirm(`Delete collab application from "${item.name}"? This cannot be undone.`)) return
+    const res = await fetch(`${apiBase}/admin/collab-applications/${item.id}`, {
+      method: 'DELETE',
+      headers: authHeaders,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return alert(data?.message || 'Failed to delete')
     await fetchItems()
   }
 
@@ -216,13 +240,15 @@ export default function CollabRequests() {
                   <td className="px-4 py-3 text-sm text-gray-600">{new Date(item.created_at).toLocaleString()}</td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openModal(item, 'view')} className="text-blue-600 hover:text-blue-800"><Eye className="h-4 w-4" /></button>
+                      <button onClick={() => openModal(item, 'view')} title="View details" className="text-blue-600 hover:text-blue-800"><Eye className="h-4 w-4" /></button>
                       {item.status === 'pending' && (
                         <>
-                          <button onClick={() => openModal(item, 'approve')} className="text-green-600 hover:text-green-800"><CheckCircle className="h-4 w-4" /></button>
-                          <button onClick={() => openModal(item, 'reject')} className="text-red-600 hover:text-red-800"><XCircle className="h-4 w-4" /></button>
+                          <button onClick={() => openModal(item, 'approve')} title="Approve" className="text-green-600 hover:text-green-800"><CheckCircle className="h-4 w-4" /></button>
+                          <button onClick={() => openModal(item, 'reject')} title="Reject" className="text-red-600 hover:text-red-800"><XCircle className="h-4 w-4" /></button>
                         </>
                       )}
+                      <button onClick={() => promoteToAffiliate(item)} title="Promote to Affiliate" className="text-amber-500 hover:text-amber-700"><Star className="h-4 w-4" /></button>
+                      <button onClick={() => deleteItem(item)} title="Delete" className="text-red-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -245,6 +271,12 @@ export default function CollabRequests() {
               <div><strong>Status:</strong> {selected.status}</div>
               <div><strong>Handles:</strong> {(selected.instagram_handles || []).map((h) => `@${h}`).join(', ') || '-'}</div>
               <div><strong>Followers:</strong> {selected.followers || '-'}</div>
+              {selected.unique_user_id && (
+                <div className="pt-1 border-t border-gray-100">
+                  <strong>Unique User ID:</strong>{' '}
+                  <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded select-all">{selected.unique_user_id}</span>
+                </div>
+              )}
             </div>
 
             {modalType === 'approve' && (

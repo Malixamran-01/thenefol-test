@@ -836,11 +836,15 @@ app.get('/api/affiliate/commission-settings', affiliateRoutes.getAffiliateCommis
 app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarketingMaterials.bind(null, pool))
 
 // ==================== COLLAB (Collab → Affiliate progression) ====================
+// Ensure unique_user_id column exists (safe to run every startup)
+pool.query(`ALTER TABLE collab_applications ADD COLUMN IF NOT EXISTS unique_user_id text`).catch(() => {})
 app.use('/api/collab', collabRouter(pool))
 app.get('/api/admin/collab-applications', (req, res) => collabRoutes.getCollabApplications(pool, req, res))
 app.get('/api/admin/collab-applications/:id', (req, res) => collabRoutes.getCollabApplication(pool, req, res))
 app.put('/api/admin/collab-applications/:id/approve', (req, res) => collabRoutes.approveCollabApplication(pool, req, res))
 app.put('/api/admin/collab-applications/:id/reject', (req, res) => collabRoutes.rejectCollabApplication(pool, req, res))
+app.put('/api/admin/collab-applications/:id/promote-affiliate', (req, res) => collabRoutes.promoteToAffiliate(pool, req, res))
+app.delete('/api/admin/collab-applications/:id', (req, res) => collabRoutes.deleteCollabApplication(pool, req, res))
 
 // ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
 // Frontend expects these endpoints; return empty lists for now so UI works without errors

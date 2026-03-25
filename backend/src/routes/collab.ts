@@ -426,6 +426,53 @@ export async function rejectCollabApplication(pool: Pool, req: Request, res: Res
   }
 }
 
+// Promote collab applicant directly to affiliate (bypass view/like thresholds)
+export async function promoteToAffiliate(pool: Pool, req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    const appRes = await pool.query('SELECT * FROM collab_applications WHERE id = $1', [id])
+    if (appRes.rows.length === 0) return res.status(404).json({ message: 'Collab application not found' })
+
+    const app = appRes.rows[0]
+
+    // Ensure the application is approved first
+    if (app.status !== 'approved') {
+      await pool.query(
+        `UPDATE collab_applications SET status = 'approved', approved_at = COALESCE(approved_at, NOW()), updated_at = NOW() WHERE id = $1`,
+        [id]
+      )
+    }
+
+    // Insert enough synthetic views/likes to exceed both thresholds
+    // This makes affiliate_unlocked = true for this user
+    await pool.query(
+      `INSERT INTO collab_reels (collab_application_id, reel_url, instagram_username, views_count, likes_count, verified)
+       VALUES ($1, $2, $3, $4, $5, true)
+       ON CONFLICT (collab_application_id, reel_url) DO UPDATE
+         SET views_count = EXCLUDED.views_count, likes_count = EXCLUDED.likes_count`,
+      [id, `admin-promoted-${id}`, app.instagram?.split(',')[0]?.trim() || 'admin', AFFILIATE_THRESHOLD_VIEWS, AFFILIATE_THRESHOLD_LIKES]
+    )
+
+    return res.json({ message: 'User promoted to affiliate successfully' })
+  } catch (err) {
+    console.error('promoteToAffiliate error:', err)
+    return res.status(500).json({ message: 'Failed to promote to affiliate' })
+  }
+}
+
+// Delete a collab application and all its reels
+export async function deleteCollabApplication(pool: Pool, req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    const result = await pool.query('DELETE FROM collab_applications WHERE id = $1 RETURNING id', [id])
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Collab application not found' })
+    return res.json({ message: 'Collab application deleted' })
+  } catch (err) {
+    console.error('deleteCollabApplication error:', err)
+    return res.status(500).json({ message: 'Failed to delete collab application' })
+  }
+}
+
 // Check if user has unlocked affiliate (by unique_user_id or email - for Join Us modal)
 export async function checkAffiliateUnlocked(pool: Pool, req: Request, res: Response) {
   try {

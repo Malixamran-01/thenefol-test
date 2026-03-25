@@ -781,13 +781,13 @@ async function runMigration() {
           WHERE table_name = 'collab_reels' AND column_name = 'verified'
         ) THEN
           ALTER TABLE collab_reels ADD COLUMN verified boolean default false;
+        END IF;
 
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'collab_applications' AND column_name = 'user_id'
+          WHERE table_name = 'collab_applications' AND column_name = 'unique_user_id'
         ) THEN
           ALTER TABLE collab_applications ADD COLUMN unique_user_id text;
-        END IF;
         END IF;
       END $$;
     `);
