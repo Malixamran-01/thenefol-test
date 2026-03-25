@@ -4,6 +4,7 @@ import { Search, X, ArrowRight } from 'lucide-react'
 import NotificationBell from '../components/NotificationBell'
 import Can from '../components/Can'
 import { useAuth } from '../contexts/AuthContext'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface NavigationSection {
   title: string
@@ -29,8 +30,31 @@ const Layout = () => {
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [pendingCollabCount, setPendingCollabCount] = useState(0)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const { user, logout, hasPageAccess } = useAuth()
+
+  // Fetch pending collab count for sidebar badge
+  useEffect(() => {
+    const fetchPendingCollab = async () => {
+      try {
+        const token = localStorage.getItem('auth_token')
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'x-user-role': 'admin',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        }
+        const res = await fetch(`${getApiBaseUrl()}/admin/collab-applications?status=pending&limit=1`, { headers })
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}))
+          setPendingCollabCount(data?.pagination?.total ?? 0)
+        }
+      } catch { /* silent */ }
+    }
+    fetchPendingCollab()
+    const interval = setInterval(fetchPendingCollab, 60_000)
+    return () => clearInterval(interval)
+  }, [])
   
   const userInitials = user?.name
     ? user.name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase()
@@ -159,7 +183,7 @@ const Layout = () => {
       items: [
         { name: 'Affiliate Program', href: '/admin/affiliate-program', icon: '🤝', current: location.pathname === '/admin/affiliate-program' },
         { name: 'Affiliate Requests', href: '/admin/affiliate-requests', icon: '📋', badge: '3', current: location.pathname === '/admin/affiliate-requests' },
-        { name: 'Collab Requests', href: '/admin/collab-requests', icon: '🎬', current: location.pathname === '/admin/collab-requests' },
+        { name: 'Collab Requests', href: '/admin/collab-requests', icon: '🎬', badge: pendingCollabCount > 0 ? String(pendingCollabCount) : undefined, current: location.pathname === '/admin/collab-requests' },
         { name: 'Coin Withdrawals', href: '/admin/coin-withdrawals', icon: '💸', current: location.pathname === '/admin/coin-withdrawals' },
         { name: 'Loyalty Program Management', href: '/admin/loyalty-program-management', icon: '⭐', current: location.pathname === '/admin/loyalty-program-management' },
       ]

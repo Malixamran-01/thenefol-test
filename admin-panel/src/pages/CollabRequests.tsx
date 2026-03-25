@@ -22,7 +22,8 @@ interface CollabApplication {
 }
 
 export default function CollabRequests() {
-  const [items, setItems] = useState<CollabApplication[]>([])
+  // Always store ALL records so counts are accurate across all tabs
+  const [allItems, setAllItems] = useState<CollabApplication[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending')
   const [search, setSearch] = useState('')
@@ -43,17 +44,15 @@ export default function CollabRequests() {
     } as Record<string, string>
   }, [])
 
+  // Fetch ALL records every time — filter client-side so counts are always correct
   const fetchItems = async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams()
-      if (statusFilter !== 'all') params.set('status', statusFilter)
-      if (search.trim()) params.set('search', search.trim())
-      params.set('limit', '100')
+      const params = new URLSearchParams({ status: 'all', limit: '500' })
       const res = await fetch(`${apiBase}/admin/collab-applications?${params.toString()}`, { headers: authHeaders })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.message || 'Failed to load collab requests')
-      setItems(Array.isArray(data?.applications) ? data.applications : [])
+      setAllItems(Array.isArray(data?.applications) ? data.applications : [])
     } catch (err: any) {
       alert(err?.message || 'Failed to load collab requests')
     } finally {
@@ -61,9 +60,26 @@ export default function CollabRequests() {
     }
   }
 
-  useEffect(() => {
-    fetchItems()
-  }, [statusFilter])
+  useEffect(() => { fetchItems() }, [])
+
+  // Counts always from full dataset
+  const counts = {
+    pending: allItems.filter((i) => i.status === 'pending').length,
+    approved: allItems.filter((i) => i.status === 'approved').length,
+    rejected: allItems.filter((i) => i.status === 'rejected').length,
+  }
+
+  // Client-side filter for active tab + search
+  const filtered = allItems.filter((i) => {
+    if (statusFilter !== 'all' && i.status !== statusFilter) return false
+    const q = search.toLowerCase().trim()
+    if (!q) return true
+    return (
+      i.name?.toLowerCase().includes(q) ||
+      i.email?.toLowerCase().includes(q) ||
+      i.instagram?.toLowerCase().includes(q)
+    )
+  })
 
   const openModal = (item: CollabApplication, type: 'view' | 'approve' | 'reject') => {
     setSelected(item)
@@ -123,22 +139,6 @@ export default function CollabRequests() {
     await fetchItems()
   }
 
-  const filtered = items.filter((i) => {
-    const q = search.toLowerCase().trim()
-    if (!q) return true
-    return (
-      i.name?.toLowerCase().includes(q) ||
-      i.email?.toLowerCase().includes(q) ||
-      i.instagram?.toLowerCase().includes(q)
-    )
-  })
-
-  const counts = {
-    pending: items.filter((i) => i.status === 'pending').length,
-    approved: items.filter((i) => i.status === 'approved').length,
-    rejected: items.filter((i) => i.status === 'rejected').length,
-  }
-
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--arctic-blue-background)' }}>
       <div className="flex items-center justify-between mb-6">
@@ -154,12 +154,23 @@ export default function CollabRequests() {
         </button>
       </div>
 
+      {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg p-4 border border-gray-200"><div className="text-xs text-gray-500">Pending</div><div className="text-2xl font-semibold text-yellow-600">{counts.pending}</div></div>
-        <div className="bg-white rounded-lg p-4 border border-gray-200"><div className="text-xs text-gray-500">Approved</div><div className="text-2xl font-semibold text-green-600">{counts.approved}</div></div>
-        <div className="bg-white rounded-lg p-4 border border-gray-200"><div className="text-xs text-gray-500">Rejected</div><div className="text-2xl font-semibold text-red-600">{counts.rejected}</div></div>
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <div className="text-xs text-gray-500">Pending</div>
+          <div className="text-2xl font-semibold text-yellow-600">{counts.pending}</div>
+        </div>
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <div className="text-xs text-gray-500">Approved</div>
+          <div className="text-2xl font-semibold text-green-600">{counts.approved}</div>
+        </div>
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <div className="text-xs text-gray-500">Rejected</div>
+          <div className="text-2xl font-semibold text-red-600">{counts.rejected}</div>
+        </div>
       </div>
 
+      {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -167,7 +178,7 @@ export default function CollabRequests() {
               { key: 'pending', label: `Pending (${counts.pending})` },
               { key: 'approved', label: `Accepted (${counts.approved})` },
               { key: 'rejected', label: `Rejected (${counts.rejected})` },
-              { key: 'all', label: `All (${items.length})` },
+              { key: 'all', label: `All (${allItems.length})` },
             ] as const).map((tab) => (
               <button
                 key={tab.key}
@@ -179,19 +190,27 @@ export default function CollabRequests() {
                 }`}
               >
                 {tab.label}
+                {tab.key === 'pending' && counts.pending > 0 && (
+                  <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-yellow-500 text-white text-[10px] font-bold">
+                    {counts.pending}
+                  </span>
+                )}
               </button>
             ))}
           </div>
-
-          <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, email, instagram" className="w-full pl-9 pr-3 py-2 border rounded-lg" />
-          </div>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, email, instagram"
+              className="w-full pl-9 pr-3 py-2 border rounded-lg"
+            />
           </div>
         </div>
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50">
@@ -211,7 +230,7 @@ export default function CollabRequests() {
               <tr><td className="px-4 py-8 text-center text-gray-500" colSpan={6}>No collab requests found</td></tr>
             ) : (
               filtered.map((item) => (
-                <tr key={item.id} className="border-t">
+                <tr key={item.id} className="border-t hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium">{item.name}</div>
                     <div className="text-xs text-gray-500">{item.email}</div>
@@ -227,13 +246,19 @@ export default function CollabRequests() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <div className="inline-flex items-center gap-2 text-gray-700"><Film className="h-4 w-4" /> {item.total_views || 0} views · {item.total_likes || 0} likes</div>
+                    <div className="inline-flex items-center gap-2 text-gray-700">
+                      <Film className="h-4 w-4" /> {item.total_views || 0} views · {item.total_likes || 0} likes
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                      item.status === 'approved' ? 'bg-green-100 text-green-700' : item.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                      item.status === 'approved' ? 'bg-green-100 text-green-700'
+                      : item.status === 'rejected' ? 'bg-red-100 text-red-700'
+                      : 'bg-yellow-100 text-yellow-700'
                     }`}>
-                      {item.status === 'approved' ? <CheckCircle className="h-3 w-3" /> : item.status === 'rejected' ? <XCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                      {item.status === 'approved' ? <CheckCircle className="h-3 w-3" />
+                        : item.status === 'rejected' ? <XCircle className="h-3 w-3" />
+                        : <Clock className="h-3 w-3" />}
                       {item.status}
                     </span>
                   </td>
@@ -258,6 +283,7 @@ export default function CollabRequests() {
         </table>
       </div>
 
+      {/* Modal */}
       {showModal && selected && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -297,4 +323,3 @@ export default function CollabRequests() {
     </div>
   )
 }
-
