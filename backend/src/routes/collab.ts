@@ -1,5 +1,6 @@
 import { Request, Response, Router } from 'express'
 import { Pool } from 'pg'
+import { generateUniqueUserId } from '../utils/generateUserId'
 
 const AFFILIATE_THRESHOLD_VIEWS = 1000
 const AFFILIATE_THRESHOLD_LIKES = 100
@@ -36,9 +37,20 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
 
   if (parts.length >= 3 && parts[0] === 'user' && parts[1] === 'token') {
     const numericId = parts[2]
-    const userRes = await pool.query('SELECT email, unique_user_id FROM users WHERE id = $1 LIMIT 1', [numericId])
-    email = userRes.rows[0]?.email || null
-    uniqueUserId = userRes.rows[0]?.unique_user_id || null
+    const userRes = await pool.query('SELECT id, email, unique_user_id FROM users WHERE id = $1 LIMIT 1', [numericId])
+    const row = userRes.rows[0]
+    email = row?.email || null
+    uniqueUserId = row?.unique_user_id || null
+
+    // If this is an older user missing unique_user_id, generate it on-the-fly.
+    if (row?.id && !uniqueUserId) {
+      const generated = await generateUniqueUserId(pool)
+      const updated = await pool.query(
+        'UPDATE users SET unique_user_id = $1 WHERE id = $2 AND unique_user_id IS NULL RETURNING unique_user_id',
+        [generated, row.id]
+      )
+      uniqueUserId = updated.rows[0]?.unique_user_id || generated
+    }
   }
 
   // Fall back to query param email if no token
@@ -76,15 +88,7 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       return res.status(400).json({ message: 'At least one Instagram handle is required' })
     }
 
-    // Extract unique_user_id from auth token
-    const token = req.headers.authorization?.replace('Bearer ', '').trim() || ''
-    const parts = token.split('_')
-    let uniqueUserId: string | null = null
-    if (parts.length >= 3 && parts[0] === 'user' && parts[1] === 'token') {
-      const numericId = parts[2]
-      const userRes = await pool.query('SELECT unique_user_id FROM users WHERE id = $1 LIMIT 1', [numericId])
-      uniqueUserId = userRes.rows[0]?.unique_user_id || null
-    }
+    const { uniqueUserId } = await resolveUniqueUserId(pool, req)
 
     const storedInstagram = handles.join(',')
     const { rows } = await pool.query(

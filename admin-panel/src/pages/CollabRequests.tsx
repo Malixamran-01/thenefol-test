@@ -235,6 +235,11 @@ export default function CollabRequests() {
                     <div className="text-sm font-medium">{item.name}</div>
                     <div className="text-xs text-gray-500">{item.email}</div>
                     <div className="text-xs text-gray-500">{item.phone || '-'}</div>
+                    {item.unique_user_id && (
+                      <div className="text-[11px] text-gray-500 mt-0.5">
+                        <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded select-all">{item.unique_user_id}</span>
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex flex-wrap gap-1">
