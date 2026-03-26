@@ -1,22 +1,27 @@
 /**
- * Instagram Graph API OAuth + Insights Routes
+ * Instagram Business Login OAuth + Insights Routes
  *
- * Flow:
- *  1. GET  /api/instagram/connect?collab_id=X  → redirects to Meta OAuth dialog
- *  2. GET  /api/instagram/callback             → exchanges code, stores tokens, redirects user back
- *  3. GET  /api/instagram/status?collab_id=X   → returns connection status for a collab
- *  4. POST /api/instagram/disconnect           → clears tokens for a collab
+ * Uses the Instagram API with Instagram Login (launched July 2024).
+ * NO Facebook Page or Facebook Login required — users log in directly with Instagram.
  *
- * Internal (used by collab routes):
- *  - fetchReelData(reelUrl, accessToken, igUserId) → { views, likes, postedAt, caption }
+ * OAuth flow:
+ *  1. GET  /api/instagram/connect?collab_id=X  → redirects to Instagram OAuth dialog
+ *  2. GET  /api/instagram/callback             → exchanges code, stores token, redirects back
+ *  3. GET  /api/instagram/status?collab_id=X   → returns connection status
+ *  4. POST /api/instagram/disconnect           → clears tokens
+ *
+ * Scopes used:
+ *  - instagram_business_basic        (profile info + media list)
+ *  - instagram_business_manage_insights  (views/likes on reels — requires Advanced Access)
+ *
+ * Docs: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login
  */
 
 import { Request, Response, Router } from 'express'
 import { Pool } from 'pg'
 
-const META_API_VERSION = process.env.META_API_VERSION || 'v21.0'
-const META_GRAPH = `https://graph.facebook.com/${META_API_VERSION}`
-const IG_GRAPH = `https://graph.instagram.com/${META_API_VERSION}`
+const IG_API = 'https://api.instagram.com'
+const IG_GRAPH = 'https://graph.instagram.com'
 
 // Nefol-related keywords reels must include in caption/hashtags
 export const NEFOL_KEYWORDS = ['nefol', 'neföl', '#nefol', '#neföl', 'nefol skincare', 'nefol hair', 'nefoltest']
@@ -34,18 +39,25 @@ export function captionMentionsNefol(caption: string | null | undefined): boolea
   return NEFOL_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()))
 }
 
-/** Exchange short-lived user token → long-lived user token (~60 days) */
-async function exchangeForLongLivedToken(shortToken: string): Promise<{ access_token: string; expires_in: number } | null> {
+/**
+ * Exchange a short-lived Instagram user token for a long-lived one (~60 days).
+ * Uses graph.instagram.com (not graph.facebook.com) for the IG Business Login flow.
+ */
+async function exchangeForLongLivedToken(
+  shortToken: string
+): Promise<{ access_token: string; token_type: string; expires_in: number } | null> {
   try {
-    const url = new URL(`${META_GRAPH}/oauth/access_token`)
-    url.searchParams.set('grant_type', 'fb_exchange_token')
-    url.searchParams.set('client_id', process.env.META_APP_ID || '')
+    const url = new URL(`${IG_GRAPH}/access_token`)
+    url.searchParams.set('grant_type', 'ig_exchange_token')
     url.searchParams.set('client_secret', process.env.META_APP_SECRET || '')
-    url.searchParams.set('fb_exchange_token', shortToken)
+    url.searchParams.set('access_token', shortToken)
 
     const res = await fetch(url.toString())
-    const data = await res.json() as any
-    if (data.error) { console.error('Long-lived token exchange error:', data.error); return null }
+    const data = (await res.json()) as any
+    if (data.error) {
+      console.error('Long-lived IG token exchange error:', data.error)
+      return null
+    }
     return data
   } catch (err) {
     console.error('exchangeForLongLivedToken error:', err)
@@ -53,54 +65,22 @@ async function exchangeForLongLivedToken(shortToken: string): Promise<{ access_t
   }
 }
 
-/** Get the user's FB pages and resolve the linked Instagram Business Account */
-async function resolveIgAccount(userToken: string): Promise<{ pageId: string; igUserId: string; igUsername: string } | null> {
-  try {
-    // 1. Get pages
-    const pagesRes = await fetch(`${META_GRAPH}/me/accounts?access_token=${userToken}`)
-    const pagesData = await pagesRes.json() as any
-    if (!pagesData.data?.length) return null
-
-    // Use the first page (most collab users have one page)
-    const page = pagesData.data[0]
-    const pageToken: string = page.access_token
-    const pageId: string = page.id
-
-    // 2. Get Instagram Business Account linked to this page
-    const igRes = await fetch(
-      `${META_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${pageToken}`
-    )
-    const igData = await igRes.json() as any
-    const igUserId: string = igData.instagram_business_account?.id
-    if (!igUserId) return null
-
-    // 3. Get IG username
-    const igProfileRes = await fetch(
-      `${META_GRAPH}/${igUserId}?fields=username&access_token=${pageToken}`
-    )
-    const igProfile = await igProfileRes.json() as any
-
-    return { pageId, igUserId, igUsername: igProfile.username || '' }
-  } catch (err) {
-    console.error('resolveIgAccount error:', err)
-    return null
-  }
-}
-
 /**
- * Fetch real views + likes for a reel URL using the connected IG account token.
- * Returns null if reel not found or not accessible.
+ * Fetch real views + likes for a reel URL using the connected IG user token.
+ * - Media list fetched from graph.instagram.com/me/media
+ * - Insights fetched from graph.instagram.com/{media_id}/insights
+ * - Uses `views` metric (replaces deprecated `plays` as of April 2025)
  */
 export async function fetchReelData(
   reelUrl: string,
-  pageAccessToken: string,
-  igUserId: string
+  igUserToken: string,
+  _igUserId: string // kept for API compat, not needed with IG Business Login
 ): Promise<{ views: number; likes: number; postedAt: string | null; caption: string | null } | null> {
   try {
     const shortcode = extractShortcode(reelUrl)
     if (!shortcode) return null
 
-    // Fetch media list (paginate up to 3 pages = 75 items to find the reel)
+    // Paginate up to 3 pages (75 items) to locate the reel by shortcode
     let nextCursor: string | undefined
     let found: any = null
 
@@ -108,12 +88,12 @@ export async function fetchReelData(
       const params = new URLSearchParams({
         fields: 'id,shortcode,media_type,timestamp,caption,like_count',
         limit: '25',
-        access_token: pageAccessToken,
+        access_token: igUserToken,
       })
       if (nextCursor) params.set('after', nextCursor)
 
-      const mediaRes = await fetch(`${META_GRAPH}/${igUserId}/media?${params}`)
-      const mediaData = await mediaRes.json() as any
+      const mediaRes = await fetch(`${IG_GRAPH}/me/media?${params}`)
+      const mediaData = (await mediaRes.json()) as any
 
       if (mediaData.error) {
         console.error('IG media fetch error:', mediaData.error)
@@ -129,23 +109,22 @@ export async function fetchReelData(
     if (!found) return null
 
     const likes = Number(found.like_count) || 0
-    const postedAt: string = found.timestamp || null
+    const postedAt: string | null = found.timestamp || null
     const caption: string | null = found.caption || null
 
-    // Fetch video insights (plays = views for reels)
+    // Fetch video insights — `views` metric (as of April 2025, replaces `plays`)
     let views = 0
     try {
       const insightsRes = await fetch(
-        `${META_GRAPH}/${found.id}/insights?metric=plays,reach&access_token=${pageAccessToken}`
+        `${IG_GRAPH}/${found.id}/insights?metric=views&access_token=${igUserToken}`
       )
-      const insightsData = await insightsRes.json() as any
-      if (!insightsData.error) {
-        const playsMetric = insightsData.data?.find((m: any) => m.name === 'plays')
-        views = Number(playsMetric?.values?.[0]?.value ?? playsMetric?.id?.split('?')[0] ?? 0)
-        // Some API versions return total_value instead
-        if (!views) {
-          views = Number(playsMetric?.total_value?.value ?? 0)
-        }
+      const insightsData = (await insightsRes.json()) as any
+
+      if (!insightsData.error && insightsData.data?.length) {
+        const viewsMetric = insightsData.data.find((m: any) => m.name === 'views')
+        views =
+          Number(viewsMetric?.total_value?.value ?? 0) ||
+          Number(viewsMetric?.values?.[0]?.value ?? 0)
       }
     } catch (e) {
       console.warn('Insights fetch failed (non-fatal):', e)
@@ -158,24 +137,27 @@ export async function fetchReelData(
   }
 }
 
-/** Refresh a long-lived page token (pages tokens don't expire if refreshed) */
-export async function getPageTokenForCollab(pool: Pool, collabId: number): Promise<{ pageToken: string; igUserId: string } | null> {
+/** Read the IG user token and ig_user_id for a collab from DB */
+export async function getPageTokenForCollab(
+  pool: Pool,
+  collabId: number
+): Promise<{ pageToken: string; igUserId: string } | null> {
   try {
     const { rows } = await pool.query(
-      `SELECT fb_page_id, fb_page_access_token, ig_user_id FROM collab_applications WHERE id = $1`,
+      `SELECT fb_page_access_token, ig_user_id FROM collab_applications WHERE id = $1`,
       [collabId]
     )
     const row = rows[0]
     if (!row?.fb_page_access_token || !row?.ig_user_id) return null
     return { pageToken: row.fb_page_access_token, igUserId: row.ig_user_id }
-  } catch (e) {
+  } catch {
     return null
   }
 }
 
 // ==================== Route Handlers ====================
 
-export async function handleConnect(pool: Pool, req: Request, res: Response) {
+export async function handleConnect(_pool: Pool, req: Request, res: Response) {
   const { collab_id } = req.query as Record<string, string>
   if (!collab_id) return res.status(400).send('collab_id is required')
 
@@ -185,20 +167,16 @@ export async function handleConnect(pool: Pool, req: Request, res: Response) {
   const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 2000}`
   const redirectUri = `${backendUrl}/api/instagram/callback`
 
-  const scope = [
-    'pages_show_list',
-    'pages_read_engagement',
-    'instagram_basic',
-    'instagram_manage_insights',
-  ].join(',')
+  // Direct Instagram OAuth — no Facebook Page needed
+  const scope = ['instagram_business_basic', 'instagram_business_manage_insights'].join(',')
 
   const oauthUrl =
-    `https://www.facebook.com/${META_API_VERSION}/dialog/oauth?` +
+    `${IG_API}/oauth/authorize?` +
     `client_id=${appId}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&scope=${encodeURIComponent(scope)}` +
-    `&state=${encodeURIComponent(collab_id)}` +
-    `&response_type=code`
+    `&response_type=code` +
+    `&state=${encodeURIComponent(collab_id)}`
 
   return res.redirect(oauthUrl)
 }
@@ -211,71 +189,96 @@ export async function handleCallback(pool: Pool, req: Request, res: Response) {
 
   if (error || !code) {
     console.error('Instagram OAuth error:', error, error_description)
-    return res.redirect(`${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(error_description || error || 'OAuth failed')}`)
+    return res.redirect(
+      `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(error_description || error || 'OAuth failed')}`
+    )
   }
 
   try {
     const redirectUri = `${backendUrl}/api/instagram/callback`
 
-    // 1. Exchange code → short-lived user token
-    const tokenUrl =
-      `${META_GRAPH}/oauth/access_token?` +
-      `client_id=${process.env.META_APP_ID}` +
-      `&client_secret=${process.env.META_APP_SECRET}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&code=${code}`
+    // Step 1: Exchange authorization code → short-lived IG user token
+    const tokenBody = new URLSearchParams({
+      client_id: process.env.META_APP_ID || '',
+      client_secret: process.env.META_APP_SECRET || '',
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+      code,
+    })
 
-    const tokenRes = await fetch(tokenUrl)
-    const tokenData = await tokenRes.json() as any
+    const tokenRes = await fetch(`${IG_API}/oauth/access_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenBody.toString(),
+    })
+    const tokenData = (await tokenRes.json()) as any
 
-    if (tokenData.error || !tokenData.access_token) {
-      console.error('Token exchange error:', tokenData.error)
-      return res.redirect(`${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent('Token exchange failed')}`)
+    if (tokenData.error_type || !tokenData.access_token) {
+      console.error('IG token exchange error:', tokenData)
+      return res.redirect(
+        `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent('Instagram token exchange failed. Please try again.')}`
+      )
     }
 
-    // 2. Exchange → long-lived user token (~60 days)
-    const longToken = await exchangeForLongLivedToken(tokenData.access_token)
-    const userToken = longToken?.access_token || tokenData.access_token
-    const expiresIn = longToken?.expires_in || 3600
+    const shortToken: string = tokenData.access_token
+    const igUserIdFromToken: string = String(tokenData.user_id || '')
 
-    // 3. Resolve IG Business Account through the user's FB page
-    const igAccount = await resolveIgAccount(userToken)
-    if (!igAccount) {
+    // Step 2: Exchange → long-lived token (~60 days)
+    const longTokenData = await exchangeForLongLivedToken(shortToken)
+    const igUserToken = longTokenData?.access_token || shortToken
+    const expiresIn = longTokenData?.expires_in || 3600
+    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000)
+
+    // Step 3: Fetch IG username from profile
+    const profileRes = await fetch(
+      `${IG_GRAPH}/me?fields=user_id,username,account_type&access_token=${igUserToken}`
+    )
+    const profile = (await profileRes.json()) as any
+
+    if (profile.error) {
+      console.error('IG profile fetch error:', profile.error)
+      return res.redirect(
+        `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent('Could not fetch Instagram profile. Make sure you have a Professional account.')}`
+      )
+    }
+
+    const igUserId: string = String(profile.user_id || igUserIdFromToken)
+    const igUsername: string = profile.username || ''
+    const accountType: string = profile.account_type || ''
+
+    // Only Business and Creator accounts can access insights
+    if (accountType && accountType.toLowerCase() === 'personal') {
       return res.redirect(
         `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(
-          'No Instagram Professional account found linked to a Facebook Page. Please ensure your Instagram account is a Creator or Business account and linked to a Facebook Page.'
+          'Personal Instagram accounts cannot be connected. Please switch your account to Creator or Business in Instagram Settings → Account → Switch to Professional Account.'
         )}`
       )
     }
 
-    // 4. Get long-lived page access token (pages tokens are non-expiring)
-    const pagesRes = await fetch(`${META_GRAPH}/me/accounts?access_token=${userToken}`)
-    const pagesData = await pagesRes.json() as any
-    const page = pagesData.data?.find((p: any) => p.id === igAccount.pageId) || pagesData.data?.[0]
-    const pageToken: string = page?.access_token || userToken
-    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000)
-
-    // 5. Store in collab_applications
+    // Step 4: Store token in DB
+    // We store the IG user token in fb_page_access_token for backward compat with fetchReelData
     await pool.query(
       `UPDATE collab_applications
-       SET instagram_connected = true,
+       SET instagram_connected  = true,
            fb_user_access_token = $1,
-           fb_page_id = $2,
-           fb_page_access_token = $3,
-           ig_user_id = $4,
-           ig_username = $5,
-           token_expires_at = $6,
-           token_updated_at = NOW(),
-           updated_at = NOW()
-       WHERE id = $7`,
-      [userToken, igAccount.pageId, pageToken, igAccount.igUserId, igAccount.igUsername, tokenExpiresAt, collabId]
+           fb_page_id           = NULL,
+           fb_page_access_token = $1,
+           ig_user_id           = $2,
+           ig_username          = $3,
+           token_expires_at     = $4,
+           token_updated_at     = NOW(),
+           updated_at           = NOW()
+       WHERE id = $5`,
+      [igUserToken, igUserId, igUsername, tokenExpiresAt, collabId]
     )
 
-    console.log(`✅ Instagram connected for collab ${collabId}: @${igAccount.igUsername}`)
+    console.log(`✅ Instagram (direct) connected for collab ${collabId}: @${igUsername} (${accountType})`)
     return res.redirect(`${frontendUrl}/#/user/collab?ig_connected=1`)
   } catch (err) {
     console.error('Instagram callback error:', err)
-    return res.redirect(`${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent('Connection failed. Please try again.')}`)
+    return res.redirect(
+      `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent('Connection failed. Please try again.')}`
+    )
   }
 }
 
@@ -309,9 +312,14 @@ export async function handleDisconnect(pool: Pool, req: Request, res: Response) 
   try {
     await pool.query(
       `UPDATE collab_applications
-       SET instagram_connected = false, fb_user_access_token = NULL,
-           fb_page_access_token = NULL, ig_user_id = NULL, ig_username = NULL,
-           token_expires_at = NULL, updated_at = NOW()
+       SET instagram_connected  = false,
+           fb_user_access_token = NULL,
+           fb_page_id           = NULL,
+           fb_page_access_token = NULL,
+           ig_user_id           = NULL,
+           ig_username          = NULL,
+           token_expires_at     = NULL,
+           updated_at           = NOW()
        WHERE id = $1`,
       [collab_id]
     )

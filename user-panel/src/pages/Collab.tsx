@@ -487,7 +487,7 @@ export default function Collab() {
                   Step 2 — Connect your Instagram account
                 </h2>
                 <p className="text-sm mb-5 leading-relaxed" style={{ color: textMuted }}>
-                  Connect your <strong>Instagram Professional/Creator</strong> account linked to a Facebook Page. This is required to verify your reels and fetch real view/like data.
+                  Connect your <strong>Instagram Professional or Creator</strong> account directly. This is required to verify your reels and fetch real views and likes. No Facebook account needed.
                 </p>
 
                 {status?.instagramConnected && status.igUsername ? (
@@ -525,7 +525,7 @@ export default function Collab() {
                       {igConnecting ? 'Redirecting...' : 'Connect Instagram Account'}
                     </button>
                     <p className="mt-3 text-xs" style={{ color: textMuted }}>
-                      Requires a Professional/Creator Instagram account linked to a Facebook Page. You'll be redirected to Meta's login.
+                      Requires an Instagram Professional or Creator account. You'll log in directly with Instagram — no Facebook account needed.
                     </p>
                   </div>
                 )}
