@@ -35,6 +35,7 @@ security-audit.md
 # IDE
 .vscode/settings.json
 .idea/
+.cursor/
 node_modules
 
 # Large upload files (exceed GitHub 100MB limit)
