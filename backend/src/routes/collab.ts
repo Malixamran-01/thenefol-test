@@ -1,10 +1,13 @@
 import { Request, Response, Router } from 'express'
 import { Pool } from 'pg'
 import { generateUniqueUserId } from '../utils/generateUserId'
+import { fetchReelData, captionMentionsNefol, getPageTokenForCollab, extractShortcode, NEFOL_KEYWORDS } from './instagram'
 
-const AFFILIATE_THRESHOLD_VIEWS = 1000
-const AFFILIATE_THRESHOLD_LIKES = 100
+// ─── Thresholds ────────────────────────────────────────────────────────────────
+const AFFILIATE_THRESHOLD_VIEWS = 10_000
+const AFFILIATE_THRESHOLD_LIKES = 500
 
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 function normalizeHandle(handle: string): string {
   return String(handle || '').trim().replace(/^@/, '').toLowerCase()
 }
@@ -20,12 +23,36 @@ function parseInstagramHandles(instagram: string | null | undefined, instagramHa
 }
 
 function computeProgress(totalViews: number, totalLikes: number) {
-  const progress = Math.min(
-    100,
-    (totalViews / AFFILIATE_THRESHOLD_VIEWS) * 50 + (totalLikes / AFFILIATE_THRESHOLD_LIKES) * 50
-  )
+  const viewsPct = Math.min(1, totalViews / AFFILIATE_THRESHOLD_VIEWS)
+  const likesPct = Math.min(1, totalLikes / AFFILIATE_THRESHOLD_LIKES)
+  const progress = Math.round((viewsPct * 50 + likesPct * 50))
   const affiliateUnlocked = totalViews >= AFFILIATE_THRESHOLD_VIEWS && totalLikes >= AFFILIATE_THRESHOLD_LIKES
-  return { progress: Math.round(progress), affiliateUnlocked }
+  return { progress, affiliateUnlocked }
+}
+
+/** Ensure DB schema has Instagram OAuth columns on collab_applications + collab_reels validation fields */
+async function ensureCollabSchema(pool: Pool) {
+  await pool.query(`
+    -- Instagram OAuth columns on collab_applications
+    ALTER TABLE collab_applications
+      ADD COLUMN IF NOT EXISTS instagram_connected   BOOLEAN   DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS fb_user_access_token  TEXT,
+      ADD COLUMN IF NOT EXISTS fb_page_id            TEXT,
+      ADD COLUMN IF NOT EXISTS fb_page_access_token  TEXT,
+      ADD COLUMN IF NOT EXISTS ig_user_id            TEXT,
+      ADD COLUMN IF NOT EXISTS ig_username           TEXT,
+      ADD COLUMN IF NOT EXISTS token_expires_at      TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS token_updated_at      TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS collab_joined_at      TIMESTAMPTZ DEFAULT NOW();
+
+    -- Validation metadata on collab_reels
+    ALTER TABLE collab_reels
+      ADD COLUMN IF NOT EXISTS reel_posted_at        TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS caption               TEXT,
+      ADD COLUMN IF NOT EXISTS caption_ok            BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS date_ok               BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS rejection_reason      TEXT;
+  `)
 }
 
 async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUserId: string | null; email: string | null }> {
@@ -42,7 +69,7 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
     email = row?.email || null
     uniqueUserId = row?.unique_user_id || null
 
-    // If this is an older user missing unique_user_id, generate it on-the-fly.
+    // Auto-generate unique_user_id for older accounts
     if (row?.id && !uniqueUserId) {
       const generated = await generateUniqueUserId(pool)
       const updated = await pool.query(
@@ -53,7 +80,7 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
     }
   }
 
-  // Fall back to query param email if no token
+  // Fallback to query param email
   if (!email) {
     const queryEmail = req.query?.email
     if (typeof queryEmail === 'string' && queryEmail.trim()) {
@@ -64,14 +91,10 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
   return { uniqueUserId, email }
 }
 
-async function resolveEmail(pool: Pool, req: Request): Promise<string | null> {
-  const { email } = await resolveUniqueUserId(pool, req)
-  return email
-}
-
-// Submit collab application
+// ─── Submit Collab Application ─────────────────────────────────────────────────
 export async function submitCollabApplication(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureCollabSchema(pool)
     const { name, email, phone, instagram, instagram_handles, youtube, facebook, followers, message, agreeTerms } = req.body
 
     if (!name || !email || !phone || !agreeTerms) {
@@ -92,8 +115,9 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
 
     const storedInstagram = handles.join(',')
     const { rows } = await pool.query(
-      `INSERT INTO collab_applications (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms, status, unique_user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10)
+      `INSERT INTO collab_applications
+         (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms, status, unique_user_id, collab_joined_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, NOW())
        RETURNING id, email, status, created_at, instagram`,
       [name, email, phone, storedInstagram, (youtube || '').trim() || null, (facebook || '').trim() || null, followers || null, message || null, !!agreeTerms, uniqueUserId]
     )
@@ -103,7 +127,7 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
         ...rows[0],
         instagram_handles: handles,
       },
-      message: 'Collab application submitted. You can now add reels from your listed Instagram accounts.',
+      message: 'Collab application submitted. Connect your Instagram account while waiting for approval.',
     })
   } catch (err) {
     console.error('Collab application error:', err)
@@ -111,9 +135,10 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
   }
 }
 
-// Check collab status by unique_user_id (primary) or email (fallback)
+// ─── Get Collab Status (user-facing) ──────────────────────────────────────────
 export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureCollabSchema(pool)
     const { uniqueUserId, email } = await resolveUniqueUserId(pool, req)
 
     if (!uniqueUserId && !email) {
@@ -121,34 +146,30 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
     }
 
     let rows: any[] = []
+    const BASE_SELECT = `
+      SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
+             ca.instagram_connected, ca.ig_username, ca.ig_user_id, ca.collab_joined_at,
+             (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id AND caption_ok = true AND date_ok = true) AS total_views,
+             (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id AND caption_ok = true AND date_ok = true) AS total_likes
+      FROM collab_applications ca
+    `
 
     if (uniqueUserId) {
       const result = await pool.query(
-        `SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
-                (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_views,
-                (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_likes
-         FROM collab_applications ca
-         WHERE ca.unique_user_id = $1
-         ORDER BY ca.created_at DESC LIMIT 1`,
+        `${BASE_SELECT} WHERE ca.unique_user_id = $1 ORDER BY ca.created_at DESC LIMIT 1`,
         [uniqueUserId]
       )
       rows = result.rows
     }
 
-    // Fall back to email if no result by unique_user_id
     if (rows.length === 0 && email) {
       const result = await pool.query(
-        `SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
-                (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_views,
-                (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id) AS total_likes
-         FROM collab_applications ca
-         WHERE LOWER(ca.email) = LOWER($1)
-         ORDER BY ca.created_at DESC LIMIT 1`,
+        `${BASE_SELECT} WHERE LOWER(ca.email) = LOWER($1) ORDER BY ca.created_at DESC LIMIT 1`,
         [email]
       )
       rows = result.rows
 
-      // Backfill unique_user_id on old records found by email
+      // Backfill unique_user_id on old records
       if (rows.length > 0 && uniqueUserId) {
         await pool.query(
           `UPDATE collab_applications SET unique_user_id = $1 WHERE id = $2 AND unique_user_id IS NULL`,
@@ -167,7 +188,8 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
     const { progress, affiliateUnlocked } = computeProgress(totalViews, totalLikes)
 
     const reelsRes = await pool.query(
-      `SELECT id, reel_url, instagram_username, views_count, likes_count, verified, created_at
+      `SELECT id, reel_url, instagram_username, views_count, likes_count, verified, created_at,
+              reel_posted_at, caption, caption_ok, date_ok, rejection_reason
        FROM collab_reels
        WHERE collab_application_id = $1
        ORDER BY created_at DESC`,
@@ -179,6 +201,10 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
       email: app.email,
       instagram: app.instagram,
       instagram_handles: parseInstagramHandles(app.instagram),
+      instagram_connected: !!app.instagram_connected,
+      ig_username: app.ig_username || null,
+      ig_user_id: app.ig_user_id || null,
+      collab_joined_at: app.collab_joined_at || app.created_at,
       reels: reelsRes.rows,
       status: app.status,
       created_at: app.created_at,
@@ -195,27 +221,42 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
   }
 }
 
-// Submit one or many reel links - verify handle belongs to listed handles
+// ─── Submit Reel Link (with real validation) ──────────────────────────────────
 export async function submitReelLink(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureCollabSchema(pool)
     const { collab_id, reel_url, reel_urls, instagram_handle } = req.body
 
     if (!collab_id) {
       return res.status(400).json({ message: 'Collab ID required' })
     }
 
-    const { rows } = await pool.query('SELECT id, instagram, status FROM collab_applications WHERE id = $1', [collab_id])
+    const { rows } = await pool.query(
+      `SELECT id, instagram, status, instagram_connected, fb_page_access_token, ig_user_id, collab_joined_at, created_at
+       FROM collab_applications WHERE id = $1`,
+      [collab_id]
+    )
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Collab application not found' })
     }
 
     const app = rows[0]
     if (String(app.status || 'pending').toLowerCase() !== 'approved') {
-      return res.status(403).json({ message: 'Collab request is pending admin approval. Reel tracking starts after approval.' })
+      return res.status(403).json({
+        message: 'Your collab request is pending admin approval. Reel tracking starts after approval.',
+      })
     }
+
+    // Require Instagram to be connected for real insights
+    if (!app.instagram_connected || !app.fb_page_access_token || !app.ig_user_id) {
+      return res.status(403).json({
+        message: 'Please connect your Instagram account before submitting reels. Use the "Connect Instagram" button above.',
+      })
+    }
+
     const allowedHandles = parseInstagramHandles(app.instagram)
     if (allowedHandles.length === 0) {
-      return res.status(400).json({ message: 'No Instagram handles found for this collab application. Update your application first.' })
+      return res.status(400).json({ message: 'No Instagram handles on your application.' })
     }
 
     const incoming: Array<{ reel_url: string; instagram_handle?: string }> = Array.isArray(reel_urls)
@@ -228,20 +269,30 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
       return res.status(400).json({ message: 'Please submit at least one reel URL' })
     }
 
+    // Validate URLs
     for (const item of incoming) {
       const url = String(item.reel_url || '').trim()
       const handle = normalizeHandle(item.instagram_handle || '')
       if (!url) return res.status(400).json({ message: 'Reel URL cannot be empty' })
       if (!url.includes('instagram.com') && !url.includes('instagr.am')) {
-        return res.status(400).json({ message: 'All submitted links must be valid Instagram reel URLs' })
+        return res.status(400).json({ message: 'All links must be valid Instagram reel URLs' })
       }
-      if (!handle) return res.status(400).json({ message: 'Please choose Instagram handle for each reel' })
+      if (!extractShortcode(url)) {
+        return res.status(400).json({ message: `Not a valid reel URL: ${url}` })
+      }
+      if (!handle) return res.status(400).json({ message: 'Please select an Instagram handle for each reel' })
       if (!allowedHandles.includes(handle)) {
-        return res.status(400).json({ message: `Reel handle @${handle} is not in your approved Instagram handles list` })
+        return res.status(400).json({ message: `Handle @${handle} is not on your approved list` })
       }
     }
 
+    const collabJoinedAt = new Date(app.collab_joined_at || app.created_at)
+    const pageToken: string = app.fb_page_access_token
+    const igUserId: string = app.ig_user_id
+
     const client = await pool.connect()
+    const results: any[] = []
+
     try {
       await client.query('BEGIN')
 
@@ -249,24 +300,56 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
         const url = String(item.reel_url).trim()
         const handle = normalizeHandle(item.instagram_handle || '')
 
+        // Duplicate check
         const dup = await client.query(
           'SELECT id FROM collab_reels WHERE collab_application_id = $1 AND reel_url = $2',
           [collab_id, url]
         )
         if (dup.rows.length > 0) {
           await client.query('ROLLBACK')
-          return res.status(409).json({ message: `This reel is already submitted: ${url}` })
+          return res.status(409).json({ message: `Reel already submitted: ${url}` })
         }
 
-        // TODO: Replace with Instagram API data source in production.
-        const mockViews = Math.floor(Math.random() * 500) + 100
-        const mockLikes = Math.floor(mockViews * (0.02 + Math.random() * 0.08))
+        // Fetch real data from Instagram Graph API
+        const reelData = await fetchReelData(url, pageToken, igUserId)
+
+        if (!reelData) {
+          await client.query('ROLLBACK')
+          return res.status(400).json({
+            message: `Could not fetch reel data for ${url}. Make sure this reel was posted from your connected Instagram account (@${handle}).`,
+          })
+        }
+
+        const { views, likes, postedAt, caption } = reelData
+
+        // ─── Validation 1: Reel must be posted AFTER joining the collab ──────
+        const reelDate = postedAt ? new Date(postedAt) : null
+        const dateOk = reelDate !== null && reelDate >= collabJoinedAt
+        if (!dateOk) {
+          await client.query('ROLLBACK')
+          return res.status(400).json({
+            message: `This reel was posted before you joined the collab program (joined: ${collabJoinedAt.toLocaleDateString()}). Only reels posted after joining are eligible.`,
+          })
+        }
+
+        // ─── Validation 2: Caption/hashtag must mention NEFOL ─────────────
+        const captionOk = captionMentionsNefol(caption)
+        if (!captionOk) {
+          await client.query('ROLLBACK')
+          return res.status(400).json({
+            message: `Your reel's caption or hashtags must mention NEFOL (e.g. #nefol or #neföl). Keywords to include: ${NEFOL_KEYWORDS.filter(k => k.startsWith('#')).join(', ')}. Please update your reel caption and try again.`,
+          })
+        }
 
         await client.query(
-          `INSERT INTO collab_reels (collab_application_id, reel_url, instagram_username, views_count, likes_count, verified)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [collab_id, url, handle, mockViews, mockLikes, true]
+          `INSERT INTO collab_reels
+             (collab_application_id, reel_url, instagram_username, views_count, likes_count, verified,
+              reel_posted_at, caption, caption_ok, date_ok)
+           VALUES ($1, $2, $3, $4, $5, true, $6, $7, $8, $9)`,
+          [collab_id, url, handle, views, likes, postedAt, caption, captionOk, dateOk]
         )
+
+        results.push({ url, views, likes })
       }
 
       await client.query('COMMIT')
@@ -277,9 +360,10 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
       client.release()
     }
 
+    // Return updated totals
     const sumRes = await pool.query(
       `SELECT COALESCE(SUM(views_count), 0)::int AS v, COALESCE(SUM(likes_count), 0)::int AS l
-       FROM collab_reels WHERE collab_application_id = $1`,
+       FROM collab_reels WHERE collab_application_id = $1 AND caption_ok = true AND date_ok = true`,
       [collab_id]
     )
     const totalViews = sumRes.rows[0]?.v || 0
@@ -287,8 +371,9 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
     const { progress, affiliateUnlocked } = computeProgress(totalViews, totalLikes)
 
     return res.status(201).json({
-      message: `${incoming.length} reel${incoming.length > 1 ? 's' : ''} submitted successfully`,
-      submitted_count: incoming.length,
+      message: `${results.length} reel${results.length > 1 ? 's' : ''} submitted successfully`,
+      submitted_count: results.length,
+      reels: results,
       total_views: totalViews,
       total_likes: totalLikes,
       progress,
@@ -300,7 +385,7 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
   }
 }
 
-// ==================== ADMIN: Collab Management ====================
+// ─── Admin: List Collab Applications ──────────────────────────────────────────
 export async function getCollabApplications(pool: Pool, req: Request, res: Response) {
   try {
     const { status = 'all', page = 1, limit = 20, search = '' } = req.query as Record<string, string>
@@ -319,6 +404,8 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
         LOWER(ca.name) LIKE $${params.length}
         OR LOWER(ca.email) LIKE $${params.length}
         OR LOWER(COALESCE(ca.instagram, '')) LIKE $${params.length}
+        OR LOWER(COALESCE(ca.ig_username, '')) LIKE $${params.length}
+        OR LOWER(COALESCE(ca.unique_user_id, '')) LIKE $${params.length}
       )`)
     }
 
@@ -331,8 +418,8 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
 
     const query = `
       SELECT ca.*,
-             COALESCE(SUM(cr.views_count), 0)::int AS total_views,
-             COALESCE(SUM(cr.likes_count), 0)::int AS total_likes
+             COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.views_count ELSE 0 END), 0)::int AS total_views,
+             COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.likes_count ELSE 0 END), 0)::int AS total_likes
       FROM collab_applications ca
       LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
       ${whereSql}
@@ -349,7 +436,10 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
 
     const countParams = params.slice(0, params.length - 2)
     const countWhere = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
-    const countRes = await pool.query(`SELECT COUNT(*)::int AS total FROM collab_applications ca ${countWhere}`, countParams)
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM collab_applications ca ${countWhere}`,
+      countParams
+    )
 
     return res.json({
       applications: mapped,
@@ -373,7 +463,8 @@ export async function getCollabApplication(pool: Pool, req: Request, res: Respon
     if (appRes.rows.length === 0) return res.status(404).json({ message: 'Collab application not found' })
 
     const reelsRes = await pool.query(
-      `SELECT id, reel_url, instagram_username, views_count, likes_count, verified, created_at
+      `SELECT id, reel_url, instagram_username, views_count, likes_count, verified,
+              created_at, reel_posted_at, caption, caption_ok, date_ok, rejection_reason
        FROM collab_reels WHERE collab_application_id = $1 ORDER BY created_at DESC`,
       [id]
     )
@@ -430,7 +521,6 @@ export async function rejectCollabApplication(pool: Pool, req: Request, res: Res
   }
 }
 
-// Promote collab applicant directly to affiliate (bypass view/like thresholds)
 export async function promoteToAffiliate(pool: Pool, req: Request, res: Response) {
   try {
     const { id } = req.params
@@ -439,7 +529,6 @@ export async function promoteToAffiliate(pool: Pool, req: Request, res: Response
 
     const app = appRes.rows[0]
 
-    // Ensure the application is approved first
     if (app.status !== 'approved') {
       await pool.query(
         `UPDATE collab_applications SET status = 'approved', approved_at = COALESCE(approved_at, NOW()), updated_at = NOW() WHERE id = $1`,
@@ -447,13 +536,15 @@ export async function promoteToAffiliate(pool: Pool, req: Request, res: Response
       )
     }
 
-    // Insert enough synthetic views/likes to exceed both thresholds
-    // This makes affiliate_unlocked = true for this user
+    // Insert synthetic reel exceeding both thresholds (admin bypass)
     await pool.query(
-      `INSERT INTO collab_reels (collab_application_id, reel_url, instagram_username, views_count, likes_count, verified)
-       VALUES ($1, $2, $3, $4, $5, true)
+      `INSERT INTO collab_reels
+         (collab_application_id, reel_url, instagram_username, views_count, likes_count, verified,
+          caption_ok, date_ok, caption)
+       VALUES ($1, $2, $3, $4, $5, true, true, true, 'admin-promoted')
        ON CONFLICT (collab_application_id, reel_url) DO UPDATE
-         SET views_count = EXCLUDED.views_count, likes_count = EXCLUDED.likes_count`,
+         SET views_count = EXCLUDED.views_count, likes_count = EXCLUDED.likes_count,
+             caption_ok = true, date_ok = true`,
       [id, `admin-promoted-${id}`, app.instagram?.split(',')[0]?.trim() || 'admin', AFFILIATE_THRESHOLD_VIEWS, AFFILIATE_THRESHOLD_LIKES]
     )
 
@@ -464,7 +555,6 @@ export async function promoteToAffiliate(pool: Pool, req: Request, res: Response
   }
 }
 
-// Delete a collab application and all its reels
 export async function deleteCollabApplication(pool: Pool, req: Request, res: Response) {
   try {
     const { id } = req.params
@@ -477,7 +567,7 @@ export async function deleteCollabApplication(pool: Pool, req: Request, res: Res
   }
 }
 
-// Check if user has unlocked affiliate (by unique_user_id or email - for Join Us modal)
+// ─── Check affiliate unlocked (used by JoinUs modal) ──────────────────────────
 export async function checkAffiliateUnlocked(pool: Pool, req: Request, res: Response) {
   try {
     const { uniqueUserId, email } = await resolveUniqueUserId(pool, req)
@@ -488,27 +578,22 @@ export async function checkAffiliateUnlocked(pool: Pool, req: Request, res: Resp
       return res.json({ unlocked: false })
     }
 
+    const BASE = `
+      SELECT COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.views_count ELSE 0 END), 0)::int AS v,
+             COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.likes_count ELSE 0 END), 0)::int AS l
+      FROM collab_applications ca
+      LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
+    `
+
     let rows: any[] = []
 
     if (uniqueUserId) {
-      const result = await pool.query(
-        `SELECT COALESCE(SUM(cr.views_count), 0)::int AS v, COALESCE(SUM(cr.likes_count), 0)::int AS l
-         FROM collab_applications ca
-         LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
-         WHERE ca.unique_user_id = $1`,
-        [uniqueUserId]
-      )
+      const result = await pool.query(`${BASE} WHERE ca.unique_user_id = $1`, [uniqueUserId])
       rows = result.rows
     }
 
     if ((!rows.length || (!rows[0]?.v && !rows[0]?.l)) && resolvedEmail) {
-      const result = await pool.query(
-        `SELECT COALESCE(SUM(cr.views_count), 0)::int AS v, COALESCE(SUM(cr.likes_count), 0)::int AS l
-         FROM collab_applications ca
-         LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
-         WHERE LOWER(ca.email) = LOWER($1)`,
-        [resolvedEmail]
-      )
+      const result = await pool.query(`${BASE} WHERE LOWER(ca.email) = LOWER($1)`, [resolvedEmail])
       rows = result.rows
     }
 
@@ -521,6 +606,87 @@ export async function checkAffiliateUnlocked(pool: Pool, req: Request, res: Resp
   }
 }
 
+// ─── Admin: manually refresh reel stats via Instagram API ─────────────────────
+export async function adminRefreshReelStats(pool: Pool, req: Request, res: Response) {
+  try {
+    const { id } = req.params // collab application id
+    const conn = await getPageTokenForCollab(pool, Number(id))
+    if (!conn) {
+      return res.status(400).json({ message: 'No Instagram connection for this collab. User must connect their account first.' })
+    }
+
+    const reels = await pool.query(
+      `SELECT id, reel_url FROM collab_reels WHERE collab_application_id = $1`,
+      [id]
+    )
+
+    let updated = 0
+    for (const reel of reels.rows) {
+      const data = await fetchReelData(reel.reel_url, conn.pageToken, conn.igUserId)
+      if (!data) continue
+      await pool.query(
+        `UPDATE collab_reels
+         SET views_count = $1, likes_count = $2, reel_posted_at = $3, caption = $4,
+             caption_ok = $5, date_ok = (reel_posted_at >= (SELECT collab_joined_at FROM collab_applications WHERE id = $6)),
+             updated_at = NOW()
+         WHERE id = $7`,
+        [data.views, data.likes, data.postedAt, data.caption, captionMentionsNefol(data.caption), id, reel.id]
+      )
+      updated++
+    }
+
+    return res.json({ message: `Refreshed ${updated} reels for collab #${id}` })
+  } catch (err) {
+    console.error('adminRefreshReelStats error:', err)
+    return res.status(500).json({ message: 'Failed to refresh reel stats' })
+  }
+}
+
+// ─── Cron: refresh all approved connected collabs ─────────────────────────────
+export async function refreshAllCollabStats(pool: Pool) {
+  try {
+    const { rows } = await pool.query(`
+      SELECT ca.id, ca.fb_page_access_token, ca.ig_user_id, ca.collab_joined_at,
+             cr.id AS reel_id, cr.reel_url
+      FROM collab_applications ca
+      JOIN collab_reels cr ON cr.collab_application_id = ca.id
+      WHERE ca.instagram_connected = true
+        AND ca.status = 'approved'
+        AND ca.fb_page_access_token IS NOT NULL
+        AND ca.ig_user_id IS NOT NULL
+    `)
+
+    let updated = 0
+    for (const row of rows) {
+      try {
+        const data = await fetchReelData(row.reel_url, row.fb_page_access_token, row.ig_user_id)
+        if (!data) continue
+
+        const reelDate = data.postedAt ? new Date(data.postedAt) : null
+        const collabJoinedAt = row.collab_joined_at ? new Date(row.collab_joined_at) : new Date(0)
+        const dateOk = reelDate !== null && reelDate >= collabJoinedAt
+        const captionOk = captionMentionsNefol(data.caption)
+
+        await pool.query(
+          `UPDATE collab_reels
+           SET views_count = $1, likes_count = $2, reel_posted_at = $3,
+               caption = $4, caption_ok = $5, date_ok = $6, updated_at = NOW()
+           WHERE id = $7`,
+          [data.views, data.likes, data.postedAt, data.caption, captionOk, dateOk, row.reel_id]
+        )
+        updated++
+      } catch (e) {
+        console.warn(`Refresh failed for reel ${row.reel_id}:`, e)
+      }
+    }
+
+    console.log(`✅ Collab stats refresh: updated ${updated} reels`)
+  } catch (err) {
+    console.error('refreshAllCollabStats error:', err)
+  }
+}
+
+// ─── Router ────────────────────────────────────────────────────────────────────
 export default function collabRouter(pool: Pool) {
   const router = Router()
   router.post('/apply', (req, res) => submitCollabApplication(pool, req, res))

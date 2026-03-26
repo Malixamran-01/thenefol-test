@@ -34,6 +34,8 @@ import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/aut
 import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
 import collabRouter, * as collabRoutes from './routes/collab'
+import instagramRouter from './routes/instagram'
+import { refreshAllCollabStats } from './routes/collab'
 import * as searchRoutes from './routes/search'
 import * as marketingRoutes from './routes/marketing'
 import * as whatsappWebhookRoutes from './routes/whatsappWebhook'
@@ -839,12 +841,14 @@ app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarket
 // Ensure unique_user_id column exists (safe to run every startup)
 pool.query(`ALTER TABLE collab_applications ADD COLUMN IF NOT EXISTS unique_user_id text`).catch(() => {})
 app.use('/api/collab', collabRouter(pool))
+app.use('/api/instagram', instagramRouter(pool))
 app.get('/api/admin/collab-applications', (req, res) => collabRoutes.getCollabApplications(pool, req, res))
 app.get('/api/admin/collab-applications/:id', (req, res) => collabRoutes.getCollabApplication(pool, req, res))
 app.put('/api/admin/collab-applications/:id/approve', (req, res) => collabRoutes.approveCollabApplication(pool, req, res))
 app.put('/api/admin/collab-applications/:id/reject', (req, res) => collabRoutes.rejectCollabApplication(pool, req, res))
 app.put('/api/admin/collab-applications/:id/promote-affiliate', (req, res) => collabRoutes.promoteToAffiliate(pool, req, res))
 app.delete('/api/admin/collab-applications/:id', (req, res) => collabRoutes.deleteCollabApplication(pool, req, res))
+app.post('/api/admin/collab-applications/:id/refresh-stats', (req, res) => collabRoutes.adminRefreshReelStats(pool, req, res))
 
 // ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
 // Frontend expects these endpoints; return empty lists for now so UI works without errors
@@ -5195,6 +5199,15 @@ cron.schedule('* * * * *', async () => {
     }
   } catch (err) {
     console.error('Scheduled WhatsApp messages processing failed', err)
+  }
+})
+
+// Refresh Instagram collab reel stats every 8 hours
+cron.schedule('0 */8 * * *', async () => {
+  try {
+    await refreshAllCollabStats(pool)
+  } catch (err) {
+    console.error('Collab stats refresh cron failed:', err)
   }
 })
 

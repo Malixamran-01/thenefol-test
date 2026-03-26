@@ -789,6 +789,107 @@ async function runMigration() {
         ) THEN
           ALTER TABLE collab_applications ADD COLUMN unique_user_id text;
         END IF;
+
+        -- Instagram OAuth integration columns
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'instagram_connected'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN instagram_connected boolean DEFAULT false;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'fb_user_access_token'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN fb_user_access_token text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'fb_page_id'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN fb_page_id text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'fb_page_access_token'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN fb_page_access_token text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'ig_user_id'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN ig_user_id text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'ig_username'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN ig_username text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'token_expires_at'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN token_expires_at timestamptz;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'token_updated_at'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN token_updated_at timestamptz;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'collab_joined_at'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN collab_joined_at timestamptz DEFAULT NOW();
+        END IF;
+
+        -- Reel validation columns
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'reel_posted_at'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN reel_posted_at timestamptz;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'caption'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN caption text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'caption_ok'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN caption_ok boolean DEFAULT false;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'date_ok'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN date_ok boolean DEFAULT false;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'rejection_reason'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN rejection_reason text;
+        END IF;
+
       END $$;
     `);
     

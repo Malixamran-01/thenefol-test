@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film, Trash2, Star } from 'lucide-react'
+import { CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film, Trash2, Star, Wifi, WifiOff } from 'lucide-react'
 import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface CollabApplication {
@@ -19,6 +19,11 @@ interface CollabApplication {
   rejection_reason?: string
   total_views?: number
   total_likes?: number
+  instagram_connected?: boolean
+  ig_username?: string
+  ig_user_id?: string
+  collab_joined_at?: string
+  token_expires_at?: string
 }
 
 export default function CollabRequests() {
@@ -139,6 +144,18 @@ export default function CollabRequests() {
     await fetchItems()
   }
 
+  const refreshReelStats = async (item: CollabApplication) => {
+    if (!confirm(`Refresh Instagram reel stats for "${item.name}" via Instagram API?`)) return
+    const res = await fetch(`${apiBase}/admin/collab-applications/${item.id}/refresh-stats`, {
+      method: 'POST',
+      headers: authHeaders,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return alert(data?.message || 'Failed to refresh')
+    alert(data?.message || 'Stats refreshed!')
+    await fetchItems()
+  }
+
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--arctic-blue-background)' }}>
       <div className="flex items-center justify-between mb-6">
@@ -216,7 +233,8 @@ export default function CollabRequests() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Applicant</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Instagram Handles</th>
+              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Instagram</th>
+              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">IG Connected</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Totals</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Status</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Applied</th>
@@ -251,9 +269,29 @@ export default function CollabRequests() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm">
+                    {item.instagram_connected && item.ig_username ? (
+                      <div className="space-y-0.5">
+                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs">
+                          <Wifi className="h-3 w-3" /> @{item.ig_username}
+                        </div>
+                        {item.ig_user_id && (
+                          <div className="text-[10px] text-gray-400 font-mono select-all">{item.ig_user_id}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                        <WifiOff className="h-3 w-3" /> Not connected
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
                     <div className="inline-flex items-center gap-2 text-gray-700">
-                      <Film className="h-4 w-4" /> {item.total_views || 0} views · {item.total_likes || 0} likes
+                      <Film className="h-4 w-4" /> {(item.total_views || 0).toLocaleString()} views
                     </div>
+                    <div className="text-xs text-gray-500">{(item.total_likes || 0).toLocaleString()} likes</div>
+                    {(item.total_views || 0) >= 10000 && (item.total_likes || 0) >= 500 && (
+                      <div className="text-[10px] text-green-600 font-semibold mt-0.5">✓ Affiliate threshold met</div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
@@ -278,6 +316,9 @@ export default function CollabRequests() {
                         </>
                       )}
                       <button onClick={() => promoteToAffiliate(item)} title="Promote to Affiliate" className="text-amber-500 hover:text-amber-700"><Star className="h-4 w-4" /></button>
+                      {item.instagram_connected && (
+                        <button onClick={() => refreshReelStats(item)} title="Refresh reel stats via Instagram API" className="text-blue-400 hover:text-blue-600"><RefreshCw className="h-4 w-4" /></button>
+                      )}
                       <button onClick={() => deleteItem(item)} title="Delete" className="text-red-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
@@ -302,6 +343,30 @@ export default function CollabRequests() {
               <div><strong>Status:</strong> {selected.status}</div>
               <div><strong>Handles:</strong> {(selected.instagram_handles || []).map((h) => `@${h}`).join(', ') || '-'}</div>
               <div><strong>Followers:</strong> {selected.followers || '-'}</div>
+              <div><strong>Applied:</strong> {new Date(selected.created_at).toLocaleString()}</div>
+              {selected.collab_joined_at && (
+                <div><strong>Joined Collab:</strong> {new Date(selected.collab_joined_at).toLocaleString()}</div>
+              )}
+              <div className="pt-2 border-t border-gray-100">
+                <strong>Instagram Connected:</strong>{' '}
+                {selected.instagram_connected && selected.ig_username ? (
+                  <span className="text-green-700">✓ @{selected.ig_username}</span>
+                ) : (
+                  <span className="text-gray-400">Not connected</span>
+                )}
+              </div>
+              {selected.ig_user_id && (
+                <div><strong>IG User ID:</strong> <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded select-all">{selected.ig_user_id}</span></div>
+              )}
+              {selected.token_expires_at && (
+                <div><strong>Token Expires:</strong> {new Date(selected.token_expires_at).toLocaleString()}</div>
+              )}
+              <div className="pt-1">
+                <strong>Views / Likes:</strong> {(selected.total_views || 0).toLocaleString()} / {(selected.total_likes || 0).toLocaleString()}
+                {(selected.total_views || 0) >= 10000 && (selected.total_likes || 0) >= 500 && (
+                  <span className="ml-2 text-green-600 font-semibold text-xs">✓ Affiliate threshold met</span>
+                )}
+              </div>
               {selected.unique_user_id && (
                 <div className="pt-1 border-t border-gray-100">
                   <strong>Unique User ID:</strong>{' '}
