@@ -53,37 +53,62 @@ async function exchangeForLongLivedToken(shortToken: string): Promise<{ access_t
 }
 
 /**
- * Resolve the Instagram Business/Creator account through the user's FB pages.
- * Returns the page access token (non-expiring) and ig_user_id.
+ * Resolve the Instagram Business/Creator account.
+ *
+ * Strategy (in order):
+ *  1. Loop through user's FB pages and find a linked IG Business account
+ *  2. Try GET /me?fields=instagram_business_account directly on the user token
+ *  3. Try GET /me?fields=id,username on graph.instagram.com (works if instagram_basic granted)
+ *
+ * Returns a unified shape — pageToken is the best token available for IG API calls.
  */
 async function resolveIgAccount(
   userToken: string
-): Promise<{ pageId: string; pageToken: string; igUserId: string; igUsername: string } | null> {
+): Promise<{ pageId: string | null; pageToken: string; igUserId: string; igUsername: string } | null> {
   try {
+    // ── Strategy 1: Find IG account via FB pages ──────────────────────────
     const pagesRes = await fetch(`${META_GRAPH}/me/accounts?access_token=${userToken}`)
     const pagesData = (await pagesRes.json()) as any
-    if (!pagesData.data?.length) return null
 
-    for (const page of pagesData.data) {
-      const igRes = await fetch(
-        `${META_GRAPH}/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
-      )
-      const igData = (await igRes.json()) as any
-      const igUserId: string = igData.instagram_business_account?.id
-      if (!igUserId) continue
+    if (pagesData.data?.length) {
+      for (const page of pagesData.data) {
+        const igRes = await fetch(
+          `${META_GRAPH}/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
+        )
+        const igData = (await igRes.json()) as any
+        const igUserId: string = igData.instagram_business_account?.id
+        if (!igUserId) continue
 
-      const profileRes = await fetch(
-        `${META_GRAPH}/${igUserId}?fields=username&access_token=${page.access_token}`
-      )
-      const profile = (await profileRes.json()) as any
+        const profileRes = await fetch(
+          `${META_GRAPH}/${igUserId}?fields=username&access_token=${page.access_token}`
+        )
+        const profile = (await profileRes.json()) as any
 
-      return {
-        pageId: page.id,
-        pageToken: page.access_token,
-        igUserId,
-        igUsername: profile.username || '',
+        console.log(`Resolved IG account via FB page: @${profile.username}`)
+        return { pageId: page.id, pageToken: page.access_token, igUserId, igUsername: profile.username || '' }
       }
     }
+
+    // ── Strategy 2: GET /me?fields=instagram_business_account on user token ──
+    const meRes = await fetch(`${META_GRAPH}/me?fields=instagram_business_account&access_token=${userToken}`)
+    const meData = (await meRes.json()) as any
+    const igIdFromMe: string | undefined = meData.instagram_business_account?.id
+    if (igIdFromMe) {
+      const profileRes = await fetch(`${META_GRAPH}/${igIdFromMe}?fields=username&access_token=${userToken}`)
+      const profile = (await profileRes.json()) as any
+      console.log(`Resolved IG account via /me: @${profile.username}`)
+      return { pageId: null, pageToken: userToken, igUserId: igIdFromMe, igUsername: profile.username || '' }
+    }
+
+    // ── Strategy 3: Try graph.instagram.com/me directly (instagram_basic) ──
+    const igMeRes = await fetch(`https://graph.instagram.com/me?fields=id,username&access_token=${userToken}`)
+    const igMe = (await igMeRes.json()) as any
+    if (!igMe.error && igMe.id) {
+      console.log(`Resolved IG account via graph.instagram.com: @${igMe.username}`)
+      return { pageId: null, pageToken: userToken, igUserId: igMe.id, igUsername: igMe.username || '' }
+    }
+
+    console.warn('resolveIgAccount: all strategies exhausted', { pagesCount: pagesData.data?.length ?? 0 })
     return null
   } catch (err) {
     console.error('resolveIgAccount error:', err)
@@ -320,12 +345,12 @@ export async function handleCallback(pool: Pool, req: Request, res: Response) {
     const expiresIn = longToken?.expires_in || 3600
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000)
 
-    // 3. Resolve Instagram Business/Creator account through FB pages
+    // 3. Resolve Instagram Business/Creator account (tries multiple strategies)
     const igAccount = await resolveIgAccount(userToken)
     if (!igAccount) {
       return res.redirect(
         `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(
-          'No Instagram Professional account found. Make sure your Instagram account is set to Creator or Business and is linked to a Facebook Page.'
+          'Could not find your Instagram Professional account. Fix: In Instagram app → Settings → Account → Switch to Professional Account (Creator) → Linked Accounts → Connect to Facebook. Then try again.'
         )}`
       )
     }
