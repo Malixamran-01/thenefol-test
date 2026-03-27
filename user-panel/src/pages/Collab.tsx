@@ -44,6 +44,7 @@ interface SubmittedReel {
   caption_ok: boolean
   date_ok: boolean
   reel_posted_at?: string
+  insights_pending?: boolean
 }
 
 export default function Collab() {
@@ -227,9 +228,21 @@ export default function Collab() {
     setSubmittingSelected(true)
     setSubmitResult(null)
 
+    // Pass pre-fetched data to avoid double API call
     const toSubmit = syncedReels
       .filter((r) => selectedReels.has(r.media_id))
-      .map((r) => ({ reel_url: r.reel_url, instagram_handle: status.igUsername || status.instagramHandles[0] || '' }))
+      .map((r) => ({
+        reel_url: r.reel_url,
+        instagram_handle: status.igUsername || status.instagramHandles[0] || '',
+        prefetched: {
+          views:       r.views,
+          likes:       r.likes,
+          postedAt:    r.timestamp,
+          caption:     r.caption,
+          caption_ok:  r.caption_ok,
+          date_ok:     r.date_ok,
+        },
+      }))
 
     try {
       const res = await fetch(`${getApiBase()}/api/collab/submit-reel`, {
@@ -413,7 +426,7 @@ export default function Collab() {
                   Step 2 — Connect Instagram
                 </h2>
                 <p className="text-sm mb-5 leading-relaxed" style={{ color: textMuted }}>
-                  Connect your Instagram Creator or Business account. We use this to sync your reels and verify views &amp; likes automatically.
+                  Connect your Instagram <strong>Creator</strong> or <strong>Business</strong> account — no Facebook account or Page needed. We use this to sync your reels and verify views &amp; likes automatically.
                 </p>
 
                 {status?.instagramConnected && status.igUsername ? (
@@ -616,24 +629,74 @@ export default function Collab() {
                 {submittedReels.length > 0 && (
                   <div className="mt-6">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>Submitted reels ({submittedReels.length})</h3>
+                      <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
+                        Submitted reels ({submittedReels.length})
+                      </h3>
                       <button onClick={fetchStatus} className="text-xs flex items-center gap-1" style={{ color: textMuted }}>
                         <RefreshCw className="h-3 w-3" /> Refresh
                       </button>
                     </div>
+
+                    {/* Pending banner */}
+                    {submittedReels.some((r) => r.insights_pending) && (
+                      <div className="mb-3 p-3 rounded-xl flex items-start gap-2 text-xs"
+                        style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#92400e' }}>
+                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                        <span>
+                          <strong>{submittedReels.filter((r) => r.insights_pending).length} reel{submittedReels.filter((r) => r.insights_pending).length > 1 ? 's' : ''} still syncing</strong> — Instagram's API takes time to make insights available for new posts. Metrics update automatically every 8 hours.
+                        </span>
+                      </div>
+                    )}
+
                     {submittedReels.map((reel) => (
-                      <div key={reel.id} className="mb-2 p-3 rounded-xl border text-xs" style={{ borderColor, backgroundColor: '#fafafa' }}>
+                      <div key={reel.id} className="mb-2 p-3 rounded-xl border text-xs"
+                        style={{
+                          borderColor: reel.insights_pending ? '#fde68a' : reel.caption_ok && reel.date_ok ? '#bbf7d0' : '#fecaca',
+                          backgroundColor: reel.insights_pending ? '#fffbeb' : reel.caption_ok && reel.date_ok ? '#f0fdf4' : '#fef2f2',
+                        }}>
                         <div className="flex items-start justify-between gap-2">
                           <a href={reel.reel_url} target="_blank" rel="noreferrer" className="text-blue-600 underline truncate flex-1">{reel.reel_url}</a>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${reel.caption_ok && reel.date_ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {reel.caption_ok && reel.date_ok ? 'Eligible' : 'Not eligible'}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {reel.insights_pending ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">Syncing</span>
+                            ) : (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${reel.caption_ok && reel.date_ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {reel.caption_ok && reel.date_ok ? 'Eligible' : 'Not eligible'}
+                              </span>
+                            )}
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Remove this reel from your submission?')) return
+                                await fetch(`${getApiBase()}/api/collab/reels/${reel.id}`, {
+                                  method: 'DELETE', headers: authHeaders(),
+                                  body: JSON.stringify({ collab_id: status?.id }),
+                                })
+                                await fetchStatus()
+                              }}
+                              className="text-gray-400 hover:text-red-500 transition-colors"
+                              title="Remove reel"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <div className="flex gap-4 mt-1.5 text-gray-600">
-                          <span>👁 {(reel.views_count || 0).toLocaleString()}</span>
-                          <span>❤️ {(reel.likes_count || 0).toLocaleString()}</span>
-                          <span>@{reel.instagram_username}</span>
+                          {reel.insights_pending ? (
+                            <span className="italic text-amber-600">Metrics syncing... check back in a few hours</span>
+                          ) : (
+                            <>
+                              <span>👁 {(reel.views_count || 0).toLocaleString()}</span>
+                              <span>❤️ {(reel.likes_count || 0).toLocaleString()}</span>
+                              <span>@{reel.instagram_username}</span>
+                            </>
+                          )}
                         </div>
+                        {!reel.insights_pending && (!reel.caption_ok || !reel.date_ok) && (
+                          <p className="mt-1 text-red-600">
+                            {!reel.date_ok && '• Posted before you joined collab. '}
+                            {!reel.caption_ok && '• Caption missing #nefol or #neföl.'}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -34,7 +34,7 @@ import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/aut
 import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
 import collabRouter, * as collabRoutes from './routes/collab'
-import instagramRouter from './routes/instagram'
+import instagramRouter, { refreshExpiringTokens } from './routes/instagram'
 import { refreshAllCollabStats } from './routes/collab'
 import * as searchRoutes from './routes/search'
 import * as marketingRoutes from './routes/marketing'
@@ -849,6 +849,8 @@ app.put('/api/admin/collab-applications/:id/reject', (req, res) => collabRoutes.
 app.put('/api/admin/collab-applications/:id/promote-affiliate', (req, res) => collabRoutes.promoteToAffiliate(pool, req, res))
 app.delete('/api/admin/collab-applications/:id', (req, res) => collabRoutes.deleteCollabApplication(pool, req, res))
 app.post('/api/admin/collab-applications/:id/refresh-stats', (req, res) => collabRoutes.adminRefreshReelStats(pool, req, res))
+app.put('/api/admin/collab-reels/:reelId',                  (req, res) => collabRoutes.adminUpdateReelMetrics(pool, req, res))
+app.delete('/api/admin/collab-reels/:reelId',               (req, res) => collabRoutes.adminDeleteReel(pool, req, res))
 
 // ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
 // Frontend expects these endpoints; return empty lists for now so UI works without errors
@@ -5208,6 +5210,15 @@ cron.schedule('0 */8 * * *', async () => {
     await refreshAllCollabStats(pool)
   } catch (err) {
     console.error('Collab stats refresh cron failed:', err)
+  }
+})
+
+// Refresh expiring IG tokens daily at 2am
+cron.schedule('0 2 * * *', async () => {
+  try {
+    await refreshExpiringTokens(pool)
+  } catch (err) {
+    console.error('IG token refresh cron failed:', err)
   }
 })
 

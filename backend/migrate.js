@@ -890,6 +890,13 @@ async function runMigration() {
           ALTER TABLE collab_reels ADD COLUMN rejection_reason text;
         END IF;
 
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'insights_pending'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN insights_pending boolean DEFAULT false;
+        END IF;
+
       END $$;
     `);
     
