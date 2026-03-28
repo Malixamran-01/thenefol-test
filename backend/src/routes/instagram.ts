@@ -256,7 +256,7 @@ export async function handleConnect(_pool: Pool, req: Request, res: Response) {
 export async function handleCallback(pool: Pool, req: Request, res: Response) {
   const { code, state: collabId, error, error_description } = req.query as Record<string, string>
 
-  const frontendUrl = process.env.USER_PANEL_URL || process.env.CLIENT_ORIGIN || 'http://localhost:2001'
+  const frontendUrl = process.env.USER_PANEL_URL || process.env.FRONTEND_URL || process.env.CLIENT_ORIGIN || 'http://localhost:2001'
   const backendUrl  = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 2000}`
 
   if (error || !code) {
