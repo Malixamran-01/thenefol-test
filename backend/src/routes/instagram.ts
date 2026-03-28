@@ -246,6 +246,10 @@ export async function handleConnect(_pool: Pool, req: Request, res: Response) {
     `&response_type=code` +
     `&state=${encodeURIComponent(collab_id)}`
 
+  console.log('🔗 Instagram OAuth URL:', oauthUrl)
+  console.log('   App ID used:', appId)
+  console.log('   Redirect URI:', redirectUri)
+
   return res.redirect(oauthUrl)
 }
 
