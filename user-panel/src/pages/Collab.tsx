@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { State, City } from 'country-state-city'
 import {
   ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, Sparkles, TrendingUp,
@@ -107,7 +108,14 @@ export default function Collab() {
       Object.keys(PLATFORM_CONFIG).map((k) => [k, { checked: k === 'instagram', links: [''] }])
     ) as Record<PlatformKey, PlatformState>
   )
-  const [address, setAddress] = useState({ country: '', state: '', city: '', pincode: '' })
+  const [selectedStateCode, setSelectedStateCode] = useState('')
+  const [address, setAddress] = useState({ state: '', city: '', pincode: '' })
+
+  const indianStates = useMemo(() => State.getStatesOfCountry('IN'), [])
+  const indianCities = useMemo(
+    () => selectedStateCode ? City.getCitiesOfState('IN', selectedStateCode) : [],
+    [selectedStateCode]
+  )
 
   const addPlatformLink = (key: PlatformKey) =>
     setPlatforms((p) => ({ ...p, [key]: { ...p[key], links: [...p[key].links, ''] } }))
@@ -189,7 +197,8 @@ export default function Collab() {
       body: JSON.stringify({
         ...formData, agreeTerms: true,
         instagram: handles[0] || '', instagram_handles: handles,
-        platforms: selectedPlatforms, address,
+        platforms: selectedPlatforms,
+        address: { ...address, country: 'India' },
       }),
     })
     const data = await res.json().catch(() => ({}))
@@ -436,20 +445,55 @@ export default function Collab() {
                   {/* Address */}
                   <div>
                     <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                      <MapPin className="h-3.5 w-3.5" /> Location
+                      <MapPin className="h-3.5 w-3.5" /> Location <span className="normal-case font-normal text-gray-400">(India)</span>
                     </label>
                     <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { key: 'city',    placeholder: 'City'    },
-                        { key: 'state',   placeholder: 'State'   },
-                        { key: 'pincode', placeholder: 'Pincode' },
-                        { key: 'country', placeholder: 'Country' },
-                      ].map((f) => (
-                        <input key={f.key} type="text" placeholder={f.placeholder}
-                          value={(address as any)[f.key]}
-                          onChange={(e) => setAddress((a) => ({ ...a, [f.key]: e.target.value }))}
-                          className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
-                      ))}
+                      {/* State dropdown */}
+                      <div className="sm:col-span-1">
+                        <select
+                          value={selectedStateCode}
+                          onChange={(e) => {
+                            const code = e.target.value
+                            const name = indianStates.find((s) => s.isoCode === code)?.name || ''
+                            setSelectedStateCode(code)
+                            setAddress((a) => ({ ...a, state: name, city: '' }))
+                          }}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all appearance-none"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
+                        >
+                          <option value="">Select State / UT</option>
+                          {indianStates.map((s) => (
+                            <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* City dropdown */}
+                      <div className="sm:col-span-1">
+                        <select
+                          value={address.city}
+                          disabled={!selectedStateCode}
+                          onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all appearance-none disabled:text-gray-400 disabled:bg-gray-50"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
+                        >
+                          <option value="">{selectedStateCode ? 'Select City / District' : 'Select state first'}</option>
+                          {indianCities.map((c) => (
+                            <option key={c.name} value={c.name}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Pincode */}
+                      <input type="text" placeholder="PIN Code" value={address.pincode}
+                        onChange={(e) => setAddress((a) => ({ ...a, pincode: e.target.value }))}
+                        maxLength={6}
+                        className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+
+                      {/* Country — fixed */}
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-400 flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5" /> India
+                      </div>
                     </div>
                   </div>
 
