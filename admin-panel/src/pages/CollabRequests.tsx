@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film,
   Trash2, Star, Wifi, WifiOff, ChevronDown, ChevronUp, Edit2, Save, X, AlertCircle,
-  Youtube, Twitter, Facebook, Globe, Link, MapPin, Filter, ExternalLink
+  Youtube, Twitter, Facebook, Globe, Link, MapPin, Filter, ExternalLink, Linkedin, Send, Ghost
 } from 'lucide-react'
 import { getApiBaseUrl } from '../utils/apiUrl'
 
@@ -21,7 +21,7 @@ interface Reel {
   rejection_reason?: string
 }
 
-interface PlatformEntry { name: string; link: string }
+interface PlatformEntry { name: string; links?: string[]; link?: string }
 interface AddressEntry { country?: string; state?: string; city?: string; pincode?: string }
 
 interface CollabApplication {
@@ -55,25 +55,48 @@ interface CollabApplication {
 const PLATFORM_META: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   instagram: { icon: <Instagram className="h-3 w-3" />, color: '#E1306C', bg: '#fff0f5' },
   youtube:   { icon: <Youtube   className="h-3 w-3" />, color: '#FF0000', bg: '#fff5f5' },
-  x:         { icon: <Twitter   className="h-3 w-3" />, color: '#000000', bg: '#f5f5f5' },
   facebook:  { icon: <Facebook  className="h-3 w-3" />, color: '#1877F2', bg: '#f0f5ff' },
+  x:         { icon: <Twitter   className="h-3 w-3" />, color: '#1a1a1a', bg: '#f5f5f5' },
+  linkedin:  { icon: <Linkedin  className="h-3 w-3" />, color: '#0077B5', bg: '#f0f7ff' },
+  telegram:  { icon: <Send      className="h-3 w-3" />, color: '#26A5E4', bg: '#f0f9ff' },
+  snapchat:  { icon: <Ghost     className="h-3 w-3" />, color: '#FF6B35', bg: '#fff8f5' },
   reddit:    { icon: <Globe     className="h-3 w-3" />, color: '#FF4500', bg: '#fff5f0' },
+  vk:        { icon: <Globe     className="h-3 w-3" />, color: '#0077FF', bg: '#f0f5ff' },
   quora:     { icon: <Link      className="h-3 w-3" />, color: '#B92B27', bg: '#fff5f5' },
   other:     { icon: <Globe     className="h-3 w-3" />, color: '#6b7280', bg: '#f5f5f5' },
 }
 
-const ALL_PLATFORMS = ['instagram', 'youtube', 'x', 'facebook', 'reddit', 'quora', 'other']
+const ALL_PLATFORMS = ['instagram', 'youtube', 'facebook', 'x', 'linkedin', 'telegram', 'snapchat', 'reddit', 'vk', 'quora', 'other']
 
 function PlatformBadge({ p }: { p: PlatformEntry }) {
   const meta = PLATFORM_META[p.name] || PLATFORM_META.other
+  // Normalise to links array (support legacy {link} and new {links[]})
+  const urls = Array.isArray(p.links) && p.links.length > 0 ? p.links : p.link ? [p.link] : []
   const badge = (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border"
       style={{ color: meta.color, backgroundColor: meta.bg, borderColor: meta.color + '30' }}>
       {meta.icon} {p.name}
+      {urls.length > 1 && <span className="ml-0.5 opacity-70">×{urls.length}</span>}
     </span>
   )
-  if (p.link) {
-    return <a href={p.link} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity inline-flex items-center gap-1">{badge} <ExternalLink className="h-2.5 w-2.5" style={{ color: meta.color }} /></a>
+  if (urls.length === 1) {
+    return <a href={urls[0]} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity inline-flex items-center gap-1">{badge} <ExternalLink className="h-2.5 w-2.5" style={{ color: meta.color }} /></a>
+  }
+  if (urls.length > 1) {
+    // Tooltip-style: show all links stacked on hover via title
+    return (
+      <div className="group relative inline-block">
+        <span className="cursor-pointer">{badge}</span>
+        <div className="absolute z-10 hidden group-hover:block left-0 top-full mt-1 bg-white shadow-lg rounded-xl border border-gray-100 p-2 min-w-[180px]">
+          {urls.map((url, i) => (
+            <a key={i} href={url} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 py-1 px-2 rounded-lg text-[11px] text-gray-600 hover:bg-gray-50 truncate">
+              <ExternalLink className="h-2.5 w-2.5 flex-shrink-0" /> {url.replace(/^https?:\/\//, '')}
+            </a>
+          ))}
+        </div>
+      </div>
+    )
   }
   return badge
 }

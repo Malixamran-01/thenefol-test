@@ -3,7 +3,7 @@ import {
   ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, Sparkles, TrendingUp,
   Clapperboard, Zap, ChevronRight, Star, Award, Youtube, Twitter, Facebook,
-  Link, Globe, MapPin
+  Globe, MapPin, Plus, Linkedin, Send, Ghost, ScrollText
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -83,24 +83,40 @@ export default function Collab() {
   const [submittingSelected, setSubmittingSelected] = useState(false)
   const [submitResult, setSubmitResult] = useState<{ success?: string; error?: string } | null>(null)
 
-  const [instagramHandles, setInstagramHandles] = useState<string[]>([''])
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', followers: '', agreeTerms: false })
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', followers: '' })
+  const [showTCModal, setShowTCModal] = useState(false)
 
   // Platform + address state
-  type PlatformKey = 'instagram' | 'youtube' | 'x' | 'reddit' | 'facebook' | 'quora' | 'other'
+  type PlatformKey = 'instagram' | 'youtube' | 'x' | 'facebook' | 'linkedin' | 'telegram' | 'snapchat' | 'reddit' | 'vk' | 'quora' | 'other'
   const PLATFORM_CONFIG: Record<PlatformKey, { label: string; icon: React.ReactNode; placeholder: string; color: string }> = {
-    instagram: { label: 'Instagram',  icon: <Instagram className="h-4 w-4" />, placeholder: 'instagram.com/yourhandle', color: '#E1306C' },
-    youtube:   { label: 'YouTube',    icon: <Youtube   className="h-4 w-4" />, placeholder: 'youtube.com/c/yourhandle',  color: '#FF0000' },
-    x:         { label: 'X (Twitter)',icon: <Twitter   className="h-4 w-4" />, placeholder: 'x.com/yourhandle',         color: '#000000' },
-    facebook:  { label: 'Facebook',   icon: <Facebook  className="h-4 w-4" />, placeholder: 'facebook.com/yourprofile', color: '#1877F2' },
-    reddit:    { label: 'Reddit',     icon: <Globe     className="h-4 w-4" />, placeholder: 'reddit.com/u/yourhandle',  color: '#FF4500' },
-    quora:     { label: 'Quora',      icon: <Link      className="h-4 w-4" />, placeholder: 'quora.com/profile/you',    color: '#B92B27' },
-    other:     { label: 'Other',      icon: <Globe     className="h-4 w-4" />, placeholder: 'Your profile link',        color: '#6b7280' },
+    instagram: { label: 'Instagram',  icon: <Instagram className="h-4 w-4" />, placeholder: 'instagram.com/yourhandle',      color: '#E1306C' },
+    youtube:   { label: 'YouTube',    icon: <Youtube   className="h-4 w-4" />, placeholder: 'youtube.com/c/yourhandle',       color: '#FF0000' },
+    facebook:  { label: 'Facebook',   icon: <Facebook  className="h-4 w-4" />, placeholder: 'facebook.com/yourprofile',       color: '#1877F2' },
+    x:         { label: 'X (Twitter)',icon: <Twitter   className="h-4 w-4" />, placeholder: 'x.com/yourhandle',               color: '#1a1a1a' },
+    linkedin:  { label: 'LinkedIn',   icon: <Linkedin  className="h-4 w-4" />, placeholder: 'linkedin.com/in/yourprofile',    color: '#0077B5' },
+    telegram:  { label: 'Telegram',   icon: <Send      className="h-4 w-4" />, placeholder: 't.me/yourchannel',               color: '#26A5E4' },
+    snapchat:  { label: 'Snapchat',   icon: <Ghost     className="h-4 w-4" />, placeholder: 'snapchat.com/add/yourusername',  color: '#FF6B35' },
+    reddit:    { label: 'Reddit',     icon: <Globe     className="h-4 w-4" />, placeholder: 'reddit.com/u/yourhandle',        color: '#FF4500' },
+    vk:        { label: 'VK',         icon: <Globe     className="h-4 w-4" />, placeholder: 'vk.com/yourprofile',             color: '#0077FF' },
+    quora:     { label: 'Quora',      icon: <Globe     className="h-4 w-4" />, placeholder: 'quora.com/profile/you',          color: '#B92B27' },
+    other:     { label: 'Other',      icon: <Globe     className="h-4 w-4" />, placeholder: 'Your profile link',              color: '#6b7280' },
   }
-  const [platforms, setPlatforms] = useState<Record<PlatformKey, { checked: boolean; link: string }>>(
-    Object.fromEntries(Object.keys(PLATFORM_CONFIG).map((k) => [k, { checked: k === 'instagram', link: '' }])) as any
+  type PlatformState = { checked: boolean; links: string[] }
+  const [platforms, setPlatforms] = useState<Record<PlatformKey, PlatformState>>(
+    Object.fromEntries(
+      Object.keys(PLATFORM_CONFIG).map((k) => [k, { checked: k === 'instagram', links: [''] }])
+    ) as Record<PlatformKey, PlatformState>
   )
   const [address, setAddress] = useState({ country: '', state: '', city: '', pincode: '' })
+
+  const addPlatformLink = (key: PlatformKey) =>
+    setPlatforms((p) => ({ ...p, [key]: { ...p[key], links: [...p[key].links, ''] } }))
+
+  const removePlatformLink = (key: PlatformKey, idx: number) =>
+    setPlatforms((p) => ({ ...p, [key]: { ...p[key], links: p[key].links.length > 1 ? p[key].links.filter((_, i) => i !== idx) : [''] } }))
+
+  const setPlatformLink = (key: PlatformKey, idx: number, val: string) =>
+    setPlatforms((p) => ({ ...p, [key]: { ...p[key], links: p[key].links.map((l, i) => i === idx ? val : l) } }))
 
   useEffect(() => {
     const hash = window.location.hash || ''
@@ -132,7 +148,6 @@ export default function Collab() {
           igUsername: data.ig_username || null, collabJoinedAt: data.collab_joined_at || null,
         })
         setSubmittedReels(Array.isArray(data.reels) ? data.reels : [])
-        if (handles.length > 0) setInstagramHandles(handles)
         if (data.id) { setSubmitted(true); setShowForm(false) }
       }
     } catch (e) { console.error('Collab status fetch failed:', e) }
@@ -146,20 +161,34 @@ export default function Collab() {
     setFormData((p) => ({ ...p, [name]: type === 'checkbox' ? checked : value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const handles = instagramHandles.map((h) => h.trim().replace(/^@/, '').toLowerCase()).filter(Boolean)
-    if (!formData.name || !formData.email || !formData.phone || !handles.length)
-      return alert('Please fill in: Name, Email, Phone, and at least one Instagram handle.')
-    if (!formData.agreeTerms) return alert('Please agree to the terms.')
-    const selectedPlatforms = (Object.entries(platforms) as [PlatformKey, { checked: boolean; link: string }][])
+    if (!formData.name || !formData.email || !formData.phone)
+      return alert('Please fill in your Name, Email, and Phone.')
+    // Open T&C modal for review before final submit
+    setShowTCModal(true)
+  }
+
+  const doSubmit = async () => {
+    setShowTCModal(false)
+    // Collect instagram handles from instagram platform links
+    const igLinks = platforms['instagram'].checked
+      ? platforms['instagram'].links.map((l) => l.trim()).filter(Boolean)
+      : []
+    const handles = igLinks.map((l) => {
+      const m = l.match(/instagram\.com\/([^/?#]+)/)
+      return m ? m[1] : l.replace(/^@/, '').trim()
+    }).filter(Boolean)
+
+    const selectedPlatforms = (Object.entries(platforms) as [PlatformKey, PlatformState][])
       .filter(([, v]) => v.checked)
-      .map(([name, v]) => ({ name, link: v.link.trim() }))
+      .map(([name, v]) => ({ name, links: v.links.map((l) => l.trim()).filter(Boolean) }))
 
     const res = await fetch(`${getApiBase()}/api/collab/apply`, {
       method: 'POST', headers: authHeaders(),
       body: JSON.stringify({
-        ...formData, instagram: handles[0], instagram_handles: handles,
+        ...formData, agreeTerms: true,
+        instagram: handles[0] || '', instagram_handles: handles,
         platforms: selectedPlatforms, address,
       }),
     })
@@ -359,21 +388,45 @@ export default function Collab() {
                       {(Object.entries(PLATFORM_CONFIG) as [PlatformKey, typeof PLATFORM_CONFIG[PlatformKey]][]).map(([key, cfg]) => {
                         const isChecked = platforms[key].checked
                         return (
-                          <div key={key} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all ${isChecked ? 'border-gray-200 bg-gray-50' : 'border-gray-100 bg-white opacity-60'}`}>
-                            {/* Checkbox + icon + label */}
-                            <label className="flex items-center gap-2.5 cursor-pointer flex-shrink-0 min-w-[130px]">
+                          <div key={key} className={`rounded-xl border transition-all ${isChecked ? 'border-gray-200 bg-gray-50' : 'border-gray-100 bg-white'}`}>
+                            {/* Platform header row */}
+                            <label className="flex items-center gap-3 px-3 py-2.5 cursor-pointer">
                               <input type="checkbox" checked={isChecked}
                                 onChange={(e) => setPlatforms((p) => ({ ...p, [key]: { ...p[key], checked: e.target.checked } }))}
-                                className="h-4 w-4 rounded accent-[#4B97C9]" />
-                              <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700" style={{ color: isChecked ? cfg.color : '#9ca3af' }}>
+                                className="h-4 w-4 rounded accent-[#4B97C9] flex-shrink-0" />
+                              <span className="flex items-center gap-2 text-sm font-medium" style={{ color: isChecked ? cfg.color : '#c0c0c0' }}>
                                 {cfg.icon} {cfg.label}
                               </span>
+                              {isChecked && platforms[key].links.length > 0 && (
+                                <span className="ml-auto text-[10px] text-gray-400 font-medium">
+                                  {platforms[key].links.filter((l) => l.trim()).length} link{platforms[key].links.filter((l) => l.trim()).length !== 1 ? 's' : ''}
+                                </span>
+                              )}
                             </label>
-                            {/* Link input */}
-                            <input type="url" placeholder={cfg.placeholder} disabled={!isChecked}
-                              value={platforms[key].link}
-                              onChange={(e) => setPlatforms((p) => ({ ...p, [key]: { ...p[key], link: e.target.value } }))}
-                              className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-[#4B97C9] disabled:bg-transparent disabled:border-transparent disabled:text-gray-300 disabled:placeholder-gray-200 transition-all" />
+                            {/* Link inputs — shown when checked */}
+                            {isChecked && (
+                              <div className="px-3 pb-3 space-y-2">
+                                {platforms[key].links.map((link, idx) => (
+                                  <div key={idx} className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder={idx === 0 ? cfg.placeholder : `Another ${cfg.label} profile link`}
+                                      value={link}
+                                      onChange={(e) => setPlatformLink(key, idx, e.target.value)}
+                                      className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-[#4B97C9] transition-all"
+                                    />
+                                    <button type="button" onClick={() => removePlatformLink(key, idx)}
+                                      className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors">
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                                <button type="button" onClick={() => addPlatformLink(key)}
+                                  className="flex items-center gap-1.5 text-[11px] font-medium text-[#4B97C9] hover:opacity-70 transition-opacity pt-0.5">
+                                  <Plus className="h-3 w-3" /> Add another {cfg.label} profile
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )
                       })}
@@ -387,10 +440,10 @@ export default function Collab() {
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { key: 'city',    placeholder: 'City',    span: '' },
-                        { key: 'state',   placeholder: 'State',   span: '' },
-                        { key: 'pincode', placeholder: 'Pincode', span: '' },
-                        { key: 'country', placeholder: 'Country', span: '' },
+                        { key: 'city',    placeholder: 'City'    },
+                        { key: 'state',   placeholder: 'State'   },
+                        { key: 'pincode', placeholder: 'Pincode' },
+                        { key: 'country', placeholder: 'Country' },
                       ].map((f) => (
                         <input key={f.key} type="text" placeholder={f.placeholder}
                           value={(address as any)[f.key]}
@@ -400,17 +453,10 @@ export default function Collab() {
                     </div>
                   </div>
 
-                  <label className="flex items-start gap-3 cursor-pointer select-none p-4 rounded-xl bg-gray-50 border border-gray-100">
-                    <input type="checkbox" name="agreeTerms" checked={formData.agreeTerms} onChange={handleInputChange} className="mt-0.5 h-4 w-4 rounded accent-[#4B97C9]" />
-                    <span className="text-sm text-gray-600 leading-relaxed">
-                      I agree to create content featuring NEFOL products and include <strong className="text-gray-800">#nefol</strong> in my reel captions.
-                    </span>
-                  </label>
-
                   <button type="submit"
-                    className="w-full rounded-xl py-3.5 font-semibold text-sm text-white transition-all hover:opacity-90 active:scale-[0.99]"
+                    className="w-full rounded-xl py-3.5 font-semibold text-sm text-white transition-all hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
                     style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
-                    Submit Application
+                    <ScrollText className="h-4 w-4" /> Review Terms &amp; Submit
                   </button>
                 </form>
               </div>
@@ -761,6 +807,86 @@ export default function Collab() {
               )}
             </div>
           )}
+        </div>
+      )}
+      {/* ── Terms & Conditions Modal ────────────────────────────────────────── */}
+      {showTCModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+            {/* Modal header */}
+            <div className="flex items-center gap-3 px-7 pt-7 pb-4 border-b border-gray-100">
+              <div className="w-10 h-10 rounded-2xl bg-[#4B97C9]/10 flex items-center justify-center flex-shrink-0">
+                <ScrollText className="h-5 w-5 text-[#4B97C9]" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-base">Creator Collab Terms</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Please read before submitting your application</p>
+              </div>
+              <button onClick={() => setShowTCModal(false)} className="ml-auto text-gray-300 hover:text-gray-500 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="overflow-y-auto px-7 py-5 flex-1 space-y-5 text-sm text-gray-600 leading-relaxed">
+              <p className="text-xs text-gray-400 tracking-wide uppercase font-semibold">Last updated: 2025</p>
+
+              <section>
+                <h4 className="font-semibold text-gray-800 mb-1.5">1. Content Requirements</h4>
+                <ul className="space-y-1.5 text-sm">
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>All reels submitted must <strong>authentically feature NEFOL products</strong>. Content must be original and created by you.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Each reel caption or video must include <strong>#nefol</strong> or a similar branded hashtag/mention. Reels without this will not count toward your affiliate milestone.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Only reels posted <strong>after your application is approved</strong> are eligible. Older content cannot be submitted.</span></li>
+                </ul>
+              </section>
+
+              <section>
+                <h4 className="font-semibold text-gray-800 mb-1.5">2. Affiliate Milestone</h4>
+                <ul className="space-y-1.5 text-sm">
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>The affiliate milestone is <strong>10,000 total views</strong> and <strong>500 total likes</strong> across all eligible submitted reels.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Views and likes are tracked automatically via the Instagram API. Counts are refreshed periodically and may take up to 24 hours to update.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Unlocking the affiliate milestone does not guarantee an affiliate partnership. NEFOL reserves the right to review content quality before approval.</span></li>
+                </ul>
+              </section>
+
+              <section>
+                <h4 className="font-semibold text-gray-800 mb-1.5">3. Account & Data</h4>
+                <ul className="space-y-1.5 text-sm">
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>You must connect a <strong>Creator or Business Instagram account</strong> to enable automatic reel tracking. Personal accounts are not supported by the Instagram API.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>You confirm that the profiles and links you submit belong to you. Submitting accounts you do not own is grounds for disqualification.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>NEFOL collects platform usernames and public engagement metrics (views, likes) solely to track collab progress. Data is not sold to third parties.</span></li>
+                </ul>
+              </section>
+
+              <section>
+                <h4 className="font-semibold text-gray-800 mb-1.5">4. Program Rules</h4>
+                <ul className="space-y-1.5 text-sm">
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>NEFOL may approve or reject any application at its sole discretion without providing a reason.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Any attempt to manipulate engagement metrics (buying views/likes, coordinated inauthentic behavior) will result in permanent disqualification.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>NEFOL reserves the right to modify or terminate the collab program at any time with reasonable notice.</span></li>
+                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Submitted content may be reshared on NEFOL's official social media channels with credit to the original creator.</span></li>
+                </ul>
+              </section>
+
+              <section className="bg-[#f0f8fd] rounded-2xl p-4">
+                <p className="text-xs text-[#4B97C9] font-medium">By clicking "I Accept & Submit" you confirm you have read, understood, and agree to these terms and conditions.</p>
+              </section>
+            </div>
+
+            {/* Footer */}
+            <div className="px-7 py-5 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setShowTCModal(false)}
+                className="flex-1 rounded-xl py-3 text-sm font-semibold border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={doSubmit}
+                className="flex-1 rounded-xl py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
+                style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
+                I Accept &amp; Submit
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </main>

@@ -93,7 +93,7 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
 }
 
 // ─── Submit Collab Application ─────────────────────────────────────────────────
-interface PlatformEntry { name: string; link: string }
+interface PlatformEntry { name: string; links?: string[]; link?: string }
 interface AddressEntry { country?: string; state?: string; city?: string; pincode?: string }
 
 export async function submitCollabApplication(pool: Pool, req: Request, res: Response) {
@@ -113,17 +113,23 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
 
     const handles = parseInstagramHandles(instagram, instagram_handles)
 
-    // Normalise platforms array: filter out entries with no name
+    // Normalise platforms: support both {link} (legacy) and {links[]} (new)
     const normPlatforms: PlatformEntry[] = Array.isArray(platforms)
       ? platforms
           .filter((p: any) => p?.name?.trim())
-          .map((p: any) => ({ name: p.name.trim().toLowerCase(), link: (p.link || '').trim() }))
+          .map((p: any) => {
+            const links: string[] = Array.isArray(p.links)
+              ? p.links.map((l: string) => l.trim()).filter(Boolean)
+              : p.link ? [p.link.trim()] : []
+            return { name: p.name.trim().toLowerCase(), links }
+          })
+          .filter((p) => p.links!.length > 0 || true) // keep even empty ones so checkbox state persists
       : []
 
-    // Auto-include instagram handle link if an instagram platform entry exists
+    // Auto-include instagram if handles provided but no instagram platform
     const igPlatform = normPlatforms.find((p) => p.name === 'instagram')
     if (!igPlatform && handles.length > 0) {
-      normPlatforms.unshift({ name: 'instagram', link: `https://www.instagram.com/${handles[0]}` })
+      normPlatforms.unshift({ name: 'instagram', links: handles.map((h) => `https://www.instagram.com/${h}`) })
     }
 
     const normAddress: AddressEntry = address && typeof address === 'object' ? {
