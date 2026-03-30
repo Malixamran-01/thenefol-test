@@ -811,78 +811,157 @@ export default function Collab() {
       )}
       {/* ── Terms & Conditions Modal ────────────────────────────────────────── */}
       {showTCModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
-            {/* Modal header */}
-            <div className="flex items-center gap-3 px-7 pt-7 pb-4 border-b border-gray-100">
-              <div className="w-10 h-10 rounded-2xl bg-[#4B97C9]/10 flex items-center justify-center flex-shrink-0">
-                <ScrollText className="h-5 w-5 text-[#4B97C9]" />
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowTCModal(false) }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            backgroundColor: 'rgba(15,23,42,0.55)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+        >
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.18)',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: 'calc(100vh - 48px)',
+            margin: 'auto',
+          }}>
+            {/* Header */}
+            <div style={{ padding: '28px 28px 20px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#EBF5FB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ScrollText style={{ width: 20, height: 20, color: '#4B97C9' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>Creator Collab Terms &amp; Conditions</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>Read carefully before submitting your application</p>
+                </div>
+                <button onClick={() => setShowTCModal(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#cbd5e1', flexShrink: 0, marginTop: 2 }}>
+                  <X style={{ width: 18, height: 18 }} />
+                </button>
               </div>
-              <div>
-                <h3 className="font-bold text-gray-900 text-base">Creator Collab Terms</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Please read before submitting your application</p>
-              </div>
-              <button onClick={() => setShowTCModal(false)} className="ml-auto text-gray-300 hover:text-gray-500 transition-colors">
-                <X className="h-5 w-5" />
-              </button>
             </div>
 
             {/* Scrollable body */}
-            <div className="overflow-y-auto px-7 py-5 flex-1 space-y-5 text-sm text-gray-600 leading-relaxed">
-              <p className="text-xs text-gray-400 tracking-wide uppercase font-semibold">Last updated: 2025</p>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '24px 28px' }}>
 
-              <section>
-                <h4 className="font-semibold text-gray-800 mb-1.5">1. Content Requirements</h4>
-                <ul className="space-y-1.5 text-sm">
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>All reels submitted must <strong>authentically feature NEFOL products</strong>. Content must be original and created by you.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Each reel caption or video must include <strong>#nefol</strong> or a similar branded hashtag/mention. Reels without this will not count toward your affiliate milestone.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Only reels posted <strong>after your application is approved</strong> are eligible. Older content cannot be submitted.</span></li>
-                </ul>
-              </section>
+              <p style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 600, marginBottom: 20 }}>Effective January 2025</p>
 
-              <section>
-                <h4 className="font-semibold text-gray-800 mb-1.5">2. Affiliate Milestone</h4>
-                <ul className="space-y-1.5 text-sm">
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>The affiliate milestone is <strong>10,000 total views</strong> and <strong>500 total likes</strong> across all eligible submitted reels.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Views and likes are tracked automatically via the Instagram API. Counts are refreshed periodically and may take up to 24 hours to update.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Unlocking the affiliate milestone does not guarantee an affiliate partnership. NEFOL reserves the right to review content quality before approval.</span></li>
-                </ul>
-              </section>
+              {/* Section 1 */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: '#4B97C9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>1</span>
+                  </div>
+                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Content Requirements</h4>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    <>All reels submitted must <strong>authentically feature NEFOL products</strong>. Content must be original and created by you.</>,
+                    <>Reels must include <strong>#nefol</strong> or a branded hashtag/mention in the caption or video. Reels without this are ineligible.</>,
+                    <>Only reels posted <strong>after your application is approved</strong> count. You cannot submit older content.</>,
+                  ].map((text, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <CheckCircle style={{ width: 15, height: 15, color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
+                      <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <section>
-                <h4 className="font-semibold text-gray-800 mb-1.5">3. Account & Data</h4>
-                <ul className="space-y-1.5 text-sm">
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>You must connect a <strong>Creator or Business Instagram account</strong> to enable automatic reel tracking. Personal accounts are not supported by the Instagram API.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>You confirm that the profiles and links you submit belong to you. Submitting accounts you do not own is grounds for disqualification.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>NEFOL collects platform usernames and public engagement metrics (views, likes) solely to track collab progress. Data is not sold to third parties.</span></li>
-                </ul>
-              </section>
+              {/* Section 2 */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: '#4B97C9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>2</span>
+                  </div>
+                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Affiliate Milestone</h4>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    <>The milestone is <strong>10,000 total views</strong> and <strong>500 total likes</strong> across all eligible submitted reels — shared across multiple reels.</>,
+                    <>Stats are tracked automatically via the Instagram API and refreshed periodically. Updates may take up to 24 hours.</>,
+                    <>Reaching the milestone does not guarantee an affiliate partnership. NEFOL reviews content quality before final approval.</>,
+                  ].map((text, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <CheckCircle style={{ width: 15, height: 15, color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
+                      <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <section>
-                <h4 className="font-semibold text-gray-800 mb-1.5">4. Program Rules</h4>
-                <ul className="space-y-1.5 text-sm">
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>NEFOL may approve or reject any application at its sole discretion without providing a reason.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Any attempt to manipulate engagement metrics (buying views/likes, coordinated inauthentic behavior) will result in permanent disqualification.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>NEFOL reserves the right to modify or terminate the collab program at any time with reasonable notice.</span></li>
-                  <li className="flex gap-2"><CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /><span>Submitted content may be reshared on NEFOL's official social media channels with credit to the original creator.</span></li>
-                </ul>
-              </section>
+              {/* Section 3 */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: '#4B97C9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>3</span>
+                  </div>
+                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Account &amp; Data</h4>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    <>Connect a <strong>Creator or Business Instagram account</strong> to enable reel tracking. Personal accounts are unsupported by the Instagram API.</>,
+                    <>You confirm all submitted profiles and links belong to you. Submitting accounts you do not own results in immediate disqualification.</>,
+                    <>NEFOL collects only usernames and public engagement metrics (views, likes) to track collab progress. Your data is never sold to third parties.</>,
+                  ].map((text, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <CheckCircle style={{ width: 15, height: 15, color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
+                      <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <section className="bg-[#f0f8fd] rounded-2xl p-4">
-                <p className="text-xs text-[#4B97C9] font-medium">By clicking "I Accept & Submit" you confirm you have read, understood, and agree to these terms and conditions.</p>
-              </section>
+              {/* Section 4 */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: '#4B97C9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>4</span>
+                  </div>
+                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Program Rules</h4>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    'NEFOL may approve or reject any application at its sole discretion without providing a reason.',
+                    'Any attempt to manipulate engagement metrics (buying views/likes, coordinated inauthentic behavior) will result in permanent disqualification.',
+                    'NEFOL reserves the right to modify or terminate the collab program at any time with reasonable notice to participants.',
+                    "Submitted content may be reshared on NEFOL's official social media channels with credit to the original creator.",
+                  ].map((text, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <CheckCircle style={{ width: 15, height: 15, color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
+                      <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Acceptance note */}
+              <div style={{ backgroundColor: '#F0F8FD', borderRadius: 14, padding: '14px 16px', border: '1px solid #D6EAF8' }}>
+                <p style={{ margin: 0, fontSize: 12, color: '#4B97C9', lineHeight: 1.6 }}>
+                  By clicking <strong>"I Accept &amp; Submit"</strong> below, you confirm that you have read, understood, and agree to all of the above terms and conditions.
+                </p>
+              </div>
             </div>
 
             {/* Footer */}
-            <div className="px-7 py-5 border-t border-gray-100 flex gap-3">
+            <div style={{ padding: '20px 28px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: 12, flexShrink: 0 }}>
               <button onClick={() => setShowTCModal(false)}
-                className="flex-1 rounded-xl py-3 text-sm font-semibold border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                style={{ flex: 1, padding: '12px 0', borderRadius: 14, border: '1.5px solid #e2e8f0', background: 'none', fontSize: 13, fontWeight: 600, color: '#64748b', cursor: 'pointer', transition: 'background 0.15s' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
                 Cancel
               </button>
               <button onClick={doSubmit}
-                className="flex-1 rounded-xl py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
-                style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
+                style={{ flex: 2, padding: '12px 0', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #4B97C9, #357aad)', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', letterSpacing: '0.01em' }}>
                 I Accept &amp; Submit
               </button>
             </div>
