@@ -33,9 +33,8 @@ function computeProgress(totalViews: number, totalLikes: number) {
 /** Ensure DB schema has Instagram OAuth columns on collab_applications + collab_reels validation fields */
 async function ensureCollabSchema(pool: Pool) {
   await pool.query(`
-    -- Instagram OAuth columns on collab_applications
     ALTER TABLE collab_applications
-      ADD COLUMN IF NOT EXISTS instagram_connected   BOOLEAN   DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS instagram_connected   BOOLEAN     DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS fb_user_access_token  TEXT,
       ADD COLUMN IF NOT EXISTS fb_page_id            TEXT,
       ADD COLUMN IF NOT EXISTS fb_page_access_token  TEXT,
@@ -43,9 +42,10 @@ async function ensureCollabSchema(pool: Pool) {
       ADD COLUMN IF NOT EXISTS ig_username           TEXT,
       ADD COLUMN IF NOT EXISTS token_expires_at      TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS token_updated_at      TIMESTAMPTZ,
-      ADD COLUMN IF NOT EXISTS collab_joined_at      TIMESTAMPTZ DEFAULT NOW();
+      ADD COLUMN IF NOT EXISTS collab_joined_at      TIMESTAMPTZ DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS platforms             JSONB       DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS address               JSONB       DEFAULT '{}'::jsonb;
 
-    -- Validation metadata on collab_reels
     ALTER TABLE collab_reels
       ADD COLUMN IF NOT EXISTS reel_posted_at        TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS caption               TEXT,
@@ -93,42 +93,66 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
 }
 
 // ─── Submit Collab Application ─────────────────────────────────────────────────
+interface PlatformEntry { name: string; link: string }
+interface AddressEntry { country?: string; state?: string; city?: string; pincode?: string }
+
 export async function submitCollabApplication(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabSchema(pool)
-    const { name, email, phone, instagram, instagram_handles, youtube, facebook, followers, message, agreeTerms } = req.body
+    const {
+      name, email, phone, instagram, instagram_handles, youtube, facebook,
+      followers, message, agreeTerms, platforms, address,
+    } = req.body
 
     if (!name || !email || !phone || !agreeTerms) {
       return res.status(400).json({ message: 'Missing required fields' })
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'Invalid email address' })
-    }
+    if (!emailRegex.test(email)) return res.status(400).json({ message: 'Invalid email address' })
 
     const handles = parseInstagramHandles(instagram, instagram_handles)
-    if (handles.length === 0) {
-      return res.status(400).json({ message: 'At least one Instagram handle is required' })
+
+    // Normalise platforms array: filter out entries with no name
+    const normPlatforms: PlatformEntry[] = Array.isArray(platforms)
+      ? platforms
+          .filter((p: any) => p?.name?.trim())
+          .map((p: any) => ({ name: p.name.trim().toLowerCase(), link: (p.link || '').trim() }))
+      : []
+
+    // Auto-include instagram handle link if an instagram platform entry exists
+    const igPlatform = normPlatforms.find((p) => p.name === 'instagram')
+    if (!igPlatform && handles.length > 0) {
+      normPlatforms.unshift({ name: 'instagram', link: `https://www.instagram.com/${handles[0]}` })
     }
 
-    const { uniqueUserId } = await resolveUniqueUserId(pool, req)
+    const normAddress: AddressEntry = address && typeof address === 'object' ? {
+      country: (address.country || '').trim() || undefined,
+      state:   (address.state   || '').trim() || undefined,
+      city:    (address.city    || '').trim() || undefined,
+      pincode: (address.pincode || '').trim() || undefined,
+    } : {}
 
+    const { uniqueUserId } = await resolveUniqueUserId(pool, req)
     const storedInstagram = handles.join(',')
+
     const { rows } = await pool.query(
       `INSERT INTO collab_applications
-         (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms, status, unique_user_id, collab_joined_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, NOW())
+         (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms,
+          status, unique_user_id, collab_joined_at, platforms, address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10,NOW(),$11,$12)
        RETURNING id, email, status, created_at, instagram`,
-      [name, email, phone, storedInstagram, (youtube || '').trim() || null, (facebook || '').trim() || null, followers || null, message || null, !!agreeTerms, uniqueUserId]
+      [
+        name, email, phone, storedInstagram,
+        (youtube || '').trim() || null, (facebook || '').trim() || null,
+        followers || null, message || null, !!agreeTerms, uniqueUserId,
+        JSON.stringify(normPlatforms), JSON.stringify(normAddress),
+      ]
     )
 
     return res.status(201).json({
-      application: {
-        ...rows[0],
-        instagram_handles: handles,
-      },
-      message: 'Collab application submitted. Connect your Instagram account while waiting for approval.',
+      application: { ...rows[0], instagram_handles: handles, platforms: normPlatforms, address: normAddress },
+      message: 'Application submitted successfully.',
     })
   } catch (err) {
     console.error('Collab application error:', err)
@@ -423,7 +447,10 @@ export async function deleteReel(pool: Pool, req: Request, res: Response) {
 // ─── Admin: List Collab Applications ──────────────────────────────────────────
 export async function getCollabApplications(pool: Pool, req: Request, res: Response) {
   try {
-    const { status = 'all', page = 1, limit = 20, search = '' } = req.query as Record<string, string>
+    const {
+      status = 'all', page = 1, limit = 20, search = '',
+      platform = '', city = '', state = '', country = '',
+    } = req.query as Record<string, string>
     const offset = (Number(page) - 1) * Number(limit)
     const clauses: string[] = []
     const params: any[] = []
@@ -442,6 +469,27 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
         OR LOWER(COALESCE(ca.ig_username, '')) LIKE $${params.length}
         OR LOWER(COALESCE(ca.unique_user_id, '')) LIKE $${params.length}
       )`)
+    }
+
+    // Platform filter — supports comma-separated: "instagram,reddit"
+    const platformList = platform.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean)
+    for (const p of platformList) {
+      params.push(JSON.stringify([{ name: p }]))
+      clauses.push(`ca.platforms @> $${params.length}::jsonb`)
+    }
+
+    // Address filters
+    if (city.trim()) {
+      params.push(`%${city.trim()}%`)
+      clauses.push(`ca.address->>'city' ILIKE $${params.length}`)
+    }
+    if (state.trim()) {
+      params.push(`%${state.trim()}%`)
+      clauses.push(`ca.address->>'state' ILIKE $${params.length}`)
+    }
+    if (country.trim()) {
+      params.push(`%${country.trim()}%`)
+      clauses.push(`ca.address->>'country' ILIKE $${params.length}`)
     }
 
     const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
@@ -467,6 +515,8 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
     const mapped = rows.map((r: any) => ({
       ...r,
       instagram_handles: parseInstagramHandles(r.instagram),
+      platforms: Array.isArray(r.platforms) ? r.platforms : [],
+      address: r.address && typeof r.address === 'object' ? r.address : {},
     }))
 
     const countParams = params.slice(0, params.length - 2)

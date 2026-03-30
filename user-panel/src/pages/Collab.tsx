@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import {
   ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, Sparkles, TrendingUp,
-  Clapperboard, Zap, ChevronRight, Star, Award
+  Clapperboard, Zap, ChevronRight, Star, Award, Youtube, Twitter, Facebook,
+  Link, Globe, MapPin
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -85,6 +86,22 @@ export default function Collab() {
   const [instagramHandles, setInstagramHandles] = useState<string[]>([''])
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', followers: '', agreeTerms: false })
 
+  // Platform + address state
+  type PlatformKey = 'instagram' | 'youtube' | 'x' | 'reddit' | 'facebook' | 'quora' | 'other'
+  const PLATFORM_CONFIG: Record<PlatformKey, { label: string; icon: React.ReactNode; placeholder: string; color: string }> = {
+    instagram: { label: 'Instagram',  icon: <Instagram className="h-4 w-4" />, placeholder: 'instagram.com/yourhandle', color: '#E1306C' },
+    youtube:   { label: 'YouTube',    icon: <Youtube   className="h-4 w-4" />, placeholder: 'youtube.com/c/yourhandle',  color: '#FF0000' },
+    x:         { label: 'X (Twitter)',icon: <Twitter   className="h-4 w-4" />, placeholder: 'x.com/yourhandle',         color: '#000000' },
+    facebook:  { label: 'Facebook',   icon: <Facebook  className="h-4 w-4" />, placeholder: 'facebook.com/yourprofile', color: '#1877F2' },
+    reddit:    { label: 'Reddit',     icon: <Globe     className="h-4 w-4" />, placeholder: 'reddit.com/u/yourhandle',  color: '#FF4500' },
+    quora:     { label: 'Quora',      icon: <Link      className="h-4 w-4" />, placeholder: 'quora.com/profile/you',    color: '#B92B27' },
+    other:     { label: 'Other',      icon: <Globe     className="h-4 w-4" />, placeholder: 'Your profile link',        color: '#6b7280' },
+  }
+  const [platforms, setPlatforms] = useState<Record<PlatformKey, { checked: boolean; link: string }>>(
+    Object.fromEntries(Object.keys(PLATFORM_CONFIG).map((k) => [k, { checked: k === 'instagram', link: '' }])) as any
+  )
+  const [address, setAddress] = useState({ country: '', state: '', city: '', pincode: '' })
+
   useEffect(() => {
     const hash = window.location.hash || ''
     if (hash.includes('ig_connected=1')) window.location.hash = '/user/collab'
@@ -135,9 +152,16 @@ export default function Collab() {
     if (!formData.name || !formData.email || !formData.phone || !handles.length)
       return alert('Please fill in: Name, Email, Phone, and at least one Instagram handle.')
     if (!formData.agreeTerms) return alert('Please agree to the terms.')
+    const selectedPlatforms = (Object.entries(platforms) as [PlatformKey, { checked: boolean; link: string }][])
+      .filter(([, v]) => v.checked)
+      .map(([name, v]) => ({ name, link: v.link.trim() }))
+
     const res = await fetch(`${getApiBase()}/api/collab/apply`, {
       method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({ ...formData, instagram: handles[0], instagram_handles: handles }),
+      body: JSON.stringify({
+        ...formData, instagram: handles[0], instagram_handles: handles,
+        platforms: selectedPlatforms, address,
+      }),
     })
     const data = await res.json().catch(() => ({}))
     if (res.ok) {
@@ -328,30 +352,51 @@ export default function Collab() {
                     ))}
                   </div>
 
+                  {/* Platforms */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Instagram handle(s)</label>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Platforms you're active on</label>
                     <div className="space-y-2">
-                      {instagramHandles.map((handle, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <div className="flex-1 relative">
-                            <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input type="text" placeholder="username" value={handle}
-                              onChange={(e) => setInstagramHandles((p) => p.map((h, i) => i === idx ? e.target.value : h))}
-                              required={idx === 0}
-                              className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                      {(Object.entries(PLATFORM_CONFIG) as [PlatformKey, typeof PLATFORM_CONFIG[PlatformKey]][]).map(([key, cfg]) => {
+                        const isChecked = platforms[key].checked
+                        return (
+                          <div key={key} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all ${isChecked ? 'border-gray-200 bg-gray-50' : 'border-gray-100 bg-white opacity-60'}`}>
+                            {/* Checkbox + icon + label */}
+                            <label className="flex items-center gap-2.5 cursor-pointer flex-shrink-0 min-w-[130px]">
+                              <input type="checkbox" checked={isChecked}
+                                onChange={(e) => setPlatforms((p) => ({ ...p, [key]: { ...p[key], checked: e.target.checked } }))}
+                                className="h-4 w-4 rounded accent-[#4B97C9]" />
+                              <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700" style={{ color: isChecked ? cfg.color : '#9ca3af' }}>
+                                {cfg.icon} {cfg.label}
+                              </span>
+                            </label>
+                            {/* Link input */}
+                            <input type="url" placeholder={cfg.placeholder} disabled={!isChecked}
+                              value={platforms[key].link}
+                              onChange={(e) => setPlatforms((p) => ({ ...p, [key]: { ...p[key], link: e.target.value } }))}
+                              className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-[#4B97C9] disabled:bg-transparent disabled:border-transparent disabled:text-gray-300 disabled:placeholder-gray-200 transition-all" />
                           </div>
-                          {instagramHandles.length > 1 && (
-                            <button type="button" onClick={() => setInstagramHandles((p) => p.filter((_, i) => i !== idx))}
-                              className="p-2.5 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors">
-                              <X className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                      <MapPin className="h-3.5 w-3.5" /> Location
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { key: 'city',    placeholder: 'City',    span: '' },
+                        { key: 'state',   placeholder: 'State',   span: '' },
+                        { key: 'pincode', placeholder: 'Pincode', span: '' },
+                        { key: 'country', placeholder: 'Country', span: '' },
+                      ].map((f) => (
+                        <input key={f.key} type="text" placeholder={f.placeholder}
+                          value={(address as any)[f.key]}
+                          onChange={(e) => setAddress((a) => ({ ...a, [f.key]: e.target.value }))}
+                          className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
                       ))}
-                      <button type="button" onClick={() => setInstagramHandles((p) => [...p, ''])}
-                        className="text-xs font-medium text-[#4B97C9] hover:opacity-80 transition-opacity">
-                        + Add another handle
-                      </button>
                     </div>
                   </div>
 

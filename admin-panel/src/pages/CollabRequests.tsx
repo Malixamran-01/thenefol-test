@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film,
-  Trash2, Star, Wifi, WifiOff, ChevronDown, ChevronUp, Edit2, Save, X, AlertCircle
+  Trash2, Star, Wifi, WifiOff, ChevronDown, ChevronUp, Edit2, Save, X, AlertCircle,
+  Youtube, Twitter, Facebook, Globe, Link, MapPin, Filter, ExternalLink
 } from 'lucide-react'
 import { getApiBaseUrl } from '../utils/apiUrl'
 
@@ -19,6 +20,9 @@ interface Reel {
   reel_posted_at?: string
   rejection_reason?: string
 }
+
+interface PlatformEntry { name: string; link: string }
+interface AddressEntry { country?: string; state?: string; city?: string; pincode?: string }
 
 interface CollabApplication {
   id: number
@@ -44,6 +48,34 @@ interface CollabApplication {
   collab_joined_at?: string
   token_expires_at?: string
   reels?: Reel[]
+  platforms?: PlatformEntry[]
+  address?: AddressEntry
+}
+
+const PLATFORM_META: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+  instagram: { icon: <Instagram className="h-3 w-3" />, color: '#E1306C', bg: '#fff0f5' },
+  youtube:   { icon: <Youtube   className="h-3 w-3" />, color: '#FF0000', bg: '#fff5f5' },
+  x:         { icon: <Twitter   className="h-3 w-3" />, color: '#000000', bg: '#f5f5f5' },
+  facebook:  { icon: <Facebook  className="h-3 w-3" />, color: '#1877F2', bg: '#f0f5ff' },
+  reddit:    { icon: <Globe     className="h-3 w-3" />, color: '#FF4500', bg: '#fff5f0' },
+  quora:     { icon: <Link      className="h-3 w-3" />, color: '#B92B27', bg: '#fff5f5' },
+  other:     { icon: <Globe     className="h-3 w-3" />, color: '#6b7280', bg: '#f5f5f5' },
+}
+
+const ALL_PLATFORMS = ['instagram', 'youtube', 'x', 'facebook', 'reddit', 'quora', 'other']
+
+function PlatformBadge({ p }: { p: PlatformEntry }) {
+  const meta = PLATFORM_META[p.name] || PLATFORM_META.other
+  const badge = (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border"
+      style={{ color: meta.color, backgroundColor: meta.bg, borderColor: meta.color + '30' }}>
+      {meta.icon} {p.name}
+    </span>
+  )
+  if (p.link) {
+    return <a href={p.link} target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity inline-flex items-center gap-1">{badge} <ExternalLink className="h-2.5 w-2.5" style={{ color: meta.color }} /></a>
+  }
+  return badge
 }
 
 export default function CollabRequests() {
@@ -61,6 +93,13 @@ export default function CollabRequests() {
   const [reelsExpanded, setReelsExpanded] = useState(false)
   const [savingReel, setSavingReel] = useState(false)
 
+  // Creator database filters
+  const [showFilters, setShowFilters] = useState(false)
+  const [platformFilters, setPlatformFilters] = useState<Set<string>>(new Set())
+  const [cityFilter, setCityFilter] = useState('')
+  const [stateFilter, setStateFilter] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
+
   const apiBase = getApiBaseUrl()
   const authHeaders = useMemo(() => {
     const token = localStorage.getItem('auth_token')
@@ -76,6 +115,10 @@ export default function CollabRequests() {
     try {
       setLoading(true)
       const params = new URLSearchParams({ status: 'all', limit: '500' })
+      if (platformFilters.size > 0) params.set('platform', Array.from(platformFilters).join(','))
+      if (cityFilter.trim())    params.set('city',    cityFilter.trim())
+      if (stateFilter.trim())   params.set('state',   stateFilter.trim())
+      if (countryFilter.trim()) params.set('country', countryFilter.trim())
       const res = await fetch(`${apiBase}/admin/collab-applications?${params}`, { headers: authHeaders })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.message || 'Failed to load')
@@ -87,7 +130,7 @@ export default function CollabRequests() {
     }
   }
 
-  useEffect(() => { fetchItems() }, [])
+  useEffect(() => { fetchItems() }, [platformFilters, cityFilter, stateFilter, countryFilter])
 
   const counts = {
     pending:  allItems.filter((i) => i.status === 'pending').length,
@@ -265,29 +308,91 @@ export default function CollabRequests() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {([
-              { key: 'pending',  label: `Pending (${counts.pending})` },
-              { key: 'approved', label: `Approved (${counts.approved})` },
-              { key: 'rejected', label: `Rejected (${counts.rejected})` },
-              { key: 'all',      label: `All (${allItems.length})` },
-            ] as const).map((tab) => (
-              <button key={tab.key} onClick={() => setStatusFilter(tab.key)}
-                className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
-                  statusFilter === tab.key ? 'bg-cyan-50 border-cyan-300 text-gray-900' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, instagram..." className="w-full pl-9 pr-3 py-2 border rounded-lg" />
-          </div>
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 space-y-3">
+        {/* Status tabs + search */}
+        <div className="flex flex-wrap items-center gap-2">
+          {([
+            { key: 'pending',  label: `Pending (${counts.pending})` },
+            { key: 'approved', label: `Approved (${counts.approved})` },
+            { key: 'rejected', label: `Rejected (${counts.rejected})` },
+            { key: 'all',      label: `All (${allItems.length})` },
+          ] as const).map((tab) => (
+            <button key={tab.key} onClick={() => setStatusFilter(tab.key)}
+              className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                statusFilter === tab.key ? 'bg-cyan-50 border-cyan-300 text-gray-900' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}>
+              {tab.label}
+            </button>
+          ))}
+          <button onClick={() => setShowFilters((v) => !v)}
+            className={`ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-colors ${showFilters ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            <Filter className="h-3.5 w-3.5" />
+            Creator Filters
+            {(platformFilters.size > 0 || cityFilter || stateFilter || countryFilter) && (
+              <span className="ml-1 w-2 h-2 rounded-full bg-indigo-500 inline-block" />
+            )}
+          </button>
         </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, instagram..." className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm" />
+        </div>
+
+        {/* Creator database filters */}
+        {showFilters && (
+          <div className="border-t pt-3 space-y-3">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Filter by platform</p>
+              <div className="flex flex-wrap gap-2">
+                {ALL_PLATFORMS.map((p) => {
+                  const meta = PLATFORM_META[p] || PLATFORM_META.other
+                  const active = platformFilters.has(p)
+                  return (
+                    <button key={p} onClick={() => setPlatformFilters((prev) => {
+                      const next = new Set(prev); active ? next.delete(p) : next.add(p); return next
+                    })}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+                      style={{
+                        borderColor: active ? meta.color : '#e5e7eb',
+                        backgroundColor: active ? meta.bg : 'white',
+                        color: active ? meta.color : '#6b7280',
+                      }}>
+                      {meta.icon} {p}
+                    </button>
+                  )
+                })}
+                {platformFilters.size > 0 && (
+                  <button onClick={() => setPlatformFilters(new Set())} className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Filter by location</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { placeholder: 'City',    value: cityFilter,    set: setCityFilter },
+                  { placeholder: 'State',   value: stateFilter,   set: setStateFilter },
+                  { placeholder: 'Country', value: countryFilter, set: setCountryFilter },
+                ].map((f) => (
+                  <div key={f.placeholder} className="relative">
+                    <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                    <input value={f.value} onChange={(e) => f.set(e.target.value)}
+                      placeholder={f.placeholder}
+                      className="w-full pl-7 pr-3 py-1.5 border rounded-lg text-xs text-gray-700 focus:outline-none focus:border-indigo-300" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {(platformFilters.size > 0 || cityFilter || stateFilter || countryFilter) && (
+              <button onClick={() => { setPlatformFilters(new Set()); setCityFilter(''); setStateFilter(''); setCountryFilter('') }}
+                className="text-xs text-red-500 hover:text-red-700 font-medium">
+                Clear all filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -296,11 +401,11 @@ export default function CollabRequests() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Applicant</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Instagram</th>
+              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Platforms</th>
+              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Location</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">IG Connected</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Progress</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Status</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Applied</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -324,14 +429,33 @@ export default function CollabRequests() {
                       <div className="text-[10px] text-gray-400 mt-0.5 font-mono select-all bg-gray-50 px-1 rounded">{item.unique_user_id}</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="flex flex-wrap gap-1">
-                      {(item.instagram_handles || []).map((h) => (
-                        <span key={h} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 text-xs">
-                          <Instagram className="h-3 w-3" /> @{h}
-                        </span>
-                      ))}
+                  {/* Platforms */}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+                      {(item.platforms || []).length > 0
+                        ? (item.platforms || []).map((p, i) => <PlatformBadge key={i} p={p} />)
+                        : (item.instagram_handles || []).map((h) => (
+                            <span key={h} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 text-xs">
+                              <Instagram className="h-3 w-3" /> @{h}
+                            </span>
+                          ))
+                      }
                     </div>
+                  </td>
+
+                  {/* Location */}
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {item.address && (item.address.city || item.address.state || item.address.country) ? (
+                      <div className="flex items-start gap-1">
+                        <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-gray-400" />
+                        <div>
+                          {item.address.city && <div className="font-medium text-gray-700">{item.address.city}</div>}
+                          {item.address.state && <div>{item.address.state}</div>}
+                          {item.address.country && <div>{item.address.country}</div>}
+                          {item.address.pincode && <div className="text-gray-400">{item.address.pincode}</div>}
+                        </div>
+                      </div>
+                    ) : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     {item.instagram_connected && item.ig_username ? (
@@ -447,6 +571,29 @@ export default function CollabRequests() {
               </div>
               {selected.unique_user_id && (
                 <div className="col-span-2"><strong>Unique User ID:</strong> <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded select-all">{selected.unique_user_id}</span></div>
+              )}
+
+              {/* Platforms */}
+              {(selected.platforms || []).length > 0 && (
+                <div className="col-span-2">
+                  <strong className="block mb-1.5">Platforms:</strong>
+                  <div className="flex flex-wrap gap-2">
+                    {(selected.platforms || []).map((p, i) => <PlatformBadge key={i} p={p} />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Address */}
+              {selected.address && (selected.address.city || selected.address.state || selected.address.country) && (
+                <div className="col-span-2">
+                  <strong className="block mb-1">Location:</strong>
+                  <div className="flex items-start gap-1.5 text-gray-600">
+                    <MapPin className="h-3.5 w-3.5 mt-0.5 text-gray-400 flex-shrink-0" />
+                    <span>
+                      {[selected.address.city, selected.address.state, selected.address.pincode, selected.address.country].filter(Boolean).join(', ')}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
 

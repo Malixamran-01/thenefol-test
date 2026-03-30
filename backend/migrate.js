@@ -897,6 +897,22 @@ async function runMigration() {
           ALTER TABLE collab_reels ADD COLUMN insights_pending boolean DEFAULT false;
         END IF;
 
+        -- platforms: JSONB array of { name, link } objects
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'platforms'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN platforms JSONB DEFAULT '[]'::jsonb;
+        END IF;
+
+        -- address: JSONB object { country, state, city, pincode }
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'address'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN address JSONB DEFAULT '{}'::jsonb;
+        END IF;
+
       END $$;
     `);
     
@@ -948,6 +964,8 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_collab_applications_unique_user_id ON collab_applications(unique_user_id);
       CREATE INDEX IF NOT EXISTS idx_collab_reels_application ON collab_reels(collab_application_id);
       CREATE UNIQUE INDEX IF NOT EXISTS uq_collab_reels_app_url ON collab_reels(collab_application_id, reel_url);
+      CREATE INDEX IF NOT EXISTS idx_collab_applications_platforms ON collab_applications USING gin(platforms) WHERE platforms IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_collab_applications_address ON collab_applications USING gin(address) WHERE address IS NOT NULL;
     `);
 
     console.log('📝 Step 4: Creating indexes for new columns...');
