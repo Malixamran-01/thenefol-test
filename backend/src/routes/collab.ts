@@ -44,7 +44,9 @@ async function ensureCollabSchema(pool: Pool) {
       ADD COLUMN IF NOT EXISTS token_updated_at      TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS collab_joined_at      TIMESTAMPTZ DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS platforms             JSONB       DEFAULT '[]'::jsonb,
-      ADD COLUMN IF NOT EXISTS address               JSONB       DEFAULT '{}'::jsonb;
+      ADD COLUMN IF NOT EXISTS address               JSONB       DEFAULT '{}'::jsonb,
+      ADD COLUMN IF NOT EXISTS profile               JSONB       DEFAULT '{}'::jsonb,
+      ADD COLUMN IF NOT EXISTS phone_code            TEXT;
 
     ALTER TABLE collab_reels
       ADD COLUMN IF NOT EXISTS reel_posted_at        TIMESTAMPTZ,
@@ -100,8 +102,8 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
   try {
     await ensureCollabSchema(pool)
     const {
-      name, email, phone, instagram, instagram_handles, youtube, facebook,
-      followers, message, agreeTerms, platforms, address,
+      name, email, phone, phone_code, instagram, instagram_handles, youtube, facebook,
+      followers, message, agreeTerms, platforms, address, profile,
     } = req.body
 
     if (!name || !email || !phone || !agreeTerms) {
@@ -142,22 +144,38 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
     const { uniqueUserId } = await resolveUniqueUserId(pool, req)
     const storedInstagram = handles.join(',')
 
+    // Normalise profile
+    const normProfile = {
+      phone_code: (phone_code || '').trim(),
+      birthdate:       (profile?.birthdate       || '').trim(),
+      gender:          (profile?.gender          || '').trim(),
+      marital_status:  (profile?.marital_status  || '').trim(),
+      occupation:      (profile?.occupation      || '').trim(),
+      education:       (profile?.education       || '').trim(),
+      followers_range: (profile?.followers_range || followers || '').trim(),
+      bio:             (profile?.bio             || message   || '').trim(),
+      niche:     Array.isArray(profile?.niche)     ? profile.niche     : [],
+      skills:    Array.isArray(profile?.skills)    ? profile.skills    : [],
+      languages: Array.isArray(profile?.languages) ? profile.languages : [],
+    }
+
     const { rows } = await pool.query(
       `INSERT INTO collab_applications
-         (name, email, phone, instagram, youtube, facebook, followers, message, agree_terms,
-          status, unique_user_id, collab_joined_at, platforms, address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10,NOW(),$11,$12)
+         (name, email, phone, phone_code, instagram, youtube, facebook, followers, message, agree_terms,
+          status, unique_user_id, collab_joined_at, platforms, address, profile)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',$11,NOW(),$12,$13,$14)
        RETURNING id, email, status, created_at, instagram`,
       [
-        name, email, phone, storedInstagram,
+        name, email, phone, normProfile.phone_code, storedInstagram,
         (youtube || '').trim() || null, (facebook || '').trim() || null,
-        followers || null, message || null, !!agreeTerms, uniqueUserId,
-        JSON.stringify(normPlatforms), JSON.stringify(normAddress),
+        normProfile.followers_range || null, normProfile.bio || null, !!agreeTerms,
+        uniqueUserId,
+        JSON.stringify(normPlatforms), JSON.stringify(normAddress), JSON.stringify(normProfile),
       ]
     )
 
     return res.status(201).json({
-      application: { ...rows[0], instagram_handles: handles, platforms: normPlatforms, address: normAddress },
+      application: { ...rows[0], instagram_handles: handles, platforms: normPlatforms, address: normAddress, profile: normProfile },
       message: 'Application submitted successfully.',
     })
   } catch (err) {
@@ -456,6 +474,8 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
     const {
       status = 'all', page = 1, limit = 20, search = '',
       platform = '', city = '', state = '', country = '',
+      gender = '', niche = '', education = '', occupation = '', language = '',
+      followers_range = '',
     } = req.query as Record<string, string>
     const offset = (Number(page) - 1) * Number(limit)
     const clauses: string[] = []
@@ -498,6 +518,32 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
       clauses.push(`ca.address->>'country' ILIKE $${params.length}`)
     }
 
+    // Profile filters
+    if (gender.trim()) {
+      params.push(gender.trim())
+      clauses.push(`ca.profile->>'gender' = $${params.length}`)
+    }
+    if (education.trim()) {
+      params.push(education.trim())
+      clauses.push(`ca.profile->>'education' = $${params.length}`)
+    }
+    if (occupation.trim()) {
+      params.push(occupation.trim())
+      clauses.push(`ca.profile->>'occupation' = $${params.length}`)
+    }
+    if (followers_range.trim()) {
+      params.push(followers_range.trim())
+      clauses.push(`ca.profile->>'followers_range' = $${params.length}`)
+    }
+    if (niche.trim()) {
+      params.push(JSON.stringify([niche.trim()]))
+      clauses.push(`ca.profile->'niche' @> $${params.length}::jsonb`)
+    }
+    if (language.trim()) {
+      params.push(JSON.stringify([language.trim()]))
+      clauses.push(`ca.profile->'languages' @> $${params.length}::jsonb`)
+    }
+
     const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
 
     params.push(Number(limit))
@@ -523,6 +569,7 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
       instagram_handles: parseInstagramHandles(r.instagram),
       platforms: Array.isArray(r.platforms) ? r.platforms : [],
       address: r.address && typeof r.address === 'object' ? r.address : {},
+      profile: r.profile && typeof r.profile === 'object' ? r.profile : {},
     }))
 
     const countParams = params.slice(0, params.length - 2)

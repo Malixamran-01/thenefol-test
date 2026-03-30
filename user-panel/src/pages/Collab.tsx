@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { State, City } from 'country-state-city'
+import { Country, State, City } from 'country-state-city'
 import {
   ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, Sparkles, TrendingUp,
@@ -84,8 +84,24 @@ export default function Collab() {
   const [submittingSelected, setSubmittingSelected] = useState(false)
   const [submitResult, setSubmitResult] = useState<{ success?: string; error?: string } | null>(null)
 
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', followers: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '' })
   const [showTCModal, setShowTCModal] = useState(false)
+
+  // Extended profile fields
+  const [profile, setProfile] = useState({
+    phone_code: '+91', birthdate: '', gender: '', marital_status: '',
+    occupation: '', education: '', followers_range: '', bio: '',
+  })
+  const [niche, setNiche] = useState<string[]>([])
+  const [skills, setSkills] = useState<string[]>([])
+  const [languages, setLanguages] = useState<string[]>([])
+
+  // Profile chip options
+  const NICHE_OPTIONS = ['Beauty','Fashion','Lifestyle','Travel','Food','Fitness','Gaming','Tech','Music','Comedy','Education','Business','Art','Sports','Finance','Other']
+  const SKILL_OPTIONS = ['Video Editing','Photography','Graphic Design','Copywriting','Voice Over','Acting','Dancing','Singing','Cooking','Review Writing','Live Streaming','Podcasting']
+  const LANGUAGE_OPTIONS = ['English','Hindi','Bengali','Tamil','Telugu','Marathi','Gujarati','Kannada','Malayalam','Punjabi','Urdu','Odia','Arabic','French','Spanish','German','Russian','Portuguese','Japanese','Korean','Chinese']
+  const toggleChip = (list: string[], setList: (v: string[]) => void, val: string) =>
+    setList(list.includes(val) ? list.filter((x) => x !== val) : [...list, val])
 
   // Platform + address state
   type PlatformKey = 'instagram' | 'youtube' | 'x' | 'facebook' | 'linkedin' | 'telegram' | 'snapchat' | 'reddit' | 'vk' | 'quora' | 'other'
@@ -108,13 +124,15 @@ export default function Collab() {
       Object.keys(PLATFORM_CONFIG).map((k) => [k, { checked: k === 'instagram', links: [''] }])
     ) as Record<PlatformKey, PlatformState>
   )
+  const [selectedCountryCode, setSelectedCountryCode] = useState('IN')
   const [selectedStateCode, setSelectedStateCode] = useState('')
-  const [address, setAddress] = useState({ state: '', city: '', pincode: '' })
+  const [address, setAddress] = useState({ country: 'India', state: '', city: '', pincode: '' })
 
-  const indianStates = useMemo(() => State.getStatesOfCountry('IN'), [])
-  const indianCities = useMemo(
-    () => selectedStateCode ? City.getCitiesOfState('IN', selectedStateCode) : [],
-    [selectedStateCode]
+  const allCountries = useMemo(() => Country.getAllCountries(), [])
+  const countryStates = useMemo(() => State.getStatesOfCountry(selectedCountryCode), [selectedCountryCode])
+  const stateCities = useMemo(
+    () => selectedStateCode ? City.getCitiesOfState(selectedCountryCode, selectedStateCode) : [],
+    [selectedCountryCode, selectedStateCode]
   )
 
   const addPlatformLink = (key: PlatformKey) =>
@@ -196,9 +214,10 @@ export default function Collab() {
       method: 'POST', headers: authHeaders(),
       body: JSON.stringify({
         ...formData, agreeTerms: true,
+        phone_code: profile.phone_code,
         instagram: handles[0] || '', instagram_handles: handles,
-        platforms: selectedPlatforms,
-        address: { ...address, country: 'India' },
+        platforms: selectedPlatforms, address,
+        profile: { ...profile, niche, skills, languages },
       }),
     })
     const data = await res.json().catch(() => ({}))
@@ -374,21 +393,41 @@ export default function Collab() {
                 <h2 className="text-xl font-bold text-gray-900 mb-1" style={{ fontFamily: 'var(--font-heading-family)' }}>Apply to join</h2>
                 <p className="text-sm text-gray-500 mb-7">Fill in your details and we'll review your application within 2-3 days.</p>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    {[
-                      { label: 'Full name', name: 'name', type: 'text', placeholder: 'Your name' },
-                      { label: 'Email', name: 'email', type: 'email', placeholder: 'you@email.com' },
-                      { label: 'Phone', name: 'phone', type: 'tel', placeholder: '+91 XXXXX XXXXX' },
-                    ].map((f) => (
-                      <div key={f.name} className={f.name === 'name' ? 'sm:col-span-2' : ''}>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{f.label}</label>
-                        <input type={f.type} name={f.name} value={(formData as any)[f.name]} onChange={handleInputChange}
-                          placeholder={f.placeholder} required
+                <form onSubmit={handleSubmit} className="space-y-7">
+
+                  {/* ── Section helper ──────────────────────────────────── */}
+                  {/* SECTION: Basic Info */}
+                  <div className="space-y-4">
+                    <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400">Basic Info <span className="text-red-400 ml-1">required</span></p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Full Name</label>
+                        <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Your full name" required
                           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
                       </div>
-                    ))}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Email</label>
+                        <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="you@email.com" required
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Phone</label>
+                        <div className="flex gap-2">
+                          <select value={profile.phone_code} onChange={(e) => setProfile((p) => ({ ...p, phone_code: e.target.value }))}
+                            className="w-28 flex-shrink-0 rounded-xl border border-gray-200 px-2 py-3 text-sm text-gray-700 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
+                            {allCountries.map((c) => (
+                              <option key={c.isoCode} value={`+${c.phonecode}`}>{c.flag} +{c.phonecode}</option>
+                            ))}
+                          </select>
+                          <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone number" required
+                            className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
+                  <div className="border-t border-gray-100" />
 
                   {/* Platforms */}
                   <div>
@@ -442,60 +481,170 @@ export default function Collab() {
                     </div>
                   </div>
 
-                  {/* Address */}
-                  <div>
-                    <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                      <MapPin className="h-3.5 w-3.5" /> Location <span className="normal-case font-normal text-gray-400">(India)</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* State dropdown */}
-                      <div className="sm:col-span-1">
-                        <select
-                          value={selectedStateCode}
-                          onChange={(e) => {
-                            const code = e.target.value
-                            const name = indianStates.find((s) => s.isoCode === code)?.name || ''
-                            setSelectedStateCode(code)
-                            setAddress((a) => ({ ...a, state: name, city: '' }))
-                          }}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all appearance-none"
-                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
-                        >
-                          <option value="">Select State / UT</option>
-                          {indianStates.map((s) => (
-                            <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
+                  {/* ── SECTION: Personal Details ────────────────────── */}
+                  <div className="space-y-4">
+                    <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400">Personal Details <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Date of Birth</label>
+                        <input type="date" value={profile.birthdate} onChange={(e) => setProfile((p) => ({ ...p, birthdate: e.target.value }))}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
+                        <select value={profile.gender} onChange={(e) => setProfile((p) => ({ ...p, gender: e.target.value }))}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                          <option value="">Prefer not to say</option>
+                          {['Male','Female','Non-binary','Other'].map((g) => <option key={g} value={g.toLowerCase()}>{g}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Marital Status</label>
+                        <select value={profile.marital_status} onChange={(e) => setProfile((p) => ({ ...p, marital_status: e.target.value }))}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                          <option value="">Select</option>
+                          {['Single','Married','Divorced','Widowed','Other'].map((s) => <option key={s} value={s.toLowerCase()}>{s}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Education</label>
+                        <select value={profile.education} onChange={(e) => setProfile((p) => ({ ...p, education: e.target.value }))}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                          <option value="">Select</option>
+                          {['High School','Diploma','Bachelor\'s','Master\'s','PhD','Other'].map((e) => <option key={e} value={e.toLowerCase().replace(/'/g, '')}>{e}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Occupation</label>
+                        <select value={profile.occupation} onChange={(e) => setProfile((p) => ({ ...p, occupation: e.target.value }))}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                          <option value="">Select</option>
+                          {['Student','Full-time Creator','Freelancer','Employee','Business Owner','Other'].map((o) => <option key={o} value={o.toLowerCase().replace(/-/g, '_')}>{o}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Follower Range</label>
+                        <select value={profile.followers_range} onChange={(e) => setProfile((p) => ({ ...p, followers_range: e.target.value }))}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                          <option value="">Select total followers</option>
+                          {[['under_1k','Under 1K'],['1k_10k','1K – 10K'],['10k_50k','10K – 50K'],['50k_100k','50K – 100K'],['100k_500k','100K – 500K'],['500k_plus','500K+']].map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
                           ))}
                         </select>
                       </div>
+                    </div>
 
-                      {/* City dropdown */}
-                      <div className="sm:col-span-1">
-                        <select
-                          value={address.city}
-                          disabled={!selectedStateCode}
-                          onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all appearance-none disabled:text-gray-400 disabled:bg-gray-50"
-                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
-                        >
-                          <option value="">{selectedStateCode ? 'Select City / District' : 'Select state first'}</option>
-                          {indianCities.map((c) => (
-                            <option key={c.name} value={c.name}>{c.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Pincode */}
-                      <input type="text" placeholder="PIN Code" value={address.pincode}
-                        onChange={(e) => setAddress((a) => ({ ...a, pincode: e.target.value }))}
-                        maxLength={6}
-                        className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
-
-                      {/* Country — fixed */}
-                      <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-400 flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5" /> India
+                    {/* Languages */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Languages</label>
+                      <div className="flex flex-wrap gap-2">
+                        {LANGUAGE_OPTIONS.map((l) => (
+                          <button key={l} type="button" onClick={() => toggleChip(languages, setLanguages, l)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${languages.includes(l) ? 'bg-[#4B97C9] text-white border-[#4B97C9]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                            {l}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
+
+                  <div className="border-t border-gray-100" />
+
+                  {/* ── SECTION: Creator Profile ─────────────────────── */}
+                  <div className="space-y-4">
+                    <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400">Creator Profile <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
+                    {/* Niche */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Content Niche</label>
+                      <div className="flex flex-wrap gap-2">
+                        {NICHE_OPTIONS.map((n) => (
+                          <button key={n} type="button" onClick={() => toggleChip(niche, setNiche, n)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${niche.includes(n) ? 'bg-[#E1306C] text-white border-[#E1306C]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Skills */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Skills</label>
+                      <div className="flex flex-wrap gap-2">
+                        {SKILL_OPTIONS.map((s) => (
+                          <button key={s} type="button" onClick={() => toggleChip(skills, setSkills, s)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${skills.includes(s) ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Bio */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Short Bio</label>
+                      <textarea value={profile.bio} onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
+                        placeholder="Tell us about yourself and your content style…" rows={3}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all resize-none" />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100" />
+
+                  {/* ── SECTION: Location ───────────────────────────── */}
+                  <div className="space-y-4">
+                    <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400 flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Location</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Country */}
+                      <div className="col-span-2">
+                        <select value={selectedCountryCode} onChange={(e) => {
+                          const code = e.target.value
+                          const cName = allCountries.find((c) => c.isoCode === code)?.name || ''
+                          setSelectedCountryCode(code)
+                          setSelectedStateCode('')
+                          setAddress((a) => ({ ...a, country: cName, state: '', city: '' }))
+                        }} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}>
+                          <option value="">Select Country</option>
+                          {allCountries.map((c) => <option key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</option>)}
+                        </select>
+                      </div>
+                      {/* State */}
+                      <select value={selectedStateCode} disabled={!selectedCountryCode}
+                        onChange={(e) => {
+                          const code = e.target.value
+                          const sName = countryStates.find((s) => s.isoCode === code)?.name || ''
+                          setSelectedStateCode(code)
+                          setAddress((a) => ({ ...a, state: sName, city: '' }))
+                        }} className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none disabled:text-gray-400 disabled:bg-gray-50"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                        <option value="">{countryStates.length ? 'State / Province' : 'No states available'}</option>
+                        {countryStates.map((s) => <option key={s.isoCode} value={s.isoCode}>{s.name}</option>)}
+                      </select>
+                      {/* City */}
+                      <select value={address.city} disabled={!selectedStateCode || stateCities.length === 0}
+                        onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
+                        className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none disabled:text-gray-400 disabled:bg-gray-50"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                        <option value="">{selectedStateCode ? (stateCities.length ? 'City / District' : 'Enter city below') : 'Select state first'}</option>
+                        {stateCities.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      </select>
+                      {/* City text fallback if no cities listed */}
+                      {selectedStateCode && stateCities.length === 0 && (
+                        <input type="text" placeholder="Enter your city" value={address.city}
+                          onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
+                          className="col-span-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] transition-all" />
+                      )}
+                      {/* Postal code */}
+                      <input type="text" placeholder="Postal / ZIP / PIN Code" value={address.pincode}
+                        onChange={(e) => setAddress((a) => ({ ...a, pincode: e.target.value }))}
+                        className="col-span-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] transition-all" />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100" />
 
                   <button type="submit"
                     className="w-full rounded-xl py-3.5 font-semibold text-sm text-white transition-all hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"

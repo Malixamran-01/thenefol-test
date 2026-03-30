@@ -913,6 +913,22 @@ async function runMigration() {
           ALTER TABLE collab_applications ADD COLUMN address JSONB DEFAULT '{}'::jsonb;
         END IF;
 
+        -- profile: extended creator profile JSONB
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'profile'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN profile JSONB DEFAULT '{}'::jsonb;
+        END IF;
+
+        -- phone_code: country dial code
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_applications' AND column_name = 'phone_code'
+        ) THEN
+          ALTER TABLE collab_applications ADD COLUMN phone_code TEXT;
+        END IF;
+
       END $$;
     `);
     

@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film,
   Trash2, Star, Wifi, WifiOff, ChevronDown, ChevronUp, Edit2, Save, X, AlertCircle,
-  Youtube, Twitter, Facebook, Globe, Link, MapPin, Filter, ExternalLink, Linkedin, Send, Ghost
+  Youtube, Twitter, Facebook, Globe, Link, MapPin, Filter, ExternalLink, Linkedin, Send, Ghost,
+  ChevronRight
 } from 'lucide-react'
+import { Country, State } from 'country-state-city'
 import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface Reel {
@@ -50,6 +52,11 @@ interface CollabApplication {
   reels?: Reel[]
   platforms?: PlatformEntry[]
   address?: AddressEntry
+  profile?: {
+    phone_code?: string; birthdate?: string; gender?: string; marital_status?: string
+    occupation?: string; education?: string; followers_range?: string; bio?: string
+    niche?: string[]; skills?: string[]; languages?: string[]
+  }
 }
 
 const PLATFORM_META: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
@@ -119,9 +126,26 @@ export default function CollabRequests() {
   // Creator database filters
   const [showFilters, setShowFilters] = useState(false)
   const [platformFilters, setPlatformFilters] = useState<Set<string>>(new Set())
+  const [filterCountryCode, setFilterCountryCode] = useState('')
+  const [filterStateCode, setFilterStateCode] = useState('')
   const [cityFilter, setCityFilter] = useState('')
-  const [stateFilter, setStateFilter] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
+  const [stateFilter, setStateFilter] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
+  const [nicheFilter, setNicheFilter] = useState('')
+  const [educationFilter, setEducationFilter] = useState('')
+  const [occupationFilter, setOccupationFilter] = useState('')
+  const [languageFilter, setLanguageFilter] = useState('')
+  const [followersRangeFilter, setFollowersRangeFilter] = useState('')
+
+  const allCountries = useMemo(() => Country.getAllCountries(), [])
+  const filterStates = useMemo(() => filterCountryCode ? State.getStatesOfCountry(filterCountryCode) : [], [filterCountryCode])
+
+  const NICHE_OPTIONS = ['Beauty','Fashion','Lifestyle','Travel','Food','Fitness','Gaming','Tech','Music','Comedy','Education','Business','Art','Sports','Finance']
+  const LANGUAGE_OPTIONS = ['English','Hindi','Bengali','Tamil','Telugu','Marathi','Gujarati','Kannada','Malayalam','Punjabi','Urdu','Arabic','French','Spanish','German','Russian']
+  const FOLLOWERS_RANGES = [['under_1k','Under 1K'],['1k_10k','1K–10K'],['10k_50k','10K–50K'],['50k_100k','50K–100K'],['100k_500k','100K–500K'],['500k_plus','500K+']]
+
+  const hasActiveFilters = platformFilters.size > 0 || cityFilter || stateFilter || countryFilter || genderFilter || nicheFilter || educationFilter || occupationFilter || languageFilter || followersRangeFilter
 
   const apiBase = getApiBaseUrl()
   const authHeaders = useMemo(() => {
@@ -139,9 +163,15 @@ export default function CollabRequests() {
       setLoading(true)
       const params = new URLSearchParams({ status: 'all', limit: '500' })
       if (platformFilters.size > 0) params.set('platform', Array.from(platformFilters).join(','))
-      if (cityFilter.trim())    params.set('city',    cityFilter.trim())
-      if (stateFilter.trim())   params.set('state',   stateFilter.trim())
-      if (countryFilter.trim()) params.set('country', countryFilter.trim())
+      if (cityFilter.trim())       params.set('city',            cityFilter.trim())
+      if (stateFilter.trim())      params.set('state',           stateFilter.trim())
+      if (countryFilter.trim())    params.set('country',         countryFilter.trim())
+      if (genderFilter)            params.set('gender',          genderFilter)
+      if (nicheFilter)             params.set('niche',           nicheFilter)
+      if (educationFilter)         params.set('education',       educationFilter)
+      if (occupationFilter)        params.set('occupation',      occupationFilter)
+      if (languageFilter)          params.set('language',        languageFilter)
+      if (followersRangeFilter)    params.set('followers_range', followersRangeFilter)
       const res = await fetch(`${apiBase}/admin/collab-applications?${params}`, { headers: authHeaders })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.message || 'Failed to load')
@@ -153,7 +183,7 @@ export default function CollabRequests() {
     }
   }
 
-  useEffect(() => { fetchItems() }, [platformFilters, cityFilter, stateFilter, countryFilter])
+  useEffect(() => { fetchItems() }, [platformFilters, cityFilter, stateFilter, countryFilter, genderFilter, nicheFilter, educationFilter, occupationFilter, languageFilter, followersRangeFilter])
 
   const counts = {
     pending:  allItems.filter((i) => i.status === 'pending').length,
@@ -347,13 +377,11 @@ export default function CollabRequests() {
               {tab.label}
             </button>
           ))}
-          <button onClick={() => setShowFilters((v) => !v)}
+            <button onClick={() => setShowFilters((v) => !v)}
             className={`ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-colors ${showFilters ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
             <Filter className="h-3.5 w-3.5" />
-            Creator Filters
-            {(platformFilters.size > 0 || cityFilter || stateFilter || countryFilter) && (
-              <span className="ml-1 w-2 h-2 rounded-full bg-indigo-500 inline-block" />
-            )}
+            Filters
+            {hasActiveFilters && <span className="ml-1 w-2 h-2 rounded-full bg-indigo-500 inline-block" />}
           </button>
         </div>
 
@@ -363,55 +391,116 @@ export default function CollabRequests() {
             placeholder="Search name, email, instagram..." className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm" />
         </div>
 
-        {/* Creator database filters */}
+        {/* Comprehensive filter panel */}
         {showFilters && (
-          <div className="border-t pt-3 space-y-3">
+          <div className="border-t pt-4 space-y-5">
+
+            {/* Platforms */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Filter by platform</p>
-              <div className="flex flex-wrap gap-2">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Platform</p>
+              <div className="flex flex-wrap gap-1.5">
                 {ALL_PLATFORMS.map((p) => {
                   const meta = PLATFORM_META[p] || PLATFORM_META.other
                   const active = platformFilters.has(p)
                   return (
-                    <button key={p} onClick={() => setPlatformFilters((prev) => {
-                      const next = new Set(prev); active ? next.delete(p) : next.add(p); return next
-                    })}
+                    <button key={p} onClick={() => setPlatformFilters((prev) => { const next = new Set(prev); active ? next.delete(p) : next.add(p); return next })}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
-                      style={{
-                        borderColor: active ? meta.color : '#e5e7eb',
-                        backgroundColor: active ? meta.bg : 'white',
-                        color: active ? meta.color : '#6b7280',
-                      }}>
+                      style={{ borderColor: active ? meta.color : '#e5e7eb', backgroundColor: active ? meta.bg : 'white', color: active ? meta.color : '#6b7280' }}>
                       {meta.icon} {p}
                     </button>
                   )
                 })}
-                {platformFilters.size > 0 && (
-                  <button onClick={() => setPlatformFilters(new Set())} className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
-                )}
               </div>
             </div>
+
+            {/* Location */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Filter by location</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Location</p>
               <div className="grid grid-cols-3 gap-2">
-                {[
-                  { placeholder: 'City',    value: cityFilter,    set: setCityFilter },
-                  { placeholder: 'State',   value: stateFilter,   set: setStateFilter },
-                  { placeholder: 'Country', value: countryFilter, set: setCountryFilter },
-                ].map((f) => (
-                  <div key={f.placeholder} className="relative">
-                    <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                    <input value={f.value} onChange={(e) => f.set(e.target.value)}
-                      placeholder={f.placeholder}
-                      className="w-full pl-7 pr-3 py-1.5 border rounded-lg text-xs text-gray-700 focus:outline-none focus:border-indigo-300" />
-                  </div>
-                ))}
+                <select value={filterCountryCode} onChange={(e) => {
+                  const code = e.target.value
+                  const name = allCountries.find((c) => c.isoCode === code)?.name || ''
+                  setFilterCountryCode(code); setFilterStateCode(''); setCountryFilter(name); setStateFilter(''); setCityFilter('')
+                }} className="rounded-lg border text-xs px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-300 bg-white">
+                  <option value="">All Countries</option>
+                  {allCountries.map((c) => <option key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</option>)}
+                </select>
+                <select value={filterStateCode} disabled={!filterCountryCode} onChange={(e) => {
+                  const code = e.target.value
+                  const name = filterStates.find((s) => s.isoCode === code)?.name || ''
+                  setFilterStateCode(code); setStateFilter(name); setCityFilter('')
+                }} className="rounded-lg border text-xs px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-300 bg-white disabled:text-gray-400">
+                  <option value="">All States</option>
+                  {filterStates.map((s) => <option key={s.isoCode} value={s.isoCode}>{s.name}</option>)}
+                </select>
+                <div className="relative">
+                  <MapPin className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                  <input value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} placeholder="City"
+                    className="w-full pl-6 pr-2 py-1.5 border rounded-lg text-xs text-gray-700 focus:outline-none focus:border-indigo-300" />
+                </div>
               </div>
             </div>
-            {(platformFilters.size > 0 || cityFilter || stateFilter || countryFilter) && (
-              <button onClick={() => { setPlatformFilters(new Set()); setCityFilter(''); setStateFilter(''); setCountryFilter('') }}
-                className="text-xs text-red-500 hover:text-red-700 font-medium">
-                Clear all filters
+
+            {/* Profile filters */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Gender</p>
+                <select value={genderFilter} onChange={(e) => setGenderFilter(e.target.value)}
+                  className="w-full rounded-lg border text-xs px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-300 bg-white">
+                  <option value="">Any</option>
+                  {['male','female','non-binary','other'].map((g) => <option key={g} value={g}>{g.charAt(0).toUpperCase()+g.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Followers</p>
+                <select value={followersRangeFilter} onChange={(e) => setFollowersRangeFilter(e.target.value)}
+                  className="w-full rounded-lg border text-xs px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-300 bg-white">
+                  <option value="">Any range</option>
+                  {FOLLOWERS_RANGES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Niche</p>
+                <select value={nicheFilter} onChange={(e) => setNicheFilter(e.target.value)}
+                  className="w-full rounded-lg border text-xs px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-300 bg-white">
+                  <option value="">Any</option>
+                  {NICHE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Language</p>
+                <select value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value)}
+                  className="w-full rounded-lg border text-xs px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-300 bg-white">
+                  <option value="">Any</option>
+                  {LANGUAGE_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Education</p>
+                <select value={educationFilter} onChange={(e) => setEducationFilter(e.target.value)}
+                  className="w-full rounded-lg border text-xs px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-300 bg-white">
+                  <option value="">Any</option>
+                  {["high school","diploma","bachelors","masters","phd","other"].map((e) => <option key={e} value={e}>{e.charAt(0).toUpperCase()+e.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Occupation</p>
+                <select value={occupationFilter} onChange={(e) => setOccupationFilter(e.target.value)}
+                  className="w-full rounded-lg border text-xs px-2 py-1.5 text-gray-700 focus:outline-none focus:border-indigo-300 bg-white">
+                  <option value="">Any</option>
+                  {["student","full_time_creator","freelancer","employee","business_owner","other"].map((o) => <option key={o} value={o}>{o.replace(/_/g,' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {hasActiveFilters && (
+              <button onClick={() => {
+                setPlatformFilters(new Set()); setFilterCountryCode(''); setFilterStateCode('')
+                setCityFilter(''); setStateFilter(''); setCountryFilter('')
+                setGenderFilter(''); setNicheFilter(''); setEducationFilter('')
+                setOccupationFilter(''); setLanguageFilter(''); setFollowersRangeFilter('')
+              }} className="text-xs text-red-500 hover:text-red-700 font-semibold">
+                ✕ Clear all filters
               </button>
             )}
           </div>
@@ -625,6 +714,51 @@ export default function CollabRequests() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {(selected.platforms || []).map((p, i) => <PlatformBadge key={i} p={p} />)}
                   </div>
+                </div>
+              )}
+
+              {/* Profile info */}
+              {selected.profile && Object.values(selected.profile).some((v) => v && (Array.isArray(v) ? v.length > 0 : true)) && (
+                <div style={{ backgroundColor: '#f8fafc', borderRadius: 14, padding: '16px 18px', border: '1px solid #e2e8f0' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Creator Profile</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                    {selected.profile.birthdate && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DOB</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{new Date(selected.profile.birthdate).toLocaleDateString()}</p></div>}
+                    {selected.profile.gender && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gender</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{selected.profile.gender}</p></div>}
+                    {selected.profile.marital_status && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Marital</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{selected.profile.marital_status}</p></div>}
+                    {selected.profile.occupation && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Occupation</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{selected.profile.occupation.replace(/_/g,' ')}</p></div>}
+                    {selected.profile.education && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Education</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{selected.profile.education}</p></div>}
+                    {selected.profile.followers_range && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Followers</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{selected.profile.followers_range.replace(/_/g,' ').toUpperCase()}</p></div>}
+                  </div>
+                  {(selected.profile.niche || []).length > 0 && (
+                    <div style={{ marginTop: 10 }}>
+                      <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Niche</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                        {(selected.profile.niche || []).map((n) => <span key={n} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#fce7f3', color: '#db2777', border: '1px solid #fbcfe8' }}>{n}</span>)}
+                      </div>
+                    </div>
+                  )}
+                  {(selected.profile.languages || []).length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Languages</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                        {(selected.profile.languages || []).map((l) => <span key={l} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>{l}</span>)}
+                      </div>
+                    </div>
+                  )}
+                  {(selected.profile.skills || []).length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skills</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                        {(selected.profile.skills || []).map((s) => <span key={s} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0' }}>{s}</span>)}
+                      </div>
+                    </div>
+                  )}
+                  {selected.profile.bio && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bio</span>
+                      <p style={{ margin: '4px 0 0', fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{selected.profile.bio}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
