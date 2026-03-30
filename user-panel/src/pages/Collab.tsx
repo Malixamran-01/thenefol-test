@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, Sparkles, TrendingUp,
-  Camera, Zap, ChevronRight, Star
+  Clapperboard, Zap, ChevronRight, Star, Award
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -218,17 +218,15 @@ export default function Collab() {
   // ── Not authenticated ──────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #0e2730 0%, #1a4a5a 50%, #0e2730 100%)' }}>
+      <main className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--arctic-blue-background, #F4F9F9)' }}>
         <div className="text-center max-w-md">
-          <div className="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)' }}>
-            <Camera className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'var(--font-heading-family)' }}>Creator Collab</h1>
-          <p className="text-white/70 mb-8">Sign in to join our creator program and track your affiliate progress.</p>
+          <Clapperboard className="h-10 w-10 mx-auto mb-6" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+          <h1 className="text-3xl font-light mb-3 tracking-[0.12em]" style={{ fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}>Creator Collab</h1>
+          <p className="text-sm font-light tracking-wide mb-8" style={{ color: '#888', letterSpacing: '0.04em' }}>Sign in to join our creator program and track your affiliate progress.</p>
           <a href="#/user/login" onClick={() => sessionStorage.setItem('post_login_redirect', '#/user/collab')}
-            className="inline-flex items-center gap-2 rounded-xl px-7 py-3.5 font-semibold text-sm transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)', color: '#fff' }}>
-            Sign in to continue <ChevronRight className="h-4 w-4" />
+            className="inline-flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-light tracking-widest uppercase transition-opacity hover:opacity-80"
+            style={{ backgroundColor: 'var(--arctic-blue-primary, #4B97C9)', color: '#fff', letterSpacing: '0.1em' }}>
+            Sign in <ChevronRight className="h-3.5 w-3.5" />
           </a>
         </div>
       </main>
@@ -236,49 +234,47 @@ export default function Collab() {
   }
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: '#f5f4f0', fontFamily: 'var(--font-body-family)' }}>
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--arctic-blue-background, #F4F9F9)', fontFamily: 'var(--font-body-family)' }}>
 
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0e2730 0%, #1c4a5c 60%, #0e2730 100%)' }}>
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: 'radial-gradient(circle at 20% 50%, #4B97C9 0%, transparent 50%), radial-gradient(circle at 80% 20%, #E1306C 0%, transparent 40%)',
-        }} />
-        <div className="relative max-w-5xl mx-auto px-4 py-10 sm:py-14">
-          <a href="#/user/" className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors mb-8">
-            <ArrowLeft className="h-3.5 w-3.5" /> Back
+      <div className="bg-white border-b" style={{ borderColor: '#eee' }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+          <a href="#/user/" className="inline-flex items-center gap-1.5 text-xs font-light tracking-widest uppercase mb-10 transition-colors hover:opacity-60"
+            style={{ color: '#aaa', letterSpacing: '0.1em' }}>
+            <ArrowLeft className="h-3 w-3" /> Back
           </a>
 
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(75,151,201,0.3)' }}>
-                  <Camera className="h-5 w-5 text-[#4B97C9]" />
-                </div>
-                <div>
-                  <p className="text-white/50 text-xs tracking-widest uppercase">NEFOL</p>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight" style={{ fontFamily: 'var(--font-heading-family)' }}>
-                    Creator Collab Program
-                  </h1>
-                </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border"
+                style={{ borderColor: '#e8f4fb', backgroundColor: '#f0f8fd' }}>
+                <Clapperboard className="h-5 w-5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
               </div>
-              <p className="text-white/60 text-sm max-w-md leading-relaxed">
-                Post reels featuring NEFOL, sync from Instagram, and unlock Affiliate status at <strong className="text-white/80">10K views</strong> + <strong className="text-white/80">500 likes</strong>.
-              </p>
+              <div>
+                <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-1" style={{ color: '#bbb' }}>Nefol</p>
+                <h1 className="text-2xl sm:text-3xl font-light tracking-[0.12em]"
+                  style={{ fontFamily: 'var(--font-heading-family)', color: '#1a1a1a', letterSpacing: '0.12em' }}>
+                  Creator Collab Program
+                </h1>
+                <p className="text-xs font-light tracking-wide mt-1.5" style={{ color: '#999', letterSpacing: '0.04em' }}>
+                  Post reels featuring NEFOL · Reach 10K views &amp; 500 likes · Unlock Affiliate
+                </p>
+              </div>
             </div>
 
             {/* Status pill */}
             {submitted && status && (
               <div className="flex-shrink-0">
-                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
-                  affiliateUnlocked ? 'bg-amber-400 text-amber-900'
-                  : status.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : status.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                  : 'bg-white/10 text-white/70 border border-white/20'
+                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium tracking-wide ${
+                  affiliateUnlocked ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                  : status.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : status.status === 'rejected' ? 'bg-red-50 text-red-600 border border-red-200'
+                  : 'bg-gray-50 text-gray-500 border border-gray-200'
                 }`}>
-                  {affiliateUnlocked ? <><Star className="h-3.5 w-3.5" /> Affiliate Unlocked!</>
+                  {affiliateUnlocked ? <><Award className="h-3.5 w-3.5" /> Affiliate Unlocked</>
                     : status.status === 'approved' ? <><CheckCircle className="h-3.5 w-3.5" /> Approved</>
-                    : status.status === 'rejected' ? <><X className="h-3.5 w-3.5" /> Rejected</>
-                    : <><Loader2 className="h-3.5 w-3.5" /> Pending Review</>}
+                    : status.status === 'rejected' ? <><X className="h-3.5 w-3.5" /> Not Approved</>
+                    : <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Pending Review</>}
                 </span>
               </div>
             )}
@@ -299,7 +295,7 @@ export default function Collab() {
               {/* Requirements */}
               <div className="grid grid-cols-3 gap-3 mb-8">
                 {[
-                  { icon: <Camera className="h-4 w-4" />, label: 'Post after joining', color: '#4B97C9' },
+                  { icon: <Clapperboard className="h-4 w-4" />, label: 'Post after joining', color: '#4B97C9' },
                   { icon: <Zap className="h-4 w-4" />, label: 'Include #nefol', color: '#E1306C' },
                   { icon: <TrendingUp className="h-4 w-4" />, label: '10K views + 500 likes', color: '#10b981' },
                 ].map((r) => (
@@ -698,7 +694,7 @@ export default function Collab() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Eligibility rules</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
-                    { icon: <Camera className="h-4 w-4 text-[#4B97C9]" />, title: 'Timing', desc: 'Reel must be posted after your collab approval date', bg: '#eff8ff' },
+                    { icon: <Clapperboard className="h-4 w-4 text-[#4B97C9]" />, title: 'Timing', desc: 'Reel must be posted after your collab approval date', bg: '#eff8ff' },
                     { icon: <Zap className="h-4 w-4 text-[#E1306C]" />, title: 'Caption', desc: 'Must include #nefol or #neföl in the caption or hashtags', bg: '#fff0f5' },
                     { icon: <TrendingUp className="h-4 w-4 text-emerald-600" />, title: 'Target', desc: '10,000 views + 500 likes unlocks Affiliate status', bg: '#f0fdf4' },
                   ].map((r) => (
