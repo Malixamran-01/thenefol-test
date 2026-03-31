@@ -198,6 +198,7 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
     const BASE_SELECT = `
       SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
              ca.instagram_connected, ca.ig_username, ca.ig_user_id, ca.collab_joined_at,
+             ca.platforms,
              (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id AND caption_ok = true AND date_ok = true AND COALESCE(content_status,'auto') NOT IN ('rejected','flagged')) AS total_views,
              (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id AND caption_ok = true AND date_ok = true AND COALESCE(content_status,'auto') NOT IN ('rejected','flagged')) AS total_likes
       FROM collab_applications ca
@@ -258,6 +259,13 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
       platformConnections = pcRes.rows
     } catch (_) { /* table may not exist yet on older DBs */ }
 
+    const rawPlatforms = app.platforms
+    const platformsList = Array.isArray(rawPlatforms)
+      ? rawPlatforms
+      : typeof rawPlatforms === 'string'
+        ? (() => { try { return JSON.parse(rawPlatforms) } catch { return [] } })()
+        : []
+
     return res.json({
       id: app.id,
       email: app.email,
@@ -267,6 +275,7 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
       ig_username: app.ig_username || null,
       ig_user_id: app.ig_user_id || null,
       collab_joined_at: app.collab_joined_at || app.created_at,
+      platforms: platformsList,
       reels: reelsRes.rows,
       platform_connections: platformConnections,
       status: app.status,

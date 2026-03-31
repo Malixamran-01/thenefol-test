@@ -2,12 +2,65 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Country, State, City } from 'country-state-city'
 import {
   ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink,
-  RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, Sparkles, TrendingUp,
+  RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, TrendingUp,
   Clapperboard, Zap, ChevronRight, Star, Award, Youtube, Twitter, Facebook,
-  Globe, MapPin, Plus, Linkedin, Send, Ghost, ScrollText
+  Globe, MapPin, Plus, Linkedin, Send, Ghost, ScrollText, Trophy
 } from 'lucide-react'
+import { YoutubeLogo, RedditLogo } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+
+export type SupportedPlatform = 'youtube' | 'reddit' | 'vk'
+
+/** VK wordmark badge (no generic globe) */
+function VkBrandIcon({ className }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center justify-center rounded-xl font-bold tracking-tight text-[11px] text-[#0077FF] bg-[#0077FF]/10 ${className ?? ''}`}
+      style={{ minWidth: 36, minHeight: 36 }}
+      aria-hidden
+    >
+      VK
+    </span>
+  )
+}
+
+/** OAuth platforms only — used to filter which connect cards appear (from application `platforms`) */
+const OAUTH_PLATFORM_KEYS: SupportedPlatform[] = ['youtube', 'reddit', 'vk']
+
+const PLATFORM_SYNC_META: Record<SupportedPlatform, {
+  label: string
+  contentLabel: string
+  subline: string
+  connectHelp: string
+  icon: React.ReactNode
+  brandTint: string
+}> = {
+  youtube: {
+    label: 'YouTube',
+    contentLabel: 'Videos',
+    subline: 'Your channel uploads',
+    connectHelp: 'Connect the Google account that owns your YouTube channel. We only read your video list and stats.',
+    icon: <YoutubeLogo className="h-8 w-8" weight="duotone" style={{ color: '#FF0000' }} aria-hidden />,
+    brandTint: 'rgba(255,0,0,0.09)',
+  },
+  reddit: {
+    label: 'Reddit',
+    contentLabel: 'Posts',
+    subline: 'Submissions on your profile',
+    connectHelp: 'Upvotes count toward your likes milestone. View counts are not available from Reddit’s API.',
+    icon: <RedditLogo className="h-8 w-8" weight="duotone" style={{ color: '#FF4500' }} aria-hidden />,
+    brandTint: 'rgba(255,69,0,0.09)',
+  },
+  vk: {
+    label: 'VK',
+    contentLabel: 'Videos',
+    subline: 'Optional — for audiences on VK',
+    connectHelp: 'Connect to sync videos from your VK profile. You can skip this if you do not use VK.',
+    icon: <VkBrandIcon className="!min-w-[2rem] !min-h-[2rem] !text-[12px]" />,
+    brandTint: 'rgba(0,119,255,0.1)',
+  },
+}
 
 const AFFILIATE_VIEWS_THRESHOLD = 10_000
 const AFFILIATE_LIKES_THRESHOLD = 500
@@ -86,13 +139,19 @@ export default function Collab() {
   const [submittingSelected, setSubmittingSelected] = useState(false)
   const [submitResult, setSubmitResult] = useState<{ success?: string; error?: string } | null>(null)
 
-  // Multi-platform (YouTube, Reddit, VK) state
-  type SupportedPlatform = 'youtube' | 'reddit' | 'vk'
-  const SYNCED_PLATFORMS: { key: SupportedPlatform; label: string; contentLabel: string; color: string; gradient: string; bg: string; icon: React.ReactNode }[] = [
-    { key: 'youtube', label: 'YouTube',  contentLabel: 'Videos', color: '#FF0000', gradient: 'linear-gradient(135deg,#FF0000,#cc0000)', bg: '#fff5f5', icon: <Youtube className="h-4 w-4" /> },
-    { key: 'reddit',  label: 'Reddit',   contentLabel: 'Posts',  color: '#FF4500', gradient: 'linear-gradient(135deg,#FF4500,#cc3700)', bg: '#fff8f5', icon: <Globe  className="h-4 w-4" /> },
-    { key: 'vk',      label: 'VK',       contentLabel: 'Videos', color: '#0077FF', gradient: 'linear-gradient(135deg,#0077FF,#0055cc)', bg: '#f0f6ff', icon: <Globe  className="h-4 w-4" /> },
-  ]
+  /** Platform keys from collab application (instagram, youtube, …) — drives which connect UIs appear */
+  const [applicationPlatformKeys, setApplicationPlatformKeys] = useState<Set<string>>(new Set())
+
+  const showInstagramSection = useMemo(() => {
+    if (applicationPlatformKeys.size === 0) return true
+    return applicationPlatformKeys.has('instagram')
+  }, [applicationPlatformKeys])
+
+  const visibleOauthPlatforms = useMemo((): SupportedPlatform[] => {
+    if (applicationPlatformKeys.size === 0) return []
+    return OAUTH_PLATFORM_KEYS.filter((k) => applicationPlatformKeys.has(k))
+  }, [applicationPlatformKeys])
+
   type PlatformSyncState = { content: any[]; syncing: boolean; selected: Set<string>; submitting: boolean; result: { success?: string; error?: string } | null; error: string }
   const initPS = (): PlatformSyncState => ({ content: [], syncing: false, selected: new Set(), submitting: false, result: null, error: '' })
   const [platformStates, setPlatformStates] = useState<Record<SupportedPlatform, PlatformSyncState>>({ youtube: initPS(), reddit: initPS(), vk: initPS() })
@@ -213,6 +272,10 @@ export default function Collab() {
           igUsername: data.ig_username || null, collabJoinedAt: data.collab_joined_at || null,
         })
         setSubmittedReels(Array.isArray(data.reels) ? data.reels : [])
+        const plat = Array.isArray(data.platforms) ? data.platforms : []
+        setApplicationPlatformKeys(
+          new Set(plat.map((p: { name?: string }) => String(p.name || '').toLowerCase()).filter(Boolean))
+        )
         if (Array.isArray(data.platform_connections)) {
           const conns: Record<string, any> = {}
           data.platform_connections.forEach((c: any) => { conns[c.platform] = c })
@@ -267,6 +330,10 @@ export default function Collab() {
     const data = await res.json().catch(() => ({}))
     if (res.ok) {
       setSubmitted(true); setShowForm(false)
+      const ap = data?.application?.platforms
+      if (Array.isArray(ap)) {
+        setApplicationPlatformKeys(new Set(ap.map((p: { name?: string }) => String(p.name || '').toLowerCase()).filter(Boolean)))
+      }
       setStatus((s) => s
         ? { ...s, id: data?.application?.id || s.id, hasApplication: true, status: 'pending', instagramHandles: handles }
         : { id: data?.application?.id, status: 'pending', hasApplication: true, totalViews: 0, totalLikes: 0,
@@ -337,7 +404,7 @@ export default function Collab() {
   }
 
   const handleDisconnectPlatform = async (platform: SupportedPlatform) => {
-    if (!status?.id || !confirm(`Disconnect ${SYNCED_PLATFORMS.find((p) => p.key === platform)?.label} from this collab?`)) return
+    if (!status?.id || !confirm(`Disconnect ${PLATFORM_SYNC_META[platform].label} from this collab?`)) return
     await fetch(`${getApiBase()}/api/platform/disconnect/${platform}`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ collab_id: status.id }) })
     setPlatformConnections((prev) => { const n = { ...prev }; delete n[platform]; return n })
     updPS(platform, { content: [], selected: new Set() })
@@ -774,8 +841,8 @@ export default function Collab() {
                 </div>
               )}
 
-              {/* Top row: Progress + IG Connection */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Top row: Progress + optional IG Connection */}
+              <div className={`grid grid-cols-1 gap-5 ${showInstagramSection ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
 
                 {/* Views progress */}
                 <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center gap-5">
@@ -807,49 +874,51 @@ export default function Collab() {
                   </div>
                 </div>
 
-                {/* IG Connection */}
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-3">Instagram</p>
-                  {status.instagramConnected && status.igUsername ? (
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>
-                          <Instagram className="h-4 w-4 text-white" />
+                {/* IG Connection — only if user selected Instagram on the application */}
+                {showInstagramSection && (
+                  <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm">
+                    <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-3">Instagram</p>
+                    {status.instagramConnected && status.igUsername ? (
+                      <div>
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>
+                            <Instagram className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">@{status.igUsername}</p>
+                            <p className="text-xs text-emerald-600">Connected</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">@{status.igUsername}</p>
-                          <p className="text-xs text-emerald-600">Connected</p>
+                        <div className="flex gap-3">
+                          <a href={`https://www.instagram.com/${status.igUsername}`} target="_blank" rel="noreferrer"
+                            className="text-xs text-gray-500 flex items-center gap-1 hover:text-gray-700 transition-colors">
+                            <ExternalLink className="h-3 w-3" /> Profile
+                          </a>
+                          <button onClick={handleDisconnectInstagram} className="text-xs text-red-400 hover:text-red-600 transition-colors">Disconnect</button>
                         </div>
                       </div>
-                      <div className="flex gap-3">
-                        <a href={`https://www.instagram.com/${status.igUsername}`} target="_blank" rel="noreferrer"
-                          className="text-xs text-gray-500 flex items-center gap-1 hover:text-gray-700 transition-colors">
-                          <ExternalLink className="h-3 w-3" /> Profile
-                        </a>
-                        <button onClick={handleDisconnectInstagram} className="text-xs text-red-400 hover:text-red-600 transition-colors">Disconnect</button>
+                    ) : (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-3 leading-relaxed font-light">Connect your Creator or Business account to sync reels.</p>
+                        <button onClick={handleConnectInstagram} disabled={igConnecting || !status.id}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                          style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366)' }}>
+                          <Instagram className="h-4 w-4" />
+                          {igConnecting ? 'Redirecting...' : 'Connect Instagram'}
+                        </button>
                       </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-3 leading-relaxed">Connect your Creator or Business account to sync reels.</p>
-                      <button onClick={handleConnectInstagram} disabled={igConnecting || !status.id}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                        style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366)' }}>
-                        <Instagram className="h-4 w-4" />
-                        {igConnecting ? 'Redirecting...' : 'Connect Instagram'}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Affiliate unlocked banner */}
               {affiliateUnlocked && (
-                <div className="rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden"
+                <div className="rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden border border-amber-200/80"
                   style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
                   <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)' }} />
                   <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="h-6 w-6 text-white" />
+                    <Trophy className="h-6 w-6 text-white" aria-hidden />
                   </div>
                   <div className="flex-1">
                     <p className="font-bold text-white text-lg">Affiliate Program Unlocked!</p>
@@ -875,8 +944,8 @@ export default function Collab() {
                 </div>
               )}
 
-              {/* Reels section — only when approved */}
-              {isApproved && status.instagramConnected && (
+              {/* Reels section — only when approved & Instagram was selected on the application */}
+              {isApproved && showInstagramSection && status.instagramConnected && (
                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -1010,178 +1079,217 @@ export default function Collab() {
                 </div>
               )}
 
-              {/* ── Platform sync sections (YouTube / Reddit / VK) ──────────── */}
-              {isApproved && SYNCED_PLATFORMS.map((cfg) => {
-                const conn = platformConnections[cfg.key]
-                const ps = platformStates[cfg.key]
-                const eligibleCnt = ps.content.filter((c) => c.eligible && !c.already_submitted).length
-                const ineligibleCnt = ps.content.filter((c) => !c.eligible).length
-                return (
-                  <div key={cfg.key} className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                    {/* Platform header */}
-                    <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: cfg.gradient }}>
-                          {cfg.icon}
-                        </div>
-                        <div>
-                          <h2 className="font-bold text-gray-900 text-base">Sync {cfg.label} {cfg.contentLabel}</h2>
-                          <p className="text-xs text-gray-400">
-                            {conn ? `Connected as ${conn.platform_username}` : `Connect your ${cfg.label} account to sync ${cfg.contentLabel.toLowerCase()}`}
-                          </p>
-                        </div>
-                      </div>
-                      {conn ? (
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => syncPlatform(cfg.key)} disabled={ps.syncing}
-                            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                            style={{ background: cfg.gradient }}>
-                            {ps.syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Syncing...</> : <><RefreshCw className="h-4 w-4" /> Sync {cfg.contentLabel}</>}
-                          </button>
-                        </div>
-                      ) : (
-                        <a href={`${getApiBase()}/api/platform/${cfg.key}/connect?collab_id=${status?.id}`}
-                          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-                          style={{ background: cfg.gradient }}>
-                          {cfg.icon} Connect {cfg.label}
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Connected bar with disconnect */}
-                    {conn && (
-                      <div className="flex items-center justify-between px-6 py-3 text-xs" style={{ backgroundColor: cfg.bg }}>
-                        <div className="flex items-center gap-2 font-medium" style={{ color: cfg.color }}>
-                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                          Connected as <span className="font-bold">{conn.platform_username}</span>
-                        </div>
-                        <button onClick={() => handleDisconnectPlatform(cfg.key)} className="text-gray-400 hover:text-red-400 transition-colors">Disconnect</button>
-                      </div>
-                    )}
-
-                    {/* Error message */}
-                    {ps.error && (
-                      <div className="mx-6 my-4 flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
-                        <AlertCircle className="h-4 w-4 flex-shrink-0" /> {ps.error}
-                      </div>
-                    )}
-
-                    {/* Content picker */}
-                    {ps.content.length > 0 && (
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3 text-xs">
-                            {eligibleCnt > 0 && <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium">{eligibleCnt} eligible</span>}
-                            {ineligibleCnt > 0 && <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-medium">{ineligibleCnt} ineligible</span>}
+              {/* ── Extra platforms (only those chosen on the application) ───── */}
+              {isApproved && visibleOauthPlatforms.length > 0 && (
+                <div className="space-y-4">
+                  <div className="px-1">
+                    <p className="text-[10px] tracking-[0.25em] uppercase font-medium text-gray-400">Additional channels</p>
+                    <p className="text-xs text-gray-500 font-light mt-1 tracking-wide">Connect and sync only the platforms you listed when you applied.</p>
+                  </div>
+                  {visibleOauthPlatforms.map((key) => {
+                    const meta = PLATFORM_SYNC_META[key]
+                    const conn = platformConnections[key]
+                    const ps = platformStates[key]
+                    const eligibleCnt = ps.content.filter((c) => c.eligible && !c.already_submitted).length
+                    const ineligibleCnt = ps.content.filter((c) => !c.eligible).length
+                    const accent = 'var(--arctic-blue-primary, #4B97C9)'
+                    return (
+                      <div key={key} className="bg-white rounded-3xl border border-[#e8f4fb] shadow-sm overflow-hidden">
+                        <div className="p-6 sm:p-8">
+                          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                            <div
+                              className="flex h-[3.75rem] w-[3.75rem] shrink-0 items-center justify-center rounded-2xl border border-white shadow-sm"
+                              style={{ backgroundColor: meta.brandTint }}
+                            >
+                              {meta.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">{meta.label}</p>
+                              <h3 className="text-xl font-light tracking-[0.08em] text-gray-900" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
+                                {meta.label} · {meta.contentLabel}
+                              </h3>
+                              <p className="text-sm text-gray-500 mt-2 font-light leading-relaxed max-w-xl">{meta.subline}</p>
+                              {key === 'reddit' && (
+                                <p className="text-xs text-amber-900/90 mt-3 rounded-xl border border-amber-100 bg-amber-50/90 px-3 py-2 font-light leading-snug">
+                                  Reddit metrics: upvotes count toward your likes milestone. View counts are not available from Reddit’s API.
+                                </p>
+                              )}
+                              {key === 'vk' && (
+                                <p className="text-xs text-gray-500 mt-3 font-light italic">Optional network — connect only if you publish on VK.</p>
+                              )}
+                              {!conn && (
+                                <p className="text-xs text-gray-400 mt-4 font-light leading-relaxed max-w-2xl border-t border-gray-100 pt-4">{meta.connectHelp}</p>
+                              )}
+                              {conn && (
+                                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 font-light border-t border-gray-100 pt-4">
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                    Signed in as <strong className="font-medium text-gray-700">{conn.platform_username}</strong>
+                                  </span>
+                                  <button type="button" onClick={() => handleDisconnectPlatform(key)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                    Disconnect
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col sm:flex-row lg:flex-col gap-2 lg:items-stretch lg:min-w-[200px]">
+                              {conn ? (
+                                <button
+                                  type="button"
+                                  onClick={() => syncPlatform(key)}
+                                  disabled={ps.syncing}
+                                  className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm"
+                                  style={{ backgroundColor: accent }}
+                                >
+                                  {ps.syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Loading…</> : <><RefreshCw className="h-4 w-4" /> Load {meta.contentLabel}</>}
+                                </button>
+                              ) : (
+                                <a
+                                  href={`${getApiBase()}/api/platform/${key}/connect?collab_id=${status?.id}`}
+                                  className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 text-center shadow-sm"
+                                  style={{ backgroundColor: accent }}
+                                >
+                                  Connect {meta.label}
+                                </a>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex gap-3 text-xs font-medium" style={{ color: cfg.color }}>
-                            <button onClick={() => setPlatformStates(prev => ({ ...prev, [cfg.key]: { ...prev[cfg.key], selected: new Set(ps.content.filter((c) => c.eligible && !c.already_submitted).map((c) => c.content_id)) } }))}>Select all</button>
-                            <span className="text-gray-300">|</span>
-                            <button onClick={() => updPS(cfg.key, { selected: new Set() })} className="text-gray-400">Clear</button>
-                          </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
-                          {ps.content.map((item: any) => {
-                            const isSelected = ps.selected.has(item.content_id)
-                            const isDisabled = item.already_submitted || !item.eligible
-                            return (
-                              <div key={item.content_id} onClick={() => !isDisabled && togglePlatformSelect(cfg.key, item.content_id)}
-                                className={`relative rounded-2xl overflow-hidden border transition-all ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'}`}
-                                style={{ borderColor: isSelected ? cfg.color : '#f0f0f0', boxShadow: isSelected ? `0 0 0 2px ${cfg.color}33` : undefined }}>
+                        {ps.error && (
+                          <div className="mx-6 sm:mx-8 mb-4 flex items-center gap-2 text-sm text-red-700 bg-red-50/90 border border-red-100 px-4 py-3 rounded-xl">
+                            <AlertCircle className="h-4 w-4 flex-shrink-0" /> {ps.error}
+                          </div>
+                        )}
 
-                                {/* Thumbnail */}
-                                <div className="relative h-32 bg-gray-100">
-                                  {item.thumbnail_url
-                                    ? <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                                    : <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: cfg.bg }}>{React.cloneElement(cfg.icon as React.ReactElement, { className: 'h-8 w-8', style: { color: cfg.color, opacity: 0.4 } })}</div>}
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        {ps.content.length > 0 && (
+                          <div className="px-6 sm:px-8 pb-8 pt-2 border-t border-[#f0f7fb]">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-2 text-xs">
+                                {eligibleCnt > 0 && <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 font-medium border border-emerald-100">{eligibleCnt} eligible</span>}
+                                {ineligibleCnt > 0 && <span className="px-2.5 py-1 rounded-full bg-gray-50 text-gray-600 font-medium border border-gray-100">{ineligibleCnt} ineligible</span>}
+                              </div>
+                              <div className="flex gap-3 text-xs font-medium" style={{ color: accent }}>
+                                <button type="button" className="hover:opacity-70" onClick={() => setPlatformStates((prev) => ({ ...prev, [key]: { ...prev[key], selected: new Set(ps.content.filter((c) => c.eligible && !c.already_submitted).map((c) => c.content_id)) } }))}>Select all</button>
+                                <span className="text-gray-200">|</span>
+                                <button type="button" className="text-gray-400 hover:text-gray-600" onClick={() => updPS(key, { selected: new Set() })}>Clear</button>
+                              </div>
+                            </div>
 
-                                  <div className="absolute top-2 right-2">
-                                    {item.already_submitted
-                                      ? <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500 text-white">Submitted</span>
-                                      : item.eligible
-                                      ? <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500 text-white">Eligible</span>
-                                      : <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500 text-white">Ineligible</span>}
-                                  </div>
-
-                                  {!isDisabled && (
-                                    <div className="absolute top-2 left-2">
-                                      <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all"
-                                        style={{ backgroundColor: isSelected ? cfg.color : 'rgba(255,255,255,0.8)', borderColor: isSelected ? cfg.color : 'rgba(255,255,255,0.8)' }}>
-                                        {isSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
+                              {ps.content.map((item: any) => {
+                                const isSelected = ps.selected.has(item.content_id)
+                                const isDisabled = item.already_submitted || !item.eligible
+                                return (
+                                  <div
+                                    key={item.content_id}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => !isDisabled && togglePlatformSelect(key, item.content_id)}
+                                    onKeyDown={(e) => e.key === 'Enter' && !isDisabled && togglePlatformSelect(key, item.content_id)}
+                                    className={`relative rounded-2xl overflow-hidden border transition-all ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'}`}
+                                    style={{
+                                      borderColor: isSelected ? accent : '#eef6fb',
+                                      boxShadow: isSelected ? `0 0 0 2px rgba(75, 151, 201, 0.25)` : undefined,
+                                    }}
+                                  >
+                                    <div className="relative h-32 bg-[#f8fcfd]">
+                                      {item.thumbnail_url ? (
+                                        <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center opacity-50" style={{ backgroundColor: meta.brandTint }}>
+                                          {meta.icon}
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+                                      <div className="absolute top-2 right-2">
+                                        {item.already_submitted ? (
+                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#4B97C9] text-white">Submitted</span>
+                                        ) : item.eligible ? (
+                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-600 text-white">Eligible</span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500 text-white">Ineligible</span>
+                                        )}
+                                      </div>
+                                      {!isDisabled && (
+                                        <div className="absolute top-2 left-2">
+                                          <div
+                                            className="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all"
+                                            style={{
+                                              backgroundColor: isSelected ? accent : 'rgba(255,255,255,0.9)',
+                                              borderColor: isSelected ? accent : 'rgba(255,255,255,0.9)',
+                                            }}
+                                          >
+                                            {isSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                                          </div>
+                                        </div>
+                                      )}
+                                      <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2 text-white text-xs font-medium">
+                                        <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{(item.views || 0).toLocaleString()}</span>
+                                        <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{(item.likes || 0).toLocaleString()}</span>
+                                        {item.published_at && <span className="ml-auto opacity-90">{new Date(item.published_at).toLocaleDateString()}</span>}
                                       </div>
                                     </div>
-                                  )}
-
-                                  <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2 text-white text-xs font-medium">
-                                    <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{(item.views || 0).toLocaleString()}</span>
-                                    <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{(item.likes || 0).toLocaleString()}</span>
-                                    {item.published_at && <span className="ml-auto">{new Date(item.published_at).toLocaleDateString()}</span>}
+                                    <div className="px-3 py-2.5 bg-white">
+                                      {item.title ? (
+                                        <p className="text-xs text-gray-700 truncate font-medium">{item.title}</p>
+                                      ) : (
+                                        <p className="text-xs text-gray-400 italic font-light">No title</p>
+                                      )}
+                                      {!item.eligible && !item.already_submitted && (
+                                        <p className="text-[10px] text-red-600 mt-0.5 font-light">
+                                          {!item.date_ok && 'Posted before joining. '}
+                                          {!item.caption_ok && 'Missing NEFOL mention.'}
+                                        </p>
+                                      )}
+                                      <a
+                                        href={item.content_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="text-[10px] flex items-center gap-0.5 mt-1.5 font-medium hover:opacity-80 transition-opacity"
+                                        style={{ color: accent }}
+                                      >
+                                        <ExternalLink className="h-2.5 w-2.5" /> Open on {meta.label}
+                                      </a>
+                                    </div>
                                   </div>
-                                </div>
+                                )
+                              })}
+                            </div>
 
-                                {/* Caption + reason */}
-                                <div className="px-3 py-2.5">
-                                  {item.title
-                                    ? <p className="text-xs text-gray-600 truncate font-medium">{item.title}</p>
-                                    : <p className="text-xs text-gray-400 italic">No title</p>}
-                                  {!item.eligible && !item.already_submitted && (
-                                    <p className="text-[10px] text-red-500 mt-0.5">
-                                      {!item.date_ok && 'Posted before joining. '}
-                                      {!item.caption_ok && 'Missing "nefol" mention.'}
-                                    </p>
+                            {ps.selected.size > 0 && (
+                              <div className="mt-5 flex flex-wrap items-center gap-4">
+                                <button
+                                  type="button"
+                                  onClick={() => submitPlatformContent(key)}
+                                  disabled={ps.submitting}
+                                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm"
+                                  style={{ backgroundColor: accent }}
+                                >
+                                  {ps.submitting ? (
+                                    <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
+                                  ) : (
+                                    <><CheckCircle className="h-4 w-4" /> Submit {ps.selected.size} {meta.contentLabel.toLowerCase().replace(/s$/, '')}{ps.selected.size > 1 ? 's' : ''}</>
                                   )}
-                                  <a href={item.content_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                                    className="text-[10px] flex items-center gap-0.5 mt-1 hover:opacity-80 transition-opacity" style={{ color: cfg.color }}>
-                                    <ExternalLink className="h-2.5 w-2.5" /> View on {cfg.label}
-                                  </a>
-                                </div>
+                                </button>
+                                <span className="text-sm text-gray-400 font-light">{ps.selected.size} selected</span>
                               </div>
-                            )
-                          })}
-                        </div>
+                            )}
 
-                        {ps.selected.size > 0 && (
-                          <div className="mt-4 flex items-center gap-4">
-                            <button onClick={() => submitPlatformContent(cfg.key)} disabled={ps.submitting}
-                              className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                              style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
-                              {ps.submitting
-                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</>
-                                : <><CheckCircle className="h-4 w-4" /> Submit {ps.selected.size} {cfg.contentLabel.slice(0, -1).toLowerCase()}{ps.selected.size > 1 ? 's' : ''}</>}
-                            </button>
-                            <span className="text-sm text-gray-400">{ps.selected.size} selected</span>
-                          </div>
-                        )}
-
-                        {ps.result && (
-                          <div className={`mt-3 rounded-xl px-4 py-3 text-sm flex items-center gap-2 ${ps.result.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                            {ps.result.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                            {ps.result.success || ps.result.error}
+                            {ps.result && (
+                              <div className={`mt-4 rounded-xl px-4 py-3 text-sm flex items-center gap-2 border ${ps.result.success ? 'bg-emerald-50/90 text-emerald-800 border-emerald-100' : 'bg-red-50 text-red-800 border-red-100'}`}>
+                                {ps.result.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                                {ps.result.success || ps.result.error}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                    )}
-
-                    {/* Not connected placeholder */}
-                    {!conn && !ps.error && (
-                      <div className="px-6 py-8 text-center">
-                        <div className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: cfg.bg, color: cfg.color }}>
-                          {cfg.icon}
-                        </div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">Connect your {cfg.label} account</p>
-                        <p className="text-xs text-gray-400 mb-5 max-w-xs mx-auto">Link your {cfg.label} {cfg.key === 'reddit' ? 'profile' : 'channel'} to sync {cfg.contentLabel.toLowerCase()} that mention NEFOL and count them towards your milestone.</p>
-                        <a href={`${getApiBase()}/api/platform/${cfg.key}/connect?collab_id=${status?.id}`}
-                          className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-                          style={{ background: cfg.gradient }}>
-                          {cfg.icon} Connect {cfg.label}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                    )
+                  })}
+                </div>
+              )}
 
               {/* Submitted reels */}
               {submittedReels.length > 0 && (
