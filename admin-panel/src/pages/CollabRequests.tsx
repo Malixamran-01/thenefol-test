@@ -26,6 +26,33 @@ interface Reel {
 interface PlatformEntry { name: string; links?: string[]; link?: string }
 interface AddressEntry { country?: string; state?: string; city?: string; pincode?: string }
 
+interface CollabProfileDetails {
+  id?: number
+  collab_application_id?: number
+  phone_country_iso?: string | null
+  phone_code?: string | null
+  phone_local?: string | null
+  full_name?: string | null
+  email?: string | null
+  birth_month?: string | null
+  birth_day?: string | null
+  birth_year?: string | null
+  birthdate?: string | null
+  gender?: string | null
+  marital_status?: string | null
+  anniversary?: string | null
+  occupation?: string | null
+  education?: string | null
+  education_branch?: string | null
+  followers_range?: string | null
+  bio?: string | null
+  niche?: string[] | null
+  skills?: string[] | null
+  languages?: string[] | null
+  address?: AddressEntry | null
+  platforms_snapshot?: PlatformEntry[] | null
+}
+
 interface CollabApplication {
   id: number
   name: string
@@ -53,10 +80,58 @@ interface CollabApplication {
   platforms?: PlatformEntry[]
   address?: AddressEntry
   profile?: {
-    phone_code?: string; birthdate?: string; gender?: string; marital_status?: string
-    occupation?: string; education?: string; followers_range?: string; bio?: string
-    niche?: string[]; skills?: string[]; languages?: string[]
+    phone_code?: string
+    phone_country_iso?: string
+    birthdate?: string
+    birth_month?: string
+    birth_day?: string
+    birth_year?: string
+    gender?: string
+    marital_status?: string
+    anniversary?: string
+    occupation?: string
+    education?: string
+    education_branch?: string
+    followers_range?: string
+    bio?: string
+    niche?: string[]
+    skills?: string[]
+    languages?: string[]
   }
+  profile_details?: CollabProfileDetails | null
+}
+
+function isoToFlagEmoji(isoCode: string): string {
+  const u = String(isoCode || '').toUpperCase()
+  if (u.length !== 2 || !/^[A-Z]{2}$/.test(u)) return '🏳️'
+  return String.fromCodePoint(...[...u].map((ch) => 127397 + ch.charCodeAt(0)))
+}
+
+/** Merge JSON profile on application row with normalized `collab_profile_details` row (admin display). */
+function mergedApplicantProfile(app: CollabApplication): CollabProfileDetails & Record<string, unknown> {
+  const p = (app.profile || {}) as Record<string, unknown>
+  const d = (app.profile_details || {}) as Record<string, unknown>
+  const out = { ...p, ...d } as CollabProfileDetails & Record<string, unknown>
+  if (!out.address && app.address) out.address = app.address
+  return out
+}
+
+function formatDob(m: CollabProfileDetails & Record<string, unknown>): string {
+  const mo = String(m.birth_month || '').trim()
+  const day = String(m.birth_day || '').trim()
+  const yr = String(m.birth_year || '').trim()
+  if (mo && day) {
+    const mi = Number(mo)
+    const monthLabel = mi >= 1 && mi <= 12 ? new Date(2000, mi - 1, 1).toLocaleString('en', { month: 'short' }) : mo
+    const parts = [monthLabel, day]
+    if (yr && /^\d{4}$/.test(yr)) parts.push(yr)
+    return parts.join(' ')
+  }
+  if (m.birthdate) {
+    const d = new Date(String(m.birthdate))
+    return Number.isNaN(d.getTime()) ? String(m.birthdate) : d.toLocaleDateString()
+  }
+  return ''
 }
 
 const PLATFORM_META: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
@@ -517,14 +592,15 @@ export default function CollabRequests() {
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">IG Connected</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Progress</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Status</th>
+              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Applied</th>
               <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="px-4 py-8 text-center text-gray-500" colSpan={6}>Loading...</td></tr>
+              <tr><td className="px-4 py-8 text-center text-gray-500" colSpan={7}>Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td className="px-4 py-8 text-center text-gray-500" colSpan={6}>No collab requests found</td></tr>
+              <tr><td className="px-4 py-8 text-center text-gray-500" colSpan={7}>No collab requests found</td></tr>
             ) : filtered.map((item) => {
               const viewsPct = Math.min(100, ((item.total_views || 0) / AFFILIATE_VIEWS) * 100)
               const likesPct = Math.min(100, ((item.total_likes || 0) / AFFILIATE_LIKES) * 100)
@@ -654,9 +730,22 @@ export default function CollabRequests() {
                     <span style={{ fontSize: 10, fontFamily: 'monospace', backgroundColor: '#f1f5f9', color: '#64748b', padding: '2px 7px', borderRadius: 6 }} title="Unique User ID">{selected.unique_user_id}</span>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: 16, marginTop: 4, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 16, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                   <span style={{ fontSize: 13, color: '#64748b' }}>{selected.email}</span>
-                  {selected.phone && <span style={{ fontSize: 13, color: '#64748b' }}>{selected.phone}</span>}
+                  {(() => {
+                    const mp = mergedApplicantProfile(selected)
+                    const iso = String(mp.phone_country_iso || '').toUpperCase()
+                    const code = (mp.phone_code || selected.profile?.phone_code || '').trim()
+                    const local = (selected.phone || mp.phone_local || '').trim()
+                    const full = [code, local].filter(Boolean).join(' ')
+                    if (!full) return null
+                    return (
+                      <span style={{ fontSize: 13, color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {iso.length === 2 && <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden>{isoToFlagEmoji(iso)}</span>}
+                        <span style={{ fontWeight: 500, color: '#334155' }}>{full}</span>
+                      </span>
+                    )
+                  })()}
                 </div>
               </div>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', flexShrink: 0, padding: 4 }}>
@@ -748,65 +837,140 @@ export default function CollabRequests() {
                 </div>
               )}
 
-              {/* Profile info */}
-              {selected.profile && Object.values(selected.profile).some((v) => v && (Array.isArray(v) ? v.length > 0 : true)) && (
-                <div style={{ backgroundColor: '#f8fafc', borderRadius: 14, padding: '16px 18px', border: '1px solid #e2e8f0' }}>
-                  <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Creator Profile</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                    {selected.profile.birthdate && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DOB</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{new Date(selected.profile.birthdate).toLocaleDateString()}</p></div>}
-                    {selected.profile.gender && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gender</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{selected.profile.gender}</p></div>}
-                    {selected.profile.marital_status && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Marital</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{selected.profile.marital_status}</p></div>}
-                    {selected.profile.occupation && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Occupation</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{selected.profile.occupation.replace(/_/g,' ')}</p></div>}
-                    {selected.profile.education && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Education</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{selected.profile.education}</p></div>}
-                    {selected.profile.followers_range && <div><span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Followers</span><p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{selected.profile.followers_range.replace(/_/g,' ').toUpperCase()}</p></div>}
+              {/* Profile info (JSON profile + collab_profile_details) */}
+              {(() => {
+                const mp = mergedApplicantProfile(selected)
+                const dobStr = formatDob(mp)
+                const hasAny =
+                  dobStr ||
+                  mp.gender ||
+                  mp.marital_status ||
+                  mp.anniversary ||
+                  mp.occupation ||
+                  mp.education ||
+                  mp.education_branch ||
+                  mp.followers_range ||
+                  (Array.isArray(mp.niche) && mp.niche.length > 0) ||
+                  (Array.isArray(mp.skills) && mp.skills.length > 0) ||
+                  (Array.isArray(mp.languages) && mp.languages.length > 0) ||
+                  (mp.bio && String(mp.bio).trim())
+                if (!hasAny) return null
+                return (
+                  <div style={{ backgroundColor: '#f8fafc', borderRadius: 14, padding: '16px 18px', border: '1px solid #e2e8f0' }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Applicant profile</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+                      {dobStr ? (
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date of birth</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{dobStr}</p>
+                        </div>
+                      ) : null}
+                      {mp.gender ? (
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gender</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{String(mp.gender)}</p>
+                        </div>
+                      ) : null}
+                      {mp.marital_status ? (
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Marital status</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{String(mp.marital_status).replace(/_/g, ' ')}</p>
+                        </div>
+                      ) : null}
+                      {mp.anniversary ? (
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Anniversary</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>
+                            {(() => {
+                              const d = new Date(String(mp.anniversary))
+                              return Number.isNaN(d.getTime()) ? String(mp.anniversary) : d.toLocaleDateString()
+                            })()}
+                          </p>
+                        </div>
+                      ) : null}
+                      {mp.occupation ? (
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Occupation</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{String(mp.occupation).replace(/_/g, ' ')}</p>
+                        </div>
+                      ) : null}
+                      {mp.education ? (
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Education</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500, textTransform: 'capitalize' }}>{String(mp.education)}</p>
+                        </div>
+                      ) : null}
+                      {mp.education_branch ? (
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Field / branch</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{String(mp.education_branch)}</p>
+                        </div>
+                      ) : null}
+                      {mp.followers_range ? (
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Follower range</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{String(mp.followers_range).replace(/_/g, ' ')}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                    {(mp.niche || []).length > 0 && (
+                      <div style={{ marginTop: 10 }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Niche</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                          {(mp.niche || []).map((n) => (
+                            <span key={n} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#fce7f3', color: '#db2777', border: '1px solid #fbcfe8' }}>{n}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(mp.languages || []).length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Languages</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                          {(mp.languages || []).map((l) => (
+                            <span key={l} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>{l}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(mp.skills || []).length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skills</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                          {(mp.skills || []).map((s) => (
+                            <span key={s} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0' }}>{s}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {mp.bio && String(mp.bio).trim() ? (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bio</span>
+                        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{String(mp.bio)}</p>
+                      </div>
+                    ) : null}
                   </div>
-                  {(selected.profile.niche || []).length > 0 && (
-                    <div style={{ marginTop: 10 }}>
-                      <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Niche</span>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                        {(selected.profile.niche || []).map((n) => <span key={n} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#fce7f3', color: '#db2777', border: '1px solid #fbcfe8' }}>{n}</span>)}
-                      </div>
-                    </div>
-                  )}
-                  {(selected.profile.languages || []).length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                      <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Languages</span>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                        {(selected.profile.languages || []).map((l) => <span key={l} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>{l}</span>)}
-                      </div>
-                    </div>
-                  )}
-                  {(selected.profile.skills || []).length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                      <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skills</span>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                        {(selected.profile.skills || []).map((s) => <span key={s} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0' }}>{s}</span>)}
-                      </div>
-                    </div>
-                  )}
-                  {selected.profile.bio && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bio</span>
-                      <p style={{ margin: '4px 0 0', fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{selected.profile.bio}</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                )
+              })()}
 
               {/* Location + Meta */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {/* Location */}
-                {selected.address && (selected.address.city || selected.address.state) && (
+                {(() => {
+                  const addr = (mergedApplicantProfile(selected).address || selected.address) as AddressEntry | undefined
+                  if (!addr || (!addr.city && !addr.state && !addr.country)) return null
+                  return (
                   <div style={{ backgroundColor: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
                     <p style={{ margin: '0 0 8px', fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}>
                       <MapPin style={{ width: 11, height: 11 }} /> Location
                     </p>
-                    {selected.address.city && <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#1e293b' }}>{selected.address.city}</p>}
-                    {selected.address.state && <p style={{ margin: '2px 0 0', fontSize: 13, color: '#64748b' }}>{selected.address.state}</p>}
-                    {selected.address.country && <p style={{ margin: '1px 0 0', fontSize: 12, color: '#94a3b8' }}>{selected.address.country}</p>}
-                    {selected.address.pincode && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8', fontFamily: 'monospace' }}>PIN {selected.address.pincode}</p>}
+                    {addr.city && <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#1e293b' }}>{addr.city}</p>}
+                    {addr.state && <p style={{ margin: '2px 0 0', fontSize: 13, color: '#64748b' }}>{addr.state}</p>}
+                    {addr.country && <p style={{ margin: '1px 0 0', fontSize: 12, color: '#94a3b8' }}>{addr.country}</p>}
+                    {addr.pincode && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8', fontFamily: 'monospace' }}>PIN {addr.pincode}</p>}
                   </div>
-                )}
+                  )
+                })()}
                 {/* Meta details */}
                 <div style={{ backgroundColor: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
                   <p style={{ margin: '0 0 8px', fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Details</p>

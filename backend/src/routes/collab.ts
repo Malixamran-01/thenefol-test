@@ -56,6 +56,40 @@ async function ensureCollabSchema(pool: Pool) {
       ADD COLUMN IF NOT EXISTS rejection_reason      TEXT,
       ADD COLUMN IF NOT EXISTS insights_pending      BOOLEAN DEFAULT FALSE;
   `)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS collab_profile_details (
+      id SERIAL PRIMARY KEY,
+      collab_application_id INTEGER NOT NULL UNIQUE REFERENCES collab_applications(id) ON DELETE CASCADE,
+      unique_user_id TEXT,
+      full_name TEXT,
+      email TEXT,
+      phone_local TEXT,
+      phone_code TEXT,
+      phone_country_iso VARCHAR(2),
+      birth_month TEXT,
+      birth_day TEXT,
+      birth_year TEXT,
+      birthdate DATE,
+      gender TEXT,
+      marital_status TEXT,
+      anniversary TEXT,
+      occupation TEXT,
+      education TEXT,
+      education_branch TEXT,
+      followers_range TEXT,
+      bio TEXT,
+      niche JSONB DEFAULT '[]'::jsonb,
+      skills JSONB DEFAULT '[]'::jsonb,
+      languages JSONB DEFAULT '[]'::jsonb,
+      address JSONB DEFAULT '{}'::jsonb,
+      platforms_snapshot JSONB DEFAULT '[]'::jsonb,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_collab_profile_details_unique_user ON collab_profile_details(unique_user_id);
+    CREATE INDEX IF NOT EXISTS idx_collab_profile_details_email ON collab_profile_details(email);
+  `)
 }
 
 async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUserId: string | null; email: string | null }> {
@@ -153,8 +187,14 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       if (by && /^\d{4}$/.test(by)) birthdate = `${by}-${bm.padStart(2, '0')}-${bd.padStart(2, '0')}`
     }
 
+    const phoneCountryIso = String(profile?.phone_country_iso || '')
+      .trim()
+      .toUpperCase()
+      .slice(0, 2)
+
     const normProfile = {
       phone_code: (phone_code || '').trim(),
+      phone_country_iso: phoneCountryIso,
       birthdate,
       birth_month: bm,
       birth_day: bd,
@@ -172,25 +212,82 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       languages: Array.isArray(profile?.languages) ? profile.languages : [],
     }
 
-    const { rows } = await pool.query(
-      `INSERT INTO collab_applications
-         (name, email, phone, phone_code, instagram, youtube, facebook, followers, message, agree_terms,
-          status, unique_user_id, collab_joined_at, platforms, address, profile)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',$11,NOW(),$12,$13,$14)
-       RETURNING id, email, status, created_at, instagram`,
-      [
-        name, email, phone, normProfile.phone_code, storedInstagram,
-        (youtube || '').trim() || null, (facebook || '').trim() || null,
-        normProfile.followers_range || null, normProfile.bio || null, !!agreeTerms,
-        uniqueUserId,
-        JSON.stringify(normPlatforms), JSON.stringify(normAddress), JSON.stringify(normProfile),
-      ]
-    )
+    const birthdateSql =
+      birthdate && /^\d{4}-\d{2}-\d{2}$/.test(birthdate) ? birthdate : null
+    const annSql =
+      normProfile.anniversary && /^\d{4}-\d{2}-\d{2}$/.test(normProfile.anniversary)
+        ? normProfile.anniversary
+        : null
 
-    return res.status(201).json({
-      application: { ...rows[0], instagram_handles: handles, platforms: normPlatforms, address: normAddress, profile: normProfile },
-      message: 'Application submitted successfully.',
-    })
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      const { rows } = await client.query(
+        `INSERT INTO collab_applications
+           (name, email, phone, phone_code, instagram, youtube, facebook, followers, message, agree_terms,
+            status, unique_user_id, collab_joined_at, platforms, address, profile)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',$11,NOW(),$12,$13,$14)
+         RETURNING id, email, status, created_at, instagram`,
+        [
+          name, email, phone, normProfile.phone_code, storedInstagram,
+          (youtube || '').trim() || null, (facebook || '').trim() || null,
+          normProfile.followers_range || null, normProfile.bio || null, !!agreeTerms,
+          uniqueUserId,
+          JSON.stringify(normPlatforms), JSON.stringify(normAddress), JSON.stringify(normProfile),
+        ]
+      )
+      const appId = rows[0].id
+
+      await client.query(
+        `INSERT INTO collab_profile_details (
+           collab_application_id, unique_user_id, full_name, email, phone_local, phone_code, phone_country_iso,
+           birth_month, birth_day, birth_year, birthdate, gender, marital_status, anniversary,
+           occupation, education, education_branch, followers_range, bio,
+           niche, skills, languages, address, platforms_snapshot
+         ) VALUES (
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::date,$12,$13,$14,$15,$16,$17,$18,$19,
+           $20::jsonb,$21::jsonb,$22::jsonb,$23::jsonb,$24::jsonb
+         )`,
+        [
+          appId,
+          uniqueUserId,
+          String(name).trim(),
+          String(email).trim(),
+          String(phone).trim(),
+          normProfile.phone_code || null,
+          phoneCountryIso || null,
+          bm || null,
+          bd || null,
+          by || null,
+          birthdateSql,
+          normProfile.gender || null,
+          normProfile.marital_status || null,
+          annSql,
+          normProfile.occupation || null,
+          normProfile.education || null,
+          normProfile.education_branch || null,
+          normProfile.followers_range || null,
+          normProfile.bio || null,
+          JSON.stringify(normProfile.niche),
+          JSON.stringify(normProfile.skills),
+          JSON.stringify(normProfile.languages),
+          JSON.stringify(normAddress),
+          JSON.stringify(normPlatforms),
+        ]
+      )
+
+      await client.query('COMMIT')
+
+      return res.status(201).json({
+        application: { ...rows[0], instagram_handles: handles, platforms: normPlatforms, address: normAddress, profile: normProfile },
+        message: 'Application submitted successfully.',
+      })
+    } catch (e) {
+      await client.query('ROLLBACK')
+      throw e
+    } finally {
+      client.release()
+    }
   } catch (err) {
     console.error('Collab application error:', err)
     return res.status(500).json({ message: 'Failed to submit application' })
@@ -529,6 +626,7 @@ export async function deleteReel(pool: Pool, req: Request, res: Response) {
 // ─── Admin: List Collab Applications ──────────────────────────────────────────
 export async function getCollabApplications(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureCollabSchema(pool)
     const {
       status = 'all', page = 1, limit = 20, search = '',
       platform = '', city = '', state = '', country = '',
@@ -612,7 +710,8 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
     const query = `
       SELECT ca.*,
              COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.views_count ELSE 0 END), 0)::int AS total_views,
-             COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.likes_count ELSE 0 END), 0)::int AS total_likes
+             COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.likes_count ELSE 0 END), 0)::int AS total_likes,
+             (SELECT row_to_json(cpd) FROM collab_profile_details cpd WHERE cpd.collab_application_id = ca.id) AS profile_details
       FROM collab_applications ca
       LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
       ${whereSql}
@@ -628,6 +727,7 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
       platforms: Array.isArray(r.platforms) ? r.platforms : [],
       address: r.address && typeof r.address === 'object' ? r.address : {},
       profile: r.profile && typeof r.profile === 'object' ? r.profile : {},
+      profile_details: r.profile_details && typeof r.profile_details === 'object' ? r.profile_details : null,
     }))
 
     const countParams = params.slice(0, params.length - 2)
@@ -654,8 +754,14 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
 
 export async function getCollabApplication(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureCollabSchema(pool)
     const { id } = req.params
-    const appRes = await pool.query('SELECT * FROM collab_applications WHERE id = $1', [id])
+    const appRes = await pool.query(
+      `SELECT ca.*,
+        (SELECT row_to_json(cpd) FROM collab_profile_details cpd WHERE cpd.collab_application_id = ca.id) AS profile_details
+       FROM collab_applications ca WHERE ca.id = $1`,
+      [id]
+    )
     if (!appRes.rows.length) return res.status(404).json({ message: 'Collab application not found' })
 
     const reelsRes = await pool.query(
@@ -681,6 +787,7 @@ export async function getCollabApplication(pool: Pool, req: Request, res: Respon
       pending_count: pendingCount,
       progress,
       affiliate_unlocked: affiliateUnlocked,
+      profile_details: app.profile_details && typeof app.profile_details === 'object' ? app.profile_details : null,
     })
   } catch (err) {
     console.error('getCollabApplication error:', err)

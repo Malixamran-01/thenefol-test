@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Country, State, City } from 'country-state-city'
 import {
-  ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink,
+  ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, TrendingUp,
   Clapperboard, Zap, ChevronRight, Star, Award, Youtube, Twitter, Facebook,
   Globe, MapPin, Plus, Linkedin, Send, Ghost, ScrollText, Trophy
@@ -64,6 +64,13 @@ const PLATFORM_SYNC_META: Record<SupportedPlatform, {
 
 const AFFILIATE_VIEWS_THRESHOLD = 10_000
 const AFFILIATE_LIKES_THRESHOLD = 500
+
+/** Regional indicator symbols (emoji flags) — native `<option>` often omits these on Windows; use in custom lists. */
+function isoToFlagEmoji(isoCode: string): string {
+  const u = String(isoCode || '').toUpperCase()
+  if (u.length !== 2 || !/^[A-Z]{2}$/.test(u)) return '🏳️'
+  return String.fromCodePoint(...[...u].map((ch) => 127397 + ch.charCodeAt(0)))
+}
 
 interface CollabStatus {
   id?: number
@@ -166,6 +173,7 @@ export default function Collab() {
   // Extended profile fields
   const [profile, setProfile] = useState({
     phone_code: '+91',
+    phone_country_iso: 'IN',
     birth_month: '', birth_day: '', birth_year: '',
     gender: '', marital_status: '', anniversary: '',
     occupation: '', education: '', education_branch: '',
@@ -228,6 +236,30 @@ export default function Collab() {
     () => selectedStateCode ? City.getCitiesOfState(selectedCountryCode, selectedStateCode) : [],
     [selectedCountryCode, selectedStateCode]
   )
+
+  const [phonePickerOpen, setPhonePickerOpen] = useState(false)
+  const phonePickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (phonePickerRef.current && !phonePickerRef.current.contains(e.target as Node)) setPhonePickerOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
+
+  const phoneCountriesSorted = useMemo(
+    () => [...allCountries].sort((a, b) => a.name.localeCompare(b.name)),
+    [allCountries]
+  )
+
+  const selectedPhoneCountry = useMemo(() => {
+    const iso = profile.phone_country_iso
+    const byIso = iso ? allCountries.find((c) => c.isoCode === iso) : undefined
+    if (byIso && `+${byIso.phonecode}` === profile.phone_code) return byIso
+    const byCode = allCountries.find((c) => `+${c.phonecode}` === profile.phone_code)
+    return byIso || byCode || allCountries.find((c) => c.isoCode === 'IN')!
+  }, [allCountries, profile.phone_country_iso, profile.phone_code])
 
   const addPlatformLink = (key: PlatformKey) =>
     setPlatforms((p) => ({ ...p, [key]: { ...p[key], links: [...p[key].links, ''] } }))
@@ -606,18 +638,48 @@ export default function Collab() {
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Phone</label>
                         <div className="flex gap-2">
-                          <select value={profile.phone_code} onChange={(e) => setProfile((p) => ({ ...p, phone_code: e.target.value }))}
-                            className="min-w-[6.75rem] max-w-[40%] sm:max-w-[180px] flex-shrink-0 rounded-xl border border-gray-200 py-3 pl-3 pr-8 text-base text-gray-800 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none leading-none"
-                            title={allCountries.find((c) => `+${c.phonecode}` === profile.phone_code)?.name || 'Country code'}
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}>
-                            {allCountries.map((c) => (
-                              <option key={c.isoCode} value={`+${c.phonecode}`} title={c.name}>
-                                {c.flag} +{c.phonecode}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="relative flex-shrink-0 min-w-[10.5rem] sm:min-w-[11.5rem] max-w-[min(100%,14rem)]" ref={phonePickerRef}>
+                            <button
+                              type="button"
+                              aria-haspopup="listbox"
+                              aria-expanded={phonePickerOpen}
+                              onClick={() => setPhonePickerOpen((o) => !o)}
+                              title={selectedPhoneCountry.name}
+                              className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white py-3 pl-3 pr-2 text-left text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                            >
+                              <span className="text-xl leading-none select-none" aria-hidden>{isoToFlagEmoji(selectedPhoneCountry.isoCode)}</span>
+                              <span className="font-medium tabular-nums">+{selectedPhoneCountry.phonecode}</span>
+                              <ChevronDown className={`ml-auto h-4 w-4 text-gray-400 flex-shrink-0 transition-transform ${phonePickerOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            {phonePickerOpen && (
+                              <ul
+                                role="listbox"
+                                className="absolute z-50 mt-1 max-h-[min(60vh,320px)] w-[min(100vw-2rem,20rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+                              >
+                                {phoneCountriesSorted.map((c) => {
+                                  const active = c.isoCode === selectedPhoneCountry.isoCode
+                                  return (
+                                    <li key={c.isoCode} role="option" aria-selected={active}>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setProfile((p) => ({ ...p, phone_country_iso: c.isoCode, phone_code: `+${c.phonecode}` }))
+                                          setPhonePickerOpen(false)
+                                        }}
+                                        className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[#f0f8fd] ${active ? 'bg-[#e8f4fb]' : ''}`}
+                                      >
+                                        <span className="text-xl leading-none select-none" aria-hidden>{isoToFlagEmoji(c.isoCode)}</span>
+                                        <span className="font-medium tabular-nums text-gray-900">+{c.phonecode}</span>
+                                        <span className="min-w-0 flex-1 truncate text-gray-500">{c.name}</span>
+                                      </button>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            )}
+                          </div>
                           <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone number" required
-                            className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                            className="flex-1 min-w-0 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
                         </div>
                       </div>
                     </div>
