@@ -145,13 +145,26 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
     const storedInstagram = handles.join(',')
 
     // Normalise profile
+    const bm = String(profile?.birth_month || '').trim()
+    const bd = String(profile?.birth_day || '').trim()
+    const by = String(profile?.birth_year || '').trim()
+    let birthdate = String(profile?.birthdate || '').trim()
+    if (!birthdate && bm && bd) {
+      if (by && /^\d{4}$/.test(by)) birthdate = `${by}-${bm.padStart(2, '0')}-${bd.padStart(2, '0')}`
+    }
+
     const normProfile = {
       phone_code: (phone_code || '').trim(),
-      birthdate:       (profile?.birthdate       || '').trim(),
+      birthdate,
+      birth_month: bm,
+      birth_day: bd,
+      birth_year: by,
       gender:          (profile?.gender          || '').trim(),
       marital_status:  (profile?.marital_status  || '').trim(),
+      anniversary:     (profile?.anniversary     || '').trim(),
       occupation:      (profile?.occupation      || '').trim(),
       education:       (profile?.education       || '').trim(),
+      education_branch:(profile?.education_branch|| '').trim(),
       followers_range: (profile?.followers_range || followers || '').trim(),
       bio:             (profile?.bio             || message   || '').trim(),
       niche:     Array.isArray(profile?.niche)     ? profile.niche     : [],

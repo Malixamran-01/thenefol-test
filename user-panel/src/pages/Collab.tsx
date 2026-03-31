@@ -165,14 +165,32 @@ export default function Collab() {
 
   // Extended profile fields
   const [profile, setProfile] = useState({
-    phone_code: '+91', birthdate: '', gender: '', marital_status: '',
-    occupation: '', education: '', followers_range: '', bio: '',
+    phone_code: '+91',
+    birth_month: '', birth_day: '', birth_year: '',
+    gender: '', marital_status: '', anniversary: '',
+    occupation: '', education: '', education_branch: '',
+    followers_range: '', bio: '',
   })
   const [niche, setNiche] = useState<string[]>([])
   const [skills, setSkills] = useState<string[]>([])
   const [languages, setLanguages] = useState<string[]>([])
 
   // Profile chip options
+  /** Branch / field options keyed by education level value (lowercase, matches select options) */
+  const EDUCATION_BRANCH_OPTIONS: Record<string, string[]> = {
+    'high school': ['General', 'Science', 'Commerce', 'Arts', 'Vocational', 'Other'],
+    diploma: ['Engineering / Tech', 'Design', 'Business', 'Healthcare', 'Hospitality', 'Other'],
+    bachelors: ['Engineering / CS / IT', 'Commerce / Business', 'Science', 'Arts / Humanities', 'Law', 'Medicine / Health', 'Design / Media', 'Other'],
+    masters: ['Engineering / CS', 'MBA / Business', 'Science', 'Arts', 'Law', 'Medicine', 'Other'],
+    phd: ['STEM', 'Social sciences', 'Humanities', 'Business', 'Other'],
+    other: ['Specify in bio', 'Other'],
+  }
+  const educationBranchChoices = useMemo(() => {
+    const e = profile.education
+    if (!e) return [] as string[]
+    return EDUCATION_BRANCH_OPTIONS[e] || []
+  }, [profile.education])
+
   const NICHE_OPTIONS = ['Beauty','Fashion','Lifestyle','Travel','Food','Fitness','Gaming','Tech','Music','Comedy','Education','Business','Art','Sports','Finance','Other']
   const SKILL_OPTIONS = ['Video Editing','Photography','Graphic Design','Copywriting','Voice Over','Acting','Dancing','Singing','Cooking','Review Writing','Live Streaming','Podcasting']
   const LANGUAGE_OPTIONS = ['English','Hindi','Bengali','Tamil','Telugu','Marathi','Gujarati','Kannada','Malayalam','Punjabi','Urdu','Odia','Arabic','French','Spanish','German','Russian','Portuguese','Japanese','Korean','Chinese']
@@ -324,7 +342,16 @@ export default function Collab() {
         phone_code: profile.phone_code,
         instagram: handles[0] || '', instagram_handles: handles,
         platforms: selectedPlatforms, address,
-        profile: { ...profile, niche, skills, languages },
+        profile: {
+          ...profile,
+          birthdate:
+            profile.birth_year && profile.birth_month && profile.birth_day
+              ? `${profile.birth_year}-${String(profile.birth_month).padStart(2, '0')}-${String(profile.birth_day).padStart(2, '0')}`
+              : '',
+          niche,
+          skills,
+          languages,
+        },
       }),
     })
     const data = await res.json().catch(() => ({}))
@@ -580,10 +607,13 @@ export default function Collab() {
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Phone</label>
                         <div className="flex gap-2">
                           <select value={profile.phone_code} onChange={(e) => setProfile((p) => ({ ...p, phone_code: e.target.value }))}
-                            className="w-28 flex-shrink-0 rounded-xl border border-gray-200 px-2 py-3 text-sm text-gray-700 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
+                            className="min-w-[6.75rem] max-w-[40%] sm:max-w-[180px] flex-shrink-0 rounded-xl border border-gray-200 py-3 pl-3 pr-8 text-base text-gray-800 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none leading-none"
+                            title={allCountries.find((c) => `+${c.phonecode}` === profile.phone_code)?.name || 'Country code'}
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}>
                             {allCountries.map((c) => (
-                              <option key={c.isoCode} value={`+${c.phonecode}`}>{c.flag} +{c.phonecode}</option>
+                              <option key={c.isoCode} value={`+${c.phonecode}`} title={c.name}>
+                                {c.flag} +{c.phonecode}
+                              </option>
                             ))}
                           </select>
                           <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone number" required
@@ -651,10 +681,34 @@ export default function Collab() {
                   <div className="space-y-4">
                     <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400">Personal Details <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Date of Birth</label>
-                        <input type="date" value={profile.birthdate} onChange={(e) => setProfile((p) => ({ ...p, birthdate: e.target.value }))}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                      <div className="col-span-2">
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Date of birth <span className="font-normal text-gray-400">(year optional)</span></label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <select value={profile.birth_month} onChange={(e) => setProfile((p) => ({ ...p, birth_month: e.target.value }))}
+                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
+                            <option value="">Month</option>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                              <option key={m} value={String(m)}>{new Date(2000, m - 1).toLocaleString('en', { month: 'short' })}</option>
+                            ))}
+                          </select>
+                          <select value={profile.birth_day} onChange={(e) => setProfile((p) => ({ ...p, birth_day: e.target.value }))}
+                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
+                            <option value="">Day</option>
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                              <option key={d} value={String(d)}>{d}</option>
+                            ))}
+                          </select>
+                          <select value={profile.birth_year} onChange={(e) => setProfile((p) => ({ ...p, birth_year: e.target.value }))}
+                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
+                            <option value="">Year (optional)</option>
+                            {Array.from({ length: 80 }, (_, i) => new Date().getFullYear() - 15 - i).map((y) => (
+                              <option key={y} value={String(y)}>{y}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
@@ -674,15 +728,35 @@ export default function Collab() {
                           {['Single','Married','Divorced','Widowed','Other'].map((s) => <option key={s} value={s.toLowerCase()}>{s}</option>)}
                         </select>
                       </div>
+                      {profile.marital_status === 'married' && (
+                        <div className="col-span-2">
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Anniversary <span className="font-normal text-gray-400">(optional)</span></label>
+                          <input type="date" value={profile.anniversary} onChange={(e) => setProfile((p) => ({ ...p, anniversary: e.target.value }))}
+                            className="w-full max-w-sm rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                        </div>
+                      )}
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Education</label>
-                        <select value={profile.education} onChange={(e) => setProfile((p) => ({ ...p, education: e.target.value }))}
+                        <select value={profile.education} onChange={(e) => setProfile((p) => ({ ...p, education: e.target.value, education_branch: '' }))}
                           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
                           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
                           <option value="">Select</option>
                           {['High School','Diploma','Bachelor\'s','Master\'s','PhD','Other'].map((e) => <option key={e} value={e.toLowerCase().replace(/'/g, '')}>{e}</option>)}
                         </select>
                       </div>
+                      {educationBranchChoices.length > 0 && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Field / branch</label>
+                          <select value={profile.education_branch} onChange={(e) => setProfile((p) => ({ ...p, education_branch: e.target.value }))}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
+                            <option value="">Select (optional)</option>
+                            {educationBranchChoices.map((b) => (
+                              <option key={b} value={b}>{b}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Occupation</label>
                         <select value={profile.occupation} onChange={(e) => setProfile((p) => ({ ...p, occupation: e.target.value }))}
@@ -841,11 +915,9 @@ export default function Collab() {
                 </div>
               )}
 
-              {/* Top row: Progress + optional IG Connection */}
-              <div className={`grid grid-cols-1 gap-5 ${showInstagramSection ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-
-                {/* Views progress */}
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center gap-5">
+              {/* Milestone progress */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm flex items-center gap-5">
                   <div className="relative flex-shrink-0">
                     <Ring pct={viewsPct} color="#4B97C9" size={72} stroke={6} />
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -858,9 +930,7 @@ export default function Collab() {
                     <p className="text-xs text-gray-400">of {AFFILIATE_VIEWS_THRESHOLD.toLocaleString()}</p>
                   </div>
                 </div>
-
-                {/* Likes progress */}
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center gap-5">
+                <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm flex items-center gap-5">
                   <div className="relative flex-shrink-0">
                     <Ring pct={likesPct} color="#E1306C" size={72} stroke={6} />
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -873,44 +943,92 @@ export default function Collab() {
                     <p className="text-xs text-gray-400">of {AFFILIATE_LIKES_THRESHOLD.toLocaleString()}</p>
                   </div>
                 </div>
+              </div>
 
-                {/* IG Connection — only if user selected Instagram on the application */}
-                {showInstagramSection && (
-                  <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm">
-                    <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-3">Instagram</p>
-                    {status.instagramConnected && status.igUsername ? (
-                      <div>
-                        <div className="flex items-center gap-2.5 mb-3">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>
-                            <Instagram className="h-4 w-4 text-white" />
+              {/* Unified platform connection strip — same pattern for Instagram + OAuth platforms */}
+              {(showInstagramSection || visibleOauthPlatforms.length > 0) && (
+                <div className="bg-white rounded-3xl border border-[#e8f4fb] p-5 sm:p-6 shadow-sm">
+                  <p className="text-[10px] tracking-[0.25em] uppercase font-medium text-gray-400">Platform connections</p>
+                  <p className="text-xs text-gray-500 font-light mt-1 mb-4 tracking-wide max-w-2xl">
+                    Connect each channel here first. Scroll down to load posts or reels and submit them toward your milestone.
+                  </p>
+                  <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                    {showInstagramSection && (
+                      <div className="rounded-2xl border border-[#e8f4fb] bg-[#fafdfd] p-4 flex flex-col min-h-[168px]">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>
+                            <Instagram className="h-5 w-5 text-white" />
                           </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 text-sm">@{status.igUsername}</p>
-                            <p className="text-xs text-emerald-600">Connected</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900">Instagram</p>
+                            <p className="text-[11px] text-gray-400 font-light mt-0.5">Reels &amp; insights</p>
                           </div>
                         </div>
-                        <div className="flex gap-3">
-                          <a href={`https://www.instagram.com/${status.igUsername}`} target="_blank" rel="noreferrer"
-                            className="text-xs text-gray-500 flex items-center gap-1 hover:text-gray-700 transition-colors">
-                            <ExternalLink className="h-3 w-3" /> Profile
-                          </a>
-                          <button onClick={handleDisconnectInstagram} className="text-xs text-red-400 hover:text-red-600 transition-colors">Disconnect</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-3 leading-relaxed font-light">Connect your Creator or Business account to sync reels.</p>
-                        <button onClick={handleConnectInstagram} disabled={igConnecting || !status.id}
-                          className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
-                          style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366)' }}>
-                          <Instagram className="h-4 w-4" />
-                          {igConnecting ? 'Redirecting...' : 'Connect Instagram'}
-                        </button>
+                        {status.instagramConnected && status.igUsername ? (
+                          <>
+                            <p className="text-sm font-semibold text-gray-800 truncate">@{status.igUsername}</p>
+                            <p className="text-xs text-emerald-600 font-medium mt-1">Connected</p>
+                            <div className="mt-auto pt-3 flex flex-wrap gap-3">
+                              <a href={`https://www.instagram.com/${status.igUsername}`} target="_blank" rel="noreferrer" className="text-xs text-[#4B97C9] flex items-center gap-1 hover:opacity-80">
+                                <ExternalLink className="h-3 w-3" /> Profile
+                              </a>
+                              <button type="button" onClick={handleDisconnectInstagram} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Disconnect</button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-gray-500 font-light leading-relaxed flex-1">Creator or Business account required for reel sync.</p>
+                            <button type="button" onClick={handleConnectInstagram} disabled={igConnecting || !status.id}
+                              className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
+                              style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366)' }}>
+                              <Instagram className="h-4 w-4" />
+                              {igConnecting ? 'Redirecting…' : 'Connect'}
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
+                    {visibleOauthPlatforms.map((pkey) => {
+                      const meta = PLATFORM_SYNC_META[pkey]
+                      const conn = platformConnections[pkey]
+                      const accent = 'var(--arctic-blue-primary, #4B97C9)'
+                      return (
+                        <div key={pkey} className="rounded-2xl border border-[#e8f4fb] bg-[#fafdfd] p-4 flex flex-col min-h-[168px]">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 border border-white shadow-sm overflow-hidden" style={{ backgroundColor: meta.brandTint }}>
+                              {meta.icon}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900">{meta.label}</p>
+                              <p className="text-[11px] text-gray-400 font-light mt-0.5">{meta.contentLabel}</p>
+                            </div>
+                          </div>
+                          {conn ? (
+                            <>
+                              <p className="text-sm font-semibold text-gray-800 truncate">{conn.platform_username}</p>
+                              <p className="text-xs text-emerald-600 font-medium mt-1">Connected</p>
+                              <div className="mt-auto pt-3">
+                                <button type="button" onClick={() => handleDisconnectPlatform(pkey)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Disconnect</button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-xs text-gray-500 font-light leading-relaxed flex-1">{meta.subline}</p>
+                              <a
+                                href={`${getApiBase()}/api/platform/${pkey}/connect?collab_id=${status?.id}`}
+                                className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 text-center shadow-sm"
+                                style={{ backgroundColor: accent }}
+                              >
+                                Connect
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Affiliate unlocked banner */}
               {affiliateUnlocked && (
@@ -944,22 +1062,25 @@ export default function Collab() {
                 </div>
               )}
 
-              {/* Reels section — only when approved & Instagram was selected on the application */}
-              {isApproved && showInstagramSection && status.instagramConnected && (
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-[#4B97C9]/10 flex items-center justify-center">
-                        <Video className="h-4 w-4 text-[#4B97C9]" />
-                      </div>
-                      <div>
-                        <h2 className="font-bold text-gray-900 text-base">Sync Reels</h2>
-                        <p className="text-xs text-gray-400">Fetch from Instagram and submit eligible reels</p>
-                      </div>
-                    </div>
+              {/* Instagram · detail: load & submit reels (connection lives in strip above) */}
+              {isApproved && showInstagramSection && (
+                <div className="bg-white rounded-3xl border border-[#e8f4fb] shadow-sm overflow-hidden">
+                  <div className="px-6 sm:px-8 py-5 border-b border-[#f0f7fb]">
+                    <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">Instagram</p>
+                    <h2 className="text-xl font-light tracking-[0.06em] text-gray-900" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>Sync reels</h2>
+                    <p className="text-xs text-gray-500 font-light mt-1">Fetch eligible reels and add them to your milestone.</p>
+                  </div>
+                  <div className="p-6 sm:p-8">
+                  {!status.instagramConnected ? (
+                    <p className="text-sm text-gray-500 font-light leading-relaxed">
+                      Connect your Instagram account in the <strong className="font-medium text-gray-700">Platform connections</strong> section above. After it shows as connected, you can sync reels here.
+                    </p>
+                  ) : (
+                    <>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <button onClick={syncReels} disabled={syncing}
-                      className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                      style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
+                      className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm sm:ml-auto"
+                      style={{ backgroundColor: 'var(--arctic-blue-primary, #4B97C9)' }}>
                       {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Syncing...</> : <><RefreshCw className="h-4 w-4" /> Sync from Instagram</>}
                     </button>
                   </div>
@@ -1068,6 +1189,9 @@ export default function Collab() {
                       )}
                     </>
                   )}
+                  </>
+                  )}
+                  </div>
                 </div>
               )}
 
@@ -1079,13 +1203,9 @@ export default function Collab() {
                 </div>
               )}
 
-              {/* ── Extra platforms (only those chosen on the application) ───── */}
+              {/* YouTube / Reddit / VK · detail only (same header pattern as Instagram) */}
               {isApproved && visibleOauthPlatforms.length > 0 && (
-                <div className="space-y-4">
-                  <div className="px-1">
-                    <p className="text-[10px] tracking-[0.25em] uppercase font-medium text-gray-400">Additional channels</p>
-                    <p className="text-xs text-gray-500 font-light mt-1 tracking-wide">Connect and sync only the platforms you listed when you applied.</p>
-                  </div>
+                <div className="space-y-5">
                   {visibleOauthPlatforms.map((key) => {
                     const meta = PLATFORM_SYNC_META[key]
                     const conn = platformConnections[key]
@@ -1095,69 +1215,58 @@ export default function Collab() {
                     const accent = 'var(--arctic-blue-primary, #4B97C9)'
                     return (
                       <div key={key} className="bg-white rounded-3xl border border-[#e8f4fb] shadow-sm overflow-hidden">
-                        <div className="p-6 sm:p-8">
-                          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-                            <div
-                              className="flex h-[3.75rem] w-[3.75rem] shrink-0 items-center justify-center rounded-2xl border border-white shadow-sm"
-                              style={{ backgroundColor: meta.brandTint }}
-                            >
-                              {meta.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">{meta.label}</p>
-                              <h3 className="text-xl font-light tracking-[0.08em] text-gray-900" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
-                                {meta.label} · {meta.contentLabel}
-                              </h3>
-                              <p className="text-sm text-gray-500 mt-2 font-light leading-relaxed max-w-xl">{meta.subline}</p>
-                              {key === 'reddit' && (
-                                <p className="text-xs text-amber-900/90 mt-3 rounded-xl border border-amber-100 bg-amber-50/90 px-3 py-2 font-light leading-snug">
-                                  Reddit metrics: upvotes count toward your likes milestone. View counts are not available from Reddit’s API.
-                                </p>
-                              )}
-                              {key === 'vk' && (
-                                <p className="text-xs text-gray-500 mt-3 font-light italic">Optional network — connect only if you publish on VK.</p>
-                              )}
-                              {!conn && (
-                                <p className="text-xs text-gray-400 mt-4 font-light leading-relaxed max-w-2xl border-t border-gray-100 pt-4">{meta.connectHelp}</p>
-                              )}
-                              {conn && (
-                                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 font-light border-t border-gray-100 pt-4">
-                                  <span className="inline-flex items-center gap-1.5">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                    Signed in as <strong className="font-medium text-gray-700">{conn.platform_username}</strong>
-                                  </span>
-                                  <button type="button" onClick={() => handleDisconnectPlatform(key)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                    Disconnect
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col sm:flex-row lg:flex-col gap-2 lg:items-stretch lg:min-w-[200px]">
-                              {conn ? (
-                                <button
-                                  type="button"
-                                  onClick={() => syncPlatform(key)}
-                                  disabled={ps.syncing}
-                                  className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm"
-                                  style={{ backgroundColor: accent }}
-                                >
-                                  {ps.syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Loading…</> : <><RefreshCw className="h-4 w-4" /> Load {meta.contentLabel}</>}
-                                </button>
-                              ) : (
-                                <a
-                                  href={`${getApiBase()}/api/platform/${key}/connect?collab_id=${status?.id}`}
-                                  className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 text-center shadow-sm"
-                                  style={{ backgroundColor: accent }}
-                                >
-                                  Connect {meta.label}
-                                </a>
-                              )}
-                            </div>
+                        <div className="px-6 sm:px-8 py-5 border-b border-[#f0f7fb] flex items-start gap-4">
+                          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-white shadow-sm overflow-hidden" style={{ backgroundColor: meta.brandTint }}>
+                            {meta.icon}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">{meta.label}</p>
+                            <h3 className="text-xl font-light tracking-[0.06em] text-gray-900" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
+                              Sync {meta.contentLabel.toLowerCase()}
+                            </h3>
+                            <p className="text-xs text-gray-500 font-light mt-1">{meta.subline}</p>
                           </div>
                         </div>
 
+                        <div className="p-6 sm:p-8">
+                        {!conn ? (
+                          <div className="space-y-3">
+                            <p className="text-sm text-gray-500 font-light leading-relaxed">
+                              Connect <strong className="font-medium text-gray-700">{meta.label}</strong> in the <strong className="font-medium text-gray-700">Platform connections</strong> section above, then load your {meta.contentLabel.toLowerCase()} here.
+                            </p>
+                            <p className="text-xs text-gray-400 font-light">{meta.connectHelp}</p>
+                            {key === 'reddit' && (
+                              <p className="text-xs text-amber-900/90 rounded-xl border border-amber-100 bg-amber-50/90 px-3 py-2 font-light leading-snug">
+                                Reddit: upvotes count toward likes; views are not available from Reddit’s API.
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                              <p className="text-xs text-gray-500 font-light">
+                                Signed in as <span className="font-medium text-gray-700">{conn.platform_username}</span>
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => syncPlatform(key)}
+                                disabled={ps.syncing}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm sm:ml-auto"
+                                style={{ backgroundColor: accent }}
+                              >
+                                {ps.syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Loading…</> : <><RefreshCw className="h-4 w-4" /> Load {meta.contentLabel}</>}
+                              </button>
+                            </div>
+                            {key === 'reddit' && (
+                              <p className="text-xs text-amber-900/90 mb-4 rounded-xl border border-amber-100 bg-amber-50/90 px-3 py-2 font-light leading-snug">
+                                Reddit: upvotes count toward likes; views are not available from Reddit’s API.
+                              </p>
+                            )}
+                          </>
+                        )}
+
                         {ps.error && (
-                          <div className="mx-6 sm:mx-8 mb-4 flex items-center gap-2 text-sm text-red-700 bg-red-50/90 border border-red-100 px-4 py-3 rounded-xl">
+                          <div className="mb-4 flex items-center gap-2 text-sm text-red-700 bg-red-50/90 border border-red-100 px-4 py-3 rounded-xl">
                             <AlertCircle className="h-4 w-4 flex-shrink-0" /> {ps.error}
                           </div>
                         )}
@@ -1285,6 +1394,7 @@ export default function Collab() {
                             )}
                           </div>
                         )}
+                      </div>
                       </div>
                     )
                   })}
