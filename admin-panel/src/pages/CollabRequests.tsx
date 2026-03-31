@@ -710,9 +710,40 @@ export default function CollabRequests() {
               {/* Platforms */}
               {(selected.platforms || []).length > 0 && (
                 <div>
-                  <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Platforms</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {(selected.platforms || []).map((p, i) => <PlatformBadge key={i} p={p} />)}
+                  <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Platforms &amp; Profile Links</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                    {(selected.platforms || []).map((p, i) => {
+                      const meta = PLATFORM_META[p.name] || PLATFORM_META.other
+                      const urls = Array.isArray(p.links) && p.links.length > 0
+                        ? p.links.filter((l: string) => l.trim())
+                        : p.link ? [p.link] : []
+                      return (
+                        <div key={i} style={{ backgroundColor: meta.bg, border: `1px solid ${meta.color}22`, borderRadius: 12, padding: '10px 12px' }}>
+                          {/* Platform name row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: urls.length ? 8 : 0 }}>
+                            <span style={{ color: meta.color }}>{meta.icon}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: meta.color, textTransform: 'capitalize' }}>{p.name}</span>
+                          </div>
+                          {/* Links */}
+                          {urls.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {urls.map((url: string, j: number) => (
+                                <a key={j} href={url.startsWith('http') ? url : `https://${url}`}
+                                  target="_blank" rel="noreferrer"
+                                  style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: meta.color, wordBreak: 'break-all', textDecoration: 'none', padding: '3px 6px', backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 7 }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.95)')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.7)')}>
+                                  <ExternalLink style={{ width: 10, height: 10, flexShrink: 0 }} />
+                                  {url.replace(/^https?:\/\//, '')}
+                                </a>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>No link provided</span>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}

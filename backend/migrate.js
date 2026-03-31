@@ -929,7 +929,69 @@ async function runMigration() {
           ALTER TABLE collab_applications ADD COLUMN phone_code TEXT;
         END IF;
 
+        -- platform column on collab_reels (multi-platform content support)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'platform'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN platform TEXT DEFAULT 'instagram';
+        END IF;
+
+        -- platform_username on collab_reels (generic username field)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'platform_username'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN platform_username TEXT;
+          -- Backfill from instagram_username for existing rows
+          UPDATE collab_reels SET platform_username = instagram_username WHERE platform_username IS NULL AND instagram_username IS NOT NULL;
+        END IF;
+
+        -- snapshot_views: view count captured at submission time (immutable, anti-cheat reference)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'snapshot_views'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN snapshot_views INTEGER DEFAULT 0;
+          UPDATE collab_reels SET snapshot_views = views_count WHERE snapshot_views = 0;
+        END IF;
+
+        -- snapshot_likes: like count captured at submission time (immutable, anti-cheat reference)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'snapshot_likes'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN snapshot_likes INTEGER DEFAULT 0;
+          UPDATE collab_reels SET snapshot_likes = likes_count WHERE snapshot_likes = 0;
+        END IF;
+
+        -- content_status: 'auto' = eligible by rules, 'approved' = manual approval,
+        --                  'rejected' = admin rejected, 'flagged' = content deleted/missing
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'collab_reels' AND column_name = 'content_status'
+        ) THEN
+          ALTER TABLE collab_reels ADD COLUMN content_status TEXT DEFAULT 'auto';
+        END IF;
+
       END $$;
+
+      -- collab_platform_connections: stores OAuth tokens for YouTube, Reddit, VK etc.
+      CREATE TABLE IF NOT EXISTS collab_platform_connections (
+        id SERIAL PRIMARY KEY,
+        collab_application_id INTEGER NOT NULL REFERENCES collab_applications(id) ON DELETE CASCADE,
+        platform VARCHAR(50) NOT NULL,
+        access_token TEXT,
+        refresh_token TEXT,
+        platform_user_id TEXT,
+        platform_username TEXT,
+        token_expires_at TIMESTAMPTZ,
+        connected_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(collab_application_id, platform)
+      );
+      CREATE INDEX IF NOT EXISTS idx_platform_connections_app ON collab_platform_connections(collab_application_id);
+      CREATE INDEX IF NOT EXISTS idx_platform_connections_platform ON collab_platform_connections(platform);
     `);
     
     console.log('📝 Step 3: Creating indexes...');
@@ -982,6 +1044,8 @@ async function runMigration() {
       CREATE UNIQUE INDEX IF NOT EXISTS uq_collab_reels_app_url ON collab_reels(collab_application_id, reel_url);
       CREATE INDEX IF NOT EXISTS idx_collab_applications_platforms ON collab_applications USING gin(platforms) WHERE platforms IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_collab_applications_address ON collab_applications USING gin(address) WHERE address IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_collab_reels_platform ON collab_reels(platform);
+      CREATE INDEX IF NOT EXISTS idx_collab_reels_content_status ON collab_reels(content_status);
     `);
 
     console.log('📝 Step 4: Creating indexes for new columns...');

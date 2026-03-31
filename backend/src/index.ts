@@ -36,6 +36,8 @@ import * as affiliateRoutes from './routes/affiliate'
 import collabRouter, * as collabRoutes from './routes/collab'
 import instagramRouter, { refreshExpiringTokens } from './routes/instagram'
 import { refreshAllCollabStats } from './routes/collab'
+import createPlatformRouter from './routes/platform'
+import { refreshAllPlatformStats } from './jobs/refreshPlatformStats'
 import * as searchRoutes from './routes/search'
 import * as marketingRoutes from './routes/marketing'
 import * as whatsappWebhookRoutes from './routes/whatsappWebhook'
@@ -842,6 +844,7 @@ app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarket
 pool.query(`ALTER TABLE collab_applications ADD COLUMN IF NOT EXISTS unique_user_id text`).catch(() => {})
 app.use('/api/collab', collabRouter(pool))
 app.use('/api/instagram', instagramRouter(pool))
+app.use('/api/platform', createPlatformRouter(pool))
 app.get('/api/admin/collab-applications', (req, res) => collabRoutes.getCollabApplications(pool, req, res))
 app.get('/api/admin/collab-applications/:id', (req, res) => collabRoutes.getCollabApplication(pool, req, res))
 app.put('/api/admin/collab-applications/:id/approve', (req, res) => collabRoutes.approveCollabApplication(pool, req, res))
@@ -5210,6 +5213,15 @@ cron.schedule('0 */8 * * *', async () => {
     await refreshAllCollabStats(pool)
   } catch (err) {
     console.error('Collab stats refresh cron failed:', err)
+  }
+})
+
+// Refresh YouTube / Reddit / VK platform stats every 2 hours
+cron.schedule('0 */2 * * *', async () => {
+  try {
+    await refreshAllPlatformStats(pool)
+  } catch (err) {
+    console.error('Platform stats refresh cron failed:', err)
   }
 })
 

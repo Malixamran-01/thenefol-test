@@ -198,8 +198,8 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
     const BASE_SELECT = `
       SELECT ca.id, ca.email, ca.instagram, COALESCE(ca.status, 'pending') AS status, ca.created_at,
              ca.instagram_connected, ca.ig_username, ca.ig_user_id, ca.collab_joined_at,
-             (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id AND caption_ok = true AND date_ok = true) AS total_views,
-             (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id AND caption_ok = true AND date_ok = true) AS total_likes
+             (SELECT COALESCE(SUM(views_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id AND caption_ok = true AND date_ok = true AND COALESCE(content_status,'auto') NOT IN ('rejected','flagged')) AS total_views,
+             (SELECT COALESCE(SUM(likes_count), 0)::int FROM collab_reels WHERE collab_application_id = ca.id AND caption_ok = true AND date_ok = true AND COALESCE(content_status,'auto') NOT IN ('rejected','flagged')) AS total_likes
       FROM collab_applications ca
     `
 
@@ -237,13 +237,26 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
     const { progress, affiliateUnlocked } = computeProgress(totalViews, totalLikes)
 
     const reelsRes = await pool.query(
-      `SELECT id, reel_url, instagram_username, views_count, likes_count, verified, created_at,
-              reel_posted_at, caption, caption_ok, date_ok, rejection_reason
+      `SELECT id, reel_url, instagram_username, platform_username, platform,
+              views_count, likes_count, snapshot_views, snapshot_likes,
+              verified, created_at, reel_posted_at, caption, caption_ok, date_ok,
+              rejection_reason, content_status, insights_pending
        FROM collab_reels
        WHERE collab_application_id = $1
        ORDER BY created_at DESC`,
       [app.id]
     )
+
+    // Fetch connected third-party platform connections
+    let platformConnections: any[] = []
+    try {
+      const pcRes = await pool.query(
+        `SELECT platform, platform_username, platform_user_id, connected_at, token_expires_at
+         FROM collab_platform_connections WHERE collab_application_id = $1`,
+        [app.id]
+      )
+      platformConnections = pcRes.rows
+    } catch (_) { /* table may not exist yet on older DBs */ }
 
     return res.json({
       id: app.id,
@@ -255,6 +268,7 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
       ig_user_id: app.ig_user_id || null,
       collab_joined_at: app.collab_joined_at || app.created_at,
       reels: reelsRes.rows,
+      platform_connections: platformConnections,
       status: app.status,
       created_at: app.created_at,
       total_views: totalViews,
@@ -289,7 +303,8 @@ interface IncomingReel {
 export async function submitReelLink(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabSchema(pool)
-    const { collab_id, reel_url, reel_urls, instagram_handle } = req.body
+    const { collab_id, reel_url, reel_urls, instagram_handle, platform: reqPlatform } = req.body
+    const platform: string = (reqPlatform || 'instagram').toLowerCase()
 
     if (!collab_id) return res.status(400).json({ message: 'Collab ID required' })
 
@@ -304,8 +319,12 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
     if (String(app.status || 'pending').toLowerCase() !== 'approved') {
       return res.status(403).json({ message: 'Your collab request is pending admin approval.' })
     }
-    if (!app.instagram_connected || !app.fb_page_access_token || !app.ig_user_id) {
-      return res.status(403).json({ message: 'Please connect your Instagram account before submitting reels.' })
+
+    // Instagram-only: require Instagram connection
+    if (platform === 'instagram') {
+      if (!app.instagram_connected || !app.fb_page_access_token || !app.ig_user_id) {
+        return res.status(403).json({ message: 'Please connect your Instagram account before submitting reels.' })
+      }
     }
 
     const allowedHandles = parseInstagramHandles(app.instagram)
@@ -316,18 +335,21 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
       ? [{ reel_url, instagram_handle }]
       : []
 
-    if (!incoming.length) return res.status(400).json({ message: 'Please submit at least one reel URL' })
+    if (!incoming.length) return res.status(400).json({ message: 'Please submit at least one URL' })
 
-    for (const item of incoming) {
-      const url = String(item.reel_url || '').trim()
-      const handle = normalizeHandle(item.instagram_handle || '')
-      if (!url) return res.status(400).json({ message: 'Reel URL cannot be empty' })
-      if (!url.includes('instagram.com') && !url.includes('instagr.am'))
-        return res.status(400).json({ message: 'All links must be valid Instagram reel URLs' })
-      if (!extractShortcode(url)) return res.status(400).json({ message: `Not a valid reel URL: ${url}` })
-      if (!handle) return res.status(400).json({ message: 'Select an Instagram handle for each reel' })
-      if (allowedHandles.length > 0 && !allowedHandles.includes(handle))
-        return res.status(400).json({ message: `Handle @${handle} is not on your approved list` })
+    // Instagram-specific URL validation
+    if (platform === 'instagram') {
+      for (const item of incoming) {
+        const url = String(item.reel_url || '').trim()
+        const handle = normalizeHandle(item.instagram_handle || '')
+        if (!url) return res.status(400).json({ message: 'Reel URL cannot be empty' })
+        if (!url.includes('instagram.com') && !url.includes('instagr.am'))
+          return res.status(400).json({ message: 'All links must be valid Instagram reel URLs' })
+        if (!extractShortcode(url)) return res.status(400).json({ message: `Not a valid reel URL: ${url}` })
+        if (!handle) return res.status(400).json({ message: 'Select an Instagram handle for each reel' })
+        if (allowedHandles.length > 0 && !allowedHandles.includes(handle))
+          return res.status(400).json({ message: `Handle @${handle} is not on your approved list` })
+      }
     }
 
     const collabJoinedAt = new Date(app.collab_joined_at || app.created_at)
@@ -341,7 +363,7 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
 
       for (const item of incoming) {
         const url    = String(item.reel_url).trim()
-        const handle = normalizeHandle(item.instagram_handle || '')
+        const handle = platform === 'instagram' ? normalizeHandle(item.instagram_handle || '') : (item.instagram_handle || '')
 
         // Duplicate check
         const dup = await client.query(
@@ -350,10 +372,9 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
         )
         if (dup.rows.length > 0) {
           await client.query('ROLLBACK')
-          return res.status(409).json({ message: `Reel already submitted: ${url}` })
+          return res.status(409).json({ message: `Content already submitted: ${url}` })
         }
 
-        // Use pre-fetched data from sync picker if available, else fetch fresh
         let views: number
         let likes: number
         let postedAt: string | null
@@ -363,24 +384,24 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
         let insightsPending: boolean
 
         if (item.prefetched) {
-          // Data already fetched by sync picker — use it directly
-          views         = item.prefetched.views
-          likes         = item.prefetched.likes
-          postedAt      = item.prefetched.postedAt
-          caption       = item.prefetched.caption
-          captionOk     = item.prefetched.caption_ok
-          dateOk        = item.prefetched.date_ok
+          // Pre-fetched from platform picker (Instagram sync or YouTube/Reddit/VK)
+          views           = item.prefetched.views
+          likes           = item.prefetched.likes
+          postedAt        = item.prefetched.postedAt
+          caption         = item.prefetched.caption
+          captionOk       = item.prefetched.caption_ok
+          dateOk          = item.prefetched.date_ok
           insightsPending = false
-        } else {
-          // Fresh fetch from Instagram API
+        } else if (platform === 'instagram') {
+          // Fresh fetch from Instagram Graph API
           const reelData = await fetchReelData(url, pageToken, igUserId)
           if (reelData === null) {
             console.warn(`fetchReelData returned null for ${url} — storing as insights_pending`)
           }
-          views         = reelData?.views   ?? 0
-          likes         = reelData?.likes   ?? 0
-          postedAt      = reelData?.postedAt ?? null
-          caption       = reelData?.caption  ?? null
+          views           = reelData?.views   ?? 0
+          likes           = reelData?.likes   ?? 0
+          postedAt        = reelData?.postedAt ?? null
+          caption         = reelData?.caption  ?? null
           insightsPending = reelData === null
 
           const reelDate = postedAt ? new Date(postedAt) : null
@@ -399,15 +420,28 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
               message: `Caption must include #nefol or #neföl. Update your reel caption and try again.`,
             })
           }
+        } else {
+          // Non-Instagram without prefetch: store with pending metrics
+          views = likes = 0; postedAt = null; caption = null
+          captionOk = false; dateOk = false; insightsPending = true
         }
 
         await client.query(
           `INSERT INTO collab_reels
-             (collab_application_id, reel_url, instagram_username, views_count, likes_count,
-              verified, reel_posted_at, caption, caption_ok, date_ok, insights_pending)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-          [collab_id, url, handle, views, likes, !insightsPending,
-           postedAt, caption, captionOk, dateOk, insightsPending]
+             (collab_application_id, reel_url, instagram_username, platform_username, platform,
+              views_count, likes_count, snapshot_views, snapshot_likes,
+              verified, reel_posted_at, caption, caption_ok, date_ok, insights_pending,
+              content_status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+          [collab_id, url,
+           platform === 'instagram' ? handle : null,
+           handle,
+           platform,
+           views, likes,
+           views, likes,   // snapshot = initial value, never overwritten by cron
+           !insightsPending,
+           postedAt, caption, captionOk, dateOk, insightsPending,
+           'auto']         // content_status starts as 'auto' (ruled by caption_ok + date_ok)
         )
 
         results.push({ url, views, likes, insights_pending: insightsPending })
@@ -423,18 +457,20 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
 
     const sumRes = await pool.query(
       `SELECT COALESCE(SUM(views_count),0)::int AS v, COALESCE(SUM(likes_count),0)::int AS l
-       FROM collab_reels WHERE collab_application_id=$1 AND caption_ok=true AND date_ok=true`,
+       FROM collab_reels WHERE collab_application_id=$1 AND caption_ok=true AND date_ok=true
+         AND COALESCE(content_status,'auto') NOT IN ('rejected','flagged')`,
       [collab_id]
     )
     const totalViews = sumRes.rows[0]?.v || 0
     const totalLikes = sumRes.rows[0]?.l || 0
     const { progress, affiliateUnlocked } = computeProgress(totalViews, totalLikes)
     const pendingCount = results.filter((r) => r.insights_pending).length
+    const label = platform === 'instagram' ? 'reel' : 'post'
 
     return res.status(201).json({
       message: pendingCount > 0
-        ? `${results.length} reel${results.length > 1 ? 's' : ''} submitted. ${pendingCount} are syncing — metrics will update automatically.`
-        : `${results.length} reel${results.length > 1 ? 's' : ''} submitted successfully`,
+        ? `${results.length} ${label}${results.length > 1 ? 's' : ''} submitted. ${pendingCount} are syncing — metrics will update automatically.`
+        : `${results.length} ${label}${results.length > 1 ? 's' : ''} submitted successfully`,
       submitted_count: results.length,
       pending_count: pendingCount,
       reels: results,
@@ -444,8 +480,8 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
       affiliate_unlocked: affiliateUnlocked,
     })
   } catch (err) {
-    console.error('Reel submission error:', err)
-    return res.status(500).json({ message: 'Failed to submit reel' })
+    console.error('Content submission error:', err)
+    return res.status(500).json({ message: 'Failed to submit content' })
   }
 }
 
