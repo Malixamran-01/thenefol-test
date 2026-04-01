@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film,
   Trash2, Star, Wifi, WifiOff, ChevronDown, ChevronUp, Edit2, Save, X, AlertCircle,
   Youtube, Twitter, Facebook, Globe, Link, MapPin, Filter, ExternalLink, Linkedin, Send, Ghost,
-  ChevronRight
+  ChevronRight, Download, FileText, FileJson
 } from 'lucide-react'
 import { Country, State } from 'country-state-city'
 import { getApiBaseUrl } from '../utils/apiUrl'
@@ -200,6 +200,9 @@ export default function CollabRequests() {
 
   // Creator database filters
   const [showFilters, setShowFilters] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
   const [platformFilters, setPlatformFilters] = useState<Set<string>>(new Set())
   const [filterCountryCode, setFilterCountryCode] = useState('')
   const [filterStateCode, setFilterStateCode] = useState('')
@@ -405,6 +408,102 @@ export default function CollabRequests() {
   const AFFILIATE_VIEWS = 10_000
   const AFFILIATE_LIKES = 500
 
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) setShowExportMenu(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
+
+  /** Download CSV from the dedicated backend endpoint (all records, full JOIN). */
+  const handleExportCSV = async () => {
+    setShowExportMenu(false)
+    setExporting(true)
+    try {
+      const token = localStorage.getItem('auth_token')
+      const headers: Record<string, string> = {
+        'x-user-permissions': 'orders:read,orders:update',
+        'x-user-role': 'admin',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      }
+      const res = await fetch(`${apiBase}/admin/collab-applications/export.csv`, { headers })
+      if (!res.ok) { alert('Export failed — server returned an error.'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `collab-applications-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(a); a.click(); a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert('Export failed — network error.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  /** Export the currently visible (filtered) items as JSON. */
+  const handleExportJSON = () => {
+    setShowExportMenu(false)
+    const data = filtered.map((item) => {
+      const mp = mergedApplicantProfile(item)
+      const addr = (mp.address || item.address || {}) as Record<string, unknown>
+      const platforms: Record<string, string> = {}
+      ;(item.platforms || []).forEach((p) => {
+        const urls: string[] = Array.isArray(p.links) && p.links.length > 0 ? p.links.filter(Boolean) : p.link ? [p.link] : []
+        if (urls.length > 0) platforms[p.name] = urls.join('; ')
+      })
+      return {
+        id: item.id,
+        unique_user_id: item.unique_user_id,
+        status: item.status,
+        applied_date: item.created_at,
+        approved_date: item.approved_at || null,
+        rejected_date: item.rejected_at || null,
+        joined_date: item.collab_joined_at || null,
+        name: item.name,
+        email: item.email,
+        phone_code: mp.phone_code || item.profile?.phone_code || null,
+        phone_country_iso: mp.phone_country_iso || null,
+        phone: item.phone || null,
+        instagram_connected: !!item.instagram_connected,
+        ig_username: item.ig_username || null,
+        total_views: item.total_views || 0,
+        total_likes: item.total_likes || 0,
+        date_of_birth: {
+          month: mp.birth_month || null,
+          day: mp.birth_day || null,
+          year: mp.birth_year || null,
+          full: mp.birthdate || null,
+        },
+        gender: mp.gender || null,
+        marital_status: mp.marital_status || null,
+        anniversary: mp.anniversary || null,
+        occupation: mp.occupation || null,
+        education: mp.education || null,
+        education_branch: mp.education_branch || null,
+        followers_range: mp.followers_range || null,
+        bio: mp.bio || null,
+        niche: mp.niche || [],
+        skills: mp.skills || [],
+        languages: mp.languages || [],
+        address: addr,
+        platforms,
+        admin_notes: item.admin_notes || null,
+        rejection_reason: item.rejection_reason || null,
+      }
+    })
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `collab-applications-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a); a.click(); a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--arctic-blue-background)' }}>
       <div className="flex items-center justify-between mb-6">
@@ -414,10 +513,65 @@ export default function CollabRequests() {
           </h1>
           <p className="text-sm text-gray-600 mt-1">Manage collab applications, reels, and affiliate progression.</p>
         </div>
+        <div className="flex items-center gap-3">
+        {/* Export dropdown */}
+        <div className="relative" ref={exportMenuRef}>
+          <button
+            onClick={() => setShowExportMenu((v) => !v)}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#4B97C9] text-[#4B97C9] bg-white px-4 py-2 text-sm font-medium hover:bg-[#f0f8fd] disabled:opacity-60 transition-colors"
+          >
+            {exporting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {exporting ? 'Exporting…' : 'Export'}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showExportMenu && (
+            <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[220px] rounded-2xl border border-gray-100 bg-white shadow-xl py-1.5 overflow-hidden">
+              {/* CSV */}
+              <button
+                onClick={handleExportCSV}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[#f0f8fd] transition-colors"
+              >
+                <div className="mt-0.5 w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Export as CSV</p>
+                  <p className="text-xs text-gray-400 mt-0.5">All records · opens in Excel</p>
+                </div>
+              </button>
+
+              <div className="mx-4 my-0.5 border-t border-gray-50" />
+
+              {/* JSON */}
+              <button
+                onClick={handleExportJSON}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[#f0f8fd] transition-colors"
+              >
+                <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <FileJson className="h-4 w-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Export as JSON</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {filtered.length} visible record{filtered.length !== 1 ? 's' : ''} · structured data
+                  </p>
+                </div>
+              </button>
+
+              <div className="px-4 pb-2 pt-2 border-t border-gray-50">
+                <p className="text-[10px] text-gray-400">CSV exports all applicants from the database. JSON exports the current filtered view.</p>
+              </div>
+            </div>
+          )}
+        </div>
+
         <button onClick={fetchItems} className="btn-secondary inline-flex items-center gap-2">
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
+        </div>
       </div>
 
       {/* Stats */}

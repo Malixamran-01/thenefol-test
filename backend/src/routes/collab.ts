@@ -1060,6 +1060,195 @@ export async function refreshAllCollabStats(pool: Pool) {
   }
 }
 
+// ─── Admin: Export all collab data as CSV ──────────────────────────────────────
+export async function exportCollabApplications(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabSchema(pool)
+
+    const rows = (await pool.query(`
+      SELECT
+        ca.id,
+        ca.unique_user_id,
+        ca.name,
+        ca.email,
+        ca.phone,
+        ca.phone_code,
+        ca.status,
+        ca.created_at,
+        ca.approved_at,
+        ca.rejected_at,
+        ca.collab_joined_at,
+        ca.instagram_connected,
+        ca.ig_username,
+        ca.ig_user_id,
+        ca.token_expires_at,
+        ca.admin_notes,
+        ca.rejection_reason,
+        ca.platforms,
+        ca.address,
+        ca.profile,
+        cpd.phone_country_iso,
+        cpd.birth_month,
+        cpd.birth_day,
+        cpd.birth_year,
+        cpd.birthdate,
+        cpd.gender,
+        cpd.marital_status,
+        cpd.anniversary,
+        cpd.occupation,
+        cpd.education,
+        cpd.education_branch,
+        cpd.followers_range,
+        cpd.bio,
+        cpd.niche,
+        cpd.skills,
+        cpd.languages,
+        COALESCE(reel_stats.total_reels, 0)::int           AS total_reels_submitted,
+        COALESCE(reel_stats.eligible_reels, 0)::int        AS eligible_reels,
+        COALESCE(reel_stats.total_views, 0)::int           AS total_views,
+        COALESCE(reel_stats.total_likes, 0)::int           AS total_likes,
+        COALESCE(reel_stats.pending_reels, 0)::int         AS pending_reels
+      FROM collab_applications ca
+      LEFT JOIN collab_profile_details cpd ON cpd.collab_application_id = ca.id
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*)::int                                                          AS total_reels,
+          SUM(CASE WHEN caption_ok AND date_ok THEN 1 ELSE 0 END)::int          AS eligible_reels,
+          COALESCE(SUM(CASE WHEN caption_ok AND date_ok THEN views_count END), 0)::int AS total_views,
+          COALESCE(SUM(CASE WHEN caption_ok AND date_ok THEN likes_count END), 0)::int AS total_likes,
+          SUM(CASE WHEN insights_pending THEN 1 ELSE 0 END)::int               AS pending_reels
+        FROM collab_reels WHERE collab_application_id = ca.id
+      ) reel_stats ON TRUE
+      ORDER BY ca.created_at DESC
+    `)).rows
+
+    // CSV cell helper – wraps in quotes, escapes inner quotes
+    const cell = (v: unknown): string => {
+      if (v === null || v === undefined) return ''
+      const s = String(v)
+      if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+        return `"${s.replace(/"/g, '""')}"`
+      }
+      return s
+    }
+
+    const arrCell = (v: unknown): string => {
+      if (!v) return ''
+      const a = Array.isArray(v) ? v : (typeof v === 'object' ? Object.values(v as object) : [String(v)])
+      return cell(a.filter(Boolean).join('; '))
+    }
+
+    // Extract platform links by name
+    const platformLinks = (platforms: unknown, name: string): string => {
+      if (!Array.isArray(platforms)) return ''
+      const p = platforms.find((x: any) => String(x?.name || '').toLowerCase() === name.toLowerCase())
+      if (!p) return ''
+      const urls: string[] = Array.isArray(p.links) ? p.links : (p.link ? [p.link] : [])
+      return cell(urls.filter(Boolean).join('; '))
+    }
+
+    const fmt = (d: unknown) => d ? new Date(String(d)).toISOString().split('T')[0] : ''
+
+    // Merge profile JSONB + profile_details row (profile_details takes priority)
+    const merge = (row: any, key: string) => {
+      const fromDetails = row[key]
+      if (fromDetails !== null && fromDetails !== undefined) return fromDetails
+      const p = row.profile && typeof row.profile === 'object' ? row.profile : {}
+      return p[key]
+    }
+
+    const PLATFORM_KEYS = ['instagram', 'youtube', 'facebook', 'x', 'linkedin', 'telegram', 'snapchat', 'reddit', 'vk', 'quora', 'other']
+
+    const headers = [
+      'ID', 'Unique User ID', 'Status',
+      'Full Name', 'Email', 'Phone Code', 'Phone Country ISO', 'Phone',
+      'Applied Date', 'Approved Date', 'Rejected Date', 'Joined Date',
+      'Instagram Connected', 'IG Username', 'IG User ID',
+      'Total Views', 'Total Likes', 'Total Reels Submitted', 'Eligible Reels', 'Pending Reels',
+      'DOB Month', 'DOB Day', 'DOB Year', 'DOB Full',
+      'Gender', 'Marital Status', 'Anniversary',
+      'Occupation', 'Education', 'Education Branch',
+      'Followers Range', 'Bio',
+      'Niche', 'Skills', 'Languages',
+      'Country', 'State', 'City', 'Pincode',
+      ...PLATFORM_KEYS.map((p) => `${p.charAt(0).toUpperCase() + p.slice(1)} Links`),
+      'Admin Notes', 'Rejection Reason',
+    ]
+
+    const csvRows: string[] = [headers.map(cell).join(',')]
+
+    for (const r of rows) {
+      const addr = (r.address && typeof r.address === 'object' ? r.address : {}) as Record<string, unknown>
+      const platforms = Array.isArray(r.platforms) ? r.platforms : []
+
+      const dobFull = (() => {
+        const mo = String(merge(r, 'birth_month') || '').trim()
+        const d  = String(merge(r, 'birth_day')   || '').trim()
+        const yr = String(merge(r, 'birth_year')  || '').trim()
+        if (mo && d) return `${mo.padStart(2,'0')}/${d.padStart(2,'0')}${yr ? `/${yr}` : ''}`
+        if (r.birthdate) return fmt(r.birthdate)
+        return ''
+      })()
+
+      const row = [
+        cell(r.id),
+        cell(r.unique_user_id),
+        cell(r.status),
+        cell(r.name),
+        cell(r.email),
+        cell(r.phone_code || merge(r, 'phone_code')),
+        cell(r.phone_country_iso),
+        cell(r.phone),
+        cell(fmt(r.created_at)),
+        cell(fmt(r.approved_at)),
+        cell(fmt(r.rejected_at)),
+        cell(fmt(r.collab_joined_at)),
+        cell(r.instagram_connected ? 'Yes' : 'No'),
+        cell(r.ig_username),
+        cell(r.ig_user_id),
+        cell(r.total_views),
+        cell(r.total_likes),
+        cell(r.total_reels_submitted),
+        cell(r.eligible_reels),
+        cell(r.pending_reels),
+        cell(merge(r, 'birth_month')),
+        cell(merge(r, 'birth_day')),
+        cell(merge(r, 'birth_year')),
+        cell(dobFull),
+        cell(merge(r, 'gender')),
+        cell(merge(r, 'marital_status')),
+        cell(merge(r, 'anniversary') ? fmt(merge(r, 'anniversary')) : ''),
+        cell(merge(r, 'occupation')),
+        cell(merge(r, 'education')),
+        cell(merge(r, 'education_branch')),
+        cell(merge(r, 'followers_range')),
+        cell(merge(r, 'bio')),
+        arrCell(merge(r, 'niche')),
+        arrCell(merge(r, 'skills')),
+        arrCell(merge(r, 'languages')),
+        cell(addr.country),
+        cell(addr.state),
+        cell(addr.city),
+        cell(addr.pincode),
+        ...PLATFORM_KEYS.map((pname) => platformLinks(platforms, pname)),
+        cell(r.admin_notes),
+        cell(r.rejection_reason),
+      ]
+      csvRows.push(row.join(','))
+    }
+
+    const csv = csvRows.join('\r\n')
+    const dateStr = new Date().toISOString().slice(0, 10)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="collab-applications-${dateStr}.csv"`)
+    // BOM for Excel UTF-8 detection
+    res.send('\uFEFF' + csv)
+  } catch (err) {
+    console.error('exportCollabApplications error:', err)
+    return res.status(500).json({ message: 'Failed to export data' })
+  }
+}
+
 // ─── Router ────────────────────────────────────────────────────────────────────
 export default function collabRouter(pool: Pool) {
   const router = Router()
