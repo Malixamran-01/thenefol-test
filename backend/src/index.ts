@@ -823,6 +823,7 @@ app.put('/api/admin/affiliate-applications/:id/reject', affiliateRoutes.rejectAf
 // Affiliate partner management
 app.get('/api/affiliate/application-status', authenticateToken, affiliateRoutes.getAffiliateApplicationStatus.bind(null, pool))
 app.post('/api/affiliate/application', affiliateRoutes.submitAffiliateApplication.bind(null, pool))
+app.post('/api/affiliate/application-from-collab', authenticateToken, affiliateRoutes.submitAffiliateApplicationFromCollab.bind(null, pool))
 app.post('/api/affiliate/verify', authenticateToken, affiliateRoutes.verifyAffiliateCode.bind(null, pool))
 app.get('/api/affiliate/dashboard', authenticateToken, affiliateRoutes.getAffiliateDashboard.bind(null, pool))
 app.get('/api/affiliate/referrals', authenticateToken, affiliateRoutes.getAffiliateReferrals.bind(null, pool))

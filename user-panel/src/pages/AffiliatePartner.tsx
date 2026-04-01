@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { ArrowLeft, BarChart3, Copy, CheckCircle, Clock, AlertCircle, UserPlus, Key, Percent, IndianRupee, Users, TrendingUp, Award, Coins, Smartphone, FileText, Mail, Video, X, Folder, Search, Download, Image as ImageIcon, FileDown, ChevronDown, ChevronUp, Info, ExternalLink, Package } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import PhoneInput from '../components/PhoneInput'
-
 interface AffiliateData {
   id: string
   user_id: string
@@ -65,7 +63,10 @@ useEffect(() => {
   const [verificationMessage, setVerificationMessage] = useState('')
   const [isAlreadyVerified, setIsAlreadyVerified] = useState(false)
   const [showCodeForm, setShowCodeForm] = useState(false)
-  const [showApplicationForm, setShowApplicationForm] = useState(false)
+  const [collabEligible, setCollabEligible] = useState(false)
+  const [collabEligibleLoading, setCollabEligibleLoading] = useState(true)
+  const [collabApplyTerms, setCollabApplyTerms] = useState(false)
+  const [collabApplySubmitting, setCollabApplySubmitting] = useState(false)
   const [commissionSettings, setCommissionSettings] = useState({ commission_percentage: 15.0, is_active: true })
   const [marketingMaterials, setMarketingMaterials] = useState<any>(null)
   const [nefolCoins, setNefolCoins] = useState(0)
@@ -74,64 +75,6 @@ useEffect(() => {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
   const [selectedCurrency, setSelectedCurrency] = useState<'INR' | 'USD' | 'EUR' | 'RUB'>('INR')
-  const [countryCode, setCountryCode] = useState('+91')
-  const [applicationForm, setApplicationForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    instagram: '',
-    snapchat: '',
-    youtube: '',
-    facebook: '',
-    twitter: '',
-    vk: '',
-    linkedin: '',
-    tiktok: '',
-    whatsapp: '',
-    threads: '',
-    sharechat: '',
-    moj: '',
-    josh: '',
-    mxtakatak: '',
-    chingari: '',
-    koo: '',
-    roposo: '',
-    followers: '',
-    platform: '',
-    experience: '',
-    whyJoin: '',
-    expectedSales: '',
-    houseNumber: '',
-    street: '',
-    building: '',
-    apartment: '',
-    road: '',
-    city: '',
-    pincode: '',
-    state: '',
-    // Date of Birth fields
-    birthDay: '',
-    birthMonth: '',
-    birthYear: '',
-    // Qualifications fields
-    educationLevel: '',
-    profession: '',
-    skills: '',
-    agreeTerms: false
-  })
-
-  // Populate form with user data when user is available
-  useEffect(() => {
-    if (user) {
-      setApplicationForm(prev => ({
-        ...prev,
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-      }))
-    }
-  }, [user])
-
   // Sync commissionSettings with affiliateData whenever commissionSettings changes
   useEffect(() => {
     if (commissionSettings?.commission_percentage !== undefined && affiliateData) {
@@ -146,6 +89,28 @@ useEffect(() => {
       })
     }
   }, [commissionSettings])
+
+  useEffect(() => {
+    if (!user?.email) {
+      setCollabEligible(false)
+      setCollabEligibleLoading(false)
+      return
+    }
+    const controller = new AbortController()
+    const token = localStorage.getItem('token')
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    setCollabEligibleLoading(true)
+    fetch(`${getApiBase()}/api/collab/affiliate-unlocked?email=${encodeURIComponent(user.email)}`, {
+      signal: controller.signal,
+      headers
+    })
+      .then((r) => r.json())
+      .then((d) => setCollabEligible(!!d?.unlocked))
+      .catch(() => setCollabEligible(false))
+      .finally(() => setCollabEligibleLoading(false))
+    return () => controller.abort()
+  }, [user?.email])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -273,7 +238,7 @@ useEffect(() => {
         setHasSubmittedApplication(true)
         setApplicationStatus(savedStatus as any)
       } else {
-        console.log('No saved status found, showing application form')
+        console.log('No saved application status found')
       }
       
       setLoading(false)
@@ -529,81 +494,49 @@ useEffect(() => {
     }
   }
 
-  const handleApplicationSubmit = async (e: React.FormEvent) => {
+  const handleApplyFromCollab = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Validate required fields
-    if (!applicationForm.name || !applicationForm.email || !applicationForm.phone) {
-      alert('Please fill all required fields')
+    if (!collabApplyTerms) {
+      alert('Please agree to the terms and conditions.')
       return
     }
-
-    // Validate Date of Birth (day and month are required)
-    if (!applicationForm.birthDay || !applicationForm.birthMonth) {
-      alert('Please provide your Date of Birth (Day and Month are required)')
-      return
-    }
-
-    // Validate email format - must be a proper email (contains @) and not just a phone number
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const isValidEmail = emailRegex.test(applicationForm.email)
-    const isPhoneNumberAsEmail = /^\d+$/.test(applicationForm.email.replace(/[\s+\-()]/g, ''))
-    
-    if (!isValidEmail || isPhoneNumberAsEmail) {
-      alert('Please provide a valid email address. A valid email address is required to apply for affiliate marketing.')
-      return
-    }
-
     try {
       const token = localStorage.getItem('token')
       if (!token) {
         alert('No authentication token found')
         return
       }
-
-      const response = await fetch(`${getApiBase()}/api/affiliate/application`, {
+      setCollabApplySubmitting(true)
+      const response = await fetch(`${getApiBase()}/api/affiliate/application-from-collab`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(applicationForm)
+        body: JSON.stringify({ agreeTerms: true })
       })
-
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
 
       if (response.ok) {
         setHasSubmittedApplication(true)
         setApplicationStatus('pending')
-        setShowApplicationForm(false)
         localStorage.setItem('affiliateApplicationStatus', 'pending')
-        // Show status message
         setVerificationMessage('Your Application is pending for Approval')
+        setCollabApplyTerms(false)
       } else if (response.status === 409) {
-        // Handle duplicate application - check if user already has an application
         const errorMessage = data.message || 'You have already submitted an application'
-        alert(`${errorMessage}. Please check your email for the verification code or contact support if you need assistance.`)
-        
-        // Update UI to reflect existing application
+        alert(`${errorMessage} Please check your email for the verification code or contact support if you need assistance.`)
         setHasSubmittedApplication(true)
         setApplicationStatus('pending')
-        setShowApplicationForm(false)
-        
-        // Refresh application status to get current state
-        setTimeout(() => {
-          checkApplicationStatus()
-        }, 1000)
+        setTimeout(() => checkApplicationStatus(), 1000)
       } else {
-        // Check if it's a validation error
-        if (data.message && (data.message.toLowerCase().includes('required') || data.message.toLowerCase().includes('fill'))) {
-          alert('Fill required fields')
-        } else {
-          alert(data.message || 'Failed to submit application. Please try again or contact support.')
-        }
+        alert(data.message || 'Failed to submit application. Please try again or contact support.')
       }
     } catch (error) {
       console.error('Application submission error:', error)
       alert('Failed to submit application. Please try again.')
+    } finally {
+      setCollabApplySubmitting(false)
     }
   }
 
@@ -1918,732 +1851,86 @@ useEffect(() => {
 
         {/* Main Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
-          {/* Application Form Option */}
+          {/* Apply from Creator Collab — profile comes from collab; no separate form */}
           <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
             <div className="text-center mb-6">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                 <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
               </div>
               <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
-                Apply for Partnership
+                Apply for partnership
               </h3>
               <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                Submit your application to become an affiliate partner
+                After Creator Collab milestones, apply in one step. We use your collab profile and linked accounts—no duplicate form.
               </p>
             </div>
 
-            {!showApplicationForm ? (
+            {collabEligibleLoading ? (
+              <p className="text-center text-gray-500 font-light text-sm" style={{ letterSpacing: '0.05em' }}>
+                Checking your Creator Collab progress…
+              </p>
+            ) : hasSubmittedApplication ? (
               <button
-                onClick={() => setShowApplicationForm(true)}
-                disabled={hasSubmittedApplication}
-                className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                disabled
+                className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-green-500 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ letterSpacing: '0.1em' }}
               >
-                {hasSubmittedApplication ? 'Application Submitted' : 'Submit Application'}
+                Application submitted
               </button>
+            ) : !collabEligible ? (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600 text-center font-light" style={{ letterSpacing: '0.05em' }}>
+                  Reach the Creator Collab thresholds (10,000+ views and 500+ likes on eligible reels) to unlock affiliate application here.
+                </p>
+                <a
+                  href="#/user/collab"
+                  className="block w-full text-center px-4 sm:px-6 py-3 sm:py-4 rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm border-2 border-gray-200 text-gray-800 hover:bg-gray-50"
+                  style={{ letterSpacing: '0.1em' }}
+                >
+                  Go to Creator Collab
+                </a>
+              </div>
             ) : (
-              <form onSubmit={handleApplicationSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={applicationForm.name}
-                    onChange={(e) => setApplicationForm({...applicationForm, name: e.target.value})}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                    style={{ 
-                      letterSpacing: '0.05em',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#d1d5db'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    value={applicationForm.email}
-                    readOnly
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-gray-100 text-gray-600 font-light tracking-wide transition-all duration-300 cursor-not-allowed"
-                    style={{ 
-                      letterSpacing: '0.05em',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#d1d5db'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
-                  />
-                  <p className="text-xs text-gray-500 mt-1 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Email cannot be changed
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Phone Number *
-                  </label>
-                  <PhoneInput
-                    value={applicationForm.phone}
-                    onChange={(value) => setApplicationForm({...applicationForm, phone: value})}
-                    onCountryCodeChange={setCountryCode}
-                    defaultCountry={countryCode}
-                    required
-                    className="w-full"
-                    inputClassName="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-3 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Social Media Profiles
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Instagram
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.instagram}
-                        onChange={(e) => setApplicationForm({...applicationForm, instagram: e.target.value})}
-                        placeholder="@username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        YouTube
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.youtube}
-                        onChange={(e) => setApplicationForm({...applicationForm, youtube: e.target.value})}
-                        placeholder="Channel name or URL"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Facebook
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.facebook}
-                        onChange={(e) => setApplicationForm({...applicationForm, facebook: e.target.value})}
-                        placeholder="Profile name or URL"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Twitter/X
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.twitter}
-                        onChange={(e) => setApplicationForm({...applicationForm, twitter: e.target.value})}
-                        placeholder="@username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        VK
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.vk}
-                        onChange={(e) => setApplicationForm({...applicationForm, vk: e.target.value})}
-                        placeholder="Profile URL or username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        TikTok
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.tiktok}
-                        onChange={(e) => setApplicationForm({...applicationForm, tiktok: e.target.value})}
-                        placeholder="@username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        LinkedIn
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.linkedin}
-                        onChange={(e) => setApplicationForm({...applicationForm, linkedin: e.target.value})}
-                        placeholder="Profile URL or name"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        WhatsApp
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.whatsapp}
-                        onChange={(e) => setApplicationForm({...applicationForm, whatsapp: e.target.value})}
-                        placeholder="Phone number or business link"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        ShareChat
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.sharechat}
-                        onChange={(e) => setApplicationForm({...applicationForm, sharechat: e.target.value})}
-                        placeholder="Username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Moj
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.moj}
-                        onChange={(e) => setApplicationForm({...applicationForm, moj: e.target.value})}
-                        placeholder="Username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Snapchat
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.snapchat}
-                        onChange={(e) => setApplicationForm({...applicationForm, snapchat: e.target.value})}
-                        placeholder="@username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Threads
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.threads}
-                        onChange={(e) => setApplicationForm({...applicationForm, threads: e.target.value})}
-                        placeholder="@username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Josh
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.josh}
-                        onChange={(e) => setApplicationForm({...applicationForm, josh: e.target.value})}
-                        placeholder="Username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        MX TakaTak
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.mxtakatak}
-                        onChange={(e) => setApplicationForm({...applicationForm, mxtakatak: e.target.value})}
-                        placeholder="Username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Chingari
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.chingari}
-                        onChange={(e) => setApplicationForm({...applicationForm, chingari: e.target.value})}
-                        placeholder="Username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Koo
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.koo}
-                        onChange={(e) => setApplicationForm({...applicationForm, koo: e.target.value})}
-                        placeholder="@username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Roposo
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.roposo}
-                        onChange={(e) => setApplicationForm({...applicationForm, roposo: e.target.value})}
-                        placeholder="Username"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Total Followers
-                  </label>
-                  <select
-                    value={applicationForm.followers}
-                    onChange={(e) => setApplicationForm({...applicationForm, followers: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                    style={{ 
-                      letterSpacing: '0.05em',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#d1d5db'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
-                  >
-                    <option value="">Select follower count</option>
-                    <option value="0-1k">0 - 1,000</option>
-                    <option value="1k-10k">1,000 - 10,000</option>
-                    <option value="10k-50k">10,000 - 50,000</option>
-                    <option value="50k-100k">50,000 - 100,000</option>
-                    <option value="100k-500k">100,000 - 500,000</option>
-                    <option value="500k-1m">500,000 - 1,000,000</option>
-                    <option value="1m+">1,000,000+</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Why do you want to join our affiliate program?
-                  </label>
-                  <textarea
-                    value={applicationForm.whyJoin}
-                    onChange={(e) => setApplicationForm({...applicationForm, whyJoin: e.target.value})}
-                    placeholder="Tell us why you want to become an affiliate partner..."
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                    style={{ 
-                      letterSpacing: '0.05em',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#d1d5db'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
-                  />
-                </div>
-
-                {/* Date of Birth Section */}
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-3 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Date of Birth
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Day *
-                      </label>
-                      <select
-                        value={applicationForm.birthDay}
-                        onChange={(e) => setApplicationForm({...applicationForm, birthDay: e.target.value})}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      >
-                        <option value="">Day</option>
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                          <option key={day} value={day}>{day}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Month *
-                      </label>
-                      <select
-                        value={applicationForm.birthMonth}
-                        onChange={(e) => setApplicationForm({...applicationForm, birthMonth: e.target.value})}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      >
-                        <option value="">Month</option>
-                        <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Year (Optional)
-                      </label>
-                      <select
-                        value={applicationForm.birthYear}
-                        onChange={(e) => setApplicationForm({...applicationForm, birthYear: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      >
-                        <option value="">Year</option>
-                        {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Qualifications Section */}
-                <div>
-                  <label className="block text-sm font-light text-gray-700 mb-3 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                    Qualifications (Optional)
-                  </label>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Education Level
-                      </label>
-                      <select
-                        value={applicationForm.educationLevel}
-                        onChange={(e) => setApplicationForm({...applicationForm, educationLevel: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      >
-                        <option value="">Select education level</option>
-                        <option value="high_school">High School</option>
-                        <option value="diploma">Diploma</option>
-                        <option value="bachelor">Bachelor's Degree</option>
-                        <option value="master">Master's Degree</option>
-                        <option value="phd">PhD</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Profession
-                      </label>
-                      <input
-                        type="text"
-                        value={applicationForm.profession}
-                        onChange={(e) => setApplicationForm({...applicationForm, profession: e.target.value})}
-                        placeholder="e.g., Marketing Professional, Content Creator, Student"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-light text-gray-600 mb-2 tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                        Skills (Optional)
-                      </label>
-                      <textarea
-                        value={applicationForm.skills}
-                        onChange={(e) => setApplicationForm({...applicationForm, skills: e.target.value})}
-                        rows={3}
-                        placeholder="List your relevant skills (e.g., Content Creation, Social Media Management, Photography, Video Editing, etc.)"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-opacity-50 focus:border-transparent bg-white text-gray-900 font-light tracking-wide transition-all duration-300"
-                        style={{ letterSpacing: '0.05em' }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
-                          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(125, 211, 211, 0.1)'
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d1d5db'
-                          e.currentTarget.style.boxShadow = 'none'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
+              <form onSubmit={handleApplyFromCollab} className="space-y-4">
+                <p className="text-sm text-gray-600 font-light" style={{ letterSpacing: '0.05em' }}>
+                  By submitting, you confirm that your name, contact, and social details from your Creator Collab application may be used for this affiliate application.
+                </p>
                 <div className="flex items-start">
                   <input
                     type="checkbox"
-                    checked={applicationForm.agreeTerms}
-                    onChange={(e) => setApplicationForm({...applicationForm, agreeTerms: e.target.checked})}
+                    id="affiliate-collab-terms"
+                    checked={collabApplyTerms}
+                    onChange={(e) => setCollabApplyTerms(e.target.checked)}
                     required
                     className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     style={{ accentColor: '#4b97c9' }}
                   />
-                  <label className="text-sm font-light text-gray-700 tracking-wide cursor-pointer" style={{ letterSpacing: '0.05em' }}>
+                  <label htmlFor="affiliate-collab-terms" className="text-sm font-light text-gray-700 tracking-wide cursor-pointer" style={{ letterSpacing: '0.05em' }}>
                     I agree to the terms and conditions *
                   </label>
                 </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={!applicationForm.agreeTerms}
-                    className="flex-1 px-4 sm:px-6 py-3 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ 
-                      backgroundColor: 'var(--arctic-blue-primary)',
-                      letterSpacing: '0.1em'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!e.currentTarget.disabled) {
-                        e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!e.currentTarget.disabled) {
-                        e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
-                      }
-                    }}
-                  >
-                    Submit Application
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowApplicationForm(false)}
-                    className="px-4 sm:px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300 font-light tracking-wide text-xs sm:text-sm"
-                    style={{ letterSpacing: '0.05em' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={!collabApplyTerms || collabApplySubmitting}
+                  className="w-full px-4 sm:px-6 py-3 sm:py-4 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: 'var(--arctic-blue-primary)',
+                    letterSpacing: '0.1em'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                    }
+                  }}
+                >
+                  {collabApplySubmitting ? 'Submitting…' : 'Submit application'}
+                </button>
               </form>
             )}
           </div>

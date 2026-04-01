@@ -425,6 +425,7 @@ export default function Collab() {
       const autoSelect = new Set<string>(content.filter((c) => c.eligible && !c.already_submitted).map((c) => c.content_id))
       updPS(platform, { content, selected: autoSelect })
       if (!content.length) updPS(platform, { error: `No ${platform === 'reddit' ? 'posts' : 'videos'} found on your ${data.platform || platform} account.` })
+      await fetchStatus()
     } catch { updPS(platform, { error: 'Could not fetch content. Please try again.' }) }
     finally { updPS(platform, { syncing: false }) }
   }
@@ -482,6 +483,7 @@ export default function Collab() {
       reels.forEach((r) => { if (r.eligible && !r.already_submitted) autoSelect.add(r.media_id) })
       setSelectedReels(autoSelect)
       if (reels.length === 0) setSyncError('No reels found on your Instagram account.')
+      await fetchStatus()
     } catch { setSyncError('Could not reach Instagram. Please try again.') }
     finally { setSyncing(false) }
   }

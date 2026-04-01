@@ -17,6 +17,7 @@
 
 import { Request, Response, Router } from 'express'
 import { Pool } from 'pg'
+import { normalizeCollabContentUrl } from './platform'
 
 // Instagram API endpoints (direct, no Facebook)
 const IG_OAUTH   = 'https://api.instagram.com'
@@ -430,6 +431,27 @@ export async function handleFetchReels(pool: Pool, req: Request, res: Response) 
     const submittedUrls = new Set(submittedRes.rows.map((r: any) => r.reel_url))
 
     const reels = await fetchEligibleReels(app.fb_page_access_token, app.ig_user_id, collabJoinedAt)
+
+    // Persist latest views/likes for already-submitted reels (user "sync" = live DB update)
+    const { rows: igDbRows } = await pool.query(
+      `SELECT reel_url FROM collab_reels WHERE collab_application_id = $1 AND platform = 'instagram'`,
+      [collab_id]
+    )
+    const dbUrlByNorm = new Map<string, string>()
+    for (const row of igDbRows) {
+      dbUrlByNorm.set(normalizeCollabContentUrl(String((row as any).reel_url)), String((row as any).reel_url))
+    }
+    for (const r of reels) {
+      const dbUrl = dbUrlByNorm.get(normalizeCollabContentUrl(r.reel_url))
+      if (!dbUrl) continue
+      await pool.query(
+        `UPDATE collab_reels
+         SET views_count = $1, likes_count = $2, caption = $3, caption_ok = $4, date_ok = $5,
+             insights_pending = false, updated_at = NOW()
+         WHERE collab_application_id = $6 AND reel_url = $7 AND platform = 'instagram'`,
+        [r.views, r.likes, r.caption, r.caption_ok, r.date_ok, collab_id, dbUrl]
+      )
+    }
 
     return res.json({
       reels: reels.map((r) => ({ ...r, already_submitted: submittedUrls.has(r.reel_url) })),

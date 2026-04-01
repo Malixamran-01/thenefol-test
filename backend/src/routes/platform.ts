@@ -21,6 +21,67 @@ export function mentionsNefol(text: string | null | undefined): boolean {
   return /nef[oö]l/.test(cleaned)
 }
 
+/**
+ * Stable key for matching a submitted `collab_reels.reel_url` to API "content_url" variants
+ * (trailing slash, youtu.be vs watch, VK player vs permalink, etc.).
+ */
+export function normalizeCollabContentUrl(url: string): string {
+  const s = String(url || '').trim()
+  if (!s) return ''
+  const lower = s.toLowerCase()
+  const ig = lower.match(/instagram\.com\/(?:reel|p|tv)\/([^/?#]+)/)
+  if (ig) return `ig:${ig[1]}`
+  const yt = lower.match(/(?:[?&]v=|youtu\.be\/)([a-z0-9_-]{11})/i)
+  if (yt) return `yt:${yt[1].toLowerCase()}`
+  const vk = lower.match(/video(-?\d+)_(\d+)/)
+  if (vk) return `vk:${vk[1]}_${vk[2]}`
+  try {
+    const u = new URL(s.startsWith('http') ? s : `https://${s}`)
+    u.hash = ''
+    let path = u.pathname.replace(/\/+$/, '') || '/'
+    u.pathname = path
+    return u.toString().toLowerCase()
+  } catch {
+    return lower.replace(/\/+$/, '')
+  }
+}
+
+/** After fetching live content for the picker, persist latest views/likes for rows already in `collab_reels`. */
+export async function syncSubmittedReelStatsFromContent(
+  pool: Pool,
+  collabId: string,
+  platform: string,
+  items: Array<{ content_url: string; views: number; likes: number; caption_ok: boolean; date_ok: boolean }>
+) {
+  const { rows } = await pool.query(
+    `SELECT reel_url FROM collab_reels WHERE collab_application_id = $1 AND platform = $2`,
+    [collabId, platform]
+  )
+  if (!rows.length || !items.length) return
+
+  const dbUrlByNorm = new Map<string, string>()
+  for (const row of rows) {
+    const ru = String((row as any).reel_url || '')
+    dbUrlByNorm.set(normalizeCollabContentUrl(ru), ru)
+  }
+
+  for (const item of items) {
+    const dbUrl = dbUrlByNorm.get(normalizeCollabContentUrl(item.content_url))
+    if (!dbUrl) continue
+    await pool.query(
+      `UPDATE collab_reels
+       SET views_count = $1,
+           likes_count = $2,
+           caption_ok = $3,
+           date_ok = $4,
+           insights_pending = false,
+           updated_at = NOW()
+       WHERE collab_application_id = $5 AND reel_url = $6 AND platform = $7`,
+      [item.views, item.likes, item.caption_ok, item.date_ok, collabId, dbUrl, platform]
+    )
+  }
+}
+
 function getFrontendUrl(): string {
   return process.env.USER_PANEL_URL || process.env.FRONTEND_URL || process.env.CLIENT_ORIGIN || 'http://localhost:2001'
 }
@@ -218,6 +279,8 @@ export async function getYoutubeContent(pool: Pool, req: Request, res: Response)
         platform_username: conn.platform_username || '',
       }
     })
+
+    await syncSubmittedReelStatsFromContent(pool, collab_id, 'youtube', content)
     return res.json({ content, platform: 'youtube', username: conn.platform_username })
   } catch (err: any) {
     console.error('YouTube content error:', err)
@@ -354,6 +417,8 @@ export async function getRedditContent(pool: Pool, req: Request, res: Response) 
         metric_note: 'Reddit: upvotes count as likes. Views not available via API.',
       }
     })
+
+    await syncSubmittedReelStatsFromContent(pool, collab_id, 'reddit', content)
     return res.json({ content, platform: 'reddit', username, metric_note: 'Upvotes count toward likes milestone. Views not tracked for Reddit.' })
   } catch (err: any) {
     console.error('Reddit content error:', err)
@@ -445,6 +510,8 @@ export async function getVkContent(pool: Pool, req: Request, res: Response) {
         platform_username: conn.platform_username || '',
       }
     })
+
+    await syncSubmittedReelStatsFromContent(pool, collab_id, 'vk', content)
     return res.json({ content, platform: 'vk', username: conn.platform_username })
   } catch (err: any) {
     console.error('VK content error:', err)

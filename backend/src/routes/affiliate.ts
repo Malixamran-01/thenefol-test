@@ -158,6 +158,157 @@ export async function submitAffiliateApplication(pool: Pool, req: Request, res: 
   }
 }
 
+const COLLAB_AFFILIATE_VIEWS = 10_000
+const COLLAB_AFFILIATE_LIKES = 500
+
+/** One-click affiliate application: uses Creator Collab application + profile (no duplicate form). */
+export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Request, res: Response) {
+  try {
+    const userId = req.userId
+    if (!userId) return sendError(res, 401, 'Authentication required')
+
+    const { agreeTerms } = req.body || {}
+    if (!agreeTerms) return sendError(res, 400, 'You must agree to the terms and conditions')
+
+    const userRes = await pool.query(
+      `SELECT id, email, name, phone, unique_user_id FROM users WHERE id = $1`,
+      [userId]
+    )
+    if (!userRes.rows.length) return sendError(res, 404, 'User not found')
+    const u = userRes.rows[0]
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const userEmail = String(u.email || '').trim()
+    if (!emailRegex.test(userEmail) || /^\d+$/.test(userEmail.replace(/[\s+\-()]/g, ''))) {
+      return sendError(res, 400, 'Please update your account with a valid email address before applying.')
+    }
+
+    const existingApp = await pool.query(
+      `SELECT id, status FROM affiliate_applications WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) ORDER BY created_at DESC LIMIT 1`,
+      [userEmail]
+    )
+    if (existingApp.rows.length > 0) {
+      const st = existingApp.rows[0].status
+      if (st === 'pending' || st === 'approved' || st === 'rejected') {
+        return sendError(res, 409, `You already have an application with ${st} status. Please wait for approval or contact support.`)
+      }
+    }
+
+    const caRes = await pool.query(
+      `SELECT * FROM collab_applications
+       WHERE (unique_user_id IS NOT NULL AND unique_user_id = $1)
+          OR LOWER(TRIM(email)) = LOWER(TRIM($2))
+       ORDER BY created_at DESC LIMIT 1`,
+      [u.unique_user_id, userEmail]
+    )
+    if (caRes.rows.length === 0) {
+      return sendError(res, 403, 'Submit a Creator Collab application first. Your creator profile is used for affiliate onboarding.')
+    }
+    const ca = caRes.rows[0]
+
+    const sumRes = await pool.query(
+      `SELECT COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.views_count ELSE 0 END), 0)::int AS v,
+              COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.likes_count ELSE 0 END), 0)::int AS l
+       FROM collab_reels cr WHERE cr.collab_application_id = $1`,
+      [ca.id]
+    )
+    const v = sumRes.rows[0]?.v || 0
+    const l = sumRes.rows[0]?.l || 0
+    if (v < COLLAB_AFFILIATE_VIEWS || l < COLLAB_AFFILIATE_LIKES) {
+      return sendError(res, 403, `Reach the Creator Collab milestones first (${COLLAB_AFFILIATE_VIEWS.toLocaleString()} views and ${COLLAB_AFFILIATE_LIKES} likes on eligible content). Current: ${v.toLocaleString()} views, ${l.toLocaleString()} likes.`)
+    }
+
+    let pd: Record<string, any> = {}
+    try {
+      const pdRes = await pool.query(`SELECT * FROM collab_profile_details WHERE collab_application_id = $1`, [ca.id])
+      pd = pdRes.rows[0] || {}
+    } catch {
+      pd = {}
+    }
+
+    const profile = ca.profile && typeof ca.profile === 'object' ? ca.profile as Record<string, any> : {}
+    const address = ca.address && typeof ca.address === 'object' ? ca.address as Record<string, any> : {}
+    const pdAddr = pd.address && typeof pd.address === 'object' ? pd.address as Record<string, any> : {}
+    const mergedAddr = { ...pdAddr, ...address }
+
+    const platforms = Array.isArray(ca.platforms) ? ca.platforms : []
+    const linkFor = (name: string) => {
+      const p = platforms.find((x: any) => String(x?.name || '').toLowerCase() === name)
+      if (!p) return ''
+      const links = Array.isArray(p.links) ? p.links.filter(Boolean) : []
+      return links.length ? links.join('; ') : String((p as any).link || '')
+    }
+
+    let instagram = linkFor('instagram') || String(ca.instagram || '').split(',')[0]?.trim() || ''
+    if (!instagram && ca.ig_username) instagram = `@${ca.ig_username}`
+    const youtube = linkFor('youtube')
+    const facebook = linkFor('facebook')
+    const snapchat = linkFor('snapchat')
+
+    const hasSocial =
+      !!(instagram || youtube || facebook || snapchat || linkFor('linkedin') || linkFor('x') || linkFor('reddit') || linkFor('vk'))
+    if (!hasSocial) {
+      instagram = instagram || 'Creator collab — platforms on file'
+    }
+
+    const name = String(pd.full_name || ca.name || u.name || '').trim()
+    const phone = String(pd.phone_local || ca.phone || u.phone || '').trim()
+    if (!phone) {
+      return sendError(res, 400, 'Add a phone number in your Creator Collab application or user profile before applying.')
+    }
+
+    const followers = String(pd.followers_range || profile.followers_range || '').trim()
+
+    const city = String(mergedAddr.city || '').trim() || '—'
+    const state = String(mergedAddr.state || '').trim() || '—'
+    const pincode = String(mergedAddr.pincode || '').trim() || '—'
+    const house_number = '—'
+    const street = [mergedAddr.country, mergedAddr.state, mergedAddr.city].filter(Boolean).join(', ') || '—'
+    const road = ''
+
+    const birthDay = pd.birth_day != null ? parseInt(String(pd.birth_day), 10) : (profile.birth_day != null ? parseInt(String(profile.birth_day), 10) : null)
+    const birthMonth = pd.birth_month != null ? parseInt(String(pd.birth_month), 10) : (profile.birth_month != null ? parseInt(String(profile.birth_month), 10) : null)
+    const birthYear = pd.birth_year != null ? parseInt(String(pd.birth_year), 10) : (profile.birth_year != null ? parseInt(String(profile.birth_year), 10) : null)
+
+    const education_level = String(pd.education || profile.education || '').trim() || null
+    const profession = String(pd.occupation || profile.occupation || '').trim() || null
+    const skillsArr = Array.isArray(pd.skills) ? pd.skills : (Array.isArray(profile.skills) ? profile.skills : [])
+    const skills = skillsArr.length ? skillsArr.join(', ') : null
+
+    const whyJoin = `Creator Collab milestone completed (collab #${ca.id}). Profile and platforms copied from your creator application.`
+
+    const { rows } = await pool.query(
+      `INSERT INTO affiliate_applications (
+        name, email, phone, instagram, snapchat, youtube, facebook,
+        followers, platform, experience, why_join, expected_sales,
+        house_number, street, building, apartment, road, city, pincode, state,
+        agree_terms, status, application_date,
+        birth_day, birth_month, birth_year,
+        education_level, profession, skills
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+      RETURNING *`,
+      [
+        name, userEmail, phone,
+        instagram || null, snapchat || null, youtube || null, facebook || null,
+        followers, 'multi', 'Creator Collab program', whyJoin, null,
+        house_number, street, null, null, road, city, pincode, state,
+        true, 'pending', new Date(),
+        Number.isFinite(birthDay as number) ? birthDay : null,
+        Number.isFinite(birthMonth as number) ? birthMonth : null,
+        Number.isFinite(birthYear as number) ? birthYear : null,
+        education_level, profession, skills,
+      ]
+    )
+
+    sendAffiliateApplicationSubmittedEmail(userEmail, name).catch(() => {})
+
+    sendSuccess(res, rows[0], 201)
+  } catch (err: any) {
+    console.error('submitAffiliateApplicationFromCollab:', err)
+    sendError(res, 500, 'Failed to submit application', err)
+  }
+}
+
 // Get all affiliate applications (admin only)
 export async function getAffiliateApplications(pool: Pool, req: Request, res: Response) {
   try {
