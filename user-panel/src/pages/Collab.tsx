@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Country, State, City } from 'country-state-city'
 import {
-  ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
+  Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, TrendingUp,
   Clapperboard, Zap, ChevronRight, Star, Award, Youtube, Twitter, Facebook,
   Globe, MapPin, Plus, Linkedin, Send, Ghost, ScrollText, Trophy, Percent
@@ -600,15 +600,11 @@ export default function Collab() {
   }
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: 'var(--arctic-blue-background, #F4F9F9)', fontFamily: 'var(--font-body-family)' }}>
+    <main className="min-h-screen pt-14 lg:pt-0" style={{ backgroundColor: 'var(--arctic-blue-background, #F4F9F9)', fontFamily: 'var(--font-body-family)' }}>
 
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <div className="bg-white border-b" style={{ borderColor: '#eee' }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-          <a href="#/user/" className="inline-flex items-center gap-1.5 text-xs font-light tracking-widest uppercase mb-10 transition-colors hover:opacity-60"
-            style={{ color: '#aaa', letterSpacing: '0.1em' }}>
-            <ArrowLeft className="h-3 w-3" /> Back
-          </a>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex items-center gap-5">

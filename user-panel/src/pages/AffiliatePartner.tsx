@@ -661,7 +661,7 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <main className="min-h-screen bg-white pt-14 lg:pt-0" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
             --arctic-blue-primary: rgb(75,151,201);
@@ -696,7 +696,7 @@ useEffect(() => {
   // If user is verified and has affiliate data, show dashboard
   if (isAlreadyVerified && affiliateData) {
     return (
-      <main className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <main className="min-h-screen bg-white overflow-x-hidden pt-14 lg:pt-0" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
             --arctic-blue-primary: rgb(75,151,201);
@@ -1753,7 +1753,7 @@ useEffect(() => {
 
   // Main affiliate partner page - show options for code entry or application
   return (
-    <main className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+    <main className="min-h-screen bg-white overflow-x-hidden pt-14 lg:pt-0" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
           --arctic-blue-primary: rgb(75,151,201);

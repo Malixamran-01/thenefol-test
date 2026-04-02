@@ -25,10 +25,15 @@ import {
   Zap,
   LayoutDashboard,
   Handshake,
-  Construction,
   Check,
   Copy,
   ArrowRight,
+  Clapperboard,
+  DollarSign,
+  Trophy,
+  Percent,
+  ShieldCheck,
+  ChevronRight,
 } from 'lucide-react'
 import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -68,7 +73,7 @@ interface DashboardData {
 }
 type SortKey = 'created_at' | 'views_count' | 'likes_count' | 'comments_count' | 'reposts_count'
 type ChartMetric = 'likes' | 'posts' | 'followers'
-type DashTab = 'posts' | 'affiliate'
+type DashTab = 'posts' | 'creator' | 'earnings'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -179,46 +184,247 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-// ─── Affiliate placeholder tab ────────────────────────────────────────────────
+// ─── Creator Program tab ──────────────────────────────────────────────────────
 
-function AffiliateTab() {
+function CreatorProgramTab() {
+  const { user, isAuthenticated } = useAuth()
+  const [collabStatus, setCollabStatus] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.email) { setLoading(false); return }
+    fetch(`${getApiBase()}/api/collab/status?email=${encodeURIComponent(user.email)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { setCollabStatus(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [isAuthenticated, user?.email])
+
+  const VIEWS_GOAL  = 10000
+  const LIKES_GOAL  = 500
+  const views = collabStatus?.totalViews ?? 0
+  const likes = collabStatus?.totalLikes ?? 0
+  const viewsPct = Math.min(100, Math.round((views / VIEWS_GOAL) * 100))
+  const likesPct = Math.min(100, Math.round((likes / LIKES_GOAL) * 100))
+  const isApproved = collabStatus?.status === 'approved'
+  const isApplied  = !!collabStatus?.status
+  const affiliateUnlocked = collabStatus?.affiliateUnlocked
+
+  // Level label
+  const level = affiliateUnlocked ? 'Partner' : isApproved ? 'Creator' : 'Explorer'
+  const levelColor = affiliateUnlocked ? 'text-[#1B4965] bg-[#edf4f9]' : isApproved ? 'text-emerald-700 bg-emerald-50' : 'text-gray-500 bg-gray-100'
+
   return (
-    <div className="pt-4 pb-20">
-      {/* Hero */}
-      <div className="mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] via-[#2d6688] to-[#4B97C9] p-8 text-center shadow-lg">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-          <Handshake className="h-8 w-8 text-white" />
-        </div>
-        <h2 className="text-2xl font-black text-white">Affiliate Program</h2>
-        <p className="mt-2 text-blue-200">Earn rewards by referring readers and authors to Nefol.</p>
-        <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white">
-          <Construction className="h-4 w-4" /> Coming Soon
+    <div className="pb-20">
+      {/* Header card */}
+      <div className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] via-[#2563a0] to-[#4B97C9] p-6 shadow-lg">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white">
+              <Trophy className="h-3 w-3" /> {level}
+            </div>
+            <h2 className="text-xl font-black text-white">Creator Program</h2>
+            <p className="mt-1 text-[13px] text-blue-200">
+              {affiliateUnlocked
+                ? 'You\'ve unlocked affiliate earnings. Visit Earnings to manage it.'
+                : isApproved
+                ? 'You\'re approved! Hit 10K views & 500 likes on eligible reels to unlock affiliate.'
+                : 'Complete your application to start your creator journey.'}
+            </p>
+          </div>
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+            <Clapperboard className="h-6 w-6 text-white" />
+          </div>
         </div>
       </div>
 
-      {/* Upcoming features */}
-      <p className="mb-4 text-[13px] font-bold uppercase tracking-wider text-gray-400">What's coming</p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {[
-          { icon: <CircleDollarSign className="h-5 w-5 text-emerald-600" />, bg: 'bg-emerald-50', title: 'Earn Commissions', desc: 'Get a share of every subscription made through your referral link.' },
-          { icon: <Users className="h-5 w-5 text-[#4B97C9]" />,            bg: 'bg-[#edf4f9]',  title: 'Track Referrals',  desc: 'See exactly how many readers signed up through your link.' },
-          { icon: <BarChart3 className="h-5 w-5 text-purple-600" />,       bg: 'bg-purple-50',   title: 'Performance Stats', desc: 'Clicks, conversions, and earnings — all in one place.' },
-          { icon: <TrendingUp className="h-5 w-5 text-amber-600" />,       bg: 'bg-amber-50',    title: 'Tiered Rewards',   desc: 'Unlock higher commission rates as your referrals grow.' },
-        ].map(({ icon, bg, title, desc }) => (
-          <div key={title} className="flex items-start gap-4 rounded-2xl border border-[#e8eef4] bg-white p-5">
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${bg}`}>{icon}</div>
-            <div>
-              <p className="font-semibold text-gray-800">{title}</p>
-              <p className="mt-0.5 text-[12px] leading-relaxed text-gray-500">{desc}</p>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[#4B97C9] border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          {/* Progress (only if approved but not yet affiliate) */}
+          {isApproved && !affiliateUnlocked && (
+            <div className="mb-6 rounded-2xl border border-[#d0e8f5] bg-white p-5 shadow-sm">
+              <p className="mb-4 text-[11px] font-bold uppercase tracking-wider text-gray-400">Affiliate Progress</p>
+              <div className="space-y-4">
+                {[
+                  { label: 'Views', val: views, goal: VIEWS_GOAL, pct: viewsPct, icon: <Eye className="h-4 w-4 text-[#4B97C9]" /> },
+                  { label: 'Likes', val: likes, goal: LIKES_GOAL, pct: likesPct, icon: <Heart className="h-4 w-4 text-rose-400" /> },
+                ].map(({ label, val, goal, pct, icon }) => (
+                  <div key={label}>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-700">{icon}{label}</span>
+                      <span className="text-[12px] text-gray-500">{val.toLocaleString()} / {goal.toLocaleString()}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-right text-[10px] text-gray-400">{pct}% complete</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Status card */}
+          <div className="mb-6 rounded-2xl border border-[#e8eef4] bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf4f9]">
+                  <ShieldCheck className="h-5 w-5 text-[#1B4965]" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-bold text-gray-800">
+                    {affiliateUnlocked ? 'Affiliate Unlocked' : isApproved ? 'Collab Approved' : isApplied ? 'Application Pending' : 'Not Applied Yet'}
+                  </p>
+                  <p className="text-[11px] text-gray-500">
+                    {affiliateUnlocked ? 'Check the Earnings tab to activate your dashboard'
+                      : isApproved ? 'Hit milestones above to unlock affiliate earnings'
+                      : isApplied ? 'Your application is under review by the team'
+                      : 'Apply now to join the Creator Program'}
+                  </p>
+                </div>
+              </div>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${levelColor}`}>
+                {level}
+              </span>
             </div>
           </div>
-        ))}
+
+          {/* CTA */}
+          <a
+            href="#/user/collab"
+            className="flex w-full items-center justify-between rounded-2xl border border-[#d0e8f5] bg-[#f0f7fc] px-5 py-4 transition hover:border-[#4B97C9] hover:bg-[#e8f2f9]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1B4965]">
+                <Clapperboard className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-[13px] font-semibold text-[#1B4965]">
+                {isApplied ? 'View Creator Program' : 'Apply for Creator Program'}
+              </span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-[#4B97C9]" />
+          </a>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Earnings tab ─────────────────────────────────────────────────────────────
+
+function EarningsTab() {
+  const { user, isAuthenticated } = useAuth()
+  const [appStatus, setAppStatus] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.email) { setLoading(false); return }
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''
+    fetch(`${getApiBase()}/api/affiliate/application-status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { setAppStatus(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [isAuthenticated, user?.email])
+
+  const statusLabel: Record<string, string> = {
+    pending: 'Under Review',
+    approved: 'Approved',
+    rejected: 'Not Approved',
+  }
+  const statusColor: Record<string, string> = {
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rejected: 'bg-red-50 text-red-600 border-red-200',
+  }
+
+  return (
+    <div className="pb-20">
+      {/* Header */}
+      <div className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] via-[#2d6688] to-[#4B97C9] p-6 shadow-lg">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-white">Earnings</h2>
+            <p className="mt-1 text-[13px] text-blue-200">Your affiliate earnings and referral program</p>
+          </div>
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+            <DollarSign className="h-6 w-6 text-white" />
+          </div>
+        </div>
       </div>
 
-      <div className="mt-8 rounded-2xl border border-dashed border-[#d0e4f0] bg-[#f8fbfd] p-6 text-center">
-        <p className="text-sm font-semibold text-[#1B4965]">Want early access?</p>
-        <p className="mt-1 text-[13px] text-gray-500">Keep writing and growing your audience — we'll notify you when the affiliate program launches.</p>
-      </div>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[#4B97C9] border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          {/* Status */}
+          {appStatus?.status && (
+            <div className="mb-6 rounded-2xl border border-[#e8eef4] bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf4f9]">
+                    <Percent className="h-5 w-5 text-[#1B4965]" />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-bold text-gray-800">Affiliate Application</p>
+                    <p className="text-[11px] text-gray-500">
+                      {appStatus.status === 'approved'
+                        ? 'Your affiliate dashboard is ready'
+                        : appStatus.status === 'pending'
+                        ? 'Submitted — the team is reviewing your application'
+                        : 'Your application was not approved at this time'}
+                    </p>
+                  </div>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusColor[appStatus.status] ?? 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                  {statusLabel[appStatus.status] ?? appStatus.status}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Feature cards */}
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[
+              { icon: <CircleDollarSign className="h-5 w-5 text-emerald-600" />, bg: 'bg-emerald-50', title: 'Earn Commissions', desc: 'Get rewarded every time someone purchases through your referral link.' },
+              { icon: <Users className="h-5 w-5 text-[#4B97C9]" />,            bg: 'bg-[#edf4f9]',  title: 'Track Referrals',  desc: 'See exactly how many readers signed up through your link.' },
+              { icon: <BarChart3 className="h-5 w-5 text-purple-600" />,       bg: 'bg-purple-50',   title: 'Performance Stats', desc: 'Clicks, conversions, and earnings — all in one place.' },
+              { icon: <TrendingUp className="h-5 w-5 text-[#1B4965]" />,       bg: 'bg-[#edf4f9]',  title: 'Tiered Rewards',   desc: 'Unlock higher commission rates as your referrals grow.' },
+            ].map(({ icon, bg, title, desc }) => (
+              <div key={title} className="flex items-start gap-4 rounded-2xl border border-[#e8eef4] bg-white p-4">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${bg}`}>{icon}</div>
+                <div>
+                  <p className="text-[13px] font-semibold text-gray-800">{title}</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <a
+            href="#/user/affiliate-partner"
+            className="flex w-full items-center justify-between rounded-2xl border border-[#d0e8f5] bg-[#f0f7fc] px-5 py-4 transition hover:border-[#4B97C9] hover:bg-[#e8f2f9]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1B4965]">
+                <DollarSign className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-[13px] font-semibold text-[#1B4965]">Open Earnings Dashboard</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-[#4B97C9]" />
+          </a>
+        </>
+      )}
     </div>
   )
 }
@@ -355,8 +561,9 @@ export default function CreatorDashboard() {
       {/* ── Tabs ── */}
       <div className="mb-8 flex gap-1 border-b border-gray-200">
         {([
-          { key: 'posts',     icon: <LayoutDashboard className="h-4 w-4" />, label: 'Posts' },
-          { key: 'affiliate', icon: <Handshake className="h-4 w-4" />,      label: 'Affiliate' },
+          { key: 'posts',   icon: <LayoutDashboard className="h-4 w-4" />, label: 'Posts' },
+          { key: 'creator', icon: <Clapperboard className="h-4 w-4" />,    label: 'Creator Program' },
+          { key: 'earnings',icon: <DollarSign className="h-4 w-4" />,      label: 'Earnings' },
         ] as { key: DashTab; icon: React.ReactNode; label: string }[]).map(({ key, icon, label }) => (
           <button key={key} onClick={() => setActiveTab(key)}
             className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${
@@ -365,15 +572,15 @@ export default function CreatorDashboard() {
                 : 'border-transparent text-gray-400 hover:text-gray-600'
             }`}>
             {icon}{label}
-            {key === 'affiliate' && (
-              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-600">Soon</span>
-            )}
           </button>
         ))}
       </div>
 
-      {/* ══ AFFILIATE TAB ══ */}
-      {activeTab === 'affiliate' && <AffiliateTab />}
+      {/* ══ CREATOR PROGRAM TAB ══ */}
+      {activeTab === 'creator' && <CreatorProgramTab />}
+
+      {/* ══ EARNINGS TAB ══ */}
+      {activeTab === 'earnings' && <EarningsTab />}
 
       {/* ══ POSTS TAB ══════════════════════════════════════════════════════ */}
       {activeTab === 'posts' && (

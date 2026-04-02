@@ -109,7 +109,11 @@ function AppContent() {
     (currentPath.startsWith('/user/blog/') &&
       currentPath !== '/user/blog/request' &&
       currentPath !== '/user/blog/edit-image') ||
-    currentPath.startsWith('/user/author/')
+    currentPath.startsWith('/user/author/') ||
+    currentPath === '/user/collab' ||
+    currentPath === '/user/affiliate' ||
+    currentPath === '/user/affiliate-partner' ||
+    currentPath === '/user/referral-history'
 
   // Capture referral parameter from URL
   useEffect(() => {
@@ -750,14 +754,13 @@ function AppContent() {
                 <li><a href="#/user/faq" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>FAQ</a></li>
                 <li><a href="#/user/blog" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Blogs</a></li>
                 <li>
-                  <button
-                    type="button"
-                    onClick={() => setShowJoinUs(true)}
-                    className="text-xs sm:text-sm font-light transition-colors hover:opacity-80 text-left"
+                  <a
+                    href="#/user/blog"
+                    className="text-xs sm:text-sm font-light transition-colors hover:opacity-80"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
-                    Join Us
-                  </button>
+                    Nefol Social
+                  </a>
                 </li>
 
                 <li><a href="#/user/contact" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Contact Us</a></li>
@@ -1086,15 +1089,13 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
     case '/user/collab':
-      return <Collab />
+      return <BlogLayout><Collab /></BlogLayout>
     case '/user/affiliate':
-  return RequiredAuth(<Affiliate />)
-
-case '/user/affiliate-partner':
-  return RequiredAuth(<AffiliatePartner />)
-
-case '/user/referral-history':
-  return RequiredAuth(<ReferralHistory />)
+      return <BlogLayout>{RequiredAuth(<Affiliate />)}</BlogLayout>
+    case '/user/affiliate-partner':
+      return <BlogLayout>{RequiredAuth(<AffiliatePartner />)}</BlogLayout>
+    case '/user/referral-history':
+      return <BlogLayout>{RequiredAuth(<ReferralHistory />)}</BlogLayout>
 
     case '/user/reports': return <Reports />
     case '/user/profile': return <Profile />

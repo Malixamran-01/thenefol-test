@@ -13,6 +13,8 @@ import {
   ChevronRight,
   LogIn,
   LogOut,
+  Clapperboard,
+  DollarSign,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
@@ -73,6 +75,20 @@ const NAV_ITEMS: NavItem[] = [
     href: '#/user/blog/dashboard',
     matchPrefix: '#/user/blog/dashboard',
   },
+  {
+    id: 'creator-program',
+    label: 'Creator Program',
+    icon: <Clapperboard strokeWidth={1.75} className="h-5 w-5" />,
+    href: '#/user/collab',
+    matchPrefix: '#/user/collab',
+  },
+  {
+    id: 'earnings',
+    label: 'Earnings',
+    icon: <DollarSign strokeWidth={1.75} className="h-5 w-5" />,
+    href: '#/user/affiliate-partner',
+    matchPrefix: '#/user/affiliate-partner',
+  },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -91,6 +107,8 @@ function isItemActive(item: NavItem, hash: string, currentUserId?: number): bool
   if (item.placeholder) return false
   if (item.id === 'home') return hash === '#/user/blog'
   if (item.id === 'my-blogs') return hash.startsWith('#/user/blog/my-blogs')
+  if (item.id === 'creator-program') return hash.startsWith('#/user/collab')
+  if (item.id === 'earnings') return hash.startsWith('#/user/affiliate-partner') || hash.startsWith('#/user/affiliate') || hash.startsWith('#/user/referral-history')
   if (item.id === 'profile') {
     const idFromHash = hash.replace(/^#\/user\/author\//, '').split('/')[0].split('?')[0]
     if (idFromHash === 'me') return true
