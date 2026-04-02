@@ -1797,14 +1797,14 @@ useEffect(() => {
               applicationStatus === 'approved' 
                 ? 'bg-green-50 border-green-200' 
                 : applicationStatus === 'pending'
-                ? 'bg-yellow-50 border-yellow-200'
+                ? 'bg-[#f0f8fd] border-[#d6eaf8]'
                 : 'bg-red-50 border-red-200'
             }`}>
               <div className="flex items-center gap-3 mb-3">
                 {applicationStatus === 'approved' ? (
                   <CheckCircle className="h-6 w-6 text-green-600" />
                 ) : applicationStatus === 'pending' ? (
-                  <Clock className="h-6 w-6 text-yellow-600" />
+                  <Clock className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
                 ) : (
                   <AlertCircle className="h-6 w-6 text-red-600" />
                 )}
@@ -1812,7 +1812,7 @@ useEffect(() => {
                   applicationStatus === 'approved' 
                     ? 'text-green-800' 
                     : applicationStatus === 'pending'
-                    ? 'text-yellow-800'
+                    ? 'text-gray-800'
                     : 'text-red-800'
                 }`} style={{ letterSpacing: '0.1em' }}>
                   {applicationStatus === 'approved' 
@@ -1827,7 +1827,7 @@ useEffect(() => {
                 applicationStatus === 'approved' 
                   ? 'text-green-700' 
                   : applicationStatus === 'pending'
-                  ? 'text-yellow-700'
+                  ? 'text-gray-600'
                   : 'text-red-700'
               }`} style={{ letterSpacing: '0.05em' }}>
                 {applicationStatus === 'approved' 
@@ -1844,13 +1844,13 @@ useEffect(() => {
               {applicationStatus === 'pending' && (
                 <>
                   <div className="mt-2 flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-yellow-700" />
-                    <span className="text-xs font-light tracking-wide text-yellow-700" style={{ letterSpacing: '0.05em' }}>
+                    <Clock className="h-4 w-4" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+                    <span className="text-xs font-light tracking-wide text-gray-700" style={{ letterSpacing: '0.05em' }}>
                       Verification Pending
                     </span>
                   </div>
-                  <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <p className="text-sm text-blue-700 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                  <div className="mt-4 p-4 rounded-xl border" style={{ backgroundColor: '#f0f8fd', borderColor: '#d6eaf8' }}>
+                    <p className="text-sm font-light tracking-wide text-gray-700" style={{ letterSpacing: '0.05em' }}>
                       <strong className="font-medium">Need help?</strong> If you're having trouble finding your verification code or have questions about your application, please contact our support team.
                     </p>
                   </div>
@@ -1866,19 +1866,24 @@ useEffect(() => {
           <div className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
             {/* Achievement banner — shown when user has collab stats */}
             {collabStats && (collabStats.views > 0 || collabStats.likes > 0) && (
-              <div className="px-6 py-4 flex items-center gap-4 border-b border-amber-100"
-                style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
-                <div className="w-9 h-9 rounded-xl bg-amber-400/20 flex items-center justify-center flex-shrink-0">
-                  <Award className="h-4 w-4 text-amber-700" />
+              <div
+                className="px-6 py-4 flex items-center gap-4 border-b border-[#e8f4fb]"
+                style={{ background: 'linear-gradient(135deg, #f4fafb 0%, #e8f4fb 100%)' }}
+              >
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/80"
+                  style={{ backgroundColor: 'rgba(75, 151, 201, 0.12)' }}
+                >
+                  <Award className="h-4 w-4" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Creator Collab Achievement</p>
+                  <p className="text-xs font-semibold text-gray-800 uppercase tracking-wide">Creator Collab Achievement</p>
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
-                      <Eye className="h-3 w-3" />{collabStats.views.toLocaleString()} views
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700">
+                      <Eye className="h-3 w-3" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />{collabStats.views.toLocaleString()} views
                     </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
-                      <Heart className="h-3 w-3" />{collabStats.likes.toLocaleString()} likes
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700">
+                      <Heart className="h-3 w-3" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />{collabStats.likes.toLocaleString()} likes
                     </span>
                   </div>
                 </div>

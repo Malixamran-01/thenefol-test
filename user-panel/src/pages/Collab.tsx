@@ -615,7 +615,7 @@ export default function Collab() {
             {submitted && status && (
               <div className="flex-shrink-0">
                 <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium tracking-wide ${
-                  affiliateUnlocked ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                  affiliateUnlocked ? 'bg-[#f0f8fd] text-[#357aad] border border-[#d6eaf8]'
                   : status.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : status.status === 'rejected' ? 'bg-red-50 text-red-600 border border-red-200'
                   : 'bg-gray-50 text-gray-500 border border-gray-200'
@@ -1137,17 +1137,17 @@ export default function Collab() {
 
               {/* Affiliate unlocked — comprehensive inline section */}
               {affiliateUnlocked && (
-                <div className="rounded-3xl overflow-hidden border border-amber-200/60 shadow-sm">
-                  {/* Header gradient bar */}
+                <div className="rounded-3xl overflow-hidden border border-[#e8f4fb] shadow-sm">
+                  {/* Header gradient bar — arctic blue (site theme) */}
                   <div className="relative p-5 sm:p-6 flex items-center gap-4"
-                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
+                    style={{ background: 'linear-gradient(135deg, #4B97C9 0%, #357aad 100%)' }}>
                     <div className="absolute inset-0 opacity-15" style={{ backgroundImage: 'radial-gradient(circle at 85% 50%, white 0%, transparent 55%)' }} />
                     <div className="w-11 h-11 rounded-2xl bg-white/25 flex items-center justify-center flex-shrink-0">
                       <Trophy className="h-5 w-5 text-white" aria-hidden />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white text-base sm:text-lg leading-tight">Affiliate Program Unlocked!</p>
-                      <p className="text-amber-100 text-xs sm:text-sm mt-0.5">You've reached {totalViews.toLocaleString()} views &amp; {totalLikes.toLocaleString()} likes — milestone achieved.</p>
+                      <p className="text-white/90 text-xs sm:text-sm mt-0.5">You've reached {totalViews.toLocaleString()} views &amp; {totalLikes.toLocaleString()} likes — milestone achieved.</p>
                     </div>
                     {/* Achievement chips */}
                     <div className="hidden sm:flex flex-col gap-1.5 flex-shrink-0 text-right">
@@ -1164,23 +1164,23 @@ export default function Collab() {
                   <div className="bg-white p-5 sm:p-6">
                     {affiliateAppLoading ? (
                       <div className="flex items-center gap-3 py-2">
-                        <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                        <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
                         <span className="text-sm text-gray-500 font-light">Checking application status…</span>
                       </div>
                     ) : affiliateAppStatus === 'pending' ? (
                       <div className="space-y-3">
-                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-2xl p-4">
-                          <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                            <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+                        <div className="flex items-start gap-3 rounded-2xl p-4 border border-[#e8f4fb]" style={{ backgroundColor: '#f0f8fd' }}>
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#d6eaf8]" style={{ backgroundColor: '#e8f4fb' }}>
+                            <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-amber-800">Application under review</p>
-                            <p className="text-xs text-amber-600 mt-0.5">We'll send your affiliate verification code by email once approved. Keep an eye on your inbox.</p>
+                            <p className="text-sm font-semibold text-gray-800">Application under review</p>
+                            <p className="text-xs text-gray-600 mt-0.5">We'll send your affiliate verification code by email once approved. Keep an eye on your inbox.</p>
                           </div>
                         </div>
                         <p className="text-xs text-gray-400 text-center">Already have a code?</p>
                         <a href="#/user/affiliate-partner"
-                          className="block w-full text-center rounded-xl py-2.5 text-sm font-semibold border-2 border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors">
+                          className="block w-full text-center rounded-xl py-2.5 text-sm font-semibold border-2 border-[#b8d9f0] text-[#357aad] hover:bg-[#f0f8fd] transition-colors">
                           Enter verification code →
                         </a>
                       </div>
@@ -1197,7 +1197,7 @@ export default function Collab() {
                         </div>
                         <a href="#/user/affiliate-partner"
                           className="block w-full text-center rounded-xl py-3 text-sm font-bold text-white transition-all hover:opacity-90"
-                          style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                          style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
                           Activate affiliate dashboard →
                         </a>
                       </div>
@@ -1228,7 +1228,7 @@ export default function Collab() {
                         <div className="flex flex-wrap gap-2">
                           {[
                             { icon: <Percent className="h-3 w-3" />, label: 'Earn commissions', color: '#10b981' },
-                            { icon: <Star className="h-3 w-3" />, label: 'Unique referral link', color: '#f59e0b' },
+                            { icon: <Star className="h-3 w-3" />, label: 'Unique referral link', color: '#357aad' },
                             { icon: <TrendingUp className="h-3 w-3" />, label: 'Track earnings live', color: '#4B97C9' },
                           ].map((b) => (
                             <span key={b.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 border border-gray-100 text-gray-700">
@@ -1239,9 +1239,11 @@ export default function Collab() {
                         <label className="flex items-start gap-3 cursor-pointer">
                           <input type="checkbox" checked={affiliateApplyTerms}
                             onChange={(e) => { setAffiliateApplyTerms(e.target.checked); setAffiliateApplyMsg('') }}
-                            className="mt-0.5 h-4 w-4 rounded accent-amber-500 flex-shrink-0" />
+                            className="mt-0.5 h-4 w-4 rounded flex-shrink-0"
+                            style={{ accentColor: 'var(--arctic-blue-primary, #4B97C9)' }}
+                          />
                           <span className="text-xs text-gray-600 leading-relaxed">
-                            I confirm my Creator Collab profile data (name, contact, social links) may be used for this affiliate application and I agree to the <a href="#/user/affiliate-partner" className="text-amber-600 underline">affiliate terms</a>.
+                            I confirm my Creator Collab profile data (name, contact, social links) may be used for this affiliate application and I agree to the <a href="#/user/affiliate-partner" className="underline" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }}>affiliate terms</a>.
                           </span>
                         </label>
                         {affiliateApplyMsg && (
@@ -1253,7 +1255,7 @@ export default function Collab() {
                           <button type="button" onClick={applyForAffiliate}
                             disabled={!affiliateApplyTerms || affiliateApplying}
                             className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-40"
-                            style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                            style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
                             {affiliateApplying
                               ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
                               : <><Trophy className="h-4 w-4" /> Apply for Affiliate</>}
@@ -1271,9 +1273,9 @@ export default function Collab() {
 
               {/* Pending approval notice */}
               {status.status === 'pending' && (
-                <div className="bg-white rounded-3xl p-6 border border-amber-100 shadow-sm flex items-start gap-4">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-                    <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />
+                <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm flex items-start gap-4">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#e8f4fb]" style={{ backgroundColor: '#f0f8fd' }}>
+                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-800 text-sm">Application under review</p>
@@ -1456,7 +1458,7 @@ export default function Collab() {
                             </p>
                             <p className="text-xs text-gray-400 font-light">{meta.connectHelp}</p>
                             {key === 'reddit' && (
-                              <p className="text-xs text-amber-900/90 rounded-xl border border-amber-100 bg-amber-50/90 px-3 py-2 font-light leading-snug">
+                              <p className="text-xs text-gray-700 rounded-xl border border-[#e8f4fb] px-3 py-2 font-light leading-snug" style={{ backgroundColor: '#f0f8fd' }}>
                                 Reddit: upvotes count toward likes; views are not available from Reddit’s API.
                               </p>
                             )}
@@ -1478,7 +1480,7 @@ export default function Collab() {
                               </button>
                             </div>
                             {key === 'reddit' && (
-                              <p className="text-xs text-amber-900/90 mb-4 rounded-xl border border-amber-100 bg-amber-50/90 px-3 py-2 font-light leading-snug">
+                              <p className="text-xs text-gray-700 mb-4 rounded-xl border border-[#e8f4fb] px-3 py-2 font-light leading-snug" style={{ backgroundColor: '#f0f8fd' }}>
                                 Reddit: upvotes count toward likes; views are not available from Reddit’s API.
                               </p>
                             )}
@@ -1640,8 +1642,8 @@ export default function Collab() {
                   </div>
 
                   {submittedReels.some((r) => r.insights_pending) && (
-                    <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-xs text-amber-800">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5 text-amber-500" />
+                    <div className="mb-4 flex items-start gap-3 rounded-2xl px-4 py-3 text-xs text-gray-800 border border-[#e8f4fb]" style={{ backgroundColor: '#f0f8fd' }}>
+                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
                       <span><strong>{submittedReels.filter((r) => r.insights_pending).length} reel{submittedReels.filter((r) => r.insights_pending).length > 1 ? 's' : ''} still syncing</strong> — metrics update automatically every 8 hours.</span>
                     </div>
                   )}
@@ -1651,14 +1653,14 @@ export default function Collab() {
                       const eligible = reel.caption_ok && reel.date_ok
                       return (
                         <div key={reel.id} className="flex items-center gap-4 rounded-2xl px-4 py-3.5 border"
-                          style={{ borderColor: reel.insights_pending ? '#fde68a' : eligible ? '#d1fae5' : '#fecaca', backgroundColor: reel.insights_pending ? '#fffbeb' : eligible ? '#f0fdf4' : '#fef2f2' }}>
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${reel.insights_pending ? 'bg-amber-400 animate-pulse' : eligible ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                          style={{ borderColor: reel.insights_pending ? '#d6eaf8' : eligible ? '#d1fae5' : '#fecaca', backgroundColor: reel.insights_pending ? '#f0f8fd' : eligible ? '#f0fdf4' : '#fef2f2' }}>
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${reel.insights_pending ? 'animate-pulse' : eligible ? 'bg-emerald-500' : 'bg-red-400'}`} style={reel.insights_pending ? { backgroundColor: 'var(--arctic-blue-primary, #4B97C9)' } : undefined} />
                           <div className="flex-1 min-w-0">
                             <a href={reel.reel_url} target="_blank" rel="noreferrer"
                               className="text-xs font-medium text-[#4B97C9] underline truncate block">{reel.reel_url}</a>
                             <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                               {reel.insights_pending
-                                ? <span className="italic text-amber-600">Syncing metrics...</span>
+                                ? <span className="italic" style={{ color: '#357aad' }}>Syncing metrics...</span>
                                 : <><span className="flex items-center gap-1"><Eye className="h-3 w-3" />{(reel.views_count || 0).toLocaleString()}</span>
                                    <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{(reel.likes_count || 0).toLocaleString()}</span>
                                    <span>@{reel.platform_username || reel.instagram_username}</span></>}
@@ -1678,7 +1680,7 @@ export default function Collab() {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {reel.insights_pending
-                              ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Syncing</span>
+                              ? <span className="text-[10px] px-2 py-0.5 rounded-full font-medium border border-[#d6eaf8]" style={{ backgroundColor: '#e8f4fb', color: '#357aad' }}>Syncing</span>
                               : <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${eligible ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>{eligible ? 'Eligible' : 'Ineligible'}</span>}
                             <button
                               onClick={async () => {
