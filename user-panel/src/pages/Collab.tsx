@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Country, State, City } from 'country-state-city'
 import {
   ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
@@ -9,6 +9,7 @@ import {
 import { YoutubeLogo, RedditLogo } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
 
 export type SupportedPlatform = 'youtube' | 'reddit' | 'vk'
 
@@ -244,6 +245,9 @@ export default function Collab() {
 
   const [phonePickerOpen, setPhonePickerOpen] = useState(false)
   const phonePickerRef = useRef<HTMLDivElement>(null)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [turnstileMountKey, setTurnstileMountKey] = useState(0)
+  const onTurnstileToken = useCallback((t: string | null) => setTurnstileToken(t), [])
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -389,12 +393,18 @@ export default function Collab() {
     e.preventDefault()
     if (!formData.name || !formData.email || !formData.phone)
       return alert('Please fill in your Name, Email, and Phone.')
+    if (isTurnstileConfigured() && !turnstileToken)
+      return alert('Please complete the security verification below.')
     // Open T&C modal for review before final submit
     setShowTCModal(true)
   }
 
   const doSubmit = async () => {
     setShowTCModal(false)
+    if (isTurnstileConfigured() && !turnstileToken) {
+      alert('Security verification expired or missing. Please complete the captcha again.')
+      return
+    }
     // Collect instagram handles from instagram platform links
     const igLinks = platforms['instagram'].checked
       ? platforms['instagram'].links.map((l) => l.trim()).filter(Boolean)
@@ -412,6 +422,7 @@ export default function Collab() {
       method: 'POST', headers: authHeaders(),
       body: JSON.stringify({
         ...formData, agreeTerms: true,
+        turnstileToken: turnstileToken || undefined,
         phone_code: profile.phone_code,
         instagram: handles[0] || '', instagram_handles: handles,
         platforms: selectedPlatforms, address,
@@ -430,6 +441,8 @@ export default function Collab() {
     const data = await res.json().catch(() => ({}))
     if (res.ok) {
       setSubmitted(true); setShowForm(false)
+      setTurnstileToken(null)
+      setTurnstileMountKey((k) => k + 1)
       const ap = data?.application?.platforms
       if (Array.isArray(ap)) {
         setApplicationPlatformKeys(new Set(ap.map((p: { name?: string }) => String(p.name || '').toLowerCase()).filter(Boolean)))
@@ -439,7 +452,11 @@ export default function Collab() {
         : { id: data?.application?.id, status: 'pending', hasApplication: true, totalViews: 0, totalLikes: 0,
             progressPercent: 0, affiliateUnlocked: false, instagramHandles: handles,
             instagramConnected: false, igUsername: null, collabJoinedAt: new Date().toISOString() })
-    } else { alert(data?.message || 'Failed to submit. Please try again.') }
+    } else {
+      alert(data?.message || 'Failed to submit. Please try again.')
+      setTurnstileToken(null)
+      setTurnstileMountKey((k) => k + 1)
+    }
   }
 
   const handleConnectInstagram = () => {
@@ -990,6 +1007,8 @@ export default function Collab() {
                   </div>
 
                   <div className="border-t border-gray-100" />
+
+                  <CollabTurnstile key={turnstileMountKey} onToken={onTurnstileToken} />
 
                   <button type="submit"
                     className="w-full rounded-xl py-3.5 font-semibold text-sm text-white transition-all hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"

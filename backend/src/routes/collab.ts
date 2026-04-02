@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express'
 import { Pool } from 'pg'
 import { generateUniqueUserId } from '../utils/generateUserId'
+import { verifyTurnstileToken } from '../utils/turnstile'
 import { fetchReelData, captionMentionsNefol, getPageTokenForCollab, extractShortcode, NEFOL_KEYWORDS } from './instagram'
 
 // ─── Thresholds ────────────────────────────────────────────────────────────────
@@ -138,7 +139,20 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
     const {
       name, email, phone, phone_code, instagram, instagram_handles, youtube, facebook,
       followers, message, agreeTerms, platforms, address, profile,
+      turnstileToken,
     } = req.body
+
+    const remoteIp =
+      (typeof req.headers['x-forwarded-for'] === 'string'
+        ? req.headers['x-forwarded-for'].split(',')[0]?.trim()
+        : undefined) || req.socket?.remoteAddress
+    const captcha = await verifyTurnstileToken(
+      typeof turnstileToken === 'string' ? turnstileToken : undefined,
+      remoteIp
+    )
+    if (!captcha.ok) {
+      return res.status(400).json({ message: captcha.message })
+    }
 
     if (!name || !email || !phone || !agreeTerms) {
       return res.status(400).json({ message: 'Missing required fields' })
