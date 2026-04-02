@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useCallback } from 'react'
-import { Shield } from 'lucide-react'
+import React, { useLayoutEffect, useRef, useCallback, useState } from 'react'
+import { Shield, AlertCircle } from 'lucide-react'
 
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
+const SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY || '').trim()
 
 declare global {
   interface Window {
@@ -10,31 +10,53 @@ declare global {
       reset: (widgetId: string) => void
       remove: (widgetId: string) => void
     }
-    onloadTurnstileCallback?: () => void
   }
 }
 
 let scriptPromise: Promise<void> | null = null
 
+function waitForTurnstileApi(maxMs = 15000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const start = Date.now()
+    const id = window.setInterval(() => {
+      if (window.turnstile) {
+        window.clearInterval(id)
+        resolve()
+        return
+      }
+      if (Date.now() - start > maxMs) {
+        window.clearInterval(id)
+        reject(new Error('Turnstile API did not become available'))
+      }
+    }, 50)
+  })
+}
+
 function loadTurnstileScript(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve()
   if (window.turnstile) return Promise.resolve()
-  if (scriptPromise) return scriptPromise
-  scriptPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')
-    if (existing) {
-      existing.addEventListener('load', () => resolve())
-      existing.addEventListener('error', () => reject(new Error('Turnstile script failed')))
-      return
-    }
-    const s = document.createElement('script')
-    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
-    s.async = true
-    s.defer = true
-    s.onload = () => resolve()
-    s.onerror = () => reject(new Error('Turnstile script failed'))
-    document.head.appendChild(s)
-  })
+
+  if (!scriptPromise) {
+    scriptPromise = (async () => {
+      const selector = 'script[src*="challenges.cloudflare.com/turnstile/v0/api.js"]'
+      let el = document.querySelector(selector) as HTMLScriptElement | null
+
+      if (!el) {
+        el = document.createElement('script')
+        el.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+        el.async = true
+        el.defer = true
+        document.head.appendChild(el)
+        await new Promise<void>((resolve, reject) => {
+          el!.addEventListener('load', () => resolve())
+          el!.addEventListener('error', () => reject(new Error('Turnstile script failed to load')))
+        })
+      }
+
+      // Wait for window.turnstile (handles script already in DOM from SPA nav, or slow init)
+      await waitForTurnstileApi(15000)
+    })()
+  }
   return scriptPromise
 }
 
@@ -44,11 +66,14 @@ type Props = {
 
 /**
  * Cloudflare Turnstile widget for Creator Collab apply form.
- * Set VITE_TURNSTILE_SITE_KEY in user-panel env (same site key as Cloudflare Turnstile dashboard).
+ * Set VITE_TURNSTILE_SITE_KEY in user-panel .env (rebuild after changing).
  */
 export default function CollabTurnstile({ onToken }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
+  const onTokenRef = useRef(onToken)
+  onTokenRef.current = onToken
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const cleanup = useCallback(() => {
     if (widgetIdRef.current && window.turnstile) {
@@ -61,42 +86,63 @@ export default function CollabTurnstile({ onToken }: Props) {
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!SITE_KEY) {
-      onToken(null)
+      onTokenRef.current(null)
       return
     }
 
     let cancelled = false
+    setLoadError(null)
 
-    loadTurnstileScript()
-      .then(() => {
-        if (cancelled || !containerRef.current || !window.turnstile) return
+    const run = async () => {
+      try {
+        await loadTurnstileScript()
+        if (cancelled || !containerRef.current) return
+        if (!window.turnstile) {
+          setLoadError('Security widget unavailable. Disable ad blockers for this site or try again.')
+          return
+        }
         cleanup()
         const id = window.turnstile.render(containerRef.current, {
           sitekey: SITE_KEY,
           theme: 'light',
-          callback: (token: string) => onToken(token),
-          'expired-callback': () => onToken(null),
-          'error-callback': () => onToken(null),
+          size: 'normal',
+          appearance: 'always',
+          callback: (token: string) => onTokenRef.current(token),
+          'expired-callback': () => onTokenRef.current(null),
+          'error-callback': () => {
+            onTokenRef.current(null)
+            setLoadError('Captcha could not load. Refresh the page or check your domain is allowed in Cloudflare Turnstile.')
+          },
         })
         widgetIdRef.current = id
-      })
-      .catch(() => onToken(null))
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error ? e.message : 'Could not load security verification. Check network and try again.'
+          )
+          onTokenRef.current(null)
+        }
+      }
+    }
+
+    void run()
 
     return () => {
       cancelled = true
       cleanup()
     }
-  }, [cleanup, onToken])
+  }, [cleanup])
 
   if (!SITE_KEY) {
     if (import.meta.env.DEV) {
       return (
         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-3 text-xs text-gray-500">
           <span className="font-medium text-gray-600">Dev:</span> Set{' '}
-          <code className="rounded bg-gray-100 px-1">VITE_TURNSTILE_SITE_KEY</code> (and server{' '}
-          <code className="rounded bg-gray-100 px-1">TURNSTILE_SECRET_KEY</code>) to enable captcha.
+          <code className="rounded bg-gray-100 px-1">VITE_TURNSTILE_SITE_KEY</code> in{' '}
+          <code className="rounded bg-gray-100 px-1">user-panel/.env</code> and restart{' '}
+          <code className="rounded bg-gray-100 px-1">npm run dev</code> (Vite only reads env at startup).
         </div>
       )
     }
@@ -109,7 +155,13 @@ export default function CollabTurnstile({ onToken }: Props) {
         <Shield className="h-3.5 w-3.5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} aria-hidden />
         Security verification
       </div>
-      <div ref={containerRef} className="min-h-[65px] flex items-center justify-center sm:justify-start" />
+      {loadError && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" aria-hidden />
+          <span>{loadError}</span>
+        </div>
+      )}
+      <div ref={containerRef} className="min-h-[68px] w-full flex items-center justify-center sm:justify-start" />
     </div>
   )
 }
