@@ -170,7 +170,7 @@ export default function Collab() {
   const [affiliateApplyTerms, setAffiliateApplyTerms] = useState(false)
   const [affiliateApplying, setAffiliateApplying] = useState(false)
   const [affiliateApplyMsg, setAffiliateApplyMsg] = useState('')
-  const [collabTab, setCollabTab] = useState<'overview' | 'submit' | 'progress'>('overview')
+  const [collabTab, setCollabTab] = useState<'collab' | 'affiliate' | 'revenue'>('collab')
   const updPS = (platform: SupportedPlatform, u: Partial<PlatformSyncState>) =>
     setPlatformStates(prev => ({ ...prev, [platform]: { ...prev[platform], ...u } }))
 
@@ -617,10 +617,10 @@ export default function Collab() {
                 <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-1" style={{ color: '#bbb' }}>Nefol</p>
                 <h1 className="text-2xl sm:text-3xl font-light tracking-[0.12em]"
                   style={{ fontFamily: 'var(--font-heading-family)', color: '#1a1a1a', letterSpacing: '0.12em' }}>
-                  Creator Collab Program
+                  Creator Program
                 </h1>
                 <p className="text-xs font-light tracking-wide mt-1.5" style={{ color: '#999', letterSpacing: '0.04em' }}>
-                  Post reels featuring NEFOL · Reach 10K views &amp; 500 likes · Unlock Affiliate
+                  Collab · Affiliate · Revenue — one place for milestones, partner onboarding, and earnings
                 </p>
               </div>
             </div>
@@ -652,164 +652,25 @@ export default function Collab() {
       ) : (
         <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10">
 
-          {/* ── Tab bar ─────────────────────────────────────────────────────── */}
-          <div className="flex gap-1 border-b border-gray-200 mb-8">
+          {/* ── Tab bar: Collab (milestones + submit) · Affiliate · Revenue ─── */}
+          <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-8">
             {([
-              { key: 'overview' as const, label: 'Overview' },
-              { key: 'submit' as const, label: 'Submit Content' },
-              { key: 'progress' as const, label: 'Progress', badge: affiliateUnlocked },
-            ]).map(({ key, label, badge }) => (
-              <button key={key} onClick={() => setCollabTab(key)}
+              { key: 'collab' as const, label: 'Collab' },
+              { key: 'affiliate' as const, label: 'Affiliate', dot: affiliateUnlocked },
+              { key: 'revenue' as const, label: 'Revenue' },
+            ]).map(({ key, label, dot }) => (
+              <button key={key} type="button" onClick={() => setCollabTab(key)}
                 className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${
                   collabTab === key ? 'border-[#4B97C9] text-[#1B4965]' : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}>
                 {label}
-                {badge && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+                {dot && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" title="Milestone reached" />}
               </button>
             ))}
           </div>
 
-          {/* ── Overview tab ─────────────────────────────────────────────────── */}
-          {collabTab === 'overview' && (
-            <div className="space-y-6 pb-10">
-              {/* Status card if applied */}
-              {submitted && status && (
-                <div className="flex items-center gap-3 rounded-2xl border border-[#e8f4fb] bg-[#f8fbff] p-4">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl flex-shrink-0 ${affiliateUnlocked ? 'bg-[#e8f4fb]' : status.status === 'approved' ? 'bg-emerald-50' : status.status === 'rejected' ? 'bg-red-50' : 'bg-gray-50'}`}>
-                    {affiliateUnlocked ? <Trophy className="h-4 w-4 text-[#4B97C9]" /> : status.status === 'approved' ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : status.status === 'rejected' ? <X className="h-4 w-4 text-red-500" /> : <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">
-                      {affiliateUnlocked ? 'Affiliate Program Unlocked!' : status.status === 'approved' ? 'Collab Approved — working toward affiliate' : status.status === 'rejected' ? 'Application not approved' : 'Application pending review'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {affiliateUnlocked ? 'Check the Progress tab to manage your affiliate.' : status.status === 'approved' ? 'Post reels and sync them in the Submit Content tab.' : status.status === 'rejected' ? 'Re-apply from the Submit Content tab.' : 'We review applications within 2-3 business days.'}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {/* How it works */}
-              <div>
-                <p className="text-[10px] tracking-[0.25em] uppercase font-semibold text-gray-400 mb-4">How it works</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {[
-                    { icon: <Clapperboard className="h-5 w-5" />, color: '#4B97C9', bg: '#eff8ff', step: '01', title: 'Apply & Get Approved', desc: 'Submit your creator application — we review in 2-3 days.' },
-                    { icon: <Play className="h-5 w-5" />, color: '#E1306C', bg: '#fff0f5', step: '02', title: 'Post Reels with #nefol', desc: 'Feature NEFOL and include #nefol in your reel captions.' },
-                    { icon: <TrendingUp className="h-5 w-5" />, color: '#10b981', bg: '#f0fdf4', step: '03', title: 'Unlock Affiliate', desc: 'Hit 10,000 views + 500 likes to unlock the affiliate program.' },
-                  ].map((s) => (
-                    <div key={s.step} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: s.bg, color: s.color }}>{s.icon}</div>
-                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: s.color }}>Step {s.step}</span>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-800 mb-1">{s.title}</p>
-                      <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Level progression */}
-              <div>
-                <p className="text-[10px] tracking-[0.25em] uppercase font-semibold text-gray-400 mb-4">Creator Level</p>
-                <div className="flex overflow-hidden rounded-2xl border border-[#e8f4fb]">
-                  {[
-                    { label: 'Explorer', sub: 'Just joined', color: '#94a3b8', active: !submitted },
-                    { label: 'Creator', sub: 'Collab approved', color: '#4B97C9', active: submitted && !affiliateUnlocked },
-                    { label: 'Partner', sub: 'Affiliate unlocked', color: '#10b981', active: affiliateUnlocked },
-                  ].map((l, i) => (
-                    <div key={l.label} className={`flex-1 px-4 py-4 text-center ${l.active ? 'bg-white' : 'bg-[#f8fbff]'} ${i !== 0 ? 'border-l border-[#e8f4fb]' : ''}`}>
-                      <div className="inline-flex h-7 w-7 items-center justify-center rounded-full mb-2 text-xs font-bold" style={{ backgroundColor: l.active ? l.color : '#e2e8f0', color: l.active ? '#fff' : '#94a3b8' }}>
-                        {l.active ? '✓' : i + 1}
-                      </div>
-                      <p className={`text-xs font-bold ${l.active ? 'text-gray-800' : 'text-gray-400'}`}>{l.label}</p>
-                      <p className={`text-[10px] mt-0.5 ${l.active ? 'text-gray-500' : 'text-gray-300'}`}>{l.sub}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {!submitted && (
-                <div className="text-center pt-2">
-                  <button onClick={() => setCollabTab('submit')}
-                    className="inline-flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
-                    style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
-                    Apply Now <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Progress tab ─────────────────────────────────────────────────── */}
-          {collabTab === 'progress' && (
-            <div className="space-y-5 pb-10">
-              {submitted && status ? (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm flex items-center gap-5">
-                      <div className="relative flex-shrink-0">
-                        <Ring pct={viewsPct} color="#4B97C9" size={72} stroke={6} />
-                        <div className="absolute inset-0 flex items-center justify-center"><Eye className="h-5 w-5 text-[#4B97C9]" /></div>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Views</p>
-                        <p className="text-2xl font-bold text-gray-900">{totalViews.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400">of {AFFILIATE_VIEWS_THRESHOLD.toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm flex items-center gap-5">
-                      <div className="relative flex-shrink-0">
-                        <Ring pct={likesPct} color="#E1306C" size={72} stroke={6} />
-                        <div className="absolute inset-0 flex items-center justify-center"><Heart className="h-5 w-5 text-[#E1306C]" /></div>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Likes</p>
-                        <p className="text-2xl font-bold text-gray-900">{totalLikes.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400">of {AFFILIATE_LIKES_THRESHOLD.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </div>
-                  {affiliateUnlocked && (
-                    <div className="rounded-3xl overflow-hidden border border-[#e8f4fb] shadow-sm">
-                      <div className="relative p-5 sm:p-6 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, #4B97C9 0%, #357aad 100%)' }}>
-                        <div className="w-11 h-11 rounded-2xl bg-white/25 flex items-center justify-center flex-shrink-0">
-                          <Trophy className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-white text-base">Affiliate Program Unlocked!</p>
-                          <p className="text-white/80 text-xs mt-0.5">You've hit {totalViews.toLocaleString()} views & {totalLikes.toLocaleString()} likes.</p>
-                        </div>
-                      </div>
-                      <div className="bg-white p-5">
-                        <a href="#/user/affiliate-partner" className="block w-full text-center rounded-xl py-3 text-sm font-bold text-white transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
-                          Go to Revenue Dashboard →
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                  {!affiliateUnlocked && (
-                    <div className="rounded-2xl border border-dashed border-[#d6eaf8] bg-[#f8fbff] p-5 text-center">
-                      <p className="text-sm font-semibold text-[#1B4965]">Keep posting to hit the milestone</p>
-                      <p className="text-xs text-gray-500 mt-1">Once you reach 10K views + 500 likes, affiliate will unlock automatically.</p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-[#f0f8fd] flex items-center justify-center mb-4">
-                    <TrendingUp className="h-6 w-6 text-[#4B97C9]" />
-                  </div>
-                  <p className="text-sm font-semibold text-gray-700">Apply first to track your progress</p>
-                  <p className="text-xs text-gray-400 mt-1 mb-5">Your views and likes milestone will appear here after joining.</p>
-                  <button onClick={() => setCollabTab('submit')} className="inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white" style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
-                    Apply Now <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ── Application form (not yet applied) ─────────────────────────── */}
-          {collabTab === 'submit' && showForm && (
+          {collabTab === 'collab' && showForm && (
             <div className="max-w-xl mx-auto">
               {/* Requirements */}
               <div className="grid grid-cols-3 gap-3 mb-8">
@@ -1173,8 +1034,8 @@ export default function Collab() {
             </div>
           )}
 
-          {/* ── Dashboard (after applying) ──────────────────────────────────── */}
-          {collabTab === 'submit' && submitted && status && (
+          {/* ── Dashboard (after applying): milestones + platforms + submit content ─ */}
+          {collabTab === 'collab' && submitted && status && (
             <div className="space-y-5">
 
               {/* Rejected banner */}
@@ -1303,142 +1164,6 @@ export default function Collab() {
                         </div>
                       )
                     })}
-                  </div>
-                </div>
-              )}
-
-              {/* Affiliate unlocked — comprehensive inline section */}
-              {affiliateUnlocked && (
-                <div className="rounded-3xl overflow-hidden border border-[#e8f4fb] shadow-sm">
-                  {/* Header gradient bar — arctic blue (site theme) */}
-                  <div className="relative p-5 sm:p-6 flex items-center gap-4"
-                    style={{ background: 'linear-gradient(135deg, #4B97C9 0%, #357aad 100%)' }}>
-                    <div className="absolute inset-0 opacity-15" style={{ backgroundImage: 'radial-gradient(circle at 85% 50%, white 0%, transparent 55%)' }} />
-                    <div className="w-11 h-11 rounded-2xl bg-white/25 flex items-center justify-center flex-shrink-0">
-                      <Trophy className="h-5 w-5 text-white" aria-hidden />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-white text-base sm:text-lg leading-tight">Affiliate Program Unlocked!</p>
-                      <p className="text-white/90 text-xs sm:text-sm mt-0.5">You've reached {totalViews.toLocaleString()} views &amp; {totalLikes.toLocaleString()} likes — milestone achieved.</p>
-                    </div>
-                    {/* Achievement chips */}
-                    <div className="hidden sm:flex flex-col gap-1.5 flex-shrink-0 text-right">
-                      <span className="inline-flex items-center gap-1 bg-white/20 rounded-full px-3 py-1 text-xs font-semibold text-white">
-                        <Eye className="h-3 w-3" />{totalViews.toLocaleString()} views
-                      </span>
-                      <span className="inline-flex items-center gap-1 bg-white/20 rounded-full px-3 py-1 text-xs font-semibold text-white">
-                        <Heart className="h-3 w-3" />{totalLikes.toLocaleString()} likes
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Body */}
-                  <div className="bg-white p-5 sm:p-6">
-                    {affiliateAppLoading ? (
-                      <div className="flex items-center gap-3 py-2">
-                        <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
-                        <span className="text-sm text-gray-500 font-light">Checking application status…</span>
-                      </div>
-                    ) : affiliateAppStatus === 'pending' ? (
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3 rounded-2xl p-4 border border-[#e8f4fb]" style={{ backgroundColor: '#f0f8fd' }}>
-                          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#d6eaf8]" style={{ backgroundColor: '#e8f4fb' }}>
-                            <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-800">Application under review</p>
-                            <p className="text-xs text-gray-600 mt-0.5">We'll send your affiliate verification code by email once approved. Keep an eye on your inbox.</p>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-400 text-center">Already have a code?</p>
-                        <a href="#/user/affiliate-partner"
-                          className="block w-full text-center rounded-xl py-2.5 text-sm font-semibold border-2 border-[#b8d9f0] text-[#357aad] hover:bg-[#f0f8fd] transition-colors">
-                          Enter verification code →
-                        </a>
-                      </div>
-                    ) : affiliateAppStatus === 'approved' ? (
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <CheckCircle className="h-4 w-4 text-emerald-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-emerald-800">Application approved!</p>
-                            <p className="text-xs text-emerald-600 mt-0.5">Check your email for the verification code to activate your affiliate dashboard.</p>
-                          </div>
-                        </div>
-                        <a href="#/user/affiliate-partner"
-                          className="block w-full text-center rounded-xl py-3 text-sm font-bold text-white transition-all hover:opacity-90"
-                          style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
-                          Activate affiliate dashboard →
-                        </a>
-                      </div>
-                    ) : affiliateAppStatus === 'rejected' ? (
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-2xl p-4">
-                          <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
-                            <X className="h-4 w-4 text-red-500" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-red-800">Application not approved</p>
-                            <p className="text-xs text-red-600 mt-0.5">Contact our support team for more details or to re-apply.</p>
-                          </div>
-                        </div>
-                        <a href="#/user/affiliate-partner"
-                          className="block w-full text-center rounded-xl py-2.5 text-sm font-semibold border-2 border-red-200 text-red-700 hover:bg-red-50 transition-colors">
-                          Go to Affiliate Partner page
-                        </a>
-                      </div>
-                    ) : (
-                      /* not_submitted — inline apply form */
-                      <div className="space-y-4">
-                        <div className="text-sm text-gray-600 leading-relaxed">
-                          <p className="font-medium text-gray-800 mb-1">Ready to become an affiliate partner?</p>
-                          <p className="text-xs text-gray-500">We'll use your Creator Collab profile, social accounts, and address — no separate form to fill.</p>
-                        </div>
-                        {/* Benefit chips */}
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { icon: <Percent className="h-3 w-3" />, label: 'Earn commissions', color: '#10b981' },
-                            { icon: <Star className="h-3 w-3" />, label: 'Unique referral link', color: '#357aad' },
-                            { icon: <TrendingUp className="h-3 w-3" />, label: 'Track earnings live', color: '#4B97C9' },
-                          ].map((b) => (
-                            <span key={b.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 border border-gray-100 text-gray-700">
-                              <span style={{ color: b.color }}>{b.icon}</span>{b.label}
-                            </span>
-                          ))}
-                        </div>
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input type="checkbox" checked={affiliateApplyTerms}
-                            onChange={(e) => { setAffiliateApplyTerms(e.target.checked); setAffiliateApplyMsg('') }}
-                            className="mt-0.5 h-4 w-4 rounded flex-shrink-0"
-                            style={{ accentColor: 'var(--arctic-blue-primary, #4B97C9)' }}
-                          />
-                          <span className="text-xs text-gray-600 leading-relaxed">
-                            I confirm my Creator Collab profile data (name, contact, social links) may be used for this affiliate application and I agree to the <a href="#/user/affiliate-partner" className="underline" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }}>affiliate terms</a>.
-                          </span>
-                        </label>
-                        {affiliateApplyMsg && (
-                          <p className="text-xs text-red-600 flex items-center gap-1.5">
-                            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />{affiliateApplyMsg}
-                          </p>
-                        )}
-                        <div className="flex gap-3">
-                          <button type="button" onClick={applyForAffiliate}
-                            disabled={!affiliateApplyTerms || affiliateApplying}
-                            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-40"
-                            style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
-                            {affiliateApplying
-                              ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
-                              : <><Trophy className="h-4 w-4" /> Apply for Affiliate</>}
-                          </button>
-                          <a href="#/user/affiliate-partner"
-                            className="flex-shrink-0 inline-flex items-center gap-1 rounded-xl px-4 py-3 text-xs font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors">
-                            <ChevronRight className="h-3.5 w-3.5" /> Full page
-                          </a>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
