@@ -73,7 +73,7 @@ interface DashboardData {
 }
 type SortKey = 'created_at' | 'views_count' | 'likes_count' | 'comments_count' | 'reposts_count'
 type ChartMetric = 'likes' | 'posts' | 'followers'
-type DashTab = 'posts' | 'creator' | 'earnings'
+type DashTab = 'overview' | 'posts' | 'growth'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -184,7 +184,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-// ─── Creator Program tab ──────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 function CreatorProgramTab() {
   const { user, isAuthenticated } = useAuth()
@@ -435,7 +435,7 @@ export default function CreatorDashboard() {
   const { isAuthenticated } = useAuth()
   const [data, setData]             = useState<DashboardData | null>(null)
   const [loading, setLoading]       = useState(true)
-  const [activeTab, setActiveTab]   = useState<DashTab>('posts')
+  const [activeTab, setActiveTab]   = useState<DashTab>('overview')
   const [sortKey, setSortKey]       = useState<SortKey>('likes_count')
   const [sortDir, setSortDir]       = useState<'desc' | 'asc'>('desc')
   const [chartMetric, setChartMetric] = useState<ChartMetric>('likes')
@@ -542,7 +542,7 @@ export default function CreatorDashboard() {
       {/* ── Page title + tabs ── */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Dashboard</h1>
+          <h1 className="text-2xl font-black text-gray-900">Analytics</h1>
           <p className="mt-0.5 text-[13px] text-gray-400">Monitor your content performance</p>
         </div>
         <div className="flex items-center gap-2">
@@ -561,9 +561,9 @@ export default function CreatorDashboard() {
       {/* ── Tabs ── */}
       <div className="mb-8 flex gap-1 border-b border-gray-200">
         {([
-          { key: 'posts',   icon: <LayoutDashboard className="h-4 w-4" />, label: 'Posts' },
-          { key: 'creator', icon: <Clapperboard className="h-4 w-4" />,    label: 'Creator Program' },
-          { key: 'earnings',icon: <DollarSign className="h-4 w-4" />,      label: 'Earnings' },
+          { key: 'overview', icon: <LayoutDashboard className="h-4 w-4" />, label: 'Overview' },
+          { key: 'posts',    icon: <FileText className="h-4 w-4" />,        label: 'Posts' },
+          { key: 'growth',   icon: <TrendingUp className="h-4 w-4" />,      label: 'Growth' },
         ] as { key: DashTab; icon: React.ReactNode; label: string }[]).map(({ key, icon, label }) => (
           <button key={key} onClick={() => setActiveTab(key)}
             className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${
@@ -576,14 +576,8 @@ export default function CreatorDashboard() {
         ))}
       </div>
 
-      {/* ══ CREATOR PROGRAM TAB ══ */}
-      {activeTab === 'creator' && <CreatorProgramTab />}
-
-      {/* ══ EARNINGS TAB ══ */}
-      {activeTab === 'earnings' && <EarningsTab />}
-
-      {/* ══ POSTS TAB ══════════════════════════════════════════════════════ */}
-      {activeTab === 'posts' && (
+      {/* ══ OVERVIEW TAB ═══════════════════════════════════════════════════ */}
+      {activeTab === 'overview' && (
         <div className="space-y-10">
 
           {/* ── Stats grid ─────────────────────────────────────────────────── */}
@@ -647,6 +641,13 @@ export default function CreatorDashboard() {
             </div>
           </section>
 
+        </div>
+      )}
+
+      {/* ══ GROWTH TAB ════════════════════════════════════════════════════ */}
+      {activeTab === 'growth' && (
+        <div className="space-y-10">
+
           {/* ── Growth Chart ─────────────────────────────────────────────────── */}
           <section>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -677,6 +678,13 @@ export default function CreatorDashboard() {
               <AreaChart points={chartPoints} color={chartColor} h={150} />
             </div>
           </section>
+
+        </div>
+      )}
+
+      {/* ══ OVERVIEW TAB continued: Top posts, Activity, Quick Actions ════ */}
+      {activeTab === 'overview' && (
+        <div className="space-y-10">
 
           {/* ── Top posts + Activity side-by-side ──────────────────────────── */}
           <section className="grid grid-cols-1 gap-8 lg:grid-cols-5">
@@ -774,6 +782,13 @@ export default function CreatorDashboard() {
               )}
             </div>
           </section>
+
+        </div>
+      )}
+
+      {/* ══ POSTS TAB ═════════════════════════════════════════════════════ */}
+      {activeTab === 'posts' && (
+        <div className="space-y-10">
 
           {/* ── Drafts ──────────────────────────────────────────────────────── */}
           {drafts.length > 0 && (

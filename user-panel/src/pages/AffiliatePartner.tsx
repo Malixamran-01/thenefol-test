@@ -76,6 +76,7 @@ useEffect(() => {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
   const [selectedCurrency, setSelectedCurrency] = useState<'INR' | 'USD' | 'EUR' | 'RUB'>('INR')
+  const [revTab, setRevTab] = useState<'overview' | 'referrals' | 'payouts'>('overview')
   // Sync commissionSettings with affiliateData whenever commissionSettings changes
   useEffect(() => {
     if (commissionSettings?.commission_percentage !== undefined && affiliateData) {
@@ -777,6 +778,25 @@ useEffect(() => {
 
           {/* Dashboard Content */}
           <div id="dashboard-content">
+
+            {/* ── Revenue Tab bar ─────────────────────────────────────────── */}
+            <div className="flex gap-1 border-b border-gray-200 mb-8">
+              {([
+                { key: 'overview' as const, label: 'Overview' },
+                { key: 'referrals' as const, label: 'Referrals' },
+                { key: 'payouts' as const, label: 'Payouts' },
+              ]).map(({ key, label }) => (
+                <button key={key} onClick={() => setRevTab(key)}
+                  className={`border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors font-light tracking-wide ${
+                    revTab === key ? 'border-[rgb(75,151,201)] text-[rgb(50,100,140)]' : 'border-transparent text-gray-400 hover:text-gray-600'
+                  }`} style={{ letterSpacing: '0.05em' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Overview tab ─────────────────────────────────────────────── */}
+            {revTab === 'overview' && <>
             {/* Currency Selector */}
             <div className="mb-6 flex items-center gap-3">
               <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Currency:</p>
@@ -997,6 +1017,10 @@ useEffect(() => {
               </div>
             </div>
 
+            </>}
+
+            {/* ── Referrals tab ─────────────────────────────────────────────── */}
+            {revTab === 'referrals' && <>
             {/* Recent Referrals */}
             <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm mb-8 sm:mb-12">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -1193,6 +1217,10 @@ useEffect(() => {
               )}
             </div>
 
+            </>}
+
+            {/* ── Payouts tab ───────────────────────────────────────────────── */}
+            {revTab === 'payouts' && <>
             {/* Marketing Materials */}
             <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
@@ -1745,6 +1773,7 @@ useEffect(() => {
                 </div>
               )}
             </div>
+            </>}
           </div>
         </div>
       </main>

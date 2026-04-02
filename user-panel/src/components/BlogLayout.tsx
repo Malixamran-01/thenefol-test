@@ -2,10 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Home,
   FileText,
+  BarChart3,
   Bell,
   User,
-  Compass,
-  LayoutDashboard,
   Menu,
   X,
   PenLine,
@@ -21,6 +20,8 @@ import { blogActivityAPI } from '../services/api'
 import { authorAPI } from '../services/authorAPI'
 import { getApiBase } from '../utils/apiBase'
 import AuthorPromptModal from './AuthorPromptModal'
+
+type CreatorBadge = 'locked' | 'progress' | 'unlocked'
 
 // ─── Nav config ───────────────────────────────────────────────────────────────
 
@@ -41,37 +42,16 @@ const NAV_ITEMS: NavItem[] = [
     href: '#/user/blog',
   },
   {
-    id: 'my-blogs',
-    label: 'My Blogs',
+    id: 'content',
+    label: 'Content',
     icon: <FileText strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/my-blogs',
     matchPrefix: '#/user/blog/my-blogs',
   },
   {
-    id: 'notifications',
-    label: 'Activity',
-    icon: <Bell strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/blog/activity',
-    matchPrefix: '#/user/blog/activity',
-  },
-  {
-    id: 'profile',
-    label: 'Profile',
-    icon: <User strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/login', // resolved dynamically in handler and render
-    matchPrefix: '#/user/author',
-  },
-  {
-    id: 'explore',
-    label: 'Explore',
-    icon: <Compass strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/blog/explore',
-    matchPrefix: '#/user/blog/explore',
-  },
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: <LayoutDashboard strokeWidth={1.75} className="h-5 w-5" />,
+    id: 'analytics',
+    label: 'Analytics',
+    icon: <BarChart3 strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/dashboard',
     matchPrefix: '#/user/blog/dashboard',
   },
@@ -83,8 +63,8 @@ const NAV_ITEMS: NavItem[] = [
     matchPrefix: '#/user/collab',
   },
   {
-    id: 'earnings',
-    label: 'Earnings',
+    id: 'revenue',
+    label: 'Revenue',
     icon: <DollarSign strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/affiliate-partner',
     matchPrefix: '#/user/affiliate-partner',
@@ -103,18 +83,13 @@ function useCurrentHash() {
   return hash
 }
 
-function isItemActive(item: NavItem, hash: string, currentUserId?: number): boolean {
+function isItemActive(item: NavItem, hash: string, _currentUserId?: number): boolean {
   if (item.placeholder) return false
   if (item.id === 'home') return hash === '#/user/blog'
-  if (item.id === 'my-blogs') return hash.startsWith('#/user/blog/my-blogs')
+  if (item.id === 'content') return hash.startsWith('#/user/blog/my-blogs') || hash.startsWith('#/user/blog/explore') || hash.startsWith('#/user/blog/request') || hash.startsWith('#/user/author/')
+  if (item.id === 'analytics') return hash.startsWith('#/user/blog/dashboard')
   if (item.id === 'creator-program') return hash.startsWith('#/user/collab')
-  if (item.id === 'earnings') return hash.startsWith('#/user/affiliate-partner') || hash.startsWith('#/user/affiliate') || hash.startsWith('#/user/referral-history')
-  if (item.id === 'profile') {
-    const idFromHash = hash.replace(/^#\/user\/author\//, '').split('/')[0].split('?')[0]
-    if (idFromHash === 'me') return true
-    if (currentUserId == null) return false
-    return idFromHash === String(currentUserId)
-  }
+  if (item.id === 'revenue') return hash.startsWith('#/user/affiliate-partner') || hash.startsWith('#/user/affiliate') || hash.startsWith('#/user/referral-history')
   if (item.matchPrefix) return hash.startsWith(item.matchPrefix)
   return hash === item.href
 }
@@ -124,6 +99,7 @@ function isItemActive(item: NavItem, hash: string, currentUserId?: number): bool
 interface SidePanelNavProps {
   collapsed: boolean
   unreadCount: number
+  creatorBadge?: CreatorBadge
   onClose?: () => void
   onToggleCollapse?: () => void
   showCollapseButton?: boolean
@@ -134,7 +110,8 @@ interface SidePanelNavProps {
 
 function SidePanelNav({
   collapsed,
-  unreadCount,
+  unreadCount: _unreadCount,
+  creatorBadge = 'locked',
   onClose,
   onToggleCollapse,
   showCollapseButton = false,
@@ -143,7 +120,7 @@ function SidePanelNav({
   onWriteClick,
 }: SidePanelNavProps) {
   const hash = useCurrentHash()
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isAuthenticated, logout } = useAuth()
 
   const handleSignOut = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -152,11 +129,8 @@ function SidePanelNav({
   }
 
   const handleNav = (item: NavItem, e: React.MouseEvent) => {
-    if (item.placeholder) {
-      e.preventDefault()
-      return
-    }
-    if (item.id === 'my-blogs') {
+    if (item.placeholder) { e.preventDefault(); return }
+    if (item.id === 'content') {
       e.preventDefault()
       if (!isAuthenticated) {
         sessionStorage.setItem('post_login_redirect', window.location.hash)
@@ -167,26 +141,15 @@ function SidePanelNav({
       if (onClose) onClose()
       return
     }
-    if (item.id === 'profile') {
-      e.preventDefault()
-      if (!isAuthenticated) {
-        sessionStorage.setItem('post_login_redirect', window.location.hash)
-        window.location.hash = '#/user/login'
-      } else {
-        sessionStorage.removeItem('blog_author_profile')
-        window.location.hash = '#/user/author/me'
-      }
-      if (onClose) onClose()
-      return
-    }
     if (onClose) onClose()
   }
 
-  const getItemHref = (item: NavItem) => {
-    if (item.id === 'profile') {
-      return isAuthenticated ? '#/user/author/me' : '#/user/login'
-    }
-    return item.href
+  const getItemHref = (item: NavItem) => item.href
+
+  const badgeDot = (badge: CreatorBadge) => {
+    if (badge === 'unlocked') return <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
+    if (badge === 'progress') return <span className="h-2 w-2 rounded-full bg-amber-400 flex-shrink-0" />
+    return <span className="h-2 w-2 rounded-full bg-gray-200 flex-shrink-0" />
   }
 
   const handleWriteClick = async (e: React.MouseEvent) => {
@@ -263,12 +226,8 @@ function SidePanelNav({
       {/* ── Nav items ────────────────────────────────────────── */}
       <nav className="flex-1 py-3">
         {NAV_ITEMS.map((item) => {
-          const active = isItemActive(item, hash, user?.id)
-          const showBadge = item.id === 'notifications' && unreadCount > 0
-
-          const effectiveHref = item.id === 'profile'
-            ? (isAuthenticated ? '#/user/author/me' : '#/user/login')
-            : item.href
+          const active = isItemActive(item, hash)
+          const effectiveHref = getItemHref(item)
 
           return (
             <a
@@ -279,69 +238,26 @@ function SidePanelNav({
               className={`group relative flex items-center transition-colors duration-150 ${
                 collapsed ? 'justify-center px-0 py-3' : 'gap-3 py-2.5 pr-4'
               } ${
-                item.placeholder
-                  ? 'cursor-not-allowed'
-                  : 'cursor-pointer hover:bg-gray-900/[0.04]'
+                item.placeholder ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-gray-900/[0.04]'
               }`}
             >
               {/* Left accent bar */}
-              <span
-                className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-150 ${
-                  active ? 'h-6 bg-[#1B4965]' : 'h-0 bg-transparent'
-                }`}
-              />
+              <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-150 ${active ? 'h-6 bg-[#1B4965]' : 'h-0 bg-transparent'}`} />
 
-              {/* Collapsed: icon centered, no left padding offset needed */}
-              {/* Expanded: icon with left padding to match accent bar */}
-              <span
-                className={`relative flex-shrink-0 ${collapsed ? '' : 'pl-5'}`}
-              >
-                <span
-                  className={`block transition-colors duration-150 ${
-                    active
-                      ? 'text-[#1B4965]'
-                      : item.placeholder
-                      ? 'text-gray-300'
-                      : 'text-gray-400 group-hover:text-gray-700'
-                  }`}
-                >
+              <span className={`relative flex-shrink-0 ${collapsed ? '' : 'pl-5'}`}>
+                <span className={`block transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-700'}`}>
                   {item.icon}
                 </span>
-
-                {/* Badge on icon (always shown when badge exists) */}
-                {showBadge && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
               </span>
 
-              {/* Label + trailing badge (expanded only) */}
+              {/* Label + badge (expanded only) */}
               {!collapsed && (
                 <>
-                  <span
-                    className={`flex-1 text-[14px] font-medium transition-colors duration-150 ${
-                      active
-                        ? 'text-[#1B4965]'
-                        : item.placeholder
-                        ? 'text-gray-300'
-                        : 'text-gray-600 group-hover:text-gray-900'
-                    }`}
-                  >
+                  <span className={`flex-1 text-[14px] font-medium transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-600 group-hover:text-gray-900'}`}>
                     {item.label}
                   </span>
-
-                  {/* Trailing unread count */}
-                  {showBadge && (
-                    <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-
-                  {/* "soon" pill */}
-                  {item.placeholder && (
-                    <span className="text-[11px] text-gray-300">soon</span>
-                  )}
+                  {item.id === 'creator-program' && badgeDot(creatorBadge)}
+                  {item.placeholder && <span className="text-[11px] text-gray-300">soon</span>}
                 </>
               )}
             </a>
@@ -441,8 +357,8 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
   const [showAuthorPrompt, setShowAuthorPrompt] = useState(false)
+  const [creatorBadge, setCreatorBadge] = useState<CreatorBadge>('locked')
 
   // Persist collapse state
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -461,14 +377,23 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
     })
   }
 
-  // ── Unread polling ──────────────────────────────────────────────────────────
+  // ── Creator badge fetch ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated || !user?.email) { setCreatorBadge('locked'); return }
+    fetch(`${getApiBase()}/api/collab/status?email=${encodeURIComponent(user.email)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d || !d.status) setCreatorBadge('locked')
+        else if (d.affiliate_unlocked || d.affiliateUnlocked) setCreatorBadge('unlocked')
+        else setCreatorBadge('progress')
+      })
+      .catch(() => setCreatorBadge('locked'))
+  }, [isAuthenticated, user?.email])
 
+  // ── Keep unread polling so activity badge still works internally ────────────
   const fetchUnread = useCallback(async () => {
     if (!isAuthenticated) return
-    try {
-      const data = await blogActivityAPI.getUnreadNotificationCount()
-      setUnreadCount(data?.count ?? 0)
-    } catch { /* silent */ }
+    try { await blogActivityAPI.getUnreadNotificationCount() } catch { /* silent */ }
   }, [isAuthenticated])
 
   useEffect(() => {
@@ -477,12 +402,6 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
     pollRef.current = setInterval(fetchUnread, 30_000)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [isAuthenticated, fetchUnread])
-
-  useEffect(() => {
-    const handler = () => setUnreadCount(0)
-    window.addEventListener('blog-notifications-read-all', handler)
-    return () => window.removeEventListener('blog-notifications-read-all', handler)
-  }, [])
 
   // ── Mobile menu ────────────────────────────────────────────────────────────
 
@@ -531,7 +450,8 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
       >
         <SidePanelNav
           collapsed={collapsed}
-          unreadCount={unreadCount}
+          unreadCount={0}
+          creatorBadge={creatorBadge}
           onToggleCollapse={toggleCollapse}
           showCollapseButton
           showStoreLink
@@ -574,14 +494,10 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
 
         <a
           href="#/user/blog/activity"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
+          title="Activity"
         >
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
         </a>
       </div>
 
@@ -645,7 +561,8 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
             <div className="flex-1 overflow-y-auto flex flex-col">
               <SidePanelNav
                 collapsed={false}
-                unreadCount={unreadCount}
+                unreadCount={0}
+                creatorBadge={creatorBadge}
                 onClose={() => setMobileMenuOpen(false)}
                 showLogoRow={false}
                 showStoreLink
