@@ -4,7 +4,7 @@ import {
   ArrowLeft, Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, TrendingUp,
   Clapperboard, Zap, ChevronRight, Star, Award, Youtube, Twitter, Facebook,
-  Globe, MapPin, Plus, Linkedin, Send, Ghost, ScrollText, Trophy
+  Globe, MapPin, Plus, Linkedin, Send, Ghost, ScrollText, Trophy, Percent
 } from 'lucide-react'
 import { YoutubeLogo, RedditLogo } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
@@ -164,6 +164,11 @@ export default function Collab() {
   const [platformStates, setPlatformStates] = useState<Record<SupportedPlatform, PlatformSyncState>>({ youtube: initPS(), reddit: initPS(), vk: initPS() })
   const [platformConnections, setPlatformConnections] = useState<Record<string, { platform_username: string; connected_at: string }>>({})
   const [platformNotification, setPlatformNotification] = useState<string | null>(null)
+  const [affiliateAppStatus, setAffiliateAppStatus] = useState<'not_submitted' | 'pending' | 'approved' | 'rejected' | null>(null)
+  const [affiliateAppLoading, setAffiliateAppLoading] = useState(false)
+  const [affiliateApplyTerms, setAffiliateApplyTerms] = useState(false)
+  const [affiliateApplying, setAffiliateApplying] = useState(false)
+  const [affiliateApplyMsg, setAffiliateApplyMsg] = useState('')
   const updPS = (platform: SupportedPlatform, u: Partial<PlatformSyncState>) =>
     setPlatformStates(prev => ({ ...prev, [platform]: { ...prev[platform], ...u } }))
 
@@ -338,6 +343,42 @@ export default function Collab() {
   }
 
   useEffect(() => { fetchStatus() }, [isAuthenticated, user?.email])
+
+  useEffect(() => {
+    if (!status?.affiliateUnlocked || !isAuthenticated) return
+    const t = localStorage.getItem('token')
+    if (!t) return
+    setAffiliateAppLoading(true)
+    fetch(`${getApiBase()}/api/affiliate/application-status`, {
+      headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }
+    })
+      .then((r) => r.json())
+      .then((d) => setAffiliateAppStatus((d.status as any) || 'not_submitted'))
+      .catch(() => setAffiliateAppStatus('not_submitted'))
+      .finally(() => setAffiliateAppLoading(false))
+  }, [status?.affiliateUnlocked, isAuthenticated])
+
+  const applyForAffiliate = async () => {
+    if (!affiliateApplyTerms) { setAffiliateApplyMsg('Please agree to the terms first.'); return }
+    const t = localStorage.getItem('token')
+    if (!t) { setAffiliateApplyMsg('Please sign in.'); return }
+    setAffiliateApplying(true); setAffiliateApplyMsg('')
+    try {
+      const res = await fetch(`${getApiBase()}/api/affiliate/application-from-collab`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agreeTerms: true })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok || res.status === 409) {
+        setAffiliateAppStatus('pending')
+        setAffiliateApplyTerms(false)
+      } else {
+        setAffiliateApplyMsg(data.message || 'Failed to submit. Please try again.')
+      }
+    } catch { setAffiliateApplyMsg('Network error. Please try again.') }
+    finally { setAffiliateApplying(false) }
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -1094,22 +1135,137 @@ export default function Collab() {
                 </div>
               )}
 
-              {/* Affiliate unlocked banner */}
+              {/* Affiliate unlocked — comprehensive inline section */}
               {affiliateUnlocked && (
-                <div className="rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden border border-amber-200/80"
-                  style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
-                  <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)' }} />
-                  <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                    <Trophy className="h-6 w-6 text-white" aria-hidden />
+                <div className="rounded-3xl overflow-hidden border border-amber-200/60 shadow-sm">
+                  {/* Header gradient bar */}
+                  <div className="relative p-5 sm:p-6 flex items-center gap-4"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
+                    <div className="absolute inset-0 opacity-15" style={{ backgroundImage: 'radial-gradient(circle at 85% 50%, white 0%, transparent 55%)' }} />
+                    <div className="w-11 h-11 rounded-2xl bg-white/25 flex items-center justify-center flex-shrink-0">
+                      <Trophy className="h-5 w-5 text-white" aria-hidden />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-white text-base sm:text-lg leading-tight">Affiliate Program Unlocked!</p>
+                      <p className="text-amber-100 text-xs sm:text-sm mt-0.5">You've reached {totalViews.toLocaleString()} views &amp; {totalLikes.toLocaleString()} likes — milestone achieved.</p>
+                    </div>
+                    {/* Achievement chips */}
+                    <div className="hidden sm:flex flex-col gap-1.5 flex-shrink-0 text-right">
+                      <span className="inline-flex items-center gap-1 bg-white/20 rounded-full px-3 py-1 text-xs font-semibold text-white">
+                        <Eye className="h-3 w-3" />{totalViews.toLocaleString()} views
+                      </span>
+                      <span className="inline-flex items-center gap-1 bg-white/20 rounded-full px-3 py-1 text-xs font-semibold text-white">
+                        <Heart className="h-3 w-3" />{totalLikes.toLocaleString()} likes
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-white text-lg">Affiliate Program Unlocked!</p>
-                    <p className="text-amber-100 text-sm">You've hit the milestone. Apply for affiliate partnership now.</p>
+
+                  {/* Body */}
+                  <div className="bg-white p-5 sm:p-6">
+                    {affiliateAppLoading ? (
+                      <div className="flex items-center gap-3 py-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                        <span className="text-sm text-gray-500 font-light">Checking application status…</span>
+                      </div>
+                    ) : affiliateAppStatus === 'pending' ? (
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                          <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                            <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-amber-800">Application under review</p>
+                            <p className="text-xs text-amber-600 mt-0.5">We'll send your affiliate verification code by email once approved. Keep an eye on your inbox.</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-400 text-center">Already have a code?</p>
+                        <a href="#/user/affiliate-partner"
+                          className="block w-full text-center rounded-xl py-2.5 text-sm font-semibold border-2 border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors">
+                          Enter verification code →
+                        </a>
+                      </div>
+                    ) : affiliateAppStatus === 'approved' ? (
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-emerald-800">Application approved!</p>
+                            <p className="text-xs text-emerald-600 mt-0.5">Check your email for the verification code to activate your affiliate dashboard.</p>
+                          </div>
+                        </div>
+                        <a href="#/user/affiliate-partner"
+                          className="block w-full text-center rounded-xl py-3 text-sm font-bold text-white transition-all hover:opacity-90"
+                          style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                          Activate affiliate dashboard →
+                        </a>
+                      </div>
+                    ) : affiliateAppStatus === 'rejected' ? (
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-2xl p-4">
+                          <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <X className="h-4 w-4 text-red-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-red-800">Application not approved</p>
+                            <p className="text-xs text-red-600 mt-0.5">Contact our support team for more details or to re-apply.</p>
+                          </div>
+                        </div>
+                        <a href="#/user/affiliate-partner"
+                          className="block w-full text-center rounded-xl py-2.5 text-sm font-semibold border-2 border-red-200 text-red-700 hover:bg-red-50 transition-colors">
+                          Go to Affiliate Partner page
+                        </a>
+                      </div>
+                    ) : (
+                      /* not_submitted — inline apply form */
+                      <div className="space-y-4">
+                        <div className="text-sm text-gray-600 leading-relaxed">
+                          <p className="font-medium text-gray-800 mb-1">Ready to become an affiliate partner?</p>
+                          <p className="text-xs text-gray-500">We'll use your Creator Collab profile, social accounts, and address — no separate form to fill.</p>
+                        </div>
+                        {/* Benefit chips */}
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { icon: <Percent className="h-3 w-3" />, label: 'Earn commissions', color: '#10b981' },
+                            { icon: <Star className="h-3 w-3" />, label: 'Unique referral link', color: '#f59e0b' },
+                            { icon: <TrendingUp className="h-3 w-3" />, label: 'Track earnings live', color: '#4B97C9' },
+                          ].map((b) => (
+                            <span key={b.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 border border-gray-100 text-gray-700">
+                              <span style={{ color: b.color }}>{b.icon}</span>{b.label}
+                            </span>
+                          ))}
+                        </div>
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input type="checkbox" checked={affiliateApplyTerms}
+                            onChange={(e) => { setAffiliateApplyTerms(e.target.checked); setAffiliateApplyMsg('') }}
+                            className="mt-0.5 h-4 w-4 rounded accent-amber-500 flex-shrink-0" />
+                          <span className="text-xs text-gray-600 leading-relaxed">
+                            I confirm my Creator Collab profile data (name, contact, social links) may be used for this affiliate application and I agree to the <a href="#/user/affiliate-partner" className="text-amber-600 underline">affiliate terms</a>.
+                          </span>
+                        </label>
+                        {affiliateApplyMsg && (
+                          <p className="text-xs text-red-600 flex items-center gap-1.5">
+                            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />{affiliateApplyMsg}
+                          </p>
+                        )}
+                        <div className="flex gap-3">
+                          <button type="button" onClick={applyForAffiliate}
+                            disabled={!affiliateApplyTerms || affiliateApplying}
+                            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-40"
+                            style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                            {affiliateApplying
+                              ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
+                              : <><Trophy className="h-4 w-4" /> Apply for Affiliate</>}
+                          </button>
+                          <a href="#/user/affiliate-partner"
+                            className="flex-shrink-0 inline-flex items-center gap-1 rounded-xl px-4 py-3 text-xs font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors">
+                            <ChevronRight className="h-3.5 w-3.5" /> Full page
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <a href="#/user/affiliate-partner"
-                    className="flex-shrink-0 bg-white rounded-xl px-5 py-2.5 text-sm font-bold text-amber-700 hover:opacity-90 transition-opacity">
-                    Apply Now
-                  </a>
                 </div>
               )}
 

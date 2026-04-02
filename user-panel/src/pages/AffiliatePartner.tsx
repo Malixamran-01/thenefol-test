@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, BarChart3, Copy, CheckCircle, Clock, AlertCircle, UserPlus, Key, Percent, IndianRupee, Users, TrendingUp, Award, Coins, Smartphone, FileText, Mail, Video, X, Folder, Search, Download, Image as ImageIcon, FileDown, ChevronDown, ChevronUp, Info, ExternalLink, Package } from 'lucide-react'
+import { ArrowLeft, BarChart3, Copy, CheckCircle, Clock, AlertCircle, UserPlus, Key, Percent, IndianRupee, Users, TrendingUp, Award, Coins, Smartphone, FileText, Mail, Video, X, Folder, Search, Download, Image as ImageIcon, FileDown, ChevronDown, ChevronUp, Info, ExternalLink, Package, Eye, Heart } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 interface AffiliateData {
@@ -67,6 +67,7 @@ useEffect(() => {
   const [collabEligibleLoading, setCollabEligibleLoading] = useState(true)
   const [collabApplyTerms, setCollabApplyTerms] = useState(false)
   const [collabApplySubmitting, setCollabApplySubmitting] = useState(false)
+  const [collabStats, setCollabStats] = useState<{ views: number; likes: number } | null>(null)
   const [commissionSettings, setCommissionSettings] = useState({ commission_percentage: 15.0, is_active: true })
   const [marketingMaterials, setMarketingMaterials] = useState<any>(null)
   const [nefolCoins, setNefolCoins] = useState(0)
@@ -101,14 +102,24 @@ useEffect(() => {
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
     setCollabEligibleLoading(true)
-    fetch(`${getApiBase()}/api/collab/affiliate-unlocked?email=${encodeURIComponent(user.email)}`, {
-      signal: controller.signal,
-      headers
-    })
-      .then((r) => r.json())
-      .then((d) => setCollabEligible(!!d?.unlocked))
+
+    Promise.all([
+      fetch(`${getApiBase()}/api/collab/affiliate-unlocked?email=${encodeURIComponent(user.email)}`, { signal: controller.signal, headers }),
+      fetch(`${getApiBase()}/api/collab/status?email=${encodeURIComponent(user.email)}`, { signal: controller.signal, headers }),
+    ])
+      .then(async ([unlockRes, statusRes]) => {
+        const unlockData = await unlockRes.json().catch(() => ({}))
+        setCollabEligible(!!unlockData?.unlocked)
+        if (statusRes.ok) {
+          const sd = await statusRes.json().catch(() => ({}))
+          const v = sd.total_views ?? 0
+          const l = sd.total_likes ?? 0
+          if (v > 0 || l > 0) setCollabStats({ views: v, likes: l })
+        }
+      })
       .catch(() => setCollabEligible(false))
       .finally(() => setCollabEligibleLoading(false))
+
     return () => controller.abort()
   }, [user?.email])
 
@@ -1852,7 +1863,28 @@ useEffect(() => {
         {/* Main Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
           {/* Apply from Creator Collab — profile comes from collab; no separate form */}
-          <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+            {/* Achievement banner — shown when user has collab stats */}
+            {collabStats && (collabStats.views > 0 || collabStats.likes > 0) && (
+              <div className="px-6 py-4 flex items-center gap-4 border-b border-amber-100"
+                style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' }}>
+                <div className="w-9 h-9 rounded-xl bg-amber-400/20 flex items-center justify-center flex-shrink-0">
+                  <Award className="h-4 w-4 text-amber-700" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Creator Collab Achievement</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                      <Eye className="h-3 w-3" />{collabStats.views.toLocaleString()} views
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                      <Heart className="h-3 w-3" />{collabStats.likes.toLocaleString()} likes
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="p-6 sm:p-8">
             <div className="text-center mb-6">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                 <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
@@ -1933,6 +1965,7 @@ useEffect(() => {
                 </button>
               </form>
             )}
+            </div>{/* end p-6 sm:p-8 inner padding */}
           </div>
 
           {/* Code Verification Option */}
