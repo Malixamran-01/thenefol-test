@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bell,
   User,
+  Compass,
   Menu,
   X,
   PenLine,
@@ -43,10 +44,31 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     id: 'content',
-    label: 'Content',
+    label: 'My Content',
     icon: <FileText strokeWidth={1.75} className="h-5 w-5" />,
     href: '#/user/blog/my-blogs',
     matchPrefix: '#/user/blog/my-blogs',
+  },
+  {
+    id: 'notifications',
+    label: 'Activity',
+    icon: <Bell strokeWidth={1.75} className="h-5 w-5" />,
+    href: '#/user/blog/activity',
+    matchPrefix: '#/user/blog/activity',
+  },
+  {
+    id: 'profile',
+    label: 'My Profile',
+    icon: <User strokeWidth={1.75} className="h-5 w-5" />,
+    href: '#/user/login',
+    matchPrefix: '#/user/author',
+  },
+  {
+    id: 'explore',
+    label: 'Explore',
+    icon: <Compass strokeWidth={1.75} className="h-5 w-5" />,
+    href: '#/user/blog/explore',
+    matchPrefix: '#/user/blog/explore',
   },
   {
     id: 'analytics',
@@ -83,10 +105,18 @@ function useCurrentHash() {
   return hash
 }
 
-function isItemActive(item: NavItem, hash: string, _currentUserId?: number): boolean {
+function isItemActive(item: NavItem, hash: string, currentUserId?: number): boolean {
   if (item.placeholder) return false
   if (item.id === 'home') return hash === '#/user/blog'
-  if (item.id === 'content') return hash.startsWith('#/user/blog/my-blogs') || hash.startsWith('#/user/blog/explore') || hash.startsWith('#/user/blog/request') || hash.startsWith('#/user/author/')
+  if (item.id === 'content') return hash.startsWith('#/user/blog/my-blogs')
+  if (item.id === 'notifications') return hash.startsWith('#/user/blog/activity')
+  if (item.id === 'profile') {
+    const idFromHash = hash.replace(/^#\/user\/author\//, '').split('/')[0].split('?')[0]
+    if (idFromHash === 'me') return true
+    if (currentUserId == null) return false
+    return idFromHash === String(currentUserId)
+  }
+  if (item.id === 'explore') return hash.startsWith('#/user/blog/explore')
   if (item.id === 'analytics') return hash.startsWith('#/user/blog/dashboard')
   if (item.id === 'creator-program') return hash.startsWith('#/user/collab')
   if (item.id === 'revenue') return hash.startsWith('#/user/affiliate-partner') || hash.startsWith('#/user/affiliate') || hash.startsWith('#/user/referral-history')
@@ -110,7 +140,7 @@ interface SidePanelNavProps {
 
 function SidePanelNav({
   collapsed,
-  unreadCount: _unreadCount,
+  unreadCount,
   creatorBadge = 'locked',
   onClose,
   onToggleCollapse,
@@ -120,7 +150,7 @@ function SidePanelNav({
   onWriteClick,
 }: SidePanelNavProps) {
   const hash = useCurrentHash()
-  const { isAuthenticated, logout } = useAuth()
+  const { isAuthenticated, user, logout } = useAuth()
 
   const handleSignOut = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -141,10 +171,27 @@ function SidePanelNav({
       if (onClose) onClose()
       return
     }
+    if (item.id === 'profile') {
+      e.preventDefault()
+      if (!isAuthenticated) {
+        sessionStorage.setItem('post_login_redirect', window.location.hash)
+        window.location.hash = '#/user/login'
+      } else {
+        sessionStorage.removeItem('blog_author_profile')
+        window.location.hash = '#/user/author/me'
+      }
+      if (onClose) onClose()
+      return
+    }
     if (onClose) onClose()
   }
 
-  const getItemHref = (item: NavItem) => item.href
+  const getItemHref = (item: NavItem) => {
+    if (item.id === 'profile') {
+      return isAuthenticated ? '#/user/author/me' : '#/user/login'
+    }
+    return item.href
+  }
 
   const badgeDot = (badge: CreatorBadge) => {
     if (badge === 'unlocked') return <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
@@ -226,8 +273,9 @@ function SidePanelNav({
       {/* ── Nav items ────────────────────────────────────────── */}
       <nav className="flex-1 py-3">
         {NAV_ITEMS.map((item) => {
-          const active = isItemActive(item, hash)
+          const active = isItemActive(item, hash, user?.id)
           const effectiveHref = getItemHref(item)
+          const showUnreadBadge = item.id === 'notifications' && unreadCount > 0
 
           return (
             <a
@@ -248,6 +296,11 @@ function SidePanelNav({
                 <span className={`block transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-700'}`}>
                   {item.icon}
                 </span>
+                {showUnreadBadge && collapsed && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </span>
 
               {/* Label + badge (expanded only) */}
@@ -257,6 +310,11 @@ function SidePanelNav({
                     {item.label}
                   </span>
                   {item.id === 'creator-program' && badgeDot(creatorBadge)}
+                  {showUnreadBadge && (
+                    <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                   {item.placeholder && <span className="text-[11px] text-gray-300">soon</span>}
                 </>
               )}
@@ -359,6 +417,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showAuthorPrompt, setShowAuthorPrompt] = useState(false)
   const [creatorBadge, setCreatorBadge] = useState<CreatorBadge>('locked')
+  const [unreadCount, setUnreadCount] = useState(0)
 
   // Persist collapse state
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -390,11 +449,19 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
       .catch(() => setCreatorBadge('locked'))
   }, [isAuthenticated, user?.email])
 
-  // ── Keep unread polling so activity badge still works internally ────────────
   const fetchUnread = useCallback(async () => {
     if (!isAuthenticated) return
-    try { await blogActivityAPI.getUnreadNotificationCount() } catch { /* silent */ }
+    try {
+      const data = await blogActivityAPI.getUnreadNotificationCount()
+      setUnreadCount(data?.count ?? 0)
+    } catch { /* silent */ }
   }, [isAuthenticated])
+
+  useEffect(() => {
+    const handler = () => setUnreadCount(0)
+    window.addEventListener('blog-notifications-read-all', handler)
+    return () => window.removeEventListener('blog-notifications-read-all', handler)
+  }, [])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -450,7 +517,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
       >
         <SidePanelNav
           collapsed={collapsed}
-          unreadCount={0}
+          unreadCount={unreadCount}
           creatorBadge={creatorBadge}
           onToggleCollapse={toggleCollapse}
           showCollapseButton
@@ -494,10 +561,15 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
 
         <a
           href="#/user/blog/activity"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
           title="Activity"
         >
           <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </a>
       </div>
 
@@ -561,7 +633,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
             <div className="flex-1 overflow-y-auto flex flex-col">
               <SidePanelNav
                 collapsed={false}
-                unreadCount={0}
+                unreadCount={unreadCount}
                 creatorBadge={creatorBadge}
                 onClose={() => setMobileMenuOpen(false)}
                 showLogoRow={false}
