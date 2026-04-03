@@ -276,7 +276,7 @@ export default function Collab(props: CollabProps = {}) {
   )
   const [selectedCountryCode, setSelectedCountryCode] = useState('IN')
   const [selectedStateCode, setSelectedStateCode] = useState('')
-  const [address, setAddress] = useState({ country: 'India', state: '', city: '', pincode: '' })
+  const [address, setAddress] = useState({ country: 'India', state: '', city: '', postal_address: '', pincode: '' })
 
   const allCountries = useMemo(() => Country.getAllCountries(), [])
   const countryStates = useMemo(() => State.getStatesOfCountry(selectedCountryCode), [selectedCountryCode])
@@ -1212,6 +1212,15 @@ export default function Collab(props: CollabProps = {}) {
                           onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
                           className="col-span-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] transition-all" />
                       )}
+                      {/* Street / house mailing lines (distinct from PIN) */}
+                      <div className="col-span-2">
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Postal address</label>
+                        <textarea value={address.postal_address} onChange={(e) => setAddress((a) => ({ ...a, postal_address: e.target.value }))}
+                          placeholder="House / street, locality, landmark…"
+                          rows={3}
+                          maxLength={500}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all resize-none" />
+                      </div>
                       {/* Postal code */}
                       <input type="text" placeholder="Postal / ZIP / PIN Code" value={address.pincode}
                         onChange={(e) => setAddress((a) => ({ ...a, pincode: e.target.value }))}

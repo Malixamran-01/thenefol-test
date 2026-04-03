@@ -136,7 +136,7 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
 
 // ─── Submit Collab Application ─────────────────────────────────────────────────
 interface PlatformEntry { name: string; links?: string[]; link?: string }
-interface AddressEntry { country?: string; state?: string; city?: string; pincode?: string }
+interface AddressEntry { country?: string; state?: string; city?: string; postal_address?: string; pincode?: string }
 
 export async function submitCollabApplication(pool: Pool, req: Request, res: Response) {
   try {
@@ -187,10 +187,12 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       normPlatforms.unshift({ name: 'instagram', links: handles.map((h) => `https://www.instagram.com/${h}`) })
     }
 
+    const rawPostal = (address && typeof address === 'object' && String(address.postal_address ?? '').trim()) || ''
     const normAddress: AddressEntry = address && typeof address === 'object' ? {
       country: (address.country || '').trim() || undefined,
       state:   (address.state   || '').trim() || undefined,
       city:    (address.city    || '').trim() || undefined,
+      postal_address: rawPostal ? rawPostal.slice(0, 500) : undefined,
       pincode: (address.pincode || '').trim() || undefined,
     } : {}
 
@@ -1266,7 +1268,7 @@ export async function exportCollabApplications(pool: Pool, req: Request, res: Re
       'Occupation', 'Education', 'Education Branch',
       'Followers Range', 'Bio',
       'Niche', 'Skills', 'Languages',
-      'Country', 'State', 'City', 'Pincode',
+      'Country', 'State', 'City', 'Postal Address', 'Pincode',
       ...PLATFORM_KEYS.map((p) => `${p.charAt(0).toUpperCase() + p.slice(1)} Links`),
       'Admin Notes', 'Rejection Reason',
     ]
@@ -1325,6 +1327,7 @@ export async function exportCollabApplications(pool: Pool, req: Request, res: Re
         cell(addr.country),
         cell(addr.state),
         cell(addr.city),
+        cell(addr.postal_address),
         cell(addr.pincode),
         ...PLATFORM_KEYS.map((pname) => platformLinks(platforms, pname)),
         cell(r.admin_notes),

@@ -24,7 +24,7 @@ interface Reel {
 }
 
 interface PlatformEntry { name: string; links?: string[]; link?: string }
-interface AddressEntry { country?: string; state?: string; city?: string; pincode?: string }
+interface AddressEntry { country?: string; state?: string; city?: string; postal_address?: string; pincode?: string }
 
 interface CollabProfileDetails {
   id?: number
@@ -893,10 +893,13 @@ export default function CollabRequests() {
                   </td>
                   {/* Location */}
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {item.address && (item.address.city || item.address.state || item.address.country) ? (
+                    {item.address && (item.address.city || item.address.state || item.address.country || item.address.postal_address) ? (
                       <div className="flex items-start gap-1">
                         <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-gray-400" />
                         <div>
+                          {item.address.postal_address && (
+                            <div className="text-gray-600 whitespace-pre-wrap break-words line-clamp-3">{item.address.postal_address}</div>
+                          )}
                           {item.address.city && <div className="font-medium text-gray-700">{item.address.city}</div>}
                           {item.address.state && <div>{item.address.state}</div>}
                           {item.address.country && <div>{item.address.country}</div>}
@@ -1240,12 +1243,15 @@ export default function CollabRequests() {
                 {/* Location */}
                 {(() => {
                   const addr = (mergedApplicantProfile(selected).address || selected.address) as AddressEntry | undefined
-                  if (!addr || (!addr.city && !addr.state && !addr.country)) return null
+                  if (!addr || (!addr.city && !addr.state && !addr.country && !addr.postal_address)) return null
                   return (
                   <div style={{ backgroundColor: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
                     <p style={{ margin: '0 0 8px', fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}>
                       <MapPin style={{ width: 11, height: 11 }} /> Location
                     </p>
+                    {addr.postal_address && (
+                      <p style={{ margin: '0 0 8px', fontSize: 13, color: '#475569', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{addr.postal_address}</p>
+                    )}
                     {addr.city && <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#1e293b' }}>{addr.city}</p>}
                     {addr.state && <p style={{ margin: '2px 0 0', fontSize: 13, color: '#64748b' }}>{addr.state}</p>}
                     {addr.country && <p style={{ margin: '1px 0 0', fontSize: 12, color: '#94a3b8' }}>{addr.country}</p>}
