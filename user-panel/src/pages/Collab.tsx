@@ -81,6 +81,14 @@ function isoToFlagEmoji(isoCode: string): string {
   return String.fromCodePoint(...[...u].map((ch) => 127397 + ch.charCodeAt(0)))
 }
 
+interface CollabBlockInfo {
+  public_message: string
+  appeal_status: string
+  appeal_submitted_at: string | null
+  blocked_at: string
+  can_submit_appeal: boolean
+}
+
 interface CollabStatus {
   id?: number
   status?: 'pending' | 'approved' | 'rejected'
@@ -93,6 +101,9 @@ interface CollabStatus {
   instagramConnected: boolean
   igUsername: string | null
   collabJoinedAt: string | null
+  collabBlocked?: boolean
+  programSuspended?: boolean
+  blockInfo?: CollabBlockInfo | null
 }
 
 interface SyncedReel {
@@ -180,6 +191,9 @@ export default function Collab(props: CollabProps = {}) {
   const [affiliateApplying, setAffiliateApplying] = useState(false)
   const [affiliateApplyMsg, setAffiliateApplyMsg] = useState('')
   const [collabTab, setCollabTab] = useState<'collab' | 'affiliate' | 'revenue'>(() => initialProgramTab ?? 'collab')
+  const [blockAppealText, setBlockAppealText] = useState('')
+  const [blockAppealSubmitting, setBlockAppealSubmitting] = useState(false)
+  const [blockAppealMsg, setBlockAppealMsg] = useState('')
 
   useEffect(() => {
     if (initialProgramTab) setCollabTab(initialProgramTab)
@@ -351,12 +365,28 @@ export default function Collab(props: CollabProps = {}) {
         const handles = Array.isArray(data.instagram_handles)
           ? data.instagram_handles
           : (data.instagram || '').split(',').map((h: string) => h.trim()).filter(Boolean)
+        const hasApp = data.has_application !== false && !!data.id
+        const blockInfo: CollabBlockInfo | null =
+          data.collab_blocked && data.block
+            ? {
+                public_message:
+                  data.block.public_message ||
+                  'Your access to the Creator Collab program has been restricted.',
+                appeal_status: data.block.appeal_status || 'none',
+                appeal_submitted_at: data.block.appeal_submitted_at || null,
+                blocked_at: data.block.blocked_at || '',
+                can_submit_appeal: data.block.can_submit_appeal !== false,
+              }
+            : null
         setStatus({
-          id: data.id, status: data.status, hasApplication: !!data.id,
+          id: data.id, status: data.status, hasApplication: hasApp,
           totalViews: data.total_views ?? 0, totalLikes: data.total_likes ?? 0,
           progressPercent: data.progress ?? 0, affiliateUnlocked: !!data.affiliate_unlocked,
           instagramHandles: handles, instagramConnected: !!data.instagram_connected,
           igUsername: data.ig_username || null, collabJoinedAt: data.collab_joined_at || null,
+          collabBlocked: !!data.collab_blocked,
+          programSuspended: !!data.program_suspended,
+          blockInfo: data.collab_blocked ? blockInfo : undefined,
         })
         setSubmittedReels(Array.isArray(data.reels) ? data.reels : [])
         const plat = Array.isArray(data.platforms) ? data.platforms : []
@@ -369,6 +399,10 @@ export default function Collab(props: CollabProps = {}) {
           setPlatformConnections(conns)
         }
         if (data.id) { setSubmitted(true); setShowForm(false) }
+        if (data.collab_blocked && !hasApp) {
+          setSubmitted(false)
+          setShowForm(false)
+        }
       }
     } catch (e) { console.error('Collab status fetch failed:', e) }
     finally { setLoading(false) }
@@ -600,7 +634,36 @@ export default function Collab(props: CollabProps = {}) {
     finally { setSubmittingSelected(false) }
   }
 
+  const submitBlockAppeal = async () => {
+    const t = blockAppealText.trim()
+    if (t.length < 20) {
+      setBlockAppealMsg('Please write at least 20 characters explaining your situation.')
+      return
+    }
+    setBlockAppealSubmitting(true)
+    setBlockAppealMsg('')
+    try {
+      const res = await fetch(`${getApiBase()}/api/collab/block-appeal`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ message: t }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setBlockAppealText('')
+        await fetchStatus()
+      } else {
+        setBlockAppealMsg(data.message || 'Could not submit appeal.')
+      }
+    } catch {
+      setBlockAppealMsg('Network error. Please try again.')
+    } finally {
+      setBlockAppealSubmitting(false)
+    }
+  }
+
   const isApproved = status?.status === 'approved'
+  const programSuspended = !!status?.programSuspended
   const totalViews = status?.totalViews ?? 0
   const totalLikes = status?.totalLikes ?? 0
   const affiliateUnlocked = status?.affiliateUnlocked ?? false
@@ -730,8 +793,83 @@ export default function Collab(props: CollabProps = {}) {
             ))}
           </div>
 
+          {status?.programSuspended && status.blockInfo && status.hasApplication && (
+            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 sm:px-5 text-sm text-amber-950">
+              <p className="font-semibold text-amber-900 flex items-center gap-2">
+                <Lock className="h-4 w-4 shrink-0" aria-hidden />
+                Creator Collab access is suspended
+              </p>
+              <p className="mt-2 text-amber-900/85 leading-relaxed">{status.blockInfo.public_message}</p>
+              {status.blockInfo.appeal_status === 'pending' && (
+                <p className="mt-3 text-xs font-medium text-amber-800">Your appeal is pending review.</p>
+              )}
+              {status.blockInfo.can_submit_appeal && status.blockInfo.appeal_status !== 'pending' && (
+                <div className="mt-4 space-y-2">
+                  <label className="block text-xs font-medium text-amber-900/80">Appeal (explain why this should be lifted)</label>
+                  <textarea
+                    value={blockAppealText}
+                    onChange={(e) => setBlockAppealText(e.target.value)}
+                    rows={4}
+                    className="w-full rounded-xl border border-amber-200/80 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
+                    placeholder="Minimum 20 characters…"
+                  />
+                  {blockAppealMsg && <p className="text-xs text-red-600">{blockAppealMsg}</p>}
+                  <button
+                    type="button"
+                    onClick={submitBlockAppeal}
+                    disabled={blockAppealSubmitting}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#1B4965] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {blockAppealSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Submit appeal
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Blocked from program (no application row — e.g. after admin action) */}
+          {collabTab === 'collab' && status?.collabBlocked && status.blockInfo && !status.hasApplication && (
+            <div className="max-w-xl mx-auto rounded-2xl border border-red-100 bg-white p-6 sm:p-8 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-red-50 p-2 text-red-600">
+                  <Lock className="h-6 w-6" aria-hidden />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-[#1B4965] tracking-wide">Not eligible to apply</h2>
+                  <p className="mt-2 text-sm text-gray-600 leading-relaxed">{status.blockInfo.public_message}</p>
+                  {status.blockInfo.appeal_status === 'pending' && (
+                    <p className="mt-3 text-xs font-medium text-gray-700">We received your appeal and will review it.</p>
+                  )}
+                  {status.blockInfo.can_submit_appeal && status.blockInfo.appeal_status !== 'pending' && (
+                    <div className="mt-5 space-y-2">
+                      <label className="block text-xs font-medium text-gray-600">Appeal</label>
+                      <textarea
+                        value={blockAppealText}
+                        onChange={(e) => setBlockAppealText(e.target.value)}
+                        rows={4}
+                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                        placeholder="Explain why you believe this restriction should be lifted (min. 20 characters)."
+                      />
+                      {blockAppealMsg && <p className="text-xs text-red-600">{blockAppealMsg}</p>}
+                      <button
+                        type="button"
+                        onClick={submitBlockAppeal}
+                        disabled={blockAppealSubmitting}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#1B4965] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {blockAppealSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Submit appeal
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Application form (not yet applied) ─────────────────────────── */}
-          {collabTab === 'collab' && showForm && (
+          {collabTab === 'collab' && showForm && !status?.collabBlocked && (
             <div className="max-w-xl mx-auto">
               {/* Requirements */}
               <div className="grid grid-cols-3 gap-3 mb-8">
@@ -1274,7 +1412,7 @@ export default function Collab(props: CollabProps = {}) {
                   ) : (
                     <>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <button onClick={syncReels} disabled={syncing}
+                    <button onClick={syncReels} disabled={syncing || programSuspended}
                       className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm sm:ml-auto"
                       style={{ backgroundColor: 'var(--arctic-blue-primary, #4B97C9)' }}>
                       {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Syncing...</> : <><RefreshCw className="h-4 w-4" /> Sync from Instagram</>}
@@ -1366,7 +1504,7 @@ export default function Collab(props: CollabProps = {}) {
 
                       {selectedReels.size > 0 && (
                         <div className="mt-4 flex items-center gap-4">
-                          <button onClick={submitSelected} disabled={submittingSelected}
+                          <button onClick={submitSelected} disabled={submittingSelected || programSuspended}
                             className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                             style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
                             {submittingSelected
@@ -1446,7 +1584,7 @@ export default function Collab(props: CollabProps = {}) {
                               <button
                                 type="button"
                                 onClick={() => syncPlatform(key)}
-                                disabled={ps.syncing}
+                                disabled={ps.syncing || programSuspended}
                                 className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm sm:ml-auto"
                                 style={{ backgroundColor: accent }}
                               >
@@ -1568,7 +1706,7 @@ export default function Collab(props: CollabProps = {}) {
                                 <button
                                   type="button"
                                   onClick={() => submitPlatformContent(key)}
-                                  disabled={ps.submitting}
+                                  disabled={ps.submitting || programSuspended}
                                   className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm"
                                   style={{ backgroundColor: accent }}
                                 >
@@ -1657,12 +1795,15 @@ export default function Collab(props: CollabProps = {}) {
                               ? <span className="text-[10px] px-2 py-0.5 rounded-full font-medium border border-[#d6eaf8]" style={{ backgroundColor: '#e8f4fb', color: '#357aad' }}>Syncing</span>
                               : <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${eligible ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>{eligible ? 'Eligible' : 'Ineligible'}</span>}
                             <button
+                              type="button"
+                              disabled={programSuspended}
                               onClick={async () => {
+                                if (programSuspended) return
                                 if (!confirm('Remove this reel?')) return
                                 await fetch(`${getApiBase()}/api/collab/reels/${reel.id}`, { method: 'DELETE', headers: authHeaders(), body: JSON.stringify({ collab_id: status?.id }) })
                                 await fetchStatus()
                               }}
-                              className="text-gray-300 hover:text-red-400 transition-colors">
+                              className="text-gray-300 hover:text-red-400 transition-colors disabled:opacity-30 disabled:pointer-events-none">
                               <X className="h-4 w-4" />
                             </button>
                           </div>

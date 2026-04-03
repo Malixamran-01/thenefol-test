@@ -2,6 +2,7 @@
 // Supports: YouTube (Google), Reddit, VK
 import { Pool } from 'pg'
 import { Request, Response, Router } from 'express'
+import { assertCollabNotBlockedByAppId } from '../utils/collabBlocks'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -132,6 +133,13 @@ async function getSubmittedUrls(pool: Pool, collabId: string, platform: string):
 
 export async function connectYoutube(pool: Pool, req: Request, res: Response) {
   const { collab_id } = req.query
+  if (collab_id) {
+    const blocked = await assertCollabNotBlockedByAppId(pool, String(collab_id))
+    if (!blocked.ok) {
+      const frontendUrl = getFrontendUrl()
+      return res.redirect(`${frontendUrl}/#/user/collab?platform_error=youtube:${encodeURIComponent(blocked.message)}`)
+    }
+  }
   const clientId = process.env.GOOGLE_CLIENT_ID
   if (!clientId) return res.status(500).send('GOOGLE_CLIENT_ID not configured')
   const redirectUri = `${process.env.BACKEND_URL}/api/platform/youtube/callback`
@@ -148,6 +156,12 @@ export async function callbackYoutube(pool: Pool, req: Request, res: Response) {
   const frontendUrl = getFrontendUrl()
   if (error || !code) return res.redirect(`${frontendUrl}/#/user/collab?platform_error=youtube:${encodeURIComponent(error || 'no_code')}`)
   try {
+    if (collabId) {
+      const blocked = await assertCollabNotBlockedByAppId(pool, collabId)
+      if (!blocked.ok) {
+        return res.redirect(`${frontendUrl}/#/user/collab?platform_error=youtube:${encodeURIComponent(blocked.message)}`)
+      }
+    }
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -198,6 +212,9 @@ async function refreshGoogleToken(refreshToken: string): Promise<any> {
 
 export async function getYoutubeContent(pool: Pool, req: Request, res: Response) {
   const { collab_id } = req.query as Record<string, string>
+  if (!collab_id) return res.status(400).json({ message: 'collab_id required' })
+  const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+  if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
   const conn = await getPlatformConnection(pool, collab_id, 'youtube')
   if (!conn) return res.status(404).json({ message: 'YouTube not connected' })
 
@@ -294,6 +311,13 @@ export async function getYoutubeContent(pool: Pool, req: Request, res: Response)
 
 export async function connectReddit(pool: Pool, req: Request, res: Response) {
   const { collab_id } = req.query
+  if (collab_id) {
+    const blocked = await assertCollabNotBlockedByAppId(pool, String(collab_id))
+    if (!blocked.ok) {
+      const frontendUrl = getFrontendUrl()
+      return res.redirect(`${frontendUrl}/#/user/collab?platform_error=reddit:${encodeURIComponent(blocked.message)}`)
+    }
+  }
   const clientId = process.env.REDDIT_CLIENT_ID
   if (!clientId) return res.status(500).send('REDDIT_CLIENT_ID not configured')
   const redirectUri = `${process.env.BACKEND_URL}/api/platform/reddit/callback`
@@ -310,6 +334,12 @@ export async function callbackReddit(pool: Pool, req: Request, res: Response) {
   const frontendUrl = getFrontendUrl()
   if (error || !code) return res.redirect(`${frontendUrl}/#/user/collab?platform_error=reddit:${encodeURIComponent(error || 'no_code')}`)
   try {
+    if (collabId) {
+      const blocked = await assertCollabNotBlockedByAppId(pool, collabId)
+      if (!blocked.ok) {
+        return res.redirect(`${frontendUrl}/#/user/collab?platform_error=reddit:${encodeURIComponent(blocked.message)}`)
+      }
+    }
     const clientId = process.env.REDDIT_CLIENT_ID!
     const clientSecret = process.env.REDDIT_CLIENT_SECRET!
     const redirectUri = `${process.env.BACKEND_URL}/api/platform/reddit/callback`
@@ -373,6 +403,9 @@ async function refreshRedditToken(pool: Pool, connId: number, refreshToken: stri
 
 export async function getRedditContent(pool: Pool, req: Request, res: Response) {
   const { collab_id } = req.query as Record<string, string>
+  if (!collab_id) return res.status(400).json({ message: 'collab_id required' })
+  const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+  if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
   const conn = await getPlatformConnection(pool, collab_id, 'reddit')
   if (!conn) return res.status(404).json({ message: 'Reddit not connected' })
 
@@ -432,6 +465,13 @@ export async function getRedditContent(pool: Pool, req: Request, res: Response) 
 
 export async function connectVk(pool: Pool, req: Request, res: Response) {
   const { collab_id } = req.query
+  if (collab_id) {
+    const blocked = await assertCollabNotBlockedByAppId(pool, String(collab_id))
+    if (!blocked.ok) {
+      const frontendUrl = getFrontendUrl()
+      return res.redirect(`${frontendUrl}/#/user/collab?platform_error=vk:${encodeURIComponent(blocked.message)}`)
+    }
+  }
   const appId = process.env.VK_APP_ID
   if (!appId) return res.status(500).send('VK_APP_ID not configured')
   const redirectUri = `${process.env.BACKEND_URL}/api/platform/vk/callback`
@@ -447,6 +487,12 @@ export async function callbackVk(pool: Pool, req: Request, res: Response) {
   const frontendUrl = getFrontendUrl()
   if (error || !code) return res.redirect(`${frontendUrl}/#/user/collab?platform_error=vk:${encodeURIComponent(error || 'no_code')}`)
   try {
+    if (collabId) {
+      const blocked = await assertCollabNotBlockedByAppId(pool, collabId)
+      if (!blocked.ok) {
+        return res.redirect(`${frontendUrl}/#/user/collab?platform_error=vk:${encodeURIComponent(blocked.message)}`)
+      }
+    }
     const redirectUri = `${process.env.BACKEND_URL}/api/platform/vk/callback`
     const tokenRes = await fetch(
       `https://oauth.vk.com/access_token?client_id=${process.env.VK_APP_ID}` +
@@ -478,6 +524,9 @@ export async function callbackVk(pool: Pool, req: Request, res: Response) {
 
 export async function getVkContent(pool: Pool, req: Request, res: Response) {
   const { collab_id } = req.query as Record<string, string>
+  if (!collab_id) return res.status(400).json({ message: 'collab_id required' })
+  const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+  if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
   const conn = await getPlatformConnection(pool, collab_id, 'vk')
   if (!conn) return res.status(404).json({ message: 'VK not connected' })
 
@@ -538,6 +587,8 @@ export async function disconnectPlatform(pool: Pool, req: Request, res: Response
   const { platform } = req.params
   const { collab_id } = req.body
   if (!collab_id || !platform) return res.status(400).json({ message: 'collab_id and platform required' })
+  const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+  if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
   await pool.query(
     `DELETE FROM collab_platform_connections WHERE collab_application_id = $1 AND platform = $2`,
     [collab_id, platform]

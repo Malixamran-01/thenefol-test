@@ -856,6 +856,11 @@ app.delete('/api/admin/collab-applications/:id', (req, res) => collabRoutes.dele
 app.post('/api/admin/collab-applications/:id/refresh-stats', (req, res) => collabRoutes.adminRefreshReelStats(pool, req, res))
 app.put('/api/admin/collab-reels/:reelId',                  (req, res) => collabRoutes.adminUpdateReelMetrics(pool, req, res))
 app.delete('/api/admin/collab-reels/:reelId',               (req, res) => collabRoutes.adminDeleteReel(pool, req, res))
+app.post('/api/admin/collab-applications/:id/block',        (req, res) => collabRoutes.adminBlockCollabUser(pool, req, res))
+app.post('/api/admin/collab-blocks/:id/unblock',            (req, res) => collabRoutes.adminUnblockCollabUser(pool, req, res))
+app.get('/api/admin/collab-blocks',                         (req, res) => collabRoutes.listCollabBlocks(pool, req, res))
+app.get('/api/admin/collab-blocks/:id',                     (req, res) => collabRoutes.getCollabBlockDetail(pool, req, res))
+app.put('/api/admin/collab-blocks/:id/appeal-resolve',      (req, res) => collabRoutes.adminResolveCollabAppeal(pool, req, res))
 
 // ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
 // Frontend expects these endpoints; return empty lists for now so UI works without errors

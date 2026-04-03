@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film,
   Trash2, Star, Wifi, WifiOff, ChevronDown, ChevronUp, Edit2, Save, X, AlertCircle,
   Youtube, Twitter, Facebook, Globe, Link, MapPin, Filter, ExternalLink, Linkedin, Send, Ghost,
-  ChevronRight, Download, FileText, FileJson
+  ChevronRight, Download, FileText, FileJson, Ban, ShieldOff
 } from 'lucide-react'
 import { Country, State } from 'country-state-city'
 import { getApiBaseUrl } from '../utils/apiUrl'
@@ -99,6 +99,8 @@ interface CollabApplication {
     languages?: string[]
   }
   profile_details?: CollabProfileDetails | null
+  collab_block_id?: number | null
+  collab_blocked?: boolean
 }
 
 function isoToFlagEmoji(isoCode: string): string {
@@ -197,6 +199,10 @@ export default function CollabRequests() {
   const [reelEditValues, setReelEditValues] = useState<{ views_count: string; likes_count: string; caption_ok: boolean; date_ok: boolean }>({ views_count: '', likes_count: '', caption_ok: false, date_ok: false })
   const [reelsExpanded, setReelsExpanded] = useState(false)
   const [savingReel, setSavingReel] = useState(false)
+  const [blockPublicMessage, setBlockPublicMessage] = useState('')
+  const [blockInternalReason, setBlockInternalReason] = useState('')
+  const [blockingUser, setBlockingUser] = useState(false)
+  const [appealBlocks, setAppealBlocks] = useState<Array<Record<string, unknown>>>([])
 
   // Creator database filters
   const [showFilters, setShowFilters] = useState(false)
@@ -236,6 +242,17 @@ export default function CollabRequests() {
     } as Record<string, string>
   }, [])
 
+  const refreshAppealQueue = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/admin/collab-blocks?limit=100`, { headers: authHeaders })
+      const data = await res.json().catch(() => ({}))
+      const blocks = Array.isArray(data?.blocks) ? data.blocks : []
+      setAppealBlocks(blocks.filter((b: Record<string, unknown>) => b.appeal_status === 'pending'))
+    } catch {
+      setAppealBlocks([])
+    }
+  }, [apiBase, authHeaders])
+
   const fetchItems = async () => {
     try {
       setLoading(true)
@@ -254,6 +271,7 @@ export default function CollabRequests() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.message || 'Failed to load')
       setAllItems(Array.isArray(data?.applications) ? data.applications : [])
+      await refreshAppealQueue()
     } catch (err: any) {
       alert(err?.message || 'Failed to load collab requests')
     } finally {
@@ -327,6 +345,71 @@ export default function CollabRequests() {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) return alert(data?.message || 'Failed to promote')
     alert('User promoted to Affiliate!')
+    await fetchItems()
+  }
+
+  const blockUserFromCollab = async () => {
+    if (!selected) return
+    if (!confirm(`Block "${selected.name}" from Creator Collab? They cannot apply, sync content, or use program features until unblocked.`)) return
+    setBlockingUser(true)
+    try {
+      const res = await fetch(`${apiBase}/admin/collab-applications/${selected.id}/block`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          public_message: blockPublicMessage.trim() || undefined,
+          internal_reason: blockInternalReason.trim() || undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data?.message || 'Failed to block user')
+        return
+      }
+      setBlockPublicMessage('')
+      setBlockInternalReason('')
+      await fetchItems()
+      const refresh = await fetch(`${apiBase}/admin/collab-applications/${selected.id}`, { headers: authHeaders })
+      const d = await refresh.json().catch(() => selected)
+      if (refresh.ok) setSelected(d)
+      alert('User blocked from Creator Collab.')
+    } finally {
+      setBlockingUser(false)
+    }
+  }
+
+  const unblockCollabUser = async () => {
+    const bid = selected?.collab_block_id
+    if (!selected || !bid) return
+    if (!confirm('Lift this block? The user can use Creator Collab again.')) return
+    const res = await fetch(`${apiBase}/admin/collab-blocks/${bid}/unblock`, { method: 'POST', headers: authHeaders })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(data?.message || 'Failed to unblock')
+      return
+    }
+    await fetchItems()
+    await refreshAppealQueue()
+    const refresh = await fetch(`${apiBase}/admin/collab-applications/${selected.id}`, { headers: authHeaders })
+    const d = await refresh.json().catch(() => selected)
+    if (refresh.ok) setSelected(d)
+    alert('Block lifted.')
+  }
+
+  const resolveCollabAppealAdmin = async (blockId: number, action: 'approve' | 'reject') => {
+    const note = window.prompt(action === 'approve' ? 'Optional internal note (shown in record):' : 'Optional note (internal):') ?? ''
+    const res = await fetch(`${apiBase}/admin/collab-blocks/${blockId}/appeal-resolve`, {
+      method: 'PUT',
+      headers: authHeaders,
+      body: JSON.stringify({ action, note: note.trim() || undefined }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(data?.message || 'Failed to resolve appeal')
+      return
+    }
+    alert(data?.message || 'Done.')
+    await refreshAppealQueue()
     await fetchItems()
   }
 
@@ -573,6 +656,44 @@ export default function CollabRequests() {
         </button>
         </div>
       </div>
+
+      {appealBlocks.length > 0 && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/95 p-4">
+          <p className="text-sm font-semibold text-amber-900 mb-3">Pending Collab appeals ({appealBlocks.length})</p>
+          <div className="space-y-3">
+            {appealBlocks.map((b) => (
+              <div
+                key={String(b.id)}
+                className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 rounded-lg bg-white/90 border border-amber-100 p-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-gray-500">UID {String(b.unique_user_id ?? '')}</p>
+                  {b.user_email ? <p className="text-xs text-gray-600">{String(b.user_email)}</p> : null}
+                  {b.appeal_text ? (
+                    <p className="mt-2 text-gray-800 whitespace-pre-wrap break-words">{String(b.appeal_text)}</p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => resolveCollabAppealAdmin(Number(b.id), 'approve')}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+                  >
+                    Approve (unblock)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => resolveCollabAppealAdmin(Number(b.id), 'reject')}
+                    className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-800 text-xs font-semibold hover:bg-gray-50"
+                  >
+                    Reject appeal
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -825,16 +946,23 @@ export default function CollabRequests() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                      item.status === 'approved' ? 'bg-green-100 text-green-700'
-                      : item.status === 'rejected' ? 'bg-red-100 text-red-700'
-                      : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {item.status === 'approved' ? <CheckCircle className="h-3 w-3" />
-                        : item.status === 'rejected' ? <XCircle className="h-3 w-3" />
-                        : <Clock className="h-3 w-3" />}
-                      {item.status}
-                    </span>
+                    <div className="flex flex-col gap-1.5">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs w-fit ${
+                        item.status === 'approved' ? 'bg-green-100 text-green-700'
+                        : item.status === 'rejected' ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {item.status === 'approved' ? <CheckCircle className="h-3 w-3" />
+                          : item.status === 'rejected' ? <XCircle className="h-3 w-3" />
+                          : <Clock className="h-3 w-3" />}
+                        {item.status}
+                      </span>
+                      {(item.collab_block_id || item.collab_blocked) && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-100 w-fit">
+                          <Ban className="h-3 w-3" /> Collab blocked
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-600">{new Date(item.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
@@ -1220,6 +1348,83 @@ export default function CollabRequests() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Creator Collab — block / unblock (does not delete the user) */}
+              {modalType === 'view' && selected.unique_user_id && (
+                <div style={{ borderRadius: 14, border: '1px solid #fecaca', backgroundColor: '#fff7f7', padding: '16px 18px' }}>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Ban style={{ width: 14, height: 14 }} /> Program access
+                  </p>
+                  {selected.collab_blocked || selected.collab_block_id ? (
+                    <div>
+                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#7f1d1d' }}>
+                        This account is <strong>blocked</strong> from Creator Collab (apply, sync, platforms). The user may appeal from their dashboard.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={unblockCollabUser}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '8px 14px',
+                          borderRadius: 10,
+                          border: 'none',
+                          backgroundColor: '#059669',
+                          color: '#fff',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <ShieldOff style={{ width: 14, height: 14 }} /> Lift block
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p style={{ margin: '0 0 10px', fontSize: 13, color: '#57534e' }}>
+                        Block this creator from the Collab program without deleting their account. They will see your message and can submit an appeal.
+                      </p>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#78716c', marginBottom: 4 }}>Message to user (shown in app)</label>
+                      <textarea
+                        value={blockPublicMessage}
+                        onChange={(e) => setBlockPublicMessage(e.target.value)}
+                        placeholder="Optional — defaults to a standard restriction message"
+                        rows={2}
+                        style={{ width: '100%', borderRadius: 10, border: '1px solid #e7e5e4', padding: '8px 10px', fontSize: 12, marginBottom: 10, resize: 'vertical' }}
+                      />
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#78716c', marginBottom: 4 }}>Internal note (admin only)</label>
+                      <textarea
+                        value={blockInternalReason}
+                        onChange={(e) => setBlockInternalReason(e.target.value)}
+                        placeholder="Why are you blocking? (team only)"
+                        rows={2}
+                        style={{ width: '100%', borderRadius: 10, border: '1px solid #e7e5e4', padding: '8px 10px', fontSize: 12, marginBottom: 12, resize: 'vertical' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={blockUserFromCollab}
+                        disabled={blockingUser}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '8px 14px',
+                          borderRadius: 10,
+                          border: 'none',
+                          backgroundColor: blockingUser ? '#9ca3af' : '#b91c1c',
+                          color: '#fff',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: blockingUser ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <Ban style={{ width: 14, height: 14 }} /> {blockingUser ? 'Blocking…' : 'Block from Collab'}
+                      </button>
                     </div>
                   )}
                 </div>

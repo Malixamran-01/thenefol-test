@@ -17,6 +17,7 @@
 
 import { Request, Response, Router } from 'express'
 import { Pool } from 'pg'
+import { assertCollabNotBlockedByAppId } from '../utils/collabBlocks'
 import { normalizeCollabContentUrl } from './platform'
 
 // Instagram API endpoints (direct, no Facebook)
@@ -224,9 +225,18 @@ export async function getPageTokenForCollab(
 
 // ═══════════════════════ Route Handlers ═══════════════════════════════════════
 
-export async function handleConnect(_pool: Pool, req: Request, res: Response) {
+export async function handleConnect(pool: Pool, req: Request, res: Response) {
   const { collab_id } = req.query as Record<string, string>
   if (!collab_id) return res.status(400).send('collab_id is required')
+
+  const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+  if (!blocked.ok) {
+    const frontendUrl =
+      process.env.USER_PANEL_URL || process.env.FRONTEND_URL || process.env.CLIENT_ORIGIN || 'http://localhost:2001'
+    return res.redirect(
+      `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(blocked.message || 'Creator Collab access is restricted.')}`
+    )
+  }
 
   // Use Instagram-specific App ID if configured (Business app Instagram product has its own ID)
   const appId = process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID
@@ -268,6 +278,13 @@ export async function handleCallback(pool: Pool, req: Request, res: Response) {
   }
 
   try {
+    const blocked = await assertCollabNotBlockedByAppId(pool, String(collabId))
+    if (!blocked.ok) {
+      return res.redirect(
+        `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(blocked.message || 'Creator Collab access is restricted.')}`
+      )
+    }
+
     const redirectUri = `${backendUrl}/api/instagram/callback`
 
     // Step 1: Exchange authorization code → short-lived IG user token
@@ -384,6 +401,9 @@ export async function handleDisconnect(pool: Pool, req: Request, res: Response) 
   if (!collab_id) return res.status(400).json({ message: 'collab_id required' })
 
   try {
+    const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+    if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
+
     await pool.query(
       `UPDATE collab_applications
        SET instagram_connected  = false,
@@ -409,6 +429,9 @@ export async function handleFetchReels(pool: Pool, req: Request, res: Response) 
   if (!collab_id) return res.status(400).json({ message: 'collab_id required' })
 
   try {
+    const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+    if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
+
     const { rows } = await pool.query(
       `SELECT instagram_connected, fb_page_access_token, ig_user_id, collab_joined_at, created_at, status
        FROM collab_applications WHERE id = $1`,

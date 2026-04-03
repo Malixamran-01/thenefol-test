@@ -2,6 +2,11 @@ import { Request, Response, Router } from 'express'
 import { Pool } from 'pg'
 import { generateUniqueUserId } from '../utils/generateUserId'
 import { verifyTurnstileToken } from '../utils/turnstile'
+import {
+  assertCollabNotBlockedByAppId,
+  ensureCollabBlockSchema,
+  getActiveCollabBlock,
+} from '../utils/collabBlocks'
 import { fetchReelData, captionMentionsNefol, getPageTokenForCollab, extractShortcode, NEFOL_KEYWORDS } from './instagram'
 
 // ─── Thresholds ────────────────────────────────────────────────────────────────
@@ -190,6 +195,15 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
     } : {}
 
     const { uniqueUserId } = await resolveUniqueUserId(pool, req)
+    await ensureCollabBlockSchema(pool)
+    const existingBlock = await getActiveCollabBlock(pool, uniqueUserId, String(email || '').trim() || null)
+    if (existingBlock) {
+      return res.status(403).json({
+        message: existingBlock.public_message || 'You cannot apply to Creator Collab at this time.',
+        collab_blocked: true,
+      })
+    }
+
     const storedInstagram = handles.join(',')
 
     // Normalise profile
@@ -312,11 +326,27 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
 export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabSchema(pool)
+    await ensureCollabBlockSchema(pool)
     const { uniqueUserId, email } = await resolveUniqueUserId(pool, req)
 
     if (!uniqueUserId && !email) {
       return res.status(400).json({ message: 'Authentication required' })
     }
+
+    const block = await getActiveCollabBlock(pool, uniqueUserId, email)
+    const blockPayload = block
+      ? {
+          collab_blocked: true,
+          program_suspended: true,
+          block: {
+            public_message: block.public_message,
+            appeal_status: block.appeal_status,
+            appeal_submitted_at: block.appeal_submitted_at,
+            blocked_at: block.blocked_at,
+            can_submit_appeal: block.appeal_status !== 'pending',
+          },
+        }
+      : { collab_blocked: false, program_suspended: false }
 
     let rows: any[] = []
     const BASE_SELECT = `
@@ -353,6 +383,12 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
     }
 
     if (rows.length === 0) {
+      if (block) {
+        return res.json({
+          ...blockPayload,
+          has_application: false,
+        })
+      }
       return res.status(404).json({ message: 'No collab application found' })
     }
 
@@ -391,6 +427,8 @@ export async function getCollabStatus(pool: Pool, req: Request, res: Response) {
         : []
 
     return res.json({
+      ...blockPayload,
+      has_application: true,
       id: app.id,
       email: app.email,
       instagram: app.instagram,
@@ -436,19 +474,29 @@ interface IncomingReel {
 export async function submitReelLink(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabSchema(pool)
+    await ensureCollabBlockSchema(pool)
     const { collab_id, reel_url, reel_urls, instagram_handle, platform: reqPlatform } = req.body
     const platform: string = (reqPlatform || 'instagram').toLowerCase()
 
     if (!collab_id) return res.status(400).json({ message: 'Collab ID required' })
 
+    const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+    if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
+
+    const { uniqueUserId } = await resolveUniqueUserId(pool, req)
+    if (!uniqueUserId) return res.status(401).json({ message: 'Authentication required' })
+
     const { rows } = await pool.query(
-      `SELECT id, instagram, status, instagram_connected, fb_page_access_token, ig_user_id, collab_joined_at, created_at
+      `SELECT id, unique_user_id, instagram, status, instagram_connected, fb_page_access_token, ig_user_id, collab_joined_at, created_at
        FROM collab_applications WHERE id = $1`,
       [collab_id]
     )
     if (!rows.length) return res.status(404).json({ message: 'Collab application not found' })
 
     const app = rows[0]
+    if (String(app.unique_user_id || '') !== String(uniqueUserId)) {
+      return res.status(403).json({ message: 'Access denied' })
+    }
     if (String(app.status || 'pending').toLowerCase() !== 'approved') {
       return res.status(403).json({ message: 'Your collab request is pending admin approval.' })
     }
@@ -621,9 +669,21 @@ export async function submitReelLink(pool: Pool, req: Request, res: Response) {
 // ─── User: Delete own reel ─────────────────────────────────────────────────────
 export async function deleteReel(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureCollabSchema(pool)
+    await ensureCollabBlockSchema(pool)
     const { id } = req.params
     const { collab_id } = req.body as { collab_id?: number }
     if (!collab_id) return res.status(400).json({ message: 'collab_id required' })
+
+    const blocked = await assertCollabNotBlockedByAppId(pool, collab_id)
+    if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
+
+    const { uniqueUserId } = await resolveUniqueUserId(pool, req)
+    if (!uniqueUserId) return res.status(401).json({ message: 'Authentication required' })
+    const own = await pool.query(`SELECT unique_user_id FROM collab_applications WHERE id = $1`, [collab_id])
+    if (!own.rows.length || String(own.rows[0].unique_user_id || '') !== String(uniqueUserId)) {
+      return res.status(403).json({ message: 'Access denied' })
+    }
 
     const result = await pool.query(
       'DELETE FROM collab_reels WHERE id=$1 AND collab_application_id=$2 RETURNING id',
@@ -641,6 +701,7 @@ export async function deleteReel(pool: Pool, req: Request, res: Response) {
 export async function getCollabApplications(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabSchema(pool)
+    await ensureCollabBlockSchema(pool)
     const {
       status = 'all', page = 1, limit = 20, search = '',
       platform = '', city = '', state = '', country = '',
@@ -725,7 +786,10 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
       SELECT ca.*,
              COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.views_count ELSE 0 END), 0)::int AS total_views,
              COALESCE(SUM(CASE WHEN cr.caption_ok AND cr.date_ok THEN cr.likes_count ELSE 0 END), 0)::int AS total_likes,
-             (SELECT row_to_json(cpd) FROM collab_profile_details cpd WHERE cpd.collab_application_id = ca.id) AS profile_details
+             (SELECT row_to_json(cpd) FROM collab_profile_details cpd WHERE cpd.collab_application_id = ca.id) AS profile_details,
+             (SELECT b.id FROM collab_program_blocks b
+              WHERE b.is_active AND ca.unique_user_id IS NOT NULL AND b.unique_user_id = ca.unique_user_id
+              LIMIT 1) AS collab_block_id
       FROM collab_applications ca
       LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
       ${whereSql}
@@ -769,6 +833,7 @@ export async function getCollabApplications(pool: Pool, req: Request, res: Respo
 export async function getCollabApplication(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabSchema(pool)
+    await ensureCollabBlockSchema(pool)
     const { id } = req.params
     const appRes = await pool.query(
       `SELECT ca.*,
@@ -792,6 +857,15 @@ export async function getCollabApplication(pool: Pool, req: Request, res: Respon
     const pendingCount = reels.filter((r: any) => r.insights_pending).length
     const { progress, affiliateUnlocked } = computeProgress(totalViews, totalLikes)
 
+    let collab_block_id: number | null = null
+    if (app.unique_user_id) {
+      const br = await pool.query(
+        `SELECT id FROM collab_program_blocks WHERE is_active AND unique_user_id = $1 LIMIT 1`,
+        [app.unique_user_id]
+      )
+      collab_block_id = br.rows[0]?.id ?? null
+    }
+
     return res.json({
       ...app,
       instagram_handles: parseInstagramHandles(app.instagram),
@@ -802,6 +876,8 @@ export async function getCollabApplication(pool: Pool, req: Request, res: Respon
       progress,
       affiliate_unlocked: affiliateUnlocked,
       profile_details: app.profile_details && typeof app.profile_details === 'object' ? app.profile_details : null,
+      collab_block_id,
+      collab_blocked: !!collab_block_id,
     })
   } catch (err) {
     console.error('getCollabApplication error:', err)
@@ -944,12 +1020,18 @@ export async function deleteCollabApplication(pool: Pool, req: Request, res: Res
 // ─── Check affiliate unlocked (used by JoinUs modal) ──────────────────────────
 export async function checkAffiliateUnlocked(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureCollabBlockSchema(pool)
     const { uniqueUserId, email } = await resolveUniqueUserId(pool, req)
     const queryEmail = req.query?.email as string | undefined
     const resolvedEmail = email || queryEmail
 
     if (!uniqueUserId && !resolvedEmail) {
       return res.json({ unlocked: false })
+    }
+
+    const block = await getActiveCollabBlock(pool, uniqueUserId, resolvedEmail || null)
+    if (block) {
+      return res.json({ unlocked: false, collab_blocked: true })
     }
 
     const BASE = `
@@ -1263,6 +1345,213 @@ export async function exportCollabApplications(pool: Pool, req: Request, res: Re
   }
 }
 
+// ─── User: appeal a collab program block ─────────────────────────────────────
+export async function submitCollabBlockAppeal(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabSchema(pool)
+    await ensureCollabBlockSchema(pool)
+    const { uniqueUserId, email } = await resolveUniqueUserId(pool, req)
+    if (!uniqueUserId && !email) return res.status(401).json({ message: 'Authentication required' })
+
+    const { message } = req.body as { message?: string }
+    const text = typeof message === 'string' ? message.trim() : ''
+    if (text.length < 20) {
+      return res.status(400).json({ message: 'Please explain your situation in at least 20 characters.' })
+    }
+    if (text.length > 8000) return res.status(400).json({ message: 'Message is too long.' })
+
+    const block = await getActiveCollabBlock(pool, uniqueUserId, email)
+    if (!block) return res.status(400).json({ message: 'You are not blocked from Creator Collab.' })
+    if (block.appeal_status === 'pending') {
+      return res.status(400).json({ message: 'You already have a pending appeal. We will review it soon.' })
+    }
+
+    const upd = await pool.query(
+      `UPDATE collab_program_blocks SET
+        appeal_status = 'pending',
+        appeal_text = $1,
+        appeal_submitted_at = NOW(),
+        updated_at = NOW()
+       WHERE id = $2 AND is_active = TRUE AND appeal_status IN ('none', 'rejected')
+       RETURNING id`,
+      [text, block.id]
+    )
+    if (!upd.rows.length) {
+      return res.status(400).json({ message: 'Could not submit appeal. Try again or contact support.' })
+    }
+    return res.json({ message: 'Appeal submitted. Our team will review it and email you if needed.' })
+  } catch (err) {
+    console.error('submitCollabBlockAppeal error:', err)
+    return res.status(500).json({ message: 'Failed to submit appeal' })
+  }
+}
+
+// ─── Admin: block creator from Collab program (by application id) ────────────
+export async function adminBlockCollabUser(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabSchema(pool)
+    await ensureCollabBlockSchema(pool)
+    const { id } = req.params
+    const { public_message, internal_reason } = (req.body || {}) as {
+      public_message?: string
+      internal_reason?: string
+    }
+
+    const appRes = await pool.query(
+      `SELECT id, email, unique_user_id FROM collab_applications WHERE id = $1`,
+      [id]
+    )
+    if (!appRes.rows.length) return res.status(404).json({ message: 'Collab application not found' })
+    let { email, unique_user_id: uid } = appRes.rows[0] as { email: string; unique_user_id: string | null }
+
+    if (!uid && email) {
+      const uRes = await pool.query(
+        `SELECT unique_user_id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1`,
+        [email]
+      )
+      uid = uRes.rows[0]?.unique_user_id || null
+      if (uid) {
+        await pool.query(`UPDATE collab_applications SET unique_user_id = $1 WHERE id = $2 AND unique_user_id IS NULL`, [
+          uid,
+          id,
+        ])
+      }
+    }
+    if (!uid) {
+      return res.status(400).json({
+        message:
+          'This application has no linked account ID. Ask the user to sign in once, then try blocking again.',
+      })
+    }
+
+    const pub =
+      typeof public_message === 'string' && public_message.trim()
+        ? public_message.trim()
+        : 'Your access to the Creator Collab program has been restricted. If you believe this is a mistake, you can submit an appeal below.'
+    const internal = typeof internal_reason === 'string' && internal_reason.trim() ? internal_reason.trim() : null
+    const emailNorm = email ? String(email).trim().toLowerCase() : null
+
+    const ins = await pool.query(
+      `INSERT INTO collab_program_blocks
+        (unique_user_id, user_email, internal_reason, public_message, is_active, appeal_status, blocked_at, updated_at)
+       VALUES ($1, $2, $3, $4, TRUE, 'none', NOW(), NOW())
+       ON CONFLICT (unique_user_id) DO UPDATE SET
+         user_email = COALESCE(EXCLUDED.user_email, collab_program_blocks.user_email),
+         internal_reason = EXCLUDED.internal_reason,
+         public_message = EXCLUDED.public_message,
+         is_active = TRUE,
+         appeal_status = 'none',
+         appeal_text = NULL,
+         appeal_submitted_at = NULL,
+         appeal_resolved_at = NULL,
+         appeal_resolution_note = NULL,
+         blocked_at = NOW(),
+         updated_at = NOW()
+       RETURNING *`,
+      [uid, emailNorm, internal, pub]
+    )
+
+    return res.json({ message: 'User blocked from Creator Collab', block: ins.rows[0] })
+  } catch (err) {
+    console.error('adminBlockCollabUser error:', err)
+    return res.status(500).json({ message: 'Failed to block user' })
+  }
+}
+
+export async function adminUnblockCollabUser(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabBlockSchema(pool)
+    const { id } = req.params
+    const r = await pool.query(
+      `UPDATE collab_program_blocks SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND is_active = TRUE RETURNING id`,
+      [id]
+    )
+    if (!r.rows.length) return res.status(404).json({ message: 'Active block not found' })
+    return res.json({ message: 'Block lifted. User can use Creator Collab again.' })
+  } catch (err) {
+    console.error('adminUnblockCollabUser error:', err)
+    return res.status(500).json({ message: 'Failed to unblock' })
+  }
+}
+
+export async function listCollabBlocks(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabBlockSchema(pool)
+    const { page = '1', limit = '50' } = req.query as Record<string, string>
+    const lim = Math.min(100, Math.max(1, Number(limit) || 50))
+    const offset = (Math.max(1, Number(page) || 1) - 1) * lim
+    const r = await pool.query(
+      `SELECT * FROM collab_program_blocks WHERE is_active = TRUE ORDER BY blocked_at DESC LIMIT $1 OFFSET $2`,
+      [lim, offset]
+    )
+    const c = await pool.query(`SELECT COUNT(*)::int AS n FROM collab_program_blocks WHERE is_active = TRUE`)
+    return res.json({ blocks: r.rows, total: c.rows[0]?.n || 0, page: Number(page) || 1, limit: lim })
+  } catch (err) {
+    console.error('listCollabBlocks error:', err)
+    return res.status(500).json({ message: 'Failed to list blocks' })
+  }
+}
+
+export async function adminResolveCollabAppeal(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabBlockSchema(pool)
+    const { id } = req.params
+    const { action, note } = req.body as { action?: string; note?: string }
+    if (action !== 'approve' && action !== 'reject') {
+      return res.status(400).json({ message: 'action must be "approve" or "reject"' })
+    }
+
+    const block = await pool.query(`SELECT * FROM collab_program_blocks WHERE id = $1 AND is_active = TRUE`, [id])
+    if (!block.rows.length) return res.status(404).json({ message: 'Active block not found' })
+    if (block.rows[0].appeal_status !== 'pending') {
+      return res.status(400).json({ message: 'No pending appeal for this block.' })
+    }
+
+    const noteTrim = typeof note === 'string' && note.trim() ? note.trim() : null
+
+    if (action === 'approve') {
+      await pool.query(
+        `UPDATE collab_program_blocks SET
+          is_active = FALSE,
+          appeal_status = 'approved',
+          appeal_resolved_at = NOW(),
+          appeal_resolution_note = $1,
+          updated_at = NOW()
+         WHERE id = $2`,
+        [noteTrim, id]
+      )
+      return res.json({ message: 'Appeal approved — user unblocked from Creator Collab.' })
+    }
+
+    await pool.query(
+      `UPDATE collab_program_blocks SET
+        appeal_status = 'rejected',
+        appeal_resolved_at = NOW(),
+        appeal_resolution_note = $1,
+        updated_at = NOW()
+       WHERE id = $2`,
+      [noteTrim, id]
+    )
+    return res.json({ message: 'Appeal rejected. User may submit a new appeal later.' })
+  } catch (err) {
+    console.error('adminResolveCollabAppeal error:', err)
+    return res.status(500).json({ message: 'Failed to resolve appeal' })
+  }
+}
+
+export async function getCollabBlockDetail(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabBlockSchema(pool)
+    const { id } = req.params
+    const r = await pool.query(`SELECT * FROM collab_program_blocks WHERE id = $1`, [id])
+    if (!r.rows.length) return res.status(404).json({ message: 'Block not found' })
+    return res.json({ block: r.rows[0] })
+  } catch (err) {
+    console.error('getCollabBlockDetail error:', err)
+    return res.status(500).json({ message: 'Failed to load block' })
+  }
+}
+
 // ─── Router ────────────────────────────────────────────────────────────────────
 export default function collabRouter(pool: Pool) {
   const router = Router()
@@ -1271,5 +1560,6 @@ export default function collabRouter(pool: Pool) {
   router.post('/submit-reel',       (req, res) => submitReelLink(pool, req, res))
   router.delete('/reels/:id',       (req, res) => deleteReel(pool, req, res))
   router.get('/affiliate-unlocked', (req, res) => checkAffiliateUnlocked(pool, req, res))
+  router.post('/block-appeal',       (req, res) => submitCollabBlockAppeal(pool, req, res))
   return router
 }

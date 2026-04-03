@@ -4,6 +4,7 @@ import { Pool } from 'pg'
 import { sendSuccess, sendError } from '../utils/apiHelpers'
 import crypto from 'crypto'
 import { sendAffiliateCodeEmail, sendAffiliateApplicationSubmittedEmail } from '../services/emailService'
+import { getActiveCollabBlock } from '../utils/collabBlocks'
 
 // Generate 20-digit verification code
 function generateVerificationCode(): string {
@@ -181,6 +182,16 @@ export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Requ
     const userEmail = String(u.email || '').trim()
     if (!emailRegex.test(userEmail) || /^\d+$/.test(userEmail.replace(/[\s+\-()]/g, ''))) {
       return sendError(res, 400, 'Please update your account with a valid email address before applying.')
+    }
+
+    const collabBlock = await getActiveCollabBlock(pool, u.unique_user_id || null, userEmail)
+    if (collabBlock) {
+      return sendError(
+        res,
+        403,
+        collabBlock.public_message ||
+          'Your Creator Collab access is restricted. Affiliate onboarding uses your collab profile — resolve this first.'
+      )
     }
 
     const existingApp = await pool.query(
