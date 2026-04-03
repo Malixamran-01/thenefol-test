@@ -1676,18 +1676,24 @@ export default function Collab(props: CollabProps = {}) {
               {/* Requirements reminder */}
               <div className="rounded-3xl p-6 border border-gray-100 bg-white shadow-sm">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Eligibility rules</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:items-stretch">
                   {[
                     { icon: <Clapperboard className="h-4 w-4 text-[#4B97C9]" />, title: 'Timing', desc: 'Reel must be posted after your collab approval date', bg: '#eff8ff' },
                     { icon: <Zap className="h-4 w-4 text-[#E1306C]" />, title: 'Caption', desc: 'Must include #nefol or #neföl in the caption or hashtags', bg: '#fff0f5' },
                     { icon: <TrendingUp className="h-4 w-4 text-emerald-600" />, title: 'Target', desc: '10,000 views + 500 likes unlocks Affiliate status', bg: '#f0fdf4' },
                   ].map((r) => (
-                    <div key={r.title} className="flex items-start gap-3 p-4 rounded-2xl" style={{ backgroundColor: r.bg }}>
-                      <div className="flex-shrink-0 mt-0.5">{r.icon}</div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-800 mb-0.5">{r.title}</p>
-                        <p className="text-xs text-gray-500 leading-relaxed">{r.desc}</p>
+                    <div
+                      key={r.title}
+                      className="flex flex-col gap-2.5 p-4 rounded-2xl h-full border border-white/60"
+                      style={{ backgroundColor: r.bg }}
+                    >
+                      <div className="flex items-center gap-3 min-h-[2rem]">
+                        <span className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/70 shadow-sm border border-white/80">
+                          {r.icon}
+                        </span>
+                        <p className="text-xs font-semibold text-gray-800 leading-tight">{r.title}</p>
                       </div>
+                      <p className="text-xs text-gray-500 leading-relaxed">{r.desc}</p>
                     </div>
                   ))}
                 </div>

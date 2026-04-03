@@ -1924,14 +1924,14 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Main Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
+        {/* Main Options — equal-height columns; actions pinned to bottom for symmetry */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12 md:items-stretch">
           {/* Apply from Creator Collab — profile comes from collab; no separate form */}
-          <div className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full min-h-0">
             {/* Achievement banner — shown when user has collab stats */}
             {collabStats && (collabStats.views > 0 || collabStats.likes > 0) && (
               <div
-                className="px-6 py-4 flex items-center gap-4 border-b border-[#e8f4fb]"
+                className="px-6 py-4 flex items-center gap-4 border-b border-[#e8f4fb] shrink-0"
                 style={{ background: 'linear-gradient(135deg, #f4fafb 0%, #e8f4fb 100%)' }}
               >
                 <div
@@ -1953,19 +1953,20 @@ useEffect(() => {
                 </div>
               </div>
             )}
-            <div className="p-6 sm:p-8">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
-                <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+            <div className="flex flex-col flex-1 min-h-0 p-6 sm:p-8 justify-between gap-6">
+              <div className="text-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+                  <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-light text-[#1B4965] mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
+                  Apply for partnership
+                </h3>
+                <p className="text-gray-600 font-light tracking-wide text-sm sm:text-[15px] leading-relaxed" style={{ letterSpacing: '0.05em' }}>
+                  After Creator Collab milestones, apply in one step. We use your collab profile and linked accounts—no duplicate form.
+                </p>
               </div>
-              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
-                Apply for partnership
-              </h3>
-              <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                After Creator Collab milestones, apply in one step. We use your collab profile and linked accounts—no duplicate form.
-              </p>
-            </div>
 
+              <div className="w-full shrink-0 mt-auto">
             {collabEligibleLoading ? (
               <p className="text-center text-gray-500 font-light text-sm" style={{ letterSpacing: '0.05em' }}>
                 Checking your Creator Collab progress…
@@ -1974,7 +1975,7 @@ useEffect(() => {
               <button
                 type="button"
                 disabled
-                className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-green-500 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 sm:px-6 py-3.5 rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm cursor-not-allowed bg-emerald-100 text-emerald-800 border border-emerald-200/80"
                 style={{ letterSpacing: '0.1em' }}
               >
                 Application submitted
@@ -1986,7 +1987,7 @@ useEffect(() => {
                 </p>
                 <a
                   href="#/user/collab"
-                  className="block w-full text-center px-4 sm:px-6 py-3 sm:py-4 rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm border-2 border-gray-200 text-gray-800 hover:bg-gray-50"
+                  className="block w-full text-center px-4 sm:px-6 py-3.5 rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm border-2 border-gray-200 text-gray-800 hover:bg-gray-50"
                   style={{ letterSpacing: '0.1em' }}
                 >
                   Go to Creator Collab
@@ -2014,7 +2015,7 @@ useEffect(() => {
                 <button
                   type="submit"
                   disabled={!collabApplyTerms || collabApplySubmitting}
-                  className="w-full px-4 sm:px-6 py-3 sm:py-4 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 sm:px-6 py-3.5 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     backgroundColor: 'var(--arctic-blue-primary)',
                     letterSpacing: '0.1em'
@@ -2034,19 +2035,21 @@ useEffect(() => {
                 </button>
               </form>
             )}
-            </div>{/* end p-6 sm:p-8 inner padding */}
+              </div>
+            </div>
           </div>
 
           {/* Code Verification Option */}
-          <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+          <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full min-h-0 justify-between gap-6">
+            <div className="text-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                 <Key className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
               </div>
-              <h3 className="text-xl sm:text-2xl font-light text-gray-900 mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>Verification Code</h3>
-              <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Enter your 20-character verification code</p>
+              <h3 className="text-xl sm:text-2xl font-light text-[#1B4965] mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>Verification Code</h3>
+              <p className="text-gray-600 font-light tracking-wide text-sm sm:text-[15px] leading-relaxed min-h-[3rem]" style={{ letterSpacing: '0.05em' }}>Enter your 20-character verification code</p>
             </div>
 
+            <div className="w-full shrink-0 mt-auto">
             {!showCodeForm ? (
               <button
                 onClick={() => {
@@ -2057,7 +2060,7 @@ useEffect(() => {
                     setShowCodeForm(true)
                   }
                 }}
-                className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 sm:px-6 py-3.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ letterSpacing: '0.1em' }}
               >
                 Enter Verification Code
@@ -2108,7 +2111,7 @@ useEffect(() => {
                   <button
                     type="submit"
                     disabled={isVerifying || !verificationCode.trim() || verificationCode.length !== 20}
-                    className="flex-1 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 sm:px-6 py-3.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ letterSpacing: '0.1em' }}
                   >
                     {isVerifying ? 'Verifying...' : 'Verify Code'}
@@ -2120,7 +2123,7 @@ useEffect(() => {
                       setVerificationCode('')
                       setVerificationMessage('')
                     }}
-                    className="px-4 sm:px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300 font-light tracking-wide text-xs sm:text-sm"
+                    className="px-4 sm:px-6 py-3.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-300 font-light tracking-wide text-xs sm:text-sm"
                     style={{ letterSpacing: '0.05em' }}
                   >
                     Cancel
@@ -2129,6 +2132,7 @@ useEffect(() => {
               </form>
             )}
           </div>
+        </div>
         </div>
 
         {/* Benefits Section */}
