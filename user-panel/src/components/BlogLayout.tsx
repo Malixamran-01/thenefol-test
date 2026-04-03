@@ -14,7 +14,6 @@ import {
   LogIn,
   LogOut,
   Clapperboard,
-  DollarSign,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
@@ -84,13 +83,6 @@ const NAV_ITEMS: NavItem[] = [
     href: '#/user/collab',
     matchPrefix: '#/user/collab',
   },
-  {
-    id: 'revenue',
-    label: 'Revenue',
-    icon: <DollarSign strokeWidth={1.75} className="h-5 w-5" />,
-    href: '#/user/affiliate-partner',
-    matchPrefix: '#/user/affiliate-partner',
-  },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -118,8 +110,11 @@ function isItemActive(item: NavItem, hash: string, currentUserId?: number): bool
   }
   if (item.id === 'explore') return hash.startsWith('#/user/blog/explore')
   if (item.id === 'analytics') return hash.startsWith('#/user/blog/dashboard')
-  if (item.id === 'creator-program') return hash.startsWith('#/user/collab')
-  if (item.id === 'revenue') return hash.startsWith('#/user/affiliate-partner') || hash.startsWith('#/user/affiliate') || hash.startsWith('#/user/referral-history')
+  if (item.id === 'creator-program') {
+    return hash.startsWith('#/user/collab')
+      || hash.startsWith('#/user/affiliate-partner')
+      || hash.startsWith('#/user/referral-history')
+  }
   if (item.matchPrefix) return hash.startsWith(item.matchPrefix)
   return hash === item.href
 }

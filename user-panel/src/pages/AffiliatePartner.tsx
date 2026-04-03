@@ -39,7 +39,17 @@ interface ApplicationStatus {
   message?: string
 }
 
-const AffiliatePartner: React.FC = () => {
+export interface AffiliatePartnerProps {
+  /** Render inside Creator Program (Collab) — no duplicate top padding / back nav */
+  embedInCreatorProgram?: boolean
+  /** Which Creator Program tab this instance backs */
+  embeddedSegment?: 'affiliate' | 'revenue'
+}
+
+const AffiliatePartner: React.FC<AffiliatePartnerProps> = ({
+  embedInCreatorProgram = false,
+  embeddedSegment,
+}) => {
   // Force refresh - timestamp: 1761382000000
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -77,6 +87,33 @@ useEffect(() => {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
   const [selectedCurrency, setSelectedCurrency] = useState<'INR' | 'USD' | 'EUR' | 'RUB'>('INR')
   const [revTab, setRevTab] = useState<'overview' | 'referrals' | 'payouts'>('overview')
+
+  useEffect(() => {
+    if (!embedInCreatorProgram || !embeddedSegment) return
+    if (embeddedSegment === 'affiliate') setRevTab('overview')
+    if (embeddedSegment === 'revenue') setRevTab('overview')
+  }, [embedInCreatorProgram, embeddedSegment])
+
+  useEffect(() => {
+    if (embedInCreatorProgram && embeddedSegment === 'affiliate' && revTab === 'payouts') setRevTab('overview')
+  }, [embedInCreatorProgram, embeddedSegment, revTab])
+
+  const mainEmbed = embedInCreatorProgram
+    ? 'min-h-0 bg-white overflow-x-hidden pt-0'
+    : 'min-h-screen bg-white overflow-x-hidden pt-14 lg:pt-0'
+
+  const partnerDashboardRevTabs: { key: 'overview' | 'referrals' | 'payouts'; label: string }[] =
+    embedInCreatorProgram && embeddedSegment === 'affiliate'
+      ? [
+          { key: 'overview', label: 'Overview' },
+          { key: 'referrals', label: 'Referrals' },
+        ]
+      : [
+          { key: 'overview', label: 'Overview' },
+          { key: 'referrals', label: 'Referrals' },
+          { key: 'payouts', label: 'Payouts' },
+        ]
+
   // Sync commissionSettings with affiliateData whenever commissionSettings changes
   useEffect(() => {
     if (commissionSettings?.commission_percentage !== undefined && affiliateData) {
@@ -662,7 +699,7 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white pt-14 lg:pt-0" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
             --arctic-blue-primary: rgb(75,151,201);
@@ -697,7 +734,7 @@ useEffect(() => {
   // If user is verified and has affiliate data, show dashboard
   if (isAlreadyVerified && affiliateData) {
     return (
-      <main className="min-h-screen bg-white overflow-x-hidden pt-14 lg:pt-0" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
             --arctic-blue-primary: rgb(75,151,201);
@@ -711,7 +748,7 @@ useEffect(() => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           {/* Header with Back Button */}
           <div className="mb-8 sm:mb-12">
-            {affiliateSource === 'profile' && (
+            {!embedInCreatorProgram && affiliateSource === 'profile' && (
   <button
     onClick={() => window.location.hash = '#/user/profile'}
     className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 font-light tracking-wide"
@@ -721,7 +758,7 @@ useEffect(() => {
   </button>
 )}
 
-{affiliateSource === 'home' && (
+{!embedInCreatorProgram && affiliateSource === 'home' && (
   <button
     onClick={() => window.location.hash = '#/'}
     className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 font-light tracking-wide"
@@ -781,12 +818,8 @@ useEffect(() => {
 
             {/* ── Revenue Tab bar ─────────────────────────────────────────── */}
             <div className="flex gap-1 border-b border-gray-200 mb-8">
-              {([
-                { key: 'overview' as const, label: 'Overview' },
-                { key: 'referrals' as const, label: 'Referrals' },
-                { key: 'payouts' as const, label: 'Payouts' },
-              ]).map(({ key, label }) => (
-                <button key={key} onClick={() => setRevTab(key)}
+              {partnerDashboardRevTabs.map(({ key, label }) => (
+                <button key={key} type="button" onClick={() => setRevTab(key)}
                   className={`border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors font-light tracking-wide ${
                     revTab === key ? 'border-[rgb(75,151,201)] text-[rgb(50,100,140)]' : 'border-transparent text-gray-400 hover:text-gray-600'
                   }`} style={{ letterSpacing: '0.05em' }}>
@@ -1782,7 +1815,7 @@ useEffect(() => {
 
   // Main affiliate partner page - show options for code entry or application
   return (
-    <main className="min-h-screen bg-white overflow-x-hidden pt-14 lg:pt-0" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+    <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
           --arctic-blue-primary: rgb(75,151,201);
@@ -1796,6 +1829,7 @@ useEffect(() => {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Header */}
         <div className="mb-8 sm:mb-12">
+          {!embedInCreatorProgram && (
           <button 
             onClick={() => window.location.hash = '#/user/profile'}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 font-light tracking-wide"
@@ -1804,6 +1838,7 @@ useEffect(() => {
             <ArrowLeft className="h-4 w-4" />
             <span>Back to Profile</span>
           </button>
+          )}
           <div className="text-center">
             <h1 
               className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]" 

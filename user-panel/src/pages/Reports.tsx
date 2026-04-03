@@ -141,7 +141,7 @@ export default function Reports() {
         {/* Header */}
         <div className="mb-8">
           <button 
-            onClick={() => window.location.hash = '#/user/affiliate-partner'}
+            onClick={() => window.location.hash = '#/user/collab?tab=revenue'}
             className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />

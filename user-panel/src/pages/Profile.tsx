@@ -567,7 +567,7 @@ export default function Profile() {
                           window.location.hash = '#/user/nefol-coins'
                         } else if (tab.id === 'affiliate') {
                           sessionStorage.setItem('affiliate_referrer', 'profile')
-                          window.location.hash = '#/user/affiliate-partner'
+                          window.location.hash = '#/user/collab?tab=revenue'
                         } else if (tab.id === 'orders') {
                           window.location.hash = '#/user/user-orders'
                         } else if (tab.id === 'cards') {

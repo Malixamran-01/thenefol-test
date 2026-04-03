@@ -945,7 +945,7 @@ function AppContent() {
         isOpen={showJoinUs}
         onClose={() => setShowJoinUs(false)}
         onSelectCollab={() => { setShowJoinUs(false); window.location.hash = '#/user/collab' }}
-        onSelectAffiliate={() => { setShowJoinUs(false); sessionStorage.setItem('affiliate_referrer', 'home'); window.location.hash = '#/user/affiliate-partner' }}
+        onSelectAffiliate={() => { setShowJoinUs(false); sessionStorage.setItem('affiliate_referrer', 'home'); window.location.hash = '#/user/collab?tab=affiliate' }}
         affiliateUnlocked={affiliateUnlocked}
       />
 
@@ -987,9 +987,7 @@ const Contact = lazy(() => import('./pages/Contact'))
 const ProductPage = lazy(() => import('./pages/Product'))
 const CategoryPage = lazy(() => import('./pages/Category'))
 const Affiliate = lazy(() => import('./pages/Affiliate'))
-const AffiliatePartner = lazy(() => import('./pages/AffiliatePartner'))
 const Collab = lazy(() => import('./pages/Collab'))
-const ReferralHistory = lazy(() => import('./pages/ReferralHistory'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Checkout = lazy(() => import('./pages/Checkout'))
 const Confirmation = lazy(() => import('./pages/Confirmation'))
@@ -1093,9 +1091,9 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/affiliate':
       return <BlogLayout>{RequiredAuth(<Affiliate />)}</BlogLayout>
     case '/user/affiliate-partner':
-      return <BlogLayout>{RequiredAuth(<AffiliatePartner />)}</BlogLayout>
+      return <BlogLayout>{RequiredAuth(<Collab initialProgramTab="revenue" />)}</BlogLayout>
     case '/user/referral-history':
-      return <BlogLayout>{RequiredAuth(<ReferralHistory />)}</BlogLayout>
+      return <BlogLayout>{RequiredAuth(<Collab initialProgramTab="revenue" />)}</BlogLayout>
 
     case '/user/reports': return <Reports />
     case '/user/profile': return <Profile />

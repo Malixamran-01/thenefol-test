@@ -10,6 +10,14 @@ import { YoutubeLogo, RedditLogo } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
+import AffiliatePartner from './AffiliatePartner'
+
+export type CreatorProgramTab = 'collab' | 'affiliate' | 'revenue'
+
+export interface CollabProps {
+  /** Set when routing from legacy partner URLs */
+  initialProgramTab?: CreatorProgramTab
+}
 
 export type SupportedPlatform = 'youtube' | 'reddit' | 'vk'
 
@@ -131,7 +139,8 @@ function Ring({ pct, color, size = 80, stroke = 7 }: { pct: number; color: strin
   )
 }
 
-export default function Collab() {
+export default function Collab(props: CollabProps = {}) {
+  const { initialProgramTab } = props
   const { isAuthenticated, user } = useAuth()
   const [showForm, setShowForm] = useState(true)
   const [submitted, setSubmitted] = useState(false)
@@ -170,7 +179,25 @@ export default function Collab() {
   const [affiliateApplyTerms, setAffiliateApplyTerms] = useState(false)
   const [affiliateApplying, setAffiliateApplying] = useState(false)
   const [affiliateApplyMsg, setAffiliateApplyMsg] = useState('')
-  const [collabTab, setCollabTab] = useState<'collab' | 'affiliate' | 'revenue'>('collab')
+  const [collabTab, setCollabTab] = useState<'collab' | 'affiliate' | 'revenue'>(() => initialProgramTab ?? 'collab')
+
+  useEffect(() => {
+    if (initialProgramTab) setCollabTab(initialProgramTab)
+  }, [initialProgramTab])
+
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      const hash = window.location.hash || ''
+      const idx = hash.indexOf('?')
+      if (idx === -1) return
+      const q = new URLSearchParams(hash.slice(idx + 1))
+      const t = q.get('tab')
+      if (t === 'collab' || t === 'affiliate' || t === 'revenue') setCollabTab(t)
+    }
+    syncTabFromHash()
+    window.addEventListener('hashchange', syncTabFromHash)
+    return () => window.removeEventListener('hashchange', syncTabFromHash)
+  }, [])
   const updPS = (platform: SupportedPlatform, u: Partial<PlatformSyncState>) =>
     setPlatformStates(prev => ({ ...prev, [platform]: { ...prev[platform], ...u } }))
 
@@ -650,6 +677,7 @@ export default function Collab() {
           <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
         </div>
       ) : (
+        <>
         <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10">
 
           {/* ── Tab bar: Collab (milestones + submit) · Affiliate · Revenue ─── */}
@@ -1624,6 +1652,18 @@ export default function Collab() {
             </div>
           )}
         </div>
+
+        {collabTab === 'affiliate' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 w-full">
+            <AffiliatePartner embedInCreatorProgram embeddedSegment="affiliate" />
+          </div>
+        )}
+        {collabTab === 'revenue' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 w-full">
+            <AffiliatePartner embedInCreatorProgram embeddedSegment="revenue" />
+          </div>
+        )}
+        </>
       )}
       {/* ── Terms & Conditions Modal ────────────────────────────────────────── */}
       {showTCModal && (

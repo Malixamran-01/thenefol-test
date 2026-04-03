@@ -412,7 +412,7 @@ function EarningsTab() {
 
           {/* CTA */}
           <a
-            href="#/user/affiliate-partner"
+            href="#/user/collab?tab=revenue"
             className="flex w-full items-center justify-between rounded-2xl border border-[#d0e8f5] bg-[#f0f7fc] px-5 py-4 transition hover:border-[#4B97C9] hover:bg-[#e8f2f9]"
           >
             <div className="flex items-center gap-3">
