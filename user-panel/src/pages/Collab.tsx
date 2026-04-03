@@ -630,44 +630,69 @@ export default function Collab(props: CollabProps = {}) {
   return (
     <main className="min-h-screen pt-14 lg:pt-0" style={{ backgroundColor: 'var(--arctic-blue-background, #F4F9F9)', fontFamily: 'var(--font-body-family)' }}>
 
-      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b" style={{ borderColor: '#eee' }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      {/* ── Hero (Nefol Social) ─────────────────────────────────────────────── */}
+      <div className="border-b border-[#e8eef4]" style={{ background: 'linear-gradient(180deg, #F4F9F9 0%, #ffffff 100%)' }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+          <div className="rounded-2xl border border-[#e8eef4] bg-white/95 shadow-sm px-6 sm:px-8 py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div
+                  className="flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border border-[#d6eaf8] bg-[#f0f8fd] ring-2 ring-[#e8f4fb]"
+                  aria-hidden
+                >
+                  <Clapperboard className="h-5 w-5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] uppercase font-semibold mb-1" style={{ color: 'rgba(27, 73, 101, 0.65)' }}>
+                    Nefol Social
+                  </p>
+                  <h1
+                    className="text-2xl sm:text-3xl font-light tracking-[0.08em]"
+                    style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965', letterSpacing: '0.08em' }}
+                  >
+                    Creator Program
+                  </h1>
+                  <p className="text-xs font-light tracking-wide mt-1.5 text-gray-500" style={{ letterSpacing: '0.04em' }}>
+                    Collab · Affiliate · Revenue — milestones, partner onboarding, and earnings in one place
+                  </p>
+                </div>
+              </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border"
-                style={{ borderColor: '#e8f4fb', backgroundColor: '#f0f8fd' }}>
-                <Clapperboard className="h-5 w-5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
-              </div>
-              <div>
-                <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-1" style={{ color: '#bbb' }}>Nefol</p>
-                <h1 className="text-2xl sm:text-3xl font-light tracking-[0.12em]"
-                  style={{ fontFamily: 'var(--font-heading-family)', color: '#1a1a1a', letterSpacing: '0.12em' }}>
-                  Creator Program
-                </h1>
-                <p className="text-xs font-light tracking-wide mt-1.5" style={{ color: '#999', letterSpacing: '0.04em' }}>
-                  Collab · Affiliate · Revenue — one place for milestones, partner onboarding, and earnings
-                </p>
-              </div>
+              {/* Status pill */}
+              {submitted && status && (
+                <div className="flex-shrink-0">
+                  <span
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium tracking-wide ${
+                      affiliateUnlocked
+                        ? 'bg-[#f0f8fd] text-[#1B4965] border border-[#d6eaf8]'
+                        : status.status === 'approved'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+                          : status.status === 'rejected'
+                            ? 'bg-red-50 text-red-600 border border-red-200'
+                            : 'bg-gray-50 text-gray-600 border border-gray-200'
+                    }`}
+                  >
+                    {affiliateUnlocked ? (
+                      <>
+                        <Award className="h-3.5 w-3.5" /> Affiliate Unlocked
+                      </>
+                    ) : status.status === 'approved' ? (
+                      <>
+                        <CheckCircle className="h-3.5 w-3.5" /> Approved
+                      </>
+                    ) : status.status === 'rejected' ? (
+                      <>
+                        <X className="h-3.5 w-3.5" /> Not Approved
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Pending Review
+                      </>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
-
-            {/* Status pill */}
-            {submitted && status && (
-              <div className="flex-shrink-0">
-                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium tracking-wide ${
-                  affiliateUnlocked ? 'bg-[#f0f8fd] text-[#357aad] border border-[#d6eaf8]'
-                  : status.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : status.status === 'rejected' ? 'bg-red-50 text-red-600 border border-red-200'
-                  : 'bg-gray-50 text-gray-500 border border-gray-200'
-                }`}>
-                  {affiliateUnlocked ? <><Award className="h-3.5 w-3.5" /> Affiliate Unlocked</>
-                    : status.status === 'approved' ? <><CheckCircle className="h-3.5 w-3.5" /> Approved</>
-                    : status.status === 'rejected' ? <><X className="h-3.5 w-3.5" /> Not Approved</>
-                    : <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Pending Review</>}
-                </span>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -680,19 +705,27 @@ export default function Collab(props: CollabProps = {}) {
         <>
         <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10">
 
-          {/* ── Tab bar: Collab (milestones + submit) · Affiliate · Revenue ─── */}
-          <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-8">
+          {/* ── Tab bar: Collab · Affiliate · Revenue (Nefol Social segment control) ─── */}
+          <div className="mb-8 inline-flex flex-wrap gap-1 rounded-2xl border border-[#e8eef4] bg-white p-1 shadow-sm">
             {([
               { key: 'collab' as const, label: 'Collab' },
               { key: 'affiliate' as const, label: 'Affiliate', dot: affiliateUnlocked },
               { key: 'revenue' as const, label: 'Revenue' },
             ]).map(({ key, label, dot }) => (
-              <button key={key} type="button" onClick={() => setCollabTab(key)}
-                className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${
-                  collabTab === key ? 'border-[#4B97C9] text-[#1B4965]' : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}>
+              <button
+                key={key}
+                type="button"
+                onClick={() => setCollabTab(key)}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all ${
+                  collabTab === key
+                    ? 'bg-[#1B4965] text-white shadow-sm'
+                    : 'text-gray-500 hover:bg-[#f4f9fb] hover:text-[#1B4965]'
+                }`}
+              >
                 {label}
-                {dot && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" title="Milestone reached" />}
+                {dot && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-white/40" title="Milestone reached" />
+                )}
               </button>
             ))}
           </div>
@@ -1211,11 +1244,27 @@ export default function Collab(props: CollabProps = {}) {
 
               {/* Instagram · detail: load & submit reels (connection lives in strip above) */}
               {isApproved && showInstagramSection && (
-                <div className="bg-white rounded-3xl border border-[#e8f4fb] shadow-sm overflow-hidden">
-                  <div className="px-6 sm:px-8 py-5 border-b border-[#f0f7fb]">
-                    <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">Instagram</p>
-                    <h2 className="text-xl font-light tracking-[0.06em] text-gray-900" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>Sync reels</h2>
-                    <p className="text-xs text-gray-500 font-light mt-1">Fetch eligible reels and add them to your milestone.</p>
+                <div className="bg-white rounded-3xl border border-[#e8eef4] shadow-sm overflow-hidden">
+                  <div className="px-6 sm:px-8 py-5 border-b border-[#f0f7fb] flex items-start gap-4">
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm border border-white overflow-hidden"
+                      style={{
+                        background: 'linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                      }}
+                      aria-hidden
+                    >
+                      <Instagram className="h-5 w-5 text-white" strokeWidth={2} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">Instagram</p>
+                      <h2
+                        className="text-xl font-light tracking-[0.06em] text-[#1B4965]"
+                        style={{ fontFamily: 'var(--font-heading-family, inherit)' }}
+                      >
+                        Sync reels
+                      </h2>
+                      <p className="text-xs text-gray-500 font-light mt-1">Fetch eligible reels and add them to your milestone.</p>
+                    </div>
                   </div>
                   <div className="p-6 sm:p-8">
                   {!status.instagramConnected ? (
@@ -1361,14 +1410,14 @@ export default function Collab(props: CollabProps = {}) {
                     const ineligibleCnt = ps.content.filter((c) => !c.eligible).length
                     const accent = 'var(--arctic-blue-primary, #4B97C9)'
                     return (
-                      <div key={key} className="bg-white rounded-3xl border border-[#e8f4fb] shadow-sm overflow-hidden">
+                      <div key={key} className="bg-white rounded-3xl border border-[#e8eef4] shadow-sm overflow-hidden">
                         <div className="px-6 sm:px-8 py-5 border-b border-[#f0f7fb] flex items-start gap-4">
                           <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-white shadow-sm overflow-hidden" style={{ backgroundColor: meta.brandTint }}>
                             {meta.icon}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">{meta.label}</p>
-                            <h3 className="text-xl font-light tracking-[0.06em] text-gray-900" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
+                            <h3 className="text-xl font-light tracking-[0.06em] text-[#1B4965]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
                               Sync {meta.contentLabel.toLowerCase()}
                             </h3>
                             <p className="text-xs text-gray-500 font-light mt-1">{meta.subline}</p>
@@ -1655,12 +1704,16 @@ export default function Collab(props: CollabProps = {}) {
 
         {collabTab === 'affiliate' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 w-full">
-            <AffiliatePartner embedInCreatorProgram embeddedSegment="affiliate" />
+            <div className="rounded-2xl border border-[#e8eef4] bg-white shadow-sm overflow-hidden">
+              <AffiliatePartner embedInCreatorProgram embeddedSegment="affiliate" />
+            </div>
           </div>
         )}
         {collabTab === 'revenue' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 w-full">
-            <AffiliatePartner embedInCreatorProgram embeddedSegment="revenue" />
+            <div className="rounded-2xl border border-[#e8eef4] bg-white shadow-sm overflow-hidden">
+              <AffiliatePartner embedInCreatorProgram embeddedSegment="revenue" />
+            </div>
           </div>
         )}
         </>
