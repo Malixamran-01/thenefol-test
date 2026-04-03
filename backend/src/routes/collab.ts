@@ -63,17 +63,6 @@ function sameApplicantIdentity(
   return !!ae && !!be && ae === be
 }
 
-function normalizeAddressFingerprint(addr: AddressEntry): string | null {
-  const postal = (addr.postal_address || '').toLowerCase().replace(/\s+/g, ' ').trim()
-  const pin = (addr.pincode || '').replace(/\D/g, '')
-  const city = (addr.city || '').toLowerCase().trim()
-  const state = (addr.state || '').toLowerCase().trim()
-  const country = (addr.country || '').toLowerCase().trim()
-  const parts = [postal, pin, city, state, country].filter(Boolean)
-  if (parts.length < 2) return null
-  return parts.join('|')
-}
-
 function profileJsonPhoneMeta(profile: unknown): { phone_code?: string; phone_country_iso?: string } {
   if (!profile || typeof profile !== 'object') return {}
   const p = profile as Record<string, unknown>
@@ -93,11 +82,6 @@ function collabPhoneKeyFromRow(row: {
   const { phone_code: pcProf, phone_country_iso: iso } = profileJsonPhoneMeta(row.profile)
   const pc = row.phone_code || pcProf
   return normalizeCollabPhoneKey(String(row.phone || ''), pc, iso)
-}
-
-function addressFpFromJson(addr: unknown): string | null {
-  if (!addr || typeof addr !== 'object') return null
-  return normalizeAddressFingerprint(addr as AddressEntry)
 }
 
 function instagramHandlesConflict(
@@ -128,7 +112,6 @@ async function assertActiveCollabNotDuplicate(
     uniqueUserId: string | null
     email: string
     phoneKey: string
-    addressFp: string | null
     handles: string[]
   }
 ): Promise<{ message: string } | null> {
@@ -157,13 +140,6 @@ async function assertActiveCollabNotDuplicate(
       return {
         message:
           'This phone number is already used for another Creator Collab application. Each applicant must use a unique mobile number.',
-      }
-    }
-
-    if (!same && opts.addressFp && addressFpFromJson(r.address) === opts.addressFp) {
-      return {
-        message:
-          'This postal address is already registered on another Creator Collab application. If this is a mistake, contact support.',
       }
     }
 
@@ -315,6 +291,29 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
   return { uniqueUserId, email }
 }
 
+/** Authenticated ecommerce user only — email is always taken from `users`, never from the request body. */
+async function loadCollabApplicantFromSession(pool: Pool, req: Request): Promise<{ uniqueUserId: string | null; email: string } | null> {
+  const token = req.headers.authorization?.replace('Bearer ', '').trim() || ''
+  const parts = token.split('_')
+  if (parts.length < 3 || parts[0] !== 'user' || parts[1] !== 'token') return null
+  const numericId = parts[2]
+  const userRes = await pool.query('SELECT id, email, unique_user_id FROM users WHERE id = $1 LIMIT 1', [numericId])
+  const row = userRes.rows[0]
+  let email = row?.email
+  if (!email || !String(email).trim()) return null
+  email = String(email).trim()
+  let uniqueUserId = row?.unique_user_id || null
+  if (row?.id && !uniqueUserId) {
+    const generated = await generateUniqueUserId(pool)
+    const updated = await pool.query(
+      'UPDATE users SET unique_user_id = $1 WHERE id = $2 AND unique_user_id IS NULL RETURNING unique_user_id',
+      [generated, row.id]
+    )
+    uniqueUserId = updated.rows[0]?.unique_user_id || generated
+  }
+  return { uniqueUserId, email }
+}
+
 // ─── Submit Collab Application ─────────────────────────────────────────────────
 interface PlatformEntry { name: string; links?: string[]; link?: string }
 interface AddressEntry { country?: string; state?: string; city?: string; postal_address?: string; pincode?: string }
@@ -323,7 +322,7 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
   try {
     await ensureCollabSchema(pool)
     const {
-      name, email, phone, phone_code, instagram, instagram_handles, youtube, facebook,
+      name, phone, phone_code, instagram, instagram_handles, youtube, facebook,
       followers, message, agreeTerms, platforms, address, profile,
       turnstileToken,
     } = req.body
@@ -340,12 +339,18 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       return res.status(400).json({ message: captcha.message })
     }
 
-    if (!name || !email || !phone || !agreeTerms) {
+    const applicant = await loadCollabApplicantFromSession(pool, req)
+    if (!applicant) {
+      return res.status(401).json({ message: 'Please sign in with your Nefol account to apply. Your email must match your store account.' })
+    }
+    const { uniqueUserId, email } = applicant
+
+    if (!name || !phone || !agreeTerms) {
       return res.status(400).json({ message: 'Missing required fields' })
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) return res.status(400).json({ message: 'Invalid email address' })
+    if (!emailRegex.test(email)) return res.status(400).json({ message: 'Invalid email on your account' })
 
     const handles = parseInstagramHandles(instagram, instagram_handles)
 
@@ -377,9 +382,8 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       pincode: (address.pincode || '').trim() || undefined,
     } : {}
 
-    const { uniqueUserId } = await resolveUniqueUserId(pool, req)
     await ensureCollabBlockSchema(pool)
-    const existingBlock = await getActiveCollabBlock(pool, uniqueUserId, String(email || '').trim() || null)
+    const existingBlock = await getActiveCollabBlock(pool, uniqueUserId, email)
     if (existingBlock) {
       return res.status(403).json({
         message: existingBlock.public_message || 'You cannot apply to Creator Collab at this time.',
@@ -431,16 +435,14 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
         : null
 
     const phoneKey = normalizeCollabPhoneKey(String(phone).trim(), normProfile.phone_code, phoneCountryIso)
-    const addressFp = normalizeAddressFingerprint(normAddress)
 
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
       const dup = await assertActiveCollabNotDuplicate(client, {
         uniqueUserId,
-        email: String(email).trim(),
+        email,
         phoneKey,
-        addressFp,
         handles,
       })
       if (dup) {
@@ -451,8 +453,8 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
       const { rows } = await client.query(
         `INSERT INTO collab_applications
            (name, email, phone, phone_code, instagram, youtube, facebook, followers, message, agree_terms,
-            status, unique_user_id, collab_joined_at, platforms, address, profile, phone_norm, address_fingerprint)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',$11,NOW(),$12,$13,$14,$15,$16)
+            status, unique_user_id, collab_joined_at, platforms, address, profile, phone_norm)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',$11,NOW(),$12,$13,$14,$15)
          RETURNING id, email, status, created_at, instagram`,
         [
           name, email, phone, normProfile.phone_code, storedInstagram,
@@ -461,7 +463,6 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
           uniqueUserId,
           JSON.stringify(normPlatforms), JSON.stringify(normAddress), JSON.stringify(normProfile),
           phoneKey || null,
-          addressFp || null,
         ]
       )
       const appId = rows[0].id

@@ -411,6 +411,10 @@ export default function Collab(props: CollabProps = {}) {
   useEffect(() => { fetchStatus() }, [isAuthenticated, user?.email])
 
   useEffect(() => {
+    if (user?.email) setFormData((p) => ({ ...p, email: user.email }))
+  }, [user?.email])
+
+  useEffect(() => {
     if (!status?.affiliateUnlocked || !isAuthenticated) return
     const t = localStorage.getItem('token')
     if (!t) return
@@ -448,13 +452,15 @@ export default function Collab(props: CollabProps = {}) {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
+    if (name === 'email' && user?.email) return
     setFormData((p) => ({ ...p, [name]: type === 'checkbox' ? checked : value }))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name || !formData.email || !formData.phone)
-      return alert('Please fill in your Name, Email, and Phone.')
+    if (!user?.email) return alert('Your Nefol account email could not be loaded. Please sign in again.')
+    if (!formData.name || !formData.phone)
+      return alert('Please fill in your Name and Phone.')
     if (isTurnstileConfigured() && !turnstileToken)
       return alert('Please complete the security verification below.')
     // Open T&C modal for review before final submit
@@ -463,6 +469,10 @@ export default function Collab(props: CollabProps = {}) {
 
   const doSubmit = async () => {
     setShowTCModal(false)
+    if (!user?.email) {
+      alert('Your Nefol account email could not be loaded. Please sign in again.')
+      return
+    }
     if (isTurnstileConfigured() && !turnstileToken) {
       alert('Security verification expired or missing. Please complete the captcha again.')
       return
@@ -483,7 +493,9 @@ export default function Collab(props: CollabProps = {}) {
     const res = await fetch(`${getApiBase()}/api/collab/apply`, {
       method: 'POST', headers: authHeaders(),
       body: JSON.stringify({
-        ...formData, agreeTerms: true,
+        name: formData.name,
+        phone: formData.phone,
+        agreeTerms: true,
         turnstileToken: turnstileToken || undefined,
         phone_code: profile.phone_code,
         instagram: handles[0] || '', instagram_handles: handles,
@@ -501,6 +513,10 @@ export default function Collab(props: CollabProps = {}) {
       }),
     })
     const data = await res.json().catch(() => ({}))
+    if (res.status === 401) {
+      alert(data?.message || 'Please sign in with your Nefol account to apply.')
+      return
+    }
     if (res.status === 409) {
       alert(data?.message || 'This application could not be submitted because the details are already linked to another account.')
       setTurnstileToken(null)
@@ -910,9 +926,19 @@ export default function Collab(props: CollabProps = {}) {
                           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Email</label>
-                        <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="you@email.com" required
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                          Email <span className="font-normal normal-case text-gray-400">(from your Nefol account)</span>
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={user?.email || formData.email}
+                          readOnly
+                          aria-readonly="true"
+                          title="Email comes from your signed-in Nefol account and cannot be changed here."
+                          required
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700 bg-gray-50 cursor-not-allowed"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Phone</label>
