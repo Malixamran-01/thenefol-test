@@ -346,6 +346,22 @@ export async function handleCallback(pool: Pool, req: Request, res: Response) {
       )
     }
 
+    const cid = Number(collabId)
+    if (igUserId) {
+      const conflict = await pool.query(
+        `SELECT id FROM collab_applications
+         WHERE ig_user_id = $1 AND id <> $2`,
+        [igUserId, cid]
+      )
+      if (conflict.rows.length > 0) {
+        return res.redirect(
+          `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(
+            'This Instagram account is already linked to another Creator Collab application. Each creator must use their own Instagram.'
+          )}`
+        )
+      }
+    }
+
     // Step 4: Store token
     // We store the IG user token in fb_page_access_token so existing fetchReelData / cron works unchanged
     await pool.query(

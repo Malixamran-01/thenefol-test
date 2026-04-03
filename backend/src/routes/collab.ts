@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express'
-import { Pool } from 'pg'
+import { Pool, PoolClient } from 'pg'
 import { generateUniqueUserId } from '../utils/generateUserId'
 import { verifyTurnstileToken } from '../utils/turnstile'
 import {
@@ -26,6 +26,156 @@ function parseInstagramHandles(instagram: string | null | undefined, instagramHa
     .filter(Boolean)
   const merged = [...fromList, ...fromSingle].map(normalizeHandle).filter(Boolean)
   return Array.from(new Set(merged))
+}
+
+function digitsOnly(s: string): string {
+  return String(s || '').replace(/\D/g, '')
+}
+
+/** Canonical digit key for duplicate phone detection (country code + local). */
+function normalizeCollabPhoneKey(
+  phoneLocal: string,
+  phoneCode?: string | null,
+  phoneCountryIso?: string | null
+): string {
+  let local = digitsOnly(phoneLocal)
+  if (local.startsWith('0') && local.length > 1) local = local.replace(/^0+/, '')
+  const code = digitsOnly(phoneCode || '')
+  const iso = String(phoneCountryIso || '').toUpperCase()
+  if (code === '91' && local.length === 10) return `91${local}`
+  if (!code && iso === 'IN' && local.length === 10) return `91${local}`
+  if (code && local) return `${code}${local}`
+  if (local.length === 10 && !code && !iso) return `91${local}`
+  return `${code}${local}` || local
+}
+
+function normalizeEmailKey(e: string): string {
+  return String(e || '').trim().toLowerCase()
+}
+
+function sameApplicantIdentity(
+  a: { uniqueUserId: string | null; email: string },
+  b: { unique_user_id: string | null; email: string | null }
+): boolean {
+  if (a.uniqueUserId && b.unique_user_id && String(a.uniqueUserId) === String(b.unique_user_id)) return true
+  const ae = normalizeEmailKey(a.email)
+  const be = normalizeEmailKey(b.email || '')
+  return !!ae && !!be && ae === be
+}
+
+function normalizeAddressFingerprint(addr: AddressEntry): string | null {
+  const postal = (addr.postal_address || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  const pin = (addr.pincode || '').replace(/\D/g, '')
+  const city = (addr.city || '').toLowerCase().trim()
+  const state = (addr.state || '').toLowerCase().trim()
+  const country = (addr.country || '').toLowerCase().trim()
+  const parts = [postal, pin, city, state, country].filter(Boolean)
+  if (parts.length < 2) return null
+  return parts.join('|')
+}
+
+function profileJsonPhoneMeta(profile: unknown): { phone_code?: string; phone_country_iso?: string } {
+  if (!profile || typeof profile !== 'object') return {}
+  const p = profile as Record<string, unknown>
+  return {
+    phone_code: typeof p.phone_code === 'string' ? p.phone_code : undefined,
+    phone_country_iso: typeof p.phone_country_iso === 'string' ? p.phone_country_iso : undefined,
+  }
+}
+
+function collabPhoneKeyFromRow(row: {
+  phone: string | null
+  phone_code: string | null
+  profile: unknown
+  phone_norm?: string | null
+}): string {
+  if (row.phone_norm && String(row.phone_norm).trim()) return String(row.phone_norm).trim()
+  const { phone_code: pcProf, phone_country_iso: iso } = profileJsonPhoneMeta(row.profile)
+  const pc = row.phone_code || pcProf
+  return normalizeCollabPhoneKey(String(row.phone || ''), pc, iso)
+}
+
+function addressFpFromJson(addr: unknown): string | null {
+  if (!addr || typeof addr !== 'object') return null
+  return normalizeAddressFingerprint(addr as AddressEntry)
+}
+
+function instagramHandlesConflict(
+  row: {
+    instagram: string | null
+    instagram_connected: boolean
+    ig_username: string | null
+  },
+  newHandles: string[]
+): boolean {
+  if (!newHandles.length) return false
+  const newSet = new Set(newHandles.map(normalizeHandle))
+  const existing = parseInstagramHandles(row.instagram, undefined)
+  for (const h of existing) {
+    if (newSet.has(h)) return true
+  }
+  if (row.instagram_connected && row.ig_username) {
+    const u = normalizeHandle(row.ig_username)
+    if (u && newSet.has(u)) return true
+  }
+  return false
+}
+
+/** Block duplicate identities across active (pending/approved) applications. */
+async function assertActiveCollabNotDuplicate(
+  client: PoolClient,
+  opts: {
+    uniqueUserId: string | null
+    email: string
+    phoneKey: string
+    addressFp: string | null
+    handles: string[]
+  }
+): Promise<{ message: string } | null> {
+  const { rows } = await client.query(
+    `SELECT id, unique_user_id, email, phone, phone_code, profile, address, instagram,
+            instagram_connected, ig_username, ig_user_id, status, phone_norm
+     FROM collab_applications
+     WHERE status IN ('pending', 'approved')`
+  )
+
+  const me = { uniqueUserId: opts.uniqueUserId, email: opts.email }
+
+  for (const r of rows) {
+    const same = sameApplicantIdentity(me, r)
+
+    if (same) {
+      if (r.status === 'pending') {
+        return { message: 'You already have a pending Creator Collab application. Please wait for a decision or contact support.' }
+      }
+      if (r.status === 'approved') {
+        return { message: 'You already have an approved Creator Collab application on this account.' }
+      }
+    }
+
+    if (!same && opts.phoneKey && collabPhoneKeyFromRow(r) === opts.phoneKey) {
+      return {
+        message:
+          'This phone number is already used for another Creator Collab application. Each applicant must use a unique mobile number.',
+      }
+    }
+
+    if (!same && opts.addressFp && addressFpFromJson(r.address) === opts.addressFp) {
+      return {
+        message:
+          'This postal address is already registered on another Creator Collab application. If this is a mistake, contact support.',
+      }
+    }
+
+    if (!same && instagramHandlesConflict(r, opts.handles)) {
+      return {
+        message:
+          'This Instagram account (handle) is already linked to another Creator Collab application. Each creator must use their own Instagram.',
+      }
+    }
+  }
+
+  return null
 }
 
 function computeProgress(totalViews: number, totalLikes: number) {
@@ -96,6 +246,37 @@ async function ensureCollabSchema(pool: Pool) {
     CREATE INDEX IF NOT EXISTS idx_collab_profile_details_unique_user ON collab_profile_details(unique_user_id);
     CREATE INDEX IF NOT EXISTS idx_collab_profile_details_email ON collab_profile_details(email);
   `)
+
+  await pool.query(`
+    ALTER TABLE collab_applications
+      ADD COLUMN IF NOT EXISTS phone_norm TEXT,
+      ADD COLUMN IF NOT EXISTS address_fingerprint TEXT;
+  `)
+
+  try {
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_collab_phone_norm_active
+      ON collab_applications (phone_norm)
+      WHERE status IN ('pending', 'approved')
+        AND phone_norm IS NOT NULL
+        AND btrim(phone_norm) <> '';
+    `)
+  } catch (e) {
+    console.warn(
+      '[collab] idx_collab_phone_norm_active skipped (duplicates in DB or migration issue):',
+      (e as Error).message
+    )
+  }
+  try {
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_collab_ig_user_active
+      ON collab_applications (ig_user_id)
+      WHERE ig_user_id IS NOT NULL
+        AND status IN ('pending', 'approved');
+    `)
+  } catch (e) {
+    console.warn('[collab] idx_collab_ig_user_active skipped:', (e as Error).message)
+  }
 }
 
 async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUserId: string | null; email: string | null }> {
@@ -249,14 +430,29 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
         ? normProfile.anniversary
         : null
 
+    const phoneKey = normalizeCollabPhoneKey(String(phone).trim(), normProfile.phone_code, phoneCountryIso)
+    const addressFp = normalizeAddressFingerprint(normAddress)
+
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
+      const dup = await assertActiveCollabNotDuplicate(client, {
+        uniqueUserId,
+        email: String(email).trim(),
+        phoneKey,
+        addressFp,
+        handles,
+      })
+      if (dup) {
+        await client.query('ROLLBACK')
+        return res.status(409).json({ message: dup.message, duplicate_application: true })
+      }
+
       const { rows } = await client.query(
         `INSERT INTO collab_applications
            (name, email, phone, phone_code, instagram, youtube, facebook, followers, message, agree_terms,
-            status, unique_user_id, collab_joined_at, platforms, address, profile)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',$11,NOW(),$12,$13,$14)
+            status, unique_user_id, collab_joined_at, platforms, address, profile, phone_norm, address_fingerprint)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',$11,NOW(),$12,$13,$14,$15,$16)
          RETURNING id, email, status, created_at, instagram`,
         [
           name, email, phone, normProfile.phone_code, storedInstagram,
@@ -264,6 +460,8 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
           normProfile.followers_range || null, normProfile.bio || null, !!agreeTerms,
           uniqueUserId,
           JSON.stringify(normPlatforms), JSON.stringify(normAddress), JSON.stringify(normProfile),
+          phoneKey || null,
+          addressFp || null,
         ]
       )
       const appId = rows[0].id
@@ -313,8 +511,17 @@ export async function submitCollabApplication(pool: Pool, req: Request, res: Res
         message: 'Application submitted successfully.',
       })
     } catch (e) {
-      await client.query('ROLLBACK')
-      throw e
+      await client.query('ROLLBACK').catch(() => {})
+      const pg = e as { code?: string }
+      if (pg.code === '23505') {
+        return res.status(409).json({
+          message:
+            'This phone number or Instagram account is already linked to another active Creator Collab application.',
+          duplicate_application: true,
+        })
+      }
+      console.error('Collab application error:', e)
+      return res.status(500).json({ message: 'Failed to submit application' })
     } finally {
       client.release()
     }
@@ -960,7 +1167,17 @@ export async function rejectCollabApplication(pool: Pool, req: Request, res: Res
     }
     const result = await pool.query(
       `UPDATE collab_applications
-       SET status = 'rejected', rejection_reason = $1, rejected_at = NOW(), updated_at = NOW()
+       SET status = 'rejected',
+           rejection_reason = $1,
+           rejected_at = NOW(),
+           updated_at = NOW(),
+           instagram_connected = false,
+           fb_user_access_token = NULL,
+           fb_page_id = NULL,
+           fb_page_access_token = NULL,
+           ig_user_id = NULL,
+           ig_username = NULL,
+           token_expires_at = NULL
        WHERE id = $2
        RETURNING *`,
       [String(rejectionReason).trim(), id]

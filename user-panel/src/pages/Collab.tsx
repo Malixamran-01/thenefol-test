@@ -501,6 +501,12 @@ export default function Collab(props: CollabProps = {}) {
       }),
     })
     const data = await res.json().catch(() => ({}))
+    if (res.status === 409) {
+      alert(data?.message || 'This application could not be submitted because the details are already linked to another account.')
+      setTurnstileToken(null)
+      setTurnstileMountKey((k) => k + 1)
+      return
+    }
     if (res.ok) {
       setSubmitted(true); setShowForm(false)
       setTurnstileToken(null)

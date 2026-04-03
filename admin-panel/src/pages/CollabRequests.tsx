@@ -138,15 +138,15 @@ function formatDob(m: CollabProfileDetails & Record<string, unknown>): string {
 
 const PLATFORM_META: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   instagram: { icon: <Instagram className="h-3 w-3" />, color: '#E1306C', bg: '#fff0f5' },
-  youtube:   { icon: <Youtube   className="h-3 w-3" />, color: '#FF0000', bg: '#fff5f5' },
   facebook:  { icon: <Facebook  className="h-3 w-3" />, color: '#1877F2', bg: '#f0f5ff' },
+  youtube:   { icon: <Youtube   className="h-3 w-3" />, color: '#FF0000', bg: '#fff5f5' },
   x:         { icon: <Twitter   className="h-3 w-3" />, color: '#1a1a1a', bg: '#f5f5f5' },
   linkedin:  { icon: <Linkedin  className="h-3 w-3" />, color: '#0077B5', bg: '#f0f7ff' },
   telegram:  { icon: <Send      className="h-3 w-3" />, color: '#26A5E4', bg: '#f0f9ff' },
   snapchat:  { icon: <Ghost     className="h-3 w-3" />, color: '#FF6B35', bg: '#fff8f5' },
   reddit:    { icon: <Globe     className="h-3 w-3" />, color: '#FF4500', bg: '#fff5f0' },
-  vk:        { icon: <Globe     className="h-3 w-3" />, color: '#0077FF', bg: '#f0f5ff' },
   quora:     { icon: <Link      className="h-3 w-3" />, color: '#B92B27', bg: '#fff5f5' },
+  vk:        { icon: <Globe     className="h-3 w-3" />, color: '#0077FF', bg: '#f0f5ff' },
   other:     { icon: <Globe     className="h-3 w-3" />, color: '#6b7280', bg: '#f5f5f5' },
 }
 
