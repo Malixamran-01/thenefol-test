@@ -1124,7 +1124,8 @@ export default function AffiliateRequests() {
                 </div>
               </div>
 
-              {(selectedApplication.collab_application_id != null || selectedApplication.collab_address) && (
+              {(selectedApplication.collab_application_id != null ||
+                selectedApplication.collab_address != null) && (
                 <div className="mb-6 rounded-xl border border-cyan-100 bg-cyan-50/60 p-4 dark:border-cyan-900/40 dark:bg-cyan-950/25">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                     <FileText className="h-5 w-5 text-cyan-700 dark:text-cyan-400" /> Creator Collab (source data)
@@ -1138,14 +1139,17 @@ export default function AffiliateRequests() {
                       <span className="font-mono font-medium">{selectedApplication.collab_application_id}</span>
                     </p>
                   )}
-                  {selectedApplication.collab_app_status && (
+                  {selectedApplication.collab_app_status != null &&
+                    String(selectedApplication.collab_app_status).length > 0 && (
                     <p className="text-sm text-gray-800 dark:text-gray-200 mb-1">
-                      Collab application status: <span className="font-medium">{selectedApplication.collab_app_status}</span>
+                      Collab application status:{' '}
+                      <span className="font-medium">{String(selectedApplication.collab_app_status)}</span>
                     </p>
                   )}
-                  {selectedApplication.collab_instagram && (
+                  {selectedApplication.collab_instagram != null &&
+                    String(selectedApplication.collab_instagram).length > 0 && (
                     <p className="text-sm text-gray-800 dark:text-gray-200 mb-2">
-                      Instagram (collab field): {selectedApplication.collab_instagram}
+                      Instagram (collab field): {String(selectedApplication.collab_instagram)}
                     </p>
                   )}
                   <details className="mt-2">
