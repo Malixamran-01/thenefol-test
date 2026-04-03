@@ -6,6 +6,19 @@ import crypto from 'crypto'
 import { sendAffiliateCodeEmail, sendAffiliateApplicationSubmittedEmail } from '../services/emailService'
 import { getActiveCollabBlock } from '../utils/collabBlocks'
 
+/** Links affiliate onboarding to Creator Collab (null = legacy standalone application). */
+async function ensureAffiliateCollabLinkColumn(pool: Pool) {
+  await pool.query(`
+    ALTER TABLE affiliate_applications
+      ADD COLUMN IF NOT EXISTS collab_application_id INTEGER REFERENCES collab_applications(id) ON DELETE SET NULL;
+  `)
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_affiliate_apps_collab_application_id
+    ON affiliate_applications (collab_application_id)
+    WHERE collab_application_id IS NOT NULL;
+  `)
+}
+
 // Generate 20-digit verification code
 function generateVerificationCode(): string {
   return crypto.randomBytes(10).toString('hex').slice(0, 20)
@@ -165,6 +178,7 @@ const COLLAB_AFFILIATE_LIKES = 500
 /** One-click affiliate application: uses Creator Collab application + profile (no duplicate form). */
 export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureAffiliateCollabLinkColumn(pool)
     const userId = req.userId
     if (!userId) return sendError(res, 401, 'Authentication required')
 
@@ -195,13 +209,23 @@ export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Requ
     }
 
     const existingApp = await pool.query(
-      `SELECT id, status FROM affiliate_applications WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) ORDER BY created_at DESC LIMIT 1`,
+      `SELECT id, status, collab_application_id FROM affiliate_applications WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) ORDER BY created_at DESC LIMIT 1`,
       [userEmail]
     )
     if (existingApp.rows.length > 0) {
-      const st = existingApp.rows[0].status
-      if (st === 'pending' || st === 'approved' || st === 'rejected') {
-        return sendError(res, 409, `You already have an application with ${st} status. Please wait for approval or contact support.`)
+      const row = existingApp.rows[0] as { id: number; status: string; collab_application_id: number | null }
+      if (row.status === 'approved') {
+        return sendError(res, 409, 'You already have an approved affiliate application.')
+      }
+      if (row.status === 'pending') {
+        if (row.collab_application_id != null) {
+          return sendError(
+            res,
+            409,
+            'You already have a pending affiliate application. Please wait for a decision or contact support.'
+          )
+        }
+        await pool.query(`DELETE FROM affiliate_applications WHERE id = $1`, [row.id])
       }
     }
 
@@ -295,8 +319,9 @@ export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Requ
         house_number, street, building, apartment, road, city, pincode, state,
         agree_terms, status, application_date,
         birth_day, birth_month, birth_year,
-        education_level, profession, skills
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+        education_level, profession, skills,
+        collab_application_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
       RETURNING *`,
       [
         name, userEmail, phone,
@@ -308,6 +333,7 @@ export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Requ
         Number.isFinite(birthMonth as number) ? birthMonth : null,
         Number.isFinite(birthYear as number) ? birthYear : null,
         education_level, profession, skills,
+        ca.id,
       ]
     )
 
@@ -323,28 +349,38 @@ export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Requ
 // Get all affiliate applications (admin only)
 export async function getAffiliateApplications(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureAffiliateCollabLinkColumn(pool)
     const { status, page = 1, limit = 10 } = req.query
     const offset = (Number(page) - 1) * Number(limit)
 
-    let query = 'SELECT * FROM affiliate_applications'
+    let query = `
+      SELECT aa.*,
+        ca.address AS collab_address,
+        ca.platforms AS collab_platforms,
+        ca.profile AS collab_profile,
+        ca.status AS collab_app_status,
+        ca.instagram AS collab_instagram
+      FROM affiliate_applications aa
+      LEFT JOIN collab_applications ca ON ca.id = aa.collab_application_id
+    `
     let params: any[] = []
     let paramCount = 0
 
     if (status) {
-      query += ` WHERE status = $${++paramCount}`
+      query += ` WHERE aa.status = $${++paramCount}`
       params.push(status)
     }
 
-    query += ` ORDER BY application_date DESC LIMIT $${++paramCount} OFFSET $${++paramCount}`
+    query += ` ORDER BY aa.application_date DESC LIMIT $${++paramCount} OFFSET $${++paramCount}`
     params.push(Number(limit), offset)
 
     const { rows } = await pool.query(query, params)
 
     // Get total count
-    let countQuery = 'SELECT COUNT(*) FROM affiliate_applications'
+    let countQuery = 'SELECT COUNT(*) FROM affiliate_applications aa'
     let countParams: any[] = []
     if (status) {
-      countQuery += ' WHERE status = $1'
+      countQuery += ' WHERE aa.status = $1'
       countParams.push(status)
     }
 
@@ -368,8 +404,20 @@ export async function getAffiliateApplications(pool: Pool, req: Request, res: Re
 // Get single affiliate application (admin only)
 export async function getAffiliateApplication(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureAffiliateCollabLinkColumn(pool)
     const { id } = req.params
-    const { rows } = await pool.query('SELECT * FROM affiliate_applications WHERE id = $1', [id])
+    const { rows } = await pool.query(
+      `SELECT aa.*,
+        ca.address AS collab_address,
+        ca.platforms AS collab_platforms,
+        ca.profile AS collab_profile,
+        ca.status AS collab_app_status,
+        ca.instagram AS collab_instagram
+       FROM affiliate_applications aa
+       LEFT JOIN collab_applications ca ON ca.id = aa.collab_application_id
+       WHERE aa.id = $1`,
+      [id]
+    )
 
     if (rows.length === 0) {
       return sendError(res, 404, 'Application not found')
@@ -557,9 +605,45 @@ export async function verifyAffiliateCode(pool: Pool, req: Request, res: Respons
   }
 }
 
+/** Resend the same verification email after admin approval (user may have missed the first email). */
+export async function resendAffiliateVerificationCode(pool: Pool, req: Request, res: Response) {
+  try {
+    const userId = req.userId
+    if (!userId) return sendError(res, 401, 'Authentication required')
+
+    const userResult = await pool.query('SELECT email, name FROM users WHERE id = $1', [userId])
+    if (userResult.rows.length === 0) return sendError(res, 404, 'User not found')
+
+    const userEmail = String(userResult.rows[0].email || '').trim()
+    const accountName = String(userResult.rows[0].name || 'Partner').trim()
+
+    const partnerRes = await pool.query(
+      `SELECT id, name, email, verification_code, status
+       FROM affiliate_partners
+       WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) AND status = 'unverified'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userEmail]
+    )
+    if (partnerRes.rows.length === 0) {
+      return sendError(
+        res,
+        404,
+        'No verification code on file yet. After an admin approves your affiliate application, your code is emailed to you.'
+      )
+    }
+    const p = partnerRes.rows[0]
+    await sendAffiliateCodeEmail(p.email, String(p.name || accountName).trim(), p.verification_code)
+    sendSuccess(res, { message: 'We sent the verification code to your email again.' })
+  } catch (err) {
+    sendError(res, 500, 'Failed to resend verification code', err)
+  }
+}
+
 // Get affiliate application status
 export async function getAffiliateApplicationStatus(pool: Pool, req: Request, res: Response) {
   try {
+    await ensureAffiliateCollabLinkColumn(pool)
     const userId = req.userId // From auth middleware
 
     if (!userId) {
@@ -574,9 +658,12 @@ export async function getAffiliateApplicationStatus(pool: Pool, req: Request, re
 
     const userEmail = userResult.rows[0].email
 
-    // Check if there's an application for this user's email
+    /** Only Creator Collab–linked applications count for the in-app affiliate flow (ignores legacy standalone rows). */
     const appResult = await pool.query(
-      'SELECT id, status, created_at FROM affiliate_applications WHERE email = $1 ORDER BY created_at DESC LIMIT 1',
+      `SELECT id, status, created_at, collab_application_id
+       FROM affiliate_applications
+       WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) AND collab_application_id IS NOT NULL
+       ORDER BY created_at DESC LIMIT 1`,
       [userEmail]
     )
 
@@ -588,7 +675,8 @@ export async function getAffiliateApplicationStatus(pool: Pool, req: Request, re
     return sendSuccess(res, {
       status: application.status,
       applicationId: application.id,
-      submittedAt: application.created_at
+      submittedAt: application.created_at,
+      collab_application_id: application.collab_application_id,
     })
   } catch (err) {
     sendError(res, 500, 'Failed to get application status', err)

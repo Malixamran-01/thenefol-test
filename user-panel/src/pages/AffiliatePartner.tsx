@@ -87,6 +87,7 @@ useEffect(() => {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
   const [selectedCurrency, setSelectedCurrency] = useState<'INR' | 'USD' | 'EUR' | 'RUB'>('INR')
   const [revTab, setRevTab] = useState<'overview' | 'referrals' | 'payouts'>('overview')
+  const [resendCodeLoading, setResendCodeLoading] = useState(false)
 
   useEffect(() => {
     if (!embedInCreatorProgram || !embeddedSegment) return
@@ -278,16 +279,6 @@ useEffect(() => {
         } else {
           console.error('Network or other error:', error.message)
         }
-      }
-      
-      // Try to use saved status as fallback
-      const savedStatus = localStorage.getItem('affiliateApplicationStatus')
-      if (savedStatus) {
-        console.log('Using saved application status:', savedStatus)
-        setHasSubmittedApplication(true)
-        setApplicationStatus(savedStatus as any)
-      } else {
-        console.log('No saved application status found')
       }
       
       setLoading(false)
@@ -569,15 +560,11 @@ useEffect(() => {
       if (response.ok) {
         setHasSubmittedApplication(true)
         setApplicationStatus('pending')
-        localStorage.setItem('affiliateApplicationStatus', 'pending')
-        setVerificationMessage('Your Application is pending for Approval')
+        setVerificationMessage('Your affiliate application is pending admin review.')
         setCollabApplyTerms(false)
       } else if (response.status === 409) {
-        const errorMessage = data.message || 'You have already submitted an application'
-        alert(`${errorMessage} Please check your email for the verification code or contact support if you need assistance.`)
-        setHasSubmittedApplication(true)
-        setApplicationStatus('pending')
-        setTimeout(() => checkApplicationStatus(), 1000)
+        alert(data.message || 'You already have an affiliate application in progress.')
+        await checkApplicationStatus()
       } else {
         alert(data.message || 'Failed to submit application. Please try again or contact support.')
       }
@@ -586,6 +573,31 @@ useEffect(() => {
       alert('Failed to submit application. Please try again.')
     } finally {
       setCollabApplySubmitting(false)
+    }
+  }
+
+  const handleResendVerificationEmail = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      alert('Please sign in.')
+      return
+    }
+    setResendCodeLoading(true)
+    try {
+      const res = await fetch(`${getApiBase()}/api/affiliate/resend-verification-code`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        alert(data.message || 'Check your inbox for the verification code.')
+      } else {
+        alert(data.error || data.message || 'Could not resend the email. Try again later or contact support.')
+      }
+    } catch {
+      alert('Network error. Please try again.')
+    } finally {
+      setResendCodeLoading(false)
     }
   }
 
@@ -1900,25 +1912,17 @@ useEffect(() => {
                       : 'Your application has been approved! You can now verify your account with the code sent to your email.'
                     )
                   : applicationStatus === 'pending'
-                  ? (verificationMessage || 'Your Application is pending for Approval')
+                  ? (verificationMessage || 'Your affiliate application is waiting for admin review.')
                   : 'Your application was not approved. Please contact support for more information.'
                 }
               </p>
               
               {applicationStatus === 'pending' && (
-                <>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Clock className="h-4 w-4" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
-                    <span className="text-xs font-light tracking-wide text-gray-700" style={{ letterSpacing: '0.05em' }}>
-                      Verification Pending
-                    </span>
-                  </div>
-                  <div className="mt-4 p-4 rounded-xl border" style={{ backgroundColor: '#f0f8fd', borderColor: '#d6eaf8' }}>
-                    <p className="text-sm font-light tracking-wide text-gray-700" style={{ letterSpacing: '0.05em' }}>
-                      <strong className="font-medium">Need help?</strong> If you're having trouble finding your verification code or have questions about your application, please contact our support team.
-                    </p>
-                  </div>
-                </>
+                <div className="mt-4 p-4 rounded-xl border" style={{ backgroundColor: '#f0f8fd', borderColor: '#d6eaf8' }}>
+                  <p className="text-sm font-light tracking-wide text-gray-700" style={{ letterSpacing: '0.05em' }}>
+                    <strong className="font-medium">What happens next?</strong> We review your request first. You will <strong>not</strong> receive a verification code by email until your application is approved.
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -2046,20 +2050,36 @@ useEffect(() => {
                 <Key className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
               </div>
               <h3 className="text-xl sm:text-2xl font-light text-[#1B4965] mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>Verification Code</h3>
-              <p className="text-gray-600 font-light tracking-wide text-sm sm:text-[15px] leading-relaxed min-h-[3rem]" style={{ letterSpacing: '0.05em' }}>Enter your 20-character verification code</p>
+              <p className="text-gray-600 font-light tracking-wide text-sm sm:text-[15px] leading-relaxed min-h-[3rem]" style={{ letterSpacing: '0.05em' }}>
+                After an admin approves your affiliate application, we email you a 20-character code. Enter it here to activate your partner account.
+              </p>
             </div>
 
-            <div className="w-full shrink-0 mt-auto">
+            <div className="w-full shrink-0 mt-auto space-y-3">
+            {applicationStatus === 'approved' && !isAlreadyVerified && (
+              <button
+                type="button"
+                onClick={handleResendVerificationEmail}
+                disabled={resendCodeLoading}
+                className="w-full px-4 sm:px-6 py-3 rounded-xl border-2 border-[#4B97C9] text-[#1B4965] bg-white hover:bg-[#f0f8fd] transition-all font-light tracking-wide text-xs sm:text-sm disabled:opacity-50"
+                style={{ letterSpacing: '0.08em' }}
+              >
+                {resendCodeLoading ? 'Sending…' : 'Resend code to my email'}
+              </button>
+            )}
             {!showCodeForm ? (
               <button
                 onClick={() => {
                   if (isAlreadyVerified) {
-                    // If already verified, redirect to dashboard
                     window.location.reload()
+                  } else if (applicationStatus !== 'approved') {
+                    alert('You will receive a verification code by email after your affiliate application is approved.')
                   } else {
                     setShowCodeForm(true)
                   }
                 }}
+                disabled={isAlreadyVerified ? false : applicationStatus !== 'approved'}
+                title={applicationStatus !== 'approved' && !isAlreadyVerified ? 'Available after your application is approved' : undefined}
                 className="w-full px-4 sm:px-6 py-3.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ letterSpacing: '0.1em' }}
               >

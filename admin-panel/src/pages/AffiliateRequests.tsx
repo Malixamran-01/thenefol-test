@@ -67,6 +67,12 @@ interface AffiliateApplication {
   education_level?: string
   profession?: string
   skills?: string
+  collab_application_id?: number | null
+  collab_address?: unknown
+  collab_platforms?: unknown
+  collab_profile?: unknown
+  collab_app_status?: string
+  collab_instagram?: string
 }
 
 export default function AffiliateRequests() {
@@ -1118,10 +1124,53 @@ export default function AffiliateRequests() {
                 </div>
               </div>
 
+              {(selectedApplication.collab_application_id != null || selectedApplication.collab_address) && (
+                <div className="mb-6 rounded-xl border border-cyan-100 bg-cyan-50/60 p-4 dark:border-cyan-900/40 dark:bg-cyan-950/25">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-cyan-700 dark:text-cyan-400" /> Creator Collab (source data)
+                  </h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    This affiliate request was submitted after Creator Collab milestones. The collab application holds the full creator profile used for onboarding.
+                  </p>
+                  {selectedApplication.collab_application_id != null && (
+                    <p className="text-sm text-gray-800 dark:text-gray-200 mb-1">
+                      Collab application ID:{' '}
+                      <span className="font-mono font-medium">{selectedApplication.collab_application_id}</span>
+                    </p>
+                  )}
+                  {selectedApplication.collab_app_status && (
+                    <p className="text-sm text-gray-800 dark:text-gray-200 mb-1">
+                      Collab application status: <span className="font-medium">{selectedApplication.collab_app_status}</span>
+                    </p>
+                  )}
+                  {selectedApplication.collab_instagram && (
+                    <p className="text-sm text-gray-800 dark:text-gray-200 mb-2">
+                      Instagram (collab field): {selectedApplication.collab_instagram}
+                    </p>
+                  )}
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-sm font-medium text-cyan-800 dark:text-cyan-300">
+                      View collab address, platforms & profile (JSON)
+                    </summary>
+                    <pre className="mt-2 max-h-56 overflow-auto text-xs bg-white dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700 whitespace-pre-wrap">
+                      {JSON.stringify(
+                        {
+                          address: selectedApplication.collab_address,
+                          platforms: selectedApplication.collab_platforms,
+                          profile: selectedApplication.collab_profile,
+                        },
+                        null,
+                        2
+                      )}
+                    </pre>
+                  </details>
+                </div>
+              )}
+
               {/* Address Section */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Address
+                  Address (affiliate record)
                 </h3>
                 <div className="space-y-3">
                   <div>
