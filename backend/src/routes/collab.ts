@@ -6,6 +6,7 @@ import {
   assertCollabNotBlockedByAppId,
   ensureCollabBlockSchema,
   getActiveCollabBlock,
+  getCreatorProgramBlockForUserId,
 } from '../utils/collabBlocks'
 import { fetchReelData, captionMentionsNefol, getPageTokenForCollab, extractShortcode, NEFOL_KEYWORDS } from './instagram'
 
@@ -1791,6 +1792,17 @@ export async function getCreatorRevenue(pool: Pool, req: Request, res: Response)
   try {
     const userId = (req as Request & { userId?: string }).userId
     if (!userId) return res.status(401).json({ message: 'Authentication required' })
+
+    const programBlock = await getCreatorProgramBlockForUserId(pool, userId)
+    if (programBlock) {
+      return res.status(403).json({
+        message:
+          programBlock.public_message ||
+          'Your access to the Creator Program is restricted.',
+        creator_program_blocked: true,
+        collab_blocked: true,
+      })
+    }
 
     const { rows: weekRow } = await pool.query<{ week_start: Date }>(
       `SELECT (date_trunc('week', timezone('utc', now())))::date AS week_start`

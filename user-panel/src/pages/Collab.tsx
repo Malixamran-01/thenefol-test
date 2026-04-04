@@ -366,18 +366,25 @@ export default function Collab(props: CollabProps = {}) {
           ? data.instagram_handles
           : (data.instagram || '').split(',').map((h: string) => h.trim()).filter(Boolean)
         const hasApp = data.has_application !== false && !!data.id
-        const blockInfo: CollabBlockInfo | null =
-          data.collab_blocked && data.block
+        const blockInfo: CollabBlockInfo | null = data.collab_blocked
+          ? data.block
             ? {
                 public_message:
                   data.block.public_message ||
-                  'Your access to the Creator Collab program has been restricted.',
+                  'Your access to the Creator Program has been restricted.',
                 appeal_status: data.block.appeal_status || 'none',
                 appeal_submitted_at: data.block.appeal_submitted_at || null,
                 blocked_at: data.block.blocked_at || '',
                 can_submit_appeal: data.block.can_submit_appeal !== false,
               }
-            : null
+            : {
+                public_message: 'Your access to the Creator Program has been restricted.',
+                appeal_status: 'none',
+                appeal_submitted_at: null,
+                blocked_at: '',
+                can_submit_appeal: true,
+              }
+          : null
         setStatus({
           id: data.id, status: data.status, hasApplication: hasApp,
           totalViews: data.total_views ?? 0, totalLikes: data.total_likes ?? 0,
@@ -815,53 +822,33 @@ export default function Collab(props: CollabProps = {}) {
             ))}
           </div>
 
-          {status?.programSuspended && status.blockInfo && status.hasApplication && (
-            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 sm:px-5 text-sm text-amber-950">
-              <p className="font-semibold text-amber-900 flex items-center gap-2">
-                <Lock className="h-4 w-4 shrink-0" aria-hidden />
-                Creator Collab access is suspended
-              </p>
-              <p className="mt-2 text-amber-900/85 leading-relaxed">{status.blockInfo.public_message}</p>
-              {status.blockInfo.appeal_status === 'pending' && (
-                <p className="mt-3 text-xs font-medium text-amber-800">Your appeal is pending review.</p>
-              )}
-              {status.blockInfo.can_submit_appeal && status.blockInfo.appeal_status !== 'pending' && (
-                <div className="mt-4 space-y-2">
-                  <label className="block text-xs font-medium text-amber-900/80">Appeal (explain why this should be lifted)</label>
-                  <textarea
-                    value={blockAppealText}
-                    onChange={(e) => setBlockAppealText(e.target.value)}
-                    rows={4}
-                    className="w-full rounded-xl border border-amber-200/80 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400"
-                    placeholder="Minimum 20 characters…"
-                  />
-                  {blockAppealMsg && <p className="text-xs text-red-600">{blockAppealMsg}</p>}
-                  <button
-                    type="button"
-                    onClick={submitBlockAppeal}
-                    disabled={blockAppealSubmitting}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#1B4965] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
-                  >
-                    {blockAppealSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Submit appeal
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Blocked from program (no application row — e.g. after admin action) */}
-          {collabTab === 'collab' && status?.collabBlocked && status.blockInfo && !status.hasApplication && (
-            <div className="max-w-xl mx-auto rounded-2xl border border-red-100 bg-white p-6 sm:p-8 shadow-sm">
+          {/* Whole Creator Program blocked (Collab + Affiliate + Revenue) — same view on every tab */}
+          {status?.collabBlocked && status.blockInfo != null ? (
+            <div
+              className={`max-w-xl mx-auto rounded-2xl border px-6 py-6 sm:px-8 sm:py-8 shadow-sm ${
+                status.hasApplication
+                  ? 'border-amber-200 bg-amber-50 text-amber-950'
+                  : 'border-red-100 bg-white text-gray-800'
+              }`}
+            >
               <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-red-50 p-2 text-red-600">
+                <div
+                  className={`rounded-xl p-2 shrink-0 ${status.hasApplication ? 'bg-amber-100 text-amber-800' : 'bg-red-50 text-red-600'}`}
+                >
                   <Lock className="h-6 w-6" aria-hidden />
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-[#1B4965] tracking-wide">Not eligible to apply</h2>
-                  <p className="mt-2 text-sm text-gray-600 leading-relaxed">{status.blockInfo.public_message}</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-semibold tracking-wide text-[#1B4965]">
+                    {status.hasApplication ? 'Creator Program suspended' : 'Creator Program access restricted'}
+                  </h2>
+                  <p className={`mt-2 text-sm leading-relaxed ${status.hasApplication ? 'text-amber-900/90' : 'text-gray-600'}`}>
+                    {status.blockInfo.public_message}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    This applies to Collab, Affiliate, and Revenue until lifted.
+                  </p>
                   {status.blockInfo.appeal_status === 'pending' && (
-                    <p className="mt-3 text-xs font-medium text-gray-700">We received your appeal and will review it.</p>
+                    <p className="mt-3 text-xs font-medium text-gray-700">Your appeal is pending review.</p>
                   )}
                   {status.blockInfo.can_submit_appeal && status.blockInfo.appeal_status !== 'pending' && (
                     <div className="mt-5 space-y-2">
@@ -870,8 +857,12 @@ export default function Collab(props: CollabProps = {}) {
                         value={blockAppealText}
                         onChange={(e) => setBlockAppealText(e.target.value)}
                         rows={4}
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
-                        placeholder="Explain why you believe this restriction should be lifted (min. 20 characters)."
+                        className={`w-full rounded-xl border px-3 py-2 text-sm ${
+                          status.hasApplication
+                            ? 'border-amber-200/80 bg-white text-gray-900'
+                            : 'border-gray-200 bg-white text-gray-900'
+                        }`}
+                        placeholder="Minimum 20 characters…"
                       />
                       {blockAppealMsg && <p className="text-xs text-red-600">{blockAppealMsg}</p>}
                       <button
@@ -888,10 +879,10 @@ export default function Collab(props: CollabProps = {}) {
                 </div>
               </div>
             </div>
-          )}
-
+          ) : (
+            <>
           {/* ── Application form (not yet applied) ─────────────────────────── */}
-          {collabTab === 'collab' && showForm && !status?.collabBlocked && (
+          {collabTab === 'collab' && showForm && (
             <div className="max-w-xl mx-auto">
               {/* Requirements */}
               <div className="grid grid-cols-3 gap-3 mb-8">
@@ -1887,6 +1878,8 @@ export default function Collab(props: CollabProps = {}) {
                 </div>
               )}
             </div>
+          )}
+            </>
           )}
         </div>
 

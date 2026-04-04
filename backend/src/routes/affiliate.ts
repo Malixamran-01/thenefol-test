@@ -4,7 +4,7 @@ import { Pool } from 'pg'
 import { sendSuccess, sendError } from '../utils/apiHelpers'
 import crypto from 'crypto'
 import { sendAffiliateCodeEmail, sendAffiliateApplicationSubmittedEmail } from '../services/emailService'
-import { getActiveCollabBlock } from '../utils/collabBlocks'
+import { getCreatorProgramBlockForUserId } from '../utils/collabBlocks'
 
 /** Links affiliate onboarding to Creator Collab (null = legacy standalone application). */
 async function ensureAffiliateCollabLinkColumn(pool: Pool) {
@@ -175,12 +175,31 @@ export async function submitAffiliateApplication(pool: Pool, req: Request, res: 
 const COLLAB_AFFILIATE_VIEWS = 10_000
 const COLLAB_AFFILIATE_LIKES = 500
 
+/** 403 when the user is blocked from the whole Creator Program (Collab + Affiliate + Revenue). */
+async function rejectIfCreatorProgramBlocked(pool: Pool, req: Request, res: Response): Promise<boolean> {
+  const userId = req.userId
+  if (!userId) return false
+  const block = await getCreatorProgramBlockForUserId(pool, userId)
+  if (block) {
+    res.status(403).json({
+      message:
+        block.public_message ||
+        'Your access to the Creator Program is restricted.',
+      creator_program_blocked: true,
+      collab_blocked: true,
+    })
+    return true
+  }
+  return false
+}
+
 /** One-click affiliate application: uses Creator Collab application + profile (no duplicate form). */
 export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Request, res: Response) {
   try {
     await ensureAffiliateCollabLinkColumn(pool)
     const userId = req.userId
     if (!userId) return sendError(res, 401, 'Authentication required')
+    if (await rejectIfCreatorProgramBlocked(pool, req, res)) return
 
     const { agreeTerms } = req.body || {}
     if (!agreeTerms) return sendError(res, 400, 'You must agree to the terms and conditions')
@@ -196,16 +215,6 @@ export async function submitAffiliateApplicationFromCollab(pool: Pool, req: Requ
     const userEmail = String(u.email || '').trim()
     if (!emailRegex.test(userEmail) || /^\d+$/.test(userEmail.replace(/[\s+\-()]/g, ''))) {
       return sendError(res, 400, 'Please update your account with a valid email address before applying.')
-    }
-
-    const collabBlock = await getActiveCollabBlock(pool, u.unique_user_id || null, userEmail)
-    if (collabBlock) {
-      return sendError(
-        res,
-        403,
-        collabBlock.public_message ||
-          'Your Creator Collab access is restricted. Affiliate onboarding uses your collab profile — resolve this first.'
-      )
     }
 
     const existingApp = await pool.query(
@@ -551,6 +560,7 @@ export async function verifyAffiliateCode(pool: Pool, req: Request, res: Respons
     if (!userId) {
       return sendError(res, 401, 'Authentication required')
     }
+    if (await rejectIfCreatorProgramBlocked(pool, req, res)) return
 
     // Find affiliate partner with this code
     const { rows } = await pool.query(
@@ -610,6 +620,7 @@ export async function resendAffiliateVerificationCode(pool: Pool, req: Request, 
   try {
     const userId = req.userId
     if (!userId) return sendError(res, 401, 'Authentication required')
+    if (await rejectIfCreatorProgramBlocked(pool, req, res)) return
 
     const userResult = await pool.query('SELECT email, name FROM users WHERE id = $1', [userId])
     if (userResult.rows.length === 0) return sendError(res, 404, 'User not found')
@@ -649,6 +660,7 @@ export async function getAffiliateApplicationStatus(pool: Pool, req: Request, re
     if (!userId) {
       return sendError(res, 401, 'Authentication required')
     }
+    if (await rejectIfCreatorProgramBlocked(pool, req, res)) return
 
     // Get user's email
     const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId])
@@ -691,6 +703,7 @@ export async function getAffiliateDashboard(pool: Pool, req: Request, res: Respo
     if (!userId) {
       return sendError(res, 401, 'Authentication required')
     }
+    if (await rejectIfCreatorProgramBlocked(pool, req, res)) return
 
     // First, try to get affiliate partner data by user_id (for verified partners)
     let { rows } = await pool.query(
@@ -787,6 +800,9 @@ export async function getAffiliateDashboard(pool: Pool, req: Request, res: Respo
 export async function getAffiliateReferrals(pool: Pool, req: Request, res: Response) {
   try {
     const userId = req.userId
+    if (!userId) return sendError(res, 401, 'Authentication required')
+    if (await rejectIfCreatorProgramBlocked(pool, req, res)) return
+
     const { page = 1, limit = 20 } = req.query
     const offset = (Number(page) - 1) * Number(limit)
 
