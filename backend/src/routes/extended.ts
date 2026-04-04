@@ -411,7 +411,8 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
     try {
       const userId = req.userId
       if (!userId) return sendError(res, 401, 'User ID not found')
-      let { amount, withdrawal_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id, use_saved_payout } = req.body
+      let { amount, withdrawal_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id, use_saved_payout, source } = req.body
+      const withdrawalSource: string = ['store', 'social_revenue'].includes(source) ? source : 'store'
       if (use_saved_payout === true) {
         const prefRes = await pool.query(
           `SELECT payout_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id
@@ -481,7 +482,7 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
       await pool.query(`
         INSERT INTO coin_transactions (user_id, amount, type, description, status, order_id, withdrawal_id, metadata)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      `, [userId, -amount, 'withdrawal_pending', `Withdrawal requested: ${amount} coins (₹${(amount / 10).toFixed(2)}) via ${withdrawal_method === 'bank' ? 'Bank Transfer' : 'UPI'}`, 'pending', null, rows[0].id, null])
+      `, [userId, -amount, 'withdrawal_pending', `Withdrawal requested: ${amount} coins (₹${(amount / 10).toFixed(2)}) via ${withdrawal_method === 'bank' ? 'Bank Transfer' : 'UPI'}`, 'pending', null, rows[0].id, JSON.stringify({ source: withdrawalSource })])
 
       sendSuccess(res, rows[0], 201)
     } catch (err) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { ArrowLeft, BarChart3, Copy, CheckCircle, Clock, AlertCircle, UserPlus, Key, Percent, IndianRupee, Users, TrendingUp, Award, Coins, Smartphone, FileText, Mail, Video, X, Folder, Search, Download, Image as ImageIcon, FileDown, ChevronDown, ChevronUp, Info, ExternalLink, Package, Eye, Heart } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import WithdrawalPanel from '../components/WithdrawalPanel'
 interface AffiliateData {
   id: string
   user_id: string
@@ -1190,26 +1191,15 @@ useEffect(() => {
 
             </div>
 
-            <div className="mb-8 sm:mb-10 rounded-xl border border-[#d6eaf8] bg-[#f0f8fd]/80 px-4 py-4 sm:px-6 sm:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <p className="text-sm font-light text-[#1B4965] tracking-wide" style={{ letterSpacing: '0.05em' }}>
-                Redeem Nefol coins to your bank or UPI. Add your payout details once in Settings, then request withdrawal.
-              </p>
-              <div className="flex flex-wrap gap-2 shrink-0">
-                <a
-                  href="#/user/blog/settings?view=payout"
-                  className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium text-white transition-colors"
-                  style={{ backgroundColor: 'var(--arctic-blue-primary)', letterSpacing: '0.08em' }}
-                >
-                  Payout settings
-                </a>
-                <a
-                  href="#/user/coin-withdrawal"
-                  className="inline-flex items-center justify-center rounded-xl border border-[#1B4965]/30 bg-white px-4 py-2.5 text-xs sm:text-sm font-medium text-[#1B4965] transition-colors hover:bg-white/90"
-                  style={{ letterSpacing: '0.08em' }}
-                >
-                  Redeem coins
-                </a>
-              </div>
+            {/* Withdrawal panel — embedded directly in the Revenue tab */}
+            <div className="mb-8 sm:mb-10">
+              <h2
+                className="text-xl sm:text-2xl font-light mb-5 tracking-[0.1em]"
+                style={{ color: '#1B4965', fontFamily: 'var(--font-heading-family)' }}
+              >
+                Withdraw earnings
+              </h2>
+              <WithdrawalPanel source="social_revenue" variant="embedded" />
             </div>
 
             {/* Membership ID / Affiliate ID Section */}
