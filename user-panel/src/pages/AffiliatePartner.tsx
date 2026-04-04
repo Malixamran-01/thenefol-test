@@ -1190,6 +1190,28 @@ useEffect(() => {
 
             </div>
 
+            <div className="mb-8 sm:mb-10 rounded-xl border border-[#d6eaf8] bg-[#f0f8fd]/80 px-4 py-4 sm:px-6 sm:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <p className="text-sm font-light text-[#1B4965] tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                Redeem Nefol coins to your bank or UPI. Add your payout details once in Settings, then request withdrawal.
+              </p>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <a
+                  href="#/user/blog/settings?view=payout"
+                  className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium text-white transition-colors"
+                  style={{ backgroundColor: 'var(--arctic-blue-primary)', letterSpacing: '0.08em' }}
+                >
+                  Payout settings
+                </a>
+                <a
+                  href="#/user/coin-withdrawal"
+                  className="inline-flex items-center justify-center rounded-xl border border-[#1B4965]/30 bg-white px-4 py-2.5 text-xs sm:text-sm font-medium text-[#1B4965] transition-colors hover:bg-white/90"
+                  style={{ letterSpacing: '0.08em' }}
+                >
+                  Redeem coins
+                </a>
+              </div>
+            </div>
+
             {/* Membership ID / Affiliate ID Section */}
             {affiliateData?.partner_id && (
               <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm mb-8 sm:mb-12">

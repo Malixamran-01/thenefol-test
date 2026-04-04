@@ -48,6 +48,8 @@ export default function CoinWithdrawal() {
     upi_id: ''
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [hasSavedPayout, setHasSavedPayout] = useState(false)
+  const [useSavedPayoutOnly, setUseSavedPayoutOnly] = useState(false)
 
   useEffect(() => {
     fetchCoinsData()
@@ -63,6 +65,81 @@ export default function CoinWithdrawal() {
       clearInterval(refreshInterval)
     }
   }, [])
+
+  useEffect(() => {
+    const loadPayoutPrefs = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) return
+        const response = await fetch(`${getApiBase()}/api/user/payout-preferences`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) return
+        const data = await response.json()
+        const p = data.payout as {
+          payout_method: string
+          account_holder_name: string
+          account_number?: string | null
+          ifsc_code?: string | null
+          bank_name?: string | null
+          upi_id?: string | null
+        } | null
+        if (p?.payout_method) {
+          setHasSavedPayout(true)
+          setFormData((prev) => ({
+            ...prev,
+            withdrawal_method: p.payout_method === 'bank' ? 'bank' : 'upi',
+            account_holder_name: p.account_holder_name || prev.account_holder_name,
+            account_number: p.account_number || '',
+            ifsc_code: p.ifsc_code || '',
+            bank_name: p.bank_name || '',
+            upi_id: p.upi_id || '',
+          }))
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    loadPayoutPrefs()
+  }, [])
+
+  useEffect(() => {
+    if (!showForm) return
+    const loadPayoutPrefs = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) return
+        const response = await fetch(`${getApiBase()}/api/user/payout-preferences`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) return
+        const data = await response.json()
+        const p = data.payout as {
+          payout_method: string
+          account_holder_name: string
+          account_number?: string | null
+          ifsc_code?: string | null
+          bank_name?: string | null
+          upi_id?: string | null
+        } | null
+        if (p?.payout_method) {
+          setHasSavedPayout(true)
+          setFormData((prev) => ({
+            ...prev,
+            withdrawal_method: p.payout_method === 'bank' ? 'bank' : 'upi',
+            account_holder_name: p.account_holder_name || prev.account_holder_name,
+            account_number: p.account_number || '',
+            ifsc_code: p.ifsc_code || '',
+            bank_name: p.bank_name || '',
+            upi_id: p.upi_id || '',
+          }))
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    loadPayoutPrefs()
+  }, [showForm])
 
   const fetchCoinsData = async () => {
     try {
@@ -168,6 +245,15 @@ export default function CoinWithdrawal() {
       newErrors.amount = `Insufficient coins. You have ${loyaltyCoinsOnly} withdrawable coins available. (Affiliate earnings are added to your balance when processed)`
     }
 
+    if (useSavedPayoutOnly) {
+      if (!hasSavedPayout && !newErrors.amount) {
+        newErrors.amount =
+          'Add a payout method under NEFOL Social → Settings → Payout method, or uncheck the box and enter bank/UPI below.'
+      }
+      setErrors(newErrors)
+      return Object.keys(newErrors).length === 0
+    }
+
     if (!formData.account_holder_name) {
       newErrors.account_holder_name = 'Account holder name is required'
     }
@@ -208,19 +294,21 @@ export default function CoinWithdrawal() {
         return
       }
 
-      const payload: any = {
-        amount: parseFloat(formData.amount),
-        withdrawal_method: formData.withdrawal_method,
-        account_holder_name: formData.account_holder_name
-      }
-
-      if (formData.withdrawal_method === 'bank') {
-        payload.account_number = formData.account_number
-        payload.ifsc_code = formData.ifsc_code
-        payload.bank_name = formData.bank_name
-      } else {
-        payload.upi_id = formData.upi_id
-      }
+      const payload: Record<string, unknown> =
+        useSavedPayoutOnly && hasSavedPayout
+          ? { amount: parseFloat(formData.amount), use_saved_payout: true }
+          : {
+              amount: parseFloat(formData.amount),
+              withdrawal_method: formData.withdrawal_method,
+              account_holder_name: formData.account_holder_name,
+              ...(formData.withdrawal_method === 'bank'
+                ? {
+                    account_number: formData.account_number,
+                    ifsc_code: formData.ifsc_code,
+                    bank_name: formData.bank_name,
+                  }
+                : { upi_id: formData.upi_id }),
+            }
 
       const response = await fetch(`${getApiBase()}/api/coin-withdrawals`, {
         method: 'POST',
@@ -236,6 +324,7 @@ export default function CoinWithdrawal() {
       if (response.ok) {
         alert('Withdrawal request submitted successfully!')
         setShowForm(false)
+        setUseSavedPayoutOnly(false)
         setFormData({
           amount: '',
           withdrawal_method: 'upi',
@@ -253,7 +342,7 @@ export default function CoinWithdrawal() {
         const event = new CustomEvent('coinsUpdated')
         window.dispatchEvent(event)
       } else {
-        alert(data.message || 'Failed to submit withdrawal request')
+        alert(data.error || data.message || 'Failed to submit withdrawal request')
       }
     } catch (error) {
       console.error('Error submitting withdrawal:', error)
@@ -458,7 +547,35 @@ export default function CoinWithdrawal() {
                 </p>
               </div>
 
+              {hasSavedPayout && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useSavedPayoutOnly}
+                      onChange={(e) => setUseSavedPayoutOnly(e.target.checked)}
+                      className="mt-1 rounded border-slate-300"
+                    />
+                    <span className="text-sm font-light text-slate-700" style={{ letterSpacing: '0.03em' }}>
+                      Send to my saved payout method only (from NEFOL Social Settings). You only need to enter the
+                      amount above.
+                    </span>
+                  </label>
+                  <p className="text-xs text-slate-500 pl-7">
+                    <a
+                      href="#/user/blog/settings?view=payout"
+                      className="underline font-medium"
+                      style={{ color: 'var(--arctic-blue-primary)' }}
+                    >
+                      Edit bank / UPI in Settings
+                    </a>
+                  </p>
+                </div>
+              )}
+
               {/* Withdrawal Method */}
+              {!useSavedPayoutOnly && (
+              <>
               <div>
                 <label 
                   className="block text-xs sm:text-sm font-light mb-2 tracking-wide"
@@ -635,6 +752,8 @@ export default function CoinWithdrawal() {
                     </div>
                   </div>
                 </>
+              )}
+              </>
               )}
 
               <button

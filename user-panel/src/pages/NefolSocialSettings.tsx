@@ -6,8 +6,10 @@ import {
   Clapperboard,
   CreditCard,
   Heart,
+  Landmark,
   Shield,
 } from 'lucide-react'
+import PayoutMethodSettings from '../components/PayoutMethodSettings'
 import {
   getCreatorProgramSidebarEnabled,
   getSocialInterests,
@@ -17,7 +19,7 @@ import {
   SOCIAL_INTEREST_OPTIONS,
 } from '../utils/nefolSocialSettings'
 
-type SettingsView = 'list' | 'creator-program' | 'interests'
+type SettingsView = 'list' | 'creator-program' | 'interests' | 'payout'
 
 function parseViewFromHash(): SettingsView {
   const raw = window.location.hash || ''
@@ -26,6 +28,7 @@ function parseViewFromHash(): SettingsView {
   const v = q.get('view')
   if (v === 'creator-program') return 'creator-program'
   if (v === 'interests') return 'interests'
+  if (v === 'payout') return 'payout'
   return 'list'
 }
 
@@ -186,6 +189,38 @@ export default function NefolSocialSettings() {
     )
   }
 
+  if (view === 'payout') {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10 pb-16">
+        <button
+          type="button"
+          onClick={goSettingsHome}
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#1B4965] hover:opacity-80 transition-opacity"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Settings
+        </button>
+
+        <header className="mb-6">
+          <h1
+            className="text-2xl sm:text-3xl font-light tracking-[0.06em]"
+            style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
+          >
+            Payout method
+          </h1>
+          <p className="mt-2 text-sm text-gray-500 font-light tracking-wide leading-relaxed">
+            Bank account or UPI where we send money when you redeem Nefol coins (affiliate earnings, referrals, and blog
+            rewards). Same details are used for withdrawal requests.
+          </p>
+        </header>
+
+        <section className="rounded-2xl border border-[#e8eef4] bg-white shadow-sm p-5 sm:p-6">
+          <PayoutMethodSettings />
+        </section>
+      </div>
+    )
+  }
+
   if (view === 'interests') {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10 pb-16">
@@ -273,9 +308,17 @@ export default function NefolSocialSettings() {
           }}
         />
         <SettingsListRow
+          icon={<Landmark className="h-5 w-5" strokeWidth={1.75} />}
+          title="Payout method"
+          subtitle="Bank or UPI for affiliate and coin redemptions"
+          onClick={() => {
+            window.location.hash = '#/user/blog/settings?view=payout'
+          }}
+        />
+        <SettingsListRow
           icon={<CreditCard className="h-5 w-5" strokeWidth={1.75} />}
-          title="Payments"
-          subtitle="Cards, methods, and billing"
+          title="Payment methods"
+          subtitle="Saved cards for shopping on NEFOL"
           href="#/user/payment-methods"
         />
         <SettingsListRow

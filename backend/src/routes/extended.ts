@@ -345,11 +345,94 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
     }
   })
 
+  /** Saved bank / UPI for coin & affiliate-related withdrawals (NEFOL Social → Settings → Payout method) */
+  app.get('/api/user/payout-preferences', authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.userId
+      if (!userId) return sendError(res, 401, 'Unauthorized')
+      const { rows } = await pool.query(
+        `SELECT payout_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id, updated_at
+         FROM user_payout_preferences WHERE user_id = $1`,
+        [userId]
+      )
+      sendSuccess(res, { payout: rows[0] || null })
+    } catch (err) {
+      sendError(res, 500, 'Failed to load payout preferences', err)
+    }
+  })
+
+  app.put('/api/user/payout-preferences', authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.userId
+      if (!userId) return sendError(res, 401, 'Unauthorized')
+      const { payout_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id } = req.body || {}
+      if (!payout_method || !['bank', 'upi'].includes(payout_method)) {
+        return sendError(res, 400, 'payout_method must be bank or upi')
+      }
+      const name = account_holder_name != null ? String(account_holder_name).trim() : ''
+      if (!name) return sendError(res, 400, 'Account holder name is required')
+      if (payout_method === 'bank') {
+        if (!account_number || !ifsc_code || !bank_name) {
+          return sendError(res, 400, 'Account number, IFSC, and bank name are required for bank transfer')
+        }
+      } else if (!upi_id || !String(upi_id).trim()) {
+        return sendError(res, 400, 'UPI ID is required')
+      }
+
+      await pool.query(
+        `INSERT INTO user_payout_preferences (
+          user_id, payout_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id, updated_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,now())
+        ON CONFLICT (user_id) DO UPDATE SET
+          payout_method = EXCLUDED.payout_method,
+          account_holder_name = EXCLUDED.account_holder_name,
+          account_number = EXCLUDED.account_number,
+          ifsc_code = EXCLUDED.ifsc_code,
+          bank_name = EXCLUDED.bank_name,
+          upi_id = EXCLUDED.upi_id,
+          updated_at = now()`,
+        [
+          userId,
+          payout_method,
+          name,
+          payout_method === 'bank' ? String(account_number).trim() : null,
+          payout_method === 'bank' ? String(ifsc_code).trim().toUpperCase() : null,
+          payout_method === 'bank' ? String(bank_name).trim() : null,
+          payout_method === 'upi' ? String(upi_id).trim() : null,
+        ]
+      )
+      sendSuccess(res, { ok: true, message: 'Payout method saved' })
+    } catch (err) {
+      sendError(res, 500, 'Failed to save payout preferences', err)
+    }
+  })
+
   app.post('/api/coin-withdrawals', authenticateToken, async (req: any, res) => {
     try {
       const userId = req.userId
       if (!userId) return sendError(res, 401, 'User ID not found')
-      const { amount, withdrawal_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id } = req.body
+      let { amount, withdrawal_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id, use_saved_payout } = req.body
+      if (use_saved_payout === true) {
+        const prefRes = await pool.query(
+          `SELECT payout_method, account_holder_name, account_number, ifsc_code, bank_name, upi_id
+           FROM user_payout_preferences WHERE user_id = $1`,
+          [userId]
+        )
+        if (prefRes.rows.length === 0) {
+          return sendError(
+            res,
+            400,
+            'No saved payout method. Add your bank or UPI under NEFOL Social → Settings → Payout method.'
+          )
+        }
+        const p = prefRes.rows[0]
+        withdrawal_method = p.payout_method
+        account_holder_name = p.account_holder_name
+        account_number = p.account_number
+        ifsc_code = p.ifsc_code
+        bank_name = p.bank_name
+        upi_id = p.upi_id
+      }
       if (!amount || amount <= 0) return sendError(res, 400, 'Valid amount is required')
       if (!withdrawal_method || !['bank','upi'].includes(withdrawal_method)) return sendError(res, 400, 'Valid withdrawal method is required')
       if (withdrawal_method === 'bank' && (!account_number || !ifsc_code || !bank_name)) return sendError(res, 400, 'Bank details are required for bank transfer')

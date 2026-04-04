@@ -2048,6 +2048,18 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_coin_withdrawals_user_id on coin_withdrawals(user_id);
     create index if not exists idx_coin_withdrawals_status on coin_withdrawals(status);
     create index if not exists idx_coin_withdrawals_created_at on coin_withdrawals(created_at);
+
+    -- Saved payout destination for Nefol coin withdrawals (affiliate / blog coins → bank or UPI)
+    create table if not exists user_payout_preferences (
+      user_id integer primary key references users(id) on delete cascade,
+      payout_method text not null check (payout_method in ('bank', 'upi')),
+      account_holder_name text not null,
+      account_number text,
+      ifsc_code text,
+      bank_name text,
+      upi_id text,
+      updated_at timestamptz default now()
+    );
     
     -- Coin Transaction History
     create table if not exists coin_transactions (
