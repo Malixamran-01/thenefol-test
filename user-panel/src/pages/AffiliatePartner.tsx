@@ -778,74 +778,95 @@ useEffect(() => {
     const totalBlog = creatorRevenue?.total_coins_from_blog_weekly ?? 0
     const earnedThisWeek = creatorRevenue?.earned_blog_reward_this_week ?? false
     const history = creatorRevenue?.blog_reward_history ?? []
+    const showBlogLifetimeBreakdown = totalBlog > 0 && totalBlog !== balance
 
     return (
-      <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm mb-8 sm:mb-12">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
-            <Coins className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
-          </div>
-          <div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 sm:mb-12 overflow-hidden">
+        <div
+          className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 flex items-start justify-between gap-3"
+          style={{ background: 'linear-gradient(135deg, #fafcfd 0%, #f0f8fb 100%)' }}
+        >
+          <div className="min-w-0 flex-1">
             <h2
-              className="text-xl sm:text-2xl font-light mb-2 tracking-[0.12em]"
-              style={{ color: '#1a1a1a', fontFamily: 'var(--font-heading-family)', letterSpacing: '0.12em' }}
+              className="text-lg sm:text-xl font-light text-gray-900 tracking-wide"
+              style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.08em' }}
             >
-              Blog &amp; creator coins
+              Blog rewards
             </h2>
-            <p className="text-sm text-gray-600 font-light leading-relaxed" style={{ letterSpacing: '0.05em' }}>
-              Coins are added only after an <strong className="font-medium text-gray-800">admin approves</strong> your post (submitted posts stay pending until then). Then you can earn up to {amt} Nefol coins per calendar week (UTC)—only your first <em>approved</em> post each week counts. Coins go to your Nefol wallet as loyalty points.
+            <p className="text-xs sm:text-[13px] text-gray-500 mt-1.5 leading-snug">
+              Up to {amt} coins per UTC week · first approved post only · credits after moderation
             </p>
+          </div>
+          <div
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: 'var(--arctic-blue-light)' }}
+          >
+            <Coins className="h-5 w-5 sm:h-6 sm:w-6" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="rounded-xl border border-gray-100 p-5" style={{ backgroundColor: 'var(--arctic-blue-lighter)' }}>
-            <p className="text-xs font-light tracking-wide mb-2" style={{ color: 'var(--arctic-blue-primary-dark)', letterSpacing: '0.05em' }}>
-              This week (from {weekLabel})
+        <div className="px-4 py-6 sm:px-6 sm:py-8">
+          <div className="text-center sm:text-left mb-6">
+            <p className="text-[11px] sm:text-xs uppercase tracking-[0.18em] text-gray-400 font-medium">Nefol balance</p>
+            <p className="text-4xl sm:text-5xl font-light text-gray-900 tabular-nums mt-1 tracking-tight">
+              {balance.toLocaleString()}
             </p>
-            <p className="text-2xl font-light text-gray-900">
-              {earnedThisWeek ? `${amt} coins earned` : 'Not earned yet'}
-            </p>
+            <p className="text-sm text-gray-500 mt-0.5">coins</p>
+            {showBlogLifetimeBreakdown && (
+              <p className="text-xs text-gray-500 mt-3 max-w-md mx-auto sm:mx-0">
+                <span className="text-gray-400">From blog weekly bonuses:</span> {totalBlog.toLocaleString()}
+              </p>
+            )}
           </div>
-          <div className="rounded-xl border border-gray-100 p-5 bg-gray-50">
-            <p className="text-xs font-light tracking-wide text-gray-500 mb-2" style={{ letterSpacing: '0.05em' }}>
-              Nefol wallet balance
-            </p>
-            <p className="text-2xl font-light text-gray-900">{balance.toLocaleString()} coins</p>
-          </div>
-          <div className="rounded-xl border border-gray-100 p-5 bg-gray-50">
-            <p className="text-xs font-light tracking-wide text-gray-500 mb-2" style={{ letterSpacing: '0.05em' }}>
-              Total from weekly blog rewards
-            </p>
-            <p className="text-2xl font-light text-gray-900">{totalBlog.toLocaleString()} coins</p>
-          </div>
-        </div>
 
-        {history.length > 0 && (
-          <div>
-            <h3 className="text-sm text-gray-800 mb-3 font-light tracking-wide" style={{ letterSpacing: '0.06em' }}>
-              Recent weeks
-            </h3>
-            <div className="overflow-x-auto rounded-xl border border-gray-100">
-              <table className="w-full text-sm font-light">
-                <thead>
-                  <tr className="bg-gray-50 text-left text-gray-600">
-                    <th className="px-4 py-3" style={{ letterSpacing: '0.05em' }}>Week (UTC)</th>
-                    <th className="px-4 py-3" style={{ letterSpacing: '0.05em' }}>Coins</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.slice(0, 12).map((row) => (
-                    <tr key={row.week_start} className="border-t border-gray-100">
-                      <td className="px-4 py-2.5 text-gray-800">{row.week_start}</td>
-                      <td className="px-4 py-2.5 text-gray-800">{row.coins_awarded}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div
+            className="rounded-xl border border-gray-100 px-4 py-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4"
+            style={{ backgroundColor: 'var(--arctic-blue-lighter)' }}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              {earnedThisWeek ? (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium uppercase tracking-wide shrink-0"
+                  style={{ backgroundColor: 'rgba(75, 151, 201, 0.12)', color: 'var(--arctic-blue-primary-dark)' }}
+                >
+                  <CheckCircle className="h-3 w-3" />
+                  Earned
+                </span>
+              ) : (
+                <span className="text-[11px] uppercase tracking-wide text-gray-500 font-medium shrink-0">This week</span>
+              )}
+              <span className="text-sm text-gray-800 truncate">
+                {earnedThisWeek ? (
+                  <>{amt} coins · week starts {weekLabel}</>
+                ) : (
+                  <>Max {amt} after your first approval · week starts {weekLabel}</>
+                )}
+              </span>
             </div>
           </div>
-        )}
+
+          {history.length > 0 && (
+            <details className="mt-5 group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm text-gray-600 hover:text-gray-900 py-2 border-t border-gray-100 border-dashed [&::-webkit-details-marker]:hidden">
+                <span className="font-light tracking-wide">
+                  History <span className="text-gray-400">({history.length})</span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-gray-400 shrink-0 transition-transform group-open:rotate-180" aria-hidden />
+              </summary>
+              <ul className="mt-2 space-y-2 pb-1">
+                {history.slice(0, 12).map((row) => (
+                  <li
+                    key={row.week_start}
+                    className="flex items-center justify-between text-sm py-2 border-b border-gray-50 last:border-0"
+                  >
+                    <span className="text-gray-600 font-light tabular-nums">{row.week_start}</span>
+                    <span className="text-gray-900 font-medium tabular-nums">+{row.coins_awarded}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
       </div>
     )
   }
@@ -901,36 +922,38 @@ useEffect(() => {
           }
         `}</style>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          <div className="mb-8 sm:mb-10">
+          <div className="mb-6 sm:mb-8">
             <h1
-              className="text-3xl sm:text-4xl md:text-5xl font-light mb-3 tracking-[0.15em]"
+              className="text-2xl sm:text-3xl md:text-4xl font-light mb-2 tracking-[0.12em]"
               style={{
                 color: '#1a1a1a',
                 fontFamily: 'var(--font-heading-family)',
-                letterSpacing: '0.15em',
+                letterSpacing: '0.12em',
               }}
             >
               Revenue
             </h1>
-            <p className="text-gray-600 font-light tracking-wide max-w-2xl" style={{ letterSpacing: '0.05em' }}>
-              Track Nefol coins from published blogs. Affiliate commissions and payouts appear here after your partner account is approved and verified.
+            <p className="text-sm text-gray-500 font-light">
+              Blog earnings below · affiliate tools unlock after partner verification
             </p>
           </div>
           {renderBlogWeeklySection()}
-          <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 sm:p-8">
-            <p className="text-sm text-gray-700 font-light leading-relaxed" style={{ letterSpacing: '0.05em' }}>
-              <span className="font-medium text-gray-900">Affiliate revenue &amp; payouts</span> are hidden until your affiliate application is approved and you complete partner verification. Open the{' '}
+          <div className="rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-3.5 sm:px-5">
+            <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed">
+              <span className="text-gray-800 font-medium">Affiliate</span>
+              {' — '}
               <button
                 type="button"
-                className="underline decoration-gray-400 hover:text-gray-900"
+                className="text-left underline-offset-2 hover:underline"
                 style={{ color: 'var(--arctic-blue-primary-dark)' }}
                 onClick={() => {
                   window.location.hash = '#/user/collab?tab=affiliate'
                 }}
               >
-                Affiliate
-              </button>{' '}
-              tab in Creator Program to apply when you meet the milestones.
+                Open Affiliate tab
+              </button>
+              {' '}
+              when you are eligible (milestones, approval, verification).
             </p>
           </div>
         </div>
