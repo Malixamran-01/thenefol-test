@@ -14,12 +14,17 @@ import {
   LogIn,
   LogOut,
   Clapperboard,
+  Settings,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
 import { authorAPI } from '../services/authorAPI'
 import { getApiBase } from '../utils/apiBase'
 import AuthorPromptModal from './AuthorPromptModal'
+import {
+  getCreatorProgramSidebarEnabled,
+  NEFOL_SOCIAL_SETTINGS_CHANGE,
+} from '../utils/nefolSocialSettings'
 
 type CreatorBadge = 'locked' | 'progress' | 'unlocked'
 
@@ -77,6 +82,13 @@ const NAV_ITEMS: NavItem[] = [
     matchPrefix: '#/user/blog/dashboard',
   },
   {
+    id: 'settings',
+    label: 'Settings',
+    icon: <Settings strokeWidth={1.75} className="h-5 w-5" />,
+    href: '#/user/blog/settings',
+    matchPrefix: '#/user/blog/settings',
+  },
+  {
     id: 'creator-program',
     label: 'Creator Program',
     icon: <Clapperboard strokeWidth={1.75} className="h-5 w-5" />,
@@ -110,6 +122,7 @@ function isItemActive(item: NavItem, hash: string, currentUserId?: number): bool
   }
   if (item.id === 'explore') return hash.startsWith('#/user/blog/explore')
   if (item.id === 'analytics') return hash.startsWith('#/user/blog/dashboard')
+  if (item.id === 'settings') return hash.startsWith('#/user/blog/settings')
   if (item.id === 'creator-program') {
     return hash.startsWith('#/user/collab')
       || hash.startsWith('#/user/affiliate-partner')
@@ -124,6 +137,8 @@ function isItemActive(item: NavItem, hash: string, currentUserId?: number): bool
 interface SidePanelNavProps {
   collapsed: boolean
   unreadCount: number
+  /** When false (default), Creator Program is hidden from the nav until enabled in Settings. */
+  showCreatorProgramInSidebar?: boolean
   creatorBadge?: CreatorBadge
   onClose?: () => void
   onToggleCollapse?: () => void
@@ -136,6 +151,7 @@ interface SidePanelNavProps {
 function SidePanelNav({
   collapsed,
   unreadCount,
+  showCreatorProgramInSidebar = false,
   creatorBadge = 'locked',
   onClose,
   onToggleCollapse,
@@ -267,7 +283,9 @@ function SidePanelNav({
 
       {/* ── Nav items ────────────────────────────────────────── */}
       <nav className="flex-1 py-3">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter(
+          (item) => item.id !== 'creator-program' || showCreatorProgramInSidebar
+        ).map((item) => {
           const active = isItemActive(item, hash, user?.id)
           const effectiveHref = getItemHref(item)
           const showUnreadBadge = item.id === 'notifications' && unreadCount > 0
@@ -413,6 +431,19 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
   const [showAuthorPrompt, setShowAuthorPrompt] = useState(false)
   const [creatorBadge, setCreatorBadge] = useState<CreatorBadge>('locked')
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showCreatorProgramInSidebar, setShowCreatorProgramInSidebar] = useState(() =>
+    getCreatorProgramSidebarEnabled()
+  )
+
+  useEffect(() => {
+    const sync = () => setShowCreatorProgramInSidebar(getCreatorProgramSidebarEnabled())
+    window.addEventListener('storage', sync)
+    window.addEventListener(NEFOL_SOCIAL_SETTINGS_CHANGE, sync as EventListener)
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener(NEFOL_SOCIAL_SETTINGS_CHANGE, sync as EventListener)
+    }
+  }, [])
 
   // Persist collapse state
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -513,6 +544,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
         <SidePanelNav
           collapsed={collapsed}
           unreadCount={unreadCount}
+          showCreatorProgramInSidebar={showCreatorProgramInSidebar}
           creatorBadge={creatorBadge}
           onToggleCollapse={toggleCollapse}
           showCollapseButton
@@ -629,6 +661,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
               <SidePanelNav
                 collapsed={false}
                 unreadCount={unreadCount}
+                showCreatorProgramInSidebar={showCreatorProgramInSidebar}
                 creatorBadge={creatorBadge}
                 onClose={() => setMobileMenuOpen(false)}
                 showLogoRow={false}
