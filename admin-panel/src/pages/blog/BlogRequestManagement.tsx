@@ -103,6 +103,25 @@ export default function BlogRequestManagement() {
     }
   }
 
+  /** Re-apply weekly Nefol creator reward (safe if already credited for that week). */
+  const applyWeeklyCreatorReward = async (postId: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/blog/admin/posts/${postId}/apply-weekly-creator-reward`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok) {
+        alert(data.message || 'Reward applied if eligible.')
+      } else {
+        alert(data.message || 'Could not apply reward.')
+      }
+    } catch (error) {
+      console.error('apply weekly reward:', error)
+      alert('Request failed.')
+    }
+  }
+
   // Delete blog post
   const deleteBlogPost = async (postId: string) => {
     if (!confirm('Are you sure you want to delete this blog post?')) return
@@ -376,7 +395,7 @@ export default function BlogRequestManagement() {
                       </div>
                       <p className="text-gray-700">{post.excerpt}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => {
                           setSelectedRequest(post)
@@ -387,6 +406,16 @@ export default function BlogRequestManagement() {
                         <Eye className="w-4 h-4" />
                         View
                       </button>
+                      {post.status === 'approved' && (
+                        <button
+                          type="button"
+                          title="Credit 100 Nefol coins if this post qualifies (first approved post of the UTC week)"
+                          onClick={() => applyWeeklyCreatorReward(String(post.id))}
+                          className="flex items-center gap-1 px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm"
+                        >
+                          Credit weekly coins
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteBlogPost(post.id)}
                         className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"

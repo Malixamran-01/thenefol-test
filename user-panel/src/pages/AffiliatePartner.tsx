@@ -754,21 +754,26 @@ useEffect(() => {
     }
   }
 
+  const formatWeekStartLabel = (raw: string | null | undefined): string => {
+    if (!raw) return '—'
+    const s = String(raw).trim()
+    const ymd = s.slice(0, 10)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+      const d = new Date(`${ymd}T12:00:00Z`)
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+      }
+    }
+    const d = new Date(s)
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    }
+    return '—'
+  }
+
   const renderBlogWeeklySection = () => {
     const amt = creatorRevenue?.blog_weekly_reward_amount ?? 100
-    const weekLabel = creatorRevenue?.current_week_start
-      ? (() => {
-          try {
-            return new Date(`${creatorRevenue!.current_week_start}T12:00:00.000Z`).toLocaleDateString(undefined, {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })
-          } catch {
-            return creatorRevenue!.current_week_start
-          }
-        })()
-      : '—'
+    const weekLabel = formatWeekStartLabel(creatorRevenue?.current_week_start ?? null)
     const balance = creatorRevenue?.nefol_coins_balance ?? nefolCoins
     const totalBlog = creatorRevenue?.total_coins_from_blog_weekly ?? 0
     const earnedThisWeek = creatorRevenue?.earned_blog_reward_this_week ?? false
@@ -788,7 +793,7 @@ useEffect(() => {
               Blog &amp; creator coins
             </h2>
             <p className="text-sm text-gray-600 font-light leading-relaxed" style={{ letterSpacing: '0.05em' }}>
-              When a blog post you write is approved, you can earn up to {amt} Nefol coins per calendar week (UTC). Only your first approved post each week counts; more posts the same week do not add extra coins. Coins are added to your Nefol wallet as loyalty points.
+              Coins are added only after an <strong className="font-medium text-gray-800">admin approves</strong> your post (submitted posts stay pending until then). Then you can earn up to {amt} Nefol coins per calendar week (UTC)—only your first <em>approved</em> post each week counts. Coins go to your Nefol wallet as loyalty points.
             </p>
           </div>
         </div>

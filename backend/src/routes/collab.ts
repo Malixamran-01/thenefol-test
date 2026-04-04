@@ -1775,6 +1775,17 @@ export async function getCollabBlockDetail(pool: Pool, req: Request, res: Respon
 
 const BLOG_WEEKLY_CREATOR_COINS = 100
 
+/** Normalize pg `date` / ISO strings to `YYYY-MM-DD` for JSON (avoids Invalid Date on the client). */
+function toIsoDateOnly(value: unknown): string | null {
+  if (value == null) return null
+  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  const s = String(value)
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (m) return m[1]
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
+}
+
 /** Authenticated: weekly blog creator rewards + Nefol coin balance (for Creator Program Revenue tab). */
 export async function getCreatorRevenue(pool: Pool, req: Request, res: Response) {
   try {
@@ -1784,8 +1795,7 @@ export async function getCreatorRevenue(pool: Pool, req: Request, res: Response)
     const { rows: weekRow } = await pool.query<{ week_start: Date }>(
       `SELECT (date_trunc('week', timezone('utc', now())))::date AS week_start`
     )
-    const currentWeekStart = weekRow[0]?.week_start
-    const currentWeekStr = currentWeekStart ? String(currentWeekStart) : null
+    const currentWeekStr = toIsoDateOnly(weekRow[0]?.week_start)
 
     const { rows: hist } = await pool.query(
       `SELECT week_start, coins_awarded, blog_post_id, created_at
@@ -1808,7 +1818,7 @@ export async function getCreatorRevenue(pool: Pool, req: Request, res: Response)
 
     const earned_blog_reward_this_week = !!(
       currentWeekStr &&
-      hist.some((r) => String(r.week_start) === currentWeekStr)
+      hist.some((r) => toIsoDateOnly(r.week_start) === currentWeekStr)
     )
 
     return res.json({
@@ -1818,7 +1828,7 @@ export async function getCreatorRevenue(pool: Pool, req: Request, res: Response)
       earned_blog_reward_this_week,
       total_coins_from_blog_weekly: sumRow[0]?.total ?? 0,
       blog_reward_history: hist.map((r) => ({
-        week_start: String(r.week_start),
+        week_start: toIsoDateOnly(r.week_start) ?? String(r.week_start),
         coins_awarded: r.coins_awarded,
         blog_post_id: r.blog_post_id,
         created_at: r.created_at,

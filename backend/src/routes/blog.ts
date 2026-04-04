@@ -73,33 +73,63 @@ const getUserIdFromToken = (req: express.Request): string | null => {
 
 const BLOG_WEEKLY_CREATOR_COINS = 100
 
+async function resolveBlogAuthorUserId(postRow: {
+  id: number
+  user_id: number | null
+  author_email?: string | null
+}): Promise<number | null> {
+  if (postRow.user_id != null && Number.isFinite(Number(postRow.user_id))) {
+    return Number(postRow.user_id)
+  }
+  const raw = String(postRow.author_email || '').trim()
+  if (!raw || !pool) return null
+  const { rows } = await pool.query(`SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1`, [raw])
+  const uid = rows[0]?.id
+  return uid != null && Number.isFinite(Number(uid)) ? Number(uid) : null
+}
+
 /** First approved blog post per UTC calendar week earns fixed Nefol coins (loyalty_points). */
-async function awardWeeklyBlogCreatorRewardIfEligible(postRow: { id: number; user_id: number | null }) {
-  if (!pool || postRow.user_id == null) return
+async function awardWeeklyBlogCreatorRewardIfEligible(postRow: {
+  id: number
+  user_id: number | null
+  author_email?: string | null
+}) {
+  if (!pool) return
+  const userId = await resolveBlogAuthorUserId(postRow)
+  if (userId == null) {
+    console.warn(
+      `[blog] weekly creator reward skipped for post ${postRow.id}: no user_id and no matching users.email for author_email`
+    )
+    return
+  }
+
   const client = await pool.connect()
   let awarded = false
-  let weekStart: string | null = null
+  let weekStartLabel: string | null = null
   try {
     await client.query('BEGIN')
-    const { rows: ws } = await client.query<{ week_start: Date }>(
-      `SELECT (date_trunc('week', timezone('utc', now())))::date AS week_start`
-    )
-    weekStart = ws[0]?.week_start ? String(ws[0].week_start) : null
-    if (!weekStart) {
-      await client.query('ROLLBACK')
-      return
+    if (postRow.user_id == null && userId != null) {
+      await client.query(`UPDATE blog_posts SET user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id IS NULL`, [
+        userId,
+        postRow.id,
+      ])
     }
-    const ins = await client.query(
+
+    const ins = await client.query<{ id: number; week_start: string }>(
       `INSERT INTO blog_weekly_creator_reward (user_id, week_start, blog_post_id, coins_awarded)
-       VALUES ($1, $2::date, $3, $4)
+       SELECT $1::integer,
+              (date_trunc('week', timezone('utc', now())))::date,
+              $2::integer,
+              $3::integer
        ON CONFLICT (user_id, week_start) DO NOTHING
-       RETURNING id`,
-      [postRow.user_id, weekStart, postRow.id, BLOG_WEEKLY_CREATOR_COINS]
+       RETURNING id, week_start::text AS week_start`,
+      [userId, postRow.id, BLOG_WEEKLY_CREATOR_COINS]
     )
+    weekStartLabel = ins.rows[0]?.week_start ? String(ins.rows[0].week_start) : null
     if (ins.rows.length) {
       await client.query(
         `UPDATE users SET loyalty_points = COALESCE(loyalty_points, 0) + $1 WHERE id = $2`,
-        [BLOG_WEEKLY_CREATOR_COINS, postRow.user_id]
+        [BLOG_WEEKLY_CREATOR_COINS, userId]
       )
       awarded = true
     }
@@ -110,16 +140,20 @@ async function awardWeeklyBlogCreatorRewardIfEligible(postRow: { id: number; use
   } finally {
     client.release()
   }
-  if (awarded && weekStart && pool) {
+  if (awarded && pool) {
     try {
       await pool.query(
         `INSERT INTO coin_transactions (user_id, amount, type, description, status, metadata)
          VALUES ($1, $2, 'earned', $3, 'completed', $4::jsonb)`,
         [
-          postRow.user_id,
+          userId,
           BLOG_WEEKLY_CREATOR_COINS,
           'Weekly blog creator bonus (first approved post of the week)',
-          JSON.stringify({ blog_post_id: postRow.id, week_start: weekStart, source: 'blog_weekly_creator' }),
+          JSON.stringify({
+            blog_post_id: postRow.id,
+            week_start: weekStartLabel,
+            source: 'blog_weekly_creator',
+          }),
         ]
       )
     } catch (e) {
@@ -1389,6 +1423,7 @@ router.post('/admin/approve/:id', async (req, res) => {
     await awardWeeklyBlogCreatorRewardIfEligible({
       id: Number(rows[0].id),
       user_id: rows[0].user_id != null ? Number(rows[0].user_id) : null,
+      author_email: rows[0].author_email != null ? String(rows[0].author_email) : null,
     })
 
     res.json({
@@ -1398,6 +1433,33 @@ router.post('/admin/approve/:id', async (req, res) => {
   } catch (error) {
     console.error('Error approving blog request:', error)
     res.status(500).json({ message: 'Failed to approve blog request' })
+  }
+})
+
+/** Re-run weekly creator reward for an already-approved post (e.g. after fixing user_id / deploy). Idempotent per week. */
+router.post('/admin/posts/:id/apply-weekly-creator-reward', async (req, res) => {
+  try {
+    const postId = req.params.id
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const { rows } = await pool.query(
+      `SELECT * FROM blog_posts WHERE id = $1 AND status = 'approved' AND COALESCE(is_deleted, false) = false`,
+      [postId]
+    )
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Approved post not found' })
+    }
+    const row = rows[0]
+    await awardWeeklyBlogCreatorRewardIfEligible({
+      id: Number(row.id),
+      user_id: row.user_id != null ? Number(row.user_id) : null,
+      author_email: row.author_email != null ? String(row.author_email) : null,
+    })
+    return res.json({ message: 'Weekly creator reward applied if eligible (first approved post in that UTC week only).' })
+  } catch (error) {
+    console.error('apply-weekly-creator-reward:', error)
+    return res.status(500).json({ message: 'Failed to apply weekly creator reward' })
   }
 })
 
