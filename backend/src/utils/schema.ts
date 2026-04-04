@@ -684,6 +684,19 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_blog_posts_archived on blog_posts(is_archived);
     create index if not exists idx_blog_posts_deleted on blog_posts(is_deleted);
 
+    -- Weekly blog creator reward: first approved post per calendar week (UTC) earns fixed Nefol coins
+    create table if not exists blog_weekly_creator_reward (
+      id serial primary key,
+      user_id integer not null references users(id) on delete cascade,
+      week_start date not null,
+      blog_post_id integer references blog_posts(id) on delete set null,
+      coins_awarded integer not null default 100,
+      created_at timestamptz default now(),
+      unique (user_id, week_start)
+    );
+    create index if not exists idx_blog_weekly_creator_user on blog_weekly_creator_reward(user_id);
+    create index if not exists idx_blog_weekly_creator_week on blog_weekly_creator_reward(week_start desc);
+
     -- Blog comments (threaded with Path Enumeration)
     create table if not exists blog_comments (
       id serial primary key,

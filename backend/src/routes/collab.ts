@@ -1773,6 +1773,63 @@ export async function getCollabBlockDetail(pool: Pool, req: Request, res: Respon
   }
 }
 
+const BLOG_WEEKLY_CREATOR_COINS = 100
+
+/** Authenticated: weekly blog creator rewards + Nefol coin balance (for Creator Program Revenue tab). */
+export async function getCreatorRevenue(pool: Pool, req: Request, res: Response) {
+  try {
+    const userId = (req as Request & { userId?: string }).userId
+    if (!userId) return res.status(401).json({ message: 'Authentication required' })
+
+    const { rows: weekRow } = await pool.query<{ week_start: Date }>(
+      `SELECT (date_trunc('week', timezone('utc', now())))::date AS week_start`
+    )
+    const currentWeekStart = weekRow[0]?.week_start
+    const currentWeekStr = currentWeekStart ? String(currentWeekStart) : null
+
+    const { rows: hist } = await pool.query(
+      `SELECT week_start, coins_awarded, blog_post_id, created_at
+       FROM blog_weekly_creator_reward
+       WHERE user_id = $1::integer
+       ORDER BY week_start DESC
+       LIMIT 52`,
+      [userId]
+    )
+
+    const { rows: sumRow } = await pool.query<{ total: number }>(
+      `SELECT COALESCE(SUM(coins_awarded), 0)::int AS total FROM blog_weekly_creator_reward WHERE user_id = $1::integer`,
+      [userId]
+    )
+
+    const { rows: bal } = await pool.query<{ loyalty_points: number }>(
+      `SELECT COALESCE(loyalty_points, 0)::int AS loyalty_points FROM users WHERE id = $1::integer`,
+      [userId]
+    )
+
+    const earned_blog_reward_this_week = !!(
+      currentWeekStr &&
+      hist.some((r) => String(r.week_start) === currentWeekStr)
+    )
+
+    return res.json({
+      nefol_coins_balance: bal[0]?.loyalty_points ?? 0,
+      blog_weekly_reward_amount: BLOG_WEEKLY_CREATOR_COINS,
+      current_week_start: currentWeekStr,
+      earned_blog_reward_this_week,
+      total_coins_from_blog_weekly: sumRow[0]?.total ?? 0,
+      blog_reward_history: hist.map((r) => ({
+        week_start: String(r.week_start),
+        coins_awarded: r.coins_awarded,
+        blog_post_id: r.blog_post_id,
+        created_at: r.created_at,
+      })),
+    })
+  } catch (err) {
+    console.error('getCreatorRevenue error:', err)
+    return res.status(500).json({ message: 'Failed to load creator revenue' })
+  }
+}
+
 // ─── Router ────────────────────────────────────────────────────────────────────
 export default function collabRouter(pool: Pool) {
   const router = Router()

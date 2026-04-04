@@ -71,6 +71,63 @@ const getUserIdFromToken = (req: express.Request): string | null => {
   return null
 }
 
+const BLOG_WEEKLY_CREATOR_COINS = 100
+
+/** First approved blog post per UTC calendar week earns fixed Nefol coins (loyalty_points). */
+async function awardWeeklyBlogCreatorRewardIfEligible(postRow: { id: number; user_id: number | null }) {
+  if (!pool || postRow.user_id == null) return
+  const client = await pool.connect()
+  let awarded = false
+  let weekStart: string | null = null
+  try {
+    await client.query('BEGIN')
+    const { rows: ws } = await client.query<{ week_start: Date }>(
+      `SELECT (date_trunc('week', timezone('utc', now())))::date AS week_start`
+    )
+    weekStart = ws[0]?.week_start ? String(ws[0].week_start) : null
+    if (!weekStart) {
+      await client.query('ROLLBACK')
+      return
+    }
+    const ins = await client.query(
+      `INSERT INTO blog_weekly_creator_reward (user_id, week_start, blog_post_id, coins_awarded)
+       VALUES ($1, $2::date, $3, $4)
+       ON CONFLICT (user_id, week_start) DO NOTHING
+       RETURNING id`,
+      [postRow.user_id, weekStart, postRow.id, BLOG_WEEKLY_CREATOR_COINS]
+    )
+    if (ins.rows.length) {
+      await client.query(
+        `UPDATE users SET loyalty_points = COALESCE(loyalty_points, 0) + $1 WHERE id = $2`,
+        [BLOG_WEEKLY_CREATOR_COINS, postRow.user_id]
+      )
+      awarded = true
+    }
+    await client.query('COMMIT')
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('[blog] awardWeeklyBlogCreatorRewardIfEligible:', e)
+  } finally {
+    client.release()
+  }
+  if (awarded && weekStart && pool) {
+    try {
+      await pool.query(
+        `INSERT INTO coin_transactions (user_id, amount, type, description, status, metadata)
+         VALUES ($1, $2, 'earned', $3, 'completed', $4::jsonb)`,
+        [
+          postRow.user_id,
+          BLOG_WEEKLY_CREATOR_COINS,
+          'Weekly blog creator bonus (first approved post of the week)',
+          JSON.stringify({ blog_post_id: postRow.id, week_start: weekStart, source: 'blog_weekly_creator' }),
+        ]
+      )
+    } catch (e) {
+      console.warn('[blog] coin_transactions insert skipped:', e)
+    }
+  }
+}
+
 const cleanupDeletedBlogPosts = async () => {
   if (!pool) return
   const { rows } = await pool.query(
@@ -1328,6 +1385,11 @@ router.post('/admin/approve/:id', async (req, res) => {
 
     // Send email notification to author (placeholder)
     console.log(`📧 Blog post approved for ${rows[0].author_name}: ${rows[0].title}`)
+
+    await awardWeeklyBlogCreatorRewardIfEligible({
+      id: Number(rows[0].id),
+      user_id: rows[0].user_id != null ? Number(rows[0].user_id) : null,
+    })
 
     res.json({
       message: 'Blog request approved successfully',

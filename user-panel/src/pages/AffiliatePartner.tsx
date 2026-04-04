@@ -39,6 +39,20 @@ interface ApplicationStatus {
   message?: string
 }
 
+interface CreatorRevenuePayload {
+  nefol_coins_balance: number
+  blog_weekly_reward_amount: number
+  current_week_start: string | null
+  earned_blog_reward_this_week: boolean
+  total_coins_from_blog_weekly: number
+  blog_reward_history: Array<{
+    week_start: string
+    coins_awarded: number
+    blog_post_id: number | null
+    created_at: string
+  }>
+}
+
 export interface AffiliatePartnerProps {
   /** Render inside Creator Program (Collab) — no duplicate top padding / back nav */
   embedInCreatorProgram?: boolean
@@ -88,6 +102,10 @@ useEffect(() => {
   const [selectedCurrency, setSelectedCurrency] = useState<'INR' | 'USD' | 'EUR' | 'RUB'>('INR')
   const [revTab, setRevTab] = useState<'overview' | 'referrals' | 'payouts'>('overview')
   const [resendCodeLoading, setResendCodeLoading] = useState(false)
+  const [creatorRevenue, setCreatorRevenue] = useState<CreatorRevenuePayload | null>(null)
+
+  const showEmbeddedRevenue = embedInCreatorProgram && embeddedSegment === 'revenue'
+  const isAffiliatePartnerVerified = isAlreadyVerified && !!affiliateData
 
   useEffect(() => {
     if (!embedInCreatorProgram || !embeddedSegment) return
@@ -109,11 +127,13 @@ useEffect(() => {
           { key: 'overview', label: 'Overview' },
           { key: 'referrals', label: 'Referrals' },
         ]
-      : [
-          { key: 'overview', label: 'Overview' },
-          { key: 'referrals', label: 'Referrals' },
-          { key: 'payouts', label: 'Payouts' },
-        ]
+      : showEmbeddedRevenue && !isAffiliatePartnerVerified
+        ? []
+        : [
+            { key: 'overview', label: 'Overview' },
+            { key: 'referrals', label: 'Referrals' },
+            { key: 'payouts', label: 'Payouts' },
+          ]
 
   // Sync commissionSettings with affiliateData whenever commissionSettings changes
   useEffect(() => {
@@ -321,8 +341,31 @@ useEffect(() => {
     }
   }
 
+  const fetchCreatorRevenue = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+      const res = await fetch(`${getApiBase()}/api/collab/creator-revenue`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setCreatorRevenue(data)
+        if (typeof data.nefol_coins_balance === 'number') {
+          setNefolCoins(data.nefol_coins_balance)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch creator revenue:', e)
+    }
+  }
+
   const fetchNefolCoins = async () => {
     try {
+      if (showEmbeddedRevenue) {
+        await fetchCreatorRevenue()
+        return
+      }
       // Calculate nefol coins from total earnings: 1 rupee = 10 coins
       // So if earnings are ₹288.84, coins = 288.84 * 10 = 2888.4 ≈ 2888 coins (floor)
       if (affiliateData?.total_earnings) {
@@ -386,8 +429,10 @@ useEffect(() => {
         console.log('Affiliate data fetched successfully:', data)
         console.log('Referral link in response:', data.referral_link)
         
-        // Update nefol coins based on earnings (1 rupee = 10 coins)
-        if (data.total_earnings) {
+        // Revenue tab uses wallet balance from creator-revenue API, not earnings × 10
+        if (showEmbeddedRevenue) {
+          await fetchCreatorRevenue()
+        } else if (data.total_earnings) {
           const coinsFromEarnings = Math.floor(data.total_earnings * 10)
           setNefolCoins(coinsFromEarnings)
         }
@@ -709,6 +754,97 @@ useEffect(() => {
     }
   }
 
+  const renderBlogWeeklySection = () => {
+    const amt = creatorRevenue?.blog_weekly_reward_amount ?? 100
+    const weekLabel = creatorRevenue?.current_week_start
+      ? (() => {
+          try {
+            return new Date(`${creatorRevenue!.current_week_start}T12:00:00.000Z`).toLocaleDateString(undefined, {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })
+          } catch {
+            return creatorRevenue!.current_week_start
+          }
+        })()
+      : '—'
+    const balance = creatorRevenue?.nefol_coins_balance ?? nefolCoins
+    const totalBlog = creatorRevenue?.total_coins_from_blog_weekly ?? 0
+    const earnedThisWeek = creatorRevenue?.earned_blog_reward_this_week ?? false
+    const history = creatorRevenue?.blog_reward_history ?? []
+
+    return (
+      <div className="bg-white rounded-xl p-6 sm:p-8 border border-gray-100 shadow-sm mb-8 sm:mb-12">
+        <div className="flex items-start gap-4 mb-6">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
+            <Coins className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+          </div>
+          <div>
+            <h2
+              className="text-xl sm:text-2xl font-light mb-2 tracking-[0.12em]"
+              style={{ color: '#1a1a1a', fontFamily: 'var(--font-heading-family)', letterSpacing: '0.12em' }}
+            >
+              Blog &amp; creator coins
+            </h2>
+            <p className="text-sm text-gray-600 font-light leading-relaxed" style={{ letterSpacing: '0.05em' }}>
+              When a blog post you write is approved, you can earn up to {amt} Nefol coins per calendar week (UTC). Only your first approved post each week counts; more posts the same week do not add extra coins. Coins are added to your Nefol wallet as loyalty points.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="rounded-xl border border-gray-100 p-5" style={{ backgroundColor: 'var(--arctic-blue-lighter)' }}>
+            <p className="text-xs font-light tracking-wide mb-2" style={{ color: 'var(--arctic-blue-primary-dark)', letterSpacing: '0.05em' }}>
+              This week (from {weekLabel})
+            </p>
+            <p className="text-2xl font-light text-gray-900">
+              {earnedThisWeek ? `${amt} coins earned` : 'Not earned yet'}
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-100 p-5 bg-gray-50">
+            <p className="text-xs font-light tracking-wide text-gray-500 mb-2" style={{ letterSpacing: '0.05em' }}>
+              Nefol wallet balance
+            </p>
+            <p className="text-2xl font-light text-gray-900">{balance.toLocaleString()} coins</p>
+          </div>
+          <div className="rounded-xl border border-gray-100 p-5 bg-gray-50">
+            <p className="text-xs font-light tracking-wide text-gray-500 mb-2" style={{ letterSpacing: '0.05em' }}>
+              Total from weekly blog rewards
+            </p>
+            <p className="text-2xl font-light text-gray-900">{totalBlog.toLocaleString()} coins</p>
+          </div>
+        </div>
+
+        {history.length > 0 && (
+          <div>
+            <h3 className="text-sm text-gray-800 mb-3 font-light tracking-wide" style={{ letterSpacing: '0.06em' }}>
+              Recent weeks
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full text-sm font-light">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-gray-600">
+                    <th className="px-4 py-3" style={{ letterSpacing: '0.05em' }}>Week (UTC)</th>
+                    <th className="px-4 py-3" style={{ letterSpacing: '0.05em' }}>Coins</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.slice(0, 12).map((row) => (
+                    <tr key={row.week_start} className="border-t border-gray-100">
+                      <td className="px-4 py-2.5 text-gray-800">{row.week_start}</td>
+                      <td className="px-4 py-2.5 text-gray-800">{row.coins_awarded}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
@@ -725,7 +861,9 @@ useEffect(() => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
-              <p className="text-gray-600 mb-2 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Loading affiliate data...</p>
+              <p className="text-gray-600 mb-2 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                {showEmbeddedRevenue ? 'Loading revenue…' : 'Loading affiliate data...'}
+              </p>
               <p className="text-sm text-gray-500 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>This may take a few moments</p>
               <div className="mt-6">
                 <button 
@@ -737,6 +875,58 @@ useEffect(() => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  /** Creator Program → Revenue tab: blog coins for everyone; affiliate UI only after partner verification */
+  if (showEmbeddedRevenue && !isAffiliatePartnerVerified) {
+    return (
+      <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+        <style>{`
+          :root {
+            --arctic-blue-primary: rgb(75,151,201);
+            --arctic-blue-primary-hover: rgb(60,120,160);
+            --arctic-blue-primary-dark: rgb(50,100,140);
+            --arctic-blue-light: #E0F5F5;
+            --arctic-blue-lighter: #F0F9F9;
+            --arctic-blue-background: #F4F9F9;
+          }
+        `}</style>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="mb-8 sm:mb-10">
+            <h1
+              className="text-3xl sm:text-4xl md:text-5xl font-light mb-3 tracking-[0.15em]"
+              style={{
+                color: '#1a1a1a',
+                fontFamily: 'var(--font-heading-family)',
+                letterSpacing: '0.15em',
+              }}
+            >
+              Revenue
+            </h1>
+            <p className="text-gray-600 font-light tracking-wide max-w-2xl" style={{ letterSpacing: '0.05em' }}>
+              Track Nefol coins from published blogs. Affiliate commissions and payouts appear here after your partner account is approved and verified.
+            </p>
+          </div>
+          {renderBlogWeeklySection()}
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 sm:p-8">
+            <p className="text-sm text-gray-700 font-light leading-relaxed" style={{ letterSpacing: '0.05em' }}>
+              <span className="font-medium text-gray-900">Affiliate revenue &amp; payouts</span> are hidden until your affiliate application is approved and you complete partner verification. Open the{' '}
+              <button
+                type="button"
+                className="underline decoration-gray-400 hover:text-gray-900"
+                style={{ color: 'var(--arctic-blue-primary-dark)' }}
+                onClick={() => {
+                  window.location.hash = '#/user/collab?tab=affiliate'
+                }}
+              >
+                Affiliate
+              </button>{' '}
+              tab in Creator Program to apply when you meet the milestones.
+            </p>
           </div>
         </div>
       </main>
@@ -790,9 +980,13 @@ useEffect(() => {
                     letterSpacing: '0.15em'
                   }}
                 >
-                  Affiliate Partner Dashboard
+                  {showEmbeddedRevenue ? 'Revenue' : 'Affiliate Partner Dashboard'}
                 </h1>
-                <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>Manage your affiliate program and track your earnings</p>
+                <p className="text-gray-600 font-light tracking-wide" style={{ letterSpacing: '0.05em' }}>
+                  {showEmbeddedRevenue
+                    ? 'Blog coins, affiliate earnings, referrals, and payouts'
+                    : 'Manage your affiliate program and track your earnings'}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -828,20 +1022,23 @@ useEffect(() => {
           {/* Dashboard Content */}
           <div id="dashboard-content">
 
-            {/* ── Revenue Tab bar ─────────────────────────────────────────── */}
+            {/* ── Revenue Tab bar (affiliate payouts: only when verified partner + revenue/standalone) ── */}
+            {partnerDashboardRevTabs.length > 0 && (
             <div className="flex gap-1 border-b border-gray-200 mb-8">
               {partnerDashboardRevTabs.map(({ key, label }) => (
                 <button key={key} type="button" onClick={() => setRevTab(key)}
-                  className={`border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors font-light tracking-wide ${
+                  className={`border-b-2 px-4 py-2.5 text-[13px] transition-colors font-light tracking-wide ${
                     revTab === key ? 'border-[rgb(75,151,201)] text-[rgb(50,100,140)]' : 'border-transparent text-gray-400 hover:text-gray-600'
                   }`} style={{ letterSpacing: '0.05em' }}>
                   {label}
                 </button>
               ))}
             </div>
+            )}
 
             {/* ── Overview tab ─────────────────────────────────────────────── */}
             {revTab === 'overview' && <>
+            {showEmbeddedRevenue && renderBlogWeeklySection()}
             {/* Currency Selector */}
             <div className="mb-6 flex items-center gap-3">
               <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Currency:</p>
@@ -1966,7 +2163,7 @@ useEffect(() => {
                   Apply for partnership
                 </h3>
                 <p className="text-gray-600 font-light tracking-wide text-sm sm:text-[15px] leading-relaxed" style={{ letterSpacing: '0.05em' }}>
-                  After Creator Collab milestones, apply in one step. We use your collab profile and linked accounts—no duplicate form.
+                  After Creator Collab milestones, apply in one step.
                 </p>
               </div>
 
@@ -1987,7 +2184,7 @@ useEffect(() => {
             ) : !collabEligible ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600 text-center font-light" style={{ letterSpacing: '0.05em' }}>
-                  Reach the Creator Collab thresholds (10,000+ views and 500+ likes on eligible reels) to unlock affiliate application here.
+                  Reach the Creator Collab thresholds, to unlock affiliate application here.
                 </p>
                 <a
                   href="#/user/collab"

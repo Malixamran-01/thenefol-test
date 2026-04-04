@@ -844,6 +844,7 @@ app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarket
 // ==================== COLLAB (Collab → Affiliate progression) ====================
 // Ensure unique_user_id column exists (safe to run every startup)
 pool.query(`ALTER TABLE collab_applications ADD COLUMN IF NOT EXISTS unique_user_id text`).catch(() => {})
+app.get('/api/collab/creator-revenue', authenticateToken, (req, res) => collabRoutes.getCreatorRevenue(pool, req, res))
 app.use('/api/collab', collabRouter(pool))
 app.use('/api/instagram', instagramRouter(pool))
 app.use('/api/platform', createPlatformRouter(pool))
