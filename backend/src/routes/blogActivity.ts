@@ -30,6 +30,37 @@ const getUserIdFromToken = (req: express.Request): string | null => {
   return null
 }
 
+function viewerNumericUserId(req: express.Request): number | null {
+  const raw = getUserIdFromToken(req)
+  if (!raw) return null
+  const n = parseInt(String(raw), 10)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Public / semi-public endpoints: hide banned or inactive profiles except to the account owner. */
+async function assertAuthorVisibleOrOwner(
+  authorProfileId: number,
+  viewerUserId: number | null
+): Promise<'ok' | 'hidden' | 'gone'> {
+  const { rows } = await pool.query(
+    `SELECT user_id, status FROM author_profiles WHERE id = $1`,
+    [authorProfileId]
+  )
+  const row = rows[0] as { user_id: number; status: string } | undefined
+  if (!row) return 'gone'
+  if (row.status === 'deleted') return 'gone'
+  if (row.status === 'banned' || row.status === 'inactive') {
+    if (viewerUserId != null && Number(row.user_id) === viewerUserId) return 'ok'
+    return 'hidden'
+  }
+  return 'ok'
+}
+
+async function assertAuthorAcceptsEngagement(authorProfileId: number): Promise<boolean> {
+  const { rows } = await pool.query(`SELECT status FROM author_profiles WHERE id = $1`, [authorProfileId])
+  return rows[0]?.status === 'active'
+}
+
 // Resolve author_profiles.id from identifier (can be author id, user_id, username, or unique_user_id)
 // ORDER BY id ASC ensures canonical id when duplicate profiles exist for same user (e.g. id=1 and id=4)
 const resolveAuthorId = async (identifier: string): Promise<number | null> => {
@@ -71,6 +102,10 @@ router.post('/authors/:authorId/follow', authenticateToken, async (req, res) => 
 
     if (selfCheck.length > 0) {
       return res.status(400).json({ message: 'Cannot follow yourself' })
+    }
+
+    if (!(await assertAuthorAcceptsEngagement(resolvedId))) {
+      return res.status(403).json({ message: 'This author is not accepting new followers right now.' })
     }
 
     // Add follower (check if actually inserted to avoid duplicate notifications)
@@ -199,6 +234,10 @@ router.post('/authors/:authorId/subscribe', authenticateToken, async (req, res) 
 
     if (selfCheck.length > 0) {
       return res.status(400).json({ message: 'Cannot subscribe to yourself' })
+    }
+
+    if (!(await assertAuthorAcceptsEngagement(resolvedId))) {
+      return res.status(403).json({ message: 'This author is not accepting subscriptions right now.' })
     }
 
     // Add subscription
@@ -481,6 +520,8 @@ router.get('/authors/:authorId/followers', async (req, res) => {
     const offset = parseInt(req.query.offset as string) || 0
     const resolvedId = await resolveAuthorId(authorId)
     if (resolvedId == null) return res.status(404).json({ message: 'Author not found' })
+    const vis = await assertAuthorVisibleOrOwner(resolvedId, viewerNumericUserId(req))
+    if (vis !== 'ok') return res.status(404).json({ message: 'Author not found' })
 
     const { rows } = await pool.query(
       `SELECT
@@ -517,6 +558,8 @@ router.get('/authors/:authorId/following', async (req, res) => {
     const offset = parseInt(req.query.offset as string) || 0
     const resolvedId = await resolveAuthorId(authorId)
     if (resolvedId == null) return res.status(404).json({ message: 'Author not found' })
+    const visF = await assertAuthorVisibleOrOwner(resolvedId, viewerNumericUserId(req))
+    if (visF !== 'ok') return res.status(404).json({ message: 'Author not found' })
 
     // Get this author's user_id first
     const { rows: authorRows } = await pool.query(
@@ -562,6 +605,8 @@ router.get('/authors/:authorId/subscribers', async (req, res) => {
     const offset = parseInt(req.query.offset as string) || 0
     const resolvedId = await resolveAuthorId(authorId)
     if (resolvedId == null) return res.status(404).json({ message: 'Author not found' })
+    const visS = await assertAuthorVisibleOrOwner(resolvedId, viewerNumericUserId(req))
+    if (visS !== 'ok') return res.status(404).json({ message: 'Author not found' })
 
     const { rows } = await pool.query(
       `SELECT
@@ -600,6 +645,10 @@ router.get('/authors/:authorId/stats', async (req, res) => {
     const { authorId } = req.params
     const resolvedId = await resolveAuthorId(authorId)
     if (resolvedId == null) {
+      return res.status(404).json({ message: 'Author not found' })
+    }
+    const visibility = await assertAuthorVisibleOrOwner(resolvedId, viewerNumericUserId(req))
+    if (visibility !== 'ok') {
       return res.status(404).json({ message: 'Author not found' })
     }
     const userId = getUserIdFromToken(req)
@@ -688,6 +737,11 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     const resolvedId = await resolveAuthorId(authorId)
     if (resolvedId == null) {
       return res.status(404).json({ message: 'Author not found' })
+    }
+
+    const visibility = await assertAuthorVisibleOrOwner(resolvedId, viewerNumericUserId(req))
+    if (visibility !== 'ok') {
+      return res.json([])
     }
 
     const { rows: authorRows } = await pool.query(
@@ -998,7 +1052,8 @@ router.get('/authors/search', async (req, res) => {
          COALESCE(ast.followers_count,    0) as follower_count,
          COALESCE(ast.subscribers_count,  0) as subscriber_count,
          COALESCE(ast.posts_count,        0) as post_count,
-         COALESCE(ast.total_likes,        0) as total_likes
+         COALESCE(ast.total_likes,        0) as total_likes,
+         COALESCE(ap.is_verified, false) as is_verified
        FROM author_profiles ap
        LEFT JOIN author_stats ast ON ap.id = ast.author_id
        WHERE ap.status = 'active'${whereExtra}
@@ -1028,12 +1083,13 @@ router.get('/authors/suggestions', authenticateToken, async (req, res) => {
 
     // Find active authors user is not following yet, ranked by engagement
     const { rows } = await pool.query(
-      `SELECT 
+      `       SELECT 
         ap.id as author_id,
         ap.display_name as author_name,
         ap.username as author_handle,
         ap.bio,
         ap.profile_image,
+        COALESCE(ap.is_verified, false) as is_verified,
         COALESCE(ast.followers_count, 0) as follower_count,
         COALESCE(ast.subscribers_count, 0) as subscriber_count,
         COALESCE(ast.posts_count, 0) as post_count,
@@ -1222,6 +1278,15 @@ router.get('/authors/:identifier', async (req, res) => {
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Author not found' })
+    }
+
+    const profileId = rows[0].id as number
+    const visibility = await assertAuthorVisibleOrOwner(profileId, viewerNumericUserId(req))
+    if (visibility === 'hidden') {
+      return res.status(404).json({
+        message: 'This author profile is not available.',
+        code: 'AUTHOR_UNAVAILABLE',
+      })
     }
 
     res.json(rows[0])
@@ -1671,6 +1736,11 @@ router.post('/authors/:authorId/view', async (req, res) => {
   const { authorId } = req.params
   const resolvedId = await resolveAuthorId(authorId)
   if (resolvedId == null) return res.status(404).json({ message: 'Author not found' })
+
+  const visibility = await assertAuthorVisibleOrOwner(resolvedId, viewerNumericUserId(req))
+  if (visibility !== 'ok') {
+    return res.json({ ok: false, skipped: true })
+  }
 
   try {
     // Upsert author_stats row and increment profile_views atomically

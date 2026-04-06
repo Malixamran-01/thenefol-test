@@ -1181,18 +1181,43 @@ router.get('/posts', async (req, res) => {
     const limitN  = params.length - 1
     const offsetN = params.length
 
-    const { rows } = await pool.query(`
+    const { rows } = await pool.query(
+      `
       SELECT p.*, u.unique_user_id as author_unique_user_id,
+        authprof.ap_id,
+        authprof.ap_is_verified,
+        authprof.ap_profile_status,
         (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id)                        AS likes_count,
         (SELECT COUNT(*)::int FROM blog_comments    WHERE post_id = p.id AND is_deleted = false) AS comments_count
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN LATERAL (
+        SELECT ap_inner.id AS ap_id,
+               ap_inner.is_verified AS ap_is_verified,
+               ap_inner.status AS ap_profile_status
+        FROM author_profiles ap_inner
+        WHERE ap_inner.user_id = p.user_id AND ap_inner.status != 'deleted'
+        ORDER BY ap_inner.id ASC
+        LIMIT 1
+      ) authprof ON true
       WHERE ${conditions.join(' AND ')}
       ORDER BY ${orderBy}
       LIMIT $${limitN} OFFSET $${offsetN}
-    `, params)
+    `,
+      params
+    )
 
-    res.json(rows.map((r: any) => ({ ...r, author_id: r.user_id })))
+    res.json(
+      rows.map((r: any) => {
+        const authorIsVerified = Boolean(r.ap_is_verified) && String(r.ap_profile_status || '') === 'active'
+        const { ap_id, ap_is_verified, ap_profile_status, ...rest } = r
+        return {
+          ...rest,
+          author_id: r.user_id,
+          author_is_verified: authorIsVerified,
+        }
+      })
+    )
   } catch (error) {
     console.error('Error fetching blog posts:', error)
     res.status(500).json({ message: 'Failed to fetch blog posts' })
@@ -1326,23 +1351,48 @@ router.get('/posts/:id', async (req, res) => {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
-    const { rows } = await pool.query(`
-      SELECT p.*, u.unique_user_id as author_unique_user_id
+    const { rows } = await pool.query(
+      `
+      SELECT p.*, u.unique_user_id as author_unique_user_id,
+        authprof.ap_id,
+        authprof.ap_is_verified,
+        authprof.ap_profile_status
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN LATERAL (
+        SELECT ap_inner.id AS ap_id,
+               ap_inner.is_verified AS ap_is_verified,
+               ap_inner.status AS ap_profile_status
+        FROM author_profiles ap_inner
+        WHERE ap_inner.user_id = p.user_id AND ap_inner.status != 'deleted'
+        ORDER BY ap_inner.id ASC
+        LIMIT 1
+      ) authprof ON true
       WHERE p.id = $1
         AND p.status = 'approved'
         AND p.is_active = true
         AND p.is_archived = false
         AND p.is_deleted = false
-    `, [req.params.id])
-    
+    `,
+      [req.params.id]
+    )
+
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Blog post not found' })
     }
-    
-    const post = rows[0]
-    res.json({ ...post, author_id: post.user_id, author_unique_user_id: post.author_unique_user_id })
+
+    const post = rows[0] as any
+    const authorIsVerified =
+      Boolean(post.ap_is_verified) && String(post.ap_profile_status || '') === 'active'
+    delete post.ap_id
+    delete post.ap_is_verified
+    delete post.ap_profile_status
+    res.json({
+      ...post,
+      author_id: post.user_id,
+      author_unique_user_id: post.author_unique_user_id,
+      author_is_verified: authorIsVerified,
+    })
   } catch (error) {
     console.error('Error fetching blog post:', error)
     res.status(500).json({ message: 'Failed to fetch blog post' })

@@ -15,6 +15,7 @@ interface BlogPost {
   excerpt: string
   content: string
   author_name: string
+  author_is_verified?: boolean
   author_email: string
   author_id?: number | string | null
   author_unique_user_id?: string | null
@@ -393,6 +394,7 @@ export default function Blog() {
                   authorId={post.author_id}
                   authorUniqueUserId={post.author_unique_user_id}
                   authorName={post.author_name}
+                  authorVerified={post.author_is_verified === true}
                 />
 
                 {/* Card */}

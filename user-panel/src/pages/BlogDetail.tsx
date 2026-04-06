@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHorizontal } from 'lucide-react'
+import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import CustomSelect from '../components/CustomSelect'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -15,6 +16,7 @@ interface BlogPost {
   author_email?: string
   author_id?: number | null
   author_unique_user_id?: string | null
+  author_is_verified?: boolean
   user_id?: string | number
   cover_image?: string
   detail_image?: string
@@ -996,7 +998,10 @@ export default function BlogDetail() {
               {post.author_name?.charAt(0) || 'U'}
             </span>
             <div className="text-left">
-              <div className="text-sm font-semibold text-gray-900">Posted by {post.author_name}</div>
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                Posted by {post.author_name}
+                {post.author_is_verified === true ? <AuthorVerifiedBadge /> : null}
+              </div>
               <div className="text-xs text-gray-500">{post.author_unique_user_id || (post.author_id != null || post.user_id != null ? `User #${post.author_id ?? post.user_id}` : post.author_email || 'Author')}</div>
             </div>
           </button>

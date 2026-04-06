@@ -29,6 +29,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { blogActivityAPI, uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
 import { setFollowStatus } from '../store/followSlice'
 import type { RootState } from '../store'
+import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 
 interface AuthorSeedData {
   id: string | number
@@ -68,6 +69,10 @@ interface AuthorProfileData {
   posts_count?: number
   total_views?: number
   total_likes?: number
+  /** Admin moderation: verified badge (only shown when status is active) */
+  is_verified?: boolean
+  status?: string
+  onboarding_completed?: boolean
 }
 
 interface BlogPost {
@@ -319,6 +324,7 @@ export default function AuthorProfile() {
   const [activities, setActivities] = useState<any[]>([])
   const [loadingActivities, setLoadingActivities] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [profileUnavailable, setProfileUnavailable] = useState(false)
 
   // Followers / Following modal
   const [showSocialModal, setShowSocialModal] = useState(false)
@@ -392,13 +398,18 @@ export default function AuthorProfile() {
       try {
         const profile = await blogActivityAPI.getAuthor(routeAuthorId)
         setAuthorProfile(profile)
-      } catch (err) {
+        setProfileUnavailable(false)
+      } catch (err: any) {
         setAuthorProfile(null)
         // When viewing "me" and no author profile exists, redirect to onboarding
         if (routeAuthorId === 'me' && isAuthenticated) {
+          setProfileUnavailable(false)
           sessionStorage.setItem('author_onboarding_return', '#/user/author/me')
           window.location.hash = '#/user/author/onboarding'
+          return
         }
+        const code = err?.response?.data?.code
+        setProfileUnavailable(code === 'AUTHOR_UNAVAILABLE' || err?.status === 404)
       }
     }
 
@@ -861,6 +872,30 @@ export default function AuthorProfile() {
     }
   }, [showSocialModal, lightboxImage])
 
+  const showPublicVerifiedBadge =
+    Boolean(authorProfile?.is_verified) && String(authorProfile?.status || 'active') === 'active'
+
+  if (profileUnavailable && routeAuthorId !== 'me') {
+    return (
+      <main className="min-h-screen bg-[#F4F9F9] pb-16">
+        <div className="mx-auto w-full max-w-lg px-4 pt-8 text-center sm:pt-14">
+          <button
+            type="button"
+            onClick={goBack}
+            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#1B4965] hover:opacity-80"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {backLabel}
+          </button>
+          <p className="text-lg font-semibold text-gray-900">This profile isn&apos;t available</p>
+          <p className="mt-2 text-sm text-gray-500">
+            The author may have been removed, or the profile is temporarily restricted.
+          </p>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-[#F4F9F9] pb-16">
       {/* Back button — sits above the page card */}
@@ -874,6 +909,18 @@ export default function AuthorProfile() {
           {backLabel}
         </button>
       </div>
+
+      {isOwnProfile &&
+        authorProfile &&
+        (authorProfile.status === 'banned' || authorProfile.status === 'inactive') && (
+          <div className="mx-auto mb-4 w-full max-w-5xl px-3 sm:px-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              <strong className="font-semibold">Profile restricted.</strong> Your author profile is marked{' '}
+              <span className="font-mono text-xs">{authorProfile.status}</span>. Other people can&apos;t view your public
+              profile until a moderator sets your status back to <span className="font-semibold">active</span>.
+            </div>
+          </div>
+        )}
 
       {/* ── Single unified profile page ── */}
       <div className="mx-auto w-full max-w-5xl">
@@ -1044,7 +1091,10 @@ export default function AuthorProfile() {
 
             {/* Name + handle */}
             <div className="mb-2 mt-8 sm:mb-3 sm:mt-14">
-              <h1 className="text-xl font-bold leading-tight text-gray-900 sm:text-3xl">{resolvedAuthor.name}</h1>
+              <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold leading-tight text-gray-900 sm:text-3xl">
+                {resolvedAuthor.name}
+                {showPublicVerifiedBadge && <AuthorVerifiedBadge className="sm:translate-y-0.5" />}
+              </h1>
               {handle && <p className="mt-0.5 text-xs font-medium text-gray-400 sm:text-sm">{handle}</p>}
             </div>
 

@@ -20,6 +20,7 @@ import {
   Star,
   MapPin,
 } from 'lucide-react'
+import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
@@ -35,6 +36,7 @@ interface Post {
   author_name: string
   author_id?: number | string | null
   author_unique_user_id?: string | null
+  author_is_verified?: boolean
   categories?: string[] | string | null
   meta_keywords?: string[] | string | null
   likes_count?: number
@@ -47,6 +49,7 @@ interface Author {
   author_id: number
   author_name: string
   author_handle: string
+  is_verified?: boolean
   bio?: string | null
   profile_image?: string | null
   writing_categories?: string[] | null
@@ -179,7 +182,10 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
         <div className="mt-auto flex items-center justify-between pt-2">
           <div className="flex items-center gap-1.5">
             <PostAvatar name={post.author_name} />
-            <span className="text-[11px] text-gray-500">{post.author_name}</span>
+            <span className="inline-flex items-center gap-1 text-[11px] text-gray-500">
+              {post.author_name}
+              {post.author_is_verified === true ? <AuthorVerifiedBadge className="scale-90" /> : null}
+            </span>
           </div>
           <div className="flex items-center gap-2.5 text-gray-400">
             <span className="flex items-center gap-0.5 text-[11px]">
@@ -218,8 +224,9 @@ function AuthorCard({
       </a>
       <div className="min-w-0 flex-1">
         <a href={`#/user/author/${author.author_id}`} className="group block">
-          <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">
-            {author.author_name}
+          <p className="flex items-center gap-1 truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">
+            <span className="truncate">{author.author_name}</span>
+            {author.is_verified === true ? <AuthorVerifiedBadge className="shrink-0" /> : null}
           </p>
           <p className="text-[11px] text-gray-400">@{author.author_handle}</p>
         </a>

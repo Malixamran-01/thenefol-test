@@ -35,6 +35,7 @@ import {
   ShieldCheck,
   ChevronRight,
 } from 'lucide-react'
+import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
@@ -45,6 +46,8 @@ interface AuthorProfile {
   id: number; display_name: string | null; pen_name: string | null; username: string | null
   profile_image: string | null; cover_image: string | null; bio: string | null
   writing_categories: string[] | null; location: string | null
+  is_verified?: boolean
+  status?: string
 }
 interface Stats {
   followers: number; subscribers: number; following: number; posts: number
@@ -542,7 +545,12 @@ export default function CreatorDashboard() {
       {/* ── Page title + tabs ── */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Analytics</h1>
+          <h1 className="flex flex-wrap items-center gap-2 text-2xl font-black text-gray-900">
+            Analytics
+            {data.author?.is_verified === true && String(data.author?.status || 'active') === 'active' ? (
+              <AuthorVerifiedBadge className="translate-y-0.5" />
+            ) : null}
+          </h1>
           <p className="mt-0.5 text-[13px] text-gray-400">Monitor your content performance</p>
         </div>
         <div className="flex items-center gap-2">
@@ -557,6 +565,15 @@ export default function CreatorDashboard() {
           </a>
         </div>
       </div>
+
+      {data.author &&
+        (data.author.status === 'banned' || data.author.status === 'inactive') && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-950">
+            <strong className="font-semibold">Profile restricted.</strong> Your author account is marked{' '}
+            <span className="font-mono text-xs">{data.author.status}</span>. Readers can&apos;t open your public author
+            page until a moderator sets your status back to active. You can still use this dashboard while signed in.
+          </div>
+        )}
 
       {/* ── Tabs ── */}
       <div className="mb-8 flex gap-1 border-b border-gray-200">

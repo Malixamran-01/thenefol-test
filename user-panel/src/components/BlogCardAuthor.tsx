@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { User, ChevronDown } from 'lucide-react'
+import { AuthorVerifiedBadge } from './AuthorVerifiedBadge'
 import { useDispatch, useSelector } from 'react-redux'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
@@ -11,13 +12,16 @@ interface BlogCardAuthorProps {
   authorUniqueUserId?: string | null
   authorName: string
   authorProfileImage?: string | null
+  /** From API when author has active profile + admin verified flag */
+  authorVerified?: boolean
 }
 
 export function BlogCardAuthor({
   authorId,
   authorUniqueUserId,
   authorName,
-  authorProfileImage
+  authorProfileImage,
+  authorVerified,
 }: BlogCardAuthorProps) {
   const { user, isAuthenticated } = useAuth()
   const dispatch = useDispatch()
@@ -139,8 +143,9 @@ export function BlogCardAuthor({
             <User className="h-5 w-5 text-gray-600" />
           )}
         </div>
-        <span className="text-sm font-semibold" style={{ color: '#1B4965' }}>
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: '#1B4965' }}>
           {authorName || 'Anonymous'}
+          {authorVerified ? <AuthorVerifiedBadge /> : null}
         </span>
       </button>
 
