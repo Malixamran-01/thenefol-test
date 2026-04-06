@@ -89,27 +89,13 @@ function parseStringList(raw: unknown): string[] {
   return []
 }
 
-function pickImagePathFromRow(x: unknown): string {
-  if (x == null) return ''
-  if (typeof x === 'string') return x.trim()
-  if (typeof x === 'object') {
-    const o = x as Record<string, unknown>
-    for (const k of ['url', 'path', 'src', 'filename'] as const) {
-      const v = o[k]
-      if (typeof v === 'string' && v.trim()) return v.trim()
-    }
-  }
-  const s = String(x).trim()
-  return s === '[object Object]' ? '' : s
-}
-
 function parseImages(raw: unknown): string[] {
   if (raw == null) return []
-  if (Array.isArray(raw)) return raw.map(pickImagePathFromRow).filter(Boolean)
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean)
   if (typeof raw === 'string') {
     try {
       const j = JSON.parse(raw)
-      return Array.isArray(j) ? j.map(pickImagePathFromRow).filter(Boolean) : []
+      return Array.isArray(j) ? j.map(String).filter(Boolean) : []
     } catch {
       return []
     }
@@ -178,131 +164,82 @@ function processContentImages(htmlContent: string): string {
   return content
 }
 
-/** Last path segment, decoded (handles URL-encoded filenames). */
-function mediaBasename(u: string): string {
-  const noQuery = u.split('?')[0] || ''
-  const seg = noQuery.split('/').pop() || ''
-  try {
-    return decodeURIComponent(seg)
-  } catch {
-    return seg
-  }
-}
-
 /**
- * Map editor refs to real upload URLs. Multer stores `uuid-original.ext` while HTML may only
- * reference `uuid.ext` — a straight `/uploads/blog/uuid.ext` guess 404s; match by UUID stem + '-'.
- */
-function resolveBlogMediaRef(ref: string, origin: string, postImagesAbs: string[]): string {
-  const r = String(ref || '').trim()
-  if (!r) return ''
-  if (r.startsWith('http://') || r.startsWith('https://')) {
-    return r.replace(/^(https?:\/\/[^/]+)\/api(\/uploads\/)/i, '$1$2')
-  }
-  if (r.startsWith('/uploads/')) return origin + r
-  if (r.startsWith('/api/uploads/')) return origin + r.replace(/^\/api/, '')
-
-  const refBase = r.includes('/') ? mediaBasename(r) : r.split('?')[0]
-  const stem = refBase.replace(/\.[^.]+$/i, '')
-  const uuidLike =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stem)
-
-  const hit = postImagesAbs.find((u) => {
-    const file = mediaBasename(u)
-    if (file === refBase || r === file) return true
-    if (u.endsWith('/' + r)) return true
-    if (r.length > 3 && u.includes(r)) return true
-    if (uuidLike && (file.startsWith(`${stem}-`) || file.startsWith(`${stem}.`))) return true
-    return false
-  })
-  if (hit) return hit
-
-  if (!r.includes('/') && /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(r)) {
-    return `${origin}/uploads/blog/${r}`
-  }
-  if (r.startsWith('uploads/')) return `${origin}/${r}`
-  return `${origin}/${r.replace(/^\//, '')}`
-}
-
-/**
- * DOM-based rewrite: handles any attribute order, blob:/data: src, data-filename, alt=filename,
- * and maps sequential inline images to post.images[] when src is unusable.
+ * Prepare stored HTML for admin preview: fix image & iframe URLs and YouTube embed sizing.
+ * Uploads are served at {origin}/uploads/... — not under /api (admin API base often ends with /api).
  */
 function prepareAdminBlogBodyHtml(html: string, apiBase: string, postImagePaths: string[]): string {
   if (!html) return html
   const origin = uploadsOriginFromApiBase(apiBase)
   const postImagesAbs = postImagePaths.map((p) => toUploadUrl(apiBase, p))
 
-  if (typeof document === 'undefined') return processContentImages(html)
+  let processed = html
 
-  const wrap = document.createElement('div')
-  wrap.innerHTML = html
+  processed = processed
+    .replace(/src="(\/uploads\/[^"]+)"/g, `src="${origin}$1"`)
+    .replace(/src='(\/uploads\/[^']+)'/g, `src='${origin}$1'`)
+    .replace(/src\s*=\s*"(\/uploads\/[^"]+)"/g, `src="${origin}$1"`)
+    .replace(/src\s*=\s*'(\/uploads\/[^']+)'/g, `src='${origin}$1'`)
 
-  const imgs = Array.from(wrap.querySelectorAll('img'))
-  let queueIx = 0
+  // src="https://host/api/uploads/..." → drop /api (static files are not under /api)
+  processed = processed.replace(
+    /src=(["'])(https?:\/\/[^"']+?)\/api(\/uploads\/[^"']+)\1/gi,
+    (_m, q: string, base: string, uploadRest: string) => `src=${q}${base}${uploadRest}${q}`
+  )
 
-  imgs.forEach((img) => {
-    const src = (img.getAttribute('src') || '').trim()
-    const dataFn = (img.getAttribute('data-filename') || '').trim()
-    const alt = (img.getAttribute('alt') || '').trim()
-
-    const httpsOk = /^https?:\/\//i.test(src) && !/\/api\/uploads\//i.test(src)
-    const relativeOk = /^\/uploads\//i.test(src)
-    if (httpsOk || relativeOk) {
-      if (/^https?:\/\//i.test(src) && /\/api\/uploads\//i.test(src)) {
-        img.setAttribute('src', src.replace(/^(https?:\/\/[^/]+)\/api(\/uploads\/)/i, '$1$2'))
-      } else if (relativeOk) {
-        img.setAttribute('src', origin + src)
-      }
-      img.setAttribute('referrerpolicy', 'no-referrer')
-      return
+  processed = processed.replace(/<img([^>]*data-filename="([^"]+)"[^>]*)>/gi, (match, _rest, filename: string) => {
+    const fn = String(filename || '').trim()
+    if (!fn) return match
+    const hit = postImagesAbs.find((u) => u.includes(fn) || u.endsWith(fn) || fn.includes(u.split('/').pop() || ''))
+    const src = hit || (fn.startsWith('/uploads/') ? `${origin}${fn}` : `${origin}/uploads/blog/${fn.replace(/^\/+/, '')}`)
+    if (/src\s*=/i.test(match)) {
+      return match.replace(/\s+src\s*=\s*["'][^"']*["']/i, ` src="${src}"`)
     }
-
-    let resolved = ''
-    if (dataFn) resolved = resolveBlogMediaRef(dataFn, origin, postImagesAbs)
-    else if (alt && /\.(png|jpe?g|gif|webp|svg)$/i.test(alt)) {
-      resolved = resolveBlogMediaRef(alt, origin, postImagesAbs)
-    } else if (src && !src.startsWith('blob:') && !src.startsWith('data:')) {
-      resolved = resolveBlogMediaRef(src, origin, postImagesAbs)
-    }
-    if (
-      !resolved &&
-      (!src || src.startsWith('blob:') || src.startsWith('data:')) &&
-      postImagesAbs[queueIx]
-    ) {
-      resolved = postImagesAbs[queueIx]
-      queueIx++
-    }
-
-    if (resolved) img.setAttribute('src', resolved)
-    img.setAttribute('referrerpolicy', 'no-referrer')
-    img.setAttribute('loading', 'lazy')
+    return match.replace(/<img/i, `<img src="${src}"`)
   })
 
-  wrap.querySelectorAll('iframe').forEach((frame) => {
-    let src = (frame.getAttribute('src') || '').trim()
-    if (!src) return
+  processed = processed.replace(
+    /<img([^>]*)\ssrc\s*=\s*["']([a-f0-9-]{30,}\.(?:png|jpe?g|gif|webp))["']([^>]*)>/gi,
+    (_m, pre, fname: string, post) => {
+      const src = `${origin}/uploads/blog/${fname}`
+      return `<img${pre} src="${src}"${post}>`
+    }
+  )
+
+  // src="filename.png" (no path) — common when HTML was saved before URL rewrite
+  processed = processed.replace(
+    /<img([^>]*)\bsrc\s*=\s*"((?!https?:|\/|data:|blob:)[^"]+\.(?:png|jpe?g|gif|webp))"([^>]*)>/gi,
+    (_m, pre, fname: string, post) => `<img${pre} src="${origin}/uploads/blog/${fname}"${post}>`
+  )
+  processed = processed.replace(
+    /<img([^>]*)\bsrc\s*=\s*'((?!https?:|\/|data:|blob:)[^']+\.(?:png|jpe?g|gif|webp))'([^>]*)>/gi,
+    (_m, pre, fname: string, post) => `<img${pre} src='${origin}/uploads/blog/${fname}'${post}>`
+  )
+
+  processed = processed.replace(/<iframe([^>]*)>/gi, (_full, attrs: string) => {
+    const srcMatch = attrs.match(/\ssrc\s*=\s*["']([^"']*)["']/i)
+    let src = srcMatch ? srcMatch[1].trim() : ''
+    if (!src) return `<iframe${attrs}>`
     if (src.startsWith('//')) src = `https:${src}`
     else if (src.startsWith('/') && (src.includes('youtube') || src.includes('youtu'))) {
       src = `https://www.youtube.com${src}`
     } else if (!/^https?:/i.test(src) && (src.includes('youtube.com') || src.includes('youtu.be'))) {
       src = `https://${src.replace(/^\/\//, '')}`
     }
-    frame.setAttribute('src', src)
-    frame.removeAttribute('style')
+    let next = attrs
+      .replace(/\s+src\s*=\s*["'][^"']*["']/i, ` src="${src}"`)
+      .replace(/\s+style\s*=\s*["'][^"']*["']/gi, '')
     const allow =
       'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
-    if (!frame.getAttribute('allow')) frame.setAttribute('allow', allow)
-    if (!frame.hasAttribute('allowfullscreen')) frame.setAttribute('allowfullscreen', '')
-    if (!frame.getAttribute('referrerpolicy')) frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
-    if (!frame.getAttribute('loading')) frame.setAttribute('loading', 'lazy')
-    frame.setAttribute(
-      'style',
-      'width:100%;max-width:720px;height:405px;min-height:240px;border:0;border-radius:8px;display:block;margin:12px auto'
-    )
+    if (!/\sallow\s*=/i.test(next)) next += ` allow="${allow}"`
+    if (!/\sallowfullscreen/i.test(next)) next += ' allowfullscreen'
+    if (!/\sreferrerpolicy\s*=/i.test(next)) next += ' referrerpolicy="strict-origin-when-cross-origin"'
+    if (!/\sloading\s*=/i.test(next)) next += ' loading="lazy"'
+    next += ` style="width:100%;max-width:720px;height:405px;min-height:240px;border:0;border-radius:8px;display:block;margin:12px auto"`
+    return `<iframe${next}>`
   })
 
-  return processContentImages(wrap.innerHTML)
+  return processContentImages(processed)
 }
 
 function estimateReadMinutes(html: string): number {
@@ -1154,45 +1091,6 @@ export default function BlogRequestManagement() {
   )
 }
 
-/** Thumbnail / hero image with fallback when URL 404s or is blocked cross-origin. */
-function PreviewAssetImg({ src, className }: { src: string; className?: string }) {
-  const [failed, setFailed] = useState(false)
-  if (!src || failed) {
-    return (
-      <div
-        className={`flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-amber-200 bg-amber-50/70 p-4 text-center text-xs text-amber-950 ${className || ''}`}
-      >
-        <ImageIcon className="h-8 w-8 shrink-0 text-amber-400" />
-        <span className="max-w-md">
-          Could not load image. Check the URL opens in a new tab. On Render/free hosts, uploaded files can be lost after a
-          redeploy unless you use persistent storage.
-        </span>
-        {src ? (
-          <a
-            href={src}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#4B97C9] underline break-all max-w-full font-mono text-[10px]"
-          >
-            {src}
-          </a>
-        ) : null}
-      </div>
-    )
-  }
-  return (
-    <img
-      src={src}
-      alt=""
-      className={className}
-      referrerPolicy="no-referrer"
-      loading="lazy"
-      decoding="async"
-      onError={() => setFailed(true)}
-    />
-  )
-}
-
 function AdminBlogPreview({
   apiBase,
   post,
@@ -1293,13 +1191,13 @@ function AdminBlogPreview({
 
       {cover && (
         <div className="mb-8 overflow-hidden rounded-2xl bg-slate-100">
-          <PreviewAssetImg src={cover} className="w-full max-h-[420px] object-cover" />
+          <img src={cover} alt="" className="w-full max-h-[420px] object-cover" />
         </div>
       )}
 
       {detail && (
         <div className="mb-8 overflow-hidden rounded-2xl bg-slate-100 aspect-video">
-          <PreviewAssetImg src={detail} className="h-full w-full min-h-[200px] object-cover" />
+          <img src={detail} alt="" className="h-full w-full object-cover" />
         </div>
       )}
 
@@ -1317,24 +1215,14 @@ function AdminBlogPreview({
             <Share2 className="h-3.5 w-3.5" /> Sharing assets
           </p>
           {og && (
-            <div className="mb-3 space-y-2">
-              <p className="text-xs text-slate-600">
-                OG image:{' '}
-                <a className="text-[#4B97C9] underline break-all" href={og} target="_blank" rel="noreferrer">
-                  {og}
-                </a>
-              </p>
-              <PreviewAssetImg src={og} className="max-h-40 w-full max-w-md rounded-lg object-contain border border-slate-100 bg-slate-50" />
-            </div>
+            <p className="text-xs text-slate-600 mb-2">
+              OG image: <a className="text-[#4B97C9] underline" href={og} target="_blank" rel="noreferrer">{og}</a>
+            </p>
           )}
           {parseImages(post.images).length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {parseImages(post.images).map((src, i) => (
-                <PreviewAssetImg
-                  key={i}
-                  src={toUploadUrl(apiBase, src)}
-                  className="rounded-lg object-cover h-24 w-full bg-slate-50"
-                />
+                <img key={i} src={toUploadUrl(apiBase, src)} alt="" className="rounded-lg object-cover h-24 w-full" />
               ))}
             </div>
           )}

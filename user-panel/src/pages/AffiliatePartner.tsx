@@ -611,8 +611,8 @@ useEffect(() => {
       } else if (response.status === 409) {
         alert(data.message || 'You already have an affiliate application in progress.')
         await checkApplicationStatus()
-      } else {
-        alert(data.message || 'Failed to submit application. Please try again or contact support.')
+        } else {
+          alert(data.message || 'Failed to submit application. Please try again or contact support.')
       }
     } catch (error) {
       console.error('Application submission error:', error)
@@ -2158,8 +2158,8 @@ useEffect(() => {
                 <div className="mt-4 p-4 rounded-xl border" style={{ backgroundColor: '#f0f8fd', borderColor: '#d6eaf8' }}>
                   <p className="text-sm font-light tracking-wide text-gray-700" style={{ letterSpacing: '0.05em' }}>
                     <strong className="font-medium">What happens next?</strong> We review your request first. You will <strong>not</strong> receive a verification code by email until your application is approved.
-                  </p>
-                </div>
+                    </p>
+                  </div>
               )}
             </div>
           </div>
@@ -2197,15 +2197,15 @@ useEffect(() => {
             <div className="flex flex-col flex-1 min-h-0 p-6 sm:p-8 justify-between gap-6">
               <div className="text-center">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
-                  <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
-                </div>
+                <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
+              </div>
                 <h3 className="text-xl sm:text-2xl font-light text-[#1B4965] mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
                   Apply for partnership
-                </h3>
+              </h3>
                 <p className="text-gray-600 font-light tracking-wide text-sm sm:text-[15px] leading-relaxed" style={{ letterSpacing: '0.05em' }}>
                   After Creator Collab milestones, apply in one step.
-                </p>
-              </div>
+              </p>
+            </div>
 
               <div className="w-full shrink-0 mt-auto">
             {collabEligibleLoading ? (
@@ -2233,7 +2233,7 @@ useEffect(() => {
                 >
                   Go to Creator Collab
                 </a>
-              </div>
+                </div>
             ) : (
               <form onSubmit={handleApplyFromCollab} className="space-y-4">
                 <p className="text-sm text-gray-600 font-light" style={{ letterSpacing: '0.05em' }}>
@@ -2253,27 +2253,27 @@ useEffect(() => {
                     I agree to the terms and conditions *
                   </label>
                 </div>
-                <button
-                  type="submit"
+                  <button
+                    type="submit"
                   disabled={!collabApplyTerms || collabApplySubmitting}
                   className="w-full px-4 sm:px-6 py-3.5 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: 'var(--arctic-blue-primary)',
-                    letterSpacing: '0.1em'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!e.currentTarget.disabled) {
-                      e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!e.currentTarget.disabled) {
-                      e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
-                    }
-                  }}
-                >
+                    style={{ 
+                      backgroundColor: 'var(--arctic-blue-primary)',
+                      letterSpacing: '0.1em'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
+                      }
+                    }}
+                  >
                   {collabApplySubmitting ? 'Submitting…' : 'Submit application'}
-                </button>
+                  </button>
               </form>
             )}
               </div>
@@ -2389,7 +2389,7 @@ useEffect(() => {
               </form>
             )}
           </div>
-        </div>
+          </div>
         </div>
 
         {/* Benefits Section */}

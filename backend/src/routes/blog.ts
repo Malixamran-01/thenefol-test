@@ -9,46 +9,6 @@ import { authenticateToken } from '../utils/apiHelpers'
 import { createNotification, resolveActor } from './blogNotifications'
 
 const DRAFT_SAVE_RATE_LIMIT_MS = 30_000
-
-/**
- * Persist real /uploads/blog/... URLs inside HTML: editor often saves blob:/data: or bare filenames.
- * Consumes relativeUrls in document order (first <img> that needs a URL gets relativeUrls[0], etc.).
- */
-function rewriteBlogContentImageSrcs(html: string, relativeUrls: string[]): string {
-  let ix = 0
-  return String(html || '').replace(/<img\b[^>]*>/gi, (tag) => {
-    const srcM = tag.match(/\ssrc\s*=\s*["']([^"']*)["']/i)
-    const src = srcM ? srcM[1].trim() : ''
-
-    if (/^https?:\/\//i.test(src)) {
-      const fixed = src.replace(/^(https?:\/\/[^/]+)\/api(\/uploads\/)/i, '$1$2')
-      if (fixed !== src) {
-        return tag.replace(/\ssrc\s*=\s*["'][^"']*["']/i, ` src="${fixed}"`)
-      }
-      return tag
-    }
-
-    if (/^\/uploads\//i.test(src)) return tag
-
-    const url = relativeUrls[ix]
-    const needs =
-      url != null &&
-      (!src ||
-        /^blob:/i.test(src) ||
-        /^data:/i.test(src) ||
-        (!src.includes('/') && /\.(png|jpe?g|gif|webp|svg)$/i.test(src)) ||
-        (src.startsWith('/') && !src.startsWith('/uploads/')) ||
-        /^\/api\/uploads\//i.test(src))
-
-    if (!needs) return tag
-
-    ix++
-    if (/\ssrc\s*=\s*["'][^"']*["']/i.test(tag)) {
-      return tag.replace(/\ssrc\s*=\s*["'][^"']*["']/i, ` src="${url}"`)
-    }
-    return tag.replace(/<img/i, `<img src="${url}"`)
-  })
-}
 const VERSION_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes - create version snapshot
 const lastDraftSaveByUser = new Map<string, number>()
 
@@ -321,7 +281,6 @@ router.post('/request', upload.fields([
       ? `/uploads/blog/${ogImageFile.filename}`
       : (og_image && String(og_image).trim()) || null
     const contentImageUrls = contentImages.map(img => `/uploads/blog/${img.filename}`)
-    const contentForDb = rewriteBlogContentImageSrcs(String(content || ''), contentImageUrls)
 
     // Use author_id from body, or from token, or null for guest
     const userId = authorId ?? getUserIdFromToken(req)
@@ -375,7 +334,7 @@ router.post('/request', upload.fields([
       RETURNING id, created_at
     `, [
       title,
-      contentForDb,
+      content,
       excerpt,
       author_name,
       authorEmailForDb ?? '',

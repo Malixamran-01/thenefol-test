@@ -358,13 +358,13 @@ export default function Collab(props: CollabProps = {}) {
   const fetchStatus = async () => {
     if (!isAuthenticated) { setLoading(false); return }
     try {
-      const queryEmail = user?.email ? `?email=${encodeURIComponent(user.email)}` : ''
+        const queryEmail = user?.email ? `?email=${encodeURIComponent(user.email)}` : ''
       const res = await fetch(`${getApiBase()}/api/collab/status${queryEmail}`, { headers: authHeaders() })
-      if (res.ok) {
-        const data = await res.json()
-        const handles = Array.isArray(data.instagram_handles)
-          ? data.instagram_handles
-          : (data.instagram || '').split(',').map((h: string) => h.trim()).filter(Boolean)
+        if (res.ok) {
+          const data = await res.json()
+          const handles = Array.isArray(data.instagram_handles)
+            ? data.instagram_handles
+            : (data.instagram || '').split(',').map((h: string) => h.trim()).filter(Boolean)
         const hasApp = data.has_application !== false && !!data.id
         const blockInfo: CollabBlockInfo | null = data.collab_blocked
           ? data.block
@@ -385,7 +385,7 @@ export default function Collab(props: CollabProps = {}) {
                 can_submit_appeal: true,
               }
           : null
-        setStatus({
+          setStatus({
           id: data.id, status: data.status, hasApplication: hasApp,
           totalViews: data.total_views ?? 0, totalLikes: data.total_likes ?? 0,
           progressPercent: data.progress ?? 0, affiliateUnlocked: !!data.affiliate_unlocked,
@@ -408,9 +408,9 @@ export default function Collab(props: CollabProps = {}) {
         if (data.id) { setSubmitted(true); setShowForm(false) }
         if (data.collab_blocked && !hasApp) {
           setSubmitted(false)
-          setShowForm(false)
+            setShowForm(false)
+          }
         }
-      }
     } catch (e) { console.error('Collab status fetch failed:', e) }
     finally { setLoading(false) }
   }
@@ -450,7 +450,7 @@ export default function Collab(props: CollabProps = {}) {
       if (res.ok || res.status === 409) {
         setAffiliateAppStatus('pending')
         setAffiliateApplyTerms(false)
-      } else {
+    } else {
         setAffiliateApplyMsg(data.message || 'Failed to submit. Please try again.')
       }
     } catch { setAffiliateApplyMsg('Network error. Please try again.') }
@@ -497,9 +497,9 @@ export default function Collab(props: CollabProps = {}) {
       .filter(([, v]) => v.checked)
       .map(([name, v]) => ({ name, links: v.links.map((l) => l.trim()).filter(Boolean) }))
 
-    const res = await fetch(`${getApiBase()}/api/collab/apply`, {
+      const res = await fetch(`${getApiBase()}/api/collab/apply`, {
       method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({
+        body: JSON.stringify({
         name: formData.name,
         phone: formData.phone,
         agreeTerms: true,
@@ -517,8 +517,8 @@ export default function Collab(props: CollabProps = {}) {
           skills,
           languages,
         },
-      }),
-    })
+        }),
+      })
     const data = await res.json().catch(() => ({}))
     if (res.status === 401) {
       alert(data?.message || 'Please sign in with your Nefol account to apply.')
@@ -530,7 +530,7 @@ export default function Collab(props: CollabProps = {}) {
       setTurnstileMountKey((k) => k + 1)
       return
     }
-    if (res.ok) {
+      if (res.ok) {
       setSubmitted(true); setShowForm(false)
       setTurnstileToken(null)
       setTurnstileMountKey((k) => k + 1)
@@ -543,7 +543,7 @@ export default function Collab(props: CollabProps = {}) {
         : { id: data?.application?.id, status: 'pending', hasApplication: true, totalViews: 0, totalLikes: 0,
             progressPercent: 0, affiliateUnlocked: false, instagramHandles: handles,
             instagramConnected: false, igUsername: null, collabJoinedAt: new Date().toISOString() })
-    } else {
+      } else {
       alert(data?.message || 'Failed to submit. Please try again.')
       setTurnstileToken(null)
       setTurnstileMountKey((k) => k + 1)
@@ -743,7 +743,7 @@ export default function Collab(props: CollabProps = {}) {
                     style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965', letterSpacing: '0.08em' }}
                   >
                     Creator Program
-                  </h1>
+        </h1>
                   <p className="text-xs font-light tracking-wide mt-1.5 text-gray-500" style={{ letterSpacing: '0.04em' }}>
                     Collab · Affiliate · Revenue — milestones, partner onboarding, and earnings in one place
                   </p>
@@ -789,12 +789,12 @@ export default function Collab(props: CollabProps = {}) {
         </div>
       </div>
 
-      {loading ? (
+        {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
         </div>
-      ) : (
-        <>
+        ) : (
+          <>
         <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10">
 
           {/* ── Tab bar: Collab · Affiliate · Revenue (Nefol Social segment control) ─── */}
@@ -865,7 +865,7 @@ export default function Collab(props: CollabProps = {}) {
                         placeholder="Minimum 20 characters…"
                       />
                       {blockAppealMsg && <p className="text-xs text-red-600">{blockAppealMsg}</p>}
-                      <button
+                    <button
                         type="button"
                         onClick={submitBlockAppeal}
                         disabled={blockAppealSubmitting}
@@ -873,8 +873,8 @@ export default function Collab(props: CollabProps = {}) {
                       >
                         {blockAppealSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                         Submit appeal
-                      </button>
-                    </div>
+                    </button>
+                </div>
                   )}
                 </div>
               </div>
@@ -915,28 +915,28 @@ export default function Collab(props: CollabProps = {}) {
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Full Name</label>
                         <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Your full name" required
                           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                           Email <span className="font-normal normal-case text-gray-400">(from your Nefol account)</span>
                         </label>
-                        <input
-                          type="email"
-                          name="email"
+                      <input
+                        type="email"
+                        name="email"
                           value={user?.email || formData.email}
                           readOnly
                           aria-readonly="true"
                           title="Email comes from your signed-in Nefol account and cannot be changed here."
-                          required
+                        required
                           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700 bg-gray-50 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
+                      />
+                    </div>
+                    <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Phone</label>
                         <div className="flex gap-2">
                           <div className="relative flex-shrink-0 min-w-[10.5rem] sm:min-w-[11.5rem] max-w-[min(100%,14rem)]" ref={phonePickerRef}>
-                            <button
-                              type="button"
+                              <button
+                                type="button"
                               aria-haspopup="listbox"
                               aria-expanded={phonePickerOpen}
                               onClick={() => setPhonePickerOpen((o) => !o)}
@@ -946,7 +946,7 @@ export default function Collab(props: CollabProps = {}) {
                               <span className="text-xl leading-none select-none" aria-hidden>{isoToFlagEmoji(selectedPhoneCountry.isoCode)}</span>
                               <span className="font-medium tabular-nums">+{selectedPhoneCountry.phonecode}</span>
                               <ChevronDown className={`ml-auto h-4 w-4 text-gray-400 flex-shrink-0 transition-transform ${phonePickerOpen ? 'rotate-180' : ''}`} />
-                            </button>
+                              </button>
                             {phonePickerOpen && (
                               <ul
                                 role="listbox"
@@ -956,8 +956,8 @@ export default function Collab(props: CollabProps = {}) {
                                   const active = c.isoCode === selectedPhoneCountry.isoCode
                                   return (
                                     <li key={c.isoCode} role="option" aria-selected={active}>
-                                      <button
-                                        type="button"
+                              <button
+                                type="button"
                                         onClick={() => {
                                           setProfile((p) => ({ ...p, phone_country_iso: c.isoCode, phone_code: `+${c.phonecode}` }))
                                           setPhonePickerOpen(false)
@@ -967,7 +967,7 @@ export default function Collab(props: CollabProps = {}) {
                                         <span className="text-xl leading-none select-none" aria-hidden>{isoToFlagEmoji(c.isoCode)}</span>
                                         <span className="font-medium tabular-nums text-gray-900">+{c.phonecode}</span>
                                         <span className="min-w-0 flex-1 truncate text-gray-500">{c.name}</span>
-                                      </button>
+                              </button>
                                     </li>
                                   )
                                 })}
@@ -976,15 +976,15 @@ export default function Collab(props: CollabProps = {}) {
                           </div>
                           <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="WhatsApp number" required
                             className="flex-1 min-w-0 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
-                        </div>
                       </div>
+                    </div>
                     </div>
                   </div>
 
                   <div className="border-t border-gray-100" />
 
                   {/* Platforms */}
-                  <div>
+                    <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Platforms you're active on</label>
                     <div className="space-y-2">
                       {(Object.entries(PLATFORM_CONFIG) as [PlatformKey, typeof PLATFORM_CONFIG[PlatformKey]][]).map(([key, cfg]) => {
@@ -1010,8 +1010,8 @@ export default function Collab(props: CollabProps = {}) {
                               <div className="px-3 pb-3 space-y-2">
                                 {platforms[key].links.map((link, idx) => (
                                   <div key={idx} className="flex items-center gap-2">
-                                    <input
-                                      type="text"
+                      <input
+                        type="text"
                                       placeholder={idx === 0 ? cfg.placeholder : `Another ${cfg.label} profile link`}
                                       value={link}
                                       onChange={(e) => setPlatformLink(key, idx, e.target.value)}
@@ -1067,8 +1067,8 @@ export default function Collab(props: CollabProps = {}) {
                             ))}
                           </select>
                         </div>
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
                         <select value={profile.gender} onChange={(e) => setProfile((p) => ({ ...p, gender: e.target.value }))}
                           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
@@ -1076,7 +1076,7 @@ export default function Collab(props: CollabProps = {}) {
                           <option value="">Prefer not to say</option>
                           {['Male','Female','Non-binary','Other'].map((g) => <option key={g} value={g.toLowerCase()}>{g}</option>)}
                         </select>
-                      </div>
+                    </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Marital Status</label>
                         <select value={profile.marital_status} onChange={(e) => setProfile((p) => ({ ...p, marital_status: e.target.value }))}
@@ -1259,11 +1259,11 @@ export default function Collab(props: CollabProps = {}) {
                     className="w-full rounded-xl py-3.5 font-semibold text-sm text-white transition-all hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
                     style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
                     <ScrollText className="h-4 w-4" /> Review Terms &amp; Submit
-                  </button>
-                </form>
+                    </button>
+                  </form>
               </div>
-            </div>
-          )}
+                  </div>
+                )}
 
           {/* ── Dashboard (after applying): milestones + platforms + submit content ─ */}
           {collabTab === 'collab' && submitted && status && (
@@ -1396,8 +1396,8 @@ export default function Collab(props: CollabProps = {}) {
                       )
                     })}
                   </div>
-                </div>
-              )}
+                  </div>
+                )}
 
               {/* Pending approval notice */}
               {status.status === 'pending' && (
@@ -1448,7 +1448,7 @@ export default function Collab(props: CollabProps = {}) {
                       className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm sm:ml-auto"
                       style={{ backgroundColor: 'var(--arctic-blue-primary, #4B97C9)' }}>
                       {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Syncing...</> : <><RefreshCw className="h-4 w-4" /> Sync from Instagram</>}
-                    </button>
+                          </button>
                   </div>
 
                   {syncError && !syncError.includes('connection failed') && (
@@ -1545,19 +1545,19 @@ export default function Collab(props: CollabProps = {}) {
                           </button>
                           <span className="text-sm text-gray-400">{selectedReels.size} selected</span>
                         </div>
-                      )}
+                        )}
 
                       {submitResult && (
                         <div className={`mt-3 rounded-xl px-4 py-3 text-sm flex items-center gap-2 ${submitResult.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                           {submitResult.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                           {submitResult.success || submitResult.error}
-                        </div>
+                      </div>
                       )}
                     </>
                   )}
                   </>
                   )}
-                  </div>
+                    </div>
                 </div>
               )}
 
@@ -1604,8 +1604,8 @@ export default function Collab(props: CollabProps = {}) {
                             {key === 'reddit' && (
                               <p className="text-xs text-gray-700 rounded-xl border border-[#e8f4fb] px-3 py-2 font-light leading-snug" style={{ backgroundColor: '#f0f8fd' }}>
                                 Reddit: upvotes count toward likes; views are not available from Reddit’s API.
-                              </p>
-                            )}
+                    </p>
+                  )}
                           </div>
                         ) : (
                           <>
@@ -1613,7 +1613,7 @@ export default function Collab(props: CollabProps = {}) {
                               <p className="text-xs text-gray-500 font-light">
                                 Signed in as <span className="font-medium text-gray-700">{conn.platform_username}</span>
                               </p>
-                              <button
+                  <button
                                 type="button"
                                 onClick={() => syncPlatform(key)}
                                 disabled={ps.syncing || programSuspended}
@@ -1621,8 +1621,8 @@ export default function Collab(props: CollabProps = {}) {
                                 style={{ backgroundColor: accent }}
                               >
                                 {ps.syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Loading…</> : <><RefreshCw className="h-4 w-4" /> Load {meta.contentLabel}</>}
-                              </button>
-                            </div>
+                  </button>
+                  </div>
                             {key === 'reddit' && (
                               <p className="text-xs text-gray-700 mb-4 rounded-xl border border-[#e8f4fb] px-3 py-2 font-light leading-snug" style={{ backgroundColor: '#f0f8fd' }}>
                                 Reddit: upvotes count toward likes; views are not available from Reddit’s API.
@@ -1690,13 +1690,13 @@ export default function Collab(props: CollabProps = {}) {
                                         <div className="absolute top-2 left-2">
                                           <div
                                             className="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all"
-                                            style={{
+                  style={{
                                               backgroundColor: isSelected ? accent : 'rgba(255,255,255,0.9)',
                                               borderColor: isSelected ? accent : 'rgba(255,255,255,0.9)',
-                                            }}
+                  }}
                                           >
                                             {isSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
-                                          </div>
+              </div>
                                         </div>
                                       )}
                                       <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2 text-white text-xs font-medium">
@@ -1879,9 +1879,9 @@ export default function Collab(props: CollabProps = {}) {
               )}
             </div>
           )}
-            </>
-          )}
-        </div>
+          </>
+        )}
+      </div>
 
         {collabTab === 'affiliate' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 w-full">

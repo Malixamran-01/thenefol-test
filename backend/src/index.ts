@@ -102,12 +102,11 @@ app.use((req, res, next) => {
   express.json()(req, res, next)
 })
 
-// Serve uploaded files with CORS headers (+ CORP so other origins e.g. admin panel can display images in <img>)
+// Serve uploaded files with CORS headers
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Methods', 'GET, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Content-Type')
-  res.header('Cross-Origin-Resource-Policy', 'cross-origin')
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200)
   }
