@@ -103,10 +103,28 @@ function parseImages(raw: unknown): string[] {
   return []
 }
 
+/**
+ * Static files live at /uploads/... on the API host, NOT under /api.
+ * Admin getApiBaseUrl() often ends with /api — strip it for asset URLs.
+ */
+function uploadsOriginFromApiBase(apiBase: string): string {
+  return apiBase.replace(/\/+$/, '').replace(/\/api$/i, '')
+}
+
+/** Absolute URL for a stored upload path, filename, or full URL. */
 function toUploadUrl(apiBase: string, path: string | null | undefined): string {
   if (!path) return ''
-  if (path.startsWith('http')) return path
-  return `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`
+  const p = String(path).trim()
+  if (p.startsWith('http://') || p.startsWith('https://')) return p
+  const origin = uploadsOriginFromApiBase(apiBase)
+  if (p.startsWith('/uploads/')) return `${origin}${p}`
+  // Wrong legacy shape from some clients
+  if (p.startsWith('/api/uploads/')) return `${origin}${p.replace(/^\/api/, '')}`
+  if (!p.includes('/') && /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(p)) {
+    return `${origin}/uploads/blog/${p}`
+  }
+  if (p.startsWith('uploads/')) return `${origin}/${p}`
+  return `${origin}/${p.replace(/^\//, '')}`
 }
 
 function stripHtml(html: string): string {
@@ -144,6 +162,84 @@ function processContentImages(htmlContent: string): string {
     return match
   })
   return content
+}
+
+/**
+ * Prepare stored HTML for admin preview: fix image & iframe URLs and YouTube embed sizing.
+ * Uploads are served at {origin}/uploads/... — not under /api (admin API base often ends with /api).
+ */
+function prepareAdminBlogBodyHtml(html: string, apiBase: string, postImagePaths: string[]): string {
+  if (!html) return html
+  const origin = uploadsOriginFromApiBase(apiBase)
+  const postImagesAbs = postImagePaths.map((p) => toUploadUrl(apiBase, p))
+
+  let processed = html
+
+  processed = processed
+    .replace(/src="(\/uploads\/[^"]+)"/g, `src="${origin}$1"`)
+    .replace(/src='(\/uploads\/[^']+)'/g, `src='${origin}$1'`)
+    .replace(/src\s*=\s*"(\/uploads\/[^"]+)"/g, `src="${origin}$1"`)
+    .replace(/src\s*=\s*'(\/uploads\/[^']+)'/g, `src='${origin}$1'`)
+
+  // src="https://host/api/uploads/..." → drop /api (static files are not under /api)
+  processed = processed.replace(
+    /src=(["'])(https?:\/\/[^"']+?)\/api(\/uploads\/[^"']+)\1/gi,
+    (_m, q: string, base: string, uploadRest: string) => `src=${q}${base}${uploadRest}${q}`
+  )
+
+  processed = processed.replace(/<img([^>]*data-filename="([^"]+)"[^>]*)>/gi, (match, _rest, filename: string) => {
+    const fn = String(filename || '').trim()
+    if (!fn) return match
+    const hit = postImagesAbs.find((u) => u.includes(fn) || u.endsWith(fn) || fn.includes(u.split('/').pop() || ''))
+    const src = hit || (fn.startsWith('/uploads/') ? `${origin}${fn}` : `${origin}/uploads/blog/${fn.replace(/^\/+/, '')}`)
+    if (/src\s*=/i.test(match)) {
+      return match.replace(/\s+src\s*=\s*["'][^"']*["']/i, ` src="${src}"`)
+    }
+    return match.replace(/<img/i, `<img src="${src}"`)
+  })
+
+  processed = processed.replace(
+    /<img([^>]*)\ssrc\s*=\s*["']([a-f0-9-]{30,}\.(?:png|jpe?g|gif|webp))["']([^>]*)>/gi,
+    (_m, pre, fname: string, post) => {
+      const src = `${origin}/uploads/blog/${fname}`
+      return `<img${pre} src="${src}"${post}>`
+    }
+  )
+
+  // src="filename.png" (no path) — common when HTML was saved before URL rewrite
+  processed = processed.replace(
+    /<img([^>]*)\bsrc\s*=\s*"((?!https?:|\/|data:|blob:)[^"]+\.(?:png|jpe?g|gif|webp))"([^>]*)>/gi,
+    (_m, pre, fname: string, post) => `<img${pre} src="${origin}/uploads/blog/${fname}"${post}>`
+  )
+  processed = processed.replace(
+    /<img([^>]*)\bsrc\s*=\s*'((?!https?:|\/|data:|blob:)[^']+\.(?:png|jpe?g|gif|webp))'([^>]*)>/gi,
+    (_m, pre, fname: string, post) => `<img${pre} src='${origin}/uploads/blog/${fname}'${post}>`
+  )
+
+  processed = processed.replace(/<iframe([^>]*)>/gi, (_full, attrs: string) => {
+    const srcMatch = attrs.match(/\ssrc\s*=\s*["']([^"']*)["']/i)
+    let src = srcMatch ? srcMatch[1].trim() : ''
+    if (!src) return `<iframe${attrs}>`
+    if (src.startsWith('//')) src = `https:${src}`
+    else if (src.startsWith('/') && (src.includes('youtube') || src.includes('youtu'))) {
+      src = `https://www.youtube.com${src}`
+    } else if (!/^https?:/i.test(src) && (src.includes('youtube.com') || src.includes('youtu.be'))) {
+      src = `https://${src.replace(/^\/\//, '')}`
+    }
+    let next = attrs
+      .replace(/\s+src\s*=\s*["'][^"']*["']/i, ` src="${src}"`)
+      .replace(/\s+style\s*=\s*["'][^"']*["']/gi, '')
+    const allow =
+      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+    if (!/\sallow\s*=/i.test(next)) next += ` allow="${allow}"`
+    if (!/\sallowfullscreen/i.test(next)) next += ' allowfullscreen'
+    if (!/\sreferrerpolicy\s*=/i.test(next)) next += ' referrerpolicy="strict-origin-when-cross-origin"'
+    if (!/\sloading\s*=/i.test(next)) next += ' loading="lazy"'
+    next += ` style="width:100%;max-width:720px;height:405px;min-height:240px;border:0;border-radius:8px;display:block;margin:12px auto"`
+    return `<iframe${next}>`
+  })
+
+  return processContentImages(processed)
 }
 
 function estimateReadMinutes(html: string): number {
@@ -1008,7 +1104,7 @@ function AdminBlogPreview({
   const detail = toUploadUrl(apiBase, post.detail_image)
   const cats = parseStringList(post.categories)
   const og = toUploadUrl(apiBase, post.og_image)
-  const contentHtml = processContentImages(post.content || '')
+  const contentHtml = prepareAdminBlogBodyHtml(post.content || '', apiBase, parseImages(post.images))
   const titleHtml = post.title || ''
   const excerptHtml = post.excerpt || ''
   const mins = estimateReadMinutes(post.content)
@@ -1025,7 +1121,15 @@ function AdminBlogPreview({
         .admin-blog-preview-content ol { list-style: decimal; margin-left: 2em; }
         .admin-blog-preview-content a { color: #4B97C9; text-decoration: underline; }
         .admin-blog-preview-content img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
-        .admin-blog-preview-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
+        .admin-blog-preview-content .youtube-embed-wrapper {
+          width: 100%; max-width: 720px; margin: 1.25rem auto; min-height: 200px;
+          background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+          border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+        }
+        .admin-blog-preview-content .youtube-embed-wrapper iframe {
+          max-width: 100% !important; width: 100% !important; height: 405px !important; min-height: 240px !important;
+          border: 0 !important; border-radius: 8px; display: block;
+        }
         .admin-blog-preview-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
       `}</style>
 
