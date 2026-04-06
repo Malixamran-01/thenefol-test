@@ -1,550 +1,1129 @@
-import { useState, useEffect } from 'react'
-import { CheckCircle, XCircle, Trash2, Clock, User, Calendar, Eye, EyeOff, Star, Filter, Search } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  ArchiveRestore,
+  Calendar,
+  CheckCircle,
+  ExternalLink,
+  Eye,
+  Heart,
+  LayoutList,
+  Loader2,
+  MessageCircle,
+  Search,
+  Share2,
+  Star,
+  Trash2,
+  User,
+  X,
+  XCircle,
+  BarChart3,
+  ImageIcon,
+} from 'lucide-react'
 import { getApiBaseUrl } from '../../utils/apiUrl'
 
-interface BlogRequest {
-  id: string
+/** Row from GET /blog/admin/posts (+ joined counts) */
+interface AdminBlogPost {
+  id: number
   title: string
   content: string
   excerpt: string
   author_name: string
-  author_email?: string
-  author_id?: number | null
+  author_email?: string | null
   author_unique_user_id?: string | null
   user_id?: number | null
-  images: string[]
+  cover_image?: string | null
+  detail_image?: string | null
+  og_image?: string | null
+  images?: unknown
   status: 'pending' | 'approved' | 'rejected'
   featured: boolean
   created_at: string
   updated_at: string
-  rejection_reason?: string
+  rejection_reason?: string | null
+  meta_title?: string | null
+  meta_description?: string | null
+  meta_keywords?: unknown
+  og_title?: string | null
+  og_description?: string | null
+  canonical_url?: string | null
+  categories?: unknown
+  allow_comments?: boolean
+  is_active?: boolean
+  is_archived?: boolean
+  is_deleted?: boolean
+  deleted_at?: string | null
+  views_count?: number | null
+  reads_count?: number | null
+  admin_likes_count?: number | null
+  admin_comments_count?: number | null
+}
+
+type MainTab = 'review' | 'live' | 'rejected' | 'all' | 'trash'
+type PanelTab = 'preview' | 'seo' | 'moderation'
+
+function authHeaders(): HeadersInit {
+  const token = localStorage.getItem('auth_token')
+  const role = localStorage.getItem('role') || 'admin'
+  const permissions = localStorage.getItem('permissions') || ''
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) h.Authorization = `Bearer ${token}`
+  if (role) h['x-user-role'] = role
+  if (permissions) h['x-user-permissions'] = permissions
+  return h
+}
+
+function parseStringList(raw: unknown): string[] {
+  if (raw == null) return []
+  if (Array.isArray(raw)) return raw.map((x) => String(x).trim()).filter(Boolean)
+  if (typeof raw === 'string') {
+    try {
+      const j = JSON.parse(raw)
+      if (Array.isArray(j)) return j.map((x) => String(x).trim()).filter(Boolean)
+    } catch {
+      return raw
+        .split(/[,;]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    }
+  }
+  return []
+}
+
+function parseImages(raw: unknown): string[] {
+  if (raw == null) return []
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean)
+  if (typeof raw === 'string') {
+    try {
+      const j = JSON.parse(raw)
+      return Array.isArray(j) ? j.map(String).filter(Boolean) : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+function toUploadUrl(apiBase: string, path: string | null | undefined): string {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  return `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`
+}
+
+function stripHtml(html: string): string {
+  if (!html) return ''
+  const tmp = typeof document !== 'undefined' ? document.createElement('div') : null
+  if (tmp) {
+    tmp.innerHTML = html
+    return (tmp.textContent || tmp.innerText || '').trim()
+  }
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/** Match user-panel BlogPreview image width fixes */
+function processContentImages(htmlContent: string): string {
+  if (!htmlContent) return htmlContent
+  let content = htmlContent
+  content = content.replace(/<img([^>]*)>/gi, (match) => {
+    const widthStyleMatch = match.match(/data-width-style=["'](full|wide|normal)["']/i)
+    const style = widthStyleMatch ? widthStyleMatch[1].toLowerCase() : null
+    const styleAttr = match.match(/style=["']([^"']*)["']/)?.[1] ?? ''
+    const hasOverflow = /100vw|calc\(|120%/.test(styleAttr)
+    const widthCss =
+      style === 'full'
+        ? 'width:100%;max-width:100%'
+        : style === 'wide'
+          ? 'width:50%;max-width:50%'
+          : 'width:auto;max-width:100%'
+    const newStyle = `height:auto;margin:10px auto;display:block;${widthCss}`
+    if (style || hasOverflow) {
+      if (match.includes('style=')) {
+        return match.replace(/\s*style=["'][^"']*["']/, ` style="${newStyle}"`)
+      }
+      return match.replace(/<img/, `<img style="${newStyle}"`)
+    }
+    return match
+  })
+  return content
+}
+
+function estimateReadMinutes(html: string): number {
+  const text = stripHtml(html)
+  const words = text.split(/\s+/).filter(Boolean).length
+  return Math.max(1, Math.ceil(words / 200))
+}
+
+function userBlogPostUrl(postId: number): string {
+  const origin = (import.meta.env.VITE_USER_APP_ORIGIN as string | undefined)?.replace(/\/$/, '') || 'https://thenefol.com'
+  return `${origin}/#/user/blog/${postId}`
 }
 
 export default function BlogRequestManagement() {
-  const [blogRequests, setBlogRequests] = useState<BlogRequest[]>([])
-  const [blogPosts, setBlogPosts] = useState<BlogRequest[]>([])
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'requests' | 'posts'>('requests')
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedRequest, setSelectedRequest] = useState<BlogRequest | null>(null)
-  const [showDetails, setShowDetails] = useState(false)
-
   const API_BASE = getApiBaseUrl()
+  const [library, setLibrary] = useState<AdminBlogPost[]>([])
+  const [trashList, setTrashList] = useState<AdminBlogPost[]>([])
+  const [loading, setLoading] = useState(true)
+  const [trashLoading, setTrashLoading] = useState(false)
+  const [mainTab, setMainTab] = useState<MainTab>('review')
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<AdminBlogPost | null>(null)
+  const [panelTab, setPanelTab] = useState<PanelTab>('preview')
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectTarget, setRejectTarget] = useState<AdminBlogPost | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [actionBusy, setActionBusy] = useState<string | null>(null)
+  const [seoDraft, setSeoDraft] = useState<Record<string, string>>({})
+  const [seoSaving, setSeoSaving] = useState(false)
 
-  // Fetch blog requests
-  const fetchBlogRequests = async () => {
+  const loadLibrary = useCallback(async () => {
+    setLoading(true)
     try {
-      setLoading(true)
-      const response = await fetch(`${API_BASE}/blog/admin/requests`)
-      const data = await response.json()
-      setBlogRequests(data)
-    } catch (error) {
-      console.error('Failed to fetch blog requests:', error)
+      const r = await fetch(`${API_BASE}/blog/admin/posts`, { headers: authHeaders() })
+      const data = await r.json()
+      setLibrary(Array.isArray(data) ? data : [])
+    } catch (e) {
+      console.error(e)
+      setLibrary([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [API_BASE])
 
-  // Fetch blog posts
-  const fetchBlogPosts = async () => {
+  const loadTrash = useCallback(async () => {
+    setTrashLoading(true)
     try {
-      setLoading(true)
-      const response = await fetch(`${API_BASE}/blog/admin/posts`)
-      const data = await response.json()
-      setBlogPosts(data)
-    } catch (error) {
-      console.error('Failed to fetch blog posts:', error)
+      const r = await fetch(`${API_BASE}/blog/admin/posts?trash=1`, { headers: authHeaders() })
+      const data = await r.json()
+      setTrashList(Array.isArray(data) ? data : [])
+    } catch (e) {
+      console.error(e)
+      setTrashList([])
     } finally {
-      setLoading(false)
+      setTrashLoading(false)
     }
-  }
+  }, [API_BASE])
 
   useEffect(() => {
-    if (activeTab === 'requests') {
-      fetchBlogRequests()
-    } else {
-      fetchBlogPosts()
-    }
-  }, [activeTab])
+    loadLibrary()
+    loadTrash()
+  }, [loadLibrary, loadTrash])
 
-  // Approve blog request
-  const approveBlogRequest = async (requestId: string, featured = false) => {
+  useEffect(() => {
+    if (mainTab === 'trash') loadTrash()
+  }, [mainTab, loadTrash])
+
+  useEffect(() => {
+    if (!selected) {
+      setSeoDraft({})
+      return
+    }
+    const kw = parseStringList(selected.meta_keywords).join(', ')
+    const cat = parseStringList(selected.categories).join(', ')
+    setSeoDraft({
+      meta_title: selected.meta_title || '',
+      meta_description: selected.meta_description || '',
+      meta_keywords: kw,
+      og_title: selected.og_title || '',
+      og_description: selected.og_description || '',
+      canonical_url: selected.canonical_url || '',
+      categories: cat,
+    })
+  }, [selected?.id])
+
+  const counts = useMemo(() => {
+    const pending = library.filter((p) => p.status === 'pending').length
+    const live = library.filter((p) => p.status === 'approved').length
+    const rejected = library.filter((p) => p.status === 'rejected').length
+    return { pending, live, rejected, total: library.length, trash: trashList.length }
+  }, [library, trashList])
+
+  const visibleRows = useMemo(() => {
+    const base = mainTab === 'trash' ? trashList : library
+    let rows =
+      mainTab === 'review'
+        ? library.filter((p) => p.status === 'pending')
+        : mainTab === 'live'
+          ? library.filter((p) => p.status === 'approved')
+          : mainTab === 'rejected'
+            ? library.filter((p) => p.status === 'rejected')
+            : mainTab === 'all'
+              ? library
+              : base
+    const q = search.trim().toLowerCase()
+    if (q) {
+      rows = rows.filter(
+        (p) =>
+          stripHtml(p.title).toLowerCase().includes(q) ||
+          p.author_name.toLowerCase().includes(q) ||
+          (p.author_unique_user_id && p.author_unique_user_id.toLowerCase().includes(q)) ||
+          String(p.id).includes(q)
+      )
+    }
+    return rows
+  }, [library, trashList, mainTab, search])
+
+  const approve = async (post: AdminBlogPost, featured: boolean) => {
+    setActionBusy(`approve-${post.id}`)
     try {
-      const response = await fetch(`${API_BASE}/blog/admin/approve/${requestId}`, {
+      const r = await fetch(`${API_BASE}/blog/admin/approve/${post.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ featured })
+        headers: authHeaders(),
+        body: JSON.stringify({ featured }),
       })
-      
-      if (response.ok) {
-        await fetchBlogRequests()
-        await fetchBlogPosts()
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        alert(d.message || 'Approve failed')
+        return
       }
-    } catch (error) {
-      console.error('Failed to approve blog request:', error)
+      await loadLibrary()
+      setSelected(null)
+    } finally {
+      setActionBusy(null)
     }
   }
 
-  // Reject blog request
-  const rejectBlogRequest = async (requestId: string, reason: string) => {
+  const submitReject = async () => {
+    if (!rejectTarget || !rejectReason.trim()) {
+      alert('Please enter a rejection reason.')
+      return
+    }
+    setActionBusy(`reject-${rejectTarget.id}`)
     try {
-      const response = await fetch(`${API_BASE}/blog/admin/reject/${requestId}`, {
+      const r = await fetch(`${API_BASE}/blog/admin/reject/${rejectTarget.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
+        headers: authHeaders(),
+        body: JSON.stringify({ reason: rejectReason.trim() }),
       })
-      
-      if (response.ok) {
-        await fetchBlogRequests()
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        alert(d.message || 'Reject failed')
+        return
       }
-    } catch (error) {
-      console.error('Failed to reject blog request:', error)
+      setRejectOpen(false)
+      setRejectTarget(null)
+      setRejectReason('')
+      await loadLibrary()
+      setSelected(null)
+    } finally {
+      setActionBusy(null)
     }
   }
 
-  /** Re-apply weekly Nefol creator reward (safe if already credited for that week). */
-  const applyWeeklyCreatorReward = async (postId: string) => {
+  const softDelete = async (post: AdminBlogPost) => {
+    if (!confirm(`Move "${stripHtml(post.title)}" to trash?`)) return
+    setActionBusy(`del-${post.id}`)
     try {
-      const response = await fetch(`${API_BASE}/blog/admin/posts/${postId}/apply-weekly-creator-reward`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      const data = await response.json().catch(() => ({}))
-      if (response.ok) {
-        alert(data.message || 'Reward applied if eligible.')
-      } else {
-        alert(data.message || 'Could not apply reward.')
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${post.id}`, { method: 'DELETE', headers: authHeaders() })
+      if (!r.ok) {
+        alert('Delete failed')
+        return
       }
-    } catch (error) {
-      console.error('apply weekly reward:', error)
+      await loadLibrary()
+      await loadTrash()
+      setSelected(null)
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const restore = async (post: AdminBlogPost) => {
+    setActionBusy(`restore-${post.id}`)
+    try {
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${post.id}/restore`, {
+        method: 'POST',
+        headers: authHeaders(),
+      })
+      if (!r.ok) {
+        alert('Restore failed')
+        return
+      }
+      await loadLibrary()
+      await loadTrash()
+      setSelected(null)
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const toggleFeatured = async (post: AdminBlogPost) => {
+    setActionBusy(`feat-${post.id}`)
+    try {
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${post.id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ featured: !post.featured }),
+      })
+      if (!r.ok) {
+        alert('Update failed')
+        return
+      }
+      const data = await r.json().catch(() => ({}))
+      const updated = data.post as AdminBlogPost | undefined
+      setLibrary((prev) => prev.map((p) => (p.id === post.id ? { ...p, ...(updated || { featured: !post.featured }) } : p)))
+      setSelected((s) => (s && s.id === post.id ? { ...s, featured: updated?.featured ?? !post.featured } : s))
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const patchPostStatus = async (post: AdminBlogPost, body: { is_active?: boolean; is_archived?: boolean }) => {
+    setActionBusy(`st-${post.id}`)
+    try {
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${post.id}/status`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) {
+        alert('Status update failed')
+        return
+      }
+      const data = await r.json().catch(() => ({}))
+      const updated = data.post as AdminBlogPost | undefined
+      if (updated) {
+        setLibrary((prev) => prev.map((p) => (p.id === post.id ? { ...p, ...updated } : p)))
+        setSelected((s) => (s && s.id === post.id ? { ...s, ...updated } : s))
+      }
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const toggleAllowComments = async (post: AdminBlogPost) => {
+    const next = !(post.allow_comments !== false)
+    setActionBusy(`com-${post.id}`)
+    try {
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${post.id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ allow_comments: next }),
+      })
+      if (!r.ok) {
+        alert('Update failed')
+        return
+      }
+      const data = await r.json().catch(() => ({}))
+      const updated = data.post as AdminBlogPost | undefined
+      setLibrary((prev) => prev.map((p) => (p.id === post.id ? { ...p, allow_comments: updated?.allow_comments ?? next } : p)))
+      setSelected((s) => (s && s.id === post.id ? { ...s, allow_comments: updated?.allow_comments ?? next } : s))
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const saveSeo = async () => {
+    if (!selected) return
+    setSeoSaving(true)
+    try {
+      const keywords = seoDraft.meta_keywords
+        .split(/[,;]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const categories = seoDraft.categories
+        .split(/[,;]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${selected.id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          meta_title: seoDraft.meta_title || null,
+          meta_description: seoDraft.meta_description || null,
+          meta_keywords: keywords.length ? JSON.stringify(keywords) : null,
+          og_title: seoDraft.og_title || null,
+          og_description: seoDraft.og_description || null,
+          canonical_url: seoDraft.canonical_url || null,
+          categories: categories.length ? JSON.stringify(categories) : null,
+        }),
+      })
+      if (!r.ok) {
+        alert('Save failed')
+        return
+      }
+      const data = await r.json().catch(() => ({}))
+      const updated = data.post as AdminBlogPost | undefined
+      if (updated) {
+        setLibrary((prev) => prev.map((p) => (p.id === selected.id ? { ...p, ...updated } : p)))
+        setSelected({ ...selected, ...updated })
+      }
+      alert('SEO settings saved.')
+    } finally {
+      setSeoSaving(false)
+    }
+  }
+
+  const applyWeeklyCreatorReward = async (postId: number) => {
+    try {
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${postId}/apply-weekly-creator-reward`, {
+        method: 'POST',
+        headers: authHeaders(),
+      })
+      const d = await r.json().catch(() => ({}))
+      alert(r.ok ? d.message || 'Done.' : d.message || 'Could not apply reward.')
+    } catch {
       alert('Request failed.')
     }
   }
 
-  // Delete blog post
-  const deleteBlogPost = async (postId: string) => {
-    if (!confirm('Are you sure you want to delete this blog post?')) return
-    
-    try {
-      const response = await fetch(`${API_BASE}/blog/admin/posts/${postId}`, {
-        method: 'DELETE'
-      })
-      
-      if (response.ok) {
-        await fetchBlogPosts()
-      }
-    } catch (error) {
-      console.error('Failed to delete blog post:', error)
-    }
-  }
-
-  // Filter and search functions
-  const filteredRequests = blogRequests.filter(request => {
-    const matchesStatus = filterStatus === 'all' || request.status === filterStatus
-    const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.author_name.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesStatus && matchesSearch
-  })
-
-  const filteredPosts = blogPosts.filter(post => {
-    const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.author_name.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesSearch
-  })
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      case 'approved': return 'bg-green-100 text-green-800'
-      case 'rejected': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+  const tabBtn = (id: MainTab, label: string, sub?: string) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => setMainTab(id)}
+      className={`flex flex-col items-start rounded-xl border px-4 py-3 text-left transition-all ${
+        mainTab === id
+          ? 'border-[#4B97C9] bg-[#f0f8fd] shadow-sm ring-1 ring-[#4B97C9]/30'
+          : 'border-slate-200 bg-white hover:border-slate-300'
+      }`}
+    >
+      <span className="text-sm font-semibold text-slate-800">{label}</span>
+      {sub != null && <span className="text-xs text-slate-500 mt-0.5">{sub}</span>}
+    </button>
+  )
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
-      <style>{`
-        :root {
-          --arctic-blue-primary: #7DD3D3;
-          --arctic-blue-primary-hover: #5EC4C4;
-          --arctic-blue-primary-dark: #4A9FAF;
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
-        }
-      `}</style>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
-            style={{
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
-              letterSpacing: '0.15em'
+    <div className="min-h-screen bg-[#f4f9f9] p-4 sm:p-6 lg:p-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <div className="mx-auto max-w-[1400px] space-y-6">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1
+              className="text-2xl sm:text-3xl font-light tracking-[0.12em] text-[#1B4965]"
+              style={{ fontFamily: 'var(--font-heading-family, Cormorant Garamond, serif)' }}
+            >
+              Blog management
+            </h1>
+            <p className="mt-1 text-sm text-slate-600 max-w-xl">
+              Review submissions, preview rich posts like authors see them, edit SEO / Open Graph, moderate visibility, and manage trash — aligned with NEFOL Social authoring.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              loadLibrary()
+              if (mainTab === 'trash') loadTrash()
             }}
+            className="inline-flex items-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
           >
-            Blog Request Management
-          </h1>
-          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
-            Manage blog submissions and published posts
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5" style={{ color: '#D97706' }} />
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              {blogRequests.filter(r => r.status === 'pending').length} pending
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5" style={{ color: '#059669' }} />
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              {blogPosts.filter(p => p.status === 'approved').length} published
-            </span>
-          </div>
-        </div>
-      </div>
+            <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </header>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => setActiveTab('requests')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            activeTab === 'requests'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Blog Requests
-        </button>
-        <button
-          onClick={() => setActiveTab('posts')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            activeTab === 'posts'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Published Posts
-        </button>
-      </div>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+          <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Pending review</p>
+            <p className="text-2xl font-light text-amber-950">{counts.pending}</p>
+          </div>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Published</p>
+            <p className="text-2xl font-light text-emerald-950">{counts.live}</p>
+          </div>
+          <div className="rounded-xl border border-rose-100 bg-rose-50/80 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-rose-800">Rejected</p>
+            <p className="text-2xl font-light text-rose-950">{counts.rejected}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">All active</p>
+            <p className="text-2xl font-light text-slate-900">{counts.total}</p>
+          </div>
+          <div className="rounded-xl border border-slate-300 bg-slate-100/80 px-4 py-3 col-span-2 sm:col-span-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Trash</p>
+            <p className="text-2xl font-light text-slate-900">{counts.trash}</p>
+          </div>
+        </div>
 
-      {/* Search and Filter */}
-      <div className="flex gap-4 mb-6">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        {/* Main tabs */}
+        <div className="flex flex-wrap gap-2">
+          {tabBtn('review', 'Review queue', `${counts.pending} pending`)}
+          {tabBtn('live', 'Live posts', `${counts.live} approved`)}
+          {tabBtn('rejected', 'Rejected', `${counts.rejected}`)}
+          {tabBtn('all', 'All (active)', `${counts.total} rows`)}
+          {tabBtn('trash', 'Trash', `${counts.trash} deleted`)}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
-            type="text"
-            placeholder="Search by title or author..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            type="search"
+            placeholder="Search title, author, Nefol ID, post #…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm shadow-sm focus:border-[#4B97C9] focus:outline-none focus:ring-2 focus:ring-[#4B97C9]/20"
           />
         </div>
-        {activeTab === 'requests' && (
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        )}
-      </div>
 
-      {/* Content */}
-      {loading ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading...</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {activeTab === 'requests' ? (
-            filteredRequests.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                No blog requests found
-              </div>
-            ) : (
-              filteredRequests.map((request) => (
-                <div key={request.id} className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">{request.title}</h3>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(request.status)}`}>
-                          {request.status}
-                        </span>
-                        {request.featured && (
-                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded flex items-center gap-1">
-                            <Star className="w-3 h-3" />
-                            Featured
-                          </span>
+        {/* List */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+          {loading && mainTab !== 'trash' ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+              <Loader2 className="h-10 w-10 animate-spin text-[#4B97C9] mb-3" />
+              Loading posts…
+            </div>
+          ) : mainTab === 'trash' && trashLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+              <Loader2 className="h-10 w-10 animate-spin text-[#4B97C9] mb-3" />
+              Loading trash…
+            </div>
+          ) : visibleRows.length === 0 ? (
+            <div className="py-16 text-center text-slate-500">
+              <LayoutList className="mx-auto h-10 w-10 opacity-40 mb-2" />
+              No posts in this view.
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {visibleRows.map((post) => {
+                const cover = toUploadUrl(API_BASE, post.cover_image)
+                const cats = parseStringList(post.categories)
+                const busy = actionBusy != null && actionBusy.endsWith(`-${post.id}`)
+                return (
+                  <li key={`${mainTab}-${post.id}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4 hover:bg-slate-50/80">
+                    <div className="flex shrink-0 items-start gap-3 sm:w-[420px]">
+                      <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                        {cover ? (
+                          <img src={cover} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-slate-300">
+                            <ImageIcon className="h-6 w-6" />
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                        <div className="flex items-center gap-1">
-                          <User className="w-4 h-4" />
-                          {request.author_name}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(request.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <p className="text-gray-700 mb-3">{request.excerpt}</p>
-                      {request.images && request.images.length > 0 && (
-                        <div className="flex gap-2 mb-3">
-                          {request.images.map((image: string, index: number) => (
-                            <img
-                              key={index}
-                              src={`${API_BASE}${image}`}
-                              alt={`Blog image ${index + 1}`}
-                              className="w-16 h-16 object-cover rounded"
-                            />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-900 line-clamp-2">{stripHtml(post.title) || '(no title)'}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          <span
+                            className={`rounded-full px-2 py-0.5 font-medium ${
+                              post.status === 'pending'
+                                ? 'bg-amber-100 text-amber-900'
+                                : post.status === 'approved'
+                                  ? 'bg-emerald-100 text-emerald-900'
+                                  : 'bg-rose-100 text-rose-900'
+                            }`}
+                          >
+                            {post.status}
+                          </span>
+                          {post.featured && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-2 py-0.5 font-medium text-sky-900">
+                              <Star className="h-3 w-3" /> Featured
+                            </span>
+                          )}
+                          {post.is_archived && (
+                            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">Archived</span>
+                          )}
+                          {post.is_active === false && (
+                            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-orange-900">Hidden</span>
+                          )}
+                          {cats.slice(0, 3).map((c) => (
+                            <span key={c} className="rounded-md bg-slate-100 px-1.5 py-0.5 text-slate-600">
+                              {c}
+                            </span>
                           ))}
                         </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedRequest(request)
-                          setShowDetails(true)
-                        }}
-                        className="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </button>
-                      {request.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => approveBlogRequest(request.id, false)}
-                            className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => approveBlogRequest(request.id, true)}
-                            className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                          >
-                            <Star className="w-4 h-4" />
-                            Featured
-                          </button>
-                          <button
-                            onClick={() => {
-                              const reason = prompt('Reason for rejection:')
-                              if (reason) rejectBlogRequest(request.id, reason)
-                            }}
-                            className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            <XCircle className="w-4 h-4" />
-                            Reject
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {request.rejection_reason && (
-                    <div className="bg-red-50 border border-red-200 rounded p-3 mb-3">
-                      <p className="text-sm text-red-800">
-                        <strong>Rejection Reason:</strong> {request.rejection_reason}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))
-            )
-          ) : (
-            filteredPosts.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                No published posts yet
-              </div>
-            ) : (
-              filteredPosts.map((post) => (
-                <div key={post.id} className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">{post.title}</h3>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(post.status)}`}>
-                          {post.status}
-                        </span>
-                        {post.featured && (
-                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded flex items-center gap-1">
-                            <Star className="w-3 h-3" />
-                            Featured
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
+                          <span className="inline-flex items-center gap-1">
+                            <User className="h-3.5 w-3.5" />
+                            {post.author_name}
+                            {post.author_unique_user_id ? ` · ${post.author_unique_user_id}` : post.user_id ? ` · user #${post.user_id}` : ''}
                           </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                        <div className="flex items-center gap-1">
-                          <User className="w-4 h-4" />
-                          {post.author_name}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(post.created_at).toLocaleDateString()}
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {new Date(post.created_at).toLocaleString()}
+                          </span>
                         </div>
                       </div>
-                      <p className="text-gray-700">{post.excerpt}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedRequest(post)
-                          setShowDetails(true)
-                        }}
-                        className="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </button>
-                      {post.status === 'approved' && (
+                    <div className="flex flex-1 flex-wrap items-center justify-between gap-2 sm:justify-end">
+                      <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1" title="Views / reads (if tracked)">
+                          <BarChart3 className="h-3.5 w-3.5" />
+                          {post.views_count ?? 0} / {post.reads_count ?? 0}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Heart className="h-3.5 w-3.5" />
+                          {post.admin_likes_count ?? 0}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          {post.admin_comments_count ?? 0}
+                        </span>
+                        <span>{estimateReadMinutes(post.content)} min read</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          title="Credit 100 Nefol coins if this post qualifies (first approved post of the UTC week)"
-                          onClick={() => applyWeeklyCreatorReward(String(post.id))}
-                          className="flex items-center gap-1 px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm"
+                          disabled={busy}
+                          onClick={() => {
+                            setSelected(post)
+                            setPanelTab('preview')
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg bg-[#1B4965] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#163d54]"
                         >
-                          Credit weekly coins
+                          <Eye className="h-3.5 w-3.5" />
+                          Review & preview
                         </button>
-                      )}
+                        {post.status === 'approved' && !post.is_deleted && (
+                          <a
+                            href={userBlogPostUrl(post.id)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Live
+                          </a>
+                        )}
+                        {mainTab === 'trash' ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => restore(post)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900"
+                          >
+                            <ArchiveRestore className="h-3.5 w-3.5" />
+                            Restore
+                          </button>
+                        ) : (
+                          <>
+                            {post.status === 'pending' && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={!!actionBusy}
+                                  onClick={() => approve(post, false)}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!actionBusy}
+                                  onClick={() => approve(post, true)}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700"
+                                >
+                                  <Star className="h-3.5 w-3.5" />
+                                  Feature
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!actionBusy}
+                                  onClick={() => {
+                                    setRejectTarget(post)
+                                    setRejectReason('')
+                                    setRejectOpen(true)
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            {post.status === 'approved' && (
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => toggleFeatured(post)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700"
+                              >
+                                <Star className="h-3.5 w-3.5" />
+                                {post.featured ? 'Unfeature' : 'Feature'}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => softDelete(post)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Trash
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Detail + preview drawer */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
+          <div className="flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div className="min-w-0 pr-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Post #{selected.id}</p>
+                <h2 className="truncate text-lg font-semibold text-[#1B4965]">{stripHtml(selected.title)}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex border-b border-slate-200 px-2">
+              {(['preview', 'seo', 'moderation'] as PanelTab[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setPanelTab(t)}
+                  className={`px-4 py-2.5 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
+                    panelTab === t ? 'border-[#4B97C9] text-[#1B4965]' : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {t === 'seo' ? 'SEO & sharing' : t}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {panelTab === 'preview' && (
+                <AdminBlogPreview apiBase={API_BASE} post={selected} onOpenLive={() => window.open(userBlogPostUrl(selected.id), '_blank')} />
+              )}
+              {panelTab === 'seo' && (
+                <div className="space-y-4 p-6 max-w-2xl">
+                  <p className="text-sm text-slate-600">
+                    Matches author fields in the blog composer: meta title/description, keywords (tags), Open Graph title/description, canonical URL, and categories (comma-separated).
+                  </p>
+                  <label className="block text-xs font-semibold uppercase text-slate-500">Meta title</label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    value={seoDraft.meta_title}
+                    onChange={(e) => setSeoDraft((d) => ({ ...d, meta_title: e.target.value }))}
+                  />
+                  <label className="block text-xs font-semibold uppercase text-slate-500">Meta description</label>
+                  <textarea
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[80px]"
+                    value={seoDraft.meta_description}
+                    onChange={(e) => setSeoDraft((d) => ({ ...d, meta_description: e.target.value }))}
+                  />
+                  <label className="block text-xs font-semibold uppercase text-slate-500">Keywords / tags (comma-separated)</label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    value={seoDraft.meta_keywords}
+                    onChange={(e) => setSeoDraft((d) => ({ ...d, meta_keywords: e.target.value }))}
+                  />
+                  <label className="block text-xs font-semibold uppercase text-slate-500">OG title</label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    value={seoDraft.og_title}
+                    onChange={(e) => setSeoDraft((d) => ({ ...d, og_title: e.target.value }))}
+                  />
+                  <label className="block text-xs font-semibold uppercase text-slate-500">OG description</label>
+                  <textarea
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[72px]"
+                    value={seoDraft.og_description}
+                    onChange={(e) => setSeoDraft((d) => ({ ...d, og_description: e.target.value }))}
+                  />
+                  <label className="block text-xs font-semibold uppercase text-slate-500">Canonical URL</label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs"
+                    value={seoDraft.canonical_url}
+                    onChange={(e) => setSeoDraft((d) => ({ ...d, canonical_url: e.target.value }))}
+                  />
+                  <label className="block text-xs font-semibold uppercase text-slate-500">Categories (comma-separated)</label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    value={seoDraft.categories}
+                    onChange={(e) => setSeoDraft((d) => ({ ...d, categories: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    disabled={seoSaving}
+                    onClick={() => saveSeo()}
+                    className="rounded-xl bg-[#1B4965] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#163d54] disabled:opacity-50"
+                  >
+                    {seoSaving ? 'Saving…' : 'Save SEO & categories'}
+                  </button>
+                </div>
+              )}
+              {panelTab === 'moderation' && (
+                <div className="space-y-6 p-6 max-w-xl">
+                  {selected.status === 'pending' && (
+                    <div className="flex flex-wrap gap-2">
                       <button
-                        onClick={() => deleteBlogPost(post.id)}
-                        className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                        type="button"
+                        disabled={!!actionBusy}
+                        onClick={() => approve(selected, false)}
+                        className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
                       >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!!actionBusy}
+                        onClick={() => approve(selected, true)}
+                        className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white"
+                      >
+                        Approve & feature
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!!actionBusy}
+                        onClick={() => {
+                          setRejectTarget(selected)
+                          setRejectReason('')
+                          setRejectOpen(true)
+                        }}
+                        className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+                      >
+                        Reject…
                       </button>
                     </div>
-                  </div>
-                  {post.images && post.images.length > 0 && (
-                    <div className="flex gap-2">
-                      {post.images.map((image: string, index: number) => (
-                        <img
-                          key={index}
-                          src={`${API_BASE}${image}`}
-                          alt={`Blog image ${index + 1}`}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      ))}
+                  )}
+                  {selected.status === 'approved' && !selected.is_deleted && (
+                    <>
+                      <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+                        <p className="text-sm font-semibold text-slate-800">Visibility</p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={!!actionBusy}
+                            onClick={() => patchPostStatus(selected, { is_active: !(selected.is_active !== false) })}
+                            className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                          >
+                            {selected.is_active === false ? 'Show on site' : 'Hide from listings'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!!actionBusy}
+                            onClick={() => patchPostStatus(selected, { is_archived: !selected.is_archived })}
+                            className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                          >
+                            {selected.is_archived ? 'Unarchive' : 'Archive'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!!actionBusy}
+                            onClick={() => toggleFeatured(selected)}
+                            className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                          >
+                            {selected.featured ? 'Remove featured' : 'Mark featured'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+                        <p className="text-sm font-semibold text-slate-800">Comments</p>
+                        <button
+                          type="button"
+                          disabled={!!actionBusy}
+                          onClick={() => toggleAllowComments(selected)}
+                          className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                        >
+                          {selected.allow_comments === false ? 'Enable comments' : 'Disable comments'}
+                        </button>
+                      </div>
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 space-y-2">
+                        <p className="text-sm font-semibold text-emerald-900">Creator rewards</p>
+                        <p className="text-xs text-emerald-800">
+                          First approved post of the UTC week can earn Nefol coins. Use this if you fixed author linkage after approval.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => applyWeeklyCreatorReward(selected.id)}
+                          className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white"
+                        >
+                          Apply weekly creator reward
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!!actionBusy}
+                        onClick={() => softDelete(selected)}
+                        className="rounded-xl border-2 border-rose-200 px-4 py-2 text-sm font-semibold text-rose-800"
+                      >
+                        Move to trash
+                      </button>
+                    </>
+                  )}
+                  {selected.rejection_reason && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                      <p className="text-xs font-semibold text-rose-900 uppercase">Rejection reason</p>
+                      <p className="text-sm text-rose-800 mt-1">{selected.rejection_reason}</p>
                     </div>
                   )}
                 </div>
-              ))
-            )
-          )}
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Blog Details Modal */}
-      {showDetails && selectedRequest && (
-        <BlogDetailsModal
-          blog={selectedRequest}
-          onClose={() => {
-            setShowDetails(false)
-            setSelectedRequest(null)
-          }}
-        />
+      {/* Reject modal */}
+      {rejectOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">Reject submission</h3>
+            <p className="mt-1 text-sm text-slate-600">Authors see this message in their dashboard. Be specific and constructive.</p>
+            <textarea
+              className="mt-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm min-h-[120px]"
+              placeholder="Reason for rejection…"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectOpen(false)
+                  setRejectTarget(null)
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!!actionBusy}
+                onClick={() => submitReject()}
+                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Submit rejection
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-// Blog Details Modal Component
-function BlogDetailsModal({
-  blog,
-  onClose
+function AdminBlogPreview({
+  apiBase,
+  post,
+  onOpenLive,
 }: {
-  blog: BlogRequest
-  onClose: () => void
+  apiBase: string
+  post: AdminBlogPost
+  onOpenLive: () => void
 }) {
-  const API_BASE = getApiBaseUrl()
-  const renderContent = (content: string) => {
-    if (!content) return <p className="text-gray-500">No content provided.</p>
-    const hasHtml = content.includes('<') && content.includes('>')
-    if (hasHtml) {
-      return (
-        <div
-          className="prose prose-slate max-w-none"
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
-      )
-    }
-    return <div className="whitespace-pre-wrap text-gray-700">{content}</div>
-  }
+  const cover = toUploadUrl(apiBase, post.cover_image)
+  const detail = toUploadUrl(apiBase, post.detail_image)
+  const cats = parseStringList(post.categories)
+  const og = toUploadUrl(apiBase, post.og_image)
+  const contentHtml = processContentImages(post.content || '')
+  const titleHtml = post.title || ''
+  const excerptHtml = post.excerpt || ''
+  const mins = estimateReadMinutes(post.content)
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">{blog.title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded">
-            <XCircle className="w-6 h-6" />
-          </button>
-        </div>
+    <div className="p-4 sm:p-8 max-w-3xl mx-auto">
+      <style>{`
+        .admin-blog-preview-content { line-height: 1.85; font-size: 1.0625rem; color: #1e293b; }
+        .admin-blog-preview-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
+        .admin-blog-preview-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
+        .admin-blog-preview-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
+        .admin-blog-preview-content p { margin: 0.5em 0; }
+        .admin-blog-preview-content ul { list-style: disc; margin-left: 2em; }
+        .admin-blog-preview-content ol { list-style: decimal; margin-left: 2em; }
+        .admin-blog-preview-content a { color: #4B97C9; text-decoration: underline; }
+        .admin-blog-preview-content img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
+        .admin-blog-preview-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
+        .admin-blog-preview-content .image-caption { font-size: 0.875rem; color: #6b7280; font-style: italic; margin-top: 0.5rem; text-align: center; }
+      `}</style>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <div className="flex items-center gap-1">
-              <User className="w-4 h-4" />
-              {blog.author_name} {blog.author_unique_user_id ? `(${blog.author_unique_user_id})` : blog.author_id != null || blog.user_id != null ? `(User #${blog.author_id ?? blog.user_id})` : blog.author_email ? `(${blog.author_email})` : ''}
-            </div>
-            <div className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
-              {new Date(blog.created_at).toLocaleDateString()}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded p-4">
-            <h3 className="font-semibold mb-2">Excerpt:</h3>
-            <p className="text-gray-700">{blog.excerpt}</p>
-          </div>
-
-          <div className="bg-gray-50 rounded p-4">
-            <h3 className="font-semibold mb-2">Full Content:</h3>
-            {renderContent(blog.content)}
-          </div>
-
-          {blog.images && blog.images.length > 0 && (
-            <div>
-              <h3 className="font-semibold mb-2">Images:</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {blog.images.map((image: string, index: number) => (
-                  <img
-                    key={index}
-                    src={`${API_BASE}${image}`}
-                    alt={`Blog image ${index + 1}`}
-                    className="w-full h-32 object-cover rounded"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {blog.rejection_reason && (
-            <div className="bg-red-50 border border-red-200 rounded p-4">
-              <h3 className="font-semibold text-red-800 mb-2">Rejection Reason:</h3>
-              <p className="text-red-700">{blog.rejection_reason}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="flex justify-end mt-6">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-bold text-white">Preview</span>
+        {post.status === 'approved' && (
           <button
-            onClick={onClose}
-            className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            type="button"
+            onClick={onOpenLive}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
           >
-            Close
+            <ExternalLink className="h-3.5 w-3.5" />
+            Open live reader
           </button>
-        </div>
+        )}
       </div>
+
+      {cats.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {cats.map((c) => (
+            <span key={c} className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-900">
+              {c}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <h1 className="text-3xl sm:text-4xl font-bold leading-tight text-[#1B4965] mb-4">
+        {/<[^>]+>/.test(titleHtml) ? <span dangerouslySetInnerHTML={{ __html: titleHtml }} /> : titleHtml || 'Untitled'}
+      </h1>
+
+      <div className="mb-6 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+        <span className="inline-flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200">
+            <User className="h-4 w-4" />
+          </span>
+          <span>
+            <span className="font-semibold text-slate-900 block">{post.author_name}</span>
+            <span className="text-xs text-slate-500">
+              {post.author_unique_user_id || (post.user_id != null ? `User #${post.user_id}` : post.author_email || '')}
+            </span>
+          </span>
+        </span>
+        <span className="text-slate-300">|</span>
+        <span className="inline-flex items-center gap-1">
+          <Calendar className="h-4 w-4" />
+          {new Date(post.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+        </span>
+        <span className="text-slate-300">|</span>
+        <span>{mins} min read</span>
+        <span className="text-slate-300">|</span>
+        <span className="inline-flex items-center gap-1">
+          <Heart className="h-4 w-4" /> {post.admin_likes_count ?? 0}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <MessageCircle className="h-4 w-4" /> {post.admin_comments_count ?? 0}
+        </span>
+      </div>
+
+      {cover && (
+        <div className="mb-8 overflow-hidden rounded-2xl bg-slate-100">
+          <img src={cover} alt="" className="w-full max-h-[420px] object-cover" />
+        </div>
+      )}
+
+      {detail && (
+        <div className="mb-8 overflow-hidden rounded-2xl bg-slate-100 aspect-video">
+          <img src={detail} alt="" className="h-full w-full object-cover" />
+        </div>
+      )}
+
+      {excerptHtml && (
+        <div className="mb-8 text-lg text-slate-700 leading-relaxed">
+          {/<[^>]+>/.test(excerptHtml) ? <span dangerouslySetInnerHTML={{ __html: excerptHtml }} /> : excerptHtml}
+        </div>
+      )}
+
+      <div className="admin-blog-preview-content prose max-w-none" dangerouslySetInnerHTML={{ __html: contentHtml }} />
+
+      {(og || parseImages(post.images).length > 0) && (
+        <div className="mt-10 border-t border-slate-200 pt-6">
+          <p className="text-xs font-semibold uppercase text-slate-500 mb-2 flex items-center gap-1">
+            <Share2 className="h-3.5 w-3.5" /> Sharing assets
+          </p>
+          {og && (
+            <p className="text-xs text-slate-600 mb-2">
+              OG image: <a className="text-[#4B97C9] underline" href={og} target="_blank" rel="noreferrer">{og}</a>
+            </p>
+          )}
+          {parseImages(post.images).length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {parseImages(post.images).map((src, i) => (
+                <img key={i} src={toUploadUrl(apiBase, src)} alt="" className="rounded-lg object-cover h-24 w-full" />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

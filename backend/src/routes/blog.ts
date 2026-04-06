@@ -1374,6 +1374,7 @@ router.get('/admin/requests', async (req, res) => {
 })
 
 // Get all blog posts (admin only)
+// Query: trash=1 → soft-deleted only; otherwise active rows. status=pending|approved|rejected optional filter.
 router.get('/admin/posts', async (req, res) => {
   try {
     await cleanupDeletedBlogPosts()
@@ -1381,14 +1382,32 @@ router.get('/admin/posts', async (req, res) => {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
-    const { rows } = await pool.query(`
-      SELECT p.*, u.unique_user_id as author_unique_user_id
+    const trash =
+      String((req.query as any).trash || '') === '1' || String((req.query as any).trash || '').toLowerCase() === 'true'
+    const statusQ = String((req.query as any).status || '').trim().toLowerCase()
+    const statusFilter =
+      statusQ === 'pending' || statusQ === 'approved' || statusQ === 'rejected' ? statusQ : null
+
+    const params: unknown[] = []
+    let where = trash ? 'p.is_deleted = true' : 'p.is_deleted = false'
+    if (statusFilter) {
+      params.push(statusFilter)
+      where += ` AND p.status = $${params.length}`
+    }
+
+    const { rows } = await pool.query(
+      `
+      SELECT p.*, u.unique_user_id as author_unique_user_id,
+        (SELECT COUNT(*)::int FROM blog_post_likes WHERE post_id = p.id) AS admin_likes_count,
+        (SELECT COUNT(*)::int FROM blog_comments WHERE post_id = p.id AND is_deleted = false) AS admin_comments_count
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.is_deleted = false
-      ORDER BY p.created_at DESC
-    `)
-    
+      WHERE ${where}
+      ORDER BY p.updated_at DESC NULLS LAST, p.created_at DESC
+    `,
+      params
+    )
+
     res.json(rows)
   } catch (error) {
     console.error('Error fetching blog posts:', error)

@@ -18,6 +18,7 @@
 import { Request, Response, Router } from 'express'
 import { Pool } from 'pg'
 import { assertCollabNotBlockedByAppId } from '../utils/collabBlocks'
+import { normalizeHandle, parseInstagramHandles } from '../utils/instagramHandles'
 import { normalizeCollabContentUrl } from './platform'
 
 // Instagram API endpoints (direct, no Facebook)
@@ -26,6 +27,41 @@ const IG_GRAPH   = 'https://graph.instagram.com'
 
 // Keywords that must appear in reel captions
 export const NEFOL_KEYWORDS = ['nefol', 'neföl', '#nefol', '#neföl', 'nefol skincare', 'nefol hair', 'nefoltest']
+
+const IG_DUPLICATE_MSG =
+  'This Instagram account is already linked to another Nefol account. Each creator must use their own Instagram.'
+
+/**
+ * One Instagram identity (IG user id and/or @handle) may not be tied to two different collab applications
+ * (two Nefol users). Aligns with assertActiveCollabNotDuplicate on application submit.
+ */
+export async function assertInstagramIdentityAvailableForCollab(
+  pool: Pool,
+  collabId: number,
+  igUserId: string,
+  igUsername: string
+): Promise<string | null> {
+  const idStr = String(igUserId || '').trim()
+  const normUser = normalizeHandle(igUsername)
+  const { rows } = await pool.query(
+    `SELECT id, instagram, instagram_connected, ig_username, ig_user_id
+     FROM collab_applications
+     WHERE id <> $1 AND status IN ('pending', 'approved')`,
+    [collabId]
+  )
+  for (const row of rows) {
+    const otherId = String(row.ig_user_id || '').trim()
+    if (idStr && otherId && idStr === otherId) return IG_DUPLICATE_MSG
+    if (normUser) {
+      if (row.instagram_connected && row.ig_username && normalizeHandle(row.ig_username) === normUser) {
+        return IG_DUPLICATE_MSG
+      }
+      const claimed = parseInstagramHandles(row.instagram, undefined)
+      if (claimed.includes(normUser)) return IG_DUPLICATE_MSG
+    }
+  }
+  return null
+}
 
 export function extractShortcode(url: string): string | null {
   const m = url.match(/\/reel\/([A-Za-z0-9_-]+)/)
@@ -347,37 +383,35 @@ export async function handleCallback(pool: Pool, req: Request, res: Response) {
     }
 
     const cid = Number(collabId)
-    if (igUserId) {
-      const conflict = await pool.query(
-        `SELECT id FROM collab_applications
-         WHERE ig_user_id = $1 AND id <> $2`,
-        [igUserId, cid]
-      )
-      if (conflict.rows.length > 0) {
-        return res.redirect(
-          `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(
-            'This Instagram account is already linked to another Creator Collab application. Each creator must use their own Instagram.'
-          )}`
-        )
-      }
+    const conflictMsg = await assertInstagramIdentityAvailableForCollab(pool, cid, igUserId, igUsername)
+    if (conflictMsg) {
+      return res.redirect(`${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(conflictMsg)}`)
     }
 
     // Step 4: Store token
     // We store the IG user token in fb_page_access_token so existing fetchReelData / cron works unchanged
-    await pool.query(
-      `UPDATE collab_applications
-       SET instagram_connected  = true,
-           fb_user_access_token = $1,
-           fb_page_id           = NULL,
-           fb_page_access_token = $1,
-           ig_user_id           = $2,
-           ig_username          = $3,
-           token_expires_at     = $4,
-           token_updated_at     = NOW(),
-           updated_at           = NOW()
-       WHERE id = $5`,
-      [igUserToken, igUserId, igUsername, tokenExpiresAt, collabId]
-    )
+    try {
+      await pool.query(
+        `UPDATE collab_applications
+         SET instagram_connected  = true,
+             fb_user_access_token = $1,
+             fb_page_id           = NULL,
+             fb_page_access_token = $1,
+             ig_user_id           = $2,
+             ig_username          = $3,
+             token_expires_at     = $4,
+             token_updated_at     = NOW(),
+             updated_at           = NOW()
+         WHERE id = $5`,
+        [igUserToken, igUserId, igUsername, tokenExpiresAt, collabId]
+      )
+    } catch (dbErr: unknown) {
+      const code = dbErr && typeof dbErr === 'object' && 'code' in dbErr ? (dbErr as { code: string }).code : ''
+      if (code === '23505') {
+        return res.redirect(`${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(IG_DUPLICATE_MSG)}`)
+      }
+      throw dbErr
+    }
 
     console.log(`✅ Instagram connected for collab ${collabId}: @${igUsername} (${accountType})`)
     return res.redirect(`${frontendUrl}/#/user/collab?ig_connected=1`)

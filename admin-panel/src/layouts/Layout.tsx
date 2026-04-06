@@ -121,7 +121,7 @@ const Layout = () => {
       defaultOpen: true,
       items: [
         { name: 'CMS', href: '/admin/cms', icon: '📄', current: location.pathname === '/admin/cms' },
-        { name: 'Blog Requests', href: '/admin/blog-requests', icon: '📝', current: location.pathname === '/admin/blog-requests' },
+        { name: 'Blog', href: '/admin/blog-requests', icon: '📝', current: location.pathname === '/admin/blog-requests' },
         { name: 'Video Manager', href: '/admin/video-manager', icon: '🎬', current: location.pathname === '/admin/video-manager' },
         { name: 'Static Pages', href: '/admin/static-pages', icon: '📃', current: location.pathname === '/admin/static-pages' },
         { name: 'Community Management', href: '/admin/community-management', icon: '👥', current: location.pathname === '/admin/community-management' },

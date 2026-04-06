@@ -9,25 +9,13 @@ import {
   getCreatorProgramBlockForUserId,
 } from '../utils/collabBlocks'
 import { fetchReelData, captionMentionsNefol, getPageTokenForCollab, extractShortcode, NEFOL_KEYWORDS } from './instagram'
+import { normalizeHandle, parseInstagramHandles } from '../utils/instagramHandles'
 
 // ─── Thresholds ────────────────────────────────────────────────────────────────
 const AFFILIATE_THRESHOLD_VIEWS = 10_000
 const AFFILIATE_THRESHOLD_LIKES = 500
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-function normalizeHandle(handle: string): string {
-  return String(handle || '').trim().replace(/^@/, '').toLowerCase()
-}
-
-function parseInstagramHandles(instagram: string | null | undefined, instagramHandles?: string[]): string[] {
-  const fromList = Array.isArray(instagramHandles) ? instagramHandles : []
-  const fromSingle = String(instagram || '')
-    .split(',')
-    .map((h) => h.trim())
-    .filter(Boolean)
-  const merged = [...fromList, ...fromSingle].map(normalizeHandle).filter(Boolean)
-  return Array.from(new Set(merged))
-}
 
 function digitsOnly(s: string): string {
   return String(s || '').replace(/\D/g, '')
@@ -188,6 +176,13 @@ async function ensureCollabSchema(pool: Pool) {
       ADD COLUMN IF NOT EXISTS date_ok               BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS rejection_reason      TEXT,
       ADD COLUMN IF NOT EXISTS insights_pending      BOOLEAN DEFAULT FALSE;
+  `)
+
+  // One Instagram Business/Creator user id per collab row — prevents two Nefol accounts from sharing one IG OAuth identity (race-safe with app-level checks).
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS collab_applications_ig_user_id_unique
+    ON collab_applications (ig_user_id)
+    WHERE ig_user_id IS NOT NULL AND btrim(ig_user_id) <> ''
   `)
 
   await pool.query(`
