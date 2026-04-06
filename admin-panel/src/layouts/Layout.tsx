@@ -122,6 +122,12 @@ const Layout = () => {
       items: [
         { name: 'CMS', href: '/admin/cms', icon: '📄', current: location.pathname === '/admin/cms' },
         { name: 'Blog', href: '/admin/blog-requests', icon: '📝', current: location.pathname === '/admin/blog-requests' },
+        {
+          name: 'Authors',
+          href: '/admin/author-management',
+          icon: '✍️',
+          current: location.pathname === '/admin/author-management',
+        },
         { name: 'Video Manager', href: '/admin/video-manager', icon: '🎬', current: location.pathname === '/admin/video-manager' },
         { name: 'Static Pages', href: '/admin/static-pages', icon: '📃', current: location.pathname === '/admin/static-pages' },
         { name: 'Community Management', href: '/admin/community-management', icon: '👥', current: location.pathname === '/admin/community-management' },
@@ -287,6 +293,7 @@ const Layout = () => {
     '/admin/invoices': { permission: 'payments:read' },
     '/admin/cms': { permission: 'cms:read' },
     '/admin/blog-requests': { permission: 'cms:read' },
+    '/admin/author-management': { permission: 'cms:read' },
     '/admin/video-manager': { permission: 'cms:read' },
     '/admin/static-pages': { permission: 'cms:read' },
     '/admin/whatsapp-management': { permission: 'notifications:read' },

@@ -27,6 +27,7 @@ export { default as UserNotifications } from './users/UserNotifications'
 export { default as LoyaltyProgramManagement } from './users/LoyaltyProgramManagement'
 
 // New Content Management Pages
+export { default as AuthorManagement } from './authors/AuthorManagement'
 export { default as StaticPagesManagement } from './content/StaticPagesManagement'
 export { default as CommunityManagement } from './content/CommunityManagement'
 export { default as HomepageLayoutManager } from './HomepageLayoutManager'

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   ArchiveRestore,
   Calendar,
@@ -254,6 +255,8 @@ function userBlogPostUrl(postId: number): string {
 }
 
 export default function BlogRequestManagement() {
+  const [searchParams] = useSearchParams()
+  const filterUserId = searchParams.get('user_id')
   const API_BASE = getApiBaseUrl()
   const [library, setLibrary] = useState<AdminBlogPost[]>([])
   const [trashList, setTrashList] = useState<AdminBlogPost[]>([])
@@ -344,6 +347,10 @@ export default function BlogRequestManagement() {
             : mainTab === 'all'
               ? library
               : base
+    const uidNum = filterUserId != null && filterUserId !== '' ? parseInt(filterUserId, 10) : NaN
+    if (Number.isFinite(uidNum)) {
+      rows = rows.filter((p) => p.user_id === uidNum)
+    }
     const q = search.trim().toLowerCase()
     if (q) {
       rows = rows.filter(
@@ -355,7 +362,7 @@ export default function BlogRequestManagement() {
       )
     }
     return rows
-  }, [library, trashList, mainTab, search])
+  }, [library, trashList, mainTab, search, filterUserId])
 
   const approve = async (post: AdminBlogPost, featured: boolean) => {
     setActionBusy(`approve-${post.id}`)
@@ -603,6 +610,20 @@ export default function BlogRequestManagement() {
             Refresh
           </button>
         </header>
+
+        {filterUserId != null && filterUserId !== '' && Number.isFinite(parseInt(filterUserId, 10)) && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#4B97C9]/40 bg-[#f0f8fd] px-4 py-3 text-sm text-slate-800">
+            <span>
+              Showing posts for <strong>user #{filterUserId}</strong> (from author management).
+            </span>
+            <Link
+              to="/admin/blog-requests"
+              className="font-medium text-[#1B4965] underline decoration-[#4B97C9]/50 hover:decoration-[#4B97C9]"
+            >
+              Clear filter
+            </Link>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">

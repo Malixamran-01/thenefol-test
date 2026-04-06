@@ -747,6 +747,7 @@ export async function listAdminPanelPages(pool: Pool, req: Request, res: Respons
       { path: '/admin/pos', name: 'POS System', section: 'Sales & Orders' },
       { path: '/admin/cms', name: 'CMS', section: 'Content & CMS' },
       { path: '/admin/blog-requests', name: 'Blog Requests', section: 'Content & CMS' },
+      { path: '/admin/author-management', name: 'Author Management', section: 'Content & CMS' },
       { path: '/admin/video-manager', name: 'Video Manager', section: 'Content & CMS' },
       { path: '/admin/static-pages', name: 'Static Pages', section: 'Content & CMS' },
       { path: '/admin/community-management', name: 'Community Management', section: 'Content & CMS' },

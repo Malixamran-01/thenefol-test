@@ -34,6 +34,7 @@ import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/aut
 import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
 import collabRouter, * as collabRoutes from './routes/collab'
+import * as adminAuthorRoutes from './routes/adminAuthors'
 import instagramRouter, { refreshExpiringTokens } from './routes/instagram'
 import { refreshAllCollabStats } from './routes/collab'
 import createPlatformRouter from './routes/platform'
@@ -863,6 +864,11 @@ app.post('/api/admin/collab-blocks/:id/unblock',            (req, res) => collab
 app.get('/api/admin/collab-blocks',                         (req, res) => collabRoutes.listCollabBlocks(pool, req, res))
 app.get('/api/admin/collab-blocks/:id',                     (req, res) => collabRoutes.getCollabBlockDetail(pool, req, res))
 app.put('/api/admin/collab-blocks/:id/appeal-resolve',      (req, res) => collabRoutes.adminResolveCollabAppeal(pool, req, res))
+
+// ==================== AUTHORS (ADMIN — NEFOL Social) ====================
+app.get('/api/admin/authors', (req, res) => adminAuthorRoutes.listAdminAuthors(pool, req, res))
+app.get('/api/admin/authors/:id', (req, res) => adminAuthorRoutes.getAdminAuthor(pool, req, res))
+app.patch('/api/admin/authors/:id', (req, res) => adminAuthorRoutes.patchAdminAuthor(pool, req, res))
 
 // ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
 // Frontend expects these endpoints; return empty lists for now so UI works without errors
