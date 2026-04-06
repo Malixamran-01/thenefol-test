@@ -1000,7 +1000,7 @@ export default function BlogDetail() {
             <div className="text-left">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
                 Posted by {post.author_name}
-                {post.author_is_verified === true ? <AuthorVerifiedBadge /> : null}
+                {post.author_is_verified === true ? <AuthorVerifiedBadge className="size-3" /> : null}
               </div>
               <div className="text-xs text-gray-500">{post.author_unique_user_id || (post.author_id != null || post.user_id != null ? `User #${post.author_id ?? post.user_id}` : post.author_email || 'Author')}</div>
             </div>
