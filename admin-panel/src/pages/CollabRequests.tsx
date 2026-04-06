@@ -109,6 +109,64 @@ function isoToFlagEmoji(isoCode: string): string {
   return String.fromCodePoint(...[...u].map((ch) => 127397 + ch.charCodeAt(0)))
 }
 
+/** Admin quick-fill for Creator Program block — user sees public_message; team sees internal_note. */
+const CREATOR_PROGRAM_BLOCK_PRESETS: ReadonlyArray<{
+  id: string
+  label: string
+  publicMessage: string
+  internalNote: string
+}> = [
+  {
+    id: 'tos',
+    label: 'Terms of Service violation',
+    publicMessage:
+      'Your Creator Program access has been restricted because your activity does not comply with our Terms of Service. If you believe this is a mistake, you can submit an appeal from your dashboard.',
+    internalNote: 'TOS violation',
+  },
+  {
+    id: 'program_rules',
+    label: 'Not complying with program rules',
+    publicMessage:
+      'Your Creator Program access has been restricted for not following program rules (for example content, disclosure, or collaboration guidelines). Please review the creator guidelines. You may submit an appeal if you wish.',
+    internalNote: 'Program rules / guidelines non-compliance',
+  },
+  {
+    id: 'misleading',
+    label: 'Fraudulent or misleading content',
+    publicMessage:
+      'Your Creator Program access has been restricted due to content or behaviour we consider misleading or fraudulent. You may submit an appeal from your dashboard with any context you would like us to review.',
+    internalNote: 'Fraudulent or misleading content',
+  },
+  {
+    id: 'ip',
+    label: 'Copyright / IP violation',
+    publicMessage:
+      'Your Creator Program access has been restricted following a concern about copyright or intellectual property. You may submit an appeal from your dashboard.',
+    internalNote: 'Copyright or IP violation',
+  },
+  {
+    id: 'spam',
+    label: 'Spam, abuse, or platform misuse',
+    publicMessage:
+      'Your Creator Program access has been restricted for spam, abuse, or misuse of the platform. You may submit an appeal from your dashboard.',
+    internalNote: 'Spam / abuse / platform misuse',
+  },
+  {
+    id: 'duplicate',
+    label: 'Duplicate or inauthentic accounts',
+    publicMessage:
+      'Your Creator Program access has been restricted because of duplicate, fake, or inauthentic account activity. You may submit an appeal from your dashboard if you think this was an error.',
+    internalNote: 'Duplicate / inauthentic accounts',
+  },
+  {
+    id: 'quality',
+    label: 'Repeated low-quality or policy-borderline content',
+    publicMessage:
+      'Your Creator Program access has been restricted after repeated content that does not meet our quality or policy expectations. You may submit an appeal from your dashboard.',
+    internalNote: 'Repeated low-quality or borderline policy content',
+  },
+]
+
 /** Merge JSON profile on application row with normalized `collab_profile_details` row (admin display). */
 function mergedApplicantProfile(app: CollabApplication): CollabProfileDetails & Record<string, unknown> {
   const p = (app.profile || {}) as Record<string, unknown>
@@ -201,6 +259,7 @@ export default function CollabRequests() {
   const [savingReel, setSavingReel] = useState(false)
   const [blockPublicMessage, setBlockPublicMessage] = useState('')
   const [blockInternalReason, setBlockInternalReason] = useState('')
+  const [blockReasonPresetId, setBlockReasonPresetId] = useState('')
   const [blockingUser, setBlockingUser] = useState(false)
   const [appealBlocks, setAppealBlocks] = useState<Array<Record<string, unknown>>>([])
 
@@ -313,6 +372,9 @@ export default function CollabRequests() {
     setRejectionReason('')
     setReelEditId(null)
     setReelsExpanded(true)
+    setBlockPublicMessage('')
+    setBlockInternalReason('')
+    setBlockReasonPresetId('')
     setShowModal(true)
   }
 
@@ -368,6 +430,7 @@ export default function CollabRequests() {
       }
       setBlockPublicMessage('')
       setBlockInternalReason('')
+      setBlockReasonPresetId('')
       await fetchItems()
       const refresh = await fetch(`${apiBase}/admin/collab-applications/${selected.id}`, { headers: authHeaders })
       const d = await refresh.json().catch(() => selected)
@@ -1395,6 +1458,37 @@ export default function CollabRequests() {
                       <p style={{ margin: '0 0 10px', fontSize: 13, color: '#57534e' }}>
                         Block this creator from the Collab program without deleting their account. They will see your message and can submit an appeal.
                       </p>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#78716c', marginBottom: 4 }}>Quick reason (fills both fields — edit if needed)</label>
+                      <select
+                        value={blockReasonPresetId}
+                        onChange={(e) => {
+                          const id = e.target.value
+                          setBlockReasonPresetId(id)
+                          const preset = CREATOR_PROGRAM_BLOCK_PRESETS.find((p) => p.id === id)
+                          if (preset) {
+                            setBlockPublicMessage(preset.publicMessage)
+                            setBlockInternalReason(preset.internalNote)
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          borderRadius: 10,
+                          border: '1px solid #e7e5e4',
+                          padding: '8px 10px',
+                          fontSize: 12,
+                          marginBottom: 12,
+                          backgroundColor: '#fff',
+                          color: '#44403c',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">Choose a template…</option>
+                        {CREATOR_PROGRAM_BLOCK_PRESETS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#78716c', marginBottom: 4 }}>Message to user (shown in app)</label>
                       <textarea
                         value={blockPublicMessage}
