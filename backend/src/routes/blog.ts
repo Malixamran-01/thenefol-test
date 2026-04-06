@@ -71,6 +71,52 @@ const getUserIdFromToken = (req: express.Request): string | null => {
   return null
 }
 
+/**
+ * `blog_posts.author_name` is denormalized (often copied from `users.name` when the post was saved).
+ * API responses should show the current NEFOL Social author identity when a profile exists.
+ */
+function resolvePublicAuthorName(row: {
+  author_name?: string | null
+  ap_display_name?: string | null
+  ap_pen_name?: string | null
+  ap_username?: string | null
+}): string {
+  const chain = [row.ap_display_name, row.ap_pen_name, row.ap_username, row.author_name]
+  for (const x of chain) {
+    if (x != null && String(x).trim() !== '') return String(x).trim()
+  }
+  return 'Anonymous'
+}
+
+/** Join one author_profiles row per post (non-deleted) for display name + verification. */
+const SQL_AUTHOR_PROFILE_LATERAL = `
+  LEFT JOIN LATERAL (
+    SELECT ap_inner.id AS ap_id,
+           ap_inner.is_verified AS ap_is_verified,
+           ap_inner.status AS ap_profile_status,
+           ap_inner.display_name AS ap_display_name,
+           ap_inner.pen_name AS ap_pen_name,
+           ap_inner.username AS ap_username
+    FROM author_profiles ap_inner
+    WHERE ap_inner.user_id = p.user_id AND ap_inner.status != 'deleted'
+    ORDER BY ap_inner.id ASC
+    LIMIT 1
+  ) authprof ON true
+`
+
+function omitAuthorProfileJoinCols(r: any) {
+  const {
+    ap_id: _apId,
+    ap_is_verified: _v,
+    ap_profile_status: _s,
+    ap_display_name: _d,
+    ap_pen_name: _p,
+    ap_username: _u,
+    ...rest
+  } = r
+  return rest
+}
+
 const BLOG_WEEKLY_CREATOR_COINS = 100
 
 async function resolveBlogAuthorUserId(postRow: {
@@ -1115,14 +1161,28 @@ router.get('/posts/my', authenticateToken, async (req, res) => {
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
 
     const { rows } = await pool.query(
-      `SELECT p.*, u.unique_user_id as author_unique_user_id
+      `SELECT p.*, u.unique_user_id as author_unique_user_id,
+        authprof.ap_id,
+        authprof.ap_is_verified,
+        authprof.ap_profile_status,
+        authprof.ap_display_name,
+        authprof.ap_pen_name,
+        authprof.ap_username
        FROM blog_posts p
        LEFT JOIN users u ON p.user_id = u.id
+       ${SQL_AUTHOR_PROFILE_LATERAL}
        WHERE p.user_id = $1 AND p.is_deleted = false
        ORDER BY p.created_at DESC`,
       [userId]
     )
-    res.json(rows.map((r: any) => ({ ...r, author_id: r.user_id, author_unique_user_id: r.author_unique_user_id })))
+    res.json(
+      rows.map((r: any) => ({
+        ...omitAuthorProfileJoinCols(r),
+        author_name: resolvePublicAuthorName(r),
+        author_id: r.user_id,
+        author_unique_user_id: r.author_unique_user_id,
+      }))
+    )
   } catch (error) {
     console.error('Error fetching my blog posts:', error)
     res.status(500).json({ message: 'Failed to fetch your posts' })
@@ -1187,19 +1247,14 @@ router.get('/posts', async (req, res) => {
         authprof.ap_id,
         authprof.ap_is_verified,
         authprof.ap_profile_status,
+        authprof.ap_display_name,
+        authprof.ap_pen_name,
+        authprof.ap_username,
         (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id)                        AS likes_count,
         (SELECT COUNT(*)::int FROM blog_comments    WHERE post_id = p.id AND is_deleted = false) AS comments_count
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN LATERAL (
-        SELECT ap_inner.id AS ap_id,
-               ap_inner.is_verified AS ap_is_verified,
-               ap_inner.status AS ap_profile_status
-        FROM author_profiles ap_inner
-        WHERE ap_inner.user_id = p.user_id AND ap_inner.status != 'deleted'
-        ORDER BY ap_inner.id ASC
-        LIMIT 1
-      ) authprof ON true
+      ${SQL_AUTHOR_PROFILE_LATERAL}
       WHERE ${conditions.join(' AND ')}
       ORDER BY ${orderBy}
       LIMIT $${limitN} OFFSET $${offsetN}
@@ -1210,9 +1265,9 @@ router.get('/posts', async (req, res) => {
     res.json(
       rows.map((r: any) => {
         const authorIsVerified = Boolean(r.ap_is_verified) && String(r.ap_profile_status || '') === 'active'
-        const { ap_id, ap_is_verified, ap_profile_status, ...rest } = r
         return {
-          ...rest,
+          ...omitAuthorProfileJoinCols(r),
+          author_name: resolvePublicAuthorName(r),
           author_id: r.user_id,
           author_is_verified: authorIsVerified,
         }
@@ -1260,15 +1315,22 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
       return res.status(500).send('Server error')
     }
     const id = req.params.id
-    const { rows } = await pool.query(`
-      SELECT id, title, excerpt, meta_title, meta_description, og_title, og_description, og_image, cover_image, detail_image, canonical_url, author_name, created_at, updated_at
-      FROM blog_posts
-      WHERE id = $1 AND status = 'approved' AND is_active = true AND is_archived = false AND is_deleted = false
-    `, [id])
+    const { rows } = await pool.query(
+      `
+      SELECT p.id, p.title, p.excerpt, p.meta_title, p.meta_description, p.og_title, p.og_description, p.og_image,
+             p.cover_image, p.detail_image, p.canonical_url, p.author_name, p.created_at, p.updated_at,
+             authprof.ap_display_name, authprof.ap_pen_name, authprof.ap_username
+      FROM blog_posts p
+      ${SQL_AUTHOR_PROFILE_LATERAL}
+      WHERE p.id = $1 AND p.status = 'approved' AND p.is_active = true AND p.is_archived = false AND p.is_deleted = false
+    `,
+      [id]
+    )
     if (rows.length === 0) {
       return res.status(404).send('Blog post not found')
     }
-    const post = rows[0]
+    const post = rows[0] as any
+    const authorDisplayName = resolvePublicAuthorName(post)
     const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http')
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'thenefol.com'
     const baseUrl = `${protocol}://${host}`
@@ -1303,7 +1365,7 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
   <meta property="og:image:height" content="630">
   <meta property="article:published_time" content="${post.created_at}">
   <meta property="article:modified_time" content="${post.updated_at || post.created_at}">
-  <meta property="article:author" content="${escapeHtml(post.author_name || '')}">
+  <meta property="article:author" content="${escapeHtml(authorDisplayName)}">
   <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}">
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
@@ -1315,7 +1377,7 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
     headline: title,
     description: description,
     image: ogImage || undefined,
-    author: { '@type': 'Person', name: post.author_name || 'Unknown' },
+    author: { '@type': 'Person', name: authorDisplayName || 'Unknown' },
     datePublished: post.created_at,
     dateModified: post.updated_at || post.created_at,
     mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl }
@@ -1356,18 +1418,13 @@ router.get('/posts/:id', async (req, res) => {
       SELECT p.*, u.unique_user_id as author_unique_user_id,
         authprof.ap_id,
         authprof.ap_is_verified,
-        authprof.ap_profile_status
+        authprof.ap_profile_status,
+        authprof.ap_display_name,
+        authprof.ap_pen_name,
+        authprof.ap_username
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN LATERAL (
-        SELECT ap_inner.id AS ap_id,
-               ap_inner.is_verified AS ap_is_verified,
-               ap_inner.status AS ap_profile_status
-        FROM author_profiles ap_inner
-        WHERE ap_inner.user_id = p.user_id AND ap_inner.status != 'deleted'
-        ORDER BY ap_inner.id ASC
-        LIMIT 1
-      ) authprof ON true
+      ${SQL_AUTHOR_PROFILE_LATERAL}
       WHERE p.id = $1
         AND p.status = 'approved'
         AND p.is_active = true
@@ -1381,16 +1438,14 @@ router.get('/posts/:id', async (req, res) => {
       return res.status(404).json({ message: 'Blog post not found' })
     }
 
-    const post = rows[0] as any
+    const raw = rows[0] as any
     const authorIsVerified =
-      Boolean(post.ap_is_verified) && String(post.ap_profile_status || '') === 'active'
-    delete post.ap_id
-    delete post.ap_is_verified
-    delete post.ap_profile_status
+      Boolean(raw.ap_is_verified) && String(raw.ap_profile_status || '') === 'active'
     res.json({
-      ...post,
-      author_id: post.user_id,
-      author_unique_user_id: post.author_unique_user_id,
+      ...omitAuthorProfileJoinCols(raw),
+      author_name: resolvePublicAuthorName(raw),
+      author_id: raw.user_id,
+      author_unique_user_id: raw.author_unique_user_id,
       author_is_verified: authorIsVerified,
     })
   } catch (error) {
@@ -1409,14 +1464,23 @@ router.get('/admin/requests', async (req, res) => {
     }
 
     const { rows } = await pool.query(`
-      SELECT p.*, u.unique_user_id as author_unique_user_id
+      SELECT p.*, u.unique_user_id as author_unique_user_id,
+        authprof.ap_display_name,
+        authprof.ap_pen_name,
+        authprof.ap_username
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
+      ${SQL_AUTHOR_PROFILE_LATERAL}
       WHERE p.status = 'pending' AND p.is_deleted = false
       ORDER BY p.created_at DESC
     `)
-    
-    res.json(rows)
+
+    res.json(
+      rows.map((r: any) => ({
+        ...omitAuthorProfileJoinCols(r),
+        author_name: resolvePublicAuthorName(r),
+      }))
+    )
   } catch (error) {
     console.error('Error fetching blog requests:', error)
     res.status(500).json({ message: 'Failed to fetch blog requests' })
@@ -1448,17 +1512,26 @@ router.get('/admin/posts', async (req, res) => {
     const { rows } = await pool.query(
       `
       SELECT p.*, u.unique_user_id as author_unique_user_id,
+        authprof.ap_display_name,
+        authprof.ap_pen_name,
+        authprof.ap_username,
         (SELECT COUNT(*)::int FROM blog_post_likes WHERE post_id = p.id) AS admin_likes_count,
         (SELECT COUNT(*)::int FROM blog_comments WHERE post_id = p.id AND is_deleted = false) AS admin_comments_count
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
+      ${SQL_AUTHOR_PROFILE_LATERAL}
       WHERE ${where}
       ORDER BY p.updated_at DESC NULLS LAST, p.created_at DESC
     `,
       params
     )
 
-    res.json(rows)
+    res.json(
+      rows.map((r: any) => ({
+        ...omitAuthorProfileJoinCols(r),
+        author_name: resolvePublicAuthorName(r),
+      }))
+    )
   } catch (error) {
     console.error('Error fetching blog posts:', error)
     res.status(500).json({ message: 'Failed to fetch blog posts' })
