@@ -1,8 +1,20 @@
 import VerifiedBadge from './VerifiedBadge'
 
-/** NEFOL Social: same star badge as storefront `VerifiedBadge`, for verified author profiles. */
-export function AuthorVerifiedBadge({ className = '' }: { className?: string }) {
+type BadgeSize = 'sm' | 'md' | 'lg' | 'xl'
+
+/** NEFOL Social: star badge for verified authors (sizes match `VerifiedBadge`). */
+export function AuthorVerifiedBadge({
+  className = '',
+  size = 'md',
+}: {
+  className?: string
+  size?: BadgeSize
+}) {
   return (
-    <VerifiedBadge className={`align-middle ${className}`} size="sm" title="Verified author" />
+    <VerifiedBadge
+      className={`align-middle ${className}`}
+      size={size}
+      title="Verified author"
+    />
   )
 }

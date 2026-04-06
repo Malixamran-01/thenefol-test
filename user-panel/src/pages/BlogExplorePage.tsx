@@ -184,7 +184,7 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
             <PostAvatar name={post.author_name} />
             <span className="inline-flex items-center gap-1 text-[11px] text-gray-500">
               {post.author_name}
-              {post.author_is_verified === true ? <AuthorVerifiedBadge className="scale-90" /> : null}
+              {post.author_is_verified === true ? <AuthorVerifiedBadge size="md" /> : null}
             </span>
           </div>
           <div className="flex items-center gap-2.5 text-gray-400">
@@ -226,7 +226,7 @@ function AuthorCard({
         <a href={`#/user/author/${author.author_id}`} className="group block">
           <p className="flex items-center gap-1 truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">
             <span className="truncate">{author.author_name}</span>
-            {author.is_verified === true ? <AuthorVerifiedBadge className="shrink-0" /> : null}
+            {author.is_verified === true ? <AuthorVerifiedBadge size="md" className="shrink-0" /> : null}
           </p>
           <p className="text-[11px] text-gray-400">@{author.author_handle}</p>
         </a>

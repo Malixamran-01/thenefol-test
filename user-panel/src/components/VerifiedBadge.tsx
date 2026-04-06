@@ -2,7 +2,8 @@ import { useId } from 'react'
 
 interface VerifiedBadgeProps {
   className?: string
-  size?: 'sm' | 'md' | 'lg'
+  /** Visual scale — tuned so `md` reads well next to body/author names */
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   /** Accessible name; shown as native tooltip on hover */
   title?: string
 }
@@ -16,9 +17,10 @@ export default function VerifiedBadge({
   const gradId = `vstar-g-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`
 
   const sizeClasses = {
-    sm: 'h-4 w-4 min-h-4 min-w-4',
-    md: 'h-5 w-5 min-h-5 min-w-5',
-    lg: 'h-6 w-6 min-h-6 min-w-6',
+    sm: 'h-6 w-6 min-h-6 min-w-6',
+    md: 'h-7 w-7 min-h-7 min-w-7',
+    lg: 'h-9 w-9 min-h-9 min-w-9',
+    xl: 'h-11 w-11 min-h-11 min-w-11',
   }
 
   return (

@@ -145,7 +145,7 @@ export function BlogCardAuthor({
         </div>
         <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: '#1B4965' }}>
           {authorName || 'Anonymous'}
-          {authorVerified ? <AuthorVerifiedBadge /> : null}
+          {authorVerified ? <AuthorVerifiedBadge size="md" /> : null}
         </span>
       </button>
 

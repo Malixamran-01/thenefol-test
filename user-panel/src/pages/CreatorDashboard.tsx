@@ -548,7 +548,7 @@ export default function CreatorDashboard() {
           <h1 className="flex flex-wrap items-center gap-2 text-2xl font-black text-gray-900">
             Analytics
             {data.author?.is_verified === true && String(data.author?.status || 'active') === 'active' ? (
-              <AuthorVerifiedBadge className="translate-y-0.5" />
+              <AuthorVerifiedBadge size="lg" className="translate-y-0.5" />
             ) : null}
           </h1>
           <p className="mt-0.5 text-[13px] text-gray-400">Monitor your content performance</p>
