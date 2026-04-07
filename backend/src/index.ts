@@ -3099,6 +3099,13 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     
     const order = rows[0]
 
+    try {
+      const { tryLinkCollabPurchaseOrder } = await import('./routes/collabTasks')
+      await tryLinkCollabPurchaseOrder(pool, req, order, req.body || {}, customer_email)
+    } catch (linkErr) {
+      console.error('Collab purchase link error (non-fatal):', linkErr)
+    }
+
     // Track discount usage if discount code was applied
     if (discount_code && discount_amount > 0) {
       try {

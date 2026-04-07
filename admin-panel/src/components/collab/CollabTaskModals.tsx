@@ -54,7 +54,8 @@ export function AssignCollabTaskModal({
   const [postFormat, setPostFormat] = useState('any')
   const [minFollowers, setMinFollowers] = useState('')
   const [requireOrderId, setRequireOrderId] = useState(true)
-  const [products, setProducts] = useState<{ id: number; title?: string }[]>([])
+  const [compensationMode, setCompensationMode] = useState<'rewarded' | 'barter'>('rewarded')
+  const [products, setProducts] = useState<{ id: number; title?: string; price?: number | string | null }[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -70,7 +71,13 @@ export function AssignCollabTaskModal({
       const res = await fetch(`${apiBase}/products`, { headers: authHeaders })
       const data = await res.json().catch(() => [])
       const list = Array.isArray(data) ? data : []
-      setProducts(list.map((p: { id: number; title?: string }) => ({ id: p.id, title: p.title })))
+      setProducts(
+        list.map((p: { id: number; title?: string; price?: number | string | null }) => ({
+          id: p.id,
+          title: p.title,
+          price: p.price,
+        }))
+      )
     } catch {
       setProducts([])
     } finally {
@@ -105,10 +112,27 @@ export function AssignCollabTaskModal({
   const showInstaFields = selectedPlatforms.includes('instagram_reel')
   const showXFields = selectedPlatforms.includes('x')
 
+  const selectedProduct = useMemo(
+    () => products.find((p) => String(p.id) === String(productId)),
+    [products, productId]
+  )
+  const selectedMRP = selectedProduct != null ? Number(selectedProduct.price) : NaN
+  const mrpDisplay = !Number.isNaN(selectedMRP) && selectedMRP > 0 ? selectedMRP : null
+
+  useEffect(() => {
+    if (!open || compensationMode !== 'barter' || mrpDisplay == null) return
+    setReimbursement(String(mrpDisplay))
+    setCreatorFee('0')
+  }, [open, compensationMode, mrpDisplay, productId])
+
   const submit = async () => {
     setErr('')
     if (!title.trim()) {
       setErr('Title is required')
+      return
+    }
+    if (compensationMode === 'barter' && !productId) {
+      setErr('Barter collab requires a product (creator is compensated with the product value).')
       return
     }
     if (!platformOptions.length) {
@@ -126,6 +150,7 @@ export function AssignCollabTaskModal({
         required_keyword: requiredKeyword.trim() || '#nefol',
         post_format: postFormat,
         require_order_id: requireOrderId,
+        compensation_mode: compensationMode,
       }
       if (subredditHint.trim() && showRedditFields) task_options.subreddit_hint = subredditHint.trim()
       if (hashtagHint.trim() && showInstaFields) task_options.hashtag_hint = hashtagHint.trim()
@@ -145,8 +170,14 @@ export function AssignCollabTaskModal({
         currency: currency.trim() || 'INR',
       }
       if (productId) body.product_id = Number(productId)
-      if (reimbursement !== '') body.reimbursement_budget = Number(reimbursement)
-      if (creatorFee !== '') body.creator_fee_amount = Number(creatorFee)
+      if (compensationMode === 'barter') {
+        body.creator_fee_amount = 0
+        if (mrpDisplay != null) body.reimbursement_budget = mrpDisplay
+        else if (reimbursement !== '') body.reimbursement_budget = Number(reimbursement)
+      } else {
+        if (reimbursement !== '') body.reimbursement_budget = Number(reimbursement)
+        if (creatorFee !== '') body.creator_fee_amount = Number(creatorFee)
+      }
       if (dueAt) body.due_at = new Date(dueAt).toISOString()
 
       const res = await fetch(`${apiBase}/admin/collab-tasks`, {
@@ -177,6 +208,7 @@ export function AssignCollabTaskModal({
       setPostFormat('any')
       setMinFollowers('')
       setRequireOrderId(true)
+      setCompensationMode('rewarded')
     } finally {
       setSaving(false)
     }
@@ -263,10 +295,59 @@ export function AssignCollabTaskModal({
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   #{p.id} {p.title || 'Untitled'}
+                  {p.price != null && p.price !== '' ? ` — ₹${Number(p.price).toLocaleString()}` : ''}
                 </option>
               ))}
             </select>
+            {productId && mrpDisplay != null && (
+              <p className="mt-1.5 text-xs text-gray-600">
+                Store price (MRP): <span className="font-semibold text-gray-900">₹{mrpDisplay.toLocaleString()}</span>
+              </p>
+            )}
           </div>
+
+          <div className="rounded-xl border border-gray-100 bg-slate-50/90 p-3 space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Compensation</p>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="compMode"
+                  checked={compensationMode === 'rewarded'}
+                  onChange={() => setCompensationMode('rewarded')}
+                />
+                <span>Rewarded (MRP + extra pay)</span>
+              </label>
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="compMode"
+                  checked={compensationMode === 'barter'}
+                  onChange={() => {
+                    setCompensationMode('barter')
+                    setCreatorFee('0')
+                    if (mrpDisplay != null) setReimbursement(String(mrpDisplay))
+                  }}
+                />
+                <span>Barter (product value only)</span>
+              </label>
+            </div>
+            {compensationMode === 'barter' && mrpDisplay != null && (
+              <p className="text-xs text-gray-600">
+                Creator sees <span className="font-semibold">₹{mrpDisplay.toLocaleString()}</span> product value; cash fee is set to 0.
+              </p>
+            )}
+            {compensationMode === 'rewarded' && mrpDisplay != null && Number(creatorFee) > 0 && (
+              <p className="text-xs text-gray-600">
+                Creator-facing total (indicative):{' '}
+                <span className="font-semibold">
+                  ₹{(mrpDisplay + Number(creatorFee || 0)).toLocaleString()}
+                </span>{' '}
+                (MRP + fee; budget cap may differ).
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reward (creator fee)</label>
             <div className="mt-1 flex flex-wrap gap-2">
@@ -274,8 +355,9 @@ export function AssignCollabTaskModal({
                 <button
                   key={n}
                   type="button"
+                  disabled={compensationMode === 'barter'}
                   onClick={() => setRewardPreset(n)}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-[#1B4965] hover:bg-[#f0f8fd]"
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-[#1B4965] hover:bg-[#f0f8fd] disabled:opacity-40"
                 >
                   ₹{n.toLocaleString()}
                 </button>
@@ -288,7 +370,8 @@ export function AssignCollabTaskModal({
               value={creatorFee}
               onChange={(e) => setCreatorFee(e.target.value)}
               placeholder="Custom amount"
-              className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              disabled={compensationMode === 'barter'}
+              className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm disabled:bg-gray-50"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -301,7 +384,8 @@ export function AssignCollabTaskModal({
                 value={reimbursement}
                 onChange={(e) => setReimbursement(e.target.value)}
                 placeholder="0"
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                disabled={compensationMode === 'barter' && mrpDisplay != null}
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm disabled:bg-gray-50"
               />
             </div>
             <div>
@@ -640,6 +724,24 @@ export function ReviewCollabTaskModal({
               <p className="text-xs text-gray-500">
                 Status: <span className="font-medium text-gray-800">{st}</span> · Creator: {String(task.creator_name || task.creator_email || '—')}
               </p>
+              {task.collab_order_returned_at ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+                  <span className="font-bold">Linked order returned / cancelled</span> before payout (
+                  {new Date(String(task.collab_order_returned_at)).toLocaleString()}). Do not pay product reimbursement or
+                  creator fee until you resolve this with the creator.
+                </div>
+              ) : null}
+              {task.linked_order_id != null ? (
+                <p className="text-xs text-gray-600">
+                  Tracked purchase: order DB id <span className="font-mono">{String(task.linked_order_id)}</span>
+                  {task.completion_order_id ? (
+                    <>
+                      {' '}
+                      · Nefol order # <span className="font-mono">{String(task.completion_order_id)}</span>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
               {task.instructions ? <p className="text-gray-600 whitespace-pre-wrap">{String(task.instructions)}</p> : null}
               {task.task_options && typeof task.task_options === 'object' && task.task_options !== null && (
                 <div className="rounded-lg border border-gray-100 bg-white p-3 text-xs text-gray-700 space-y-1">
@@ -780,7 +882,7 @@ export function ReviewCollabTaskModal({
                     </button>
                   </div>
 
-                  {verifiedOrder && verifiedPost && st !== 'paid' && (
+                  {verifiedOrder && verifiedPost && st !== 'paid' && !task.collab_order_returned_at && (
                     <div className="space-y-2 border-t border-gray-100 pt-3">
                       <p className="text-xs font-bold uppercase text-gray-500">Payout</p>
                       <input
@@ -820,6 +922,11 @@ export function ReviewCollabTaskModal({
                         Record payout &amp; notify creator
                       </button>
                     </div>
+                  )}
+                  {verifiedOrder && verifiedPost && st !== 'paid' && task.collab_order_returned_at && (
+                    <p className="text-xs text-red-700 border border-red-100 bg-red-50 rounded-lg px-3 py-2">
+                      Payout is blocked until the linked order return/cancel issue is resolved.
+                    </p>
                   )}
                 </>
               )}

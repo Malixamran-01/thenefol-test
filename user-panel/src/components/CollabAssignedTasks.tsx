@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, ClipboardList, ExternalLink, Loader2, PlayCircle } from 'lucide-react'
+import { ChevronDown, ChevronUp, ClipboardList, ExternalLink, Loader2, PlayCircle, ShoppingBag } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
 type TaskSection = 'active' | 'submitted' | 'completed' | 'rejected'
@@ -12,6 +12,7 @@ interface TaskRow {
   platforms?: unknown
   task_template_key?: string | null
   task_options?: Record<string, unknown> | null
+  product_id?: number | null
   product_snapshot?: { title?: string; id?: number; slug?: string | null } | null
   reimbursement_budget?: number | null
   creator_fee_amount?: number | null
@@ -25,6 +26,9 @@ interface TaskRow {
   completion_extra?: Record<string, unknown> | null
   paid_at?: string | null
   paid_amount?: number | null
+  purchase_token?: string | null
+  linked_order_id?: number | null
+  collab_order_returned_at?: string | null
 }
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -273,7 +277,7 @@ export default function CollabAssignedTasks({
                 type="button"
                 onClick={() => {
                   if (!expanded) {
-                    setOrderId('')
+                    setOrderId(t.completion_order_id ? String(t.completion_order_id) : '')
                     setPostUrl('')
                     setHandle('')
                     setNotes('')
@@ -316,12 +320,32 @@ export default function CollabAssignedTasks({
                       <span className="font-semibold text-gray-800">Deadline:</span> {new Date(t.due_at).toLocaleString()}
                     </p>
                   )}
+                  {t.collab_order_returned_at && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+                      The product linked to this task was <span className="font-semibold">returned or cancelled</span>. The
+                      brand may hold reimbursement and creator fee until this is resolved.
+                    </div>
+                  )}
                   {t.creator_fee_amount != null && (
                     <p className="text-xs text-gray-600">
                       <span className="font-semibold text-gray-800">Reward:</span>{' '}
                       {t.creator_fee_amount} {t.currency || 'INR'}
+                      {t.reimbursement_budget != null && Number(t.reimbursement_budget) > 0 ? (
+                        <span className="text-gray-500">
+                          {' '}
+                          · Product value (cap): {t.reimbursement_budget} {t.currency || 'INR'}
+                        </span>
+                      ) : null}
                     </p>
                   )}
+                  {t.reimbursement_budget != null &&
+                    t.creator_fee_amount == null &&
+                    Number(t.reimbursement_budget) > 0 && (
+                      <p className="text-xs text-gray-600">
+                        <span className="font-semibold text-gray-800">Product value:</span>{' '}
+                        {t.reimbursement_budget} {t.currency || 'INR'}
+                      </p>
+                    )}
                   {productHref && (
                     <a
                       href={productHref}
@@ -392,6 +416,26 @@ export default function CollabAssignedTasks({
 
                   {canAct && (
                     <div className="space-y-2 pt-2">
+                      {t.product_id &&
+                        t.purchase_token &&
+                        t.product_snapshot &&
+                        typeof t.product_snapshot === 'object' &&
+                        t.product_snapshot !== null &&
+                        (t.product_snapshot as { slug?: string | null }).slug && (
+                          <a
+                            href={`#/user/product/${encodeURIComponent(String((t.product_snapshot as { slug?: string }).slug))}?collabPurchase=${encodeURIComponent(String(t.purchase_token))}`}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B4965] bg-white px-4 py-2.5 text-sm font-semibold text-[#1B4965] hover:bg-[#f4f9fc]"
+                          >
+                            <ShoppingBag className="h-4 w-4" />
+                            Buy product for this task (tracks order)
+                          </a>
+                        )}
+                      {t.linked_order_id != null && t.completion_order_id && (
+                        <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                          Nefol order <span className="font-mono font-semibold">{t.completion_order_id}</span> is linked to
+                          this task. Checkout used your creator buy link.
+                        </p>
+                      )}
                       {t.status === 'assigned' && (
                         <button
                           type="button"
@@ -411,7 +455,13 @@ export default function CollabAssignedTasks({
                         className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
                         placeholder="https://…"
                       />
-                      {requireOrder && (
+                      {requireOrder && t.completion_order_id ? (
+                        <p className="text-xs text-gray-700 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                          <span className="font-semibold text-gray-800">Nefol order ID (linked):</span>{' '}
+                          <span className="font-mono">{t.completion_order_id}</span>
+                        </p>
+                      ) : null}
+                      {requireOrder && !t.completion_order_id && (
                         <>
                           <label className="block text-[11px] font-semibold text-gray-500 uppercase">Order ID</label>
                           <input
@@ -420,6 +470,10 @@ export default function CollabAssignedTasks({
                             className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
                             placeholder="Your Nefol order ID"
                           />
+                          <p className="text-[11px] text-gray-500">
+                            Prefer the <span className="font-semibold">Buy product for this task</span> button so your order
+                            links automatically (checkout email must match your Nefol account).
+                          </p>
                         </>
                       )}
                       <label className="block text-[11px] font-semibold text-gray-500 uppercase">Your handle on that platform</label>

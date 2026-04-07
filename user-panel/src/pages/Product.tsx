@@ -23,6 +23,18 @@ let csvDataCache: any[] | null = null
 let csvDataCacheTime: number = 0
 const CSV_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
+function captureCollabPurchaseTokenFromHash() {
+  try {
+    const hash = window.location.hash || ''
+    if (!hash.includes('?')) return
+    const query = hash.split('?')[1]?.split('#')[0] ?? ''
+    const tok = new URLSearchParams(query).get('collabPurchase')?.trim()
+    if (tok) sessionStorage.setItem('nefol_collab_purchase_token', tok)
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function ProductPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [csvProduct, setCsvProduct] = useState<any>(null)
@@ -414,6 +426,7 @@ export default function ProductPage() {
     const match = hash.match(/^#\/user\/product\/([^?#]+)/)
     const slug = match?.[1] || null
     setCurrentSlug(slug)
+    captureCollabPurchaseTokenFromHash()
   }, [])
   
   // Listen for hash changes
@@ -423,6 +436,7 @@ export default function ProductPage() {
       const match = hash.match(/^#\/user\/product\/([^?#]+)/)
       const slug = match?.[1] || null
       setCurrentSlug(slug)
+      captureCollabPurchaseTokenFromHash()
     }
     
     window.addEventListener('hashchange', handleHashChange)

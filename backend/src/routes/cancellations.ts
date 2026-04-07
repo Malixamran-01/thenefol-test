@@ -4,6 +4,7 @@ import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import Razorpay from 'razorpay'
 import { WhatsAppService } from '../services/whatsappService'
+import { flagCollabTasksForReturnedOrder } from './collabTasks'
 
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
 const razorpay = new Razorpay({
@@ -231,6 +232,8 @@ export async function approveCancellation(pool: Pool, req: Request, res: Respons
       `UPDATE orders SET status = 'cancelled' WHERE order_number = $1`,
       [cancellation.order_number]
     )
+
+    await flagCollabTasksForReturnedOrder(pool, Number(cancellation.order_id))
 
     // Initialize refund if payment was made via Razorpay
     if (cancellation.razorpay_payment_id && cancellation.payment_method !== 'cod') {
@@ -487,6 +490,8 @@ export async function cancelOrderImmediate(pool: Pool, req: Request, res: Respon
       `UPDATE orders SET status = 'cancelled', cancellation_requested_at = now(), can_cancel = false, updated_at = now() WHERE order_number = $1`,
       [order_number]
     )
+
+    await flagCollabTasksForReturnedOrder(pool, Number(order.id))
 
     // Reverse coins if coins were used for payment
     if (order.coins_used && order.coins_used > 0) {

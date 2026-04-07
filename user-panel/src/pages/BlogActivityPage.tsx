@@ -4,6 +4,8 @@ import {
   BellOff,
   Check,
   ChevronDown,
+  ClipboardList,
+  CircleDollarSign,
   Heart,
   MessageCircle,
   Repeat2,
@@ -72,6 +74,31 @@ const TYPE_META: Record<
     icon: <Star className="h-4 w-4" />,
     color: 'text-amber-500',
     label: () => 'subscribed to your profile',
+  },
+  collab_task_assigned: {
+    icon: <ClipboardList className="h-4 w-4" />,
+    color: 'text-[#4B97C9]',
+    label: (n) => `assigned you a brand task${n.post_title ? `: ${n.post_title}` : ''}`,
+  },
+  collab_task_revision: {
+    icon: <ClipboardList className="h-4 w-4" />,
+    color: 'text-orange-500',
+    label: () => 'asked for updates on your brand task',
+  },
+  collab_task_rejected: {
+    icon: <ClipboardList className="h-4 w-4" />,
+    color: 'text-red-500',
+    label: () => 'did not approve a brand task submission',
+  },
+  collab_task_paid: {
+    icon: <CircleDollarSign className="h-4 w-4" />,
+    color: 'text-emerald-600',
+    label: () => 'recorded payout for a brand task',
+  },
+  collab_task_submitted: {
+    icon: <ClipboardList className="h-4 w-4" />,
+    color: 'text-slate-500',
+    label: () => 'received your brand task submission',
   },
 }
 
@@ -218,6 +245,10 @@ export default function BlogActivityPage() {
       setNotifications((prev) =>
         prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x))
       )
+    }
+    if (String(n.type).startsWith('collab_task_') || n.post_id === 'collab') {
+      window.location.hash = '#/user/collab?tab=collab&work=tasks'
+      return
     }
     if (n.post_id) {
       window.location.hash = `#/user/blog/${n.post_id}`
@@ -371,7 +402,7 @@ export default function BlogActivityPage() {
           <Bell className="mb-4 h-14 w-14 text-gray-200" />
           <p className="text-base font-semibold text-gray-400">No activity yet</p>
           <p className="mt-1 text-sm text-gray-300">
-            We'll let you know when someone likes, comments, or follows you.
+            We will show likes, comments, follows, and creator program task updates here.
           </p>
         </div>
       ) : (

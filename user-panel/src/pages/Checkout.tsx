@@ -9,6 +9,25 @@ import PhoneInput from '../components/PhoneInput'
 import { pixelEvents, formatPurchaseData, formatCartData } from '../utils/metaPixel'
 import { getApiBase } from '../utils/apiBase'
 
+const COLLAB_PURCHASE_TOKEN_KEY = 'nefol_collab_purchase_token'
+
+function readCollabPurchaseToken(): string | undefined {
+  try {
+    const v = sessionStorage.getItem(COLLAB_PURCHASE_TOKEN_KEY)
+    return v && v.trim() ? v.trim() : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function clearCollabPurchaseToken() {
+  try {
+    sessionStorage.removeItem(COLLAB_PURCHASE_TOKEN_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 const paymentMethods = [
   { id: 'razorpay', name: 'Razorpay Secure (UPI, Cards, Int\'l Cards, Wallets)', icon: CreditCard, color: 'rgb(75,151,201)' },
   { id: 'cod', name: 'Cash on Delivery', icon: CreditCard, color: 'bg-green-600' }
@@ -811,7 +830,8 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         affiliate_id: affiliateId,
         discount_code: appliedDiscount?.code || null,
         discount_amount: discountAmount > 0 ? roundPrice(discountAmount) : 0,
-        coins_used: useCoins ? coinsToUse : 0 // Coins used for partial payment
+        coins_used: useCoins ? coinsToUse : 0, // Coins used for partial payment
+        collab_purchase_token: readCollabPurchaseToken(),
       }
 
       // Create order in backend first - backend will auto-generate order_number in new format (NS-093011251001 or NC-093011251001)
@@ -946,6 +966,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
             }
 
             if (clear) clear()
+            clearCollabPurchaseToken()
             window.location.hash = `#/user/confirmation?order=${encodeURIComponent(orderNumber)}`
           } catch (err: any) {
             console.error('Payment verification error:', {
@@ -1163,7 +1184,8 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           affiliate_id: affiliateId,
           discount_code: appliedDiscount?.code || null,
           discount_amount: discountAmount > 0 ? roundPrice(discountAmount) : 0,
-          coins_used: useCoins ? coinsToUse : 0
+          coins_used: useCoins ? coinsToUse : 0,
+          collab_purchase_token: readCollabPurchaseToken(),
         }
         
         const data = await api.orders.createOrder(orderData)
@@ -1175,6 +1197,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         
         // Clear cart and redirect to confirmation
         if (clear) clear()
+        clearCollabPurchaseToken()
         window.location.hash = `#/user/confirmation?order=${orderNumber}`
         setLoading(false)
         return
@@ -1269,7 +1292,8 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         affiliate_id: affiliateId,
         discount_code: appliedDiscount?.code || null,
         discount_amount: discountAmount > 0 ? roundPrice(discountAmount) : 0,
-        coins_used: useCoins ? coinsToUse : 0
+        coins_used: useCoins ? coinsToUse : 0,
+        collab_purchase_token: readCollabPurchaseToken(),
       }
       
       // Create order - backend will auto-generate order_number in new format (NS-093011251001 or NC-093011251001)
@@ -1324,6 +1348,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
       }
       
       if (clear) clear()
+      clearCollabPurchaseToken()
       window.location.hash = `#/user/confirmation?order=${encodeURIComponent(orderNumber)}`
     } catch (err: any) {
       setError(err?.message || 'Order failed')

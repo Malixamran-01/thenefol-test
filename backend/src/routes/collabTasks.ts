@@ -2,11 +2,13 @@
  * Creator collab: admin-assigned platform tasks (Reddit / Reel / X / …),
  * user submission, admin verification, and payout recording.
  */
+import { randomUUID } from 'crypto'
 import { Request, Response } from 'express'
 import type { Pool } from 'pg'
 import type { Server } from 'socket.io'
 import { assertCollabNotBlockedByAppId, ensureCollabBlockSchema } from '../utils/collabBlocks'
 import { ensureCollabSchema } from './collab'
+import { createNotification } from './blogNotifications'
 
 export const COLLAB_TASK_PLATFORMS = [
   'instagram_reel',
@@ -81,6 +83,14 @@ async function ensureCollabTaskSchema(pool: Pool) {
   } catch {
     /* ignore if table new or constraint differs */
   }
+
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS purchase_token TEXT`)
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS linked_order_id INTEGER`)
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS collab_order_returned_at TIMESTAMPTZ`)
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS collab_assigned_tasks_purchase_token_uidx
+    ON collab_assigned_tasks(purchase_token) WHERE purchase_token IS NOT NULL
+  `)
 }
 
 /** Task platform keys allowed for a creator, derived from collab application `platforms[].name` */
@@ -158,6 +168,31 @@ async function ensureUserNotificationsTable(pool: Pool) {
       created_at timestamptz default now()
     )
   `)
+}
+
+/** Blog "Activity" tab + bell (blog_notifications) — separate from user_notifications inbox */
+async function notifyCollabBlogActivity(
+  pool: Pool,
+  recipientUserId: number,
+  type: string,
+  title: string,
+  excerpt: string
+) {
+  try {
+    await createNotification({
+      pool,
+      recipientUserId,
+      actorUserId: null,
+      actorName: 'Nefol Creator Program',
+      type,
+      postId: 'collab',
+      postTitle: title,
+      commentExcerpt: excerpt.slice(0, 500),
+      commentId: null,
+    })
+  } catch (e) {
+    console.error('[collabTasks] notifyCollabBlogActivity:', e)
+  }
 }
 
 async function notifyUser(
@@ -268,6 +303,102 @@ function normalizePlatforms(raw: unknown): string[] {
   return raw.map((x) => String(x).trim()).filter((x) => set.has(x))
 }
 
+/** When a linked collab purchase order is cancelled/refunded, flag the task for admin (no payout until resolved). */
+export async function flagCollabTasksForReturnedOrder(pool: Pool, orderId: number): Promise<void> {
+  if (!orderId || Number.isNaN(Number(orderId))) return
+  try {
+    await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS linked_order_id INTEGER`)
+    await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS collab_order_returned_at TIMESTAMPTZ`)
+    await pool.query(
+      `UPDATE collab_assigned_tasks SET collab_order_returned_at = COALESCE(collab_order_returned_at, NOW()), updated_at = NOW()
+       WHERE linked_order_id = $1 AND status::text NOT IN ('paid', 'cancelled', 'rejected')`,
+      [orderId]
+    )
+  } catch (e) {
+    console.error('[collabTasks] flagCollabTasksForReturnedOrder:', e)
+  }
+}
+
+/**
+ * If checkout included `collab_purchase_token`, link the order to the collab task and pre-fill order ID.
+ * Caller: POST /api/orders after the order row exists.
+ */
+export async function tryLinkCollabPurchaseOrder(
+  pool: Pool,
+  req: Request,
+  order: { id: number; order_number: string; items: unknown },
+  body: Record<string, unknown>,
+  customerEmail: string
+): Promise<void> {
+  const token = typeof body.collab_purchase_token === 'string' ? body.collab_purchase_token.trim() : ''
+  if (!token) return
+
+  try {
+    await ensureCollabTaskSchema(pool)
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS collab_task_id INTEGER`)
+
+    const emailNorm = String(customerEmail || '').trim().toLowerCase()
+    const authUserId = (req as Request & { userId?: string }).userId
+
+    const taskQ = await pool.query(
+      `SELECT t.*, u.email AS assignee_email FROM collab_assigned_tasks t
+       JOIN users u ON u.id = t.assignee_user_id
+       WHERE t.purchase_token = $1 AND t.product_id IS NOT NULL`,
+      [token]
+    )
+    if (!taskQ.rows.length) return
+    const task = taskQ.rows[0]
+    const assigneeEmail = String(task.assignee_email || '').trim().toLowerCase()
+    if (!emailNorm || emailNorm !== assigneeEmail) {
+      console.warn('[collab] collab_purchase_token: email does not match assignee')
+      return
+    }
+    if (authUserId != null && String(task.assignee_user_id) !== String(authUserId)) {
+      console.warn('[collab] collab_purchase_token: auth user does not match assignee')
+      return
+    }
+
+    let itemsRaw = order.items
+    const items = Array.isArray(itemsRaw)
+      ? itemsRaw
+      : typeof itemsRaw === 'string'
+        ? (JSON.parse(itemsRaw) as unknown[])
+        : []
+    const pid = Number(task.product_id)
+    const hasProduct = items.some((it: unknown) => {
+      if (!it || typeof it !== 'object') return false
+      const o = it as { product_id?: number; id?: number }
+      const id = Number(o.product_id ?? o.id)
+      return !Number.isNaN(id) && id === pid
+    })
+    if (!hasProduct) {
+      console.warn('[collab] collab_purchase_token: order items do not include task product', pid)
+      return
+    }
+
+    if (task.linked_order_id != null && Number(task.linked_order_id) !== Number(order.id)) {
+      console.warn('[collab] task already linked to a different order')
+      return
+    }
+
+    await pool.query(
+      `UPDATE collab_assigned_tasks SET
+         linked_order_id = $1,
+         completion_order_id = COALESCE(NULLIF(TRIM(completion_order_id), ''), $2),
+         updated_at = NOW()
+       WHERE id = $3 AND purchase_token = $4`,
+      [order.id, order.order_number, task.id, token]
+    )
+
+    await pool.query(
+      `UPDATE orders SET collab_task_id = $2, user_id = COALESCE(user_id, $3::integer) WHERE id = $1`,
+      [order.id, task.id, task.assignee_user_id]
+    )
+  } catch (e) {
+    console.error('[collabTasks] tryLinkCollabPurchaseOrder:', e)
+  }
+}
+
 /** Admin: create task */
 export async function adminCreateCollabTask(pool: Pool, req: Request, res: Response) {
   try {
@@ -281,7 +412,10 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
     const instructions = typeof body.instructions === 'string' ? body.instructions.trim() : ''
     const platforms = normalizePlatforms(body.platforms)
     const taskTemplateKey = typeof body.task_template_key === 'string' ? body.task_template_key.trim() : 'other'
-    const taskOptions = body.task_options && typeof body.task_options === 'object' ? body.task_options : {}
+    const taskOptions =
+      body.task_options && typeof body.task_options === 'object' && !Array.isArray(body.task_options)
+        ? (body.task_options as Record<string, unknown>)
+        : {}
     const productId = body.product_id != null && body.product_id !== '' ? Number(body.product_id) : null
     const reimbursementBudget =
       body.reimbursement_budget != null && body.reimbursement_budget !== ''
@@ -360,11 +494,13 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
       (typeof body.assigned_by === 'string' && body.assigned_by) ||
       'admin'
 
+    const purchaseToken = pid != null ? randomUUID() : null
+
     const { rows } = await pool.query(
       `INSERT INTO collab_assigned_tasks (
         collab_application_id, assignee_user_id, title, instructions, platforms, task_template_key, task_options,
-        product_id, product_snapshot, reimbursement_budget, creator_fee_amount, currency, due_at, assigned_by_label, status
-      ) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7::jsonb,$8,$9::jsonb,$10,$11,$12,$13,$14,'assigned')
+        product_id, product_snapshot, reimbursement_budget, creator_fee_amount, currency, due_at, assigned_by_label, status, purchase_token
+      ) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7::jsonb,$8,$9::jsonb,$10,$11,$12,$13,$14,'assigned',$15)
       RETURNING *`,
       [
         collabApplicationId,
@@ -381,6 +517,7 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
         currency,
         dueAt,
         String(assignedBy).slice(0, 200),
+        purchaseToken,
       ]
     )
 
@@ -393,8 +530,16 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
       'collab_task_assigned',
       'New creator task assigned',
       `Open Creator Program → Collab to complete: ${title}`,
-      '#/user/collab',
+      '#/user/collab?tab=collab&work=tasks',
       { collab_task_id: task.id, collab_application_id: collabApplicationId }
+    )
+
+    await notifyCollabBlogActivity(
+      pool,
+      assigneeUserId,
+      'collab_task_assigned',
+      title,
+      `New brand task: ${title}. Open Creator Program → Collab → Brand tasks.`
     )
 
     return res.status(201).json({ task })
@@ -532,8 +677,16 @@ export async function adminRequestCollabTaskRevision(pool: Pool, req: Request, r
       'collab_task_revision',
       'Creator task needs updates',
       message.slice(0, 200),
-      '#/user/collab',
+      '#/user/collab?tab=collab&work=tasks',
       { collab_task_id: id }
+    )
+
+    await notifyCollabBlogActivity(
+      pool,
+      Number(t.assignee_user_id),
+      'collab_task_revision',
+      String(t.title),
+      `Revision requested: ${message.slice(0, 280)}`
     )
 
     return res.json({ task: updated[0] })
@@ -581,6 +734,14 @@ export async function adminRejectCollabTask(pool: Pool, req: Request, res: Respo
       { collab_task_id: id }
     )
 
+    await notifyCollabBlogActivity(
+      pool,
+      Number(t.assignee_user_id),
+      'collab_task_rejected',
+      String(t.title),
+      `Not approved: ${reason.slice(0, 280)}`
+    )
+
     return res.json({ task: updated[0] })
   } catch (err) {
     console.error('adminRejectCollabTask:', err)
@@ -611,6 +772,12 @@ export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: R
     const t = rows[0]
 
     if (String(t.status) === 'paid') return res.status(400).json({ message: 'Task already paid' })
+    if (t.collab_order_returned_at) {
+      return res.status(400).json({
+        message:
+          'Linked collab product order was returned or cancelled before payout. Resolve with the creator before paying.',
+      })
+    }
     if (!(t.admin_verified_order && t.admin_verified_post)) {
       return res.status(400).json({ message: 'Verify order and post before payout' })
     }
@@ -662,6 +829,16 @@ export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: R
         : `Payout recorded for: ${t.title}`,
       '#/user/collab?tab=revenue',
       { collab_task_id: id, amount, credit_coins: creditCoins }
+    )
+
+    await notifyCollabBlogActivity(
+      pool,
+      Number(t.assignee_user_id),
+      'collab_task_paid',
+      String(t.title),
+      creditCoins
+        ? `Payout: ${Math.round(amount)} coins added for "${t.title}".`
+        : `Payout recorded for "${t.title}".`
     )
 
     return res.json({ task: updated[0] })
@@ -770,6 +947,8 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
     const requireOrder = opts.require_order_id !== false
 
     let orderId = typeof body.completion_order_id === 'string' ? body.completion_order_id.trim() : ''
+    const existingOrder = t.completion_order_id != null ? String(t.completion_order_id).trim() : ''
+    if (!orderId && existingOrder) orderId = existingOrder
     const postUrl = typeof body.completion_post_url === 'string' ? body.completion_post_url.trim() : ''
     const handle = typeof body.completion_platform_handle === 'string' ? body.completion_platform_handle.trim() : ''
     const notes = typeof body.completion_notes === 'string' ? body.completion_notes.trim() : ''
@@ -782,7 +961,10 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
       return res.status(400).json({ message: 'Content / post URL is required' })
     }
     if (requireOrder && !orderId) {
-      return res.status(400).json({ message: 'Order ID is required for this task' })
+      return res.status(400).json({
+        message:
+          'Order ID is required. Use “Buy for this task” on the product page so your order links automatically, or paste your Nefol order number.',
+      })
     }
     const orderStored = orderId.trim() ? orderId.trim() : null
 
@@ -873,6 +1055,14 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
       `${t.title}${orderStored ? ` — order ${orderStored}` : ''}`,
       '/admin/collab-requests',
       { collab_task_id: id, collab_application_id: app.id }
+    )
+
+    await notifyCollabBlogActivity(
+      pool,
+      Number(userId),
+      'collab_task_submitted',
+      String(t.title),
+      'Your submission was sent for review. We will notify you when it is approved or needs changes.'
     )
 
     return res.json({ task: updated[0], validation: auto_validation })
