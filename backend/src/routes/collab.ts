@@ -152,7 +152,7 @@ function computeProgress(totalViews: number, totalLikes: number) {
 }
 
 /** Ensure DB schema has Instagram OAuth columns on collab_applications + collab_reels validation fields */
-async function ensureCollabSchema(pool: Pool) {
+export async function ensureCollabSchema(pool: Pool) {
   await pool.query(`
     ALTER TABLE collab_applications
       ADD COLUMN IF NOT EXISTS instagram_connected   BOOLEAN     DEFAULT FALSE,
@@ -1828,6 +1828,21 @@ export async function getCreatorRevenue(pool: Pool, req: Request, res: Response)
       hist.some((r) => toIsoDateOnly(r.week_start) === currentWeekStr)
     )
 
+    let collab_task_payouts: Array<Record<string, unknown>> = []
+    try {
+      const payoutRes = await pool.query(
+        `SELECT id, title, paid_at, paid_amount, paid_currency, paid_method, coins_credited, task_template_key, platforms
+         FROM collab_assigned_tasks
+         WHERE assignee_user_id = $1::integer AND status = 'paid'
+         ORDER BY paid_at DESC NULLS LAST, id DESC
+         LIMIT 100`,
+        [userId]
+      )
+      collab_task_payouts = payoutRes.rows
+    } catch {
+      collab_task_payouts = []
+    }
+
     return res.json({
       nefol_coins_balance: bal[0]?.loyalty_points ?? 0,
       blog_weekly_reward_amount: BLOG_WEEKLY_CREATOR_COINS,
@@ -1840,6 +1855,7 @@ export async function getCreatorRevenue(pool: Pool, req: Request, res: Response)
         blog_post_id: r.blog_post_id,
         created_at: r.created_at,
       })),
+      collab_task_payouts,
     })
   } catch (err) {
     console.error('getCreatorRevenue error:', err)

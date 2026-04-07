@@ -52,6 +52,17 @@ interface CreatorRevenuePayload {
     blog_post_id: number | null
     created_at: string
   }>
+  collab_task_payouts?: Array<{
+    id: number
+    title: string
+    paid_at: string | null
+    paid_amount: number | null
+    paid_currency: string | null
+    paid_method: string | null
+    coins_credited: number | null
+    task_template_key: string | null
+    platforms: unknown
+  }>
 }
 
 export interface AffiliatePartnerProps {
@@ -772,6 +783,54 @@ useEffect(() => {
     return '—'
   }
 
+  const renderCollabTaskPayoutsSection = () => {
+    const rows = creatorRevenue?.collab_task_payouts ?? []
+    if (!rows.length) return null
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 sm:mb-12 overflow-hidden">
+        <div
+          className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 flex items-start justify-between gap-3"
+          style={{ background: 'linear-gradient(135deg, #fafcfd 0%, #f5f0fb 100%)' }}
+        >
+          <div className="min-w-0 flex-1">
+            <h2
+              className="text-lg sm:text-xl font-light text-gray-900 tracking-wide"
+              style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.08em' }}
+            >
+              Brand task payouts
+            </h2>
+            <p className="text-xs sm:text-[13px] text-gray-500 mt-1.5 leading-snug">
+              Completed collab jobs verified and paid by Nefol
+            </p>
+          </div>
+        </div>
+        <ul className="divide-y divide-gray-50 px-4 sm:px-6 py-2">
+          {rows.map((row) => (
+            <li key={row.id} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm">
+              <div>
+                <p className="font-medium text-gray-900">{row.title}</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {row.paid_at ? new Date(row.paid_at).toLocaleString() : '—'}
+                  {row.paid_method ? ` · ${row.paid_method.replace(/_/g, ' ')}` : ''}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                {row.paid_amount != null && (
+                  <p className="font-semibold tabular-nums text-gray-900">
+                    {row.paid_amount} {row.paid_currency || ''}
+                  </p>
+                )}
+                {row.coins_credited != null && row.coins_credited > 0 && (
+                  <p className="text-xs text-emerald-700">+{row.coins_credited} coins</p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
   const renderBlogWeeklySection = () => {
     const amt = creatorRevenue?.blog_weekly_reward_amount ?? 100
     const weekLabel = formatWeekStartLabel(creatorRevenue?.current_week_start ?? null)
@@ -938,6 +997,7 @@ useEffect(() => {
               Blog earnings below · affiliate tools unlock after partner verification
             </p>
           </div>
+          {renderCollabTaskPayoutsSection()}
           {renderBlogWeeklySection()}
           <div className="rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-3.5 sm:px-5">
             <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed">
@@ -1067,7 +1127,12 @@ useEffect(() => {
 
             {/* ── Overview tab ─────────────────────────────────────────────── */}
             {revTab === 'overview' && <>
-            {showEmbeddedRevenue && renderBlogWeeklySection()}
+            {showEmbeddedRevenue && (
+              <>
+                {renderCollabTaskPayoutsSection()}
+                {renderBlogWeeklySection()}
+              </>
+            )}
             {/* Currency Selector */}
             <div className="mb-6 flex items-center gap-3">
               <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Currency:</p>

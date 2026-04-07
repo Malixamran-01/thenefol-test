@@ -3,10 +3,11 @@ import {
   CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film,
   Trash2, Star, Wifi, WifiOff, ChevronDown, ChevronUp, Edit2, Save, X, AlertCircle,
   Youtube, Twitter, Facebook, Globe, Link, MapPin, Filter, ExternalLink, Linkedin, Send, Ghost,
-  ChevronRight, Download, FileText, FileJson, Ban, ShieldOff
+  ChevronRight, Download, FileText, FileJson, Ban, ShieldOff, ClipboardList
 } from 'lucide-react'
 import { Country, State } from 'country-state-city'
 import { getApiBaseUrl } from '../utils/apiUrl'
+import { AssignCollabTaskModal, ReviewCollabTaskModal } from '../components/collab/CollabTaskModals'
 
 interface Reel {
   id: number
@@ -263,6 +264,12 @@ export default function CollabRequests() {
   const [blockingUser, setBlockingUser] = useState(false)
   const [appealBlocks, setAppealBlocks] = useState<Array<Record<string, unknown>>>([])
 
+  const [assignTaskOpen, setAssignTaskOpen] = useState(false)
+  const [assignForAppId, setAssignForAppId] = useState<number | null>(null)
+  const [reviewTaskOpen, setReviewTaskOpen] = useState(false)
+  const [reviewTaskId, setReviewTaskId] = useState<number | null>(null)
+  const [collabTasksQueue, setCollabTasksQueue] = useState<Array<Record<string, unknown>>>([])
+
   // Creator database filters
   const [showFilters, setShowFilters] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
@@ -312,6 +319,17 @@ export default function CollabRequests() {
     }
   }, [apiBase, authHeaders])
 
+  const fetchCollabTasksQueue = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/admin/collab-tasks?status=all&limit=200`, { headers: authHeaders })
+      const data = await res.json().catch(() => ({}))
+      const tasks = Array.isArray(data?.tasks) ? data.tasks : []
+      setCollabTasksQueue(tasks)
+    } catch {
+      setCollabTasksQueue([])
+    }
+  }, [apiBase, authHeaders])
+
   const fetchItems = async () => {
     try {
       setLoading(true)
@@ -331,6 +349,7 @@ export default function CollabRequests() {
       if (!res.ok) throw new Error(data?.message || 'Failed to load')
       setAllItems(Array.isArray(data?.applications) ? data.applications : [])
       await refreshAppealQueue()
+      await fetchCollabTasksQueue()
     } catch (err: any) {
       alert(err?.message || 'Failed to load collab requests')
     } finally {
@@ -758,6 +777,46 @@ export default function CollabRequests() {
         </div>
       )}
 
+      {(() => {
+        const pendingReview = collabTasksQueue.filter((t) =>
+          ['submitted', 'verified_ready'].includes(String(t.status))
+        )
+        if (!pendingReview.length) return null
+        return (
+          <div className="mb-6 rounded-xl border border-[#4B97C9]/25 bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-[#1B4965] mb-3">
+              Creator tasks — needs review ({pendingReview.length})
+            </p>
+            <div className="space-y-2">
+              {pendingReview.map((t) => (
+                <div
+                  key={String(t.id)}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <span className="font-medium text-gray-900">{String(t.title)}</span>
+                    <span className="text-gray-500 ml-2">
+                      · {String(t.creator_name || t.creator_email || '')}
+                    </span>
+                    <span className="text-xs text-amber-700 ml-2 uppercase">{String(t.status)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReviewTaskId(Number(t.id))
+                      setReviewTaskOpen(true)
+                    }}
+                    className="rounded-lg bg-[#1B4965] px-3 py-1 text-xs font-semibold text-white shrink-0"
+                  >
+                    Review
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {[
@@ -1038,6 +1097,18 @@ export default function CollabRequests() {
                         <button onClick={() => openModal(item, 'approve')} title="Approve" className="text-green-600 hover:text-green-800"><CheckCircle className="h-4 w-4" /></button>
                         <button onClick={() => openModal(item, 'reject')} title="Reject" className="text-red-600 hover:text-red-800"><XCircle className="h-4 w-4" /></button>
                       </>}
+                      {item.status === 'approved' && !item.collab_blocked && !item.collab_block_id && (
+                        <button
+                          onClick={() => {
+                            setAssignForAppId(item.id)
+                            setAssignTaskOpen(true)
+                          }}
+                          title="Assign creator task"
+                          className="text-[#4B97C9] hover:text-[#357aad]"
+                        >
+                          <ClipboardList className="h-4 w-4" />
+                        </button>
+                      )}
                       <button onClick={() => promoteToAffiliate(item)} title="Promote to Affiliate" className="text-amber-500 hover:text-amber-700"><Star className="h-4 w-4" /></button>
                       {item.instagram_connected && (
                         <button onClick={() => refreshReelStats(item)} title="Refresh reel stats" className="text-indigo-400 hover:text-indigo-600"><RefreshCw className="h-4 w-4" /></button>
@@ -1103,6 +1174,22 @@ export default function CollabRequests() {
 
             {/* Scrollable body */}
             <div style={{ overflowY: 'auto', flex: 1, padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {selected.status === 'approved' && !selected.collab_blocked && !selected.collab_block_id && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignForAppId(selected.id)
+                      setAssignTaskOpen(true)
+                    }}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[#4B97C9] bg-[#f0f8fd] px-4 py-2.5 text-sm font-semibold text-[#1B4965] hover:bg-[#e2f0fa]"
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                    Assign creator task
+                  </button>
+                </div>
+              )}
 
               {/* Row: Progress + Instagram + Dates */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
@@ -1563,6 +1650,29 @@ export default function CollabRequests() {
           </div>
         </div>
       )}
+
+      <AssignCollabTaskModal
+        open={assignTaskOpen && assignForAppId != null}
+        onClose={() => {
+          setAssignTaskOpen(false)
+          setAssignForAppId(null)
+        }}
+        collabApplicationId={assignForAppId ?? 0}
+        apiBase={apiBase}
+        authHeaders={authHeaders}
+        onCreated={() => void fetchCollabTasksQueue()}
+      />
+      <ReviewCollabTaskModal
+        open={reviewTaskOpen}
+        taskId={reviewTaskId}
+        onClose={() => {
+          setReviewTaskOpen(false)
+          setReviewTaskId(null)
+        }}
+        apiBase={apiBase}
+        authHeaders={authHeaders}
+        onUpdated={() => void fetchCollabTasksQueue()}
+      />
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { YoutubeLogo, RedditLogo } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
+import CollabAssignedTasks from '../components/CollabAssignedTasks'
 import AffiliatePartner from './AffiliatePartner'
 
 export type CreatorProgramTab = 'collab' | 'affiliate' | 'revenue'
@@ -1313,6 +1314,8 @@ export default function Collab(props: CollabProps = {}) {
                   </div>
                 </div>
               </div>
+
+              {isApproved && <CollabAssignedTasks enabled={!!status?.id} authHeaders={authHeaders} />}
 
               {/* Unified platform connection strip — same pattern for Instagram + OAuth platforms */}
               {(showInstagramSection || visibleOauthPlatforms.length > 0) && (

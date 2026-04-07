@@ -34,6 +34,7 @@ import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/aut
 import { initRoleCheck } from './middleware/roleCheck'
 import * as affiliateRoutes from './routes/affiliate'
 import collabRouter, * as collabRoutes from './routes/collab'
+import * as collabTaskRoutes from './routes/collabTasks'
 import * as adminAuthorRoutes from './routes/adminAuthors'
 import instagramRouter, { refreshExpiringTokens } from './routes/instagram'
 import { refreshAllCollabStats } from './routes/collab'
@@ -846,6 +847,12 @@ app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarket
 // Ensure unique_user_id column exists (safe to run every startup)
 pool.query(`ALTER TABLE collab_applications ADD COLUMN IF NOT EXISTS unique_user_id text`).catch(() => {})
 app.get('/api/collab/creator-revenue', authenticateToken, (req, res) => collabRoutes.getCreatorRevenue(pool, req, res))
+app.get('/api/collab/tasks', authenticateToken, (req, res) => collabTaskRoutes.listUserCollabTasks(pool, req, res))
+app.get('/api/collab/tasks/:id', authenticateToken, (req, res) => collabTaskRoutes.getUserCollabTask(pool, req, res))
+app.post('/api/collab/tasks/:id/submit', authenticateToken, (req: any, res) => {
+  req.io = io
+  collabTaskRoutes.submitUserCollabTask(pool, req, res)
+})
 app.use('/api/collab', collabRouter(pool))
 app.use('/api/instagram', instagramRouter(pool))
 app.use('/api/platform', createPlatformRouter(pool))
@@ -864,6 +871,17 @@ app.post('/api/admin/collab-blocks/:id/unblock',            (req, res) => collab
 app.get('/api/admin/collab-blocks',                         (req, res) => collabRoutes.listCollabBlocks(pool, req, res))
 app.get('/api/admin/collab-blocks/:id',                     (req, res) => collabRoutes.getCollabBlockDetail(pool, req, res))
 app.put('/api/admin/collab-blocks/:id/appeal-resolve',      (req, res) => collabRoutes.adminResolveCollabAppeal(pool, req, res))
+
+const withCollabTaskIo = (handler: (p: typeof pool, req: any, res: any) => unknown) => (req: any, res: any) => {
+  req.io = io
+  return handler(pool, req, res)
+}
+app.post('/api/admin/collab-tasks', withCollabTaskIo(collabTaskRoutes.adminCreateCollabTask))
+app.get('/api/admin/collab-tasks', withCollabTaskIo(collabTaskRoutes.adminListCollabTasks))
+app.get('/api/admin/collab-tasks/:id', withCollabTaskIo(collabTaskRoutes.adminGetCollabTask))
+app.put('/api/admin/collab-tasks/:id/verify', withCollabTaskIo(collabTaskRoutes.adminVerifyCollabTask))
+app.put('/api/admin/collab-tasks/:id/revision', withCollabTaskIo(collabTaskRoutes.adminRequestCollabTaskRevision))
+app.put('/api/admin/collab-tasks/:id/pay', withCollabTaskIo(collabTaskRoutes.adminPayCollabTaskHandler))
 
 // ==================== AUTHORS (ADMIN — NEFOL Social) ====================
 app.get('/api/admin/authors', (req, res) => adminAuthorRoutes.listAdminAuthors(pool, req, res))
