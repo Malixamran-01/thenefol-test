@@ -41,9 +41,9 @@ export default function VerifiedBadge({
       >
         <defs>
           <radialGradient id={gradId} cx="50%" cy="38%" r="68%">
-            <stop offset="0%" stopColor="#8AD4FF" />
-            <stop offset="55%" stopColor="#3BAAF5" />
-            <stop offset="100%" stopColor="#1E88E5" />
+            <stop offset="0%" stopColor="#0c5078" />
+            <stop offset="55%" stopColor="#1568a1" />
+            <stop offset="100%" stopColor="#1c5e99" />
           </radialGradient>
         </defs>
         <path
