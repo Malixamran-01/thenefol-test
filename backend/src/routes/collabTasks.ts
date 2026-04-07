@@ -87,6 +87,9 @@ async function ensureCollabTaskSchema(pool: Pool) {
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS purchase_token TEXT`)
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS linked_order_id INTEGER`)
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS collab_order_returned_at TIMESTAMPTZ`)
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS external_retailer TEXT`)
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS external_order_ref TEXT`)
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_received_at TIMESTAMPTZ`)
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS collab_assigned_tasks_purchase_token_uidx
     ON collab_assigned_tasks(purchase_token) WHERE purchase_token IS NOT NULL
@@ -983,6 +986,10 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
       completion_notes?: string
       completion_extra?: Record<string, unknown>
       mark_in_progress?: boolean
+      save_purchase_info?: boolean
+      external_retailer?: string
+      external_order_ref?: string
+      nefol_order_number?: string
     }
 
     const { rows } = await pool.query(
@@ -995,9 +1002,73 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
     const blocked = await assertCollabNotBlockedByAppId(pool, app.id)
     if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
 
+    if (body.save_purchase_info) {
+      if (!['assigned', 'in_progress'].includes(String(t.status))) {
+        return res.status(400).json({ message: 'Purchase details can only be updated while the task is active' })
+      }
+      const erRaw = typeof body.external_retailer === 'string' ? body.external_retailer.trim().toLowerCase() : ''
+      const eor = typeof body.external_order_ref === 'string' ? body.external_order_ref.trim() : ''
+      const nefol = typeof body.nefol_order_number === 'string' ? body.nefol_order_number.trim() : ''
+      if (!eor && !nefol) {
+        return res.status(400).json({ message: 'Provide a marketplace order ID or your Nefol order number' })
+      }
+      const allowedRetailers = ['amazon', 'flipkart', 'other']
+      let externalRetailer: string | null = null
+      let externalRef: string | null = null
+      if (eor) {
+        if (!allowedRetailers.includes(erRaw)) {
+          return res.status(400).json({ message: 'Choose Amazon, Flipkart, or Other for marketplace purchases' })
+        }
+        externalRetailer = erRaw
+        externalRef = eor
+      } else if (erRaw) {
+        return res.status(400).json({ message: 'Enter the marketplace order ID' })
+      }
+      let completionOrder: string | null = null
+      if (nefol) {
+        if (t.linked_order_id != null) {
+          return res.status(400).json({ message: 'This task already has a linked Nefol checkout order' })
+        }
+        completionOrder = nefol
+      }
+      await pool.query(
+        `UPDATE collab_assigned_tasks SET
+          external_retailer = COALESCE($2, external_retailer),
+          external_order_ref = COALESCE($3, external_order_ref),
+          completion_order_id = CASE WHEN $4::text IS NOT NULL THEN $4 ELSE completion_order_id END,
+          updated_at = NOW()
+         WHERE id = $1`,
+        [id, externalRetailer ?? null, externalRef ?? null, completionOrder ?? null]
+      )
+      const r = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
+      return res.json({ task: r.rows[0] })
+    }
+
     if (body.mark_in_progress) {
       if (t.status === 'assigned') {
-        await pool.query(`UPDATE collab_assigned_tasks SET status = 'in_progress', updated_at = NOW() WHERE id = $1`, [id])
+        const opts = parseTaskOptions(t)
+        const skipPurchaseGate = opts.skip_product_purchase_gate === true
+        const pid = t.product_id != null ? Number(t.product_id) : NaN
+        const hasProduct = !Number.isNaN(pid) && pid > 0
+        if (hasProduct && !skipPurchaseGate) {
+          const linked = t.linked_order_id != null
+          const ext =
+            t.external_retailer &&
+            String(t.external_retailer).trim() &&
+            t.external_order_ref &&
+            String(t.external_order_ref).trim()
+          const nefolManual = t.completion_order_id && String(t.completion_order_id).trim()
+          if (!linked && !ext && !nefolManual) {
+            return res.status(400).json({
+              message:
+                'Confirm how you got the product first: use Buy now on Nefol, enter your Nefol order number, or save your Amazon/Flipkart order ID.',
+            })
+          }
+        }
+        await pool.query(
+          `UPDATE collab_assigned_tasks SET status = 'in_progress', product_received_at = NOW(), updated_at = NOW() WHERE id = $1`,
+          [id]
+        )
         const r = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
         return res.json({ task: r.rows[0] })
       }
@@ -1026,9 +1097,16 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
       return res.status(400).json({ message: 'Content / post URL is required' })
     }
     if (requireOrder && !orderId) {
+      const extR = t.external_order_ref != null ? String(t.external_order_ref).trim() : ''
+      const extP = t.external_retailer != null ? String(t.external_retailer).trim().toLowerCase() : ''
+      if (extR && extP) {
+        orderId = `${extP}:${extR}`
+      }
+    }
+    if (requireOrder && !orderId) {
       return res.status(400).json({
         message:
-          'Order ID is required. Use “Buy for this task” on the product page so your order links automatically, or paste your Nefol order number.',
+          'Order ID is required. Use Buy now on Nefol, save your marketplace order, or paste your Nefol order number.',
       })
     }
     const orderStored = orderId.trim() ? orderId.trim() : null

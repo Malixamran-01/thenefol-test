@@ -29,6 +29,9 @@ interface TaskRow {
   purchase_token?: string | null
   linked_order_id?: number | null
   collab_order_returned_at?: string | null
+  external_retailer?: string | null
+  external_order_ref?: string | null
+  product_received_at?: string | null
 }
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -144,10 +147,10 @@ function BuyCollabProductCta({ task, panelOpen }: { task: TaskRow; panelOpen: bo
   return (
     <a
       href={`#/user/product/${encodeURIComponent(slug)}?collabPurchase=${encodeURIComponent(String(task.purchase_token))}`}
-      className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B4965] bg-white px-4 py-2.5 text-sm font-semibold text-[#1B4965] hover:bg-[#f4f9fc]"
+      className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#1B4965] bg-white px-3 py-2 text-xs font-semibold text-[#1B4965] hover:bg-[#f4f9fc]"
     >
-      <ShoppingBag className="h-4 w-4" />
-      Buy product for this task (tracks order)
+      <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+      Buy now
     </a>
   )
 }
@@ -170,6 +173,10 @@ export default function CollabAssignedTasks({
   const [caption, setCaption] = useState('')
   const [proofUrl, setProofUrl] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [purchaseSaving, setPurchaseSaving] = useState(false)
+  const [purchaseRetailer, setPurchaseRetailer] = useState('')
+  const [purchaseExtRef, setPurchaseExtRef] = useState('')
+  const [purchaseNefolOrder, setPurchaseNefolOrder] = useState('')
   const [msg, setMsg] = useState<{ type: 'ok' | 'err' | 'warn'; text: string } | null>(null)
 
   const load = useCallback(async () => {
@@ -205,13 +212,80 @@ export default function CollabAssignedTasks({
 
   const filtered = useMemo(() => tasks.filter((t) => sectionForStatus(t.status) === section), [tasks, section])
 
-  const startTask = async (id: number) => {
-    await fetch(`${getApiBase()}/api/collab/tasks/${id}/submit`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ mark_in_progress: true }),
-    })
-    await load()
+  const openTask = useMemo(() => tasks.find((x) => x.id === openId) ?? null, [tasks, openId])
+
+  useEffect(() => {
+    if (!openTask) return
+    setPurchaseRetailer(openTask.external_retailer || '')
+    setPurchaseExtRef(openTask.external_order_ref || '')
+    setPurchaseNefolOrder(
+      openTask.linked_order_id ? '' : openTask.completion_order_id ? String(openTask.completion_order_id) : ''
+    )
+  }, [
+    openTask?.id,
+    openTask?.external_retailer,
+    openTask?.external_order_ref,
+    openTask?.completion_order_id,
+    openTask?.linked_order_id,
+  ])
+
+  const skipPurchaseGate = (t: TaskRow) => (t.task_options as { skip_product_purchase_gate?: boolean } | null)?.skip_product_purchase_gate === true
+
+  const savePurchaseInfo = async (t: TaskRow) => {
+    setMsg(null)
+    setPurchaseSaving(true)
+    try {
+      const body: Record<string, unknown> = { save_purchase_info: true }
+      const extRef = purchaseExtRef.trim()
+      const retailer = purchaseRetailer.trim().toLowerCase()
+      if (extRef) {
+        if (!['amazon', 'flipkart', 'other'].includes(retailer)) {
+          setMsg({ type: 'err', text: 'Choose Amazon, Flipkart, or Other for marketplace orders.' })
+          return
+        }
+        body.external_retailer = retailer
+        body.external_order_ref = extRef
+      }
+      const nefol = purchaseNefolOrder.trim()
+      if (nefol && !t.linked_order_id) body.nefol_order_number = nefol
+      if (!extRef && !nefol) {
+        setMsg({ type: 'err', text: 'Enter a marketplace order ID or your Nefol order number, then save.' })
+        return
+      }
+      const res = await fetch(`${getApiBase()}/api/collab/tasks/${t.id}/submit`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg({ type: 'err', text: data?.message || 'Could not save purchase details' })
+        return
+      }
+      setMsg({ type: 'ok', text: 'Purchase details saved.' })
+      await load()
+    } finally {
+      setPurchaseSaving(false)
+    }
+  }
+
+  const startTask = async (t: TaskRow) => {
+    setMsg(null)
+    try {
+      const res = await fetch(`${getApiBase()}/api/collab/tasks/${t.id}/submit`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mark_in_progress: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg({ type: 'err', text: data?.message || 'Could not start task' })
+        return
+      }
+      await load()
+    } catch {
+      setMsg({ type: 'err', text: 'Network error' })
+    }
   }
 
   const submitTask = async (t: TaskRow) => {
@@ -223,8 +297,18 @@ export default function CollabAssignedTasks({
       return
     }
     if (requireOrder && !orderId.trim()) {
-      setMsg({ type: 'err', text: 'Order ID is required for this task.' })
-      return
+      const hasNefolOnFile =
+        !!(t.completion_order_id && String(t.completion_order_id).trim()) || t.linked_order_id != null
+      const hasMarketplace = !!(
+        t.external_retailer &&
+        String(t.external_retailer).trim() &&
+        t.external_order_ref &&
+        String(t.external_order_ref).trim()
+      )
+      if (!hasNefolOnFile && !hasMarketplace) {
+        setMsg({ type: 'err', text: 'Order ID is required for this task (or save a marketplace order above).' })
+        return
+      }
     }
     setSubmitting(true)
     try {
@@ -495,22 +579,103 @@ export default function CollabAssignedTasks({
 
                   {canAct && (
                     <div className="space-y-2 pt-2">
-                      <BuyCollabProductCta task={t} panelOpen={expanded} />
+                      {t.product_id && (
+                        <div className="rounded-xl border border-gray-100 bg-white p-3 space-y-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Get the product</p>
+                          <div className="flex flex-wrap items-start gap-3">
+                            {t.purchase_token ? (
+                              <div className="w-[48%] min-w-[7.5rem] max-w-[11rem] shrink-0">
+                                <BuyCollabProductCta task={t} panelOpen={expanded} />
+                              </div>
+                            ) : null}
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <p className="text-xs text-gray-600">Bought on Amazon, Flipkart, or elsewhere?</p>
+                              <div className="flex flex-wrap gap-2">
+                                <select
+                                  value={openId === t.id ? purchaseRetailer : ''}
+                                  onChange={(e) => setPurchaseRetailer(e.target.value)}
+                                  className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs min-w-[6.5rem]"
+                                >
+                                  <option value="">Store</option>
+                                  <option value="amazon">Amazon</option>
+                                  <option value="flipkart">Flipkart</option>
+                                  <option value="other">Other</option>
+                                </select>
+                                <input
+                                  value={openId === t.id ? purchaseExtRef : ''}
+                                  onChange={(e) => setPurchaseExtRef(e.target.value)}
+                                  className="min-w-[8rem] flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-xs"
+                                  placeholder="Marketplace order ID"
+                                />
+                              </div>
+                              {!t.linked_order_id && (
+                                <div>
+                                  <label className="text-[10px] font-semibold uppercase text-gray-500">Nefol order #</label>
+                                  <input
+                                    value={openId === t.id ? purchaseNefolOrder : ''}
+                                    onChange={(e) => setPurchaseNefolOrder(e.target.value)}
+                                    className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs"
+                                    placeholder="If you bought on Nefol without Buy now"
+                                  />
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                disabled={purchaseSaving || openId !== t.id}
+                                onClick={() => void savePurchaseInfo(t)}
+                                className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 disabled:opacity-50"
+                              >
+                                {purchaseSaving ? 'Saving…' : 'Save purchase details'}
+                              </button>
+                              {t.external_retailer && t.external_order_ref ? (
+                                <p className="text-[11px] text-emerald-800">
+                                  Marketplace order on file:{' '}
+                                  <span className="font-mono">
+                                    {t.external_retailer} · {t.external_order_ref}
+                                  </span>
+                                </p>
+                              ) : null}
+                              {!t.linked_order_id && t.completion_order_id ? (
+                                <p className="text-[11px] text-emerald-800">
+                                  Nefol order on file: <span className="font-mono">{t.completion_order_id}</span>
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       {t.linked_order_id != null && t.completion_order_id && (
                         <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
                           Nefol order <span className="font-mono font-semibold">{t.completion_order_id}</span> is linked to
-                          this task. Checkout used your creator buy link.
+                          this task (tracked checkout).
+                        </p>
+                      )}
+                      {t.product_received_at && ['in_progress', 'needs_revision'].includes(t.status) && (
+                        <p className="text-xs text-gray-600">
+                          <span className="font-semibold text-gray-800">Product received:</span>{' '}
+                          {new Date(t.product_received_at).toLocaleString()} — you confirmed you have the product before
+                          starting.
                         </p>
                       )}
                       {t.status === 'assigned' && (
-                        <button
-                          type="button"
-                          onClick={() => void startTask(t.id)}
-                          className="inline-flex items-center gap-2 rounded-xl bg-[#1B4965] px-4 py-2 text-xs font-semibold text-white"
-                        >
-                          <PlayCircle className="h-4 w-4" />
-                          Start task
-                        </button>
+                        <div className="space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => void startTask(t)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#1B4965] px-4 py-2 text-xs font-semibold text-white"
+                          >
+                            <PlayCircle className="h-4 w-4" />
+                            {t.product_id && !skipPurchaseGate(t)
+                              ? 'I received the product — Start task'
+                              : 'Start task'}
+                          </button>
+                          {t.product_id && !skipPurchaseGate(t) ? (
+                            <p className="text-[11px] text-gray-500 max-w-md">
+                              This confirms to the team you have the product in hand. You will need a Nefol order, saved
+                              marketplace ID, or linked checkout first.
+                            </p>
+                          ) : null}
+                        </div>
                       )}
                       <label className="block text-[11px] font-semibold text-gray-500 uppercase">
                         Content / post URL <span className="text-red-500">*</span>
@@ -537,8 +702,8 @@ export default function CollabAssignedTasks({
                             placeholder="Your Nefol order ID"
                           />
                           <p className="text-[11px] text-gray-500">
-                            Prefer the <span className="font-semibold">Buy product for this task</span> button so your order
-                            links automatically (checkout email must match your Nefol account).
+                            Use <span className="font-semibold">Buy now</span> for tracked Nefol checkout, or save Amazon /
+                            Flipkart details above.
                           </p>
                         </>
                       )}

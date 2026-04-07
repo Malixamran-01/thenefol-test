@@ -54,6 +54,7 @@ export function AssignCollabTaskModal({
   const [postFormat, setPostFormat] = useState('any')
   const [minFollowers, setMinFollowers] = useState('')
   const [requireOrderId, setRequireOrderId] = useState(true)
+  const [skipPurchaseGate, setSkipPurchaseGate] = useState(false)
   const [compensationMode, setCompensationMode] = useState<'rewarded' | 'barter'>('rewarded')
   const [products, setProducts] = useState<{ id: number; title?: string; price?: number | string | null }[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
@@ -152,6 +153,7 @@ export function AssignCollabTaskModal({
         require_order_id: requireOrderId,
         compensation_mode: compensationMode,
       }
+      if (skipPurchaseGate) task_options.skip_product_purchase_gate = true
       if (subredditHint.trim() && showRedditFields) task_options.subreddit_hint = subredditHint.trim()
       if (hashtagHint.trim() && showInstaFields) task_options.hashtag_hint = hashtagHint.trim()
       if (xThreadHint.trim() && showXFields) task_options.x_placement_hint = xThreadHint.trim()
@@ -208,6 +210,7 @@ export function AssignCollabTaskModal({
       setPostFormat('any')
       setMinFollowers('')
       setRequireOrderId(true)
+      setSkipPurchaseGate(false)
       setCompensationMode('rewarded')
     } finally {
       setSaving(false)
@@ -458,6 +461,10 @@ export function AssignCollabTaskModal({
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input type="checkbox" checked={requireOrderId} onChange={(e) => setRequireOrderId(e.target.checked)} />
               Require Nefol order ID on submission
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={skipPurchaseGate} onChange={(e) => setSkipPurchaseGate(e.target.checked)} />
+              Allow start without purchase proof (no product, digital-only, or review tasks)
             </label>
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input type="checkbox" checked={disclosureRequired} onChange={(e) => setDisclosureRequired(e.target.checked)} />
@@ -740,6 +747,20 @@ export function ReviewCollabTaskModal({
                       · Nefol order # <span className="font-mono">{String(task.completion_order_id)}</span>
                     </>
                   ) : null}
+                </p>
+              ) : null}
+              {task.external_retailer && task.external_order_ref ? (
+                <p className="text-xs text-gray-600">
+                  External / marketplace:{' '}
+                  <span className="font-mono">
+                    {String(task.external_retailer)} · {String(task.external_order_ref)}
+                  </span>
+                </p>
+              ) : null}
+              {task.product_received_at ? (
+                <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                  Creator confirmed <span className="font-semibold">product received</span>{' '}
+                  {new Date(String(task.product_received_at)).toLocaleString()} (before starting work).
                 </p>
               ) : null}
               {task.instructions ? <p className="text-gray-600 whitespace-pre-wrap">{String(task.instructions)}</p> : null}
