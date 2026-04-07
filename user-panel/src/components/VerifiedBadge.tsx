@@ -2,11 +2,15 @@ import { useId } from 'react'
 
 interface VerifiedBadgeProps {
   className?: string
-  /** Visual scale — tuned so `md` reads well next to body/author names */
+  /** Visual scale — balanced next to body text / display names */
   size?: 'sm' | 'md' | 'lg' | 'xl'
   /** Accessible name; shown as native tooltip on hover */
   title?: string
 }
+
+/** Rounded 5-point star (smooth curves), 24×24 viewBox */
+const STAR_PATH =
+  'M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.007z'
 
 export default function VerifiedBadge({
   className = '',
@@ -17,10 +21,10 @@ export default function VerifiedBadge({
   const gradId = `vstar-g-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`
 
   const sizeClasses = {
-    sm: 'h-6 w-6 min-h-6 min-w-6',
-    md: 'h-7 w-7 min-h-7 min-w-7',
-    lg: 'h-9 w-9 min-h-9 min-w-9',
-    xl: 'h-11 w-11 min-h-11 min-w-11',
+    sm: 'h-4 w-4 min-h-4 min-w-4',
+    md: 'h-5 w-5 min-h-5 min-w-5',
+    lg: 'h-6 w-6 min-h-6 min-w-6',
+    xl: 'h-8 w-8 min-h-8 min-w-8',
   }
 
   return (
@@ -36,30 +40,29 @@ export default function VerifiedBadge({
         focusable="false"
       >
         <defs>
-          <radialGradient id={gradId} cx="50%" cy="40%" r="65%">
+          <radialGradient id={gradId} cx="50%" cy="38%" r="68%">
             <stop offset="0%" stopColor="#8AD4FF" />
             <stop offset="55%" stopColor="#3BAAF5" />
             <stop offset="100%" stopColor="#1E88E5" />
           </radialGradient>
         </defs>
-        {/* Base star */}
         <path
-          d="M12 2L14.9 8.3L22 9.2L17 14L18.2 21L12 17.8L5.8 21L7 14L2 9.2L9.1 8.3L12 2Z"
+          d={STAR_PATH}
           fill="#3BAAF5"
+          fillRule="evenodd"
+          clipRule="evenodd"
         />
-        {/* Gloss / depth */}
         <path
-          d="M12 2L14.9 8.3L22 9.2L17 14L18.2 21L12 17.8L5.8 21L7 14L2 9.2L9.1 8.3L12 2Z"
+          d={STAR_PATH}
           fill={`url(#${gradId})`}
-          opacity={0.75}
+          fillRule="evenodd"
+          clipRule="evenodd"
+          opacity={0.78}
         />
-        {/* Head (reference: person + check) */}
-        <circle cx="12" cy="9.2" r="1.85" fill="white" />
-        {/* Check */}
         <path
-          d="M8.2 13.2L11 15.6L16.2 10.4"
+          d="M9 13.35 L11.15 15.25 L16.35 10.15"
           stroke="white"
-          strokeWidth="1.85"
+          strokeWidth="1.65"
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
