@@ -1094,7 +1094,10 @@ export default function AuthorProfile() {
               <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold leading-tight text-gray-900 sm:text-3xl">
                 {resolvedAuthor.name}
                 {showPublicVerifiedBadge && (
-                  <AuthorVerifiedBadge size="xl" className="translate-y-0.5 sm:translate-y-1" />
+                  <AuthorVerifiedBadge
+                    size="xl"
+                    className="relative -top-px sm:-top-0.5"
+                  />
                 )}
               </h1>
               {handle && <p className="mt-0.5 text-xs font-medium text-gray-400 sm:text-sm">{handle}</p>}

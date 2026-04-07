@@ -60,9 +60,9 @@ export default function VerifiedBadge({
           opacity={0.78}
         />
         <path
-          d="M9 13.35 L11.15 15.25 L16.35 10.15"
+          d="M9.55 13.5 L10.95 14.85 L15.45 10.85"
           stroke="white"
-          strokeWidth="1.65"
+          strokeWidth="1.28"
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
