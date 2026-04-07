@@ -1,22 +1,19 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { X, Loader2, ClipboardList } from 'lucide-react'
+import { buildTaskPlatformOptionsFromApplicant, type ApplicantPlatform } from '../../utils/collabApplicantPlatforms'
 
-const PLATFORMS: { key: string; label: string }[] = [
-  { key: 'instagram_reel', label: 'Instagram Reel' },
-  { key: 'reddit', label: 'Reddit' },
-  { key: 'x', label: 'X (Twitter)' },
-  { key: 'youtube', label: 'YouTube' },
-  { key: 'tiktok', label: 'TikTok' },
-  { key: 'facebook', label: 'Facebook' },
-  { key: 'other', label: 'Other' },
+const TASK_TYPES: { key: string; label: string }[] = [
+  { key: 'review', label: 'Review' },
+  { key: 'reel', label: 'Reel' },
+  { key: 'post', label: 'Post' },
+  { key: 'blog', label: 'Blog' },
 ]
 
-const TASK_TEMPLATES: { key: string; label: string }[] = [
-  { key: 'product_review', label: 'Product review' },
-  { key: 'unboxing', label: 'Unboxing' },
-  { key: 'brand_awareness', label: 'Brand awareness / mention' },
-  { key: 'custom_story', label: 'Custom creative brief' },
-  { key: 'other', label: 'Other' },
+const POST_FORMATS: { key: string; label: string }[] = [
+  { key: 'any', label: 'Any' },
+  { key: 'video', label: 'Video' },
+  { key: 'text', label: 'Text' },
+  { key: 'image', label: 'Image' },
 ]
 
 type AuthHeaders = Record<string, string>
@@ -25,6 +22,7 @@ export function AssignCollabTaskModal({
   open,
   onClose,
   collabApplicationId,
+  applicantPlatforms,
   apiBase,
   authHeaders,
   onCreated,
@@ -32,6 +30,8 @@ export function AssignCollabTaskModal({
   open: boolean
   onClose: () => void
   collabApplicationId: number
+  /** From collab application form — only these platforms are selectable */
+  applicantPlatforms?: ApplicantPlatform[] | null
   apiBase: string
   authHeaders: AuthHeaders
   onCreated: () => void
@@ -39,18 +39,30 @@ export function AssignCollabTaskModal({
   const [title, setTitle] = useState('')
   const [instructions, setInstructions] = useState('')
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
-  const [template, setTemplate] = useState('product_review')
+  const [template, setTemplate] = useState('review')
   const [productId, setProductId] = useState('')
   const [reimbursement, setReimbursement] = useState('')
   const [creatorFee, setCreatorFee] = useState('')
   const [currency, setCurrency] = useState('INR')
   const [dueAt, setDueAt] = useState('')
   const [subredditHint, setSubredditHint] = useState('')
+  const [hashtagHint, setHashtagHint] = useState('')
+  const [xThreadHint, setXThreadHint] = useState('')
   const [disclosureRequired, setDisclosureRequired] = useState(true)
+  const [requiredKeyword, setRequiredKeyword] = useState('#nefol')
+  const [minWordCount, setMinWordCount] = useState('')
+  const [postFormat, setPostFormat] = useState('any')
+  const [minFollowers, setMinFollowers] = useState('')
+  const [requireOrderId, setRequireOrderId] = useState(true)
   const [products, setProducts] = useState<{ id: number; title?: string }[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+
+  const platformOptions = useMemo(
+    () => buildTaskPlatformOptionsFromApplicant(applicantPlatforms ?? null),
+    [applicantPlatforms]
+  )
 
   const loadProducts = useCallback(async () => {
     setLoadingProducts(true)
@@ -72,14 +84,35 @@ export function AssignCollabTaskModal({
     loadProducts()
   }, [open, loadProducts])
 
+  useEffect(() => {
+    if (!open || platformOptions.length === 0) return
+    setSelectedPlatforms((prev) => {
+      if (prev.length > 0 && prev.every((k) => platformOptions.some((o) => o.key === k))) return prev
+      if (platformOptions.length === 1) return [platformOptions[0].key]
+      return []
+    })
+  }, [open, platformOptions])
+
   const togglePlatform = (key: string) => {
     setSelectedPlatforms((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
   }
+
+  const setRewardPreset = (n: number) => {
+    setCreatorFee(String(n))
+  }
+
+  const showRedditFields = selectedPlatforms.includes('reddit')
+  const showInstaFields = selectedPlatforms.includes('instagram_reel')
+  const showXFields = selectedPlatforms.includes('x')
 
   const submit = async () => {
     setErr('')
     if (!title.trim()) {
       setErr('Title is required')
+      return
+    }
+    if (!platformOptions.length) {
+      setErr('This creator has no platforms on their collab application.')
       return
     }
     if (!selectedPlatforms.length) {
@@ -88,9 +121,19 @@ export function AssignCollabTaskModal({
     }
     setSaving(true)
     try {
-      const task_options: Record<string, unknown> = {}
-      if (subredditHint.trim()) task_options.subreddit_hint = subredditHint.trim()
-      task_options.disclosure_required = disclosureRequired
+      const task_options: Record<string, unknown> = {
+        disclosure_required: disclosureRequired,
+        required_keyword: requiredKeyword.trim() || '#nefol',
+        post_format: postFormat,
+        require_order_id: requireOrderId,
+      }
+      if (subredditHint.trim() && showRedditFields) task_options.subreddit_hint = subredditHint.trim()
+      if (hashtagHint.trim() && showInstaFields) task_options.hashtag_hint = hashtagHint.trim()
+      if (xThreadHint.trim() && showXFields) task_options.x_placement_hint = xThreadHint.trim()
+      const mwc = minWordCount.trim() ? Number(minWordCount) : NaN
+      if (!Number.isNaN(mwc) && mwc > 0) task_options.min_word_count = mwc
+      const mf = minFollowers.trim() ? Number(minFollowers) : NaN
+      if (!Number.isNaN(mf) && mf > 0) task_options.min_followers = mf
 
       const body: Record<string, unknown> = {
         collab_application_id: collabApplicationId,
@@ -121,12 +164,19 @@ export function AssignCollabTaskModal({
       setTitle('')
       setInstructions('')
       setSelectedPlatforms([])
-      setTemplate('product_review')
+      setTemplate('review')
       setProductId('')
       setReimbursement('')
       setCreatorFee('')
       setDueAt('')
       setSubredditHint('')
+      setHashtagHint('')
+      setXThreadHint('')
+      setRequiredKeyword('#nefol')
+      setMinWordCount('')
+      setPostFormat('any')
+      setMinFollowers('')
+      setRequireOrderId(true)
     } finally {
       setSaving(false)
     }
@@ -139,7 +189,7 @@ export function AssignCollabTaskModal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
       className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/50 p-4"
     >
-      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
+      <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-[#4B97C9]" />
@@ -161,23 +211,31 @@ export function AssignCollabTaskModal({
             />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Platforms</label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {PLATFORMS.map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => togglePlatform(p.key)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    selectedPlatforms.includes(p.key)
-                      ? 'bg-[#1B4965] text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Platforms (from creator application)
+            </label>
+            {!platformOptions.length ? (
+              <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                No platforms found on this application. The creator must list platforms on their collab form first.
+              </p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {platformOptions.map((p) => (
+                  <button
+                    key={`${p.key}-${p.label}`}
+                    type="button"
+                    onClick={() => togglePlatform(p.key)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      selectedPlatforms.includes(p.key)
+                        ? 'bg-[#1B4965] text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Task type</label>
@@ -186,7 +244,7 @@ export function AssignCollabTaskModal({
               onChange={(e) => setTemplate(e.target.value)}
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
             >
-              {TASK_TEMPLATES.map((t) => (
+              {TASK_TYPES.map((t) => (
                 <option key={t.key} value={t.key}>
                   {t.label}
                 </option>
@@ -209,6 +267,30 @@ export function AssignCollabTaskModal({
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reward (creator fee)</label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {[500, 1000, 2500, 5000, 10000].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRewardPreset(n)}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-[#1B4965] hover:bg-[#f0f8fd]"
+                >
+                  ₹{n.toLocaleString()}
+                </button>
+              ))}
+            </div>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={creatorFee}
+              onChange={(e) => setCreatorFee(e.target.value)}
+              placeholder="Custom amount"
+              className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Product budget cap</label>
@@ -223,20 +305,6 @@ export function AssignCollabTaskModal({
               />
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Creator fee</label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={creatorFee}
-                onChange={(e) => setCreatorFee(e.target.value)}
-                placeholder="0"
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Currency</label>
               <input
                 value={currency}
@@ -244,36 +312,116 @@ export function AssignCollabTaskModal({
                 className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
               />
             </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Due (optional)</label>
-              <input
-                type="datetime-local"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              />
-            </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Subreddit / placement hint</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Deadline (optional)</label>
             <input
-              value={subredditHint}
-              onChange={(e) => setSubredditHint(e.target.value)}
-              placeholder="e.g. r/SkincareAddiction"
+              type="datetime-local"
+              value={dueAt}
+              onChange={(e) => setDueAt(e.target.value)}
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={disclosureRequired} onChange={(e) => setDisclosureRequired(e.target.checked)} />
-            Require disclosure (#ad / partnership)
-          </label>
+
+          <div className="rounded-xl border border-gray-100 bg-slate-50/80 p-4 space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Requirements</p>
+            <div>
+              <label className="text-xs font-semibold text-gray-500">Must include keyword / hashtag</label>
+              <input
+                value={requiredKeyword}
+                onChange={(e) => setRequiredKeyword(e.target.value)}
+                placeholder="#nefol"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-500">Min word count (optional)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={minWordCount}
+                  onChange={(e) => setMinWordCount(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500">Post format</label>
+                <select
+                  value={postFormat}
+                  onChange={(e) => setPostFormat(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+                >
+                  {POST_FORMATS.map((f) => (
+                    <option key={f.key} value={f.key}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500">Min followers on account (optional)</label>
+              <input
+                type="number"
+                min={0}
+                value={minFollowers}
+                onChange={(e) => setMinFollowers(e.target.value)}
+                placeholder="e.g. 5000"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={requireOrderId} onChange={(e) => setRequireOrderId(e.target.checked)} />
+              Require Nefol order ID on submission
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={disclosureRequired} onChange={(e) => setDisclosureRequired(e.target.checked)} />
+              Require disclosure (#ad / partnership)
+            </label>
+          </div>
+
+          {showRedditFields && (
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Subreddit / placement (Reddit)</label>
+              <input
+                value={subredditHint}
+                onChange={(e) => setSubredditHint(e.target.value)}
+                placeholder="e.g. r/SkincareAddiction"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+          {showInstaFields && (
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Hashtag / mention hint (Instagram)</label>
+              <input
+                value={hashtagHint}
+                onChange={(e) => setHashtagHint(e.target.value)}
+                placeholder="e.g. @nefol #nefol"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+          {showXFields && (
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Thread / placement hint (X)</label>
+              <input
+                value={xThreadHint}
+                onChange={(e) => setXThreadHint(e.target.value)}
+                placeholder="e.g. Quote-tweet launch post"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Instructions</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Brief / instructions</label>
             <textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               rows={4}
-              placeholder="What you need: tone, talking points, link to PDP, order timeline…"
+              placeholder="Tone, talking points, PDP link, timeline…"
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
             />
           </div>
@@ -284,7 +432,7 @@ export function AssignCollabTaskModal({
           </button>
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || !platformOptions.length}
             onClick={() => void submit()}
             className="inline-flex items-center gap-2 rounded-lg bg-[#1B4965] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
@@ -324,6 +472,7 @@ export function ReviewCollabTaskModal({
   const [creditCoins, setCreditCoins] = useState(true)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [rejectReason, setRejectReason] = useState('')
 
   const load = useCallback(async () => {
     if (!taskId) return
@@ -352,6 +501,10 @@ export function ReviewCollabTaskModal({
   useEffect(() => {
     if (open && taskId) void load()
   }, [open, taskId, load])
+
+  useEffect(() => {
+    if (open) setRejectReason('')
+  }, [open, taskId])
 
   const saveVerify = async () => {
     if (!taskId) return
@@ -392,6 +545,31 @@ export function ReviewCollabTaskModal({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setErr(data?.message || 'Failed')
+        return
+      }
+      onUpdated()
+      onClose()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const rejectSubmission = async () => {
+    if (!taskId || !rejectReason.trim()) {
+      setErr('Enter a rejection reason for the creator')
+      return
+    }
+    setBusy(true)
+    setErr('')
+    try {
+      const res = await fetch(`${apiBase}/admin/collab-tasks/${taskId}/reject`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ reason: rejectReason.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErr(data?.message || 'Reject failed')
         return
       }
       onUpdated()
@@ -442,7 +620,7 @@ export function ReviewCollabTaskModal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
       className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/50 p-4"
     >
-      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
+      <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <h3 className="text-lg font-semibold text-gray-900">Review task</h3>
           <button type="button" onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100">
@@ -463,6 +641,54 @@ export function ReviewCollabTaskModal({
                 Status: <span className="font-medium text-gray-800">{st}</span> · Creator: {String(task.creator_name || task.creator_email || '—')}
               </p>
               {task.instructions ? <p className="text-gray-600 whitespace-pre-wrap">{String(task.instructions)}</p> : null}
+              {task.task_options && typeof task.task_options === 'object' && task.task_options !== null && (
+                <div className="rounded-lg border border-gray-100 bg-white p-3 text-xs text-gray-700 space-y-1">
+                  <p className="font-bold text-gray-500 uppercase tracking-wide">Brief requirements</p>
+                  {String((task.task_options as Record<string, unknown>).required_keyword || '') && (
+                    <p>
+                      Keyword:{' '}
+                      <span className="font-medium">{String((task.task_options as Record<string, unknown>).required_keyword)}</span>
+                    </p>
+                  )}
+                  {(task.task_options as Record<string, unknown>).min_word_count != null && (
+                    <p>Min words: {String((task.task_options as Record<string, unknown>).min_word_count)}</p>
+                  )}
+                  {String((task.task_options as Record<string, unknown>).post_format ?? '') !== '' && (
+                    <p>Format: {String((task.task_options as Record<string, unknown>).post_format)}</p>
+                  )}
+                  {(task.task_options as Record<string, unknown>).min_followers != null && (
+                    <p>Min followers: {String((task.task_options as Record<string, unknown>).min_followers)}</p>
+                  )}
+                  {String((task.task_options as Record<string, unknown>).subreddit_hint ?? '') !== '' && (
+                    <p>Subreddit: {String((task.task_options as Record<string, unknown>).subreddit_hint)}</p>
+                  )}
+                </div>
+              )}
+              {(() => {
+                const ex = task.completion_extra
+                if (!ex || typeof ex !== 'object' || ex === null) return null
+                const av = (ex as Record<string, unknown>).auto_validation
+                if (!av || typeof av !== 'object') return null
+                const a = av as Record<string, unknown>
+                const warns = Array.isArray(a.warnings) ? a.warnings : []
+                return (
+                  <div className="rounded-lg border border-blue-100 bg-blue-50/80 p-3 text-xs space-y-1">
+                    <p className="font-bold text-blue-900 uppercase tracking-wide">Auto-checks (submission)</p>
+                    <p>Keyword: {a.keyword_ok ? '✓' : '✗'}</p>
+                    <p>
+                      Handle in URL:{' '}
+                      {a.handle_in_url_ok === null ? '—' : a.handle_in_url_ok ? '✓' : '✗'}
+                    </p>
+                    {warns.length > 0 && (
+                      <ul className="list-disc pl-4 text-amber-900">
+                        {warns.map((w, i) => (
+                          <li key={i}>{String(w)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )
+              })()}
               <div className="rounded-lg bg-gray-50 p-3 text-xs space-y-1">
                 <p>
                   <span className="text-gray-500">Order ID:</span> {String(task.completion_order_id || '—')}
@@ -532,6 +758,25 @@ export function ReviewCollabTaskModal({
                       className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 disabled:opacity-50"
                     >
                       Send revision request
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 border-t border-red-100 pt-3">
+                    <p className="text-xs font-bold uppercase text-red-700">Reject submission</p>
+                    <textarea
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      rows={2}
+                      placeholder="Reason shown to creator (required)"
+                      className="w-full rounded-lg border border-red-200 px-3 py-2 text-xs"
+                    />
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void rejectSubmission()}
+                      className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                    >
+                      Reject &amp; notify
                     </button>
                   </div>
 

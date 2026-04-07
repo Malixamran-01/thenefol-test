@@ -881,6 +881,7 @@ app.get('/api/admin/collab-tasks', withCollabTaskIo(collabTaskRoutes.adminListCo
 app.get('/api/admin/collab-tasks/:id', withCollabTaskIo(collabTaskRoutes.adminGetCollabTask))
 app.put('/api/admin/collab-tasks/:id/verify', withCollabTaskIo(collabTaskRoutes.adminVerifyCollabTask))
 app.put('/api/admin/collab-tasks/:id/revision', withCollabTaskIo(collabTaskRoutes.adminRequestCollabTaskRevision))
+app.put('/api/admin/collab-tasks/:id/reject', withCollabTaskIo(collabTaskRoutes.adminRejectCollabTask))
 app.put('/api/admin/collab-tasks/:id/pay', withCollabTaskIo(collabTaskRoutes.adminPayCollabTaskHandler))
 
 // ==================== AUTHORS (ADMIN — NEFOL Social) ====================

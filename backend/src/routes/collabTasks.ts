@@ -40,7 +40,7 @@ async function ensureCollabTaskSchema(pool: Pool) {
       status VARCHAR(32) NOT NULL DEFAULT 'assigned'
         CHECK (status IN (
           'assigned', 'in_progress', 'submitted', 'needs_revision',
-          'verified_ready', 'paid', 'cancelled'
+          'verified_ready', 'paid', 'cancelled', 'rejected'
         )),
       assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       assigned_by_label TEXT,
@@ -67,6 +67,74 @@ async function ensureCollabTaskSchema(pool: Pool) {
     CREATE INDEX IF NOT EXISTS idx_collab_tasks_assignee ON collab_assigned_tasks(assignee_user_id);
     CREATE INDEX IF NOT EXISTS idx_collab_tasks_status ON collab_assigned_tasks(status);
   `)
+  try {
+    await pool.query(`
+      ALTER TABLE collab_assigned_tasks DROP CONSTRAINT IF EXISTS collab_assigned_tasks_status_check
+    `)
+    await pool.query(`
+      ALTER TABLE collab_assigned_tasks ADD CONSTRAINT collab_assigned_tasks_status_check
+      CHECK (status IN (
+        'assigned', 'in_progress', 'submitted', 'needs_revision',
+        'verified_ready', 'paid', 'cancelled', 'rejected'
+      ))
+    `)
+  } catch {
+    /* ignore if table new or constraint differs */
+  }
+}
+
+/** Task platform keys allowed for a creator, derived from collab application `platforms[].name` */
+export function collabTaskKeysFromApplicationPlatforms(raw: unknown): Set<string> {
+  const set = new Set<string>()
+  const list = Array.isArray(raw) ? raw : []
+  const mapName = (n: string): string[] => {
+    const name = String(n || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+    const m: Record<string, string[]> = {
+      instagram: ['instagram_reel'],
+      ig: ['instagram_reel'],
+      youtube: ['youtube'],
+      reddit: ['reddit'],
+      x: ['x'],
+      twitter: ['x'],
+      tiktok: ['tiktok'],
+      facebook: ['facebook'],
+      fb: ['facebook'],
+      linkedin: ['other'],
+      telegram: ['other'],
+      snapchat: ['other'],
+      vk: ['other'],
+      quora: ['other'],
+      other: ['other'],
+    }
+    return m[name] || ['other']
+  }
+  for (const p of list) {
+    const name =
+      typeof p === 'object' && p !== null && 'name' in p ? String((p as { name: string }).name).trim() : ''
+    if (!name) continue
+    for (const k of mapName(name)) set.add(k)
+  }
+  return set
+}
+
+function normalizePostUrlForDedupe(url: string): string {
+  try {
+    const u = new URL(url.trim())
+    u.hash = ''
+    let path = u.pathname.replace(/\/+$/, '') || '/'
+    return `${u.hostname.toLowerCase()}${path}${u.search}`.toLowerCase()
+  } catch {
+    return url.trim().toLowerCase().replace(/\/+$/, '')
+  }
+}
+
+function parseTaskOptions(row: { task_options?: unknown }): Record<string, unknown> {
+  const o = row.task_options
+  if (o && typeof o === 'object' && !Array.isArray(o)) return o as Record<string, unknown>
+  return {}
 }
 
 function getIo(req: Request): Server | undefined {
@@ -231,12 +299,27 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
     if (!platforms.length) return res.status(400).json({ message: 'Select at least one platform' })
 
     const appQ = await pool.query(
-      `SELECT id, status, name, email FROM collab_applications WHERE id = $1`,
+      `SELECT id, status, name, email, platforms FROM collab_applications WHERE id = $1`,
       [collabApplicationId]
     )
     if (!appQ.rows.length) return res.status(404).json({ message: 'Collab application not found' })
     if (String(appQ.rows[0].status) !== 'approved') {
       return res.status(400).json({ message: 'Can only assign tasks to approved creators' })
+    }
+
+    const allowedKeys = collabTaskKeysFromApplicationPlatforms(appQ.rows[0].platforms)
+    if (allowedKeys.size === 0) {
+      return res.status(400).json({
+        message:
+          'This creator has no platforms on their collab application. They need to list platforms on their application before you can assign channel-specific tasks.',
+      })
+    }
+    for (const p of platforms) {
+      if (!allowedKeys.has(p)) {
+        return res.status(400).json({
+          message: `Platform "${p}" is not among this creator's selected collab platforms.`,
+        })
+      }
     }
 
     const blocked = await assertCollabNotBlockedByAppId(pool, collabApplicationId)
@@ -460,6 +543,51 @@ export async function adminRequestCollabTaskRevision(pool: Pool, req: Request, r
   }
 }
 
+export async function adminRejectCollabTask(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabTaskSchema(pool)
+    const id = Number(req.params.id)
+    const reason =
+      typeof (req.body as { reason?: string }).reason === 'string' ? (req.body as { reason: string }).reason.trim() : ''
+    if (Number.isNaN(id)) return res.status(400).json({ message: 'Invalid id' })
+    if (!reason) return res.status(400).json({ message: 'reason is required' })
+
+    const { rows } = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
+    if (!rows.length) return res.status(404).json({ message: 'Task not found' })
+    const t = rows[0]
+    if (!['submitted', 'verified_ready'].includes(String(t.status))) {
+      return res.status(400).json({ message: 'Only submitted tasks can be rejected' })
+    }
+
+    await pool.query(
+      `UPDATE collab_assigned_tasks SET
+        status = 'rejected',
+        revision_message = $2,
+        updated_at = NOW()
+       WHERE id = $1`,
+      [id, reason]
+    )
+
+    const { rows: updated } = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
+
+    await notifyUser(
+      pool,
+      req,
+      Number(t.assignee_user_id),
+      'collab_task_rejected',
+      'Creator task not approved',
+      reason.slice(0, 280),
+      '#/user/collab?tab=collab&work=tasks',
+      { collab_task_id: id }
+    )
+
+    return res.json({ task: updated[0] })
+  } catch (err) {
+    console.error('adminRejectCollabTask:', err)
+    return res.status(500).json({ message: 'Failed to reject task' })
+  }
+}
+
 export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabTaskSchema(pool)
@@ -638,15 +766,87 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
       return res.status(400).json({ message: 'This task cannot be submitted right now' })
     }
 
-    const orderId = typeof body.completion_order_id === 'string' ? body.completion_order_id.trim() : ''
+    const opts = parseTaskOptions(t)
+    const requireOrder = opts.require_order_id !== false
+
+    let orderId = typeof body.completion_order_id === 'string' ? body.completion_order_id.trim() : ''
     const postUrl = typeof body.completion_post_url === 'string' ? body.completion_post_url.trim() : ''
     const handle = typeof body.completion_platform_handle === 'string' ? body.completion_platform_handle.trim() : ''
     const notes = typeof body.completion_notes === 'string' ? body.completion_notes.trim() : ''
-    const extra = body.completion_extra && typeof body.completion_extra === 'object' ? body.completion_extra : {}
+    const userExtra =
+      body.completion_extra && typeof body.completion_extra === 'object' && !Array.isArray(body.completion_extra)
+        ? (body.completion_extra as Record<string, unknown>)
+        : {}
 
-    if (!orderId || !postUrl) {
-      return res.status(400).json({ message: 'Order ID and post URL are required' })
+    if (!postUrl) {
+      return res.status(400).json({ message: 'Content / post URL is required' })
     }
+    if (requireOrder && !orderId) {
+      return res.status(400).json({ message: 'Order ID is required for this task' })
+    }
+    const orderStored = orderId.trim() ? orderId.trim() : null
+
+    const normUrl = normalizePostUrlForDedupe(postUrl)
+    const dupRows = await pool.query(
+      `SELECT id, completion_post_url FROM collab_assigned_tasks
+       WHERE id <> $1
+         AND completion_post_url IS NOT NULL
+         AND TRIM(completion_post_url) <> ''
+         AND status::text NOT IN ('assigned','in_progress','needs_revision','cancelled','rejected')`,
+      [id]
+    )
+    for (const r of dupRows.rows) {
+      if (normalizePostUrlForDedupe(String(r.completion_post_url)) === normUrl) {
+        return res.status(409).json({ message: 'This content link was already used on another submission.' })
+      }
+    }
+
+    if (orderStored) {
+      const dupOrd = await pool.query(
+        `SELECT id FROM collab_assigned_tasks
+         WHERE id <> $1
+           AND completion_order_id IS NOT NULL
+           AND TRIM(completion_order_id) <> ''
+           AND LOWER(TRIM(completion_order_id)) = LOWER(TRIM($2))
+           AND status::text NOT IN ('assigned','in_progress','needs_revision','cancelled','rejected')`,
+        [id, orderStored]
+      )
+      if (dupOrd.rows.length) {
+        return res.status(409).json({ message: 'This order ID was already used on another task submission.' })
+      }
+    }
+
+    const kwRaw = opts.required_keyword
+    const kw =
+      typeof kwRaw === 'string' && kwRaw.trim()
+        ? kwRaw.trim()
+        : Array.isArray(kwRaw) && kwRaw.length
+          ? String(kwRaw[0])
+          : '#nefol'
+    const hay = `${postUrl}\n${notes}\n${JSON.stringify(userExtra)}`.toLowerCase()
+    const keywordOk = !kw || hay.includes(String(kw).toLowerCase())
+
+    let handleInUrl: boolean | null = null
+    if (handle) {
+      const h = handle.replace(/^@/, '').trim().toLowerCase()
+      if (h) handleInUrl = postUrl.toLowerCase().includes(h)
+    }
+
+    const auto_validation = {
+      keyword_ok: keywordOk,
+      handle_in_url_ok: handleInUrl,
+      required_keyword: kw,
+      checked_at: new Date().toISOString(),
+      warnings: [] as string[],
+    }
+    if (!keywordOk) {
+      auto_validation.warnings.push(`Did not detect required keyword "${kw}" in your link, notes, or attachments metadata.`)
+    }
+    if (handleInUrl === false) {
+      auto_validation.warnings.push('Post URL does not obviously contain your declared handle — admins will double-check.')
+    }
+
+    const mergedExtra = { ...userExtra, auto_validation }
 
     await pool.query(
       `UPDATE collab_assigned_tasks SET
@@ -660,7 +860,7 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
         revision_message = NULL,
         updated_at = NOW()
        WHERE id = $1`,
-      [id, orderId, postUrl, handle || null, notes || null, JSON.stringify(extra)]
+      [id, orderStored, postUrl, handle || null, notes || null, JSON.stringify(mergedExtra)]
     )
 
     const { rows: updated } = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
@@ -670,12 +870,12 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
       req,
       'collab_task_submitted',
       'Creator task submitted for review',
-      `${t.title} — order ${orderId}`,
+      `${t.title}${orderStored ? ` — order ${orderStored}` : ''}`,
       '/admin/collab-requests',
       { collab_task_id: id, collab_application_id: app.id }
     )
 
-    return res.json({ task: updated[0] })
+    return res.json({ task: updated[0], validation: auto_validation })
   } catch (err) {
     console.error('submitUserCollabTask:', err)
     return res.status(500).json({ message: 'Failed to submit task' })

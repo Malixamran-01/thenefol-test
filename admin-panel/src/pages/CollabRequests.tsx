@@ -8,6 +8,7 @@ import {
 import { Country, State } from 'country-state-city'
 import { getApiBaseUrl } from '../utils/apiUrl'
 import { AssignCollabTaskModal, ReviewCollabTaskModal } from '../components/collab/CollabTaskModals'
+import type { ApplicantPlatform } from '../utils/collabApplicantPlatforms'
 
 interface Reel {
   id: number
@@ -1658,6 +1659,9 @@ export default function CollabRequests() {
           setAssignForAppId(null)
         }}
         collabApplicationId={assignForAppId ?? 0}
+        applicantPlatforms={
+          (allItems.find((i) => i.id === assignForAppId)?.platforms || selected?.platforms || []) as ApplicantPlatform[]
+        }
         apiBase={apiBase}
         authHeaders={authHeaders}
         onCreated={() => void fetchCollabTasksQueue()}
