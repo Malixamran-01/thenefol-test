@@ -73,6 +73,85 @@ const TABS: { key: TaskSection; label: string }[] = [
   { key: 'rejected', label: 'Rejected' },
 ]
 
+function snapshotSlug(task: TaskRow): string | null {
+  const s = task.product_snapshot
+  if (!s || typeof s !== 'object') return null
+  const raw = (s as { slug?: string | null }).slug
+  const t = raw != null ? String(raw).trim() : ''
+  return t || null
+}
+
+/** Buy link: snapshot slug, then public product API; shows loading / fallback if slug missing. */
+function BuyCollabProductCta({ task, panelOpen }: { task: TaskRow; panelOpen: boolean }) {
+  const initial = snapshotSlug(task)
+  const [slug, setSlug] = useState<string | null>(initial)
+  const [fetchFailed, setFetchFailed] = useState(false)
+
+  useEffect(() => {
+    setSlug(snapshotSlug(task))
+    setFetchFailed(false)
+  }, [task.id, task.product_snapshot])
+
+  useEffect(() => {
+    if (!panelOpen || !task.product_id || !task.purchase_token) return
+    if (slug) return
+    let cancelled = false
+    const t = setTimeout(() => {
+      if (!cancelled) setFetchFailed(true)
+    }, 10000)
+    ;(async () => {
+      try {
+        const res = await fetch(`${getApiBase()}/api/products/${task.product_id}`)
+        if (!res.ok) return
+        const data = (await res.json()) as { slug?: string; details?: { slug?: string } }
+        const fromRoot = typeof data?.slug === 'string' ? data.slug.trim() : ''
+        const d = data?.details
+        const fromDetails = d && typeof d === 'object' && d.slug ? String(d.slug).trim() : ''
+        const s = fromRoot || fromDetails
+        if (!cancelled && s) {
+          setSlug(s)
+          setFetchFailed(false)
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [panelOpen, task.product_id, task.purchase_token, slug, task.id])
+
+  if (!task.product_id || !task.purchase_token) return null
+
+  if (!slug) {
+    if (fetchFailed) {
+      return (
+        <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          We could not open a tracked buy link for this product (missing store URL). Use the shop to buy the same item,
+          then paste your Nefol order number below.
+        </p>
+      )
+    }
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
+        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+        Preparing your tracked buy link…
+      </div>
+    )
+  }
+
+  return (
+    <a
+      href={`#/user/product/${encodeURIComponent(slug)}?collabPurchase=${encodeURIComponent(String(task.purchase_token))}`}
+      className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B4965] bg-white px-4 py-2.5 text-sm font-semibold text-[#1B4965] hover:bg-[#f4f9fc]"
+    >
+      <ShoppingBag className="h-4 w-4" />
+      Buy product for this task (tracks order)
+    </a>
+  )
+}
+
 export default function CollabAssignedTasks({
   enabled,
   authHeaders,
@@ -416,20 +495,7 @@ export default function CollabAssignedTasks({
 
                   {canAct && (
                     <div className="space-y-2 pt-2">
-                      {t.product_id &&
-                        t.purchase_token &&
-                        t.product_snapshot &&
-                        typeof t.product_snapshot === 'object' &&
-                        t.product_snapshot !== null &&
-                        (t.product_snapshot as { slug?: string | null }).slug && (
-                          <a
-                            href={`#/user/product/${encodeURIComponent(String((t.product_snapshot as { slug?: string }).slug))}?collabPurchase=${encodeURIComponent(String(t.purchase_token))}`}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B4965] bg-white px-4 py-2.5 text-sm font-semibold text-[#1B4965] hover:bg-[#f4f9fc]"
-                          >
-                            <ShoppingBag className="h-4 w-4" />
-                            Buy product for this task (tracks order)
-                          </a>
-                        )}
+                      <BuyCollabProductCta task={t} panelOpen={expanded} />
                       {t.linked_order_id != null && t.completion_order_id && (
                         <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
                           Nefol order <span className="font-mono font-semibold">{t.completion_order_id}</span> is linked to

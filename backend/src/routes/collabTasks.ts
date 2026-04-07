@@ -147,6 +147,66 @@ function parseTaskOptions(row: { task_options?: unknown }): Record<string, unkno
   return {}
 }
 
+/**
+ * Ensures creators always get a purchase_token (older rows) and snapshot.slug (often only on products.slug column).
+ */
+async function enrichCreatorCollabTaskRows(pool: Pool, rows: Record<string, unknown>[]) {
+  if (!rows.length) return
+  for (const r of rows) {
+    const id = Number(r.id)
+    const productId = r.product_id != null ? Number(r.product_id) : NaN
+    if (productId > 0 && (!r.purchase_token || !String(r.purchase_token).trim())) {
+      const tok = randomUUID()
+      await pool.query(
+        `UPDATE collab_assigned_tasks SET purchase_token = $1, updated_at = NOW() WHERE id = $2`,
+        [tok, id]
+      )
+      r.purchase_token = tok
+    }
+  }
+  const pids = [
+    ...new Set(
+      rows
+        .map((x) => (x.product_id != null ? Number(x.product_id) : NaN))
+        .filter((n) => !Number.isNaN(n) && n > 0)
+    ),
+  ]
+  if (!pids.length) return
+  const { rows: prows } = await pool.query(`SELECT id, slug, details FROM products WHERE id = ANY($1::int[])`, [pids])
+  const slugByProductId = new Map<number, string>()
+  for (const p of prows) {
+    let slug = typeof p.slug === 'string' && p.slug.trim() ? p.slug.trim() : ''
+    if (!slug && p.details && typeof p.details === 'object' && p.details !== null && 'slug' in p.details) {
+      slug = String((p.details as { slug?: string }).slug || '').trim()
+    }
+    if (slug) slugByProductId.set(Number(p.id), slug)
+  }
+  for (const r of rows) {
+    const pid = r.product_id != null ? Number(r.product_id) : NaN
+    if (!pid || pid <= 0) continue
+    const slugFromProduct = slugByProductId.get(pid)
+    if (!slugFromProduct) continue
+    let snap = r.product_snapshot
+    if (typeof snap === 'string') {
+      try {
+        snap = JSON.parse(snap) as Record<string, unknown>
+      } catch {
+        snap = {}
+      }
+    }
+    if (!snap || typeof snap !== 'object' || Array.isArray(snap)) snap = {}
+    const o = snap as Record<string, unknown>
+    const cur = String(o.slug || '').trim()
+    if (cur) continue
+    const merged = { ...o, slug: slugFromProduct }
+    await pool.query(
+      `UPDATE collab_assigned_tasks SET product_snapshot = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+      [JSON.stringify(merged), r.id]
+    )
+    r.product_snapshot = merged
+  }
+}
+
 function getIo(req: Request): Server | undefined {
   return (req as Request & { io?: Server }).io
 }
@@ -470,14 +530,17 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
     let productSnapshot: unknown = null
     let pid: number | null = null
     if (productId != null && !Number.isNaN(productId)) {
-      const pr = await pool.query(`SELECT id, title, price, details FROM products WHERE id = $1`, [productId])
+      const pr = await pool.query(`SELECT id, title, price, details, slug FROM products WHERE id = $1`, [productId])
       if (!pr.rows.length) return res.status(400).json({ message: 'Product not found' })
       pid = productId
       const p = pr.rows[0]
       let slug: string | null = null
+      if (typeof p.slug === 'string' && p.slug.trim()) slug = p.slug.trim()
       try {
-        const d = p.details
-        if (d && typeof d === 'object' && 'slug' in d) slug = String((d as { slug?: string }).slug || '') || null
+        if (!slug) {
+          const d = p.details
+          if (d && typeof d === 'object' && 'slug' in d) slug = String((d as { slug?: string }).slug || '').trim() || null
+        }
       } catch {
         /* ignore */
       }
@@ -869,6 +932,7 @@ export async function listUserCollabTasks(pool: Pool, req: Request, res: Respons
        ORDER BY assigned_at DESC`,
       [programBlock.id]
     )
+    await enrichCreatorCollabTaskRows(pool, rows as Record<string, unknown>[])
     return res.json({ tasks: rows })
   } catch (err) {
     console.error('listUserCollabTasks:', err)
@@ -891,6 +955,7 @@ export async function getUserCollabTask(pool: Pool, req: Request, res: Response)
       [id, app.id]
     )
     if (!rows.length) return res.status(404).json({ message: 'Task not found' })
+    await enrichCreatorCollabTaskRows(pool, rows as Record<string, unknown>[])
     return res.json({ task: rows[0] })
   } catch (err) {
     console.error('getUserCollabTask:', err)
