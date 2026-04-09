@@ -859,8 +859,24 @@ export function ReviewCollabTaskModal({
                   <span className="text-gray-500">Order ID:</span> {String(task.completion_order_id || '—')}
                 </p>
                 <p>
-                  <span className="text-gray-500">Post URL:</span>{' '}
-                  {task.completion_post_url ? (
+                  <span className="text-gray-500">Post URL(s):</span>{' '}
+                  {task.completion_post_urls &&
+                  typeof task.completion_post_urls === 'object' &&
+                  task.completion_post_urls !== null &&
+                  Object.keys(task.completion_post_urls as object).length > 0 ? (
+                    <span className="block mt-1 space-y-1">
+                      {Object.entries(task.completion_post_urls as Record<string, string>).map(([k, url]) =>
+                        url?.trim() ? (
+                          <span key={k} className="block">
+                            <span className="text-gray-500 text-[10px] uppercase">{k.replace(/_/g, ' ')}:</span>{' '}
+                            <a href={url.trim()} target="_blank" rel="noreferrer" className="text-[#4B97C9] break-all">
+                              {url.trim()}
+                            </a>
+                          </span>
+                        ) : null
+                      )}
+                    </span>
+                  ) : task.completion_post_url ? (
                     <a href={String(task.completion_post_url)} target="_blank" rel="noreferrer" className="text-[#4B97C9] break-all">
                       {String(task.completion_post_url)}
                     </a>

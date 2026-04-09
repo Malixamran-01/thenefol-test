@@ -30,6 +30,8 @@ interface TaskRow {
   revision_message?: string | null
   completion_order_id?: string | null
   completion_post_url?: string | null
+  /** When the task lists multiple platforms, one URL per platform key */
+  completion_post_urls?: Record<string, string> | null
   completion_platform_handle?: string | null
   completion_notes?: string | null
   completion_extra?: Record<string, unknown> | null
@@ -72,6 +74,11 @@ function platformsLabel(raw: unknown): string {
   return raw.map((p) => PLATFORM_LABEL[String(p)] || String(p)).filter(Boolean).join(', ')
 }
 
+function platformKeys(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((p) => String(p)).filter(Boolean)
+}
+
 function sectionForStatus(status: string): TaskSection {
   const s = String(status)
   if (['assigned', 'in_progress', 'needs_revision'].includes(s)) return 'active'
@@ -86,6 +93,9 @@ const TABS: { key: TaskSection; label: string }[] = [
   { key: 'completed', label: 'Completed' },
   { key: 'rejected', label: 'Rejected' },
 ]
+
+/** When task has no platform array (legacy), we store the single URL under this key in local state */
+const LEGACY_POST_URL_KEY = '_legacy_post_url'
 
 function snapshotSlug(task: TaskRow): string | null {
   const s = task.product_snapshot
@@ -178,7 +188,7 @@ export default function CollabAssignedTasks({
   const [section, setSection] = useState<TaskSection>('active')
   const [openId, setOpenId] = useState<number | null>(null)
   const [orderId, setOrderId] = useState('')
-  const [postUrl, setPostUrl] = useState('')
+  const [postUrls, setPostUrls] = useState<Record<string, string>>({})
   const [handle, setHandle] = useState('')
   const [notes, setNotes] = useState('')
   const [caption, setCaption] = useState('')
@@ -227,6 +237,38 @@ export default function CollabAssignedTasks({
   const filtered = useMemo(() => tasks.filter((t) => sectionForStatus(t.status) === section), [tasks, section])
 
   const openTask = useMemo(() => tasks.find((x) => x.id === openId) ?? null, [tasks, openId])
+
+  useEffect(() => {
+    if (!openTask) {
+      setPostUrls({})
+      return
+    }
+    const keys = platformKeys(openTask.platforms)
+    const fromServer = openTask.completion_post_urls
+    const parsed =
+      fromServer && typeof fromServer === 'object' && !Array.isArray(fromServer)
+        ? (fromServer as Record<string, unknown>)
+        : {}
+    const next: Record<string, string> = {}
+    if (keys.length === 0) {
+      next[LEGACY_POST_URL_KEY] = openTask.completion_post_url ? String(openTask.completion_post_url).trim() : ''
+      setPostUrls(next)
+      return
+    }
+    for (const k of keys) {
+      const v = parsed[k]
+      next[k] = typeof v === 'string' ? v : ''
+    }
+    if (keys.length === 1 && !next[keys[0]]?.trim() && openTask.completion_post_url) {
+      next[keys[0]] = String(openTask.completion_post_url).trim()
+    }
+    setPostUrls(next)
+  }, [
+    openTask?.id,
+    openTask?.completion_post_url,
+    openTask?.completion_post_urls,
+    openTask?.platforms,
+  ])
 
   useEffect(() => {
     if (!openTask) return
@@ -337,9 +379,27 @@ export default function CollabAssignedTasks({
     setMsg(null)
     const opts = t.task_options || {}
     const requireOrder = opts.require_order_id !== false
-    if (!postUrl.trim()) {
-      setMsg({ type: 'err', text: 'Content / post URL is required.' })
-      return
+    const pks = platformKeys(t.platforms)
+    if (pks.length > 1) {
+      for (const pk of pks) {
+        if (!String(postUrls[pk] || '').trim()) {
+          setMsg({
+            type: 'err',
+            text: `Post URL is required for ${PLATFORM_LABEL[pk] || pk}.`,
+          })
+          return
+        }
+      }
+    } else if (pks.length === 1) {
+      if (!String(postUrls[pks[0]] || '').trim()) {
+        setMsg({ type: 'err', text: 'Content / post URL is required.' })
+        return
+      }
+    } else {
+      if (!String(postUrls[LEGACY_POST_URL_KEY] || '').trim()) {
+        setMsg({ type: 'err', text: 'Content / post URL is required.' })
+        return
+      }
     }
     if (requireOrder && !orderId.trim()) {
       const hasNefolOnFile =
@@ -361,16 +421,30 @@ export default function CollabAssignedTasks({
       if (caption.trim()) extra.caption = caption.trim()
       if (proofUrl.trim()) extra.proof_urls = [proofUrl.trim()]
 
+      const payload: Record<string, unknown> = {
+        completion_order_id: orderId.trim() || undefined,
+        completion_platform_handle: handle.trim() || undefined,
+        completion_notes: notes.trim() || undefined,
+        completion_extra: Object.keys(extra).length ? extra : undefined,
+      }
+      if (pks.length > 1) {
+        const m: Record<string, string> = {}
+        for (const pk of pks) {
+          m[pk] = String(postUrls[pk] || '').trim()
+        }
+        payload.completion_post_urls = m
+      } else if (pks.length === 1) {
+        const u = String(postUrls[pks[0]] || '').trim()
+        payload.completion_post_url = u
+        payload.completion_post_urls = { [pks[0]]: u }
+      } else {
+        payload.completion_post_url = String(postUrls[LEGACY_POST_URL_KEY] || '').trim()
+      }
+
       const res = await fetch(`${getApiBase()}/api/collab/tasks/${t.id}/submit`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({
-          completion_order_id: orderId.trim() || undefined,
-          completion_post_url: postUrl.trim(),
-          completion_platform_handle: handle.trim() || undefined,
-          completion_notes: notes.trim() || undefined,
-          completion_extra: Object.keys(extra).length ? extra : undefined,
-        }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -383,7 +457,7 @@ export default function CollabAssignedTasks({
         : 'Submitted — we will review and notify you.'
       setMsg({ type: val?.warnings?.length ? 'warn' : 'ok', text: warns })
       setOrderId('')
-      setPostUrl('')
+      setPostUrls({})
       setHandle('')
       setNotes('')
       setCaption('')
@@ -489,7 +563,6 @@ export default function CollabAssignedTasks({
                 onClick={() => {
                   if (!expanded) {
                     setOrderId(t.completion_order_id ? String(t.completion_order_id) : '')
-                    setPostUrl('')
                     setHandle('')
                     setNotes('')
                     setCaption('')
@@ -766,15 +839,60 @@ export default function CollabAssignedTasks({
                           ) : null}
                         </div>
                       )}
-                      <label className="block text-[11px] font-semibold text-gray-500 uppercase">
-                        Content / post URL <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        value={openId === t.id ? postUrl : ''}
-                        onChange={(e) => setPostUrl(e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
-                        placeholder="https://…"
-                      />
+                      {platformKeys(t.platforms).length > 1 ? (
+                        <div className="space-y-3">
+                          <p className="text-[11px] font-semibold uppercase text-gray-500">
+                            Post URLs <span className="text-red-500">*</span>{' '}
+                            <span className="font-normal normal-case text-gray-600">
+                              (one per platform — {platformsLabel(t.platforms)})
+                            </span>
+                          </p>
+                          {platformKeys(t.platforms).map((pk) => (
+                            <div key={pk}>
+                              <label className="block text-[11px] font-semibold text-gray-600">
+                                {PLATFORM_LABEL[pk] || pk}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                value={openId === t.id ? postUrls[pk] ?? '' : ''}
+                                onChange={(e) =>
+                                  setPostUrls((prev) => ({
+                                    ...prev,
+                                    [pk]: e.target.value,
+                                  }))
+                                }
+                                className="mt-0.5 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                                placeholder="https://…"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <label className="block text-[11px] font-semibold text-gray-500 uppercase">
+                            Content / post URL <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            value={
+                              openId === t.id
+                                ? platformKeys(t.platforms).length === 1
+                                  ? postUrls[platformKeys(t.platforms)[0]] ?? ''
+                                  : postUrls[LEGACY_POST_URL_KEY] ?? ''
+                                : ''
+                            }
+                            onChange={(e) => {
+                              const pks = platformKeys(t.platforms)
+                              if (pks.length === 1) {
+                                setPostUrls((prev) => ({ ...prev, [pks[0]]: e.target.value }))
+                              } else {
+                                setPostUrls((prev) => ({ ...prev, [LEGACY_POST_URL_KEY]: e.target.value }))
+                              }
+                            }}
+                            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+                            placeholder="https://…"
+                          />
+                        </>
+                      )}
                       {requireOrder && t.completion_order_id ? (
                         <p className="text-xs text-gray-700 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
                           <span className="font-semibold text-gray-800">Nefol order ID (linked):</span>{' '}
@@ -835,16 +953,46 @@ export default function CollabAssignedTasks({
                       </button>
                     </div>
                   )}
-                  {['submitted', 'verified_ready'].includes(t.status) && t.completion_post_url && (
-                    <a
-                      href={t.completion_post_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-[#4B97C9] font-medium"
-                    >
-                      <ExternalLink className="h-3 w-3" /> View submitted link
-                    </a>
-                  )}
+                  {['submitted', 'verified_ready'].includes(t.status) &&
+                    (() => {
+                      const multi =
+                        t.completion_post_urls &&
+                        typeof t.completion_post_urls === 'object' &&
+                        !Array.isArray(t.completion_post_urls) &&
+                        Object.keys(t.completion_post_urls).length > 0
+                      if (multi) {
+                        return (
+                          <div className="flex flex-col gap-1.5">
+                            {Object.entries(t.completion_post_urls as Record<string, string>).map(([pk, url]) =>
+                              url?.trim() ? (
+                                <a
+                                  key={pk}
+                                  href={url.trim()}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-[#4B97C9] font-medium"
+                                >
+                                  <ExternalLink className="h-3 w-3" /> {PLATFORM_LABEL[pk] || pk}
+                                </a>
+                              ) : null
+                            )}
+                          </div>
+                        )
+                      }
+                      if (t.completion_post_url?.trim()) {
+                        return (
+                          <a
+                            href={t.completion_post_url.trim()}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-[#4B97C9] font-medium"
+                          >
+                            <ExternalLink className="h-3 w-3" /> View submitted link
+                          </a>
+                        )
+                      }
+                      return null
+                    })()}
                 </div>
               )}
             </div>

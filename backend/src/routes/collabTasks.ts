@@ -92,6 +92,7 @@ async function ensureCollabTaskSchema(pool: Pool) {
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_received_at TIMESTAMPTZ`)
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_not_received_at TIMESTAMPTZ`)
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_not_received_note TEXT`)
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS completion_post_urls JSONB NOT NULL DEFAULT '{}'::jsonb`)
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS collab_assigned_tasks_purchase_token_uidx
     ON collab_assigned_tasks(purchase_token) WHERE purchase_token IS NOT NULL
@@ -150,6 +151,32 @@ function parseTaskOptions(row: { task_options?: unknown }): Record<string, unkno
   const o = row.task_options
   if (o && typeof o === 'object' && !Array.isArray(o)) return o as Record<string, unknown>
   return {}
+}
+
+function taskPlatformsList(t: { platforms?: unknown }): string[] {
+  const p = t.platforms
+  if (Array.isArray(p)) return p.map((x) => String(x)).filter(Boolean)
+  return []
+}
+
+/** URLs already stored on a task row (dedupe checks). */
+function collectStoredPostUrls(r: { completion_post_url?: unknown; completion_post_urls?: unknown }): string[] {
+  const out: string[] = []
+  const ju = r.completion_post_urls
+  if (ju && typeof ju === 'object' && ju !== null && !Array.isArray(ju)) {
+    for (const v of Object.values(ju as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.trim()) out.push(v.trim())
+    }
+  }
+  if (out.length > 0) return [...new Set(out)]
+  const single = r.completion_post_url != null ? String(r.completion_post_url).trim() : ''
+  if (single) {
+    for (const line of single.split(/\r?\n/)) {
+      const s = line.trim()
+      if (s) out.push(s)
+    }
+  }
+  return [...new Set(out)]
 }
 
 /**
@@ -1015,6 +1042,8 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
     const body = req.body as {
       completion_order_id?: string
       completion_post_url?: string
+      /** One URL per platform key when the task lists multiple platforms */
+      completion_post_urls?: Record<string, string>
       completion_platform_handle?: string
       completion_notes?: string
       completion_extra?: Record<string, unknown>
@@ -1162,7 +1191,6 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
     let orderId = typeof body.completion_order_id === 'string' ? body.completion_order_id.trim() : ''
     const existingOrder = t.completion_order_id != null ? String(t.completion_order_id).trim() : ''
     if (!orderId && existingOrder) orderId = existingOrder
-    const postUrl = typeof body.completion_post_url === 'string' ? body.completion_post_url.trim() : ''
     const handle = typeof body.completion_platform_handle === 'string' ? body.completion_platform_handle.trim() : ''
     const notes = typeof body.completion_notes === 'string' ? body.completion_notes.trim() : ''
     const userExtra =
@@ -1170,9 +1198,47 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
         ? (body.completion_extra as Record<string, unknown>)
         : {}
 
-    if (!postUrl) {
-      return res.status(400).json({ message: 'Content / post URL is required' })
+    const plat = taskPlatformsList(t)
+    let urlByPlatform: Record<string, string> = {}
+    let postUrlPrimary = ''
+
+    if (plat.length > 1) {
+      const raw = body.completion_post_urls
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return res.status(400).json({ message: 'Submit one post URL for each platform selected for this task.' })
+      }
+      for (const p of plat) {
+        const u = typeof raw[p] === 'string' ? raw[p].trim() : ''
+        if (!u) {
+          return res.status(400).json({
+            message: `Post URL is required for ${p.replace(/_/g, ' ')}`,
+          })
+        }
+        urlByPlatform[p] = u
+      }
+      postUrlPrimary = plat.map((p) => urlByPlatform[p]).join('\n')
+    } else if (plat.length === 1) {
+      const p = plat[0]
+      const fromMap =
+        body.completion_post_urls && typeof body.completion_post_urls === 'object' && !Array.isArray(body.completion_post_urls)
+          ? String((body.completion_post_urls as Record<string, string>)[p] || '').trim()
+          : ''
+      const fromLegacy = typeof body.completion_post_url === 'string' ? body.completion_post_url.trim() : ''
+      const u = fromMap || fromLegacy
+      if (!u) {
+        return res.status(400).json({ message: 'Content / post URL is required' })
+      }
+      urlByPlatform = { [p]: u }
+      postUrlPrimary = u
+    } else {
+      const legacy = typeof body.completion_post_url === 'string' ? body.completion_post_url.trim() : ''
+      if (!legacy) {
+        return res.status(400).json({ message: 'Content / post URL is required' })
+      }
+      postUrlPrimary = legacy
     }
+
+    const hayUrls = plat.length > 1 ? Object.values(urlByPlatform).join('\n') : postUrlPrimary
     if (requireOrder && !orderId) {
       const extR = t.external_order_ref != null ? String(t.external_order_ref).trim() : ''
       const extP = t.external_retailer != null ? String(t.external_retailer).trim().toLowerCase() : ''
@@ -1188,18 +1254,23 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
     }
     const orderStored = orderId.trim() ? orderId.trim() : null
 
-    const normUrl = normalizePostUrlForDedupe(postUrl)
+    const urlsToDedupe =
+      plat.length > 1 ? Object.values(urlByPlatform) : plat.length === 1 ? [postUrlPrimary] : [postUrlPrimary]
     const dupRows = await pool.query(
-      `SELECT id, completion_post_url FROM collab_assigned_tasks
+      `SELECT id, completion_post_url, completion_post_urls FROM collab_assigned_tasks
        WHERE id <> $1
-         AND completion_post_url IS NOT NULL
-         AND TRIM(completion_post_url) <> ''
          AND status::text NOT IN ('assigned','in_progress','needs_revision','cancelled','rejected')`,
       [id]
     )
-    for (const r of dupRows.rows) {
-      if (normalizePostUrlForDedupe(String(r.completion_post_url)) === normUrl) {
-        return res.status(409).json({ message: 'This content link was already used on another submission.' })
+    for (const u of urlsToDedupe) {
+      if (!u || !String(u).trim()) continue
+      const normUrl = normalizePostUrlForDedupe(String(u))
+      for (const r of dupRows.rows) {
+        for (const prev of collectStoredPostUrls(r as { completion_post_url?: unknown; completion_post_urls?: unknown })) {
+          if (normalizePostUrlForDedupe(prev) === normUrl) {
+            return res.status(409).json({ message: 'This content link was already used on another submission.' })
+          }
+        }
       }
     }
 
@@ -1225,13 +1296,16 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
         : Array.isArray(kwRaw) && kwRaw.length
           ? String(kwRaw[0])
           : '#nefol'
-    const hay = `${postUrl}\n${notes}\n${JSON.stringify(userExtra)}`.toLowerCase()
+    const hay = `${hayUrls}\n${notes}\n${JSON.stringify(userExtra)}`.toLowerCase()
     const keywordOk = !kw || hay.includes(String(kw).toLowerCase())
 
     let handleInUrl: boolean | null = null
     if (handle) {
       const h = handle.replace(/^@/, '').trim().toLowerCase()
-      if (h) handleInUrl = postUrl.toLowerCase().includes(h)
+      if (h) {
+        const blob = hayUrls.toLowerCase()
+        handleInUrl = blob.includes(h)
+      }
     }
 
     const auto_validation = {
@@ -1249,6 +1323,7 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
     }
 
     const mergedExtra = { ...userExtra, auto_validation }
+    const urlsJson = plat.length > 0 ? JSON.stringify(urlByPlatform) : '{}'
 
     await pool.query(
       `UPDATE collab_assigned_tasks SET
@@ -1256,13 +1331,14 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
         submitted_at = NOW(),
         completion_order_id = $2,
         completion_post_url = $3,
+        completion_post_urls = $7::jsonb,
         completion_platform_handle = $4,
         completion_notes = $5,
         completion_extra = $6::jsonb,
         revision_message = NULL,
         updated_at = NOW()
        WHERE id = $1`,
-      [id, orderStored, postUrl, handle || null, notes || null, JSON.stringify(mergedExtra)]
+      [id, orderStored, postUrlPrimary, handle || null, notes || null, JSON.stringify(mergedExtra), urlsJson]
     )
 
     const { rows: updated } = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
