@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import './ImageEditor.filerobot.css'
 
 const EDITOR_SCRIPT = '/vendor/nefol-editor-portable/filerobot-image-editor.min.js'
 const EDITOR_VERSION = '1771394902797'
@@ -139,6 +140,7 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
         />
         <div
           ref={containerRef}
+          className="nefol-filerobot-host"
           style={{
             width: '100%',
             height: '100%',
@@ -179,7 +181,11 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
               href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"
               rel="stylesheet"
             />
-            <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+            <div
+              ref={containerRef}
+              className="nefol-filerobot-host"
+              style={{ width: '100%', height: '100%' }}
+            />
           </div>
         </div>
       )}
