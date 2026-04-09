@@ -885,6 +885,10 @@ const withCollabTaskIo = (handler: (p: typeof pool, req: any, res: any) => unkno
 app.post('/api/admin/collab-tasks', withCollabTaskIo(collabTaskRoutes.adminCreateCollabTask))
 app.get('/api/admin/collab-tasks', withCollabTaskIo(collabTaskRoutes.adminListCollabTasks))
 app.get('/api/admin/collab-tasks/:id', withCollabTaskIo(collabTaskRoutes.adminGetCollabTask))
+app.put(
+  '/api/admin/collab-tasks/:id/clear-product-not-received',
+  withCollabTaskIo(collabTaskRoutes.adminClearProductNotReceivedReport)
+)
 app.put('/api/admin/collab-tasks/:id/verify', withCollabTaskIo(collabTaskRoutes.adminVerifyCollabTask))
 app.put('/api/admin/collab-tasks/:id/revision', withCollabTaskIo(collabTaskRoutes.adminRequestCollabTaskRevision))
 app.put('/api/admin/collab-tasks/:id/reject', withCollabTaskIo(collabTaskRoutes.adminRejectCollabTask))

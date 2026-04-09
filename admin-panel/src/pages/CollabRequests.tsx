@@ -779,6 +779,50 @@ export default function CollabRequests() {
       )}
 
       {(() => {
+        const productNotReceived = collabTasksQueue.filter(
+          (t) => t.product_not_received_at && String(t.status) === 'assigned'
+        )
+        if (!productNotReceived.length) return null
+        return (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm">
+            <p className="text-sm font-semibold text-amber-950 mb-3">
+              Creator tasks — didn&apos;t receive product ({productNotReceived.length})
+            </p>
+            <p className="text-xs text-amber-900/90 mb-3">
+              Creators reported missing or wrong shipment. Follow up on logistics, then open the task and use
+              &quot;Shipment resolved&quot; when they can start.
+            </p>
+            <div className="space-y-2">
+              {productNotReceived.map((t) => (
+                <div
+                  key={String(t.id)}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <span className="font-medium text-gray-900">{String(t.title)}</span>
+                    <span className="text-gray-500 ml-2">· {String(t.creator_name || t.creator_email || '')}</span>
+                    {t.product_not_received_note ? (
+                      <p className="text-xs text-amber-900 mt-1 line-clamp-2">{String(t.product_not_received_note)}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReviewTaskId(Number(t.id))
+                      setReviewTaskOpen(true)
+                    }}
+                    className="rounded-lg bg-amber-800 px-3 py-1 text-xs font-semibold text-white shrink-0 hover:bg-amber-900"
+                  >
+                    Open task
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
+      {(() => {
         const pendingReview = collabTasksQueue.filter((t) =>
           ['submitted', 'verified_ready'].includes(String(t.status))
         )

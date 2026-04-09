@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, ClipboardList, ExternalLink, Loader2, PlayCircle, ShoppingBag } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  ExternalLink,
+  Loader2,
+  PackageX,
+  PlayCircle,
+  ShoppingBag,
+} from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
 type TaskSection = 'active' | 'submitted' | 'completed' | 'rejected'
@@ -32,6 +41,8 @@ interface TaskRow {
   external_retailer?: string | null
   external_order_ref?: string | null
   product_received_at?: string | null
+  product_not_received_at?: string | null
+  product_not_received_note?: string | null
 }
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -174,6 +185,9 @@ export default function CollabAssignedTasks({
   const [proofUrl, setProofUrl] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [purchaseSaving, setPurchaseSaving] = useState(false)
+  const [notReceivedModalId, setNotReceivedModalId] = useState<number | null>(null)
+  const [notReceivedNote, setNotReceivedNote] = useState('')
+  const [notReceivedSaving, setNotReceivedSaving] = useState(false)
   const [purchaseRetailer, setPurchaseRetailer] = useState('')
   const [purchaseExtRef, setPurchaseExtRef] = useState('')
   const [purchaseNefolOrder, setPurchaseNefolOrder] = useState('')
@@ -266,6 +280,37 @@ export default function CollabAssignedTasks({
       await load()
     } finally {
       setPurchaseSaving(false)
+    }
+  }
+
+  const reportProductNotReceived = async (taskId: number) => {
+    setMsg(null)
+    setNotReceivedSaving(true)
+    try {
+      const res = await fetch(`${getApiBase()}/api/collab/tasks/${taskId}/submit`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mark_product_not_received: true,
+          product_not_received_note: notReceivedNote.trim() || undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg({ type: 'err', text: data?.message || 'Could not send report' })
+        return
+      }
+      setMsg({
+        type: 'ok',
+        text: 'Thanks — we’ve notified marketing. You won’t be able to start this task until the issue is resolved.',
+      })
+      setNotReceivedModalId(null)
+      setNotReceivedNote('')
+      await load()
+    } catch {
+      setMsg({ type: 'err', text: 'Network error' })
+    } finally {
+      setNotReceivedSaving(false)
     }
   }
 
@@ -370,6 +415,7 @@ export default function CollabAssignedTasks({
   }
 
   return (
+    <>
     <div className="bg-white rounded-3xl border border-[#e8f4fb] shadow-sm overflow-hidden">
       <div className="px-6 sm:px-8 py-5 border-b border-[#f0f7fb] flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex items-start gap-4">
@@ -431,6 +477,8 @@ export default function CollabAssignedTasks({
           const opts = t.task_options || {}
           const requireOrder = opts.require_order_id !== false
           const canAct = ['assigned', 'in_progress', 'needs_revision'].includes(t.status)
+          const canActForm =
+            canAct && !(t.status === 'assigned' && t.product_not_received_at)
           const slug = t.product_snapshot?.slug
           const productHref = slug ? `#/user/product/${encodeURIComponent(slug)}` : null
 
@@ -555,6 +603,30 @@ export default function CollabAssignedTasks({
                     </div>
                   ) : null}
 
+                  {t.product_not_received_at && t.status === 'assigned' && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
+                      <span className="font-semibold">You reported that you haven’t received the product</span>{' '}
+                      <span className="text-amber-800">
+                        ({new Date(t.product_not_received_at).toLocaleString()}).
+                      </span>
+                      {t.product_not_received_note ? (
+                        <p className="mt-1.5 text-amber-900">
+                          <span className="font-medium">Your note:</span> {t.product_not_received_note}
+                        </p>
+                      ) : null}
+                      <p className="mt-1.5 text-amber-900/95">
+                        Marketing has been notified. You can’t start this task until shipment is sorted — use support if you
+                        need help.
+                      </p>
+                      <a
+                        href="#/user/contact"
+                        className="mt-2 inline-flex font-semibold text-[#1B4965] underline underline-offset-2"
+                      >
+                        Contact support
+                      </a>
+                    </div>
+                  )}
+
                   {typeof t.completion_extra?.auto_validation === 'object' &&
                     t.completion_extra?.auto_validation != null && (
                     <div className="rounded-lg bg-blue-50/90 border border-blue-100 px-3 py-2 text-[11px] text-blue-950">
@@ -577,7 +649,7 @@ export default function CollabAssignedTasks({
                     </p>
                   )}
 
-                  {canAct && (
+                  {canActForm && (
                     <div className="space-y-2 pt-2">
                       {t.product_id && (
                         <div className="rounded-xl border border-gray-100 bg-white p-3 space-y-3">
@@ -657,8 +729,8 @@ export default function CollabAssignedTasks({
                           starting.
                         </p>
                       )}
-                      {t.status === 'assigned' && (
-                        <div className="space-y-1">
+                      {t.status === 'assigned' && !t.product_not_received_at && (
+                        <div className="space-y-2">
                           <button
                             type="button"
                             onClick={() => void startTask(t)}
@@ -670,10 +742,27 @@ export default function CollabAssignedTasks({
                               : 'Start task'}
                           </button>
                           {t.product_id && !skipPurchaseGate(t) ? (
-                            <p className="text-[11px] text-gray-500 max-w-md">
-                              This confirms to the team you have the product in hand. You will need a Nefol order, saved
-                              marketplace ID, or linked checkout first.
-                            </p>
+                            <>
+                              <p className="text-[11px] text-gray-500 max-w-md">
+                                This confirms to the team you have the product in hand. You will need a Nefol order, saved
+                                marketplace ID, or linked checkout first.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNotReceivedModalId(t.id)
+                                  setNotReceivedNote('')
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100/90"
+                              >
+                                <PackageX className="h-3.5 w-3.5 shrink-0" />
+                                Didn’t receive the product
+                              </button>
+                              <p className="text-[11px] text-gray-500 max-w-md">
+                                Use this if the shipment hasn’t arrived or was wrong. Marketing gets notified so they can
+                                follow up.
+                              </p>
+                            </>
                           ) : null}
                         </div>
                       )}
@@ -763,5 +852,55 @@ export default function CollabAssignedTasks({
         })}
       </div>
     </div>
+
+    {notReceivedModalId != null && (
+      <div
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="not-received-title"
+      >
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-xl">
+          <h3 id="not-received-title" className="text-base font-semibold text-gray-900">
+            Report: didn’t receive the product
+          </h3>
+          <p className="mt-1 text-sm text-gray-600">
+            We’ll notify marketing. You won’t be able to start this task until the issue is resolved.
+          </p>
+          <label className="mt-4 block text-xs font-semibold uppercase text-gray-500">Details (optional)</label>
+          <textarea
+            value={notReceivedNote}
+            onChange={(e) => setNotReceivedNote(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            placeholder="e.g. parcel not delivered, wrong item, damaged…"
+            className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+          />
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              disabled={notReceivedSaving}
+              onClick={() => {
+                setNotReceivedModalId(null)
+                setNotReceivedNote('')
+              }}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={notReceivedSaving}
+              onClick={() => void reportProductNotReceived(notReceivedModalId)}
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-50"
+            >
+              {notReceivedSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageX className="h-4 w-4" />}
+              Send report
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

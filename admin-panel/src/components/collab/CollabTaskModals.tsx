@@ -670,6 +670,27 @@ export function ReviewCollabTaskModal({
     }
   }
 
+  const clearProductNotReceived = async () => {
+    if (!taskId) return
+    setBusy(true)
+    setErr('')
+    try {
+      const res = await fetch(`${apiBase}/admin/collab-tasks/${taskId}/clear-product-not-received`, {
+        method: 'PUT',
+        headers: authHeaders,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErr(data?.message || 'Failed to clear report')
+        return
+      }
+      setTask(data.task as Record<string, unknown>)
+      onUpdated()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const pay = async () => {
     if (!taskId) return
     const amt = Number(payAmount)
@@ -762,6 +783,27 @@ export function ReviewCollabTaskModal({
                   Creator confirmed <span className="font-semibold">product received</span>{' '}
                   {new Date(String(task.product_received_at)).toLocaleString()} (before starting work).
                 </p>
+              ) : null}
+              {task.product_not_received_at ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 space-y-2">
+                  <p>
+                    <span className="font-bold">Creator reported: did not receive product</span>{' '}
+                    <span className="text-amber-800">
+                      ({new Date(String(task.product_not_received_at)).toLocaleString()})
+                    </span>
+                  </p>
+                  {task.product_not_received_note ? (
+                    <p className="whitespace-pre-wrap text-amber-900">{String(task.product_not_received_note)}</p>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void clearProductNotReceived()}
+                    className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                  >
+                    Shipment resolved — clear report so creator can start
+                  </button>
+                </div>
               ) : null}
               {task.instructions ? <p className="text-gray-600 whitespace-pre-wrap">{String(task.instructions)}</p> : null}
               {task.task_options && typeof task.task_options === 'object' && task.task_options !== null && (

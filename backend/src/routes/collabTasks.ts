@@ -90,6 +90,8 @@ async function ensureCollabTaskSchema(pool: Pool) {
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS external_retailer TEXT`)
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS external_order_ref TEXT`)
   await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_received_at TIMESTAMPTZ`)
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_not_received_at TIMESTAMPTZ`)
+  await pool.query(`ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_not_received_note TEXT`)
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS collab_assigned_tasks_purchase_token_uidx
     ON collab_assigned_tasks(purchase_token) WHERE purchase_token IS NOT NULL
@@ -668,6 +670,37 @@ export async function adminGetCollabTask(pool: Pool, req: Request, res: Response
   }
 }
 
+/** After shipment is fixed, marketing can clear the "did not receive product" flag so the creator can start again. */
+export async function adminClearProductNotReceivedReport(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabTaskSchema(pool)
+    const id = Number(req.params.id)
+    if (Number.isNaN(id)) return res.status(400).json({ message: 'Invalid id' })
+    const upd = await pool.query(
+      `UPDATE collab_assigned_tasks SET
+        product_not_received_at = NULL,
+        product_not_received_note = NULL,
+        updated_at = NOW()
+       WHERE id = $1 AND product_not_received_at IS NOT NULL`,
+      [id]
+    )
+    if (!upd.rowCount) {
+      return res.status(400).json({ message: 'No "did not receive" report on this task' })
+    }
+    const { rows } = await pool.query(
+      `SELECT t.*, ca.name AS creator_name, ca.email AS creator_email, ca.instagram
+       FROM collab_assigned_tasks t
+       JOIN collab_applications ca ON ca.id = t.collab_application_id
+       WHERE t.id = $1`,
+      [id]
+    )
+    return res.json({ task: rows[0] })
+  } catch (err) {
+    console.error('adminClearProductNotReceivedReport:', err)
+    return res.status(500).json({ message: 'Failed to clear report' })
+  }
+}
+
 export async function adminVerifyCollabTask(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabTaskSchema(pool)
@@ -986,6 +1019,8 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
       completion_notes?: string
       completion_extra?: Record<string, unknown>
       mark_in_progress?: boolean
+      mark_product_not_received?: boolean
+      product_not_received_note?: string
       save_purchase_info?: boolean
       external_retailer?: string
       external_order_ref?: string
@@ -1001,6 +1036,42 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
     const t = rows[0]
     const blocked = await assertCollabNotBlockedByAppId(pool, app.id)
     if (!blocked.ok) return res.status(403).json({ message: blocked.message, collab_blocked: true })
+
+    if (body.mark_product_not_received === true) {
+      if (String(t.status) !== 'assigned') {
+        return res.status(400).json({ message: 'You can only report a missing product while the task is still waiting to start.' })
+      }
+      if (t.product_received_at) {
+        return res.status(400).json({ message: 'This task was already marked as started with product received.' })
+      }
+      const noteRaw = typeof body.product_not_received_note === 'string' ? body.product_not_received_note.trim() : ''
+      const note = noteRaw.length > 2000 ? noteRaw.slice(0, 2000) : noteRaw
+      if (t.product_not_received_at) {
+        const r = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
+        return res.json({ task: r.rows[0] })
+      }
+      await pool.query(
+        `UPDATE collab_assigned_tasks SET
+          product_not_received_at = NOW(),
+          product_not_received_note = CASE WHEN $2::text <> '' THEN $2 ELSE NULL END,
+          updated_at = NOW()
+         WHERE id = $1`,
+        [id, note || null]
+      )
+      const r = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
+      const updated = r.rows[0]
+      const titleStr = String(updated.title || 'Task')
+      await notifyAdmins(
+        pool,
+        req,
+        'collab_product_not_received',
+        'Creator did not receive product',
+        `${titleStr} — ${note ? `Note: ${note}` : 'No extra details.'} (task #${id})`,
+        '/admin/collab-requests',
+        { collab_task_id: id, collab_application_id: app.id }
+      )
+      return res.json({ task: updated })
+    }
 
     if (body.save_purchase_info) {
       if (!['assigned', 'in_progress'].includes(String(t.status))) {
@@ -1046,6 +1117,12 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
 
     if (body.mark_in_progress) {
       if (t.status === 'assigned') {
+        if (t.product_not_received_at) {
+          return res.status(400).json({
+            message:
+              'You reported that you did not receive the product. Wait for the team to follow up, or contact support — you cannot start this task until that is resolved.',
+          })
+        }
         const opts = parseTaskOptions(t)
         const skipPurchaseGate = opts.skip_product_purchase_gate === true
         const pid = t.product_id != null ? Number(t.product_id) : NaN
