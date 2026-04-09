@@ -1,5 +1,53 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import './ImageEditor.filerobot.css'
+
+/** Stops Filerobot document touchmove+scrollBy on the tools strip so native overflow-x momentum can run. */
+function useFilerobotToolsStripTouchFix(hostRef: React.RefObject<HTMLElement | null>, active: boolean) {
+  useLayoutEffect(() => {
+    if (!active) return
+
+    let lastItems: Element | null = null
+    let cleanupStrip: (() => void) | undefined
+    let mo: MutationObserver | null = null
+
+    const bind = (items: Element) => {
+      if (items === lastItems) return
+      cleanupStrip?.()
+      lastItems = items
+
+      const onTouchMove = (e: Event) => {
+        e.stopPropagation()
+      }
+      items.addEventListener('touchmove', onTouchMove, { passive: true })
+      cleanupStrip = () => {
+        items.removeEventListener('touchmove', onTouchMove)
+        lastItems = null
+      }
+    }
+
+    const tryBind = () => {
+      const host = hostRef.current
+      if (!host) return
+      if (!mo) {
+        mo = new MutationObserver(tryBind)
+        mo.observe(host, { childList: true, subtree: true })
+      }
+      const items = host.querySelector('.FIE_tools-items')
+      if (items) bind(items)
+    }
+
+    tryBind()
+    const poll = window.setInterval(tryBind, 120)
+    const stopPoll = window.setTimeout(() => clearInterval(poll), 8000)
+
+    return () => {
+      mo?.disconnect()
+      clearInterval(poll)
+      clearTimeout(stopPoll)
+      cleanupStrip?.()
+    }
+  }, [active])
+}
 
 const EDITOR_SCRIPT = '/vendor/nefol-editor-portable/filerobot-image-editor.min.js'
 const EDITOR_VERSION = '1771394902797'
@@ -54,6 +102,8 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<{ terminate: () => void } | null>(null)
+
+  useFilerobotToolsStripTouchFix(containerRef, !!(editorOpen && selectedImage))
 
   const handleFileSelect = (file: File) => {
     const url = URL.createObjectURL(file)

@@ -1,7 +1,8 @@
 /**
- * Filerobot standalone bundle sets touch-action: pan-y on .FIE_tools-wrapper, which
- * blocks horizontal browser panning on the tools strip. The editor then relies on
- * document-level drag scrolling, which feels glitchy on touch. Restore pan-x.
+ * Filerobot bundle: .FIE_tools-wrapper uses touch-action: pan-y (blocks horizontal pan).
+ * .FIE_tools-items uses scroll-behavior: smooth — feels slow and “snappy” on touch.
+ * JS in the bundle also adds document touchmove + scrollBy, which fights native scroll.
+ * ImageEditor.tsx stops touchmove propagation from .FIE_tools-items so native overflow-x wins.
  */
 .nefol-filerobot-host .FIE_tools-wrapper {
   touch-action: pan-x pan-y pinch-zoom !important;
@@ -11,6 +12,8 @@
 .nefol-filerobot-host .FIE_tools-items {
   touch-action: pan-x !important;
   overscroll-behavior-x: contain;
+  scroll-behavior: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 900px) {
