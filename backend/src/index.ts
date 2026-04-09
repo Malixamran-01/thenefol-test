@@ -32,6 +32,7 @@ import blogActivityRouter, { initBlogActivityRouter, serveAuthorMetaPage } from 
 import blogNotificationsRouter, { initBlogNotificationsRouter } from './routes/blogNotifications'
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
+import { nefolSocialBanGuard } from './middleware/nefolSocialBanGuard'
 import * as affiliateRoutes from './routes/affiliate'
 import collabRouter, * as collabRoutes from './routes/collab'
 import * as collabTaskRoutes from './routes/collabTasks'
@@ -796,6 +797,8 @@ initBlogRouter(pool)
 // Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.) - path-based URL
 app.get('/blog/:id', serveBlogMetaPage)
 app.get('/author/:id', serveAuthorMetaPage)
+const nefolSocialBan = nefolSocialBanGuard(pool)
+app.use('/api/blog', nefolSocialBan)
 app.use('/api/blog', blogRouter)
 
 // Initialize blog activity router (follows, subscriptions, feed)
@@ -810,6 +813,7 @@ initRoleCheck(pool)
 
 // Initialize author onboarding router
 initAuthorOnboardingRouter(pool)
+app.use('/api/authors', nefolSocialBan)
 app.use('/api/authors', authorOnboardingRouter)
 
 // ==================== AFFILIATE PROGRAM API ====================
@@ -822,7 +826,8 @@ app.get('/api/admin/affiliate-applications/:id', affiliateRoutes.getAffiliateApp
 app.put('/api/admin/affiliate-applications/:id/approve', affiliateRoutes.approveAffiliateApplication.bind(null, pool))
 app.put('/api/admin/affiliate-applications/:id/reject', affiliateRoutes.rejectAffiliateApplication.bind(null, pool))
 
-// Affiliate partner management
+// Affiliate partner management (banned authors cannot use creator/affiliate APIs)
+app.use('/api/affiliate', nefolSocialBan)
 app.get('/api/affiliate/application-status', authenticateToken, affiliateRoutes.getAffiliateApplicationStatus.bind(null, pool))
 app.post('/api/affiliate/application', affiliateRoutes.submitAffiliateApplication.bind(null, pool))
 app.post('/api/affiliate/application-from-collab', authenticateToken, affiliateRoutes.submitAffiliateApplicationFromCollab.bind(null, pool))
@@ -846,6 +851,7 @@ app.get('/api/affiliate/marketing-materials', affiliateRoutes.getAffiliateMarket
 // ==================== COLLAB (Collab → Affiliate progression) ====================
 // Ensure unique_user_id column exists (safe to run every startup)
 pool.query(`ALTER TABLE collab_applications ADD COLUMN IF NOT EXISTS unique_user_id text`).catch(() => {})
+app.use('/api/collab', nefolSocialBan)
 app.get('/api/collab/creator-revenue', authenticateToken, (req, res) => collabRoutes.getCreatorRevenue(pool, req, res))
 app.get('/api/collab/tasks', authenticateToken, (req, res) => collabTaskRoutes.listUserCollabTasks(pool, req, res))
 app.get('/api/collab/tasks/:id', authenticateToken, (req, res) => collabTaskRoutes.getUserCollabTask(pool, req, res))

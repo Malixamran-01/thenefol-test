@@ -5,6 +5,8 @@ import CartIcon from './components/CartIcon'
 import ProfileAvatar from './components/ProfileAvatar'
 import { useCart } from './contexts/CartContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { NefolSocialBanProvider, useNefolSocialBan } from './contexts/NefolSocialBanContext'
+import { isNefolSocialRoute } from './utils/nefolSocialRoutes'
 import { WishlistProvider, useWishlist } from './contexts/WishlistContext'
 import { CartProvider } from './contexts/CartContext'
 import { userSocketService } from './services/socket'
@@ -60,6 +62,7 @@ function AppContent() {
   const { items: cartItems } = useCart()
   const { items: wishlistItems } = useWishlist()
   const { user, isAuthenticated, logout } = useAuth()
+  const { blocked: nefolSocialBanned } = useNefolSocialBan()
   const [showSplash, setShowSplash] = useState(true)
   const [showSearch, setShowSearch] = useState(false)
   const [showJoinUs, setShowJoinUs] = useState(false)
@@ -954,7 +957,7 @@ function AppContent() {
             const isBlogRequestForm = currentPath === '/user/blog/request'
             return (
               <>
-                {isBlogPage && !isBlogRequestForm && <BlogFAB />}
+                {isBlogPage && !isBlogRequestForm && !nefolSocialBanned && <BlogFAB />}
                 <LiveChatWidget hideButton={isBlogPage} />
               </>
             )
@@ -1003,6 +1006,7 @@ const TrackOrderPage = lazy(() => import('./pages/TrackOrder'))
 const SustainabilityPage = lazy(() => import('./pages/Sustainability'))
 const PressMediaPage = lazy(() => import('./pages/PressMedia'))
 const Forms = lazy(() => import('./pages/Forms'))
+const NefolSocialBannedPage = lazy(() => import('./pages/NefolSocialBannedPage'))
 
 // Loading fallback component - minimal to avoid showing during page transitions
 const PageLoader = () => null
@@ -1013,6 +1017,7 @@ interface RouterViewProps {
 
 function RouterView({ affiliateId }: RouterViewProps) {
   const { isAuthenticated } = useAuth()
+  const { loading: banLoading, blocked: socialBanned } = useNefolSocialBan()
   const RequiredAuth = (component: JSX.Element): JSX.Element | null => {
   if (!isAuthenticated) {
     if (!window.location.hash.startsWith('#/user/login')) {
@@ -1059,7 +1064,26 @@ function RouterView({ affiliateId }: RouterViewProps) {
   
   // Extract path without query parameters
   const pathWithoutQuery = lower.split('?')[0]
-  
+
+  const onNefolSocial = isNefolSocialRoute(pathWithoutQuery)
+  if (isAuthenticated && onNefolSocial && banLoading) {
+    return (
+      <div className="flex min-h-[70vh] w-full items-center justify-center bg-[#f4f9f9]">
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-[#1B4965] border-t-transparent"
+          aria-label="Loading"
+        />
+      </div>
+    )
+  }
+  if (isAuthenticated && onNefolSocial && socialBanned) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <NefolSocialBannedPage />
+      </Suspense>
+    )
+  }
+
   if (lower.startsWith('/user/product/')) return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
@@ -1148,11 +1172,13 @@ function RouterView({ affiliateId }: RouterViewProps) {
 export default function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <WishlistProvider>
-          <AppContent />
-        </WishlistProvider>
-      </CartProvider>
+      <NefolSocialBanProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <AppContent />
+          </WishlistProvider>
+        </CartProvider>
+      </NefolSocialBanProvider>
     </AuthProvider>
   )
 }
