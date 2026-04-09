@@ -1469,14 +1469,14 @@ export default function BlogRequestForm() {
                   </div>
                 )}
 
-                {/* Terms */}
+                {/* Terms
                 <div className="flex items-start gap-3 p-3 sm:p-4 bg-white border border-gray-200 rounded-lg">
                   <input type="checkbox" id="terms" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="mt-0.5 w-4 h-4 rounded focus:ring-2 focus:ring-[rgb(75,151,201)] flex-shrink-0" style={{ accentColor: 'rgb(75,151,201)' }} />
                   <label htmlFor="terms" className="text-sm text-gray-700">
                     I agree to the{' '}
                     <button type="button" onClick={() => setShowTermsModal(true)} className="underline font-medium hover:text-[rgb(60,120,160)]" style={{ color: 'rgb(75,151,201)' }}>Terms & Conditions</button>
                   </label>
-                </div>
+                </div> */}
 
                 {/* Action Buttons */}
                 <div className="pt-4 border-t space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
