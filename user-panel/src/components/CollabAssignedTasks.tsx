@@ -151,16 +151,15 @@ function BuyCollabProductCta({ task, panelOpen }: { task: TaskRow; panelOpen: bo
   if (!slug) {
     if (fetchFailed) {
       return (
-        <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          We could not open a tracked buy link for this product (missing store URL). Use the shop to buy the same item,
-          then paste your Nefol order number below.
+        <p className="rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-[11px] leading-snug text-amber-900">
+          No tracked link for this SKU — buy on the shop, then add your Nefol order # below.
         </p>
       )
     }
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
-        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-        Preparing your tracked buy link…
+      <div className="flex min-h-[40px] items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 text-xs text-slate-500">
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4B97C9]" />
+        Preparing link…
       </div>
     )
   }
@@ -168,10 +167,10 @@ function BuyCollabProductCta({ task, panelOpen }: { task: TaskRow; panelOpen: bo
   return (
     <a
       href={`#/user/product/${encodeURIComponent(slug)}?collabPurchase=${encodeURIComponent(String(task.purchase_token))}`}
-      className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#1B4965] bg-white px-3 py-2 text-xs font-semibold text-[#1B4965] hover:bg-[#f4f9fc]"
+      className="flex min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border-2 border-[#1B4965] bg-white px-4 text-xs font-semibold text-[#1B4965] shadow-sm transition hover:bg-[#f4f9fc]"
     >
-      <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
-      Buy now
+      <ShoppingBag className="h-4 w-4 shrink-0" />
+      Buy now (tracked)
     </a>
   )
 }
@@ -677,24 +676,13 @@ export default function CollabAssignedTasks({
                   ) : null}
 
                   {t.product_not_received_at && t.status === 'assigned' && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950">
-                      <span className="font-semibold">You reported that you haven’t received the product</span>{' '}
-                      <span className="text-amber-800">
-                        ({new Date(t.product_not_received_at).toLocaleString()}).
-                      </span>
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2.5 text-xs text-amber-950">
+                      <p className="font-semibold">Shipment issue reported · {new Date(t.product_not_received_at).toLocaleString()}</p>
                       {t.product_not_received_note ? (
-                        <p className="mt-1.5 text-amber-900">
-                          <span className="font-medium">Your note:</span> {t.product_not_received_note}
-                        </p>
+                        <p className="mt-1 text-amber-900">{t.product_not_received_note}</p>
                       ) : null}
-                      <p className="mt-1.5 text-amber-900/95">
-                        Marketing has been notified. You can’t start this task until shipment is sorted — use support if you
-                        need help.
-                      </p>
-                      <a
-                        href="#/user/contact"
-                        className="mt-2 inline-flex font-semibold text-[#1B4965] underline underline-offset-2"
-                      >
+                      <p className="mt-1 text-[11px] text-amber-900/90">Team notified — start stays locked until this is resolved.</p>
+                      <a href="#/user/contact" className="mt-1.5 inline-block text-[11px] font-semibold text-[#1B4965] underline">
                         Contact support
                       </a>
                     </div>
@@ -725,21 +713,39 @@ export default function CollabAssignedTasks({
                   {canActForm && (
                     <div className="space-y-2 pt-2">
                       {t.product_id && (
-                        <div className="rounded-xl border border-gray-100 bg-white p-3 space-y-3">
-                          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Get the product</p>
-                          <div className="flex flex-wrap items-start gap-3">
+                        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
+                          <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+                            <h4 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                              Get the product
+                            </h4>
+                          </div>
+                          <div className="space-y-4 p-4">
                             {t.purchase_token ? (
-                              <div className="w-[48%] min-w-[7.5rem] max-w-[11rem] shrink-0">
+                              <div>
+                                <p className="mb-1.5 text-[11px] font-medium text-slate-600">Nefol checkout</p>
                                 <BuyCollabProductCta task={t} panelOpen={expanded} />
                               </div>
                             ) : null}
-                            <div className="min-w-0 flex-1 space-y-2">
-                              <p className="text-xs text-gray-600">Bought on Amazon, Flipkart, or elsewhere?</p>
-                              <div className="flex flex-wrap gap-2">
+
+                            {t.purchase_token ? (
+                              <div className="flex items-center gap-3">
+                                <div className="h-px flex-1 bg-slate-200" />
+                                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                                  or
+                                </span>
+                                <div className="h-px flex-1 bg-slate-200" />
+                              </div>
+                            ) : null}
+
+                            <div>
+                              <p className="mb-2 text-[11px] font-medium text-slate-600">
+                                {t.purchase_token ? 'Bought elsewhere' : 'Purchase proof'}
+                              </p>
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:items-stretch">
                                 <select
                                   value={openId === t.id ? purchaseRetailer : ''}
                                   onChange={(e) => setPurchaseRetailer(e.target.value)}
-                                  className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs min-w-[6.5rem]"
+                                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 shadow-sm focus:border-[#4B97C9] focus:outline-none focus:ring-1 focus:ring-[#4B97C9]"
                                 >
                                   <option value="">Store</option>
                                   <option value="amazon">Amazon</option>
@@ -749,18 +755,20 @@ export default function CollabAssignedTasks({
                                 <input
                                   value={openId === t.id ? purchaseExtRef : ''}
                                   onChange={(e) => setPurchaseExtRef(e.target.value)}
-                                  className="min-w-[8rem] flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-xs"
+                                  className="h-10 min-w-0 w-full rounded-lg border border-slate-200 px-2.5 text-xs text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[#4B97C9] focus:outline-none focus:ring-1 focus:ring-[#4B97C9]"
                                   placeholder="Marketplace order ID"
                                 />
                               </div>
                               {!t.linked_order_id && (
-                                <div>
-                                  <label className="text-[10px] font-semibold uppercase text-gray-500">Nefol order #</label>
+                                <div className="mt-3">
+                                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                    Nefol order #
+                                  </label>
                                   <input
                                     value={openId === t.id ? purchaseNefolOrder : ''}
                                     onChange={(e) => setPurchaseNefolOrder(e.target.value)}
-                                    className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs"
-                                    placeholder="If you bought on Nefol without Buy now"
+                                    className="h-10 w-full rounded-lg border border-slate-200 px-2.5 text-xs text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[#4B97C9] focus:outline-none focus:ring-1 focus:ring-[#4B97C9]"
+                                    placeholder="Order # if you didn’t use Buy now above"
                                   />
                                 </div>
                               )}
@@ -768,74 +776,76 @@ export default function CollabAssignedTasks({
                                 type="button"
                                 disabled={purchaseSaving || openId !== t.id}
                                 onClick={() => void savePurchaseInfo(t)}
-                                className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 disabled:opacity-50"
+                                className="mt-3 h-10 w-full rounded-lg border border-slate-300 bg-slate-50 text-xs font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:opacity-50 sm:w-auto sm:px-5"
                               >
                                 {purchaseSaving ? 'Saving…' : 'Save purchase details'}
                               </button>
-                              {t.external_retailer && t.external_order_ref ? (
-                                <p className="text-[11px] text-emerald-800">
-                                  Marketplace order on file:{' '}
-                                  <span className="font-mono">
-                                    {t.external_retailer} · {t.external_order_ref}
-                                  </span>
-                                </p>
-                              ) : null}
-                              {!t.linked_order_id && t.completion_order_id ? (
-                                <p className="text-[11px] text-emerald-800">
-                                  Nefol order on file: <span className="font-mono">{t.completion_order_id}</span>
-                                </p>
-                              ) : null}
                             </div>
+
+                            {(t.external_retailer && t.external_order_ref) || (!t.linked_order_id && t.completion_order_id) ? (
+                              <ul className="space-y-1 text-[11px] text-emerald-800">
+                                {t.external_retailer && t.external_order_ref ? (
+                                  <li>
+                                    <span className="text-emerald-700/80">Saved · </span>
+                                    <span className="font-mono">{t.external_retailer}</span> ·{' '}
+                                    <span className="font-mono">{t.external_order_ref}</span>
+                                  </li>
+                                ) : null}
+                                {!t.linked_order_id && t.completion_order_id ? (
+                                  <li>
+                                    <span className="text-emerald-700/80">Nefol · </span>
+                                    <span className="font-mono font-medium">{t.completion_order_id}</span>
+                                  </li>
+                                ) : null}
+                              </ul>
+                            ) : null}
                           </div>
                         </div>
                       )}
                       {t.linked_order_id != null && t.completion_order_id && (
-                        <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-                          Nefol order <span className="font-mono font-semibold">{t.completion_order_id}</span> is linked to
-                          this task (tracked checkout).
+                        <p className="rounded-lg border border-emerald-200 bg-emerald-50/90 px-3 py-2 text-[11px] text-emerald-900">
+                          <span className="font-semibold">Checkout linked</span> · Order{' '}
+                          <span className="font-mono">{t.completion_order_id}</span>
                         </p>
                       )}
                       {t.product_received_at && ['in_progress', 'needs_revision'].includes(t.status) && (
-                        <p className="text-xs text-gray-600">
-                          <span className="font-semibold text-gray-800">Product received:</span>{' '}
-                          {new Date(t.product_received_at).toLocaleString()} — you confirmed you have the product before
-                          starting.
+                        <p className="text-[11px] text-slate-600">
+                          Product in hand · {new Date(t.product_received_at).toLocaleString()}
                         </p>
                       )}
                       {t.status === 'assigned' && !t.product_not_received_at && (
-                        <div className="space-y-2">
-                          <button
-                            type="button"
-                            onClick={() => void startTask(t)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#1B4965] px-4 py-2 text-xs font-semibold text-white"
+                        <div className="space-y-2 pt-1">
+                          <div
+                            className={`grid gap-2 ${t.product_id && !skipPurchaseGate(t) ? 'sm:grid-cols-2' : 'grid-cols-1'}`}
                           >
-                            <PlayCircle className="h-4 w-4" />
-                            {t.product_id && !skipPurchaseGate(t)
-                              ? 'I received the product — Start task'
-                              : 'Start task'}
-                          </button>
-                          {t.product_id && !skipPurchaseGate(t) ? (
-                            <>
-                              <p className="text-[11px] text-gray-500 max-w-md">
-                                This confirms to the team you have the product in hand. You will need a Nefol order, saved
-                                marketplace ID, or linked checkout first.
-                              </p>
+                            <button
+                              type="button"
+                              title="Confirms you can start — you’ll need order proof saved above when required."
+                              onClick={() => void startTask(t)}
+                              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1B4965] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#163a52]"
+                            >
+                              <PlayCircle className="h-4 w-4 shrink-0" />
+                              {t.product_id && !skipPurchaseGate(t) ? 'Received product · Start' : 'Start task'}
+                            </button>
+                            {t.product_id && !skipPurchaseGate(t) ? (
                               <button
                                 type="button"
+                                title="Not delivered or wrong item — we’ll notify marketing."
                                 onClick={() => {
                                   setNotReceivedModalId(t.id)
                                   setNotReceivedNote('')
                                 }}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100/90"
+                                className="flex h-11 items-center justify-center gap-2 rounded-xl border-2 border-amber-300/80 bg-amber-50 px-3 text-xs font-semibold text-amber-950 shadow-sm transition hover:bg-amber-100/90"
                               >
-                                <PackageX className="h-3.5 w-3.5 shrink-0" />
-                                Didn’t receive the product
+                                <PackageX className="h-4 w-4 shrink-0" />
+                                Didn’t receive
                               </button>
-                              <p className="text-[11px] text-gray-500 max-w-md">
-                                Use this if the shipment hasn’t arrived or was wrong. Marketing gets notified so they can
-                                follow up.
-                              </p>
-                            </>
+                            ) : null}
+                          </div>
+                          {t.product_id && !skipPurchaseGate(t) ? (
+                            <p className="text-center text-[10px] text-slate-500 sm:text-left">
+                              Start needs a saved order or tracked Buy now · Not received? Use the right button.
+                            </p>
                           ) : null}
                         </div>
                       )}
