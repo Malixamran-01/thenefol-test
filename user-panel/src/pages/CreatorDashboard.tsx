@@ -48,6 +48,8 @@ interface AuthorProfile {
   writing_categories: string[] | null; location: string | null
   is_verified?: boolean
   status?: string
+  /** Set by moderators when status is `banned`; shown in the restriction notice */
+  ban_public_message?: string | null
 }
 interface Stats {
   followers: number; subscribers: number; following: number; posts: number
@@ -570,8 +572,17 @@ export default function CreatorDashboard() {
         (data.author.status === 'banned' || data.author.status === 'inactive') && (
           <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-950">
             <strong className="font-semibold">Profile restricted.</strong> Your author account is marked{' '}
-            <span className="font-mono text-xs">{data.author.status}</span>. Readers can&apos;t open your public author
-            page until a moderator sets your status back to active. You can still use this dashboard while signed in.
+            <span className="font-mono text-xs">{data.author.status}</span>.
+            {data.author.status === 'banned' &&
+            typeof data.author.ban_public_message === 'string' &&
+            data.author.ban_public_message.trim() ? (
+              <p className="mt-2 text-[13px] leading-relaxed text-amber-950">{data.author.ban_public_message.trim()}</p>
+            ) : (
+              <span className="mt-2 block">
+                Readers can&apos;t open your public author page until a moderator sets your status back to active. You can
+                still use this dashboard while signed in.
+              </span>
+            )}
           </div>
         )}
 

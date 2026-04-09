@@ -886,6 +886,7 @@ app.put('/api/admin/collab-tasks/:id/pay', withCollabTaskIo(collabTaskRoutes.adm
 
 // ==================== AUTHORS (ADMIN — NEFOL Social) ====================
 app.get('/api/admin/authors', (req, res) => adminAuthorRoutes.listAdminAuthors(pool, req, res))
+app.get('/api/admin/authors/ban-reasons', (req, res) => adminAuthorRoutes.listAuthorBanReasons(pool, req, res))
 app.get('/api/admin/authors/:id', (req, res) => adminAuthorRoutes.getAdminAuthor(pool, req, res))
 app.patch('/api/admin/authors/:id', (req, res) => adminAuthorRoutes.patchAdminAuthor(pool, req, res))
 

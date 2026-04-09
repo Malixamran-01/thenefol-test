@@ -73,6 +73,8 @@ interface AuthorProfileData {
   is_verified?: boolean
   status?: string
   onboarding_completed?: boolean
+  /** Shown to the author when status is `banned` */
+  ban_public_message?: string | null
 }
 
 interface BlogPost {
@@ -916,8 +918,17 @@ export default function AuthorProfile() {
           <div className="mx-auto mb-4 w-full max-w-5xl px-3 sm:px-4">
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
               <strong className="font-semibold">Profile restricted.</strong> Your author profile is marked{' '}
-              <span className="font-mono text-xs">{authorProfile.status}</span>. Other people can&apos;t view your public
-              profile until a moderator sets your status back to <span className="font-semibold">active</span>.
+              <span className="font-mono text-xs">{authorProfile.status}</span>.
+              {authorProfile.status === 'banned' &&
+              typeof authorProfile.ban_public_message === 'string' &&
+              authorProfile.ban_public_message.trim() ? (
+                <p className="mt-2 text-sm leading-relaxed text-amber-950">{authorProfile.ban_public_message.trim()}</p>
+              ) : (
+                <span className="mt-2 block">
+                  Other people can&apos;t view your public profile until a moderator sets your status back to{' '}
+                  <span className="font-semibold">active</span>.
+                </span>
+              )}
             </div>
           </div>
         )}

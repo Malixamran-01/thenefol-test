@@ -1,7 +1,14 @@
 import { Pool } from 'pg'
 import { Request, Response } from 'express'
+import { AUTHOR_BAN_REASONS, isValidBanReasonKey, resolveBanPublicMessage } from '../constants/authorBanReasons'
 
 const VALID_STATUS = new Set(['active', 'inactive', 'banned', 'deleted'])
+
+async function ensureAuthorBanColumns(pool: Pool) {
+  await pool.query(`ALTER TABLE author_profiles ADD COLUMN IF NOT EXISTS ban_reason_key TEXT`)
+  await pool.query(`ALTER TABLE author_profiles ADD COLUMN IF NOT EXISTS ban_public_message TEXT`)
+  await pool.query(`ALTER TABLE author_profiles ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ`)
+}
 
 function parseAuthorId(req: Request, res: Response): number | null {
   const n = parseInt(String(req.params.id), 10)
@@ -252,6 +259,17 @@ export async function getAdminAuthor(pool: Pool | null, req: Request, res: Respo
   }
 }
 
+/** Preset labels + preview text for admin UI when banning an author */
+export async function listAuthorBanReasons(_pool: Pool | null, _req: Request, res: Response) {
+  res.json({
+    reasons: AUTHOR_BAN_REASONS.map(({ key, label, publicMessage }) => ({
+      key,
+      label,
+      preview: key === 'other' ? null : publicMessage,
+    })),
+  })
+}
+
 export async function patchAdminAuthor(pool: Pool | null, req: Request, res: Response) {
   if (!pool) return res.status(500).json({ message: 'Database not initialized' })
   const authorId = parseAuthorId(req, res)
@@ -261,6 +279,9 @@ export async function patchAdminAuthor(pool: Pool | null, req: Request, res: Res
   const nextStatus = body.status !== undefined ? String(body.status).toLowerCase() : undefined
   const nextVerified = body.is_verified
   const nextOnboarding = body.onboarding_completed
+  const banReasonKeyRaw = body.ban_reason_key !== undefined ? String(body.ban_reason_key).trim() : undefined
+  const banPublicCustom =
+    typeof body.ban_public_message === 'string' ? body.ban_public_message : undefined
 
   if (
     nextStatus === undefined &&
@@ -275,8 +296,20 @@ export async function patchAdminAuthor(pool: Pool | null, req: Request, res: Res
   }
 
   try {
+    await ensureAuthorBanColumns(pool)
+
     const { rows: cur } = await pool.query(`SELECT id FROM author_profiles WHERE id = $1`, [authorId])
     if (cur.length === 0) return res.status(404).json({ message: 'Author not found' })
+
+    if (nextStatus === 'banned') {
+      if (!banReasonKeyRaw || !isValidBanReasonKey(banReasonKeyRaw)) {
+        return res.status(400).json({ message: 'Select a reason for banning this author' })
+      }
+      const resolved = resolveBanPublicMessage(banReasonKeyRaw, banPublicCustom)
+      if (!resolved.ok) {
+        return res.status(400).json({ message: resolved.error })
+      }
+    }
 
     const sets: string[] = []
     const vals: unknown[] = []
@@ -290,6 +323,19 @@ export async function patchAdminAuthor(pool: Pool | null, req: Request, res: Res
       } else {
         sets.push(`deleted_at = NULL`)
         sets.push(`recovery_until = NULL`)
+      }
+      if (nextStatus === 'banned') {
+        const resolved = resolveBanPublicMessage(banReasonKeyRaw!, banPublicCustom)
+        if (!resolved.ok) return res.status(400).json({ message: resolved.error })
+        vals.push(banReasonKeyRaw)
+        sets.push(`ban_reason_key = $${vals.length}`)
+        vals.push(resolved.message)
+        sets.push(`ban_public_message = $${vals.length}`)
+        sets.push(`banned_at = CURRENT_TIMESTAMP`)
+      } else {
+        sets.push(`ban_reason_key = NULL`)
+        sets.push(`ban_public_message = NULL`)
+        sets.push(`banned_at = NULL`)
       }
     }
 

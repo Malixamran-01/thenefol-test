@@ -1260,7 +1260,7 @@ export default function BlogRequestForm() {
               <button type="button" onClick={() => setShowPreview(true)} disabled={isSubmitting} className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition-colors">
                 Preview
               </button>
-              <button type="submit" form="blog-form" disabled={isSubmitting || !agreedToTerms} className="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}>
+              <button type="submit" form="blog-form" disabled={isSubmitting} className="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}>
                 Continue
               </button>
             </div>

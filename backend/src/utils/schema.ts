@@ -292,6 +292,15 @@ export async function ensureSchema(pool: Pool) {
       if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'unique_user_id') then
         alter table author_profiles add column unique_user_id text;
       end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'ban_reason_key') then
+        alter table author_profiles add column ban_reason_key text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'ban_public_message') then
+        alter table author_profiles add column ban_public_message text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_name = 'author_profiles' and column_name = 'banned_at') then
+        alter table author_profiles add column banned_at timestamptz;
+      end if;
       -- Backfill email and unique_user_id for existing author profiles from users table
       update author_profiles ap set
         email = u.email,

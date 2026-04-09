@@ -69,6 +69,12 @@ interface AuthorListRow {
   drafts_count: number
 }
 
+interface BanReasonOption {
+  key: string
+  label: string
+  preview: string | null
+}
+
 interface AuthorDetailResponse {
   profile: Record<string, unknown>
   stats: Record<string, unknown> | null
@@ -94,6 +100,17 @@ interface AuthorDetailResponse {
 }
 
 const LIMIT = 30
+
+/** Keys/labels match `backend/src/constants/authorBanReasons.ts` — used if GET /ban-reasons fails */
+const STATIC_BAN_REASONS: BanReasonOption[] = [
+  { key: 'policy_violation', label: 'Community or content policy violation', preview: null },
+  { key: 'spam_promotional', label: 'Spam, misleading, or excessive promotional content', preview: null },
+  { key: 'harassment', label: 'Harassment, hate, or harmful behaviour', preview: null },
+  { key: 'impersonation', label: 'Impersonation or false identity', preview: null },
+  { key: 'copyright', label: 'Copyright or intellectual property issues', preview: null },
+  { key: 'platform_abuse', label: 'Abuse of platform features (bots, fake engagement, etc.)', preview: null },
+  { key: 'other', label: 'Other (write a message to the author below)', preview: null },
+]
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All statuses' },
@@ -141,6 +158,27 @@ export default function AuthorManagement() {
   const [draftStatus, setDraftStatus] = useState('')
   const [draftVerified, setDraftVerified] = useState(false)
   const [draftOnboarding, setDraftOnboarding] = useState(false)
+  const [banReasons, setBanReasons] = useState<BanReasonOption[]>([])
+  const [draftBanReasonKey, setDraftBanReasonKey] = useState('')
+  const [draftBanOtherMessage, setDraftBanOtherMessage] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/admin/authors/ban-reasons`, { headers: authHeaders() })
+        const data = await r.json().catch(() => ({}))
+        if (!r.ok || cancelled) return
+        const list = Array.isArray(data.reasons) ? (data.reasons as BanReasonOption[]) : []
+        setBanReasons(list)
+      } catch {
+        /* keep empty; ban UI still works if backend returns 404 in dev */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [API_BASE])
 
   const loadList = useCallback(async () => {
     setLoading(true)
@@ -193,6 +231,10 @@ export default function AuthorManagement() {
         setDraftStatus(String(p.status || 'active'))
         setDraftVerified(Boolean(p.is_verified))
         setDraftOnboarding(Boolean(p.onboarding_completed))
+        const brk = typeof p.ban_reason_key === 'string' ? p.ban_reason_key.trim() : ''
+        setDraftBanReasonKey(brk)
+        const bpm = typeof p.ban_public_message === 'string' ? p.ban_public_message : ''
+        setDraftBanOtherMessage(brk === 'other' ? bpm : '')
       } finally {
         setDetailLoading(false)
       }
@@ -207,16 +249,33 @@ export default function AuthorManagement() {
 
   const saveDetail = async () => {
     if (selectedId == null) return
+    if (draftStatus === 'banned') {
+      if (!draftBanReasonKey.trim()) {
+        alert('Select a reason for banning this author.')
+        return
+      }
+      if (draftBanReasonKey === 'other' && draftBanOtherMessage.trim().length < 10) {
+        alert('Enter a clear message to the author (at least 10 characters).')
+        return
+      }
+    }
     setSaveBusy(true)
     try {
+      const body: Record<string, unknown> = {
+        status: draftStatus,
+        is_verified: draftVerified,
+        onboarding_completed: draftOnboarding,
+      }
+      if (draftStatus === 'banned') {
+        body.ban_reason_key = draftBanReasonKey.trim()
+        if (draftBanReasonKey === 'other') {
+          body.ban_public_message = draftBanOtherMessage
+        }
+      }
       const r = await fetch(`${API_BASE}/admin/authors/${selectedId}`, {
         method: 'PATCH',
         headers: authHeaders(),
-        body: JSON.stringify({
-          status: draftStatus,
-          is_verified: draftVerified,
-          onboarding_completed: draftOnboarding,
-        }),
+        body: JSON.stringify(body),
       })
       const data = await r.json().catch(() => ({}))
       if (!r.ok) {
@@ -237,6 +296,8 @@ export default function AuthorManagement() {
   const hasNext = offset + LIMIT < total
 
   const selectedRow = useMemo(() => rows.find((x) => x.id === selectedId) || null, [rows, selectedId])
+
+  const banReasonOptions = useMemo(() => (banReasons.length > 0 ? banReasons : STATIC_BAN_REASONS), [banReasons])
 
   const profile = detail?.profile
   const userId = profile && typeof profile.user_id === 'number' ? profile.user_id : null
@@ -548,6 +609,44 @@ export default function AuthorManagement() {
                         <option value="deleted">deleted (30-day recovery)</option>
                       </select>
                     </label>
+                    {draftStatus === 'banned' && (
+                      <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/80 p-3">
+                        <label className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-amber-950">Reason (shown to the author)</span>
+                          <select
+                            value={draftBanReasonKey}
+                            onChange={(e) => setDraftBanReasonKey(e.target.value)}
+                            className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                          >
+                            <option value="">— Select a reason —</option>
+                            {banReasonOptions.map((opt) => (
+                              <option key={opt.key} value={opt.key}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {draftBanReasonKey &&
+                          draftBanReasonKey !== 'other' &&
+                          banReasonOptions.find((x) => x.key === draftBanReasonKey)?.preview && (
+                            <p className="text-xs leading-relaxed text-amber-950/90">
+                              {banReasonOptions.find((x) => x.key === draftBanReasonKey)?.preview}
+                            </p>
+                          )}
+                        {draftBanReasonKey === 'other' && (
+                          <label className="flex flex-col gap-1">
+                            <span className="text-xs text-amber-950">Message to the author (min. 10 characters)</span>
+                            <textarea
+                              value={draftBanOtherMessage}
+                              onChange={(e) => setDraftBanOtherMessage(e.target.value)}
+                              rows={4}
+                              className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                              placeholder="Explain briefly why the profile was restricted…"
+                            />
+                          </label>
+                        )}
+                      </div>
+                    )}
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
