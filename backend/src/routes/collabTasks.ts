@@ -48,9 +48,9 @@ async function getCollabFormDecisionUnread(pool: Pool, userId: string): Promise<
   const { rows } = await pool.query(
     `SELECT (
         CASE
-          WHEN status = 'approved' THEN COALESCE(approved_at, updated_at)
-          WHEN status = 'rejected' THEN COALESCE(rejected_at, updated_at)
-          ELSE updated_at
+          WHEN status = 'approved' THEN COALESCE(approved_at, created_at)
+          WHEN status = 'rejected' THEN COALESCE(rejected_at, created_at)
+          ELSE NULL
         END
       ) AS decision_at
      FROM collab_applications
@@ -83,9 +83,9 @@ async function getAffiliateFormDecisionUnread(pool: Pool, userId: string, email:
   const { rows } = await pool.query(
     `SELECT (
         CASE
-          WHEN status = 'approved' THEN COALESCE(approved_at, application_date)
-          WHEN status = 'rejected' THEN COALESCE(rejected_at, updated_at)
-          ELSE updated_at
+          WHEN status = 'approved' THEN COALESCE(approved_at, application_date, created_at)
+          WHEN status = 'rejected' THEN COALESCE(rejected_at, created_at)
+          ELSE NULL
         END
       ) AS decision_at
      FROM affiliate_applications
@@ -1135,19 +1135,23 @@ export async function postCollabBadgeAck(pool: Pool, req: Request, res: Response
       return res.status(400).json({ message: 'scope must be "collab" or "affiliate"' })
     }
 
+    const uid = Number(userId)
+    if (!Number.isFinite(uid)) {
+      return res.status(400).json({ message: 'Invalid user' })
+    }
     if (scope === 'collab') {
       await pool.query(
         `INSERT INTO creator_program_badge_ack (user_id, collab_approval_seen_at)
          VALUES ($1, NOW())
          ON CONFLICT (user_id) DO UPDATE SET collab_approval_seen_at = EXCLUDED.collab_approval_seen_at`,
-        [userId]
+        [uid]
       )
     } else {
       await pool.query(
         `INSERT INTO creator_program_badge_ack (user_id, affiliate_approval_seen_at)
          VALUES ($1, NOW())
          ON CONFLICT (user_id) DO UPDATE SET affiliate_approval_seen_at = EXCLUDED.affiliate_approval_seen_at`,
-        [userId]
+        [uid]
       )
     }
     return res.json({ ok: true })

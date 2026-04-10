@@ -10,15 +10,6 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
-import { CREATOR_PROGRAM_BADGES_REFRESH } from '../contexts/CreatorProgramBadgeContext'
-
-function notifyCreatorProgramBadgesRefresh() {
-  try {
-    window.dispatchEvent(new CustomEvent(CREATOR_PROGRAM_BADGES_REFRESH))
-  } catch {
-    /* ignore */
-  }
-}
 
 type TaskSection = 'active' | 'submitted' | 'completed' | 'rejected'
 
@@ -328,7 +319,6 @@ export default function CollabAssignedTasks({
       }
       setMsg({ type: 'ok', text: 'Purchase details saved.' })
       await load()
-      notifyCreatorProgramBadgesRefresh()
     } finally {
       setPurchaseSaving(false)
     }
@@ -358,7 +348,6 @@ export default function CollabAssignedTasks({
       setNotReceivedModalId(null)
       setNotReceivedNote('')
       await load()
-      notifyCreatorProgramBadgesRefresh()
     } catch {
       setMsg({ type: 'err', text: 'Network error' })
     } finally {
@@ -380,7 +369,6 @@ export default function CollabAssignedTasks({
         return
       }
       await load()
-      notifyCreatorProgramBadgesRefresh()
     } catch {
       setMsg({ type: 'err', text: 'Network error' })
     }
@@ -476,7 +464,6 @@ export default function CollabAssignedTasks({
       setOpenId(null)
       setSection('submitted')
       await load()
-      notifyCreatorProgramBadgesRefresh()
     } finally {
       setSubmitting(false)
     }

@@ -219,24 +219,30 @@ export default function Collab(props: CollabProps = {}) {
     if (initialProgramTab) setCollabTab(initialProgramTab)
   }, [initialProgramTab])
 
-  /** Mark guided notifications read when the matching Creator Program segment is opened. */
+  /**
+   * Mark collab **application** decision (approved/rejected) as seen after status is loaded.
+   * Badges only reflect form outcomes, not brand tasks — ack once the user can see that outcome.
+   */
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || loading) return
     if (collabTab !== 'collab') return
+    if (!submitted || !status) return
+    if (status.status !== 'approved' && status.status !== 'rejected') return
     void creatorProgramAPI
       .ackBadge('collab')
       .then(() => window.dispatchEvent(new CustomEvent(CREATOR_PROGRAM_BADGES_REFRESH)))
       .catch(() => {})
-  }, [collabTab, isAuthenticated])
+  }, [collabTab, isAuthenticated, loading, submitted, status?.id, status?.status])
 
+  /** Mark affiliate application decision as seen when the Affiliate tab is opened (after main page load). */
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || loading) return
     if (collabTab !== 'affiliate') return
     void creatorProgramAPI
       .ackBadge('affiliate')
       .then(() => window.dispatchEvent(new CustomEvent(CREATOR_PROGRAM_BADGES_REFRESH)))
       .catch(() => {})
-  }, [collabTab, isAuthenticated])
+  }, [collabTab, isAuthenticated, loading])
 
   useEffect(() => {
     const syncTabFromHash = () => {
@@ -1359,15 +1365,6 @@ export default function Collab(props: CollabProps = {}) {
                     }`}
                   >
                     Brand tasks
-                    {creatorBadges.tasks > 0 && (
-                      <span
-                        className={`min-w-[1.125rem] rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-                          collabWorkView === 'tasks' ? 'bg-white/25 text-white' : 'bg-rose-500 text-white'
-                        }`}
-                      >
-                        {creatorBadges.tasks > 99 ? '99+' : creatorBadges.tasks}
-                      </span>
-                    )}
                   </button>
                 </div>
               )}
