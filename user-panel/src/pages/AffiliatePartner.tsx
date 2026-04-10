@@ -783,6 +783,16 @@ useEffect(() => {
     return '—'
   }
 
+  /** Matches admin payout `paid_method` values from collab_assigned_tasks */
+  const formatCollabTaskPaidMethodLabel = (raw: string | null | undefined): string => {
+    const m = String(raw || '').trim().toLowerCase()
+    if (m === 'coins_adjustment') return 'Nefol coins'
+    if (m === 'external_transfer') return 'Paid externally'
+    if (m === 'recorded_only') return 'Recorded only'
+    if (!m) return ''
+    return String(raw).replace(/_/g, ' ')
+  }
+
   const renderCollabTaskPayoutsSection = () => {
     const rows = creatorRevenue?.collab_task_payouts ?? []
     if (!rows.length) return null
@@ -800,7 +810,7 @@ useEffect(() => {
               Brand task payouts
             </h2>
             <p className="text-xs sm:text-[13px] text-gray-500 mt-1.5 leading-snug">
-              Completed collab jobs verified and paid by Nefol
+              Verified payouts you have received — Nefol coins credited in-app, or amounts recorded when paid outside the app
             </p>
           </div>
         </div>
@@ -811,7 +821,7 @@ useEffect(() => {
                 <p className="font-medium text-gray-900">{row.title}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {row.paid_at ? new Date(row.paid_at).toLocaleString() : '—'}
-                  {row.paid_method ? ` · ${row.paid_method.replace(/_/g, ' ')}` : ''}
+                  {row.paid_method ? ` · ${formatCollabTaskPaidMethodLabel(String(row.paid_method))}` : ''}
                 </p>
               </div>
               <div className="text-right shrink-0">

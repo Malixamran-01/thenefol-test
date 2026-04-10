@@ -560,7 +560,6 @@ export function ReviewCollabTaskModal({
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState('coins_adjustment')
   const [payNotes, setPayNotes] = useState('')
-  const [creditCoins, setCreditCoins] = useState(true)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [rejectReason, setRejectReason] = useState('')
@@ -584,6 +583,8 @@ export function ReviewCollabTaskModal({
       setInternalNotes(typeof t.admin_internal_notes === 'string' ? t.admin_internal_notes : '')
       const fee = t.creator_fee_amount
       setPayAmount(fee != null && fee !== '' ? String(fee) : '')
+      setPayMethod('coins_adjustment')
+      setPayNotes('')
     } finally {
       setLoading(false)
     }
@@ -708,7 +709,8 @@ export function ReviewCollabTaskModal({
           amount: amt,
           method: payMethod,
           notes: payNotes.trim() || null,
-          credit_coins: creditCoins,
+          /** Must match payMethod: only coins_adjustment credits loyalty_points (enforced server-side). */
+          credit_coins: payMethod === 'coins_adjustment',
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -977,14 +979,15 @@ export function ReviewCollabTaskModal({
                         onChange={(e) => setPayMethod(e.target.value)}
                         className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                       >
-                        <option value="coins_adjustment">Nefol coins (loyalty_points)</option>
-                        <option value="external_transfer">Recorded — paid externally</option>
-                        <option value="recorded_only">Recorded only (no money movement)</option>
+                        <option value="coins_adjustment">Nefol coins (credits loyalty balance)</option>
+                        <option value="external_transfer">Paid externally (record only — no coin credit)</option>
+                        <option value="recorded_only">Recorded only (bookkeeping — no coin credit)</option>
                       </select>
-                      <label className="flex items-center gap-2 text-xs">
-                        <input type="checkbox" checked={creditCoins} onChange={(e) => setCreditCoins(e.target.checked)} />
-                        Credit Nefol coins when amount &gt; 0 (uses rounded amount)
-                      </label>
+                      <p className="text-[11px] leading-snug text-gray-500">
+                        {payMethod === 'coins_adjustment'
+                          ? 'The payout amount (rounded) is added to the creator’s Nefol coin balance.'
+                          : 'No change to the creator’s coin balance — only a payout record and notification.'}
+                      </p>
                       <textarea
                         value={payNotes}
                         onChange={(e) => setPayNotes(e.target.value)}

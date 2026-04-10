@@ -972,7 +972,9 @@ export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: R
     const amount = body.amount != null ? Number(body.amount) : NaN
     const method = typeof body.method === 'string' ? body.method.trim() : 'recorded_only'
     const notes = typeof body.notes === 'string' ? body.notes.trim() : null
-    const creditCoins = !!body.credit_coins
+    /** Only `coins_adjustment` may credit loyalty_points; ignore client `credit_coins` for other methods. */
+    const creditCoins =
+      method === 'coins_adjustment' && amount > 0 && body.credit_coins !== false
 
     if (Number.isNaN(id)) return res.status(400).json({ message: 'Invalid id' })
     if (Number.isNaN(amount) || amount < 0) return res.status(400).json({ message: 'Valid amount is required' })
