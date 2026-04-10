@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  AlertTriangle,
   ExternalLink,
   Loader2,
   Search,
@@ -162,6 +163,10 @@ export default function AuthorManagement() {
   const [draftBanReasonKey, setDraftBanReasonKey] = useState('')
   const [draftBanOtherMessage, setDraftBanOtherMessage] = useState('')
 
+  const [warningReasonKey, setWarningReasonKey] = useState('')
+  const [warningMessage, setWarningMessage] = useState('')
+  const [warningBusy, setWarningBusy] = useState(false)
+
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -235,6 +240,8 @@ export default function AuthorManagement() {
         setDraftBanReasonKey(brk)
         const bpm = typeof p.ban_public_message === 'string' ? p.ban_public_message : ''
         setDraftBanOtherMessage(brk === 'other' ? bpm : '')
+        setWarningReasonKey('')
+        setWarningMessage('')
       } finally {
         setDetailLoading(false)
       }
@@ -286,6 +293,38 @@ export default function AuthorManagement() {
       await loadDetail(selectedId)
     } finally {
       setSaveBusy(false)
+    }
+  }
+
+  const sendAuthorWarning = async () => {
+    if (selectedId == null) return
+    if (!warningReasonKey.trim()) {
+      alert('Select a reason category for this warning.')
+      return
+    }
+    if (warningMessage.trim().length < 10) {
+      alert('Enter a clear message to the author (at least 10 characters).')
+      return
+    }
+    setWarningBusy(true)
+    try {
+      const r = await fetch(`${API_BASE}/admin/authors/${selectedId}/warnings`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          reason_key: warningReasonKey.trim(),
+          message: warningMessage.trim(),
+        }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        alert(typeof data.message === 'string' ? data.message : 'Failed to send warning')
+        return
+      }
+      setWarningMessage('')
+      alert('Warning sent. The author will see it on Activity (bell and Activity page).')
+    } finally {
+      setWarningBusy(false)
     }
   }
 
@@ -676,6 +715,51 @@ export default function AuthorManagement() {
                       {saveBusy ? 'Saving…' : 'Save changes'}
                     </button>
                   </section>
+
+                  {userId != null && (
+                    <section className="space-y-3 rounded-xl border border-amber-200/80 bg-amber-50/40 p-3">
+                      <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-amber-900/80">
+                        <AlertTriangle className="h-4 w-4 shrink-0" /> Send warning (Activity)
+                      </h3>
+                      <p className="text-xs leading-relaxed text-amber-950/80">
+                        Warn the author about a blog post, comment, or behaviour. This does not change profile status.
+                        They will see it in NEFOL Social under Activity and in the notification bell.
+                      </p>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-xs font-medium text-amber-950">Category</span>
+                        <select
+                          value={warningReasonKey}
+                          onChange={(e) => setWarningReasonKey(e.target.value)}
+                          className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                        >
+                          <option value="">— Select —</option>
+                          {banReasonOptions.map((opt) => (
+                            <option key={opt.key} value={opt.key}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-xs font-medium text-amber-950">Message to the author (min. 10 characters)</span>
+                        <textarea
+                          value={warningMessage}
+                          onChange={(e) => setWarningMessage(e.target.value)}
+                          rows={4}
+                          className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                          placeholder="Explain what broke the rules and what they should do next…"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        disabled={warningBusy || !warningReasonKey.trim()}
+                        onClick={() => void sendAuthorWarning()}
+                        className="w-full rounded-lg border border-amber-300 bg-amber-100 py-2.5 text-sm font-semibold text-amber-950 hover:bg-amber-200 disabled:opacity-50"
+                      >
+                        {warningBusy ? 'Sending…' : 'Send warning'}
+                      </button>
+                    </section>
+                  )}
 
                   <section className="space-y-2">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Profile vs account</h3>

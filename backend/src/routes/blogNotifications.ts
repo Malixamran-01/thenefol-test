@@ -53,6 +53,8 @@ export async function createNotification(params: {
   postTitle?: string | null
   commentId?: number | null
   commentExcerpt?: string | null
+  /** When true, deliver even if the user has muted blog notifications (e.g. moderation warnings). */
+  bypassMute?: boolean
 }): Promise<void> {
   if (!params.recipientUserId) return
   // Never notify yourself
@@ -62,14 +64,16 @@ export async function createNotification(params: {
   ) return
 
   // Skip if recipient has muted notifications and mute hasn't expired
-  try {
-    const muteCheck = await params.pool.query(
-      `SELECT 1 FROM blog_notification_preferences
-       WHERE user_id = $1::integer AND muted_until IS NOT NULL AND muted_until > NOW()`,
-      [params.recipientUserId]
-    )
-    if (muteCheck.rows.length > 0) return
-  } catch { /* best-effort: if table doesn't exist yet just continue */ }
+  if (!params.bypassMute) {
+    try {
+      const muteCheck = await params.pool.query(
+        `SELECT 1 FROM blog_notification_preferences
+         WHERE user_id = $1::integer AND muted_until IS NOT NULL AND muted_until > NOW()`,
+        [params.recipientUserId]
+      )
+      if (muteCheck.rows.length > 0) return
+    } catch { /* best-effort: if table doesn't exist yet just continue */ }
+  }
 
   try {
     await params.pool.query(

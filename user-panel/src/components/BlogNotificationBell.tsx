@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
+  AlertTriangle,
   Bell,
   ClipboardList,
   CircleDollarSign,
@@ -89,6 +90,12 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
     icon: <ClipboardList className="h-4 w-4" />,
     color: 'text-slate-500',
     label: () => 'received your brand task submission',
+  },
+  author_warning: {
+    icon: <AlertTriangle className="h-4 w-4" />,
+    color: 'text-amber-600',
+    label: (n) =>
+      `sent a moderation notice${n.post_title ? ` — ${n.post_title}` : ''}`,
   },
 }
 
@@ -186,6 +193,7 @@ export default function BlogNotificationBell() {
       setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, is_read: true } : x))
     }
     setOpen(false)
+    if (n.type === 'author_warning') return
     if (String(n.type).startsWith('collab_task_') || n.post_id === 'collab') {
       window.location.hash = '#/user/collab?tab=collab&work=tasks'
       return

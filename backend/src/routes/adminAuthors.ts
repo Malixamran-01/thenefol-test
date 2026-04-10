@@ -1,6 +1,7 @@
 import { Pool } from 'pg'
 import { Request, Response } from 'express'
 import { AUTHOR_BAN_REASONS, isValidBanReasonKey, resolveBanPublicMessage } from '../constants/authorBanReasons'
+import { createNotification } from './blogNotifications'
 
 const VALID_STATUS = new Set(['active', 'inactive', 'banned', 'deleted'])
 
@@ -361,5 +362,63 @@ export async function patchAdminAuthor(pool: Pool | null, req: Request, res: Res
   } catch (e) {
     console.error('patchAdminAuthor', e)
     res.status(500).json({ message: 'Failed to update author' })
+  }
+}
+
+/**
+ * POST /api/admin/authors/:id/warnings
+ * Sends a moderation warning to the author's linked user; appears in Activity (blog_notifications).
+ */
+export async function postAuthorWarning(pool: Pool | null, req: Request, res: Response) {
+  if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+  const authorId = parseAuthorId(req, res)
+  if (authorId == null) return
+
+  const body = req.body || {}
+  const reasonKey = typeof body.reason_key === 'string' ? body.reason_key.trim() : ''
+  const message = typeof body.message === 'string' ? body.message.trim() : ''
+
+  if (!reasonKey || !isValidBanReasonKey(reasonKey)) {
+    return res.status(400).json({ message: 'Select a reason category for this warning' })
+  }
+  if (message.length < 10) {
+    return res.status(400).json({ message: 'Message must be at least 10 characters' })
+  }
+  if (message.length > 2000) {
+    return res.status(400).json({ message: 'Message is too long' })
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT user_id FROM author_profiles WHERE id = $1 LIMIT 1`,
+      [authorId]
+    )
+    if (rows.length === 0) return res.status(404).json({ message: 'Author not found' })
+    const userId = rows[0].user_id as number | null
+    if (userId == null) {
+      return res.status(400).json({
+        message: 'This author has no linked user account; warnings cannot be delivered to Activity.',
+      })
+    }
+
+    const preset = AUTHOR_BAN_REASONS.find((r) => r.key === reasonKey)
+    const titleLabel = preset?.label || 'Moderation notice'
+
+    await createNotification({
+      pool,
+      recipientUserId: userId,
+      actorUserId: null,
+      actorName: 'NEFOL',
+      actorAvatar: null,
+      type: 'author_warning',
+      postTitle: titleLabel,
+      commentExcerpt: message,
+      bypassMute: true,
+    })
+
+    res.json({ ok: true, message: 'Warning sent' })
+  } catch (e) {
+    console.error('postAuthorWarning', e)
+    res.status(500).json({ message: 'Failed to send warning' })
   }
 }

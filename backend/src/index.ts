@@ -905,6 +905,7 @@ app.get('/api/admin/authors', (req, res) => adminAuthorRoutes.listAdminAuthors(p
 app.get('/api/admin/authors/ban-reasons', (req, res) => adminAuthorRoutes.listAuthorBanReasons(pool, req, res))
 app.get('/api/admin/authors/:id', (req, res) => adminAuthorRoutes.getAdminAuthor(pool, req, res))
 app.patch('/api/admin/authors/:id', (req, res) => adminAuthorRoutes.patchAdminAuthor(pool, req, res))
+app.post('/api/admin/authors/:id/warnings', (req, res) => adminAuthorRoutes.postAuthorWarning(pool, req, res))
 
 // ==================== COMMUNITY MANAGEMENT (ADMIN) ====================
 // Frontend expects these endpoints; return empty lists for now so UI works without errors

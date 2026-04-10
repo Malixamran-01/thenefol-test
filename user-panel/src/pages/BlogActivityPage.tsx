@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   Bell,
   BellOff,
   Check,
@@ -99,6 +100,12 @@ const TYPE_META: Record<
     icon: <ClipboardList className="h-4 w-4" />,
     color: 'text-slate-500',
     label: () => 'received your brand task submission',
+  },
+  author_warning: {
+    icon: <AlertTriangle className="h-4 w-4" />,
+    color: 'text-amber-600',
+    label: (n) =>
+      `sent a moderation notice${n.post_title ? ` — ${n.post_title}` : ''}`,
   },
 }
 
@@ -245,6 +252,9 @@ export default function BlogActivityPage() {
       setNotifications((prev) =>
         prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x))
       )
+    }
+    if (n.type === 'author_warning') {
+      return
     }
     if (String(n.type).startsWith('collab_task_') || n.post_id === 'collab') {
       window.location.hash = '#/user/collab?tab=collab&work=tasks'
