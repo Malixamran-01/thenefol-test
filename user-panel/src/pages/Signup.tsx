@@ -334,7 +334,7 @@ export default function SignupPage() {
                 required
                 value={signupData.name}
                 onChange={(e) => setSignupData((prev) => ({ ...prev, name: e.target.value }))}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 !py-2.5 !pl-12 !pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
                 placeholder="Your name"
               />
             </div>
@@ -355,7 +355,7 @@ export default function SignupPage() {
                   required
                   value={signupData.email}
                   onChange={(e) => setSignupData((prev) => ({ ...prev, email: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 !py-2.5 !pl-12 !pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
                   placeholder="you@example.com"
                 />
               </div>
@@ -374,7 +374,7 @@ export default function SignupPage() {
                   required
                   value={signupData.password}
                   onChange={(e) => setSignupData((prev) => ({ ...prev, password: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 !py-2.5 !pl-12 !pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
                   placeholder="Create a password"
                 />
                 <button
@@ -401,7 +401,7 @@ export default function SignupPage() {
                   required
                   value={signupData.confirmPassword}
                   onChange={(e) => setSignupData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 !py-2.5 !pl-12 !pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
                   placeholder="Confirm password"
                 />
                 <button
