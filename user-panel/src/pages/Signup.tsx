@@ -12,38 +12,24 @@ declare global {
   }
 }
 
-const ACCENT = 'rgb(75,151,201)'
-const ACCENT_HOVER = 'rgb(60,120,160)'
-
-const googleIcon = (
-  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
-    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-  </svg>
-)
-
-const facebookIcon = (
-  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
-    <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-  </svg>
-)
+const ACCENT = 'rgb(75, 151, 201)'
+const ACCENT_HOVER = 'rgb(60, 120, 160)'
 
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [otpSent, setOtpSent] = useState(false)
-  const [otp, setOtp] = useState('')
-  const [otpCountdown, setOtpCountdown] = useState(0)
+  const [waOtpSent, setWaOtpSent] = useState(false)
+  const [waOtp, setWaOtp] = useState('')
+  const [waOtpCountdown, setWaOtpCountdown] = useState(0)
   const [countryCode, setCountryCode] = useState('+91')
   const [loading, setLoading] = useState(false)
-  const [waLoading, setWaLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [waError, setWaError] = useState('')
+  const [oauthError, setOauthError] = useState('')
   const [googleLoaded, setGoogleLoaded] = useState(false)
   const [fbLoaded, setFbLoaded] = useState(false)
 
-  const otpTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const waTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const [signupData, setSignupData] = useState({
     name: '',
@@ -51,7 +37,7 @@ export default function SignupPage() {
     password: '',
     confirmPassword: '',
     phone: '',
-    address: { street: '', city: '', state: '', zip: '' },
+    address: { street: '', city: '', state: '', zip: '' }
   })
 
   const { signup, loginWithGoogle, loginWithFacebook, error: authError } = useAuth()
@@ -70,12 +56,19 @@ export default function SignupPage() {
     async (response: any) => {
       try {
         setLoading(true)
-        setError('')
+        setOauthError('')
+        setEmailError('')
+        setWaError('')
+
         const success = await loginWithGoogle(response.credential)
-        if (success) redirectAfterSignup()
-        else setError(authError || 'Google signup failed')
+
+        if (success) {
+          redirectAfterSignup()
+        } else {
+          setOauthError(authError || 'Google signup failed')
+        }
       } catch {
-        setError('Google signup failed. Please try again.')
+        setOauthError('Google signup failed. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -93,7 +86,7 @@ export default function SignupPage() {
       if (window.google) {
         window.google.accounts.id.initialize({
           client_id: '269814794814-bbq2slkc637hnh7dqbchb6l3hu9b80j5.apps.googleusercontent.com',
-          callback: handleGoogleResponse,
+          callback: handleGoogleResponse
         })
       }
     }
@@ -101,13 +94,18 @@ export default function SignupPage() {
       console.error('Failed to load Google SDK')
     }
     document.body.appendChild(script)
+
     return () => {
-      if (document.body.contains(script)) document.body.removeChild(script)
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
     }
   }, [handleGoogleResponse])
 
   const handleGoogleSignUp = () => {
-    if (window.google) window.google.accounts.id.prompt()
+    if (window.google) {
+      window.google.accounts.id.prompt()
+    }
   }
 
   React.useEffect(() => {
@@ -120,15 +118,17 @@ export default function SignupPage() {
           clearInterval(checkFB)
         }
       }, 100)
+
       return () => clearInterval(checkFB)
     }
   }, [])
 
   const handleFacebookSignUp = () => {
     if (!window.FB) {
-      setError('Facebook SDK not loaded. Please refresh the page.')
+      setOauthError('Facebook SDK not loaded. Please refresh the page.')
       return
     }
+
     window.FB.login(
       (response: any) => {
         if (response.authResponse) {
@@ -143,24 +143,32 @@ export default function SignupPage() {
   const handleFacebookResponse = async (accessToken: string, userID: string) => {
     try {
       setLoading(true)
-      setError('')
+      setOauthError('')
+      setEmailError('')
+      setWaError('')
+
       const success = await loginWithFacebook(accessToken, userID)
-      if (success) redirectAfterSignup()
-      else setError(authError || 'Facebook signup failed')
+
+      if (success) {
+        redirectAfterSignup()
+      } else {
+        setOauthError(authError || 'Facebook signup failed')
+      }
     } catch {
-      setError('Facebook signup failed. Please try again.')
+      setOauthError('Facebook signup failed. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const startOtpTimer = () => {
-    if (otpTimerRef.current) clearInterval(otpTimerRef.current)
-    setOtpCountdown(600)
-    otpTimerRef.current = setInterval(() => {
-      setOtpCountdown((prev) => {
+  const startWaOtpTimer = () => {
+    if (waTimerRef.current) clearInterval(waTimerRef.current)
+    setWaOtpCountdown(600)
+
+    waTimerRef.current = setInterval(() => {
+      setWaOtpCountdown((prev) => {
         if (prev <= 1) {
-          if (otpTimerRef.current) clearInterval(otpTimerRef.current)
+          if (waTimerRef.current) clearInterval(waTimerRef.current)
           return 0
         }
         return prev - 1
@@ -174,75 +182,22 @@ export default function SignupPage() {
     return `${cc}${num}`
   }
 
-  const handleWhatsAppSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    if (!signupData.name.trim()) {
-      setError('Please enter your name above')
-      return
-    }
-    if (!otpSent) {
-      if (!signupData.phone) {
-        setError('Please enter your phone number')
-        return
-      }
-      setWaLoading(true)
-      try {
-        const formattedPhone = formatPhone(signupData.phone)
-        await authAPI.sendOTP(formattedPhone)
-        setOtpSent(true)
-        startOtpTimer()
-      } catch (err: any) {
-        setError(err?.message || 'Failed to send OTP.')
-      } finally {
-        setWaLoading(false)
-      }
-      return
-    }
-    if (!otp || otp.length !== 6) {
-      setError('Please enter a valid 6-digit OTP')
-      return
-    }
-    setWaLoading(true)
-    try {
-      const formattedPhone = formatPhone(signupData.phone)
-      const result = await authAPI.verifyOTPSignup({
-        phone: formattedPhone,
-        otp,
-        name: signupData.name,
-        email: undefined,
-        address: {
-          street: '',
-          city: '',
-          state: '',
-          zip: '',
-        },
-      })
-      if (result?.token && result?.user) {
-        localStorage.setItem('token', result.token)
-        localStorage.setItem('user', JSON.stringify(result.user))
-        redirectAfterSignup()
-      } else {
-        setError('Signup failed. Please try again.')
-      }
-    } catch (err: any) {
-      setError(err?.message || 'Invalid OTP or signup failed.')
-    } finally {
-      setWaLoading(false)
-    }
-  }
-
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setEmailError('')
+    setOauthError('')
+    setWaError('')
+
     if (!signupData.name.trim()) {
-      setError('Please enter your name')
+      setEmailError('Please enter your name')
       return
     }
+
     if (signupData.password !== signupData.confirmPassword) {
-      setError('Passwords do not match')
+      setEmailError('Passwords do not match')
       return
     }
+
     setLoading(true)
     try {
       const success = await signup({
@@ -250,277 +205,376 @@ export default function SignupPage() {
         email: signupData.email,
         password: signupData.password,
         phone: '',
-        address: { street: '', city: '', state: '', zip: '' },
+        address: { street: '', city: '', state: '', zip: '' }
       })
-      if (!success) setError(authError || 'Signup failed')
-      else redirectAfterSignup()
+
+      if (!success) {
+        setEmailError(authError || 'Signup failed')
+      } else {
+        redirectAfterSignup()
+      }
     } catch {
-      setError('Signup failed. Please try again.')
+      setEmailError('Signup failed. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const Divider = ({ label }: { label: string }) => (
-    <div className="relative my-6">
-      <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-slate-200" />
-      </div>
-      <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em]">
-        <span className="bg-white px-4 text-slate-400 font-light">{label}</span>
-      </div>
-    </div>
-  )
+  const handleWhatsAppSignup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setWaError('')
+    setEmailError('')
+    setOauthError('')
+    setLoading(true)
+
+    if (!waOtpSent) {
+      if (!signupData.phone) {
+        setWaError('Please enter your phone number')
+        setLoading(false)
+        return
+      }
+
+      try {
+        const formattedPhone = formatPhone(signupData.phone)
+        await authAPI.sendOTP(formattedPhone)
+        setWaOtpSent(true)
+        startWaOtpTimer()
+      } catch (err: any) {
+        setWaError(err?.message || 'Failed to send OTP.')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    if (!waOtp || waOtp.length !== 6) {
+      setWaError('Please enter a valid 6-digit OTP')
+      setLoading(false)
+      return
+    }
+
+    if (!signupData.name.trim()) {
+      setWaError('Please enter your name')
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const formattedPhone = formatPhone(signupData.phone)
+
+      const result = await authAPI.verifyOTPSignup({
+        phone: formattedPhone,
+        otp: waOtp,
+        name: signupData.name,
+        email: undefined,
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          zip: ''
+        }
+      })
+
+      if (result?.token && result?.user) {
+        localStorage.setItem('token', result.token)
+        localStorage.setItem('user', JSON.stringify(result.user))
+        redirectAfterSignup()
+      } else {
+        setWaError('Signup failed. Please try again.')
+      }
+    } catch (err: any) {
+      setWaError(err?.message || 'Invalid OTP or signup failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetWhatsAppSignup = () => {
+    setWaOtpSent(false)
+    setWaOtp('')
+    setWaOtpCountdown(0)
+    setWaError('')
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white py-10 px-4 sm:px-6">
-      <div className="w-full max-w-md">
-        <div className="flex rounded-xl bg-slate-100/90 p-1.5 mb-8 shadow-sm ring-1 ring-slate-200/60">
-          <button
-            type="button"
-            onClick={() => {
-              window.location.hash = '#/user/login'
-            }}
-            className="flex-1 py-2.5 px-3 rounded-lg text-center text-xs font-light tracking-[0.12em] uppercase text-slate-600 hover:text-slate-900 transition-colors"
-            style={{ letterSpacing: '0.12em' }}
-          >
-            Sign in
-          </button>
-          <div
-            className="flex-1 py-2.5 px-3 rounded-lg text-center text-xs font-light tracking-[0.12em] uppercase bg-white text-slate-900 shadow-sm"
-            style={{ letterSpacing: '0.12em' }}
-          >
-            Create account
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 sm:px-6">
+      <div className="w-full max-w-[420px]">
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-7 shadow-sm sm:px-8 sm:py-8">
+          <div className="text-center">
+            <h1
+              className="text-2xl font-medium tracking-tight text-slate-900 sm:text-[1.65rem]"
+              style={{ fontFamily: 'var(--font-heading-family, inherit)' }}
+            >
+              Create account
+            </h1>
+            <p className="mt-1.5 text-sm text-slate-500">Join NEFOL® and start your beauty journey</p>
+            <p className="mt-3 text-sm text-slate-600">
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={() => (window.location.hash = '#/user/login')}
+                className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-500"
+              >
+                Sign in
+              </button>
+            </p>
           </div>
-        </div>
 
-        <div className="text-center mb-8">
-          <h1
-            className="text-2xl sm:text-3xl font-light tracking-[0.12em]"
-            style={{
-              color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family)',
-            }}
-          >
-            Create your account
-          </h1>
-          <p className="mt-2 text-sm font-light text-slate-500 tracking-wide">Join NEFOL® — pick any method below</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 text-slate-700 bg-rose-50 border border-rose-100 p-3 rounded-lg text-sm font-light">{error}</div>
-        )}
-
-        <div className="mb-6">
-          <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">Full name</label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              required
-              value={signupData.name}
-              onChange={(e) => setSignupData((prev) => ({ ...prev, name: e.target.value }))}
-              className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 pl-10 pr-3"
-              placeholder="Your name"
-              autoComplete="name"
-            />
-          </div>
-          <p className="mt-1.5 text-[11px] text-slate-400 font-light">Used for email signup and WhatsApp verification</p>
-        </div>
-
-        <p className="text-[10px] font-light uppercase tracking-[0.2em] text-slate-400 mb-3 text-center">Continue with</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={handleGoogleSignUp}
-            disabled={loading || !googleLoaded}
-            className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-sm font-light text-slate-700 bg-white hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm"
-          >
-            {googleIcon}
-            Google
-          </button>
-          <button
-            type="button"
-            onClick={handleFacebookSignUp}
-            disabled={loading || !fbLoaded}
-            className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-sm font-light text-slate-700 bg-white hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm"
-          >
-            {facebookIcon}
-            Facebook
-          </button>
-        </div>
-
-        <div className="mt-6 rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 bg-emerald-50/40">
-            <MessageCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-slate-800 tracking-wide">WhatsApp</p>
-              <p className="text-[11px] text-slate-500 font-light">We’ll send a code — no password needed</p>
+          <div className="mt-8">
+            <label htmlFor="signup-name" className="mb-1.5 block text-xs font-medium text-slate-600">
+              Full name
+            </label>
+            <div className="relative">
+              <User className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="signup-name"
+                type="text"
+                autoComplete="name"
+                required
+                value={signupData.name}
+                onChange={(e) => setSignupData((prev) => ({ ...prev, name: e.target.value }))}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                placeholder="Your name"
+              />
             </div>
           </div>
-          <form onSubmit={handleWhatsAppSignup} className="p-4 space-y-4">
-            {!otpSent ? (
-              <PhoneInput
-                value={signupData.phone}
-                onChange={(value) => setSignupData((prev) => ({ ...prev, phone: value }))}
-                onCountryCodeChange={setCountryCode}
-                defaultCountry={countryCode}
-                placeholder="Mobile number"
-                required
-                showLabel
-                label="Phone number"
-              />
-            ) : (
-              <div>
-                <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">Enter code</label>
+
+          {/* Email signup */}
+          <form onSubmit={handleEmailSignup} className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="signup-email" className="mb-1.5 block text-xs font-medium text-slate-600">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="text"
+                  id="signup-email"
+                  type="email"
+                  autoComplete="email"
                   required
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => {
-                    setOtp(e.target.value.replace(/\D/g, ''))
-                    setError('')
-                  }}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 text-center text-2xl tracking-[0.35em] font-light text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
-                  placeholder="••••••"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
+                  value={signupData.email}
+                  onChange={(e) => setSignupData((prev) => ({ ...prev, email: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  placeholder="you@example.com"
                 />
-                {otpCountdown > 0 && (
-                  <p className="text-xs text-slate-500 mt-2 text-center">
-                    Code expires in {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, '0')}
-                  </p>
-                )}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="signup-password" className="mb-1.5 block text-xs font-medium text-slate-600">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="signup-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={signupData.password}
+                  onChange={(e) => setSignupData((prev) => ({ ...prev, password: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  placeholder="Create a password"
+                />
                 <button
                   type="button"
-                  onClick={() => {
-                    setOtpSent(false)
-                    setOtp('')
-                    setOtpCountdown(0)
-                    setError('')
-                  }}
-                  className="text-xs text-slate-600 hover:text-slate-900 underline mt-2 w-full text-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  Resend / change number
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="signup-confirm" className="mb-1.5 block text-xs font-medium text-slate-600">
+                Confirm password
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="signup-confirm"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={signupData.confirmPassword}
+                  onChange={(e) => setSignupData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  placeholder="Confirm password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {emailError && (
+              <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">{emailError}</div>
             )}
+
             <button
               type="submit"
-              disabled={waLoading}
-              className="w-full py-3 rounded-lg text-xs font-light tracking-[0.12em] uppercase text-white transition-all disabled:opacity-50"
-              style={{ backgroundColor: ACCENT, letterSpacing: '0.12em' }}
+              disabled={loading}
+              className="w-full rounded-lg py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ backgroundColor: ACCENT }}
               onMouseEnter={(e) => {
-                if (!waLoading) e.currentTarget.style.backgroundColor = ACCENT_HOVER
+                if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = ACCENT_HOVER
               }}
               onMouseLeave={(e) => {
-                if (!waLoading) e.currentTarget.style.backgroundColor = ACCENT
+                if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = ACCENT
               }}
             >
-              {waLoading
-                ? otpSent
-                  ? 'Verifying…'
-                  : 'Sending…'
-                : otpSent
-                  ? 'Verify & create account'
-                  : 'Send WhatsApp code'}
+              {loading ? 'Creating account…' : 'Create account'}
             </button>
           </form>
+
+          {oauthError && (
+            <div className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-center text-sm text-red-800">
+              {oauthError}
+            </div>
+          )}
+
+          <div className="relative my-7">
+            <div className="absolute inset-0 flex items-center" aria-hidden>
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-3 text-slate-400">or continue with</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={handleGoogleSignUp}
+              disabled={loading || !googleLoaded}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
+              </svg>
+              Google
+            </button>
+            <button
+              type="button"
+              onClick={handleFacebookSignUp}
+              disabled={loading || !fbLoaded}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  fill="#1877F2"
+                  d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+                />
+              </svg>
+              Facebook
+            </button>
+          </div>
+
+          <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15">
+                <MessageCircle className="h-4 w-4 text-[#128C7E]" aria-hidden />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-800">WhatsApp OTP</h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                  Sign up with your number—we’ll send a code to WhatsApp. No password needed.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleWhatsAppSignup} className="mt-4 space-y-3">
+              {!waOtpSent ? (
+                <PhoneInput
+                  value={signupData.phone}
+                  onChange={(value) => setSignupData((prev) => ({ ...prev, phone: value }))}
+                  onCountryCodeChange={setCountryCode}
+                  defaultCountry={countryCode}
+                  placeholder="Phone number"
+                  required
+                  showLabel
+                  label="Mobile number"
+                />
+              ) : (
+                <>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Enter OTP</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      value={waOtp}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '')
+                        setWaOtp(value)
+                        setWaError('')
+                      }}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-xl tracking-[0.35em] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                      placeholder="••••••"
+                    />
+                    {waOtpCountdown > 0 && (
+                      <p className="mt-2 text-center text-xs text-slate-500">
+                        Code expires in {Math.floor(waOtpCountdown / 60)}:
+                        {(waOtpCountdown % 60).toString().padStart(2, '0')}
+                      </p>
+                    )}
+                    <div className="mt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={resetWhatsAppSignup}
+                        className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
+                      >
+                        Use a different number
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {waError && (
+                <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">{waError}</div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-lg border border-[#128C7E]/30 bg-white py-2.5 text-sm font-semibold text-[#075E54] transition hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading
+                  ? waOtpSent
+                    ? 'Verifying…'
+                    : 'Sending…'
+                  : waOtpSent
+                    ? 'Verify and create account'
+                    : 'Send code via WhatsApp'}
+              </button>
+            </form>
+          </div>
         </div>
-
-        <Divider label="or email" />
-
-        <form onSubmit={handleEmailSignup} className="space-y-4">
-          <div>
-            <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                type="email"
-                required
-                value={signupData.email}
-                onChange={(e) => setSignupData((prev) => ({ ...prev, email: e.target.value }))}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 pl-10 pr-3"
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={signupData.password}
-                onChange={(e) => setSignupData((prev) => ({ ...prev, password: e.target.value }))}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 pl-10 pr-11"
-                placeholder="Create a password"
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">Confirm password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                required
-                value={signupData.confirmPassword}
-                onChange={(e) => setSignupData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 pl-10 pr-11"
-                placeholder="Confirm password"
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-              >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 rounded-lg text-xs font-light tracking-[0.15em] uppercase text-white transition-all disabled:opacity-50"
-            style={{ backgroundColor: ACCENT, letterSpacing: '0.15em' }}
-            onMouseEnter={(e) => {
-              if (!loading) e.currentTarget.style.backgroundColor = ACCENT_HOVER
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) e.currentTarget.style.backgroundColor = ACCENT
-            }}
-          >
-            {loading ? 'Creating account…' : 'Create account with email'}
-          </button>
-        </form>
-
-        <p className="mt-8 text-center text-sm font-light text-slate-500">
-          Already have an account?{' '}
-          <button
-            type="button"
-            onClick={() => {
-              window.location.hash = '#/user/login'
-            }}
-            className="text-slate-900 underline underline-offset-2 hover:text-slate-700"
-          >
-            Sign in
-          </button>
-        </p>
       </div>
     </div>
   )

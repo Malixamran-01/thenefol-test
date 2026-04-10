@@ -4,6 +4,7 @@ import { authAPI } from '../services/api'
 import { Mail, Lock, Eye, EyeOff, MessageCircle } from 'lucide-react'
 import PhoneInput from '../components/PhoneInput'
 
+// Google OAuth
 declare global {
   interface Window {
     google?: any
@@ -12,23 +13,8 @@ declare global {
   }
 }
 
-const ACCENT = 'rgb(75,151,201)'
-const ACCENT_HOVER = 'rgb(60,120,160)'
-
-const googleIcon = (
-  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
-    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-  </svg>
-)
-
-const facebookIcon = (
-  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
-    <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-  </svg>
-)
+const ACCENT = 'rgb(75, 151, 201)'
+const ACCENT_HOVER = 'rgb(60, 120, 160)'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -40,8 +26,9 @@ export default function LoginPage() {
   const [loginPhone, setLoginPhone] = useState('')
   const [countryCode, setCountryCode] = useState('+91')
   const [loading, setLoading] = useState(false)
-  const [waLoading, setWaLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [waError, setWaError] = useState('')
+  const [oauthError, setOauthError] = useState('')
   const [googleLoaded, setGoogleLoaded] = useState(false)
   const [fbLoaded, setFbLoaded] = useState(false)
 
@@ -63,12 +50,19 @@ export default function LoginPage() {
     async (response: any) => {
       try {
         setLoading(true)
-        setError('')
+        setOauthError('')
+        setEmailError('')
+        setWaError('')
+
         const success = await loginWithGoogle(response.credential)
-        if (success) redirectAfterLogin()
-        else setError(authError || 'Google login failed')
+
+        if (success) {
+          redirectAfterLogin()
+        } else {
+          setOauthError(authError || 'Google login failed')
+        }
       } catch {
-        setError('Google login failed. Please try again.')
+        setOauthError('Google login failed. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -90,14 +84,22 @@ export default function LoginPage() {
         })
       }
     }
+    script.onerror = () => {
+      console.error('Failed to load Google SDK')
+    }
     document.body.appendChild(script)
+
     return () => {
-      if (document.body.contains(script)) document.body.removeChild(script)
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
     }
   }, [handleGoogleResponse])
 
   const handleGoogleSignIn = () => {
-    if (window.google) window.google.accounts.id.prompt()
+    if (window.google) {
+      window.google.accounts.id.prompt()
+    }
   }
 
   React.useEffect(() => {
@@ -110,15 +112,17 @@ export default function LoginPage() {
           clearInterval(checkFB)
         }
       }, 100)
+
       return () => clearInterval(checkFB)
     }
   }, [])
 
   const handleFacebookLogin = () => {
     if (!window.FB) {
-      setError('Facebook SDK not loaded. Please refresh the page.')
+      setOauthError('Facebook SDK not loaded. Please refresh the page.')
       return
     }
+
     window.FB.login(
       (response: any) => {
         if (response.authResponse) {
@@ -133,12 +137,19 @@ export default function LoginPage() {
   const handleFacebookResponse = async (accessToken: string, userID: string) => {
     try {
       setLoading(true)
-      setError('')
+      setOauthError('')
+      setEmailError('')
+      setWaError('')
+
       const success = await loginWithFacebook(accessToken, userID)
-      if (success) redirectAfterLogin()
-      else setError(authError || 'Facebook login failed')
+
+      if (success) {
+        redirectAfterLogin()
+      } else {
+        setOauthError(authError || 'Facebook login failed')
+      }
     } catch {
-      setError('Facebook login failed. Please try again.')
+      setOauthError('Facebook login failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -147,6 +158,7 @@ export default function LoginPage() {
   const startOtpTimer = () => {
     if (otpTimerRef.current) clearInterval(otpTimerRef.current)
     setOtpCountdown(600)
+
     otpTimerRef.current = setInterval(() => {
       setOtpCountdown((prev) => {
         if (prev <= 1) {
@@ -166,294 +178,325 @@ export default function LoginPage() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setEmailError('')
+    setOauthError('')
+    setWaError('')
     setLoading(true)
     try {
       const success = await login(email, password)
-      if (!success) setError(authError || 'Login failed')
-      else redirectAfterLogin()
+      if (!success) {
+        setEmailError(authError || 'Login failed')
+      } else {
+        redirectAfterLogin()
+      }
     } catch {
-      setError('Login failed. Please try again.')
+      setEmailError('Login failed. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleWhatsAppSubmit = async (e: React.FormEvent) => {
+  const handleWhatsAppLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setWaError('')
+    setEmailError('')
+    setOauthError('')
+    setLoading(true)
+
     if (!otpSent) {
       if (!loginPhone) {
-        setError('Please enter your phone number')
+        setWaError('Please enter your phone number')
+        setLoading(false)
         return
       }
-      setWaLoading(true)
+
       try {
         const formattedPhone = formatPhone(loginPhone)
         await authAPI.sendOTPLogin(formattedPhone)
         setOtpSent(true)
         startOtpTimer()
       } catch (err: any) {
-        setError(err?.message || 'Failed to send OTP.')
+        setWaError(err?.message || 'Failed to send OTP.')
       } finally {
-        setWaLoading(false)
+        setLoading(false)
       }
       return
     }
+
     if (!otp || otp.length !== 6) {
-      setError('Please enter a valid 6-digit OTP')
+      setWaError('Please enter a valid 6-digit OTP')
+      setLoading(false)
       return
     }
-    setWaLoading(true)
+
     try {
       const formattedPhone = formatPhone(loginPhone)
       const success = await loginWithWhatsApp(formattedPhone, otp)
-      if (!success) setError(authError || 'Login failed')
-      else redirectAfterLogin()
+
+      if (!success) {
+        setWaError(authError || 'Login failed')
+      } else {
+        redirectAfterLogin()
+      }
     } catch (err: any) {
-      setError(err?.message || 'Invalid OTP or login failed.')
+      setWaError(err?.message || 'Invalid OTP or login failed.')
     } finally {
-      setWaLoading(false)
+      setLoading(false)
     }
   }
 
-  const Divider = ({ label }: { label: string }) => (
-    <div className="relative my-6">
-      <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-slate-200" />
-      </div>
-      <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em]">
-        <span className="bg-white px-4 text-slate-400 font-light">{label}</span>
-      </div>
-    </div>
-  )
+  const resetWhatsApp = () => {
+    setOtpSent(false)
+    setOtp('')
+    setOtpCountdown(0)
+    setWaError('')
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white py-10 px-4 sm:px-6">
-      <div className="w-full max-w-md">
-        {/* Sign in | Create account */}
-        <div className="flex rounded-xl bg-slate-100/90 p-1.5 mb-8 shadow-sm ring-1 ring-slate-200/60">
-          <div
-            className="flex-1 py-2.5 px-3 rounded-lg text-center text-xs font-light tracking-[0.12em] uppercase bg-white text-slate-900 shadow-sm"
-            style={{ letterSpacing: '0.12em' }}
-          >
-            Sign in
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 py-10 px-4 sm:px-6">
+      <div className="w-full max-w-[420px]">
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-7 shadow-sm sm:px-8 sm:py-8">
+          {/* Header */}
+          <div className="text-center">
+            <h1
+              className="text-2xl font-medium tracking-tight text-slate-900 sm:text-[1.65rem]"
+              style={{ fontFamily: 'var(--font-heading-family, inherit)' }}
+            >
+              Sign in
+            </h1>
+            <p className="mt-1.5 text-sm text-slate-500">Welcome back to NEFOL®</p>
+            <p className="mt-3 text-sm text-slate-600">
+              New here?{' '}
+              <button
+                type="button"
+                onClick={() => (window.location.hash = '#/user/signup')}
+                className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-500"
+              >
+                Create an account
+              </button>
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              window.location.hash = '#/user/signup'
-            }}
-            className="flex-1 py-2.5 px-3 rounded-lg text-center text-xs font-light tracking-[0.12em] uppercase text-slate-600 hover:text-slate-900 transition-colors"
-            style={{ letterSpacing: '0.12em' }}
-          >
-            Create account
-          </button>
-        </div>
 
-        <div className="text-center mb-8">
-          <h1
-            className="text-2xl sm:text-3xl font-light tracking-[0.12em]"
-            style={{
-              color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family)',
-            }}
-          >
-            Welcome back
-          </h1>
-          <p className="mt-2 text-sm font-light text-slate-500 tracking-wide">Sign in to NEFOL® — pick any method below</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 text-slate-700 bg-rose-50 border border-rose-100 p-3 rounded-lg text-sm font-light">{error}</div>
-        )}
-
-        {/* Quick sign-in: Google + Facebook */}
-        <p className="text-[10px] font-light uppercase tracking-[0.2em] text-slate-400 mb-3 text-center">Continue with</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={loading || !googleLoaded}
-            className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-sm font-light text-slate-700 bg-white hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm"
-          >
-            {googleIcon}
-            Google
-          </button>
-          <button
-            type="button"
-            onClick={handleFacebookLogin}
-            disabled={loading || !fbLoaded}
-            className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-sm font-light text-slate-700 bg-white hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm"
-          >
-            {facebookIcon}
-            Facebook
-          </button>
-        </div>
-
-        {/* WhatsApp — own card */}
-        <div className="mt-6 rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 bg-emerald-50/40">
-            <MessageCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+          {/* Email + password */}
+          <form onSubmit={handleEmailLogin} className="mt-8 space-y-4">
             <div>
-              <p className="text-sm font-medium text-slate-800 tracking-wide">WhatsApp</p>
-              <p className="text-[11px] text-slate-500 font-light">We’ll send a one-time code — no password</p>
+              <label htmlFor="login-email" className="mb-1.5 block text-xs font-medium text-slate-600">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  placeholder="you@example.com"
+                />
+              </div>
             </div>
-          </div>
-          <form onSubmit={handleWhatsAppSubmit} className="p-4 space-y-4">
-            {!otpSent ? (
-              <PhoneInput
-                value={loginPhone}
-                onChange={setLoginPhone}
-                onCountryCodeChange={setCountryCode}
-                defaultCountry={countryCode}
-                placeholder="Mobile number"
-                required
-                showLabel
-                label="Phone number"
-              />
-            ) : (
-              <>
-                <div>
-                  <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">Enter code</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => {
-                      setOtp(e.target.value.replace(/\D/g, ''))
-                      setError('')
-                    }}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 text-center text-2xl tracking-[0.35em] font-light text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
-                    placeholder="••••••"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                  />
-                  {otpCountdown > 0 && (
-                    <p className="text-xs text-slate-500 mt-2 text-center">
-                      Code expires in {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, '0')}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpSent(false)
-                      setOtp('')
-                      setOtpCountdown(0)
-                      setError('')
-                    }}
-                    className="text-xs text-slate-600 hover:text-slate-900 underline mt-2 w-full text-center"
-                  >
-                    Use a different number
-                  </button>
-                </div>
-              </>
+
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label htmlFor="login-password" className="text-xs font-medium text-slate-600">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => (window.location.hash = '#/user/reset-password')}
+                  className="text-xs font-medium text-slate-500 hover:text-slate-800"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {emailError && (
+              <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">{emailError}</div>
             )}
+
             <button
               type="submit"
-              disabled={waLoading}
-              className="w-full py-3 rounded-lg text-xs font-light tracking-[0.12em] uppercase text-white transition-all disabled:opacity-50"
-              style={{ backgroundColor: ACCENT, letterSpacing: '0.12em' }}
+              disabled={loading}
+              className="w-full rounded-lg py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ backgroundColor: ACCENT }}
               onMouseEnter={(e) => {
-                if (!waLoading) e.currentTarget.style.backgroundColor = ACCENT_HOVER
+                if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = ACCENT_HOVER
               }}
               onMouseLeave={(e) => {
-                if (!waLoading) e.currentTarget.style.backgroundColor = ACCENT
+                if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = ACCENT
               }}
             >
-              {waLoading
-                ? otpSent
-                  ? 'Verifying…'
-                  : 'Sending…'
-                : otpSent
-                  ? 'Verify & sign in'
-                  : 'Send WhatsApp code'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
+
+          {oauthError && (
+            <div className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-center text-sm text-red-800">
+              {oauthError}
+            </div>
+          )}
+
+          {/* Divider */}
+          <div className="relative my-7">
+            <div className="absolute inset-0 flex items-center" aria-hidden>
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-3 text-slate-400">or continue with</span>
+            </div>
+          </div>
+
+          {/* Google + Facebook */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading || !googleLoaded}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
+              </svg>
+              Google
+            </button>
+            <button
+              type="button"
+              onClick={handleFacebookLogin}
+              disabled={loading || !fbLoaded}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  fill="#1877F2"
+                  d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+                />
+              </svg>
+              Facebook
+            </button>
+          </div>
+
+          {/* WhatsApp — always visible, no tabs */}
+          <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15">
+                <MessageCircle className="h-4 w-4 text-[#128C7E]" aria-hidden />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-800">WhatsApp OTP</h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                  We’ll send a 6-digit code to your WhatsApp. No password needed.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleWhatsAppLogin} className="mt-4 space-y-3">
+              {!otpSent ? (
+                <PhoneInput
+                  value={loginPhone}
+                  onChange={(value) => setLoginPhone(value)}
+                  onCountryCodeChange={setCountryCode}
+                  defaultCountry={countryCode}
+                  placeholder="Phone number"
+                  required
+                  showLabel
+                  label="Mobile number"
+                />
+              ) : (
+                <>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Enter OTP</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      value={otp}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '')
+                        setOtp(value)
+                        setWaError('')
+                      }}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-xl tracking-[0.35em] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                      placeholder="••••••"
+                    />
+                    {otpCountdown > 0 && (
+                      <p className="mt-2 text-center text-xs text-slate-500">
+                        Code expires in {Math.floor(otpCountdown / 60)}:
+                        {(otpCountdown % 60).toString().padStart(2, '0')}
+                      </p>
+                    )}
+                    <div className="mt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={resetWhatsApp}
+                        className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
+                      >
+                        Use a different number
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {waError && (
+                <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">{waError}</div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-lg border border-[#128C7E]/30 bg-white py-2.5 text-sm font-semibold text-[#075E54] transition hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading
+                  ? otpSent
+                    ? 'Verifying…'
+                    : 'Sending…'
+                  : otpSent
+                    ? 'Verify and sign in'
+                    : 'Send code via WhatsApp'}
+              </button>
+            </form>
+          </div>
         </div>
-
-        <Divider label="or email" />
-
-        {/* Email + password */}
-        <form onSubmit={handleEmailLogin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 pl-10 pr-3"
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-light text-slate-600 mb-2 uppercase tracking-[0.1em]">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-3 text-sm font-light text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200 pl-10 pr-11"
-                placeholder="••••••••"
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <div className="mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.hash = '#/user/reset-password'
-                }}
-                className="text-xs font-light text-slate-600 hover:text-slate-900 underline"
-              >
-                Forgot password?
-              </button>
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 rounded-lg text-xs font-light tracking-[0.15em] uppercase text-white transition-all disabled:opacity-50"
-            style={{ backgroundColor: ACCENT, letterSpacing: '0.15em' }}
-            onMouseEnter={(e) => {
-              if (!loading) e.currentTarget.style.backgroundColor = ACCENT_HOVER
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) e.currentTarget.style.backgroundColor = ACCENT
-            }}
-          >
-            {loading ? 'Signing in…' : 'Sign in with email'}
-          </button>
-        </form>
-
-        <p className="mt-8 text-center text-sm font-light text-slate-500">
-          New here?{' '}
-          <button
-            type="button"
-            onClick={() => {
-              window.location.hash = '#/user/signup'
-            }}
-            className="text-slate-900 underline underline-offset-2 hover:text-slate-700"
-          >
-            Create an account
-          </button>
-        </p>
       </div>
     </div>
   )
