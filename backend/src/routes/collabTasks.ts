@@ -32,37 +32,39 @@ async function ensureCreatorProgramBadgeAckSchema(pool: Pool) {
   `)
 }
 
-/** 1 if collab application was approved after last time user opened the Collab tab (or never seen). */
-async function getCollabApprovalUnread(pool: Pool, userId: string): Promise<number> {
+/**
+ * 1 if the latest collab application decision (approved or rejected) is newer than the last Collab-tab ack.
+ * Does not count assigned brand tasks or pending review — only form outcomes.
+ */
+async function getCollabFormDecisionUnread(pool: Pool, userId: string): Promise<number> {
   const u = await pool.query(`SELECT id, email, unique_user_id FROM users WHERE id = $1`, [userId])
   if (!u.rows.length) return 0
   const uniqueUserId = u.rows[0].unique_user_id
+    ? String(u.rows[0].unique_user_id).trim()
+    : ''
   const email = u.rows[0].email ? String(u.rows[0].email).trim().toLowerCase() : ''
+  if (!uniqueUserId && !email) return 0
 
-  let approvedAt: Date | null = null
-  if (uniqueUserId) {
-    const r = await pool.query(
-      `SELECT approved_at, updated_at FROM collab_applications
-       WHERE unique_user_id = $1 AND status = 'approved'
-       ORDER BY COALESCE(approved_at, updated_at) DESC NULLS LAST LIMIT 1`,
-      [uniqueUserId]
-    )
-    if (r.rows.length) {
-      approvedAt = (r.rows[0].approved_at || r.rows[0].updated_at) as Date | null
-    }
-  }
-  if (!approvedAt && email) {
-    const r = await pool.query(
-      `SELECT approved_at, updated_at FROM collab_applications
-       WHERE LOWER(TRIM(email)) = $1 AND status = 'approved'
-       ORDER BY COALESCE(approved_at, updated_at) DESC NULLS LAST LIMIT 1`,
-      [email]
-    )
-    if (r.rows.length) {
-      approvedAt = (r.rows[0].approved_at || r.rows[0].updated_at) as Date | null
-    }
-  }
-  if (!approvedAt) return 0
+  const { rows } = await pool.query(
+    `SELECT (
+        CASE
+          WHEN status = 'approved' THEN COALESCE(approved_at, updated_at)
+          WHEN status = 'rejected' THEN COALESCE(rejected_at, updated_at)
+          ELSE updated_at
+        END
+      ) AS decision_at
+     FROM collab_applications
+     WHERE status IN ('approved', 'rejected')
+       AND (
+         ($1::text <> '' AND TRIM(COALESCE(unique_user_id, '')) = $1)
+         OR ($2::text <> '' AND LOWER(TRIM(email)) = $2)
+       )
+     ORDER BY decision_at DESC NULLS LAST
+     LIMIT 1`,
+    [uniqueUserId, email]
+  )
+  const decisionAt = rows[0]?.decision_at as Date | null | undefined
+  if (!decisionAt) return 0
 
   const ack = await pool.query(
     `SELECT collab_approval_seen_at FROM creator_program_badge_ack WHERE user_id = $1`,
@@ -70,21 +72,30 @@ async function getCollabApprovalUnread(pool: Pool, userId: string): Promise<numb
   )
   const seen = ack.rows[0]?.collab_approval_seen_at as Date | null | undefined
   if (!seen) return 1
-  return new Date(approvedAt).getTime() > new Date(seen).getTime() ? 1 : 0
+  return new Date(decisionAt).getTime() > new Date(seen).getTime() ? 1 : 0
 }
 
-/** 1 if affiliate application was approved after last time user opened the Affiliate tab (or never seen). */
-async function getAffiliateApprovalUnread(pool: Pool, userId: string, email: string): Promise<number> {
+/**
+ * 1 if the latest affiliate application decision (approved or rejected) is newer than the last Affiliate-tab ack.
+ */
+async function getAffiliateFormDecisionUnread(pool: Pool, userId: string, email: string): Promise<number> {
   if (!email) return 0
   const { rows } = await pool.query(
-    `SELECT approved_at, application_date FROM affiliate_applications
-     WHERE LOWER(TRIM(email)) = $1 AND status = 'approved'
-     ORDER BY COALESCE(approved_at, application_date) DESC NULLS LAST LIMIT 1`,
+    `SELECT (
+        CASE
+          WHEN status = 'approved' THEN COALESCE(approved_at, application_date)
+          WHEN status = 'rejected' THEN COALESCE(rejected_at, updated_at)
+          ELSE updated_at
+        END
+      ) AS decision_at
+     FROM affiliate_applications
+     WHERE LOWER(TRIM(email)) = $1 AND status IN ('approved', 'rejected')
+     ORDER BY decision_at DESC NULLS LAST
+     LIMIT 1`,
     [email]
   )
-  if (!rows.length) return 0
-  const approvedAt = (rows[0].approved_at || rows[0].application_date) as Date | null
-  if (!approvedAt) return 0
+  const decisionAt = rows[0]?.decision_at as Date | null | undefined
+  if (!decisionAt) return 0
 
   const ack = await pool.query(
     `SELECT affiliate_approval_seen_at FROM creator_program_badge_ack WHERE user_id = $1`,
@@ -92,7 +103,7 @@ async function getAffiliateApprovalUnread(pool: Pool, userId: string, email: str
   )
   const seen = ack.rows[0]?.affiliate_approval_seen_at as Date | null | undefined
   if (!seen) return 1
-  return new Date(approvedAt).getTime() > new Date(seen).getTime() ? 1 : 0
+  return new Date(decisionAt).getTime() > new Date(seen).getTime() ? 1 : 0
 }
 
 async function ensureCollabTaskSchema(pool: Pool) {
@@ -1048,7 +1059,8 @@ export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: R
 }
 
 /**
- * Guided badges: actionable collab tasks + pending affiliate application (Creator Program nav).
+ * Creator Program nav badges: only **unread** collab / affiliate **form decisions** (approved or rejected).
+ * Brand-task assignments and pending applications are not shown as notification badges.
  */
 export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Response) {
   try {
@@ -1077,21 +1089,6 @@ export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Respo
     const emailRaw = u.rows[0].email
     const email = emailRaw ? String(emailRaw).trim().toLowerCase() : ''
 
-    let tasksCount = 0
-    const programBlock = await getApprovedCollabAppForUser(pool, userId)
-    if (programBlock) {
-      const blocked = await assertCollabNotBlockedByAppId(pool, programBlock.id)
-      if (blocked.ok) {
-        const { rows } = await pool.query(
-          `SELECT COUNT(*)::int AS c FROM collab_assigned_tasks
-           WHERE collab_application_id = $1
-             AND status IN ('assigned', 'needs_revision')`,
-          [programBlock.id]
-        )
-        tasksCount = Number(rows[0]?.c) || 0
-      }
-    }
-
     let affiliatePendingCount = 0
     if (email) {
       const { rows: ar } = await pool.query(
@@ -1102,19 +1099,17 @@ export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Respo
       affiliatePendingCount = Number(ar[0]?.c) || 0
     }
 
-    const collabApprovalUnread = await getCollabApprovalUnread(pool, userId)
-    const affiliateApprovalUnread = await getAffiliateApprovalUnread(pool, userId, email)
+    const collabApprovalUnread = await getCollabFormDecisionUnread(pool, userId)
+    const affiliateApprovalUnread = await getAffiliateFormDecisionUnread(pool, userId, email)
 
     const revenueCount = 0
-    const collabTabCount = tasksCount + collabApprovalUnread
-    const affiliateTabCount = affiliatePendingCount + affiliateApprovalUnread
-    const total = tasksCount + affiliatePendingCount + collabApprovalUnread + affiliateApprovalUnread + revenueCount
+    const total = collabApprovalUnread + affiliateApprovalUnread + revenueCount
 
     return res.json({
       total,
-      collab: collabTabCount,
-      tasks: tasksCount,
-      affiliate: affiliateTabCount,
+      collab: collabApprovalUnread,
+      tasks: 0,
+      affiliate: affiliateApprovalUnread,
       revenue: revenueCount,
       collabApprovalUnread,
       affiliateApprovalUnread,
@@ -1126,7 +1121,7 @@ export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Respo
   }
 }
 
-/** Mark Creator Program tab notifications as seen (collab application approved / affiliate approved). */
+/** Mark Creator Program form-decision notifications as seen (collab / affiliate application approved or rejected). */
 export async function postCollabBadgeAck(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCreatorProgramBadgeAckSchema(pool)

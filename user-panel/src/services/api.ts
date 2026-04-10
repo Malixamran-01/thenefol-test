@@ -1156,16 +1156,21 @@ export const blogActivityAPI = {
   }
 }
 
-/** Creator Program guided badges (sidebar + Collab tabs) — see GET /api/collab/badge-summary */
+/**
+ * Creator Program badges — see GET /api/collab/badge-summary.
+ * Counts only unread **form decisions** (collab/affiliate approved or rejected). Not brand tasks or pending review.
+ */
 export const creatorProgramAPI = {
   async getBadgeSummary(): Promise<{
     total: number
     collab: number
+    /** Always 0 — reserved; task counts are not shown as notification badges */
     tasks: number
     affiliate: number
     revenue: number
     collabApprovalUnread: number
     affiliateApprovalUnread: number
+    /** Informational only; not added to the Affiliate tab badge */
     affiliatePending: number
   }> {
     const response = await fetch(`${getApiBaseUrl()}/api/collab/badge-summary`, {
