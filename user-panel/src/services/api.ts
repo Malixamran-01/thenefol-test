@@ -1164,6 +1164,9 @@ export const creatorProgramAPI = {
     tasks: number
     affiliate: number
     revenue: number
+    collabApprovalUnread: number
+    affiliateApprovalUnread: number
+    affiliatePending: number
   }> {
     const response = await fetch(`${getApiBaseUrl()}/api/collab/badge-summary`, {
       headers: getAuthHeaders(),
@@ -1175,7 +1178,19 @@ export const creatorProgramAPI = {
       tasks: Number(data?.tasks) || 0,
       affiliate: Number(data?.affiliate) || 0,
       revenue: Number(data?.revenue) || 0,
+      collabApprovalUnread: Number(data?.collabApprovalUnread) || 0,
+      affiliateApprovalUnread: Number(data?.affiliateApprovalUnread) || 0,
+      affiliatePending: Number(data?.affiliatePending) || 0,
     }
+  },
+
+  async ackBadge(scope: 'collab' | 'affiliate'): Promise<void> {
+    const response = await fetch(`${getApiBaseUrl()}/api/collab/badge-ack`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope }),
+    })
+    await handleResponse(response)
   },
 }
 

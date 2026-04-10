@@ -857,6 +857,9 @@ app.get('/api/collab/tasks', authenticateToken, (req, res) => collabTaskRoutes.l
 app.get('/api/collab/badge-summary', authenticateToken, (req, res) =>
   collabTaskRoutes.getCollabBadgeSummary(pool, req, res)
 )
+app.post('/api/collab/badge-ack', authenticateToken, (req, res) =>
+  collabTaskRoutes.postCollabBadgeAck(pool, req, res)
+)
 app.get('/api/collab/tasks/:id', authenticateToken, (req, res) => collabTaskRoutes.getUserCollabTask(pool, req, res))
 app.post('/api/collab/tasks/:id/submit', authenticateToken, (req: any, res) => {
   req.io = io

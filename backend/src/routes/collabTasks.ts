@@ -22,6 +22,79 @@ export const COLLAB_TASK_PLATFORMS = [
 
 export type CollabTaskPlatform = (typeof COLLAB_TASK_PLATFORMS)[number]
 
+async function ensureCreatorProgramBadgeAckSchema(pool: Pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS creator_program_badge_ack (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      collab_approval_seen_at TIMESTAMPTZ,
+      affiliate_approval_seen_at TIMESTAMPTZ
+    )
+  `)
+}
+
+/** 1 if collab application was approved after last time user opened the Collab tab (or never seen). */
+async function getCollabApprovalUnread(pool: Pool, userId: string): Promise<number> {
+  const u = await pool.query(`SELECT id, email, unique_user_id FROM users WHERE id = $1`, [userId])
+  if (!u.rows.length) return 0
+  const uniqueUserId = u.rows[0].unique_user_id
+  const email = u.rows[0].email ? String(u.rows[0].email).trim().toLowerCase() : ''
+
+  let approvedAt: Date | null = null
+  if (uniqueUserId) {
+    const r = await pool.query(
+      `SELECT approved_at, updated_at FROM collab_applications
+       WHERE unique_user_id = $1 AND status = 'approved'
+       ORDER BY COALESCE(approved_at, updated_at) DESC NULLS LAST LIMIT 1`,
+      [uniqueUserId]
+    )
+    if (r.rows.length) {
+      approvedAt = (r.rows[0].approved_at || r.rows[0].updated_at) as Date | null
+    }
+  }
+  if (!approvedAt && email) {
+    const r = await pool.query(
+      `SELECT approved_at, updated_at FROM collab_applications
+       WHERE LOWER(TRIM(email)) = $1 AND status = 'approved'
+       ORDER BY COALESCE(approved_at, updated_at) DESC NULLS LAST LIMIT 1`,
+      [email]
+    )
+    if (r.rows.length) {
+      approvedAt = (r.rows[0].approved_at || r.rows[0].updated_at) as Date | null
+    }
+  }
+  if (!approvedAt) return 0
+
+  const ack = await pool.query(
+    `SELECT collab_approval_seen_at FROM creator_program_badge_ack WHERE user_id = $1`,
+    [userId]
+  )
+  const seen = ack.rows[0]?.collab_approval_seen_at as Date | null | undefined
+  if (!seen) return 1
+  return new Date(approvedAt).getTime() > new Date(seen).getTime() ? 1 : 0
+}
+
+/** 1 if affiliate application was approved after last time user opened the Affiliate tab (or never seen). */
+async function getAffiliateApprovalUnread(pool: Pool, userId: string, email: string): Promise<number> {
+  if (!email) return 0
+  const { rows } = await pool.query(
+    `SELECT approved_at, application_date FROM affiliate_applications
+     WHERE LOWER(TRIM(email)) = $1 AND status = 'approved'
+     ORDER BY COALESCE(approved_at, application_date) DESC NULLS LAST LIMIT 1`,
+    [email]
+  )
+  if (!rows.length) return 0
+  const approvedAt = (rows[0].approved_at || rows[0].application_date) as Date | null
+  if (!approvedAt) return 0
+
+  const ack = await pool.query(
+    `SELECT affiliate_approval_seen_at FROM creator_program_badge_ack WHERE user_id = $1`,
+    [userId]
+  )
+  const seen = ack.rows[0]?.affiliate_approval_seen_at as Date | null | undefined
+  if (!seen) return 1
+  return new Date(approvedAt).getTime() > new Date(seen).getTime() ? 1 : 0
+}
+
 async function ensureCollabTaskSchema(pool: Pool) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS collab_assigned_tasks (
@@ -982,13 +1055,23 @@ export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Respo
     await ensureCollabSchema(pool)
     await ensureCollabBlockSchema(pool)
     await ensureCollabTaskSchema(pool)
+    await ensureCreatorProgramBadgeAckSchema(pool)
 
     const userId = (req as Request & { userId?: string }).userId
     if (!userId) return res.status(401).json({ message: 'Authentication required' })
 
     const u = await pool.query(`SELECT id, email FROM users WHERE id = $1`, [userId])
     if (!u.rows.length) {
-      return res.json({ total: 0, collab: 0, tasks: 0, affiliate: 0, revenue: 0 })
+      return res.json({
+        total: 0,
+        collab: 0,
+        tasks: 0,
+        affiliate: 0,
+        revenue: 0,
+        collabApprovalUnread: 0,
+        affiliateApprovalUnread: 0,
+        affiliatePending: 0,
+      })
     }
 
     const emailRaw = u.rows[0].email
@@ -1009,30 +1092,71 @@ export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Respo
       }
     }
 
-    let affiliateCount = 0
+    let affiliatePendingCount = 0
     if (email) {
       const { rows: ar } = await pool.query(
         `SELECT COUNT(*)::int AS c FROM affiliate_applications
          WHERE LOWER(TRIM(email)) = $1 AND status = 'pending'`,
         [email]
       )
-      affiliateCount = Number(ar[0]?.c) || 0
+      affiliatePendingCount = Number(ar[0]?.c) || 0
     }
 
+    const collabApprovalUnread = await getCollabApprovalUnread(pool, userId)
+    const affiliateApprovalUnread = await getAffiliateApprovalUnread(pool, userId, email)
+
     const revenueCount = 0
-    const collabTabCount = tasksCount
-    const total = tasksCount + affiliateCount + revenueCount
+    const collabTabCount = tasksCount + collabApprovalUnread
+    const affiliateTabCount = affiliatePendingCount + affiliateApprovalUnread
+    const total = tasksCount + affiliatePendingCount + collabApprovalUnread + affiliateApprovalUnread + revenueCount
 
     return res.json({
       total,
       collab: collabTabCount,
       tasks: tasksCount,
-      affiliate: affiliateCount,
+      affiliate: affiliateTabCount,
       revenue: revenueCount,
+      collabApprovalUnread,
+      affiliateApprovalUnread,
+      affiliatePending: affiliatePendingCount,
     })
   } catch (err) {
     console.error('getCollabBadgeSummary:', err)
     return res.status(500).json({ message: 'Failed to load badge summary' })
+  }
+}
+
+/** Mark Creator Program tab notifications as seen (collab application approved / affiliate approved). */
+export async function postCollabBadgeAck(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCreatorProgramBadgeAckSchema(pool)
+    const userId = (req as Request & { userId?: string }).userId
+    if (!userId) return res.status(401).json({ message: 'Authentication required' })
+
+    const scope = (req.body as { scope?: string })?.scope
+    if (scope !== 'collab' && scope !== 'affiliate') {
+      return res.status(400).json({ message: 'scope must be "collab" or "affiliate"' })
+    }
+
+    if (scope === 'collab') {
+      await pool.query(
+        `INSERT INTO creator_program_badge_ack (user_id, collab_approval_seen_at)
+         VALUES ($1, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET collab_approval_seen_at = EXCLUDED.collab_approval_seen_at`,
+        [userId]
+      )
+    } else {
+      await pool.query(
+        `INSERT INTO creator_program_badge_ack (user_id, affiliate_approval_seen_at)
+         VALUES ($1, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET affiliate_approval_seen_at = EXCLUDED.affiliate_approval_seen_at`,
+        [userId]
+      )
+    }
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error('postCollabBadgeAck:', err)
+    return res.status(500).json({ message: 'Failed to save acknowledgment' })
   }
 }
 

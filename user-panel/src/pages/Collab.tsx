@@ -9,12 +9,23 @@ import {
 import { YoutubeLogo, RedditLogo } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import { useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
+import { CREATOR_PROGRAM_BADGES_REFRESH, useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
+import { creatorProgramAPI } from '../services/api'
 import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
 import CollabAssignedTasks from '../components/CollabAssignedTasks'
 import AffiliatePartner from './AffiliatePartner'
 
 export type CreatorProgramTab = 'collab' | 'affiliate' | 'revenue'
+
+function readCreatorProgramTabFromHash(): CreatorProgramTab | null {
+  if (typeof window === 'undefined') return null
+  const hash = window.location.hash || ''
+  const idx = hash.indexOf('?')
+  if (idx === -1) return null
+  const t = new URLSearchParams(hash.slice(idx + 1)).get('tab')
+  if (t === 'collab' || t === 'affiliate' || t === 'revenue') return t
+  return null
+}
 
 export interface CollabProps {
   /** Set when routing from legacy partner URLs */
@@ -193,7 +204,11 @@ export default function Collab(props: CollabProps = {}) {
   const [affiliateApplyTerms, setAffiliateApplyTerms] = useState(false)
   const [affiliateApplying, setAffiliateApplying] = useState(false)
   const [affiliateApplyMsg, setAffiliateApplyMsg] = useState('')
-  const [collabTab, setCollabTab] = useState<'collab' | 'affiliate' | 'revenue'>(() => initialProgramTab ?? 'collab')
+  const [collabTab, setCollabTab] = useState<'collab' | 'affiliate' | 'revenue'>(() => {
+    const fromHash = readCreatorProgramTabFromHash()
+    if (fromHash) return fromHash
+    return initialProgramTab ?? 'collab'
+  })
   /** Work system vs milestone overview (approved creators only) */
   const [collabWorkView, setCollabWorkView] = useState<'overview' | 'tasks'>('overview')
   const [blockAppealText, setBlockAppealText] = useState('')
@@ -203,6 +218,25 @@ export default function Collab(props: CollabProps = {}) {
   useEffect(() => {
     if (initialProgramTab) setCollabTab(initialProgramTab)
   }, [initialProgramTab])
+
+  /** Mark guided notifications read when the matching Creator Program segment is opened. */
+  useEffect(() => {
+    if (!isAuthenticated) return
+    if (collabTab !== 'collab') return
+    void creatorProgramAPI
+      .ackBadge('collab')
+      .then(() => window.dispatchEvent(new CustomEvent(CREATOR_PROGRAM_BADGES_REFRESH)))
+      .catch(() => {})
+  }, [collabTab, isAuthenticated])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    if (collabTab !== 'affiliate') return
+    void creatorProgramAPI
+      .ackBadge('affiliate')
+      .then(() => window.dispatchEvent(new CustomEvent(CREATOR_PROGRAM_BADGES_REFRESH)))
+      .catch(() => {})
+  }, [collabTab, isAuthenticated])
 
   useEffect(() => {
     const syncTabFromHash = () => {
