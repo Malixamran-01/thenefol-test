@@ -145,8 +145,11 @@ function AppContent() {
     // Listen for real-time notifications
     const unsubscribeNotification = userSocketService.subscribe('notification', (data: any) => {
       console.log('📬 Notification received:', data)
-      // You can add toast notification here
-      if (data.message) {
+      const nt = data?.notification_type as string | undefined
+      if (typeof nt === 'string' && nt.startsWith('collab_task_')) {
+        window.dispatchEvent(new CustomEvent('blog-notifications-refresh'))
+      }
+      if (data.message && !(typeof nt === 'string' && nt.startsWith('collab_task_'))) {
         alert(`Notification: ${data.message}`)
       }
     })

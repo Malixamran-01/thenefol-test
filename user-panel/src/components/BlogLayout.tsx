@@ -503,6 +503,12 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
   }, [])
 
   useEffect(() => {
+    const onRefresh = () => void fetchUnread()
+    window.addEventListener('blog-notifications-refresh', onRefresh)
+    return () => window.removeEventListener('blog-notifications-refresh', onRefresh)
+  }, [fetchUnread])
+
+  useEffect(() => {
     if (!isAuthenticated) return
     fetchUnread()
     pollRef.current = setInterval(fetchUnread, 30_000)

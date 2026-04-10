@@ -365,6 +365,8 @@ async function notifyCollabBlogActivity(
       postTitle: title,
       commentExcerpt: excerpt.slice(0, 500),
       commentId: null,
+      /** Task updates must appear in Activity; do not hide behind mute. */
+      bypassMute: type.startsWith('collab_task_'),
     })
   } catch (e) {
     console.error('[collabTasks] notifyCollabBlogActivity:', e)
@@ -702,6 +704,14 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
 
     const task = rows[0]
 
+    await notifyCollabBlogActivity(
+      pool,
+      assigneeUserId,
+      'collab_task_assigned',
+      title,
+      `New brand task: ${title}. Open Creator Program → Collab → Brand tasks.`
+    )
+
     await notifyUser(
       pool,
       req,
@@ -711,14 +721,6 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
       `Open Creator Program → Collab to complete: ${title}`,
       '#/user/collab?tab=collab&work=tasks',
       { collab_task_id: task.id, collab_application_id: collabApplicationId }
-    )
-
-    await notifyCollabBlogActivity(
-      pool,
-      assigneeUserId,
-      'collab_task_assigned',
-      title,
-      `New brand task: ${title}. Open Creator Program → Collab → Brand tasks.`
     )
 
     return res.status(201).json({ task })
@@ -880,6 +882,14 @@ export async function adminRequestCollabTaskRevision(pool: Pool, req: Request, r
 
     const { rows: updated } = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
 
+    await notifyCollabBlogActivity(
+      pool,
+      Number(t.assignee_user_id),
+      'collab_task_revision',
+      String(t.title),
+      `Revision requested: ${message.slice(0, 280)}`
+    )
+
     await notifyUser(
       pool,
       req,
@@ -889,14 +899,6 @@ export async function adminRequestCollabTaskRevision(pool: Pool, req: Request, r
       message.slice(0, 200),
       '#/user/collab?tab=collab&work=tasks',
       { collab_task_id: id }
-    )
-
-    await notifyCollabBlogActivity(
-      pool,
-      Number(t.assignee_user_id),
-      'collab_task_revision',
-      String(t.title),
-      `Revision requested: ${message.slice(0, 280)}`
     )
 
     return res.json({ task: updated[0] })
@@ -933,6 +935,14 @@ export async function adminRejectCollabTask(pool: Pool, req: Request, res: Respo
 
     const { rows: updated } = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
 
+    await notifyCollabBlogActivity(
+      pool,
+      Number(t.assignee_user_id),
+      'collab_task_rejected',
+      String(t.title),
+      `Not approved: ${reason.slice(0, 280)}`
+    )
+
     await notifyUser(
       pool,
       req,
@@ -942,14 +952,6 @@ export async function adminRejectCollabTask(pool: Pool, req: Request, res: Respo
       reason.slice(0, 280),
       '#/user/collab?tab=collab&work=tasks',
       { collab_task_id: id }
-    )
-
-    await notifyCollabBlogActivity(
-      pool,
-      Number(t.assignee_user_id),
-      'collab_task_rejected',
-      String(t.title),
-      `Not approved: ${reason.slice(0, 280)}`
     )
 
     return res.json({ task: updated[0] })
@@ -1030,6 +1032,16 @@ export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: R
 
     const { rows: updated } = await pool.query(`SELECT * FROM collab_assigned_tasks WHERE id = $1`, [id])
 
+    await notifyCollabBlogActivity(
+      pool,
+      Number(t.assignee_user_id),
+      'collab_task_paid',
+      String(t.title),
+      creditCoins
+        ? `Payout: ${Math.round(amount)} coins added for "${t.title}".`
+        : `Payout recorded for "${t.title}".`
+    )
+
     await notifyUser(
       pool,
       req,
@@ -1041,16 +1053,6 @@ export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: R
         : `Payout recorded for: ${t.title}`,
       '#/user/collab?tab=revenue',
       { collab_task_id: id, amount, credit_coins: creditCoins }
-    )
-
-    await notifyCollabBlogActivity(
-      pool,
-      Number(t.assignee_user_id),
-      'collab_task_paid',
-      String(t.title),
-      creditCoins
-        ? `Payout: ${Math.round(amount)} coins added for "${t.title}".`
-        : `Payout recorded for "${t.title}".`
     )
 
     return res.json({ task: updated[0] })

@@ -158,6 +158,15 @@ export default function BlogNotificationBell() {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [isAuthenticated, fetchCount])
 
+  useEffect(() => {
+    const onRefresh = () => {
+      void fetchCount()
+      void fetchNotifications()
+    }
+    window.addEventListener('blog-notifications-refresh', onRefresh)
+    return () => window.removeEventListener('blog-notifications-refresh', onRefresh)
+  }, [fetchCount, fetchNotifications])
+
   // Load list when panel opens + mark all read
   useEffect(() => {
     if (!open) return
