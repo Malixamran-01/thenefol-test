@@ -974,6 +974,68 @@ export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: R
   }
 }
 
+/**
+ * Guided badges: actionable collab tasks + pending affiliate application (Creator Program nav).
+ */
+export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabSchema(pool)
+    await ensureCollabBlockSchema(pool)
+    await ensureCollabTaskSchema(pool)
+
+    const userId = (req as Request & { userId?: string }).userId
+    if (!userId) return res.status(401).json({ message: 'Authentication required' })
+
+    const u = await pool.query(`SELECT id, email FROM users WHERE id = $1`, [userId])
+    if (!u.rows.length) {
+      return res.json({ total: 0, collab: 0, tasks: 0, affiliate: 0, revenue: 0 })
+    }
+
+    const emailRaw = u.rows[0].email
+    const email = emailRaw ? String(emailRaw).trim().toLowerCase() : ''
+
+    let tasksCount = 0
+    const programBlock = await getApprovedCollabAppForUser(pool, userId)
+    if (programBlock) {
+      const blocked = await assertCollabNotBlockedByAppId(pool, programBlock.id)
+      if (blocked.ok) {
+        const { rows } = await pool.query(
+          `SELECT COUNT(*)::int AS c FROM collab_assigned_tasks
+           WHERE collab_application_id = $1
+             AND status IN ('assigned', 'needs_revision')`,
+          [programBlock.id]
+        )
+        tasksCount = Number(rows[0]?.c) || 0
+      }
+    }
+
+    let affiliateCount = 0
+    if (email) {
+      const { rows: ar } = await pool.query(
+        `SELECT COUNT(*)::int AS c FROM affiliate_applications
+         WHERE LOWER(TRIM(email)) = $1 AND status = 'pending'`,
+        [email]
+      )
+      affiliateCount = Number(ar[0]?.c) || 0
+    }
+
+    const revenueCount = 0
+    const collabTabCount = tasksCount
+    const total = tasksCount + affiliateCount + revenueCount
+
+    return res.json({
+      total,
+      collab: collabTabCount,
+      tasks: tasksCount,
+      affiliate: affiliateCount,
+      revenue: revenueCount,
+    })
+  } catch (err) {
+    console.error('getCollabBadgeSummary:', err)
+    return res.status(500).json({ message: 'Failed to load badge summary' })
+  }
+}
+
 export async function listUserCollabTasks(pool: Pool, req: Request, res: Response) {
   try {
     await ensureCollabSchema(pool)

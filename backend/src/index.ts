@@ -854,6 +854,9 @@ pool.query(`ALTER TABLE collab_applications ADD COLUMN IF NOT EXISTS unique_user
 app.use('/api/collab', nefolSocialBan)
 app.get('/api/collab/creator-revenue', authenticateToken, (req, res) => collabRoutes.getCreatorRevenue(pool, req, res))
 app.get('/api/collab/tasks', authenticateToken, (req, res) => collabTaskRoutes.listUserCollabTasks(pool, req, res))
+app.get('/api/collab/badge-summary', authenticateToken, (req, res) =>
+  collabTaskRoutes.getCollabBadgeSummary(pool, req, res)
+)
 app.get('/api/collab/tasks/:id', authenticateToken, (req, res) => collabTaskRoutes.getUserCollabTask(pool, req, res))
 app.post('/api/collab/tasks/:id/submit', authenticateToken, (req: any, res) => {
   req.io = io

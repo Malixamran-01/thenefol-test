@@ -25,6 +25,7 @@ import {
   getCreatorProgramSidebarEnabled,
   NEFOL_SOCIAL_SETTINGS_CHANGE,
 } from '../utils/nefolSocialSettings'
+import { CreatorProgramBadgeProvider, useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
 
 type CreatorBadge = 'locked' | 'progress' | 'unlocked'
 
@@ -162,6 +163,7 @@ function SidePanelNav({
 }: SidePanelNavProps) {
   const hash = useCurrentHash()
   const { isAuthenticated, user, logout } = useAuth()
+  const creatorBadges = useCreatorProgramBadges()
 
   const handleSignOut = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -289,6 +291,7 @@ function SidePanelNav({
           const active = isItemActive(item, hash, user?.id)
           const effectiveHref = getItemHref(item)
           const showUnreadBadge = item.id === 'notifications' && unreadCount > 0
+          const showCreatorProgramBadge = item.id === 'creator-program' && creatorBadges.total > 0
 
           return (
             <a
@@ -309,9 +312,14 @@ function SidePanelNav({
                 <span className={`block transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-700'}`}>
                   {item.icon}
                 </span>
-                {showUnreadBadge && collapsed && (
+                {item.id === 'notifications' && showUnreadBadge && collapsed && (
                   <span className="absolute -right-1.5 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
                     {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+                {item.id === 'creator-program' && showCreatorProgramBadge && collapsed && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
+                    {creatorBadges.total > 99 ? '99+' : creatorBadges.total}
                   </span>
                 )}
               </span>
@@ -326,6 +334,11 @@ function SidePanelNav({
                   {showUnreadBadge && (
                     <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
                       {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                  {showCreatorProgramBadge && (
+                    <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                      {creatorBadges.total > 99 ? '99+' : creatorBadges.total}
                     </span>
                   )}
                   {item.placeholder && <span className="text-[11px] text-gray-300">soon</span>}
@@ -534,6 +547,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
   }, [isAuthenticated])
 
   return (
+    <CreatorProgramBadgeProvider>
     <div className="flex min-h-screen" style={{ backgroundColor: '#F4F9F9' }}>
 
       {/* ── Desktop fixed sidebar ────────────────────────────── */}
@@ -683,5 +697,6 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
         onClose={() => setShowAuthorPrompt(false)}
       />
     </div>
+    </CreatorProgramBadgeProvider>
   )
 }

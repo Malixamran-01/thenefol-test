@@ -1156,4 +1156,27 @@ export const blogActivityAPI = {
   }
 }
 
+/** Creator Program guided badges (sidebar + Collab tabs) — see GET /api/collab/badge-summary */
+export const creatorProgramAPI = {
+  async getBadgeSummary(): Promise<{
+    total: number
+    collab: number
+    tasks: number
+    affiliate: number
+    revenue: number
+  }> {
+    const response = await fetch(`${getApiBaseUrl()}/api/collab/badge-summary`, {
+      headers: getAuthHeaders(),
+    })
+    const data = (await handleResponse(response)) as Record<string, unknown>
+    return {
+      total: Number(data?.total) || 0,
+      collab: Number(data?.collab) || 0,
+      tasks: Number(data?.tasks) || 0,
+      affiliate: Number(data?.affiliate) || 0,
+      revenue: Number(data?.revenue) || 0,
+    }
+  },
+}
+
 export default api

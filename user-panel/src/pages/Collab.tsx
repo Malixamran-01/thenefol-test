@@ -9,6 +9,7 @@ import {
 import { YoutubeLogo, RedditLogo } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
 import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
 import CollabAssignedTasks from '../components/CollabAssignedTasks'
 import AffiliatePartner from './AffiliatePartner'
@@ -154,6 +155,7 @@ function Ring({ pct, color, size = 80, stroke = 7 }: { pct: number; color: strin
 export default function Collab(props: CollabProps = {}) {
   const { initialProgramTab } = props
   const { isAuthenticated, user } = useAuth()
+  const creatorBadges = useCreatorProgramBadges()
   const [showForm, setShowForm] = useState(true)
   const [submitted, setSubmitted] = useState(false)
   const [status, setStatus] = useState<CollabStatus | null>(null)
@@ -806,15 +808,20 @@ export default function Collab(props: CollabProps = {}) {
           {/* ── Tab bar: Collab · Affiliate · Revenue (Nefol Social segment control) ─── */}
           <div className="mb-8 inline-flex flex-wrap gap-1 rounded-2xl border border-[#e8eef4] bg-white p-1 shadow-sm">
             {([
-              { key: 'collab' as const, label: 'Collab' },
-              { key: 'affiliate' as const, label: 'Affiliate', dot: affiliateUnlocked },
-              { key: 'revenue' as const, label: 'Revenue' },
-            ]).map(({ key, label, dot }) => (
+              { key: 'collab' as const, label: 'Collab', attention: creatorBadges.collab },
+              {
+                key: 'affiliate' as const,
+                label: 'Affiliate',
+                dot: affiliateUnlocked,
+                attention: creatorBadges.affiliate,
+              },
+              { key: 'revenue' as const, label: 'Revenue', attention: creatorBadges.revenue },
+            ]).map(({ key, label, dot, attention }) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setCollabTab(key)}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all ${
+                className={`relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all ${
                   collabTab === key
                     ? 'bg-[#1B4965] text-white shadow-sm'
                     : 'text-gray-500 hover:bg-[#f4f9fb] hover:text-[#1B4965]'
@@ -823,6 +830,15 @@ export default function Collab(props: CollabProps = {}) {
                 {label}
                 {dot && (
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-white/40" title="Milestone reached" />
+                )}
+                {attention > 0 && (
+                  <span
+                    className={`min-w-[1.125rem] rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ${
+                      collabTab === key ? 'bg-white/25' : 'bg-rose-500'
+                    }`}
+                  >
+                    {attention > 99 ? '99+' : attention}
+                  </span>
                 )}
               </button>
             ))}
@@ -1304,11 +1320,20 @@ export default function Collab(props: CollabProps = {}) {
                   <button
                     type="button"
                     onClick={() => setCollabWorkView('tasks')}
-                    className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
                       collabWorkView === 'tasks' ? 'bg-[#1B4965] text-white' : 'text-gray-500 hover:bg-[#f4f9fb]'
                     }`}
                   >
                     Brand tasks
+                    {creatorBadges.tasks > 0 && (
+                      <span
+                        className={`min-w-[1.125rem] rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                          collabWorkView === 'tasks' ? 'bg-white/25 text-white' : 'bg-rose-500 text-white'
+                        }`}
+                      >
+                        {creatorBadges.tasks > 99 ? '99+' : creatorBadges.tasks}
+                      </span>
+                    )}
                   </button>
                 </div>
               )}
