@@ -90,6 +90,71 @@ const app = express()
 // Required for express-rate-limit to work correctly with X-Forwarded-For header
 app.set('trust proxy', 1)
 
+// CORS must run before JSON/static routes so OPTIONS preflights always get headers.
+// Set CORS_STRICT=1 to only allow CLIENT_ORIGIN, USER_PANEL_URL, FRONTEND_URL, CORS_ORIGINS,
+// and https://*.vercel.app / *.onrender.com / *.thenefol.com. Default mirrors any Origin (origin: true).
+const clientOrigin = process.env.CLIENT_ORIGIN || 'https://thenefol.com'
+const corsExtraOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+const corsStaticOrigins = [
+  clientOrigin,
+  process.env.USER_PANEL_URL,
+  process.env.FRONTEND_URL,
+  'https://thenefol.com',
+  'https://www.thenefol.com',
+  'http://localhost:2001',
+  'http://localhost:5173',
+  ...corsExtraOrigins,
+].filter((v, i, a) => Boolean(v) && a.indexOf(v) === i) as string[]
+
+const corsStrict = process.env.CORS_STRICT === '1' || process.env.CORS_STRICT === 'true'
+
+function corsOriginAllowed(origin: string | undefined): boolean {
+  if (!origin) return true
+  if (corsStaticOrigins.includes(origin)) return true
+  try {
+    const u = new URL(origin)
+    if (u.protocol !== 'https:') {
+      if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return true
+      return false
+    }
+    if (u.hostname.endsWith('.vercel.app')) return true
+    if (u.hostname.endsWith('.onrender.com')) return true
+    if (u.hostname.endsWith('.thenefol.com')) return true
+  } catch {
+    return false
+  }
+  return false
+}
+
+const corsOptions: cors.CorsOptions = {
+  origin: corsStrict
+    ? (origin, callback) => {
+        if (corsOriginAllowed(origin)) callback(null, true)
+        else callback(null, false)
+      }
+    : true,
+  credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'X-CSRF-Token',
+    'Pragma',
+  ],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  maxAge: 86400,
+}
+
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
+
 // Register GET webhook route early (doesn't need pool, and must be before express.json())
 // This handles Meta's webhook verification
 app.get('/api/whatsapp/webhook', whatsappWebhookRoutes.verifyWebhook)
@@ -159,10 +224,6 @@ if (imageSources.length === 0) {
     app.use('/IMAGES', express.static(resolved))
   })
 }
-
-// Always default to production - no localhost fallbacks
-const clientOrigin = process.env.CLIENT_ORIGIN || 'https://thenefol.com'
-app.use(cors({ origin: true, credentials: true }))
 
 // Basic in-memory rate limiting (IP-based)
 // Default: 100,000 requests per minute. Set env to override, e.g. RATE_LIMIT_MAX_REQUESTS=1000
@@ -314,12 +375,17 @@ const authenticateAndAttach = (req: express.Request, res: express.Response, next
 const server = createServer(app)
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: corsStrict
+      ? (origin, callback) => {
+          if (corsOriginAllowed(origin)) callback(null, true)
+          else callback(null, false)
+        }
+      : true,
+    methods: ['GET', 'POST'],
+    credentials: true,
   },
   allowEIO3: true,
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
 })
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/nefol'
