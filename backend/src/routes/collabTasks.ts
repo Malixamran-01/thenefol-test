@@ -32,6 +32,23 @@ async function ensureCreatorProgramBadgeAckSchema(pool: Pool) {
   `)
 }
 
+/** Brand-task rows the assignee has not opened yet (hierarchical red-dot nav; not Activity feed). */
+async function countUnseenBrandTasksForUser(pool: Pool, userId: string): Promise<number> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS c
+       FROM collab_assigned_tasks
+       WHERE assignee_user_id = $1::integer
+         AND assignee_notification_seen_at IS NULL
+         AND status <> 'cancelled'`,
+      [userId]
+    )
+    return Number(rows[0]?.c) || 0
+  } catch {
+    return 0
+  }
+}
+
 /**
  * 1 if the latest collab application decision (approved or rejected) is newer than the last Collab-tab ack.
  * Does not count assigned brand tasks or pending review — only form outcomes.
@@ -181,6 +198,9 @@ async function ensureCollabTaskSchema(pool: Pool) {
     CREATE UNIQUE INDEX IF NOT EXISTS collab_assigned_tasks_purchase_token_uidx
     ON collab_assigned_tasks(purchase_token) WHERE purchase_token IS NOT NULL
   `)
+  await pool.query(
+    `ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS assignee_notification_seen_at TIMESTAMPTZ`
+  )
 }
 
 /** Task platform keys allowed for a creator, derived from collab application `platforms[].name` */
@@ -704,14 +724,6 @@ export async function adminCreateCollabTask(pool: Pool, req: Request, res: Respo
 
     const task = rows[0]
 
-    await notifyCollabBlogActivity(
-      pool,
-      assigneeUserId,
-      'collab_task_assigned',
-      title,
-      `New brand task: ${title}. Open Creator Program → Collab → Brand tasks.`
-    )
-
     await notifyUser(
       pool,
       req,
@@ -1063,8 +1075,8 @@ export async function adminPayCollabTaskHandler(pool: Pool, req: Request, res: R
 }
 
 /**
- * Creator Program nav badges: only **unread** collab / affiliate **form decisions** (approved or rejected).
- * Brand-task assignments and pending applications are not shown as notification badges.
+ * Creator Program nav badges: collab/affiliate **form** decisions + **unopened** brand tasks (red-dot hierarchy).
+ * Task assignments do not use the blog Activity feed.
  */
 export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Response) {
   try {
@@ -1105,14 +1117,15 @@ export async function getCollabBadgeSummary(pool: Pool, req: Request, res: Respo
 
     const collabApprovalUnread = await getCollabFormDecisionUnread(pool, userId)
     const affiliateApprovalUnread = await getAffiliateFormDecisionUnread(pool, userId, email)
+    const taskUnread = await countUnseenBrandTasksForUser(pool, userId)
 
     const revenueCount = 0
-    const total = collabApprovalUnread + affiliateApprovalUnread + revenueCount
+    const total = collabApprovalUnread + affiliateApprovalUnread + revenueCount + taskUnread
 
     return res.json({
       total,
       collab: collabApprovalUnread,
-      tasks: 0,
+      tasks: taskUnread,
       affiliate: affiliateApprovalUnread,
       revenue: revenueCount,
       collabApprovalUnread,
@@ -1160,6 +1173,32 @@ export async function postCollabBadgeAck(pool: Pool, req: Request, res: Response
   } catch (err) {
     console.error('postCollabBadgeAck:', err)
     return res.status(500).json({ message: 'Failed to save acknowledgment' })
+  }
+}
+
+/** POST /api/collab/tasks/:id/seen — mark brand task as opened (clears hierarchical red dots). */
+export async function markTaskNotificationSeen(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureCollabTaskSchema(pool)
+    const userId = (req as Request & { userId?: string }).userId
+    if (!userId) return res.status(401).json({ message: 'Authentication required' })
+    const uid = Number(userId)
+    if (!Number.isFinite(uid)) return res.status(400).json({ message: 'Invalid user' })
+    const id = Number(req.params.id)
+    if (!Number.isFinite(id)) return res.status(400).json({ message: 'Invalid task id' })
+
+    const { rows } = await pool.query(
+      `UPDATE collab_assigned_tasks
+       SET assignee_notification_seen_at = NOW()
+       WHERE id = $1 AND assignee_user_id = $2
+       RETURNING id`,
+      [id, uid]
+    )
+    if (!rows.length) return res.status(404).json({ message: 'Task not found' })
+    return res.json({ ok: true })
+  } catch (e) {
+    console.error('markTaskNotificationSeen', e)
+    return res.status(500).json({ message: 'Failed to update task' })
   }
 }
 

@@ -1158,13 +1158,13 @@ export const blogActivityAPI = {
 
 /**
  * Creator Program badges — see GET /api/collab/badge-summary.
- * Counts only unread **form decisions** (collab/affiliate approved or rejected). Not brand tasks or pending review.
+ * Form decisions (collab/affiliate) + unopened brand tasks (hierarchical red dots; not blog Activity).
  */
 export const creatorProgramAPI = {
   async getBadgeSummary(): Promise<{
     total: number
     collab: number
-    /** Always 0 — reserved; task counts are not shown as notification badges */
+    /** Unopened brand tasks (Creator Program → Collab → Brand tasks) */
     tasks: number
     affiliate: number
     revenue: number
@@ -1194,6 +1194,14 @@ export const creatorProgramAPI = {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ scope }),
+    })
+    await handleResponse(response)
+  },
+
+  async markBrandTaskSeen(taskId: number): Promise<void> {
+    const response = await fetch(`${getApiBaseUrl()}/api/collab/tasks/${taskId}/seen`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
     })
     await handleResponse(response)
   },

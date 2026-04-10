@@ -10,6 +10,8 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
+import { creatorProgramAPI } from '../services/api'
+import { CREATOR_PROGRAM_BADGES_REFRESH } from '../contexts/CreatorProgramBadgeContext'
 
 type TaskSection = 'active' | 'submitted' | 'completed' | 'rejected'
 
@@ -45,6 +47,8 @@ interface TaskRow {
   product_received_at?: string | null
   product_not_received_at?: string | null
   product_not_received_note?: string | null
+  /** Set when the assignee opened the task (red-dot hierarchy; not blog Activity). */
+  assignee_notification_seen_at?: string | null
 }
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -224,6 +228,28 @@ export default function CollabAssignedTasks({
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!openId || !enabled) return
+    let cancelled = false
+    void (async () => {
+      try {
+        await creatorProgramAPI.markBrandTaskSeen(openId)
+        if (cancelled) return
+        setTasks((prev) =>
+          prev.map((x) =>
+            x.id === openId ? { ...x, assignee_notification_seen_at: new Date().toISOString() } : x
+          )
+        )
+        window.dispatchEvent(new CustomEvent(CREATOR_PROGRAM_BADGES_REFRESH))
+      } catch {
+        /* silent */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [openId, enabled])
 
   const counts = useMemo(() => {
     const c = { active: 0, submitted: 0, completed: 0, rejected: 0 }
@@ -571,7 +597,15 @@ export default function CollabAssignedTasks({
                 }}
                 className="w-full flex items-start justify-between gap-3 px-4 py-3 text-left hover:bg-white/80 transition-colors"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex items-start gap-2">
+                  {!t.assignee_notification_seen_at && (
+                    <span
+                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-rose-500 ring-2 ring-rose-200"
+                      title="New — open to mark as seen"
+                      aria-hidden
+                    />
+                  )}
+                  <div className="min-w-0">
                   <p className="font-semibold text-gray-900 text-sm">{t.title}</p>
                   <p className="text-[11px] text-gray-500 mt-0.5">
                     {platformsLabel(t.platforms)}
@@ -593,6 +627,7 @@ export default function CollabAssignedTasks({
                   >
                     {t.status.replace(/_/g, ' ')}
                   </span>
+                  </div>
                 </div>
                 {expanded ? <ChevronUp className="h-5 w-5 text-gray-400 shrink-0" /> : <ChevronDown className="h-5 w-5 text-gray-400 shrink-0" />}
               </button>

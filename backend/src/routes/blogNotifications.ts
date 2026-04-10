@@ -146,7 +146,8 @@ router.get('/notifications/unread-count', authenticateToken, async (req, res) =>
     const { rows } = await pool.query(
       `SELECT COUNT(*)::int AS count
        FROM blog_notifications
-       WHERE recipient_user_id = $1::integer AND is_read = false`,
+       WHERE recipient_user_id = $1::integer AND is_read = false
+         AND type <> 'collab_task_assigned'`,
       [userId]
     )
     res.json({ count: rows[0]?.count ?? 0 })
@@ -170,6 +171,7 @@ router.get('/notifications', authenticateToken, async (req, res) => {
               is_read, created_at
        FROM blog_notifications
        WHERE recipient_user_id = $1::integer
+         AND type <> 'collab_task_assigned'
        ORDER BY created_at DESC
        LIMIT $2 OFFSET $3`,
       [userId, limit, offset]

@@ -276,6 +276,7 @@ export default function BlogNotificationBell() {
             ) : (
               <ul>
                 {notifications.map((n) => {
+                  if (n.type === 'collab_task_assigned') return null
                   const meta = TYPE_META[n.type]
                   if (!meta) return null
                   return (

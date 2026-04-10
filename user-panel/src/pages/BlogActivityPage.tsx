@@ -418,6 +418,7 @@ export default function BlogActivityPage() {
       ) : (
         <div className="divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           {notifications.map((n) => {
+            if (n.type === 'collab_task_assigned') return null
             const meta = TYPE_META[n.type]
             if (!meta) return null
             return (

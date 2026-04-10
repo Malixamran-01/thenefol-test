@@ -860,6 +860,9 @@ app.get('/api/collab/badge-summary', authenticateToken, (req, res) =>
 app.post('/api/collab/badge-ack', authenticateToken, (req, res) =>
   collabTaskRoutes.postCollabBadgeAck(pool, req, res)
 )
+app.post('/api/collab/tasks/:id/seen', authenticateToken, (req, res) =>
+  collabTaskRoutes.markTaskNotificationSeen(pool, req, res)
+)
 app.get('/api/collab/tasks/:id', authenticateToken, (req, res) => collabTaskRoutes.getUserCollabTask(pool, req, res))
 app.post('/api/collab/tasks/:id/submit', authenticateToken, (req: any, res) => {
   req.io = io

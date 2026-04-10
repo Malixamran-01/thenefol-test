@@ -20,6 +20,7 @@ import BottomNavigation from './components/BottomNavigation'
 import SwipeNavigation from './components/SwipeNavigation'
 import JoinUsModal from './components/JoinUsModal'
 import { getApiBase } from './utils/apiBase'
+import { CREATOR_PROGRAM_BADGES_REFRESH } from './contexts/CreatorProgramBadgeContext'
 
 // Lazy load all pages for code splitting
 const LoginPage = lazy(() => import('./pages/Login'))
@@ -148,6 +149,7 @@ function AppContent() {
       const nt = data?.notification_type as string | undefined
       if (typeof nt === 'string' && nt.startsWith('collab_task_')) {
         window.dispatchEvent(new CustomEvent('blog-notifications-refresh'))
+        window.dispatchEvent(new CustomEvent(CREATOR_PROGRAM_BADGES_REFRESH))
       }
       if (data.message && !(typeof nt === 'string' && nt.startsWith('collab_task_'))) {
         alert(`Notification: ${data.message}`)

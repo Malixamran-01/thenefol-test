@@ -740,6 +740,8 @@ export default function Collab(props: CollabProps = {}) {
   }
 
   const isApproved = status?.status === 'approved'
+  /** Collab tab: form-decision badge + task dots when user is on Affiliate/Revenue (tasks live under Collab). */
+  const collabTabAttention = creatorBadges.collab + (collabTab !== 'collab' ? creatorBadges.tasks : 0)
   const programSuspended = !!status?.programSuspended
   const totalViews = status?.totalViews ?? 0
   const totalLikes = status?.totalLikes ?? 0
@@ -848,7 +850,7 @@ export default function Collab(props: CollabProps = {}) {
           {/* ── Tab bar: Collab · Affiliate · Revenue (Nefol Social segment control) ─── */}
           <div className="mb-8 inline-flex flex-wrap gap-1 rounded-2xl border border-[#e8eef4] bg-white p-1 shadow-sm">
             {([
-              { key: 'collab' as const, label: 'Collab', attention: creatorBadges.collab },
+              { key: 'collab' as const, label: 'Collab', attention: collabTabAttention },
               {
                 key: 'affiliate' as const,
                 label: 'Affiliate',
@@ -1365,6 +1367,11 @@ export default function Collab(props: CollabProps = {}) {
                     }`}
                   >
                     Brand tasks
+                    {creatorBadges.tasks > 0 && collabWorkView !== 'tasks' && (
+                      <span className="min-w-[1.125rem] rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                        {creatorBadges.tasks > 99 ? '99+' : creatorBadges.tasks}
+                      </span>
+                    )}
                   </button>
                 </div>
               )}
