@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import {
   CheckCircle, Clock, RefreshCw, Search, XCircle, Eye, Instagram, Film,
   Trash2, Star, Wifi, WifiOff, ChevronDown, ChevronUp, Edit2, Save, X, AlertCircle,
@@ -103,6 +104,26 @@ interface CollabApplication {
   profile_details?: CollabProfileDetails | null
   collab_block_id?: number | null
   collab_blocked?: boolean
+}
+
+function collabTaskStatusClass(status: string): string {
+  switch (status) {
+    case 'paid':
+    case 'verified_ready':
+      return 'bg-emerald-50 text-emerald-800 border-emerald-200'
+    case 'submitted':
+    case 'in_progress':
+      return 'bg-sky-50 text-sky-800 border-sky-200'
+    case 'assigned':
+      return 'bg-slate-100 text-slate-700 border-slate-200'
+    case 'needs_revision':
+      return 'bg-amber-50 text-amber-900 border-amber-200'
+    case 'cancelled':
+    case 'rejected':
+      return 'bg-red-50 text-red-800 border-red-200'
+    default:
+      return 'bg-gray-50 text-gray-700 border-gray-200'
+  }
 }
 
 function isoToFlagEmoji(isoCode: string): string {
@@ -270,6 +291,8 @@ export default function CollabRequests() {
   const [reviewTaskOpen, setReviewTaskOpen] = useState(false)
   const [reviewTaskId, setReviewTaskId] = useState<number | null>(null)
   const [collabTasksQueue, setCollabTasksQueue] = useState<Array<Record<string, unknown>>>([])
+  const [creatorDetailTasks, setCreatorDetailTasks] = useState<Array<Record<string, unknown>>>([])
+  const [creatorDetailTasksLoading, setCreatorDetailTasksLoading] = useState(false)
 
   // Creator database filters
   const [showFilters, setShowFilters] = useState(false)
@@ -322,7 +345,7 @@ export default function CollabRequests() {
 
   const fetchCollabTasksQueue = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/admin/collab-tasks?status=all&limit=200`, { headers: authHeaders })
+      const res = await fetch(`${apiBase}/admin/collab-tasks?status=all&limit=500`, { headers: authHeaders })
       const data = await res.json().catch(() => ({}))
       const tasks = Array.isArray(data?.tasks) ? data.tasks : []
       setCollabTasksQueue(tasks)
@@ -330,6 +353,33 @@ export default function CollabRequests() {
       setCollabTasksQueue([])
     }
   }, [apiBase, authHeaders])
+
+  const loadCreatorDetailTasks = useCallback(
+    async (appId: number) => {
+      setCreatorDetailTasksLoading(true)
+      try {
+        const res = await fetch(
+          `${apiBase}/admin/collab-tasks?collab_application_id=${appId}&status=all&limit=500`,
+          { headers: authHeaders }
+        )
+        const data = await res.json().catch(() => ({}))
+        setCreatorDetailTasks(Array.isArray(data?.tasks) ? data.tasks : [])
+      } catch {
+        setCreatorDetailTasks([])
+      } finally {
+        setCreatorDetailTasksLoading(false)
+      }
+    },
+    [apiBase, authHeaders]
+  )
+
+  useEffect(() => {
+    if (!showModal || !selected?.id) {
+      setCreatorDetailTasks([])
+      return
+    }
+    void loadCreatorDetailTasks(selected.id)
+  }, [showModal, selected?.id, loadCreatorDetailTasks])
 
   const fetchItems = async () => {
     try {
@@ -1276,6 +1326,83 @@ export default function CollabRequests() {
                 </div>
               </div>
 
+              {/* All tasks for this creator */}
+              <div style={{ borderRadius: 14, border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Creator tasks ({creatorDetailTasksLoading ? '…' : creatorDetailTasks.length})
+                  </p>
+                  <RouterLink
+                    to={`/admin/collab-tasks?collab=${selected.id}`}
+                    style={{ fontSize: 12, fontWeight: 600, color: '#4B97C9', textDecoration: 'none' }}
+                  >
+                    Open in task registry →
+                  </RouterLink>
+                </div>
+                {creatorDetailTasksLoading ? (
+                  <p style={{ margin: 0, fontSize: 13, color: '#94a3b8' }}>Loading tasks…</p>
+                ) : creatorDetailTasks.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: 13, color: '#94a3b8' }}>No tasks assigned yet.</p>
+                ) : (
+                  <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {creatorDetailTasks.map((t) => {
+                      const st = String(t.status || '')
+                      const tid = Number(t.id)
+                      return (
+                        <div
+                          key={String(t.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            flexWrap: 'wrap',
+                            backgroundColor: '#fff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 10,
+                            padding: '10px 12px',
+                          }}
+                        >
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', lineHeight: 1.35 }}>{String(t.title || 'Task')}</div>
+                            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                              Assigned {t.assigned_at ? new Date(String(t.assigned_at)).toLocaleString() : '—'}
+                              {t.due_at ? ` · Due ${new Date(String(t.due_at)).toLocaleDateString()}` : ''}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                            <span
+                              className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wide ${collabTaskStatusClass(st)}`}
+                            >
+                              {st.replace(/_/g, ' ')}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReviewTaskId(Number.isFinite(tid) ? tid : null)
+                                setReviewTaskOpen(true)
+                              }}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: 8,
+                                border: 'none',
+                                backgroundColor: '#1B4965',
+                                color: '#fff',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Open
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Platforms */}
               {(selected.platforms || []).length > 0 && (
                 <div>
@@ -1708,7 +1835,10 @@ export default function CollabRequests() {
         }
         apiBase={apiBase}
         authHeaders={authHeaders}
-        onCreated={() => void fetchCollabTasksQueue()}
+        onCreated={() => {
+          void fetchCollabTasksQueue()
+          if (selected?.id) void loadCreatorDetailTasks(selected.id)
+        }}
       />
       <ReviewCollabTaskModal
         open={reviewTaskOpen}
@@ -1719,7 +1849,10 @@ export default function CollabRequests() {
         }}
         apiBase={apiBase}
         authHeaders={authHeaders}
-        onUpdated={() => void fetchCollabTasksQueue()}
+        onUpdated={() => {
+          void fetchCollabTasksQueue()
+          if (selected?.id) void loadCreatorDetailTasks(selected.id)
+        }}
       />
     </div>
   )

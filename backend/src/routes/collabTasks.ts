@@ -747,7 +747,7 @@ export async function adminListCollabTasks(pool: Pool, req: Request, res: Respon
     await ensureCollabTaskSchema(pool)
     const status = typeof req.query.status === 'string' ? req.query.status.trim() : ''
     const collabId = req.query.collab_application_id ? Number(req.query.collab_application_id) : null
-    const lim = Math.min(200, Math.max(1, Number(req.query.limit) || 100))
+    const lim = Math.min(500, Math.max(1, Number(req.query.limit) || 100))
     const params: unknown[] = []
     let where = '1=1'
     if (status && status !== 'all') {

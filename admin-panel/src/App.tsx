@@ -13,6 +13,7 @@ import {
   Invoice, InvoiceSettings, Tax, Returns, Payment, UserProfiles, UserNotifications, LoyaltyProgramManagement,
   StaticPagesManagement, CommunityManagement, CartCheckoutManagement, AffiliateManagement, AffiliateRequests,
   CollabRequests,
+  CollabTasks,
   Staff, RolesPermissions, AuditLogs, AlertSettings, HomepageLayoutManager, ProductCollections, AccountSecurity,
   AdminManagement
 } from './pages'
@@ -238,6 +239,7 @@ export default function App() {
             <Route path="affiliate-program" element={<AffiliateManagement />} />
             <Route path="affiliate-requests" element={<AffiliateRequests />} />
             <Route path="collab-requests" element={<CollabRequests />} />
+            <Route path="collab-tasks" element={<CollabTasks />} />
             <Route path="cashback" element={<CashbackSystem />} />
             <Route path="live-chat" element={<LiveChat />} />
             <Route path="customer-segmentation" element={<CustomerSegmentation />} />

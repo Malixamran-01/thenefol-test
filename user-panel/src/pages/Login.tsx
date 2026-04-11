@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { authAPI } from '../services/api'
-import { Mail, Lock, Eye, EyeOff, MessageCircle } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import PhoneInput from '../components/PhoneInput'
 
 // Google OAuth
@@ -418,7 +418,12 @@ export default function LoginPage() {
           <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
             <div className="flex items-start gap-2">
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15">
-                <MessageCircle className="h-4 w-4 text-[#128C7E]" aria-hidden />
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#25D366]" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.672.15-.198.297-.768.966-.94 1.164-.173.199-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.372-.025-.521-.075-.149-.672-1.62-.921-2.221-.242-.58-.487-.502-.672-.512l-.573-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.262.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 3.505h-.004a8.348 8.348 0 01-4.258-1.157l-.305-.181-3.172.832.847-3.094-.199-.317a8.345 8.345 0 01-1.277-4.43c.001-4.602 3.745-8.346 8.35-8.346 2.233 0 4.332.87 5.912 2.449a8.303 8.303 0 012.444 5.898c-.003 4.602-3.747 8.345-8.348 8.345M20.52 3.48A11.815 11.815 0 0012.057 0C5.495 0 .16 5.335.157 11.897c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.631a11.88 11.88 0 005.71 1.455h.005c6.56 0 11.895-5.335 11.898-11.897A11.821 11.821 0 0020.52 3.48"
+                  />
+                </svg>
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-slate-800">WhatsApp OTP</h2>

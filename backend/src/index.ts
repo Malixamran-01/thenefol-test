@@ -147,6 +147,9 @@ const corsOptions: cors.CorsOptions = {
     'Cache-Control',
     'X-CSRF-Token',
     'Pragma',
+    // Admin panel sends these on API requests (RBAC)
+    'x-user-permissions',
+    'x-user-role',
   ],
   exposedHeaders: ['Content-Length', 'Content-Type'],
   maxAge: 86400,
@@ -383,6 +386,7 @@ const io = new SocketIOServer(server, {
       : true,
     methods: ['GET', 'POST'],
     credentials: true,
+    allowedHeaders: corsOptions.allowedHeaders as string[],
   },
   allowEIO3: true,
   transports: ['websocket', 'polling'],
