@@ -88,8 +88,8 @@ function validatePasswordStrength(password: string): string | null {
  * POST /api/auth/request-reset
  * Body: { "email": "user@example.com" } or { "phone": "91XXXXXXXXXX" }
  * 
- * If phone: sends 6-digit OTP via WhatsApp using nefol_reset_password template
- * If email: sends reset link via email
+ * If phone: sends 6-digit OTP via WhatsApp (response is generic to limit enumeration).
+ * If email: requires a matching user; returns 404 if no account exists, otherwise sends reset link.
  * 
  * @param {Pool} pool - Database pool
  * @param {Request} req - Express request
@@ -108,9 +108,6 @@ export async function forgotPassword(pool: Pool, req: Request, res: Response) {
       return sendError(res, 400, 'Either email or phone is required')
     }
 
-    // Always return success to prevent enumeration
-    let userFound = false
-
     if (phone) {
       // Phone-based reset: Generate 6-digit OTP and send via WhatsApp
       try {
@@ -123,7 +120,6 @@ export async function forgotPassword(pool: Pool, req: Request, res: Response) {
         )
 
         if (userResult.rows.length > 0) {
-          userFound = true
           const user = userResult.rows[0]
           
           const whatsappService = new WhatsAppService(pool)
@@ -177,55 +173,60 @@ export async function forgotPassword(pool: Pool, req: Request, res: Response) {
       } catch (phoneErr: any) {
         console.error('❌ Error processing phone reset:', phoneErr)
       }
-    } else if (email) {
-      // Email-based reset: Generate secure token and send link
-      try {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(email)) {
-          return sendError(res, 400, 'Invalid email format')
-        }
+      // Generic message so phone numbers cannot be enumerated from this endpoint
+      return sendSuccess(res, {
+        message: 'If an account exists, a password reset code has been sent.',
+      })
+    }
 
+    if (email) {
+      const trimmedEmail = String(email).trim()
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(trimmedEmail)) {
+        return sendError(res, 400, 'Invalid email format')
+      }
+
+      try {
         const userResult = await pool.query(
-          'SELECT id, name, email FROM users WHERE LOWER(email) = LOWER($1)',
-          [email]
+          'SELECT id, name, email FROM users WHERE LOWER(TRIM(email)) = LOWER($1)',
+          [trimmedEmail]
         )
 
-        if (userResult.rows.length > 0) {
-          userFound = true
-          const user = userResult.rows[0]
-
-          // Generate secure reset token
-          const rawToken = generateResetToken()
-          const hashedToken = hashToken(rawToken)
-          const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000)
-
-          // Save hashed token and expiry
-          await pool.query(
-            `UPDATE users 
-             SET reset_password_token = $1, 
-                 reset_password_expires = $2,
-                 updated_at = NOW()
-             WHERE id = $3`,
-            [hashedToken, expiresAt, user.id]
-          )
-
-          // Build reset link - use hash routing for frontend
-          const frontendUrl = process.env.FRONTEND_URL || process.env.USER_PANEL_URL || 'https://thenefol.com'
-          const resetLink = `${frontendUrl}/#/user/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`
-
-          // Send password reset email
-          await sendPasswordResetEmail(email, user.name || 'User', resetLink)
-          console.log(`✅ Password reset email sent to: ${email}`)
+        if (userResult.rows.length === 0) {
+          return sendError(res, 404, 'No account exists with this email address.')
         }
+
+        const user = userResult.rows[0]
+
+        const rawToken = generateResetToken()
+        const hashedToken = hashToken(rawToken)
+        const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000)
+
+        await pool.query(
+          `UPDATE users 
+           SET reset_password_token = $1, 
+               reset_password_expires = $2,
+               updated_at = NOW()
+           WHERE id = $3`,
+          [hashedToken, expiresAt, user.id]
+        )
+
+        const frontendUrl = process.env.FRONTEND_URL || process.env.USER_PANEL_URL || 'https://thenefol.com'
+        const resetLink = `${frontendUrl}/#/user/reset-password?token=${rawToken}&email=${encodeURIComponent(trimmedEmail)}`
+
+        await sendPasswordResetEmail(trimmedEmail, user.name || 'User', resetLink)
+        console.log(`✅ Password reset email sent to: ${trimmedEmail}`)
+
+        return sendSuccess(res, {
+          message: 'Check your email for a link to reset your password.',
+        })
       } catch (emailErr: any) {
         console.error('❌ Error processing email reset:', emailErr)
+        return sendError(res, 500, 'Unable to send reset email. Please try again later.', emailErr)
       }
     }
 
-    // Always return success to prevent enumeration
-    sendSuccess(res, {
-      message: 'If an account exists, a password reset code has been sent.'
-    })
+    return sendError(res, 400, 'Either email or phone is required')
   } catch (err: any) {
     console.error('❌ Error in forgot password:', err)
     sendError(res, 500, 'Failed to process password reset request', err)
