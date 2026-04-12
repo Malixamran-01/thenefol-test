@@ -57,9 +57,12 @@ interface AdminBlogPost {
   reads_count?: number | null
   admin_likes_count?: number | null
   admin_comments_count?: number | null
+  revision_pending?: Record<string, unknown> | null
+  revision_submitted_at?: string | null
+  revision_rejection_reason?: string | null
 }
 
-type MainTab = 'review' | 'live' | 'rejected' | 'all' | 'trash'
+type MainTab = 'review' | 'live' | 'edits' | 'rejected' | 'all' | 'trash'
 type PanelTab = 'preview' | 'seo' | 'moderation'
 
 function authHeaders(): HeadersInit {
@@ -126,6 +129,31 @@ function toUploadUrl(apiBase: string, path: string | null | undefined): string {
   }
   if (p.startsWith('uploads/')) return `${origin}/${p}`
   return `${origin}/${p.replace(/^\//, '')}`
+}
+
+/** Merge author-submitted revision snapshot over live row for admin preview */
+function mergePendingRevision(post: AdminBlogPost): AdminBlogPost {
+  const rev = post.revision_pending
+  if (!rev || typeof rev !== 'object') return post
+  const r = rev as Record<string, unknown>
+  return {
+    ...post,
+    title: (r.title as string) ?? post.title,
+    content: (r.content as string) ?? post.content,
+    excerpt: (r.excerpt as string) ?? post.excerpt,
+    cover_image: (r.cover_image as string) ?? post.cover_image,
+    detail_image: (r.detail_image as string | null) ?? post.detail_image,
+    images: r.images != null ? r.images : post.images,
+    meta_title: (r.meta_title as string) ?? post.meta_title,
+    meta_description: (r.meta_description as string) ?? post.meta_description,
+    meta_keywords: r.meta_keywords != null ? r.meta_keywords : post.meta_keywords,
+    og_title: (r.og_title as string) ?? post.og_title,
+    og_description: (r.og_description as string) ?? post.og_description,
+    og_image: (r.og_image as string) ?? post.og_image,
+    canonical_url: (r.canonical_url as string) ?? post.canonical_url,
+    categories: r.categories != null ? r.categories : post.categories,
+    allow_comments: r.allow_comments === false ? false : post.allow_comments,
+  }
 }
 
 function stripHtml(html: string): string {
@@ -269,6 +297,9 @@ export default function BlogRequestManagement() {
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<AdminBlogPost | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [revRejectOpen, setRevRejectOpen] = useState(false)
+  const [revRejectTarget, setRevRejectTarget] = useState<AdminBlogPost | null>(null)
+  const [revRejectReason, setRevRejectReason] = useState('')
   const [actionBusy, setActionBusy] = useState<string | null>(null)
   const [seoDraft, setSeoDraft] = useState<Record<string, string>>({})
   const [seoSaving, setSeoSaving] = useState(false)
@@ -332,7 +363,10 @@ export default function BlogRequestManagement() {
     const pending = library.filter((p) => p.status === 'pending').length
     const live = library.filter((p) => p.status === 'approved').length
     const rejected = library.filter((p) => p.status === 'rejected').length
-    return { pending, live, rejected, total: library.length, trash: trashList.length }
+    const editsPending = library.filter(
+      (p) => p.status === 'approved' && p.revision_pending != null
+    ).length
+    return { pending, live, rejected, total: library.length, trash: trashList.length, editsPending }
   }, [library, trashList])
 
   const visibleRows = useMemo(() => {
@@ -342,11 +376,13 @@ export default function BlogRequestManagement() {
         ? library.filter((p) => p.status === 'pending')
         : mainTab === 'live'
           ? library.filter((p) => p.status === 'approved')
-          : mainTab === 'rejected'
-            ? library.filter((p) => p.status === 'rejected')
-            : mainTab === 'all'
-              ? library
-              : base
+          : mainTab === 'edits'
+            ? library.filter((p) => p.status === 'approved' && p.revision_pending != null)
+            : mainTab === 'rejected'
+              ? library.filter((p) => p.status === 'rejected')
+              : mainTab === 'all'
+                ? library
+                : base
     const uidNum = filterUserId != null && filterUserId !== '' ? parseInt(filterUserId, 10) : NaN
     if (Number.isFinite(uidNum)) {
       rows = rows.filter((p) => p.user_id === uidNum)
@@ -404,6 +440,53 @@ export default function BlogRequestManagement() {
       setRejectOpen(false)
       setRejectTarget(null)
       setRejectReason('')
+      await loadLibrary()
+      setSelected(null)
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const approveRevision = async (post: AdminBlogPost) => {
+    if (!confirm(`Publish the proposed revision for "${stripHtml(post.title)}"? The public post will update.`)) return
+    setActionBusy(`approve-rev-${post.id}`)
+    try {
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${post.id}/approve-revision`, {
+        method: 'POST',
+        headers: authHeaders(),
+      })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        alert(d.message || 'Approve revision failed')
+        return
+      }
+      await loadLibrary()
+      setSelected(null)
+    } finally {
+      setActionBusy(null)
+    }
+  }
+
+  const submitRevReject = async () => {
+    if (!revRejectTarget || !revRejectReason.trim()) {
+      alert('Please enter a rejection reason.')
+      return
+    }
+    setActionBusy(`reject-rev-${revRejectTarget.id}`)
+    try {
+      const r = await fetch(`${API_BASE}/blog/admin/posts/${revRejectTarget.id}/reject-revision`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ reason: revRejectReason.trim() }),
+      })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        alert(d.message || 'Reject revision failed')
+        return
+      }
+      setRevRejectOpen(false)
+      setRevRejectTarget(null)
+      setRevRejectReason('')
       await loadLibrary()
       setSelected(null)
     } finally {
@@ -626,10 +709,14 @@ export default function BlogRequestManagement() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Pending review</p>
             <p className="text-2xl font-light text-amber-950">{counts.pending}</p>
+          </div>
+          <div className="rounded-xl border border-violet-100 bg-violet-50/80 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-violet-800">Pending edits</p>
+            <p className="text-2xl font-light text-violet-950">{counts.editsPending}</p>
           </div>
           <div className="rounded-xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Published</p>
@@ -643,7 +730,7 @@ export default function BlogRequestManagement() {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">All active</p>
             <p className="text-2xl font-light text-slate-900">{counts.total}</p>
           </div>
-          <div className="rounded-xl border border-slate-300 bg-slate-100/80 px-4 py-3 col-span-2 sm:col-span-1">
+          <div className="rounded-xl border border-slate-300 bg-slate-100/80 px-4 py-3 col-span-2 sm:col-span-1 lg:col-span-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Trash</p>
             <p className="text-2xl font-light text-slate-900">{counts.trash}</p>
           </div>
@@ -652,6 +739,7 @@ export default function BlogRequestManagement() {
         {/* Main tabs */}
         <div className="flex flex-wrap gap-2">
           {tabBtn('review', 'Review queue', `${counts.pending} pending`)}
+          {tabBtn('edits', 'Edit requests', `${counts.editsPending} pending`)}
           {tabBtn('live', 'Live posts', `${counts.live} approved`)}
           {tabBtn('rejected', 'Rejected', `${counts.rejected}`)}
           {tabBtn('all', 'All (active)', `${counts.total} rows`)}
@@ -690,7 +778,8 @@ export default function BlogRequestManagement() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {visibleRows.map((post) => {
-                const cover = toUploadUrl(API_BASE, post.cover_image)
+                const rev = post.revision_pending as { cover_image?: string } | null | undefined
+                const cover = toUploadUrl(API_BASE, rev?.cover_image || post.cover_image)
                 const cats = parseStringList(post.categories)
                 const busy = actionBusy != null && actionBusy.endsWith(`-${post.id}`)
                 return (
@@ -719,6 +808,11 @@ export default function BlogRequestManagement() {
                           >
                             {post.status}
                           </span>
+                          {post.revision_pending != null && (
+                            <span className="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-900">
+                              Edit pending
+                            </span>
+                          )}
                           {post.featured && (
                             <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-2 py-0.5 font-medium text-sky-900">
                               <Star className="h-3 w-3" /> Featured
@@ -836,6 +930,32 @@ export default function BlogRequestManagement() {
                                 </button>
                               </>
                             )}
+                            {post.status === 'approved' && post.revision_pending != null && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={!!actionBusy}
+                                  onClick={() => approveRevision(post)}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                  Approve edit
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!actionBusy}
+                                  onClick={() => {
+                                    setRevRejectTarget(post)
+                                    setRevRejectReason('')
+                                    setRevRejectOpen(true)
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  Reject edit
+                                </button>
+                              </>
+                            )}
                             {post.status === 'approved' && (
                               <button
                                 type="button"
@@ -902,7 +1022,11 @@ export default function BlogRequestManagement() {
             </div>
             <div className="flex-1 overflow-y-auto">
               {panelTab === 'preview' && (
-                <AdminBlogPreview apiBase={API_BASE} post={selected} onOpenLive={() => window.open(userBlogPostUrl(selected.id), '_blank')} />
+                <AdminBlogPreview
+                  apiBase={API_BASE}
+                  post={selected.revision_pending ? mergePendingRevision(selected) : selected}
+                  onOpenLive={() => window.open(userBlogPostUrl(selected.id), '_blank')}
+                />
               )}
               {panelTab === 'seo' && (
                 <div className="space-y-4 p-6 max-w-2xl">
@@ -963,6 +1087,41 @@ export default function BlogRequestManagement() {
               )}
               {panelTab === 'moderation' && (
                 <div className="space-y-6 p-6 max-w-xl">
+                  {selected.revision_pending != null && (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50/80 p-4 space-y-3">
+                      <p className="text-sm font-semibold text-violet-900">Pending author revision</p>
+                      <p className="text-xs text-violet-800">
+                        The live post is unchanged until you approve. The Preview tab shows the proposed version.
+                      </p>
+                      {selected.revision_submitted_at && (
+                        <p className="text-xs text-violet-700">
+                          Submitted {new Date(selected.revision_submitted_at).toLocaleString()}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={!!actionBusy}
+                          onClick={() => approveRevision(selected)}
+                          className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white"
+                        >
+                          Approve revision
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!!actionBusy}
+                          onClick={() => {
+                            setRevRejectTarget(selected)
+                            setRevRejectReason('')
+                            setRevRejectOpen(true)
+                          }}
+                          className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+                        >
+                          Reject revision…
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {selected.status === 'pending' && (
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -1074,6 +1233,43 @@ export default function BlogRequestManagement() {
       )}
 
       {/* Reject modal */}
+      {revRejectOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">Reject edit request</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              The published post stays as-is. The author will see this reason in their notifications.
+            </p>
+            <textarea
+              className="mt-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm min-h-[120px]"
+              placeholder="Reason for rejection…"
+              value={revRejectReason}
+              onChange={(e) => setRevRejectReason(e.target.value)}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRevRejectOpen(false)
+                  setRevRejectTarget(null)
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!!actionBusy}
+                onClick={() => submitRevReject()}
+                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Reject edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {rejectOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">

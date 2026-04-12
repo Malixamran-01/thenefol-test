@@ -59,6 +59,15 @@ export function initBlogRouter(databasePool: Pool) {
       UNIQUE (post_id, user_id)
     )
   `).catch((err: Error) => console.error('Error creating blog_post_reposts table:', err))
+  databasePool
+    .query(
+      `
+    ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_pending JSONB;
+    ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_submitted_at TIMESTAMPTZ;
+    ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_rejection_reason TEXT;
+  `
+    )
+    .catch((err: Error) => console.error('blog_posts revision columns:', err))
 }
 
 const getUserIdFromToken = (req: express.Request): string | null => {
@@ -114,6 +123,39 @@ function omitAuthorProfileJoinCols(r: any) {
     ap_username: _u,
     ...rest
   } = r
+  return rest
+}
+
+function parseBlogStringArray(value: any): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) return value.map(String).filter(Boolean)
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean)
+    } catch {
+      return value.split(',').map((item) => item.trim()).filter(Boolean)
+    }
+  }
+  return []
+}
+
+function parseBlogImagesJson(raw: unknown): string[] {
+  if (raw == null) return []
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean)
+  if (typeof raw === 'string') {
+    try {
+      const j = JSON.parse(raw)
+      return Array.isArray(j) ? j.map(String).filter(Boolean) : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+function omitRevisionCols(r: any) {
+  const { revision_pending: _rp, revision_submitted_at: _rs, revision_rejection_reason: _rr, ...rest } = r
   return rest
 }
 
@@ -1189,6 +1231,226 @@ router.get('/posts/my', authenticateToken, async (req, res) => {
   }
 })
 
+function metaKeywordsToFormString(raw: unknown): string {
+  if (raw == null) return ''
+  if (typeof raw === 'string') {
+    try {
+      const j = JSON.parse(raw)
+      if (Array.isArray(j)) return j.map(String).join(', ')
+    } catch {
+      return raw
+    }
+  }
+  if (Array.isArray(raw)) return raw.map(String).join(', ')
+  return ''
+}
+
+function categoriesToFormArray(raw: unknown): string[] {
+  if (raw == null) return []
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean)
+  if (typeof raw === 'string') {
+    try {
+      const j = JSON.parse(raw)
+      if (Array.isArray(j)) return j.map(String).filter(Boolean)
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+/** Owner: load approved post + pending revision state for the edit form */
+router.get('/posts/:id/for-edit', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId
+    if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+
+    const { rows } = await pool.query(
+      `
+      SELECT p.*, u.unique_user_id as author_unique_user_id,
+        authprof.ap_id,
+        authprof.ap_is_verified,
+        authprof.ap_profile_status,
+        authprof.ap_display_name,
+        authprof.ap_pen_name,
+        authprof.ap_username
+       FROM blog_posts p
+       LEFT JOIN users u ON p.user_id = u.id
+       ${SQL_AUTHOR_PROFILE_LATERAL}
+       WHERE p.id = $1::integer
+         AND p.user_id = $2::integer
+         AND p.status = 'approved'
+         AND COALESCE(p.is_deleted, false) = false
+    `,
+      [req.params.id, userId]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Post not found or not editable' })
+    }
+
+    const raw = rows[0] as any
+    const base = omitAuthorProfileJoinCols(omitRevisionCols(raw))
+    const pending = raw.revision_pending
+    let pendingObj: Record<string, unknown> | null = null
+    if (pending != null) {
+      pendingObj = typeof pending === 'object' ? (pending as Record<string, unknown>) : null
+      if (!pendingObj && typeof pending === 'string') {
+        try {
+          pendingObj = JSON.parse(pending) as Record<string, unknown>
+        } catch {
+          pendingObj = null
+        }
+      }
+    }
+
+    const liveForForm = {
+      ...base,
+      author_name: resolvePublicAuthorName(raw),
+      author_id: raw.user_id,
+      author_unique_user_id: raw.author_unique_user_id,
+      meta_keywords: metaKeywordsToFormString(raw.meta_keywords),
+      categories: categoriesToFormArray(raw.categories),
+    }
+
+    res.json({
+      post: liveForForm,
+      pending_revision: pendingObj,
+      revision_submitted_at: raw.revision_submitted_at ?? null,
+      revision_rejection_reason: raw.revision_rejection_reason ?? null,
+    })
+  } catch (error) {
+    console.error('Error loading post for edit:', error)
+    res.status(500).json({ message: 'Failed to load post for editing' })
+  }
+})
+
+/** Owner: submit a revised snapshot (requires admin approval before it goes live) */
+router.post(
+  '/posts/:id/edit-request',
+  authenticateToken,
+  upload.fields([
+    { name: 'coverImage', maxCount: 1 },
+    { name: 'detailImage', maxCount: 1 },
+    { name: 'ogImage', maxCount: 1 },
+    { name: 'images', maxCount: 5 },
+  ]),
+  async (req, res) => {
+    try {
+      const userId = req.userId
+      if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
+
+      const postId = req.params.id
+      const {
+        title,
+        content,
+        excerpt,
+        author_name,
+        meta_title,
+        meta_description,
+        meta_keywords,
+        og_title,
+        og_description,
+        og_image,
+        canonical_url,
+        categories,
+        allow_comments,
+        keep_existing_cover,
+        existing_image_urls,
+      } = req.body
+
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] }
+      const coverImageFile = files?.coverImage?.[0]
+      const detailImageFile = files?.detailImage?.[0]
+      const ogImageFile = files?.ogImage?.[0]
+      const contentImages = files?.images || []
+
+      const keepCover =
+        String(keep_existing_cover || '') === 'true' || String(keep_existing_cover || '') === '1'
+
+      if (!title || !content || !excerpt) {
+        return res.status(400).json({ message: 'Title, content, and excerpt are required' })
+      }
+
+      const { rows } = await pool.query(
+        `SELECT * FROM blog_posts WHERE id = $1::integer AND user_id = $2::integer AND status = 'approved' AND COALESCE(is_deleted, false) = false`,
+        [postId, userId]
+      )
+      if (rows.length === 0) {
+        return res.status(404).json({ message: 'Post not found or not editable' })
+      }
+      const post = rows[0] as any
+
+      if (!coverImageFile && !keepCover) {
+        return res.status(400).json({ message: 'Cover image is required, or keep your existing cover' })
+      }
+      if (!post.cover_image && !coverImageFile) {
+        return res.status(400).json({ message: 'Cover image is required' })
+      }
+
+      let coverImageUrl = coverImageFile ? `/uploads/blog/${coverImageFile.filename}` : String(post.cover_image || '')
+      const detailImageUrl: string | null = detailImageFile
+        ? `/uploads/blog/${detailImageFile.filename}`
+        : post.detail_image != null
+          ? String(post.detail_image)
+          : null
+
+      const ogImageUrl = ogImageFile
+        ? `/uploads/blog/${ogImageFile.filename}`
+        : (og_image && String(og_image).trim()) || null
+
+      let existingUrls: string[] = []
+      try {
+        const parsed = JSON.parse(String(existing_image_urls || '[]'))
+        if (Array.isArray(parsed)) existingUrls = parsed.map(String).filter(Boolean)
+      } catch {
+        existingUrls = []
+      }
+      const newContentUrls = contentImages.map((img) => `/uploads/blog/${img.filename}`)
+      const mergedImages = [...existingUrls, ...newContentUrls]
+
+      const parsedCategories = parseBlogStringArray(categories)
+      const parsedKeywords = parseBlogStringArray(meta_keywords)
+
+      const revision = {
+        title: String(title),
+        content: String(content),
+        excerpt: String(excerpt),
+        author_name: author_name != null && String(author_name).trim() ? String(author_name) : String(post.author_name || ''),
+        cover_image: coverImageUrl,
+        detail_image: detailImageUrl,
+        images: mergedImages,
+        meta_title: meta_title != null ? String(meta_title) : null,
+        meta_description: meta_description != null ? String(meta_description) : null,
+        meta_keywords: parsedKeywords,
+        og_title: og_title != null ? String(og_title) : null,
+        og_description: og_description != null ? String(og_description) : null,
+        og_image: ogImageUrl || coverImageUrl,
+        canonical_url: canonical_url != null && String(canonical_url).trim() ? String(canonical_url) : null,
+        categories: parsedCategories,
+        allow_comments: String(allow_comments).toLowerCase() === 'false' ? false : true,
+      }
+
+      await pool.query(
+        `UPDATE blog_posts
+         SET revision_pending = $1::jsonb,
+             revision_submitted_at = CURRENT_TIMESTAMP,
+             revision_rejection_reason = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2::integer`,
+        [JSON.stringify(revision), postId]
+      )
+
+      console.log(`📧 Blog edit request for post ${postId} by user ${userId}`)
+
+      res.json({ message: 'Your changes were submitted for review', postId: Number(postId) })
+    } catch (error) {
+      console.error('Error submitting blog edit request:', error)
+      res.status(500).json({ message: 'Failed to submit edit request' })
+    }
+  }
+)
+
 // Get all blog posts (approved only for public)
 router.get('/posts', async (req, res) => {
   try {
@@ -1266,7 +1528,7 @@ router.get('/posts', async (req, res) => {
       rows.map((r: any) => {
         const authorIsVerified = Boolean(r.ap_is_verified) && String(r.ap_profile_status || '') === 'active'
         return {
-          ...omitAuthorProfileJoinCols(r),
+          ...omitRevisionCols(omitAuthorProfileJoinCols(r)),
           author_name: resolvePublicAuthorName(r),
           author_id: r.user_id,
           author_is_verified: authorIsVerified,
@@ -1442,7 +1704,7 @@ router.get('/posts/:id', async (req, res) => {
     const authorIsVerified =
       Boolean(raw.ap_is_verified) && String(raw.ap_profile_status || '') === 'active'
     res.json({
-      ...omitAuthorProfileJoinCols(raw),
+      ...omitRevisionCols(omitAuthorProfileJoinCols(raw)),
       author_name: resolvePublicAuthorName(raw),
       author_id: raw.user_id,
       author_unique_user_id: raw.author_unique_user_id,
@@ -1501,12 +1763,18 @@ router.get('/admin/posts', async (req, res) => {
     const statusQ = String((req.query as any).status || '').trim().toLowerCase()
     const statusFilter =
       statusQ === 'pending' || statusQ === 'approved' || statusQ === 'rejected' ? statusQ : null
+    const pendingRevisionOnly =
+      String((req.query as any).pending_revision || '').trim() === '1' ||
+      String((req.query as any).pending_revision || '').toLowerCase() === 'true'
 
     const params: unknown[] = []
     let where = trash ? 'p.is_deleted = true' : 'p.is_deleted = false'
     if (statusFilter) {
       params.push(statusFilter)
       where += ` AND p.status = $${params.length}`
+    }
+    if (pendingRevisionOnly) {
+      where += ` AND p.revision_pending IS NOT NULL`
     }
 
     const { rows } = await pool.query(
@@ -1635,6 +1903,172 @@ router.post('/admin/reject/:id', async (req, res) => {
   } catch (error) {
     console.error('Error rejecting blog request:', error)
     res.status(500).json({ message: 'Failed to reject blog request' })
+  }
+})
+
+function revisionArrayToDbJson(val: unknown): string | null {
+  if (val == null) return null
+  if (Array.isArray(val)) {
+    const arr = val.map(String).filter(Boolean)
+    return arr.length ? JSON.stringify(arr) : null
+  }
+  if (typeof val === 'string') {
+    try {
+      const p = JSON.parse(val)
+      if (Array.isArray(p)) {
+        const arr = p.map(String).filter(Boolean)
+        return arr.length ? JSON.stringify(arr) : null
+      }
+    } catch {
+      const arr = val
+        .split(/[,;]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      return arr.length ? JSON.stringify(arr) : null
+    }
+  }
+  return null
+}
+
+/** Merge pending author revision into live columns (approved posts only) */
+router.post('/admin/posts/:id/approve-revision', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const postId = req.params.id
+    const { rows } = await pool.query(
+      `SELECT * FROM blog_posts WHERE id = $1::integer AND status = 'approved' AND revision_pending IS NOT NULL AND COALESCE(is_deleted, false) = false`,
+      [postId]
+    )
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'No pending revision for this post' })
+    }
+    const row = rows[0] as any
+    const revRaw = row.revision_pending
+    const r =
+      typeof revRaw === 'object' && revRaw !== null
+        ? (revRaw as Record<string, unknown>)
+        : (JSON.parse(String(revRaw || '{}')) as Record<string, unknown>)
+
+    const metaKw = revisionArrayToDbJson(r.meta_keywords)
+    const cats = revisionArrayToDbJson(r.categories)
+    const imagesArr = Array.isArray(r.images) ? (r.images as unknown[]).map(String) : parseBlogImagesJson(r.images)
+    const imagesStr = JSON.stringify(imagesArr)
+
+    const { rows: updated } = await pool.query(
+      `
+      UPDATE blog_posts SET
+        title = $1,
+        content = $2,
+        excerpt = $3,
+        author_name = $4,
+        cover_image = $5,
+        detail_image = $6,
+        images = $7,
+        meta_title = $8,
+        meta_description = $9,
+        meta_keywords = $10,
+        og_title = $11,
+        og_description = $12,
+        og_image = $13,
+        canonical_url = $14,
+        categories = $15,
+        allow_comments = $16,
+        revision_pending = NULL,
+        revision_submitted_at = NULL,
+        revision_rejection_reason = NULL,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $17::integer AND status = 'approved' AND revision_pending IS NOT NULL
+      RETURNING *
+    `,
+      [
+        String(r.title ?? ''),
+        String(r.content ?? ''),
+        String(r.excerpt ?? ''),
+        String(r.author_name ?? row.author_name ?? ''),
+        String(r.cover_image ?? row.cover_image ?? ''),
+        r.detail_image != null ? String(r.detail_image) : null,
+        imagesStr,
+        r.meta_title != null ? String(r.meta_title) : null,
+        r.meta_description != null ? String(r.meta_description) : null,
+        metaKw,
+        r.og_title != null ? String(r.og_title) : null,
+        r.og_description != null ? String(r.og_description) : null,
+        r.og_image != null ? String(r.og_image) : null,
+        r.canonical_url != null && String(r.canonical_url).trim() ? String(r.canonical_url) : null,
+        cats,
+        r.allow_comments === false ? false : true,
+        postId,
+      ]
+    )
+
+    if (updated.length === 0) {
+      return res.status(404).json({ message: 'Failed to merge revision' })
+    }
+
+    await createNotification({
+      pool,
+      recipientUserId: row.user_id,
+      actorUserId: null,
+      actorName: 'NEFOL',
+      type: 'post_revision_approved',
+      postId: String(postId),
+      postTitle: String(r.title ?? row.title ?? ''),
+      bypassMute: true,
+    })
+
+    res.json({ message: 'Revision approved and published', post: updated[0] })
+  } catch (error) {
+    console.error('Error approving blog revision:', error)
+    res.status(500).json({ message: 'Failed to approve revision' })
+  }
+})
+
+router.post('/admin/posts/:id/reject-revision', async (req, res) => {
+  try {
+    const { reason } = req.body
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    if (!reason || !String(reason).trim()) {
+      return res.status(400).json({ message: 'Reason is required' })
+    }
+    const postId = req.params.id
+    const { rows } = await pool.query(
+      `
+      UPDATE blog_posts
+      SET revision_pending = NULL,
+          revision_submitted_at = NULL,
+          revision_rejection_reason = $1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2::integer AND status = 'approved' AND revision_pending IS NOT NULL AND COALESCE(is_deleted, false) = false
+      RETURNING *
+    `,
+      [String(reason).trim(), postId]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'No pending revision for this post' })
+    }
+
+    const row = rows[0] as any
+    await createNotification({
+      pool,
+      recipientUserId: row.user_id,
+      actorUserId: null,
+      actorName: 'NEFOL',
+      type: 'post_revision_rejected',
+      postId: String(postId),
+      postTitle: String(row.title ?? ''),
+      commentExcerpt: String(reason).trim().slice(0, 500),
+      bypassMute: true,
+    })
+
+    res.json({ message: 'Revision rejected; live post unchanged' })
+  } catch (error) {
+    console.error('Error rejecting blog revision:', error)
+    res.status(500).json({ message: 'Failed to reject revision' })
   }
 })
 

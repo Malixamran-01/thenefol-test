@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHorizontal } from 'lucide-react'
+import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHorizontal, Pencil } from 'lucide-react'
 import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import CustomSelect from '../components/CustomSelect'
 import { getApiBase } from '../utils/apiBase'
@@ -971,8 +971,8 @@ export default function BlogDetail() {
   return (
     <main className="min-h-screen" style={{ backgroundColor: '#F4F9F9' }}>
       <div className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:pt-10">
-        {/* Header — back button only */}
-        <div className="mb-8">
+        {/* Header — back + owner edit */}
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={handleBack}
             className="inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
@@ -981,6 +981,21 @@ export default function BlogDetail() {
             <ArrowLeft className="w-4 h-4" />
             {backLabel}
           </button>
+          {isAuthenticated &&
+            user?.id != null &&
+            String(user.id) === String(post.author_id ?? post.user_id ?? '') && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.hash = `#/user/blog/request?edit=${post.id}`
+                }}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white transition-colors"
+                style={{ backgroundColor: '#1B4965' }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit post
+              </button>
+            )}
         </div>
 
         {/* Title */}

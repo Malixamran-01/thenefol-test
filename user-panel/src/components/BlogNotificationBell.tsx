@@ -97,6 +97,18 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
     label: (n) =>
       `sent a moderation notice${n.post_title ? ` — ${n.post_title}` : ''}`,
   },
+  post_revision_approved: {
+    icon: <Check className="h-4 w-4" />,
+    color: 'text-emerald-600',
+    label: (n) =>
+      `approved your blog edit${n.post_title ? ` — ${n.post_title}` : ''}`,
+  },
+  post_revision_rejected: {
+    icon: <AlertTriangle className="h-4 w-4" />,
+    color: 'text-rose-600',
+    label: (n) =>
+      `did not approve your blog edit${n.post_title ? ` — ${n.post_title}` : ''}`,
+  },
 }
 
 function timeAgo(dateStr: string): string {

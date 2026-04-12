@@ -1003,6 +1003,13 @@ export const blogActivityAPI = {
     return handleResponse(response)
   },
 
+  async getPostForEdit(postId: string | number) {
+    const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/for-edit`, {
+      headers: getAuthHeaders()
+    })
+    return handleResponse(response)
+  },
+
   async getPostReposts(postId: string) {
     const response = await fetch(`${getApiBaseUrl()}/api/blog/posts/${postId}/reposts`, {
       headers: getAuthHeaders()

@@ -18,6 +18,7 @@ interface BlogPost {
   status: 'pending' | 'approved' | 'rejected'
   likes_count?: number
   comments_count?: number
+  revision_pending?: unknown
 }
 
 interface BlogDraft {
@@ -203,55 +204,77 @@ export default function MyBlogsPage() {
                   key={post.id}
                   className="rounded-xl bg-white border border-gray-200/80 overflow-hidden hover:border-gray-300/80 transition-colors"
                 >
-                  <a
-                    href={`#/user/blog/${post.id}`}
-                    className="flex gap-4 p-4 sm:p-5"
-                  >
-                    <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100">
-                      {post.cover_image ? (
-                        <img
-                          src={post.cover_image}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <FileText className="h-8 w-8 text-gray-300" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate pr-2">
-                        {post.title || 'Untitled'}
-                      </h3>
-                      <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
-                        <span
-                          className={`px-2 py-0.5 rounded-full ${
-                            post.status === 'approved'
-                              ? 'bg-green-100 text-green-700'
-                              : post.status === 'pending'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-red-100 text-red-700'
-                          }`}
-                        >
-                          {post.status === 'approved' ? 'Published' : post.status === 'pending' ? 'Pending' : 'Rejected'}
-                        </span>
-                        <span>{formatDate(post.updated_at)}</span>
-                        {(post.likes_count ?? 0) > 0 && (
-                          <span>{post.likes_count} likes</span>
-                        )}
-                        {(post.comments_count ?? 0) > 0 && (
-                          <span>{post.comments_count} comments</span>
+                  <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 items-stretch">
+                    <a
+                      href={`#/user/blog/${post.id}`}
+                      className="flex flex-1 gap-4 min-w-0"
+                    >
+                      <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100">
+                        {post.cover_image ? (
+                          <img
+                            src={post.cover_image}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <FileText className="h-8 w-8 text-gray-300" />
+                          </div>
                         )}
                       </div>
-                      {post.excerpt && (
-                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{post.excerpt}</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 truncate pr-2">
+                          {post.title || 'Untitled'}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-xs text-gray-500">
+                          <span
+                            className={`px-2 py-0.5 rounded-full ${
+                              post.status === 'approved'
+                                ? 'bg-green-100 text-green-700'
+                                : post.status === 'pending'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {post.status === 'approved' ? 'Published' : post.status === 'pending' ? 'Pending' : 'Rejected'}
+                          </span>
+                          {post.status === 'approved' && post.revision_pending != null && (
+                            <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">
+                              Edit in review
+                            </span>
+                          )}
+                          <span>{formatDate(post.updated_at)}</span>
+                          {(post.likes_count ?? 0) > 0 && (
+                            <span>{post.likes_count} likes</span>
+                          )}
+                          {(post.comments_count ?? 0) > 0 && (
+                            <span>{post.comments_count} comments</span>
+                          )}
+                        </div>
+                        {post.excerpt && (
+                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{post.excerpt}</p>
+                        )}
+                      </div>
+                    </a>
+                    <div className="flex flex-col items-end justify-center gap-2 shrink-0">
+                      {post.status === 'approved' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            window.location.hash = `#/user/blog/request?edit=${post.id}`
+                          }}
+                          className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-white"
+                          style={{ backgroundColor: '#1B4965' }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
                       )}
+                      <a href={`#/user/blog/${post.id}`} className="text-gray-400 hover:text-gray-600" aria-label="View post">
+                        <Eye className="h-4 w-4" />
+                      </a>
                     </div>
-                    <div className="flex-shrink-0 self-center">
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    </div>
-                  </a>
+                  </div>
                 </li>
               ))}
             </ul>

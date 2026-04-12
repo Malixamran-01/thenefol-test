@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Upload, X, CheckCircle, WarningCircle, TextB, TextItalic, TextUnderline, Link, ListBullets, ListNumbers, Palette, Image, YoutubeLogo, PencilSimple, FileText, Tag, Square, ArrowsOut, ArrowsIn, Trash, ArrowLeft, FloppyDisk, WifiSlash, ClockCounterClockwise, Info, Gear, ArrowUUpLeft, ArrowUUpRight, TextStrikethrough, Quotes, Question, Plus, DotsThree } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
+import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useBlogBack } from '../hooks/useBlogBack'
 import BlogPreview from '../components/BlogPreview'
@@ -9,6 +10,22 @@ import ImageEditor from '../components/ImageEditor'
 import VersionHistoryModal from '../components/VersionHistoryModal'
 import { getLocalDraft, saveLocalDraft, clearLocalDraft, getDraftAge, hasRealDraftContent, DEBOUNCE_MS, SERVER_SYNC_INTERVAL_MS, setActiveDraftTab, clearActiveDraftTab, isActiveDraftTab, getOrCreateDraftSessionId, clearDraftSessionId } from '../utils/blogDraft'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
+
+function parseEditIdFromHash(): number | null {
+  if (typeof window === 'undefined') return null
+  const m = window.location.hash.match(/[?&]edit=(\d+)/)
+  return m ? parseInt(m[1], 10) : null
+}
+
+/** Collect /uploads/blog/ URLs referenced in HTML for revision image merge */
+function extractUploadUrlsFromHtml(html: string): string[] {
+  if (!html) return []
+  const re = /src\s*=\s*["'](\/uploads\/blog\/[^"']+)["']/gi
+  const out: string[] = []
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) out.push(m[1])
+  return [...new Set(out)]
+}
 
 interface ImageEditorCtx {
   source: string
@@ -127,6 +144,13 @@ export default function BlogRequestForm() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [editPostId, setEditPostId] = useState<number | null>(() => parseEditIdFromHash())
+  const [editFetchDone, setEditFetchDone] = useState(() => parseEditIdFromHash() === null)
+  const [editLoadError, setEditLoadError] = useState('')
+  const [editRevisionNotice, setEditRevisionNotice] = useState<string | null>(null)
+  const [existingCoverUrl, setExistingCoverUrl] = useState<string | null>(null)
+  const [existingDetailUrl, setExistingDetailUrl] = useState<string | null>(null)
+  const isEditMode = editPostId != null
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkData, setLinkData] = useState<LinkModalData>({ text: '', url: '' })
@@ -230,7 +254,120 @@ export default function BlogRequestForm() {
   }, [])
 
   useEffect(() => {
-    if (!isAuthenticated) window.location.hash = '#/user/blog'
+    if (!editPostId || !isAuthenticated) {
+      if (!editPostId) setEditFetchDone(true)
+      return
+    }
+    if (!user) return
+    let cancelled = false
+    setEditLoadError('')
+    ;(async () => {
+      try {
+        const data = (await blogActivityAPI.getPostForEdit(editPostId)) as {
+          post?: Record<string, unknown>
+          pending_revision?: Record<string, unknown> | null
+          revision_rejection_reason?: string | null
+        }
+        if (cancelled) return
+        const p = data.post || {}
+        const pending = data.pending_revision
+        const merge = (post: Record<string, unknown>, rev: Record<string, unknown> | null | undefined) => {
+          if (!rev || typeof rev !== 'object') return post
+          const kw = rev.meta_keywords
+          const metaKw =
+            kw == null
+              ? post.meta_keywords
+              : Array.isArray(kw)
+                ? kw.join(', ')
+                : typeof kw === 'string'
+                  ? kw
+                  : post.meta_keywords
+          const cat = rev.categories
+          const cats = Array.isArray(cat) ? cat : post.categories
+          return { ...post, ...rev, meta_keywords: metaKw, categories: cats }
+        }
+        const f = merge(p, pending || undefined)
+        const arr = (v: unknown): string[] =>
+          Array.isArray(v)
+            ? (v as string[])
+            : typeof v === 'string'
+              ? (() => {
+                  try {
+                    const parsed = JSON.parse(v)
+                    return Array.isArray(parsed) ? parsed : []
+                  } catch {
+                    return []
+                  }
+                })()
+              : []
+        const kw = f.meta_keywords
+        setFormData((prev) => ({
+          ...prev,
+          title: (f.title as string) || '',
+          content: (f.content as string) || '',
+          excerpt: (f.excerpt as string) || '',
+          author_name: (f.author_name as string) || prev.author_name,
+          author_id: (p.author_id as number | null) ?? prev.author_id,
+          meta_title: (f.meta_title as string) || '',
+          meta_description: (f.meta_description as string) || '',
+          meta_keywords:
+            typeof kw === 'string' ? kw : Array.isArray(kw) ? kw.join(', ') : '',
+          og_title: (f.og_title as string) || '',
+          og_description: (f.og_description as string) || '',
+          og_image: (f.og_image as string) || '',
+          canonical_url: (f.canonical_url as string) || '',
+          categories: arr(f.categories),
+          allow_comments: (f.allow_comments as boolean) ?? true,
+        }))
+        const apiBase = getApiBase()
+        const cov = (f.cover_image ?? p.cover_image) as string | undefined
+        setExistingCoverUrl(
+          cov && String(cov).startsWith('/uploads/') ? `${apiBase}${cov}` : cov ? String(cov) : null
+        )
+        const det = (f.detail_image ?? p.detail_image) as string | null | undefined
+        setExistingDetailUrl(
+          det && String(det).startsWith('/uploads/') ? `${apiBase}${det}` : det ? String(det) : null
+        )
+        requestAnimationFrame(() => {
+          if (cancelled) return
+          const html = (f.content as string) || ''
+          if (editorRef.current && html) editorRef.current.innerHTML = html
+          setTimeout(() => {
+            const t = (f.title as string) || ''
+            const ex = (f.excerpt as string) || ''
+            if (titleRef.current && t) titleRef.current.innerHTML = t
+            if (subtitleRef.current && ex) subtitleRef.current.innerHTML = ex
+          }, 0)
+        })
+        if (pending && typeof pending === 'object') {
+          setEditRevisionNotice(
+            'You have edits waiting for admin review. Submitting again will replace them.'
+          )
+        } else if (data.revision_rejection_reason) {
+          setEditRevisionNotice(`Previous edit was not approved: ${data.revision_rejection_reason}`)
+        } else {
+          setEditRevisionNotice(null)
+        }
+      } catch {
+        if (!cancelled) setEditLoadError('Could not load this post for editing.')
+      } finally {
+        if (!cancelled) setEditFetchDone(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [editPostId, isAuthenticated, user])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if (window.location.hash.match(/[?&]edit=\d+/)) {
+        sessionStorage.setItem('post_login_redirect', window.location.hash || '#/user/blog/request')
+        window.location.hash = '#/user/login'
+        return
+      }
+      window.location.hash = '#/user/blog'
+    }
   }, [isAuthenticated])
 
   useEffect(() => {
@@ -712,15 +849,27 @@ export default function BlogRequestForm() {
 
   const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setFormData(prev => ({ ...prev, coverImage: file }))
+    if (file) {
+      setFormData(prev => ({ ...prev, coverImage: file }))
+      setExistingCoverUrl(null)
+    }
   }
-  const removeCoverImage = () => setFormData(prev => ({ ...prev, coverImage: null }))
+  const removeCoverImage = () => {
+    setFormData(prev => ({ ...prev, coverImage: null }))
+    setExistingCoverUrl(null)
+  }
 
   const handleDetailImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setFormData(prev => ({ ...prev, detailImage: file }))
+    if (file) {
+      setFormData(prev => ({ ...prev, detailImage: file }))
+      setExistingDetailUrl(null)
+    }
   }
-  const removeDetailImage = () => setFormData(prev => ({ ...prev, detailImage: null }))
+  const removeDetailImage = () => {
+    setFormData(prev => ({ ...prev, detailImage: null }))
+    setExistingDetailUrl(null)
+  }
 
   const handleOgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -912,6 +1061,10 @@ export default function BlogRequestForm() {
 
   useEffect(() => {
     const hash = window.location.hash || ''
+    if (hash.match(/[?&]edit=\d+/)) {
+      hasCheckedDraftRef.current = true
+      return
+    }
     const draftMatch = hash.match(/[?&]draft=(\d+)/)
     const explicitDraftId = draftMatch ? parseInt(draftMatch[1], 10) : null
     if (explicitDraftId && isAuthenticated) {
@@ -979,14 +1132,16 @@ export default function BlogRequestForm() {
   }, [showCategoryPicker])
 
   useEffect(() => {
+    if (isEditMode) return
     const payload: Record<string, unknown> = { title: formData.title, content: formData.content, excerpt: formData.excerpt, author_name: formData.author_name, author_id: formData.author_id, meta_title: formData.meta_title, meta_description: formData.meta_description, meta_keywords: formData.meta_keywords, og_title: formData.og_title, og_description: formData.og_description, og_image: formData.og_image, canonical_url: formData.canonical_url, categories: formData.categories, allow_comments: formData.allow_comments }
     if (draftIdRef.current != null) payload.draftId = draftIdRef.current
     if (versionRef.current) payload.version = versionRef.current
     const t = setTimeout(() => { const updated = saveLocalDraft(payload as any); if (updated) setLastSavedAt(updated) }, DEBOUNCE_MS)
     return () => clearTimeout(t)
-  }, [formData.title, formData.content, formData.excerpt, formData.author_name, formData.author_id, formData.meta_title, formData.meta_description, formData.meta_keywords, formData.og_title, formData.og_description, formData.og_image, formData.canonical_url, formData.categories, formData.allow_comments])
+  }, [isEditMode, formData.title, formData.content, formData.excerpt, formData.author_name, formData.author_id, formData.meta_title, formData.meta_description, formData.meta_keywords, formData.og_title, formData.og_description, formData.og_image, formData.canonical_url, formData.categories, formData.allow_comments])
 
   const syncToServer = useCallback((opts?: { keepalive?: boolean }) => {
+    if (isEditMode) return
     const fd = formDataRef.current
     if (!fd || !isAuthenticated || !user || isOffline) return
     const content = (editorRef.current?.innerHTML ?? fd.content) || ''
@@ -1009,14 +1164,14 @@ export default function BlogRequestForm() {
           } else if (r.status === 409) setShowConflictBanner(true)
         }).catch(() => {})
     }
-  }, [isAuthenticated, user, isOffline])
+  }, [isAuthenticated, user, isOffline, isEditMode])
 
   useEffect(() => {
-    if (!isAuthenticated || !user || isOffline) return
+    if (!isAuthenticated || !user || isOffline || isEditMode) return
     const id = setInterval(() => syncToServer(), SERVER_SYNC_INTERVAL_MS)
     syncToServer()
     return () => clearInterval(id)
-  }, [isAuthenticated, user, isOffline, syncToServer])
+  }, [isAuthenticated, user, isOffline, isEditMode, syncToServer])
 
   useEffect(() => {
     const onBeforeUnload = () => syncToServer({ keepalive: true })
@@ -1097,6 +1252,10 @@ export default function BlogRequestForm() {
   const handleDismissConflict = () => setShowConflictBanner(false)
 
   const handleSaveDraft = async () => {
+    if (isEditMode) {
+      setErrorMessage('Draft save is not available while editing a published post.')
+      return
+    }
     const content = (editorRef.current?.innerHTML ?? formData.content) || ''
     const payload = { title: formData.title, content, excerpt: formData.excerpt, author_name: formData.author_name, author_id: formData.author_id, meta_title: formData.meta_title, meta_description: formData.meta_description, meta_keywords: formData.meta_keywords, og_title: formData.og_title, og_description: formData.og_description, og_image: formData.og_image, canonical_url: formData.canonical_url, categories: formData.categories, allow_comments: formData.allow_comments }
     if (!hasRealDraftContent(payload)) { setErrorMessage('Add a title, excerpt, or content before saving a draft.'); return }
@@ -1123,15 +1282,30 @@ export default function BlogRequestForm() {
     const excerptText = getTextFromHtml(subtitleRef.current?.innerHTML ?? formData.excerpt)
     if (!titleText) { setSubmitStatus('error'); setErrorMessage('Please add a title.'); return }
     if (!excerptText) { setSubmitStatus('error'); setErrorMessage('Please add a subtitle.'); return }
-    if (!agreedToTerms) { setSubmitStatus('error'); setErrorMessage('Please agree to the terms and conditions before submitting.'); return }
-    if (!formData.coverImage) { setSubmitStatus('error'); setErrorMessage('Please upload a cover image for your blog post.'); return }
+    if (!agreedToTerms) {
+      setSubmitStatus('error')
+      setErrorMessage(
+        isEditMode
+          ? 'Please confirm the terms before submitting your edits for review.'
+          : 'Please agree to the terms and conditions before submitting.'
+      )
+      return
+    }
+    if (!formData.coverImage && !existingCoverUrl) {
+      setSubmitStatus('error')
+      setErrorMessage(
+        isEditMode ? 'Add a cover image or keep your existing cover.' : 'Please upload a cover image for your blog post.'
+      )
+      return
+    }
     if (formData.author_id == null) { setSubmitStatus('error'); setErrorMessage('Please sign in to submit a blog post.'); return }
     setIsSubmitting(true); setSubmitStatus('idle'); setErrorMessage('')
     try {
       const apiBase = getApiBase()
+      const content = (editorRef.current?.innerHTML ?? formData.content) || ''
       const formDataToSend = new FormData()
       formDataToSend.append('title', titleRef.current?.innerHTML ?? formData.title)
-      formDataToSend.append('content', formData.content)
+      formDataToSend.append('content', content)
       formDataToSend.append('excerpt', subtitleRef.current?.innerHTML ?? formData.excerpt)
       formDataToSend.append('author_name', formData.author_name)
       if (formData.author_id != null) formDataToSend.append('author_id', String(formData.author_id))
@@ -1146,21 +1320,58 @@ export default function BlogRequestForm() {
       formDataToSend.append('categories', JSON.stringify(formData.categories))
       formDataToSend.append('allow_comments', String(formData.allow_comments))
       if (formData.coverImage) formDataToSend.append('coverImage', formData.coverImage)
+      if (isEditMode && !formData.coverImage && existingCoverUrl) formDataToSend.append('keep_existing_cover', '1')
       if (formData.detailImage) formDataToSend.append('detailImage', formData.detailImage)
       formData.images.forEach(image => formDataToSend.append('images', image.file))
+      if (isEditMode && editPostId != null) {
+        formDataToSend.append('existing_image_urls', JSON.stringify(extractUploadUrlsFromHtml(content)))
+      }
       const token = localStorage.getItem('token')
       const headers: Record<string, string> = {}
       if (token) headers['Authorization'] = `Bearer ${token}`
-      const response = await fetch(`${apiBase}/api/blog/request`, { method: 'POST', headers, body: formDataToSend })
+      const url = isEditMode && editPostId != null
+        ? `${apiBase}/api/blog/posts/${editPostId}/edit-request`
+        : `${apiBase}/api/blog/request`
+      const response = await fetch(url, { method: 'POST', headers, body: formDataToSend })
       if (response.ok) {
         setSubmitStatus('success')
-        draftIdRef.current = null; versionRef.current = 0; clearLocalDraft()
-        const token = localStorage.getItem('token')
-        if (token) { clearDraftSessionId(); fetch(`${apiBase}/api/blog/drafts/auto?session_id=${encodeURIComponent(sessionIdRef.current)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }).catch(() => {}) }
-        setTimeout(() => { window.location.hash = '#/user/blog' }, 2000)
-      } else { const errorData = await response.json(); setSubmitStatus('error'); setErrorMessage(errorData.message || 'Failed to submit blog request') }
+        if (isEditMode) {
+          setEditRevisionNotice(null)
+        } else {
+          draftIdRef.current = null; versionRef.current = 0; clearLocalDraft()
+          if (token) { clearDraftSessionId(); fetch(`${apiBase}/api/blog/drafts/auto?session_id=${encodeURIComponent(sessionIdRef.current)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }).catch(() => {}) }
+        }
+        setTimeout(() => {
+          window.location.hash = isEditMode ? '#/user/blog/my-blogs' : '#/user/blog'
+        }, 2000)
+      } else { const errorData = await response.json(); setSubmitStatus('error'); setErrorMessage(errorData.message || (isEditMode ? 'Failed to submit edits' : 'Failed to submit blog request')) }
     } catch { setSubmitStatus('error'); setErrorMessage('Network error. Please try again.') }
     finally { setIsSubmitting(false) }
+  }
+
+  if (isEditMode && editPostId != null && !editFetchDone) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-[rgb(75,151,201)]" />
+        <p className="mt-4 text-gray-600 text-sm">Loading post for editing…</p>
+      </div>
+    )
+  }
+
+  if (editLoadError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <p className="text-red-600 mb-4 text-center max-w-md">{editLoadError}</p>
+        <button
+          type="button"
+          onClick={() => { window.location.hash = '#/user/blog/my-blogs' }}
+          className="px-6 py-2 text-white rounded-lg"
+          style={{ backgroundColor: 'rgb(75,151,201)' }}
+        >
+          Back to My Blogs
+        </button>
+      </div>
+    )
   }
 
   if (submitStatus === 'success') {
@@ -1168,10 +1379,14 @@ export default function BlogRequestForm() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 text-center">
           <CheckCircle size={64} className="text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Request Submitted!</h2>
-          <p className="text-gray-600 mb-4">Your blog post request has been submitted successfully.</p>
+          <h2 className="text-2xl font-bold mb-2">{isEditMode ? 'Edits submitted for review' : 'Request Submitted!'}</h2>
+          <p className="text-gray-600 mb-4">
+            {isEditMode
+              ? 'Your changes were sent to the team for approval. The live post stays unchanged until they approve.'
+              : 'Your blog post request has been submitted successfully.'}
+          </p>
           <button onClick={goBack} className="px-6 py-2 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}>
-            Go Back to Blog
+            {isEditMode ? 'Back to My Blogs' : 'Go Back to Blog'}
           </button>
         </div>
       </div>
@@ -1261,7 +1476,7 @@ export default function BlogRequestForm() {
                 Preview
               </button>
               <button type="submit" form="blog-form" disabled={isSubmitting} className="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}>
-                Continue
+                {isEditMode ? 'Submit edits' : 'Continue'}
               </button>
             </div>
           </div>
@@ -1280,6 +1495,12 @@ export default function BlogRequestForm() {
                 <button type="button" onClick={handleLoadLatest} className="px-3 py-1.5 text-xs bg-amber-600 text-white rounded-lg hover:bg-amber-700">Load latest</button>
               </div>
             </div>
+          </div>
+        )}
+
+        {editRevisionNotice && (
+          <div className="flex-shrink-0 px-3 sm:px-6 py-2.5 bg-sky-50 border-b border-sky-200">
+            <p className="text-xs sm:text-sm text-sky-900">{editRevisionNotice}</p>
           </div>
         )}
 
@@ -1355,11 +1576,11 @@ export default function BlogRequestForm() {
 
               {/* Title */}
               <div className="title-scroll-wrapper overflow-x-auto overflow-y-hidden mb-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
-                <div ref={titleRef} contentEditable={!isSubmitting} onInput={() => titleRef.current && setFormData(prev => ({ ...prev, title: titleRef.current!.innerHTML }))} onFocus={updateToolbarState} onClick={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd && titleRef.current) { const payload = { ...fd, title: titleRef.current.innerHTML }; saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } }} className="title-editable w-full min-w-full text-2xl sm:text-4xl font-bold text-gray-900 border-none focus:ring-0 focus:outline-none bg-transparent outline-none" style={{ width: 'max-content', minWidth: '100%' }} data-placeholder="Title" suppressContentEditableWarning />
+                <div ref={titleRef} contentEditable={!isSubmitting} onInput={() => titleRef.current && setFormData(prev => ({ ...prev, title: titleRef.current!.innerHTML }))} onFocus={updateToolbarState} onClick={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd && titleRef.current) { const payload = { ...fd, title: titleRef.current.innerHTML }; if (!isEditMode) { saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } } }} className="title-editable w-full min-w-full text-2xl sm:text-4xl font-bold text-gray-900 border-none focus:ring-0 focus:outline-none bg-transparent outline-none" style={{ width: 'max-content', minWidth: '100%' }} data-placeholder="Title" suppressContentEditableWarning />
               </div>
 
               {/* Subtitle */}
-              <div ref={subtitleRef} contentEditable={!isSubmitting} onInput={() => subtitleRef.current && setFormData(prev => ({ ...prev, excerpt: subtitleRef.current!.innerHTML }))} onFocus={updateToolbarState} onClick={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd && subtitleRef.current) { const payload = { ...fd, excerpt: subtitleRef.current.innerHTML }; saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } }} className="w-full text-base sm:text-lg text-gray-500 border-none focus:ring-0 focus:outline-none resize-none mb-4 bg-transparent outline-none min-h-[2.5rem] sm:min-h-[3.5rem]" data-placeholder="Add a subtitle..." suppressContentEditableWarning />
+              <div ref={subtitleRef} contentEditable={!isSubmitting} onInput={() => subtitleRef.current && setFormData(prev => ({ ...prev, excerpt: subtitleRef.current!.innerHTML }))} onFocus={updateToolbarState} onClick={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd && subtitleRef.current) { const payload = { ...fd, excerpt: subtitleRef.current.innerHTML }; if (!isEditMode) { saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } } }} className="w-full text-base sm:text-lg text-gray-500 border-none focus:ring-0 focus:outline-none resize-none mb-4 bg-transparent outline-none min-h-[2.5rem] sm:min-h-[3.5rem]" data-placeholder="Add a subtitle..." suppressContentEditableWarning />
 
               {/* Categories */}
               <div ref={categoryPickerRef} className="relative flex flex-wrap items-center gap-1.5 sm:gap-2 mb-5 sm:mb-6">
@@ -1392,7 +1613,7 @@ export default function BlogRequestForm() {
                 {isEditorContentEmpty(formData.content) && (
                   <span className="absolute top-0 left-0 pt-1 text-sm sm:text-base text-gray-400 pointer-events-none select-none">Start writing..</span>
                 )}
-                <div ref={editorRef} contentEditable onInput={handleEditorInput} onKeyDown={handleEditorKeyDown} onFocus={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd) { const content = (editorRef.current?.innerHTML ?? fd.content) || ''; const payload = { ...fd, content }; saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } }} onClick={updateToolbarState} className="editor-content min-h-[40vh] sm:min-h-[500px] outline-none text-sm sm:text-base text-gray-800 w-full pt-1 pb-24 sm:pb-32" suppressContentEditableWarning />
+                <div ref={editorRef} contentEditable onInput={handleEditorInput} onKeyDown={handleEditorKeyDown} onFocus={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd) { const content = (editorRef.current?.innerHTML ?? fd.content) || ''; const payload = { ...fd, content }; if (!isEditMode) { saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } } }} onClick={updateToolbarState} className="editor-content min-h-[40vh] sm:min-h-[500px] outline-none text-sm sm:text-base text-gray-800 w-full pt-1 pb-24 sm:pb-32" suppressContentEditableWarning />
               </div>
             </div>
 
@@ -1405,7 +1626,10 @@ export default function BlogRequestForm() {
                   {/* Cover Image */}
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">
-                      Cover Image * <span className="text-xs font-normal text-gray-500">800×420px</span>
+                      Cover Image *{' '}
+                      <span className="text-xs font-normal text-gray-500">
+                        800×420px{isEditMode ? ' · keep current or replace' : ''}
+                      </span>
                     </label>
                     {formData.coverImage ? (
                       <div className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-50 aspect-video">
@@ -1416,6 +1640,16 @@ export default function BlogRequestForm() {
                           <button type="button" onClick={removeCoverImage} className="px-3 py-1.5 bg-red-500/90 text-white text-xs font-medium rounded hover:bg-red-500" disabled={isSubmitting}>Remove</button>
                         </div>
                         <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1 truncate">{formData.coverImage.name}</p>
+                      </div>
+                    ) : existingCoverUrl ? (
+                      <div className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-50 aspect-video">
+                        <img src={existingCoverUrl} alt="Current cover" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <input type="file" accept="image/*" onChange={handleCoverImageUpload} className="hidden" id="cover-image-replace-existing" disabled={isSubmitting} />
+                          <label htmlFor="cover-image-replace-existing" className="px-3 py-1.5 bg-white/90 text-gray-800 text-xs font-medium rounded cursor-pointer hover:bg-white">Replace</label>
+                          <button type="button" onClick={removeCoverImage} className="px-3 py-1.5 bg-red-500/90 text-white text-xs font-medium rounded hover:bg-red-500" disabled={isSubmitting}>Remove</button>
+                        </div>
+                        <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1">Current cover</p>
                       </div>
                     ) : (
                       <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[rgb(75,151,201)] hover:bg-[rgba(75,151,201,0.08)] transition-all group">
@@ -1441,6 +1675,16 @@ export default function BlogRequestForm() {
                           <button type="button" onClick={removeDetailImage} className="px-3 py-1.5 bg-red-500/90 text-white text-xs font-medium rounded hover:bg-red-500" disabled={isSubmitting}>Remove</button>
                         </div>
                         <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1 truncate">{formData.detailImage.name}</p>
+                      </div>
+                    ) : existingDetailUrl ? (
+                      <div className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-50 aspect-video">
+                        <img src={existingDetailUrl} alt="Current detail" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <input type="file" accept="image/*" onChange={handleDetailImageUpload} className="hidden" id="detail-image-replace-existing" disabled={isSubmitting} />
+                          <label htmlFor="detail-image-replace-existing" className="px-3 py-1.5 bg-white/90 text-gray-800 text-xs font-medium rounded cursor-pointer hover:bg-white">Replace</label>
+                          <button type="button" onClick={removeDetailImage} className="px-3 py-1.5 bg-red-500/90 text-white text-xs font-medium rounded hover:bg-red-500" disabled={isSubmitting}>Remove</button>
+                        </div>
+                        <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1">Current detail image</p>
                       </div>
                     ) : (
                       <label htmlFor="detail-image-upload" className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[rgb(75,151,201)] hover:bg-[rgba(75,151,201,0.08)] transition-all group">
@@ -1490,7 +1734,7 @@ export default function BlogRequestForm() {
                     <button type="button" onClick={goBack} className="px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm" disabled={isSubmitting}>
                       Cancel
                     </button>
-                    <button type="button" onClick={handleSaveDraft} disabled={isSubmitting || isSavingDraft} className="px-4 py-2.5 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }} onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)' }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}>
+                    <button type="button" onClick={handleSaveDraft} disabled={isSubmitting || isSavingDraft || isEditMode} className="px-4 py-2.5 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }} onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)' }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}>
                       {isSavingDraft ? <><div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(75,151,201)' }} />Saving...</> : <><FloppyDisk size={15} />Save Draft</>}
                     </button>
                     <button type="button" onClick={() => setShowSettingsModal(true)} className="col-span-2 sm:col-span-1 px-4 py-2.5 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium text-gray-700 text-sm">
