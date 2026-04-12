@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useToast } from '../components/ToastProvider'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { getApiBaseUrl } from '../utils/apiUrl'
@@ -76,6 +77,8 @@ export default function InventoryManagement() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [lowStockOnly, setLowStockOnly] = useState(false)
+  const [needsSkuOnly, setNeedsSkuOnly] = useState(false)
+  const [ensuringProductId, setEnsuringProductId] = useState<number | null>(null)
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set())
   const [editingStock, setEditingStock] = useState<{ productId: number; variantId: number; quantity: number } | null>(null)
   const [editingThreshold, setEditingThreshold] = useState<{ productId: number; variantId: number; threshold: number } | null>(null)
@@ -243,12 +246,44 @@ export default function InventoryManagement() {
     }
   }
 
+  const productsMissingSkuCount = useMemo(
+    () => products.filter((p) => !(p.variants && p.variants.length > 0)).length,
+    [products]
+  )
+
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    return products.filter((p) => {
       if (lowStockOnly && p.low_stock_variants_count === 0) return false
+      if (needsSkuOnly && (p.variants?.length ?? 0) > 0) return false
       return true
     })
-  }, [products, lowStockOnly])
+  }, [products, lowStockOnly, needsSkuOnly])
+
+  const expandAllRows = () => {
+    setExpandedProducts(new Set(filteredProducts.map((p) => p.product_id)))
+  }
+
+  const collapseAllRows = () => setExpandedProducts(new Set())
+
+  const ensureDefaultSku = async (productId: number) => {
+    try {
+      setEnsuringProductId(productId)
+      const res = await fetch(`${apiBase}/inventory/${productId}/ensure-default-variant`, {
+        method: 'POST',
+        headers: authHeaders,
+      })
+      const raw = await parseJsonOk(res)
+      if (raw.success === false) throw new Error((raw as any).error || 'Failed')
+      notify('success', 'Default SKU created. Set stock in the row below.')
+      setExpandedProducts((prev) => new Set(prev).add(productId))
+      await fetchProducts()
+      await fetchDashboard()
+    } catch (e: any) {
+      notify('error', e?.message || 'Could not create SKU')
+    } finally {
+      setEnsuringProductId(null)
+    }
+  }
 
   const formatAttributes = (attrs: any) => {
     if (!attrs || typeof attrs !== 'object') return 'N/A'
@@ -358,8 +393,47 @@ export default function InventoryManagement() {
           Inventory Management
         </h1>
         <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
-          View and manage stock levels for all products
+          Stock is tracked per SKU (variant). The catalog lists products; this screen adjusts quantities and replenishment.
         </p>
+      </div>
+
+      <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 space-y-3">
+        <p>
+          <strong className="text-slate-900">Why do I see “0 variants”?</strong> Inventory rows attach to{' '}
+          <strong>product variants</strong> (SKUs). If a product was created in the catalog but no variant/SKU was generated,
+          there is nothing to hold stock yet—use <strong>Create default SKU</strong> for a single-SKU product, or open{' '}
+          <strong>Product Variants</strong> to configure sizes/options and generate SKUs.
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-slate-500 text-xs uppercase tracking-wide">Shortcuts</span>
+          <Link
+            to="/admin/products"
+            className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-800 border border-slate-200 hover:bg-slate-100"
+          >
+            Products (add / edit catalog)
+          </Link>
+          <Link
+            to="/admin/product-variants"
+            className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-800 border border-slate-200 hover:bg-slate-100"
+          >
+            Product Variants (matrix SKUs)
+          </Link>
+          <Link
+            to="/admin/warehouses"
+            className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-800 border border-slate-200 hover:bg-slate-100"
+          >
+            Warehouses
+          </Link>
+        </div>
+        <details className="text-xs text-slate-600">
+          <summary className="cursor-pointer font-medium text-slate-700">What you can do on this page</summary>
+          <ul className="mt-2 list-disc pl-5 space-y-1">
+            <li>Set on-hand quantity, low-stock threshold, and ± adjustments per SKU</li>
+            <li>Replenishment: lead time, case pack, min reorder (used for suggested reorder)</li>
+            <li>30-day velocity, days of cover, health, suggested reorder (needs order history)</li>
+            <li>Export CSV, restock report, and stock change activity log</li>
+          </ul>
+        </details>
       </div>
 
       {/* Filters */}
@@ -382,6 +456,34 @@ export default function InventoryManagement() {
           />
           <span className="text-sm">Show low stock only</span>
         </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={needsSkuOnly}
+            onChange={(e) => setNeedsSkuOnly(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <span className="text-sm">
+            Missing SKU only
+            {productsMissingSkuCount > 0 && (
+              <span className="ml-1 text-amber-700 font-medium">({productsMissingSkuCount})</span>
+            )}
+          </span>
+        </label>
+        <button
+          type="button"
+          onClick={expandAllRows}
+          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+        >
+          Expand all
+        </button>
+        <button
+          type="button"
+          onClick={collapseAllRows}
+          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+        >
+          Collapse all
+        </button>
         <button
           onClick={() => {
             fetchProducts()
@@ -417,6 +519,11 @@ export default function InventoryManagement() {
 
       <p className="text-xs text-gray-500 mb-4">
         Metrics below are store-wide. Velocity uses order history (last {dashboard?.velocity_window_days ?? 30} days). Reorder suggestions use lead time + {dashboard?.safety_stock_days ?? 7} days safety stock (Amazon-style cover period).
+        {dashboard != null && dashboard.sku_count === 0 && products.length > 0 && (
+          <span className="block mt-1 text-amber-800">
+            No SKUs yet—create a default SKU per product below, or configure variants under Product Variants.
+          </span>
+        )}
       </p>
 
       {/* Summary Stats */}
@@ -461,43 +568,70 @@ export default function InventoryManagement() {
           {filteredProducts.map((product) => (
             <div key={product.product_id} className="bg-white rounded-lg shadow border overflow-hidden">
               {/* Product Header */}
-              <div 
-                className="p-4 cursor-pointer hover:bg-gray-50 flex items-center justify-between"
-                onClick={() => toggleProduct(product.product_id)}
-              >
-                <div className="flex items-center gap-4 flex-1">
+              <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between hover:bg-gray-50/80">
+                <div
+                  className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
+                  onClick={() => toggleProduct(product.product_id)}
+                >
                   {product.list_image && (
-                    <img 
-                      src={product.list_image} 
+                    <img
+                      src={product.list_image}
                       alt={product.title}
-                      className="w-16 h-16 object-cover rounded"
+                      className="w-16 h-16 object-cover rounded flex-shrink-0"
                     />
                   )}
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg">{product.title}</h3>
-                    <div className="text-sm text-gray-600 mt-1">
-                      <span className="mr-4">Stock: {product.total_available.toLocaleString()} available</span>
-                      <span className="mr-4">Total: {product.total_stock.toLocaleString()}</span>
+                    <div className="text-sm text-gray-600 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span>Stock: {product.total_available.toLocaleString()} available</span>
+                      <span>Total on hand: {product.total_stock.toLocaleString()}</span>
                       {product.low_stock_variants_count > 0 && (
                         <span className="text-orange-600 font-medium">
-                          {product.low_stock_variants_count} variant{product.low_stock_variants_count !== 1 ? 's' : ''} low stock
+                          {product.low_stock_variants_count} SKU{product.low_stock_variants_count !== 1 ? 's' : ''} low
                         </span>
                       )}
                     </div>
                   </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 text-gray-500">
+                    <span className="text-sm">
+                      {product.variants?.length || 0} SKU{product.variants?.length !== 1 ? 's' : ''}
+                    </span>
+                    <svg
+                      className={`w-5 h-5 transition-transform ${expandedProducts.has(product.product_id) ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">
-                    {product.variants?.length || 0} variant{product.variants?.length !== 1 ? 's' : ''}
-                  </span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${expandedProducts.has(product.product_id) ? 'rotate-180' : ''}`}
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div
+                  className="flex flex-wrap items-center gap-2 justify-end sm:pl-2 border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Link
+                    to="/admin/products"
+                    className="text-xs px-2 py-1 rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                    Catalog
+                  </Link>
+                  <Link
+                    to={`/admin/product-variants?product=${product.product_id}`}
+                    className="text-xs px-2 py-1 rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Variants
+                  </Link>
+                  {!(product.variants && product.variants.length > 0) && (
+                    <button
+                      type="button"
+                      disabled={ensuringProductId === product.product_id}
+                      onClick={() => ensureDefaultSku(product.product_id)}
+                      className="text-xs px-3 py-1.5 rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+                    >
+                      {ensuringProductId === product.product_id ? 'Creating…' : 'Create default SKU'}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -611,8 +745,27 @@ export default function InventoryManagement() {
                       </table>
                     </div>
                   ) : (
-                    <div className="p-4 text-center text-gray-500">
-                      No variants found for this product
+                    <div className="p-6 text-center space-y-3 bg-amber-50/50 border-t border-amber-100">
+                      <p className="text-gray-800 font-medium">No SKUs for this product yet</p>
+                      <p className="text-sm text-gray-600 max-w-lg mx-auto">
+                        Stock is stored per variant. Create one default SKU for simple products, or define options under Product Variants.
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <button
+                          type="button"
+                          disabled={ensuringProductId === product.product_id}
+                          onClick={() => ensureDefaultSku(product.product_id)}
+                          className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700 disabled:opacity-50"
+                        >
+                          {ensuringProductId === product.product_id ? 'Creating…' : 'Create default SKU'}
+                        </button>
+                        <Link
+                          to={`/admin/product-variants?product=${product.product_id}`}
+                          className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 hover:bg-gray-50"
+                        >
+                          Open Product Variants
+                        </Link>
+                      </div>
                     </div>
                   )}
                 </div>

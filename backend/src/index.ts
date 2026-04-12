@@ -1033,6 +1033,9 @@ app.get('/api/inventory/export.csv', (req, res) => inventoryRoutes.exportInvento
 app.get('/api/inventory/logs', (req, res) => inventoryRoutes.listInventoryLogs(pool, req, res))
 app.get('/api/inventory/low-stock', (req, res) => inventoryRoutes.listLowStock(pool, req, res))
 app.get('/api/inventory/all', (req, res) => inventoryRoutes.getAllProductsWithInventory(pool, req, res))
+app.post('/api/inventory/:productId/ensure-default-variant', (req, res) =>
+  inventoryRoutes.ensureDefaultVariant(pool, req, res)
+)
 app.get('/api/inventory/:productId/summary', (req, res) => inventoryRoutes.getInventorySummary(pool, req, res))
 app.patch('/api/inventory/:productId/:variantId/settings', (req, res) => inventoryRoutes.updateInventorySettings(pool, req, res))
 app.post('/api/inventory/:productId/:variantId/adjust', (req, res) => inventoryRoutes.adjustStock(pool, req, res))

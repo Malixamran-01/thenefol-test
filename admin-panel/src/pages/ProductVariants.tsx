@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 interface VariantOption {
   name: string
@@ -16,11 +17,17 @@ interface Variant {
 }
 
 export default function ProductVariants() {
+  const [searchParams] = useSearchParams()
   const [options, setOptions] = useState<VariantOption[]>([])
   const [variants, setVariants] = useState<Variant[]>([])
-  const [productId, setProductId] = useState<string>('')
+  const [productId, setProductId] = useState<string>(() => searchParams.get('product')?.trim() || '')
   const [newOption, setNewOption] = useState({ name: '', values: '' })
   const [lowThresholds, setLowThresholds] = useState<Record<number, string>>({})
+
+  useEffect(() => {
+    const q = searchParams.get('product')?.trim()
+    if (q) setProductId(q)
+  }, [searchParams])
 
   useEffect(() => {
     const load = async () => {

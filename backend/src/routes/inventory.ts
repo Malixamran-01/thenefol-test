@@ -490,3 +490,61 @@ export async function listInventoryLogs(pool: Pool, req: Request, res: Response)
     sendError(res, 500, 'Failed to list inventory logs', err)
   }
 }
+
+/**
+ * Products need at least one product_variants row for stock to exist.
+ * Creates a single default SKU + inventory row for simple (non-matrix) products.
+ */
+export async function ensureDefaultVariant(pool: Pool, req: Request, res: Response) {
+  try {
+    const { productId } = req.params as { productId?: string }
+    const pid = parseInt(String(productId), 10)
+    if (!Number.isFinite(pid) || pid <= 0) {
+      return sendError(res, 400, 'Invalid product id')
+    }
+
+    const { rows: pRows } = await pool.query('select id, slug, title from products where id = $1', [pid])
+    if (pRows.length === 0) return sendError(res, 404, 'Product not found')
+
+    const { rows: cRows } = await pool.query(
+      'select count(*)::int as c from product_variants where product_id = $1',
+      [pid]
+    )
+    if ((cRows[0]?.c ?? 0) > 0) {
+      return sendError(
+        res,
+        400,
+        'This product already has SKUs. Use Product Variants to add sizes/options, or manage existing stock below.'
+      )
+    }
+
+    const slugPart = String(pRows[0].slug || pRows[0].title || `product-${pid}`)
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48)
+    const skuBase = slugPart || `P${pid}`
+    const sku = `NEF-${pid}-${skuBase.toUpperCase()}`.slice(0, 120)
+
+    const attrs = { Default: 'Standard' }
+    const { rows: vRows } = await pool.query(
+      `insert into product_variants (product_id, sku, attributes, is_active)
+       values ($1, $2, $3::jsonb, true)
+       returning *`,
+      [pid, sku, JSON.stringify(attrs)]
+    )
+
+    await pool.query(
+      `insert into inventory (product_id, variant_id, quantity, reserved, low_stock_threshold)
+       values ($1, $2, 0, 0, 0)
+       on conflict (product_id, variant_id) do nothing`,
+      [pid, vRows[0].id]
+    )
+
+    jsonSuccess(res, vRows[0], 201)
+  } catch (err: any) {
+    if (err?.code === '23505') {
+      return sendError(res, 409, 'SKU already exists. Edit the variant in Product Variants or pick a unique SKU.')
+    }
+    sendError(res, 500, 'Failed to create default SKU', err)
+  }
+}
