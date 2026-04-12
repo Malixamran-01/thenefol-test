@@ -75,6 +75,20 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_inventory_variant on inventory(variant_id);
     create index if not exists idx_inventory_logs_created_at on inventory_logs(created_at);
     
+    -- Replenishment fields (Amazon-style: lead time, case pack, min reorder)
+    do $$ 
+    begin
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'inventory' and column_name = 'lead_time_days') then
+        alter table inventory add column lead_time_days integer not null default 14;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'inventory' and column_name = 'case_pack_quantity') then
+        alter table inventory add column case_pack_quantity integer not null default 1;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'inventory' and column_name = 'min_reorder_quantity') then
+        alter table inventory add column min_reorder_quantity integer not null default 1;
+      end if;
+    end $$;
+    
     create table if not exists users (
       id serial primary key,
       unique_user_id text unique,

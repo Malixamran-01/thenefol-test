@@ -143,7 +143,6 @@ export default function BlogRequestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [editPostId, setEditPostId] = useState<number | null>(() => parseEditIdFromHash())
   const [editFetchDone, setEditFetchDone] = useState(() => parseEditIdFromHash() === null)
   const [editLoadError, setEditLoadError] = useState('')
@@ -151,7 +150,6 @@ export default function BlogRequestForm() {
   const [existingCoverUrl, setExistingCoverUrl] = useState<string | null>(null)
   const [existingDetailUrl, setExistingDetailUrl] = useState<string | null>(null)
   const isEditMode = editPostId != null
-  const [showTermsModal, setShowTermsModal] = useState(false)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkData, setLinkData] = useState<LinkModalData>({ text: '', url: '' })
   const [showYouTubeModal, setShowYouTubeModal] = useState(false)
@@ -1282,15 +1280,6 @@ export default function BlogRequestForm() {
     const excerptText = getTextFromHtml(subtitleRef.current?.innerHTML ?? formData.excerpt)
     if (!titleText) { setSubmitStatus('error'); setErrorMessage('Please add a title.'); return }
     if (!excerptText) { setSubmitStatus('error'); setErrorMessage('Please add a subtitle.'); return }
-    if (!agreedToTerms) {
-      setSubmitStatus('error')
-      setErrorMessage(
-        isEditMode
-          ? 'Please confirm the terms before submitting your edits for review.'
-          : 'Please agree to the terms and conditions before submitting.'
-      )
-      return
-    }
     if (!formData.coverImage && !existingCoverUrl) {
       setSubmitStatus('error')
       setErrorMessage(
@@ -1299,6 +1288,11 @@ export default function BlogRequestForm() {
       return
     }
     if (formData.author_id == null) { setSubmitStatus('error'); setErrorMessage('Please sign in to submit a blog post.'); return }
+    const submitCarefullyMessage =
+      'This will be sent for review. If you need changes later, you will have to submit a new edit request—so review everything carefully and submit only when ready.\n\nContinue with submission?'
+    if (!window.confirm(submitCarefullyMessage)) {
+      return
+    }
     setIsSubmitting(true); setSubmitStatus('idle'); setErrorMessage('')
     try {
       const apiBase = getApiBase()
@@ -1713,15 +1707,6 @@ export default function BlogRequestForm() {
                   </div>
                 )}
 
-                {/* Terms
-                <div className="flex items-start gap-3 p-3 sm:p-4 bg-white border border-gray-200 rounded-lg">
-                  <input type="checkbox" id="terms" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="mt-0.5 w-4 h-4 rounded focus:ring-2 focus:ring-[rgb(75,151,201)] flex-shrink-0" style={{ accentColor: 'rgb(75,151,201)' }} />
-                  <label htmlFor="terms" className="text-sm text-gray-700">
-                    I agree to the{' '}
-                    <button type="button" onClick={() => setShowTermsModal(true)} className="underline font-medium hover:text-[rgb(60,120,160)]" style={{ color: 'rgb(75,151,201)' }}>Terms & Conditions</button>
-                  </label>
-                </div> */}
-
                 {/* Action Buttons */}
                 <div className="pt-4 border-t space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
                   {/* Icon buttons */}
@@ -1888,27 +1873,6 @@ export default function BlogRequestForm() {
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-3 text-center">Auto draft expires in 24 hours.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Terms Modal */}
-      {showTermsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[70] p-0 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-lg p-5 sm:p-6 w-full sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-            <h3 className="text-base sm:text-lg font-semibold mb-4">Terms & Conditions</h3>
-            <div className="prose prose-sm max-w-none text-sm">
-              <p>By submitting a blog post request, you agree to the following terms:</p>
-              <ul>
-                <li>Your content must be original and not violate any copyrights</li>
-                <li>We reserve the right to edit or reject submissions</li>
-                <li>Published content may be used for promotional purposes</li>
-                <li>You retain ownership of your original content</li>
-              </ul>
-            </div>
-            <div className="flex justify-end mt-5">
-              <button onClick={() => setShowTermsModal(false)} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'rgb(75,151,201)' }}>Close</button>
-            </div>
           </div>
         </div>
       )}

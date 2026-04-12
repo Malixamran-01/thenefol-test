@@ -1027,11 +1027,16 @@ app.post('/api/products/:id/variants', (req, res) => variantRoutes.createVariant
 app.put('/api/variants/:variantId', (req, res) => variantRoutes.updateVariant(pool, req, res))
 app.delete('/api/variants/:variantId', (req, res) => variantRoutes.deleteVariant(pool, req, res))
 
-app.get('/api/inventory/:productId/summary', (req, res) => inventoryRoutes.getInventorySummary(pool, req, res))
-app.post('/api/inventory/:productId/:variantId/adjust', (req, res) => inventoryRoutes.adjustStock(pool, req, res))
-app.post('/api/inventory/:productId/:variantId/low-threshold', (req, res) => inventoryRoutes.setLowStockThreshold(pool, req, res))
+app.get('/api/inventory/dashboard', (req, res) => inventoryRoutes.getInventoryDashboard(pool, req, res))
+app.get('/api/inventory/restock-report', (req, res) => inventoryRoutes.getRestockReport(pool, req, res))
+app.get('/api/inventory/export.csv', (req, res) => inventoryRoutes.exportInventoryCsv(pool, req, res))
+app.get('/api/inventory/logs', (req, res) => inventoryRoutes.listInventoryLogs(pool, req, res))
 app.get('/api/inventory/low-stock', (req, res) => inventoryRoutes.listLowStock(pool, req, res))
 app.get('/api/inventory/all', (req, res) => inventoryRoutes.getAllProductsWithInventory(pool, req, res))
+app.get('/api/inventory/:productId/summary', (req, res) => inventoryRoutes.getInventorySummary(pool, req, res))
+app.patch('/api/inventory/:productId/:variantId/settings', (req, res) => inventoryRoutes.updateInventorySettings(pool, req, res))
+app.post('/api/inventory/:productId/:variantId/adjust', (req, res) => inventoryRoutes.adjustStock(pool, req, res))
+app.post('/api/inventory/:productId/:variantId/low-threshold', (req, res) => inventoryRoutes.setLowStockThreshold(pool, req, res))
 app.put('/api/inventory/:productId/:variantId/quantity', (req, res) => inventoryRoutes.setStockQuantity(pool, req, res))
 
 // ==================== SHIPROCKET ====================
