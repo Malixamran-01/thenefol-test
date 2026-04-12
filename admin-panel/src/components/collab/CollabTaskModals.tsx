@@ -18,6 +18,27 @@ const POST_FORMATS: { key: string; label: string }[] = [
 
 type AuthHeaders = Record<string, string>
 
+function fmtMoney(v: unknown, currency: unknown): string {
+  if (v == null || v === '') return '—'
+  const n = Number(v)
+  if (Number.isNaN(n)) return '—'
+  const c = (currency && String(currency).trim()) || 'INR'
+  try {
+    return `${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${c}`
+  } catch {
+    return `${n} ${c}`
+  }
+}
+
+function formatPayMethod(m: string): string {
+  const map: Record<string, string> = {
+    coins_adjustment: 'Nefol coins (loyalty balance)',
+    external_transfer: 'Paid externally (record only)',
+    recorded_only: 'Recorded only (bookkeeping)',
+  }
+  return map[m] || (m ? m.replace(/_/g, ' ') : '—')
+}
+
 export function AssignCollabTaskModal({
   open,
   onClose,
@@ -734,7 +755,7 @@ export function ReviewCollabTaskModal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
       className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/50 p-4"
     >
-      <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <h3 className="text-lg font-semibold text-gray-900">Review task</h3>
           <button type="button" onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100">
@@ -754,6 +775,94 @@ export function ReviewCollabTaskModal({
               <p className="text-xs text-gray-500">
                 Status: <span className="font-medium text-gray-800">{st}</span> · Creator: {String(task.creator_name || task.creator_email || '—')}
               </p>
+
+              <div className="rounded-xl border border-gray-200 bg-slate-50/90 p-4 space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600">Task timeline &amp; money</p>
+                <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                  <div>
+                    <span className="text-gray-500">Assigned</span>
+                    <p className="font-medium text-gray-900">
+                      {task.assigned_at ? new Date(String(task.assigned_at)).toLocaleString() : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Due</span>
+                    <p className="font-medium text-gray-900">
+                      {task.due_at ? new Date(String(task.due_at)).toLocaleString() : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Submitted</span>
+                    <p className="font-medium text-gray-900">
+                      {task.submitted_at ? new Date(String(task.submitted_at)).toLocaleString() : '—'}
+                    </p>
+                  </div>
+                  {task.assigned_by_label ? (
+                    <div className="sm:col-span-2">
+                      <span className="text-gray-500">Assigned by</span>
+                      <p className="font-medium text-gray-900">{String(task.assigned_by_label)}</p>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="border-t border-gray-200 pt-3 space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600">Compensation (when assigned)</p>
+                  <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div>
+                      <span className="text-gray-500 block">Creator fee</span>
+                      <span className="font-semibold text-gray-900">{fmtMoney(task.creator_fee_amount, task.currency)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Reimbursement budget</span>
+                      <span className="font-semibold text-gray-900">{fmtMoney(task.reimbursement_budget, task.currency)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {(task.paid_at || st === 'paid') && (
+                  <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-900">Recorded payout to creator</p>
+                    <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                      <div>
+                        <span className="text-gray-600 block">Amount paid</span>
+                        <span className="text-lg font-bold text-emerald-900">
+                          {fmtMoney(task.paid_amount, task.paid_currency || task.currency)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 block">Paid at</span>
+                        <span className="font-medium text-gray-900">
+                          {task.paid_at ? new Date(String(task.paid_at)).toLocaleString() : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 block">Method</span>
+                        <span className="font-medium text-gray-900">{formatPayMethod(String(task.paid_method || ''))}</span>
+                      </div>
+                      {task.coins_credited != null && Number(task.coins_credited) > 0 ? (
+                        <div>
+                          <span className="text-gray-600 block">Coins credited</span>
+                          <span className="font-medium text-gray-900">{String(task.coins_credited)}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    {task.paid_notes ? (
+                      <div>
+                        <span className="mb-0.5 block text-[11px] font-semibold uppercase text-emerald-900/80">Payout notes</span>
+                        <p className="whitespace-pre-wrap text-sm text-gray-800">{String(task.paid_notes)}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              {st === 'paid' && internalNotes.trim() ? (
+                <div className="rounded-lg border border-gray-200 bg-white p-3">
+                  <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-gray-500">Internal team notes</p>
+                  <p className="whitespace-pre-wrap text-sm text-gray-800">{internalNotes}</p>
+                </div>
+              ) : null}
+
               {task.collab_order_returned_at ? (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
                   <span className="font-bold">Linked order returned / cancelled</span> before payout (
@@ -807,7 +916,12 @@ export function ReviewCollabTaskModal({
                   </button>
                 </div>
               ) : null}
-              {task.instructions ? <p className="text-gray-600 whitespace-pre-wrap">{String(task.instructions)}</p> : null}
+              {task.instructions ? (
+                <div className="space-y-1">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Admin brief / instructions</p>
+                  <p className="whitespace-pre-wrap text-sm text-gray-700">{String(task.instructions)}</p>
+                </div>
+              ) : null}
               {task.task_options && typeof task.task_options === 'object' && task.task_options !== null && (
                 <div className="rounded-lg border border-gray-100 bg-white p-3 text-xs text-gray-700 space-y-1">
                   <p className="font-bold text-gray-500 uppercase tracking-wide">Brief requirements</p>
