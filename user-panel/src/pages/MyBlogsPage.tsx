@@ -204,10 +204,10 @@ export default function MyBlogsPage() {
                   key={post.id}
                   className="rounded-xl bg-white border border-gray-200/80 overflow-hidden hover:border-gray-300/80 transition-colors"
                 >
-                  <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 items-stretch">
+                  <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 items-center">
                     <a
                       href={`#/user/blog/${post.id}`}
-                      className="flex flex-1 gap-4 min-w-0"
+                      className="flex flex-1 gap-4 min-w-0 min-h-0"
                     >
                       <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100">
                         {post.cover_image ? (
@@ -256,22 +256,28 @@ export default function MyBlogsPage() {
                         )}
                       </div>
                     </a>
-                    <div className="flex flex-col items-end justify-center gap-2 shrink-0">
+                    <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
                       {post.status === 'approved' && (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
                             window.location.hash = `#/user/blog/request?edit=${post.id}`
                           }}
-                          className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-white"
+                          className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full text-white transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1B4965]"
                           style={{ backgroundColor: '#1B4965' }}
+                          aria-label="Edit post"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
+                          <Pencil className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2} />
                         </button>
                       )}
-                      <a href={`#/user/blog/${post.id}`} className="text-gray-400 hover:text-gray-600" aria-label="View post">
-                        <Eye className="h-4 w-4" />
+                      <a
+                        href={`#/user/blog/${post.id}`}
+                        className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        aria-label="View post"
+                      >
+                        <Eye className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
                       </a>
                     </div>
                   </div>
