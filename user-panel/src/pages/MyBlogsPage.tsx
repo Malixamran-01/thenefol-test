@@ -256,7 +256,7 @@ export default function MyBlogsPage() {
                         )}
                       </div>
                     </a>
-                    <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+                    <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
                       {post.status === 'approved' && (
                         <button
                           type="button"
@@ -265,19 +265,18 @@ export default function MyBlogsPage() {
                             e.stopPropagation()
                             window.location.hash = `#/user/blog/request?edit=${post.id}`
                           }}
-                          className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full text-white transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1B4965]"
-                          style={{ backgroundColor: '#1B4965' }}
+                          className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-0"
                           aria-label="Edit post"
                         >
-                          <Pencil className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2} />
+                          <Pencil className="h-4 w-4" strokeWidth={1.75} />
                         </button>
                       )}
                       <a
                         href={`#/user/blog/${post.id}`}
-                        className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-0"
                         aria-label="View post"
                       >
-                        <Eye className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+                        <Eye className="h-4 w-4" strokeWidth={1.75} />
                       </a>
                     </div>
                   </div>
