@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link } from 'react-router-dom'
 import { useToast } from '../components/ToastProvider'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -75,31 +76,54 @@ type InventoryLogRow = {
   sku?: string | null
 }
 
+type InventoryModal =
+  | { type: null; data: null }
+  | {
+      type: 'stock'
+      data: { productId: number; variantId: number; quantity: number; step: 'form' | 'confirm' }
+    }
+  | {
+      type: 'threshold'
+      data: { productId: number; variantId: number; threshold: number; step: 'form' | 'confirm' }
+    }
+  | {
+      type: 'replenishment'
+      data: {
+        productId: number
+        variantId: number
+        lead_time_days: number
+        case_pack_quantity: number
+        min_reorder_quantity: number
+      }
+    }
+  | { type: 'restock'; data: null }
+  | { type: 'logs'; data: null }
+
+type SelectionKey = `${number}-${number}`
+
 export default function InventoryManagement() {
   const { notify } = useToast()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [lowStockOnly, setLowStockOnly] = useState(false)
   const [needsSkuOnly, setNeedsSkuOnly] = useState(false)
+  const [velocityFilter, setVelocityFilter] = useState<'all' | 'critical' | 'high' | 'no_sales'>('all')
   const [ensuringProductId, setEnsuringProductId] = useState<number | null>(null)
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set())
-  const [editingStock, setEditingStock] = useState<{ productId: number; variantId: number; quantity: number } | null>(null)
-  const [editingThreshold, setEditingThreshold] = useState<{ productId: number; variantId: number; threshold: number } | null>(null)
-  const [confirmUpdate, setConfirmUpdate] = useState(false)
+  const [modal, setModal] = useState<InventoryModal>({ type: null, data: null })
   const [dashboard, setDashboard] = useState<InventoryDashboard | null>(null)
-  const [editingReplenishment, setEditingReplenishment] = useState<{
-    productId: number
-    variantId: number
-    lead_time_days: number
-    case_pack_quantity: number
-    min_reorder_quantity: number
-  } | null>(null)
-  const [restockOpen, setRestockOpen] = useState(false)
   const [restockRows, setRestockRows] = useState<RestockRow[]>([])
   const [restockLoading, setRestockLoading] = useState(false)
-  const [logsOpen, setLogsOpen] = useState(false)
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLogRow[]>([])
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set())
+  const [selectedSku, setSelectedSku] = useState<{
+    key: SelectionKey
+    product: Product
+    variant: Variant
+  } | null>(null)
+  const closeModal = useCallback(() => setModal({ type: null, data: null }), [])
 
   // Use centralized API URL utility that respects VITE_API_URL
   const apiBase = getApiBaseUrl()
@@ -122,11 +146,11 @@ export default function InventoryManagement() {
     return data
   }
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
-      if (search) params.set('search', search)
+      if (debouncedSearch) params.set('search', debouncedSearch)
       if (lowStockOnly) params.set('lowStockOnly', 'true')
       
       const res = await fetch(`${apiBase}/inventory/all?${params.toString()}`, {
@@ -151,9 +175,9 @@ export default function InventoryManagement() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiBase, authHeaders, debouncedSearch, lowStockOnly, notify])
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
       const res = await fetch(`${apiBase}/inventory/dashboard`, { headers: authHeaders })
       const raw = await parseJsonOk(res)
@@ -161,12 +185,25 @@ export default function InventoryManagement() {
     } catch (e) {
       console.warn('Dashboard fetch failed', e)
     }
-  }
+  }, [apiBase, authHeaders])
+
+  const refreshAll = useCallback(async () => {
+    await fetchProducts()
+    await fetchDashboard()
+  }, [fetchProducts, fetchDashboard])
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedSearch(search), 400)
+    return () => window.clearTimeout(t)
+  }, [search])
 
   useEffect(() => {
     fetchProducts()
+  }, [debouncedSearch, lowStockOnly, fetchProducts])
+
+  useEffect(() => {
     fetchDashboard()
-  }, [search, lowStockOnly])
+  }, [fetchDashboard])
 
   const toggleProduct = (productId: number) => {
     const newExpanded = new Set(expandedProducts)
@@ -179,54 +216,50 @@ export default function InventoryManagement() {
   }
 
   const handleStockEdit = (productId: number, variantId: number, currentQuantity: number) => {
-    setEditingStock({ productId, variantId, quantity: currentQuantity })
+    setModal({ type: 'stock', data: { productId, variantId, quantity: currentQuantity, step: 'form' } })
   }
 
   const handleThresholdEdit = (productId: number, variantId: number, currentThreshold: number) => {
-    setEditingThreshold({ productId, variantId, threshold: currentThreshold })
+    setModal({ type: 'threshold', data: { productId, variantId, threshold: currentThreshold, step: 'form' } })
   }
 
   const updateStock = async () => {
-    if (!editingStock) return
-    
+    if (modal.type !== 'stock' || modal.data.step !== 'confirm') return
+
     try {
-      const { productId, variantId, quantity } = editingStock
+      const { productId, variantId, quantity } = modal.data
       const res = await fetch(`${apiBase}/inventory/${productId}/${variantId}/quantity`, {
         method: 'PUT',
         headers: authHeaders,
         body: JSON.stringify({ quantity, reason: 'manual_update' })
       })
-      
+
       const data = await parseJsonOk(res)
       if (data.success === false) throw new Error(data.error || 'Failed to update stock')
       notify('success', 'Stock updated successfully')
-      setEditingStock(null)
-      setConfirmUpdate(false)
-      fetchProducts()
-      fetchDashboard()
+      closeModal()
+      await refreshAll()
     } catch (err: any) {
       notify('error', err?.message || 'Failed to update stock')
     }
   }
 
   const updateThreshold = async () => {
-    if (!editingThreshold) return
-    
+    if (modal.type !== 'threshold' || modal.data.step !== 'confirm') return
+
     try {
-      const { productId, variantId, threshold } = editingThreshold
+      const { productId, variantId, threshold } = modal.data
       const res = await fetch(`${apiBase}/inventory/${productId}/${variantId}/low-threshold`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ threshold })
       })
-      
+
       const data = await parseJsonOk(res)
       if (data.success === false) throw new Error(data.error || 'Failed to update threshold')
       notify('success', 'Low stock threshold updated')
-      setEditingThreshold(null)
-      setConfirmUpdate(false)
-      fetchProducts()
-      fetchDashboard()
+      closeModal()
+      await refreshAll()
     } catch (err: any) {
       notify('error', err?.message || 'Failed to update threshold')
     }
@@ -239,12 +272,11 @@ export default function InventoryManagement() {
         headers: authHeaders,
         body: JSON.stringify({ delta, reason: 'manual_adjustment' })
       })
-      
+
       const data = await parseJsonOk(res)
       if (data.success === false) throw new Error(data.error || 'Failed to adjust stock')
       notify('success', `Stock ${delta > 0 ? 'increased' : 'decreased'} by ${Math.abs(delta)}`)
-      fetchProducts()
-      fetchDashboard()
+      await refreshAll()
     } catch (err: any) {
       notify('error', err?.message || 'Failed to adjust stock')
     }
@@ -259,9 +291,19 @@ export default function InventoryManagement() {
     return products.filter((p) => {
       if (lowStockOnly && p.low_stock_variants_count === 0) return false
       if (needsSkuOnly && (p.variants?.length ?? 0) > 0) return false
+      if (velocityFilter !== 'all' && (p.variants?.length ?? 0) > 0) {
+        const match = p.variants!.some((v) => {
+          const h = (v.inventory_health || '').toLowerCase()
+          if (velocityFilter === 'critical') return h === 'critical' || h === 'critical_velocity'
+          if (velocityFilter === 'high') return (v.daily_velocity ?? 0) > 0 && h !== 'no_recent_sales'
+          if (velocityFilter === 'no_sales') return h === 'no_recent_sales' || (v.sold_30d ?? 0) === 0
+          return true
+        })
+        if (!match) return false
+      }
       return true
     })
-  }, [products, lowStockOnly, needsSkuOnly])
+  }, [products, lowStockOnly, needsSkuOnly, velocityFilter])
 
   const expandAllRows = () => {
     setExpandedProducts(new Set(filteredProducts.map((p) => p.product_id)))
@@ -286,8 +328,7 @@ export default function InventoryManagement() {
           : 'Inventory SKU created. Set quantities below.'
       )
       setExpandedProducts((prev) => new Set(prev).add(productId))
-      await fetchProducts()
-      await fetchDashboard()
+      await refreshAll()
     } catch (e: any) {
       notify('error', e?.message || 'Could not create SKU')
     } finally {
@@ -336,7 +377,7 @@ export default function InventoryManagement() {
   }
 
   const openRestockReport = async () => {
-    setRestockOpen(true)
+    setModal({ type: 'restock', data: null })
     setRestockLoading(true)
     try {
       const res = await fetch(`${apiBase}/inventory/restock-report`, { headers: authHeaders })
@@ -351,7 +392,7 @@ export default function InventoryManagement() {
   }
 
   const openActivityLog = async () => {
-    setLogsOpen(true)
+    setModal({ type: 'logs', data: null })
     try {
       const res = await fetch(`${apiBase}/inventory/logs?limit=40`, { headers: authHeaders })
       const raw = await parseJsonOk(res)
@@ -363,9 +404,9 @@ export default function InventoryManagement() {
   }
 
   const saveReplenishmentSettings = async () => {
-    if (!editingReplenishment) return
+    if (modal.type !== 'replenishment') return
     try {
-      const { productId, variantId, lead_time_days, case_pack_quantity, min_reorder_quantity } = editingReplenishment
+      const { productId, variantId, lead_time_days, case_pack_quantity, min_reorder_quantity } = modal.data
       const res = await fetch(`${apiBase}/inventory/${productId}/${variantId}/settings`, {
         method: 'PATCH',
         headers: authHeaders,
@@ -374,12 +415,114 @@ export default function InventoryManagement() {
       const data = await parseJsonOk(res)
       if (data.success === false) throw new Error(data.error || 'Failed to save')
       notify('success', 'Replenishment settings saved')
-      setEditingReplenishment(null)
-      fetchProducts()
-      fetchDashboard()
+      closeModal()
+      await refreshAll()
     } catch (e: any) {
       notify('error', e?.message || 'Failed to save settings')
     }
+  }
+
+  const productListScrollRef = useRef<HTMLDivElement>(null)
+  const productVirtualizer = useVirtualizer({
+    count: filteredProducts.length,
+    getScrollElement: () => productListScrollRef.current,
+    estimateSize: () => 200,
+    overscan: 8,
+  })
+
+  const allVisibleProductIds = useMemo(() => filteredProducts.map((p) => p.product_id), [filteredProducts])
+
+  const toggleSelectAllVisible = () => {
+    setSelectedProductIds((prev) => {
+      const allSelected =
+        allVisibleProductIds.length > 0 && allVisibleProductIds.every((id) => prev.has(id))
+      if (allSelected) return new Set()
+      return new Set(allVisibleProductIds)
+    })
+  }
+
+  const exportSelectedProductsCsv = () => {
+    if (selectedProductIds.size === 0) {
+      notify('info', 'Select at least one product')
+      return
+    }
+    const rows: string[][] = [['product_id', 'title', 'catalog_sku', 'catalog_hsn', 'variant_sku', 'hsn', 'available', 'reserved', 'low_threshold']]
+    for (const id of selectedProductIds) {
+      const p = products.find((x) => x.product_id === id)
+      if (!p) continue
+      const base = [
+        String(p.product_id),
+        p.title,
+        p.catalog_sku ?? '',
+        p.catalog_hsn ?? '',
+      ]
+      if (p.variants?.length) {
+        for (const v of p.variants) {
+          rows.push([
+            ...base,
+            v.sku ?? '',
+            v.hsn || p.catalog_hsn || '',
+            String(v.available),
+            String(v.reserved),
+            String(v.low_stock_threshold),
+          ])
+        }
+      } else {
+        rows.push([...base, '', '', '0', '0', '0'])
+      }
+    }
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `inventory-selected-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    notify('success', 'Exported selected products')
+  }
+
+  const bulkSyncCatalogToInventory = async () => {
+    const targets = [...selectedProductIds].filter((id) => {
+      const p = products.find((x) => x.product_id === id)
+      return p && !(p.variants && p.variants.length > 0)
+    })
+    if (targets.length === 0) {
+      notify('info', 'No selected products need a catalog → inventory sync')
+      return
+    }
+    let ok = 0
+    for (const productId of targets) {
+      try {
+        setEnsuringProductId(productId)
+        const res = await fetch(`${apiBase}/inventory/${productId}/ensure-default-variant`, {
+          method: 'POST',
+          headers: authHeaders,
+        })
+        const raw = await parseJsonOk(res)
+        if (raw.success === false) throw new Error((raw as any).error || 'Failed')
+        ok += 1
+        setExpandedProducts((prev) => new Set(prev).add(productId))
+      } catch {
+        /* continue */
+      } finally {
+        setEnsuringProductId(null)
+      }
+    }
+    if (ok > 0) notify('success', `Synced ${ok} of ${targets.length} product(s)`)
+    else notify('error', 'Could not sync selected products')
+    await refreshAll()
+  }
+
+  const selectionKey = (productId: number, variantId: number): SelectionKey => `${productId}-${variantId}`
+
+  const toggleProductSelect = (productId: number) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(productId)) next.delete(productId)
+      else next.add(productId)
+      return next
+    })
   }
 
   return (
@@ -485,6 +628,19 @@ export default function InventoryManagement() {
             )}
           </span>
         </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <span className="text-slate-500">Velocity</span>
+          <select
+            value={velocityFilter}
+            onChange={(e) => setVelocityFilter(e.target.value as typeof velocityFilter)}
+            className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white"
+          >
+            <option value="all">All</option>
+            <option value="critical">Critical / velocity risk</option>
+            <option value="high">Active demand</option>
+            <option value="no_sales">No recent sales</option>
+          </select>
+        </label>
         <button
           type="button"
           onClick={expandAllRows}
@@ -500,10 +656,8 @@ export default function InventoryManagement() {
           Collapse all
         </button>
         <button
-          onClick={() => {
-            fetchProducts()
-            fetchDashboard()
-          }}
+          type="button"
+          onClick={() => refreshAll()}
           disabled={loading}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
         >
@@ -542,34 +696,44 @@ export default function InventoryManagement() {
       </p>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-sm text-gray-600">SKU count (variants)</div>
-          <div className="text-2xl font-semibold">{dashboard?.sku_count ?? '—'}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
+        <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Total SKUs</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{dashboard?.sku_count ?? '—'}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-sm text-gray-600">Available units</div>
-          <div className="text-2xl font-semibold">
+        <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Stock value (units)</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
             {dashboard != null
               ? Number(dashboard.total_available_units || 0).toLocaleString()
               : products.reduce((sum, p) => sum + Number(p.total_available || 0), 0).toLocaleString()}
           </div>
+          <p className="mt-1 text-[11px] text-slate-500">Available units across catalog</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-sm text-gray-600">Low stock SKUs</div>
-          <div className="text-2xl font-semibold text-orange-600">
+        <div className="rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/80 to-white p-5 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-amber-900/80">Low stock alerts</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-amber-700">
             {dashboard?.low_stock_skus ?? products.reduce((sum, p) => sum + Number(p.low_stock_variants_count || 0), 0)}
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-sm text-gray-600">Critical velocity (≤ lead time cover)</div>
-          <div className="text-2xl font-semibold text-red-600">
+        <div className="rounded-xl border border-rose-200/80 bg-gradient-to-br from-rose-50/70 to-white p-5 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-rose-900/80">Out of stock</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-rose-700">
+            {products.reduce(
+              (sum, p) => sum + (p.variants?.filter((v) => Number(v.available) <= 0).length ?? 0),
+              0
+            )}
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Critical velocity</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-red-600">
             {dashboard?.critical_velocity_skus ?? '—'}
           </div>
         </div>
       </div>
 
-      {/* Products List */}
+      {/* Products + insights */}
       {loading ? (
         <div className="text-center py-12">
           <div className="text-gray-500">Loading inventory...</div>
@@ -579,13 +743,85 @@ export default function InventoryManagement() {
           <div className="text-gray-500">No products found</div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredProducts.map((product) => (
-            <div key={product.product_id} className="bg-white rounded-lg shadow border overflow-hidden">
+        <div className="flex flex-col xl:flex-row gap-6 items-start">
+          <div className="flex-1 min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300"
+                  checked={
+                    allVisibleProductIds.length > 0 &&
+                    allVisibleProductIds.every((id) => selectedProductIds.has(id))
+                  }
+                  onChange={toggleSelectAllVisible}
+                />
+                <span>
+                  Select all on page <span className="tabular-nums">({filteredProducts.length})</span>
+                </span>
+              </label>
+            </div>
+            {selectedProductIds.size > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/90 to-white px-4 py-3 text-sm shadow-sm">
+                <span className="font-semibold text-indigo-950">{selectedProductIds.size} selected</span>
+                <button
+                  type="button"
+                  onClick={bulkSyncCatalogToInventory}
+                  className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+                >
+                  Sync catalog → inventory
+                </button>
+                <button
+                  type="button"
+                  onClick={exportSelectedProductsCsv}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
+                >
+                  Export selected
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProductIds(new Set())}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+            <div
+              ref={productListScrollRef}
+              className="max-h-[calc(100vh-200px)] min-h-[280px] overflow-auto rounded-xl border border-slate-200/80 bg-slate-50/40 p-2"
+            >
+              <div style={{ height: productVirtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
+                {productVirtualizer.getVirtualItems().map((vi) => {
+                  const product = filteredProducts[vi.index]
+                  return (
+                    <div
+                      key={product.product_id}
+                      data-index={vi.index}
+                      ref={productVirtualizer.measureElement}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${vi.start}px)`,
+                      }}
+                      className="px-0 pb-4"
+                    >
+                      <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm">
               {/* Product Header */}
-              <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between hover:bg-gray-50/80">
+              <div className="flex flex-col justify-between gap-3 p-4 hover:bg-gray-50/80 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1.5 h-4 w-4 shrink-0 rounded border-slate-300"
+                    checked={selectedProductIds.has(product.product_id)}
+                    onChange={() => toggleProductSelect(product.product_id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Select ${product.title}`}
+                  />
                 <div
-                  className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-4"
                   onClick={() => toggleProduct(product.product_id)}
                 >
                   {product.list_image && (
@@ -636,6 +872,7 @@ export default function InventoryManagement() {
                     </svg>
                   </div>
                 </div>
+                </div>
                 <div
                   className="flex flex-wrap items-center gap-2 justify-end sm:pl-2 border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100"
                   onClick={(e) => e.stopPropagation()}
@@ -674,10 +911,10 @@ export default function InventoryManagement() {
               {expandedProducts.has(product.product_id) && (
                 <div className="border-t bg-gray-50">
                   {product.variants && product.variants.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <div className="max-h-[min(60vh,540px)] overflow-auto overflow-x-auto rounded-b-xl">
                       <table className="w-full min-w-[960px] border-collapse">
                         <thead>
-                          <tr className="border-b border-slate-200 bg-white text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          <tr className="sticky top-0 z-10 border-b border-slate-200 bg-white text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm">
                             <th className="px-3 py-2.5">SKU</th>
                             <th className="px-3 py-2.5">HSN</th>
                             <th className="px-3 py-2.5">Variant</th>
@@ -693,7 +930,15 @@ export default function InventoryManagement() {
                           {product.variants.map((variant) => (
                             <tr
                               key={variant.id}
-                              className={`border-b border-slate-100 ${variant.is_low_stock ? 'bg-amber-50/60' : 'bg-white hover:bg-slate-50/80'}`}
+                              onClick={(e) => {
+                                if ((e.target as HTMLElement).closest('button, a')) return
+                                setSelectedSku({
+                                  key: selectionKey(product.product_id, variant.id),
+                                  product,
+                                  variant,
+                                })
+                              }}
+                              className={`cursor-pointer border-b border-slate-100 transition-colors ${variant.is_low_stock ? 'bg-amber-50/60' : 'bg-white hover:bg-slate-50/80'} ${selectedSku?.key === selectionKey(product.product_id, variant.id) ? 'bg-indigo-50/60 ring-1 ring-inset ring-indigo-300/50' : ''}`}
                             >
                               <td className="px-3 py-3 align-top">
                                 <div className="font-mono text-sm font-medium text-slate-900">{variant.sku || '—'}</div>
@@ -798,12 +1043,15 @@ export default function InventoryManagement() {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      setEditingReplenishment({
-                                        productId: product.product_id,
-                                        variantId: variant.id,
-                                        lead_time_days: variant.lead_time_days ?? 14,
-                                        case_pack_quantity: variant.case_pack_quantity ?? 1,
-                                        min_reorder_quantity: variant.min_reorder_quantity ?? 1,
+                                      setModal({
+                                        type: 'replenishment',
+                                        data: {
+                                          productId: product.product_id,
+                                          variantId: variant.id,
+                                          lead_time_days: variant.lead_time_days ?? 14,
+                                          case_pack_quantity: variant.case_pack_quantity ?? 1,
+                                          min_reorder_quantity: variant.min_reorder_quantity ?? 1,
+                                        },
                                       })
                                     }
                                     className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-900 hover:bg-indigo-100"
@@ -858,36 +1106,117 @@ export default function InventoryManagement() {
                   )}
                 </div>
               )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          ))}
+          </div>
+          <aside className="w-full shrink-0 space-y-4 xl:sticky xl:top-4 xl:w-[380px]">
+            <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Insights</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Select a SKU row to see reorder signals, cover, and demand context.
+              </p>
+              {selectedSku ? (
+                <div className="mt-4 space-y-4 text-sm">
+                  <div>
+                    <div className="text-xs font-medium text-slate-500">SKU</div>
+                    <div className="font-mono text-base font-semibold text-slate-900">{selectedSku.variant.sku || '—'}</div>
+                    <div className="mt-0.5 text-xs text-slate-600 line-clamp-2">{selectedSku.product.title}</div>
+                  </div>
+                  <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-3 text-xs leading-relaxed text-slate-700">
+                    {(() => {
+                      const v = selectedSku.variant
+                      const days = v.days_of_supply
+                      const vel = v.daily_velocity
+                      const sug = v.suggested_reorder_qty
+                      const lines: string[] = []
+                      if (days != null && days <= 7 && v.available < 50) {
+                        lines.push(`You may run low on this SKU in about ${days} day${days === 1 ? '' : 's'} at current velocity.`)
+                      } else if (days != null) {
+                        lines.push(`Roughly ${days} day${days === 1 ? '' : 's'} of supply at recent pace.`)
+                      }
+                      if (sug != null && sug > 0) {
+                        lines.push(`Suggested reorder: ${sug.toLocaleString()} units to align with lead time and safety stock.`)
+                      }
+                      if (vel != null && vel > 0 && v.sold_30d != null && v.sold_30d > 0) {
+                        lines.push(`30-day movement: ${Number(v.sold_30d).toLocaleString()} units sold.`)
+                      }
+                      if (lines.length === 0) {
+                        lines.push('Not enough velocity data yet—keep selling or set replenishment rules for sharper suggestions.')
+                      }
+                      return lines.map((line, i) => <p key={i}>{line}</p>)
+                    })()}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openRestockReport()}
+                      className="rounded-lg bg-teal-600 px-3 py-2 text-xs font-medium text-white hover:bg-teal-700"
+                    >
+                      Restock report
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => exportCsv()}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-50"
+                    >
+                      Export CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openActivityLog()}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-50"
+                    >
+                      Activity log
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-slate-600">
+                  Click a variant row in the table to pin insights here. Bulk actions use the checkboxes on each product.
+                </p>
+              )}
+            </div>
+          </aside>
         </div>
       )}
 
       {/* Edit Stock Dialog */}
-      {editingStock && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Update Stock Quantity</h3>
+      {modal.type === 'stock' && modal.data.step === 'form' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-lg font-semibold">Update stock quantity</h3>
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">New Quantity</label>
+              <label className="mb-2 block text-sm font-medium">New quantity</label>
               <input
                 type="number"
-                value={editingStock.quantity}
-                onChange={(e) => setEditingStock({ ...editingStock, quantity: Number(e.target.value) })}
-                className="w-full px-3 py-2 border rounded-lg"
+                value={modal.data.quantity}
+                onChange={(e) =>
+                  setModal({
+                    type: 'stock',
+                    data: { ...modal.data, quantity: Number(e.target.value) },
+                  })
+                }
+                className="w-full rounded-lg border px-3 py-2"
                 min="0"
               />
             </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setEditingStock(null)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-              >
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeModal} className="rounded-lg border px-4 py-2 hover:bg-gray-50">
                 Cancel
               </button>
               <button
-                onClick={() => setConfirmUpdate(true)}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                type="button"
+                onClick={() =>
+                  setModal({
+                    type: 'stock',
+                    data: { ...modal.data, step: 'confirm' },
+                  })
+                }
+                className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
               >
                 Update
               </button>
@@ -896,32 +1225,41 @@ export default function InventoryManagement() {
         </div>
       )}
 
-      {/* Edit Threshold Dialog */}
-      {editingThreshold && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Set Low Stock Threshold</h3>
+      {modal.type === 'threshold' && modal.data.step === 'form' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-lg font-semibold">Low stock alert threshold</h3>
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Threshold</label>
+              <label className="mb-2 block text-sm font-medium">Threshold</label>
               <input
                 type="number"
-                value={editingThreshold.threshold}
-                onChange={(e) => setEditingThreshold({ ...editingThreshold, threshold: Number(e.target.value) })}
-                className="w-full px-3 py-2 border rounded-lg"
+                value={modal.data.threshold}
+                onChange={(e) =>
+                  setModal({
+                    type: 'threshold',
+                    data: { ...modal.data, threshold: Number(e.target.value) },
+                  })
+                }
+                className="w-full rounded-lg border px-3 py-2"
                 min="0"
               />
-              <p className="text-xs text-gray-500 mt-1">Product will be marked as low stock when available quantity reaches this threshold</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Product flags as low stock when available quantity is at or below this level.
+              </p>
             </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setEditingThreshold(null)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-              >
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeModal} className="rounded-lg border px-4 py-2 hover:bg-gray-50">
                 Cancel
               </button>
               <button
-                onClick={() => setConfirmUpdate(true)}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                type="button"
+                onClick={() =>
+                  setModal({
+                    type: 'threshold',
+                    data: { ...modal.data, step: 'confirm' },
+                  })
+                }
+                className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
               >
                 Update
               </button>
@@ -930,95 +1268,105 @@ export default function InventoryManagement() {
         </div>
       )}
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
-        open={confirmUpdate}
+        open={modal.type === 'stock' && modal.data.step === 'confirm'}
         onClose={() => {
-          setConfirmUpdate(false)
-          if (editingStock) setEditingStock(null)
-          if (editingThreshold) setEditingThreshold(null)
-        }}
-        onConfirm={() => {
-          if (editingStock) {
-            updateStock()
-          } else if (editingThreshold) {
-            updateThreshold()
+          if (modal.type === 'stock') {
+            setModal({ type: 'stock', data: { ...modal.data, step: 'form' } })
           }
         }}
-        title="Confirm Update"
-        description={editingStock 
-          ? `Are you sure you want to set stock quantity to ${editingStock.quantity}?`
-          : `Are you sure you want to set low stock threshold to ${editingThreshold?.threshold}?`
+        onConfirm={updateStock}
+        closeOnConfirm={false}
+        title="Confirm stock update"
+        description={
+          modal.type === 'stock' && modal.data.step === 'confirm'
+            ? `Set on-hand quantity to ${modal.data.quantity}?`
+            : ''
         }
         confirmText="Update"
       />
 
-      {editingReplenishment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-2">Replenishment settings</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Lead time, case pack, and minimum reorder are used to compute suggested reorder quantities (similar to Amazon restock recommendations).
+      <ConfirmDialog
+        open={modal.type === 'threshold' && modal.data.step === 'confirm'}
+        onClose={() => {
+          if (modal.type === 'threshold') {
+            setModal({ type: 'threshold', data: { ...modal.data, step: 'form' } })
+          }
+        }}
+        onConfirm={updateThreshold}
+        closeOnConfirm={false}
+        title="Confirm threshold"
+        description={
+          modal.type === 'threshold' && modal.data.step === 'confirm'
+            ? `Set low-stock alert to ${modal.data.threshold}?`
+            : ''
+        }
+        confirmText="Update"
+      />
+
+      {modal.type === 'replenishment' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold">Replenishment settings</h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Lead time, case pack, and minimum reorder feed suggested reorder quantities (similar to marketplace restock
+              recommendations).
             </p>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Lead time (days)</label>
+                <label className="mb-1 block text-sm font-medium">Lead time (days)</label>
                 <input
                   type="number"
                   min={0}
-                  value={editingReplenishment.lead_time_days}
+                  value={modal.data.lead_time_days}
                   onChange={(e) =>
-                    setEditingReplenishment({
-                      ...editingReplenishment,
-                      lead_time_days: Number(e.target.value),
+                    setModal({
+                      type: 'replenishment',
+                      data: { ...modal.data, lead_time_days: Number(e.target.value) },
                     })
                   }
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full rounded-lg border px-3 py-2"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Case pack (units per supplier case)</label>
+                <label className="mb-1 block text-sm font-medium">Case pack (units per supplier case)</label>
                 <input
                   type="number"
                   min={1}
-                  value={editingReplenishment.case_pack_quantity}
+                  value={modal.data.case_pack_quantity}
                   onChange={(e) =>
-                    setEditingReplenishment({
-                      ...editingReplenishment,
-                      case_pack_quantity: Number(e.target.value),
+                    setModal({
+                      type: 'replenishment',
+                      data: { ...modal.data, case_pack_quantity: Number(e.target.value) },
                     })
                   }
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full rounded-lg border px-3 py-2"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Minimum reorder quantity</label>
+                <label className="mb-1 block text-sm font-medium">Minimum reorder quantity</label>
                 <input
                   type="number"
                   min={1}
-                  value={editingReplenishment.min_reorder_quantity}
+                  value={modal.data.min_reorder_quantity}
                   onChange={(e) =>
-                    setEditingReplenishment({
-                      ...editingReplenishment,
-                      min_reorder_quantity: Number(e.target.value),
+                    setModal({
+                      type: 'replenishment',
+                      data: { ...modal.data, min_reorder_quantity: Number(e.target.value) },
                     })
                   }
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full rounded-lg border px-3 py-2"
                 />
               </div>
             </div>
-            <div className="flex gap-2 justify-end mt-6">
-              <button
-                type="button"
-                onClick={() => setEditingReplenishment(null)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-              >
+            <div className="mt-6 flex justify-end gap-2">
+              <button type="button" onClick={closeModal} className="rounded-lg border px-4 py-2 hover:bg-gray-50">
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={saveReplenishmentSettings}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
               >
                 Save
               </button>
@@ -1027,7 +1375,7 @@ export default function InventoryManagement() {
         </div>
       )}
 
-      {restockOpen && (
+      {modal.type === 'restock' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
@@ -1037,7 +1385,7 @@ export default function InventoryManagement() {
               </div>
               <button
                 type="button"
-                onClick={() => setRestockOpen(false)}
+                onClick={closeModal}
                 className="text-gray-500 hover:text-gray-800 px-2"
               >
                 ✕
@@ -1083,14 +1431,14 @@ export default function InventoryManagement() {
         </div>
       )}
 
-      {logsOpen && (
+      {modal.type === 'logs' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-3xl w-full max-h-[85vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-semibold">Inventory activity</h3>
               <button
                 type="button"
-                onClick={() => setLogsOpen(false)}
+                onClick={closeModal}
                 className="text-gray-500 hover:text-gray-800 px-2"
               >
                 ✕

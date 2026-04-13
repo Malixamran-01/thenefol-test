@@ -8,9 +8,20 @@ type Props = {
   cancelText?: string
   onConfirm: () => void
   onClose: () => void
+  /** When false, the confirm button only runs onConfirm (caller closes the dialog). Default true. */
+  closeOnConfirm?: boolean
 }
 
-export default function ConfirmDialog({ open, title = 'Are you sure?', description, confirmText = 'Confirm', cancelText = 'Cancel', onConfirm, onClose }: Props) {
+export default function ConfirmDialog({
+  open,
+  title = 'Are you sure?',
+  description,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  onConfirm,
+  onClose,
+  closeOnConfirm = true,
+}: Props) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50">
@@ -19,7 +30,16 @@ export default function ConfirmDialog({ open, title = 'Are you sure?', descripti
         {description && (<p className="text-sm text-gray-600 mb-4">{description}</p>)}
         <div className="flex items-center justify-end gap-2">
           <button onClick={onClose} className="px-3 py-2 text-sm border rounded">{cancelText}</button>
-          <button onClick={() => { onConfirm(); onClose() }} className="px-3 py-2 text-sm rounded bg-red-600 text-white">{confirmText}</button>
+          <button
+            type="button"
+            onClick={() => {
+              onConfirm()
+              if (closeOnConfirm) onClose()
+            }}
+            className="px-3 py-2 text-sm rounded bg-red-600 text-white"
+          >
+            {confirmText}
+          </button>
         </div>
       </div>
     </div>
