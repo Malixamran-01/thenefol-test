@@ -8,6 +8,10 @@ import { getApiBaseUrl } from '../utils/apiUrl'
 interface StockBatch {
   id: number
   quantity: number
+  /** Manufacturer / product batch number (from packaging or COA) */
+  batch_number?: string | null
+  /** Which production unit or location this stock came from */
+  production_location?: string | null
   expiry_date: string | null
   priority: number
   label: string | null
@@ -99,20 +103,52 @@ function BatchEditRow({
   onSave: (patch: Partial<StockBatch>) => void
   onDelete: () => void
 }) {
+  const [batchNo, setBatchNo] = useState(batch.batch_number || '')
+  const [prodLoc, setProdLoc] = useState(batch.production_location || '')
   const [qty, setQty] = useState(batch.quantity)
   const [expiry, setExpiry] = useState(batch.expiry_date ? String(batch.expiry_date).slice(0, 10) : '')
   const [priority, setPriority] = useState(batch.priority)
   const [label, setLabel] = useState(batch.label || '')
 
   useEffect(() => {
+    setBatchNo(batch.batch_number || '')
+    setProdLoc(batch.production_location || '')
     setQty(batch.quantity)
     setExpiry(batch.expiry_date ? String(batch.expiry_date).slice(0, 10) : '')
     setPriority(batch.priority)
     setLabel(batch.label || '')
-  }, [batch.id, batch.quantity, batch.expiry_date, batch.priority, batch.label])
+  }, [
+    batch.id,
+    batch.batch_number,
+    batch.production_location,
+    batch.quantity,
+    batch.expiry_date,
+    batch.priority,
+    batch.label,
+  ])
 
   return (
     <tr className="border-b border-slate-50">
+      <td className="px-2 py-1">
+        <input
+          type="text"
+          className="w-28 max-w-full rounded border border-slate-200 px-1 py-0.5 font-mono text-[11px]"
+          value={batchNo}
+          onChange={(e) => setBatchNo(e.target.value)}
+          placeholder="e.g. BN-2026-01"
+          title="Batch number from product / packaging"
+        />
+      </td>
+      <td className="px-2 py-1">
+        <input
+          type="text"
+          className="w-36 max-w-full rounded border border-slate-200 px-1 py-0.5"
+          value={prodLoc}
+          onChange={(e) => setProdLoc(e.target.value)}
+          placeholder="Unit / site"
+          title="Production unit or location"
+        />
+      </td>
       <td className="px-2 py-1">
         <input
           type="number"
@@ -141,7 +177,7 @@ function BatchEditRow({
       <td className="px-2 py-1">
         <input
           type="text"
-          className="w-36 max-w-full rounded border border-slate-200 px-1 py-0.5"
+          className="w-32 max-w-full rounded border border-slate-200 px-1 py-0.5"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Label"
@@ -153,6 +189,8 @@ function BatchEditRow({
           type="button"
           onClick={() =>
             onSave({
+              batch_number: batchNo.trim() || null,
+              production_location: prodLoc.trim() || null,
               quantity: qty,
               priority,
               label: label.trim() || null,
@@ -220,6 +258,8 @@ export default function InventoryManagement() {
   const [batchLoadingKey, setBatchLoadingKey] = useState<string | null>(null)
   const [newBatchDraft, setNewBatchDraft] = useState<{
     key: string
+    batch_number: string
+    production_location: string
     quantity: number
     expiry_date: string
     priority: number
@@ -334,7 +374,15 @@ export default function InventoryManagement() {
         return
       }
       setBatchPanelKey(key)
-      setNewBatchDraft({ key, quantity: 0, expiry_date: '', priority: 0, label: '' })
+      setNewBatchDraft({
+        key,
+        batch_number: '',
+        production_location: '',
+        quantity: 0,
+        expiry_date: '',
+        priority: 0,
+        label: '',
+      })
       await loadBatches(productId, variantId)
     },
     [batchPanelKey, loadBatches]
@@ -347,6 +395,9 @@ export default function InventoryManagement() {
           method: 'PATCH',
           headers: authHeaders,
           body: JSON.stringify({
+            batch_number: patch.batch_number !== undefined ? patch.batch_number : batch.batch_number,
+            production_location:
+              patch.production_location !== undefined ? patch.production_location : batch.production_location,
             quantity: patch.quantity ?? batch.quantity,
             priority: patch.priority ?? batch.priority,
             label: patch.label !== undefined ? patch.label : batch.label,
@@ -377,6 +428,8 @@ export default function InventoryManagement() {
           method: 'POST',
           headers: authHeaders,
           body: JSON.stringify({
+            batch_number: d.batch_number.trim() || null,
+            production_location: d.production_location.trim() || null,
             quantity: d.quantity,
             priority: d.priority,
             label: d.label || null,
@@ -385,7 +438,15 @@ export default function InventoryManagement() {
         })
         await parseJsonOk(res)
         notify('success', 'Batch added')
-        setNewBatchDraft({ key, quantity: 0, expiry_date: '', priority: 0, label: '' })
+        setNewBatchDraft({
+          key,
+          batch_number: '',
+          production_location: '',
+          quantity: 0,
+          expiry_date: '',
+          priority: 0,
+          label: '',
+        })
         await loadBatches(productId, variantId)
         await refreshAll()
       } catch (e: any) {
@@ -470,6 +531,8 @@ export default function InventoryManagement() {
         setBatchPanelKey(variantBatchKey(modal.data.productId, modal.data.variantId))
         setNewBatchDraft({
           key: variantBatchKey(modal.data.productId, modal.data.variantId),
+          batch_number: '',
+          production_location: '',
           quantity: 0,
           expiry_date: '',
           priority: 0,
@@ -1322,9 +1385,11 @@ export default function InventoryManagement() {
                                         Stock batches (sell order: earliest expiry first; undated / returns pool last)
                                       </p>
                                       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                                        <table className="w-full min-w-[640px] border-collapse text-xs">
+                                        <table className="w-full min-w-[900px] border-collapse text-xs">
                                           <thead>
                                             <tr className="border-b border-slate-100 bg-slate-50 text-left text-[10px] uppercase tracking-wide text-slate-500">
+                                              <th className="px-2 py-1.5">Batch #</th>
+                                              <th className="px-2 py-1.5">Production unit</th>
                                               <th className="px-2 py-1.5">Qty</th>
                                               <th className="px-2 py-1.5">Expiry</th>
                                               <th className="px-2 py-1.5">Priority</th>
@@ -1351,6 +1416,34 @@ export default function InventoryManagement() {
                                       </div>
                                       {newBatchDraft?.key === variantBatchKey(product.product_id, variant.id) && (
                                         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-slate-200 bg-white p-2">
+                                          <label className="text-[11px] text-slate-600">
+                                            Batch #
+                                            <input
+                                              type="text"
+                                              className="ml-1 w-28 rounded border border-slate-200 px-1 py-0.5 font-mono"
+                                              value={newBatchDraft.batch_number}
+                                              placeholder="From product"
+                                              onChange={(e) =>
+                                                setNewBatchDraft((d) =>
+                                                  d ? { ...d, batch_number: e.target.value } : d
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                          <label className="text-[11px] text-slate-600">
+                                            Production unit
+                                            <input
+                                              type="text"
+                                              className="ml-1 w-36 rounded border border-slate-200 px-1 py-0.5"
+                                              value={newBatchDraft.production_location}
+                                              placeholder="Location / site"
+                                              onChange={(e) =>
+                                                setNewBatchDraft((d) =>
+                                                  d ? { ...d, production_location: e.target.value } : d
+                                                )
+                                              }
+                                            />
+                                          </label>
                                           <label className="text-[11px] text-slate-600">
                                             Qty
                                             <input

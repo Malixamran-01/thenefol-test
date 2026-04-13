@@ -80,6 +80,8 @@ export async function ensureSchema(pool: Pool) {
       id serial primary key,
       inventory_id integer not null references inventory(id) on delete cascade,
       quantity integer not null default 0,
+      batch_number text,
+      production_location text,
       expiry_date date,
       priority integer not null default 0,
       label text,
@@ -90,6 +92,22 @@ export async function ensureSchema(pool: Pool) {
     );
     create index if not exists idx_inventory_batches_inventory on inventory_batches(inventory_id);
     create index if not exists idx_inventory_batches_fifo on inventory_batches (inventory_id, expiry_date nulls last, priority, id);
+    
+    do $$
+    begin
+      if not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'inventory_batches' and column_name = 'batch_number'
+      ) then
+        alter table inventory_batches add column batch_number text;
+      end if;
+      if not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'inventory_batches' and column_name = 'production_location'
+      ) then
+        alter table inventory_batches add column production_location text;
+      end if;
+    end $$;
     
     do $$
     begin

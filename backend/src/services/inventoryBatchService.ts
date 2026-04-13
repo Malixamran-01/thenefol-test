@@ -105,7 +105,7 @@ export async function ensureDefaultBatchForInventoryRow(pool: Pool, inventoryId:
 
 export async function listBatchesOrdered(pool: Pool, inventoryId: number) {
   const { rows } = await pool.query(
-    `select id, inventory_id, quantity, expiry_date, priority, label, is_restock_pool, created_at, updated_at
+    `select id, inventory_id, quantity, batch_number, production_location, expiry_date, priority, label, is_restock_pool, created_at, updated_at
      from inventory_batches
      where inventory_id = $1
      order by expiry_date nulls last, priority asc, id asc`,
@@ -117,7 +117,7 @@ export async function listBatchesOrdered(pool: Pool, inventoryId: number) {
 /** FIFO depletion: soonest expiry first; undated / restock pool (null expiry) last. */
 export async function listBatchesForFifo(pool: Pool, inventoryId: number) {
   const { rows } = await pool.query(
-    `select id, inventory_id, quantity, expiry_date, priority, label, is_restock_pool, created_at, updated_at
+    `select id, inventory_id, quantity, batch_number, production_location, expiry_date, priority, label, is_restock_pool, created_at, updated_at
      from inventory_batches
      where inventory_id = $1
      order by expiry_date nulls last, priority asc, id asc`,
@@ -389,7 +389,14 @@ export async function createBatch(
   pool: Pool,
   productId: number,
   variantId: number,
-  body: { quantity?: number; expiry_date?: string | null; priority?: number; label?: string | null }
+  body: {
+    quantity?: number
+    expiry_date?: string | null
+    priority?: number
+    label?: string | null
+    batch_number?: string | null
+    production_location?: string | null
+  }
 ) {
   const invId = await ensureInventoryRow(pool, productId, variantId)
   await ensureDefaultBatchForInventoryRow(pool, invId)
@@ -397,16 +404,18 @@ export async function createBatch(
   const qty = Math.max(0, Math.floor(Number(body.quantity ?? 0)))
   const priority = Math.floor(Number(body.priority ?? 0))
   const label = body.label?.trim() || null
+  const batchNumber = body.batch_number?.trim() || null
+  const productionLocation = body.production_location?.trim() || null
   let expiry: string | null = null
   if (body.expiry_date != null && String(body.expiry_date).trim() !== '') {
     expiry = String(body.expiry_date).slice(0, 10)
   }
 
   const { rows } = await pool.query(
-    `insert into inventory_batches (inventory_id, quantity, expiry_date, priority, label)
-     values ($1, $2, $3::date, $4, $5)
-     returning id, inventory_id, quantity, expiry_date, priority, label, is_restock_pool, created_at, updated_at`,
-    [invId, qty, expiry, priority, label]
+    `insert into inventory_batches (inventory_id, quantity, batch_number, production_location, expiry_date, priority, label)
+     values ($1, $2, $3, $4, $5::date, $6, $7)
+     returning *`,
+    [invId, qty, batchNumber, productionLocation, expiry, priority, label]
   )
   await syncInventoryQuantityFromBatches(pool, invId)
   return rows[0]
@@ -415,7 +424,14 @@ export async function createBatch(
 export async function updateBatch(
   pool: Pool,
   batchId: number,
-  body: { quantity?: number; expiry_date?: string | null; priority?: number; label?: string | null }
+  body: {
+    quantity?: number
+    expiry_date?: string | null
+    priority?: number
+    label?: string | null
+    batch_number?: string | null
+    production_location?: string | null
+  }
 ) {
   const { rows: meta } = await pool.query(
     `select ib.id, ib.inventory_id, i.product_id, i.variant_id
@@ -442,6 +458,14 @@ export async function updateBatch(
     updates.push(`label = $${i++}`)
     vals.push(body.label?.trim() || null)
   }
+  if (body.batch_number !== undefined) {
+    updates.push(`batch_number = $${i++}`)
+    vals.push(body.batch_number?.trim() || null)
+  }
+  if (body.production_location !== undefined) {
+    updates.push(`production_location = $${i++}`)
+    vals.push(body.production_location?.trim() || null)
+  }
   if (body.expiry_date !== undefined) {
     if (body.expiry_date === null || String(body.expiry_date).trim() === '') {
       updates.push(`expiry_date = null`)
@@ -452,11 +476,7 @@ export async function updateBatch(
   }
 
   if (updates.length === 0) {
-    const { rows } = await pool.query(
-      `select id, inventory_id, quantity, expiry_date, priority, label, is_restock_pool, created_at, updated_at
-       from inventory_batches where id = $1`,
-      [batchId]
-    )
+    const { rows } = await pool.query(`select * from inventory_batches where id = $1`, [batchId])
     return rows[0] ?? null
   }
 
