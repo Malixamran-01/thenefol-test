@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
+import type { Product } from '../types'
 
 interface StickyAddToCartProps {
-  product: {
-    id?: number
-    title: string
-    price: string | number
-    slug: string
-    listImage?: string
-  }
+  product: Product
   quantity?: number
   className?: string
 }
@@ -54,17 +49,11 @@ export default function StickyAddToCart({
       return
     }
 
+    if (product.inStock === false) return
+
     if (addItem && product.id) {
       try {
-        addItem({
-          id: product.id,
-          slug: product.slug,
-          title: product.title,
-          price: typeof product.price === 'number' ? String(product.price) : product.price,
-          listImage: product.listImage || '',
-          pdpImages: [],
-          description: ''
-        }, quantity)
+        addItem(product, quantity)
         
         // Show success feedback
         const button = document.querySelector('.sticky-add-to-cart-btn') as HTMLElement
@@ -100,18 +89,20 @@ export default function StickyAddToCart({
               {product.title}
             </h3>
             <p className="text-sm font-semibold mt-1" style={{color: '#4B97C9'}}>
-              ₹{typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
+              ₹{String(product.price ?? '')}
             </p>
           </div>
         </div>
         
         <button
+          type="button"
+          disabled={product.inStock === false}
           onClick={handleAddToCart}
-          className="sticky-add-to-cart-btn flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 rounded-lg shadow-md hover:shadow-lg hover:scale-105"
+          className="sticky-add-to-cart-btn flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 rounded-lg shadow-md hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
           style={{backgroundColor: 'rgb(75,151,201)', minWidth: '160px'}}
         >
           <ShoppingCart className="w-5 h-5" />
-          <span>Add to Cart</span>
+          <span>{product.inStock === false ? 'Out of stock' : 'Add to Cart'}</span>
         </button>
       </div>
     </div>

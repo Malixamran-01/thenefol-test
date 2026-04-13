@@ -12,6 +12,19 @@ import { generateUniqueUserId } from '../utils/generateUserId'
 
 const SALT_ROUNDS = 10
 
+/** Total sellable units for a product (all variants: on hand − reserved). */
+async function getSellableQuantity(pool: Pool, productId: number): Promise<number> {
+  const { rows } = await pool.query(
+    `SELECT COALESCE(SUM(GREATEST(COALESCE(i.quantity, 0) - COALESCE(i.reserved, 0), 0)), 0)::bigint AS q
+     FROM product_variants pv
+     LEFT JOIN inventory i ON i.variant_id = pv.id AND i.product_id = pv.product_id
+     WHERE pv.product_id = $1`,
+    [productId]
+  )
+  const q = rows[0]?.q
+  return Math.max(0, Number(q ?? 0))
+}
+
 // Optimized GET /api/cart
 export async function getCart(pool: Pool, req: Request, res: Response) {
   try {
@@ -80,12 +93,23 @@ export async function addToCart(pool: Pool, req: Request, res: Response) {
     if (productCheck.rows.length === 0) {
       return sendError(res, 404, 'Product not found')
     }
+
+    const available = await getSellableQuantity(pool, Number(product_id))
+    if (available <= 0) {
+      return sendError(res, 400, 'This product is out of stock')
+    }
     
     // Check if item already exists in cart
     const existingItem = await pool.query(
       'SELECT * FROM cart WHERE user_id = $1 AND product_id = $2',
       [userId, product_id]
     )
+
+    const currentQty = existingItem.rows.length > 0 ? Number(existingItem.rows[0].quantity) || 0 : 0
+    const nextTotal = currentQty + Number(quantity || 0)
+    if (nextTotal > available) {
+      return sendError(res, 400, `Only ${available} units available in stock`)
+    }
     
     if (existingItem.rows.length > 0) {
       // Update quantity
@@ -193,6 +217,18 @@ export async function updateCartItem(pool: Pool, req: Request, res: Response) {
       
       sendSuccess(res, { message: 'Item removed from cart' })
     } else {
+      const line = await pool.query(
+        `SELECT c.product_id FROM cart c WHERE c.id = $1 AND c.user_id = $2`,
+        [cartItemId, userId]
+      )
+      if (line.rows.length === 0) {
+        return sendError(res, 404, 'Cart item not found')
+      }
+      const productId = Number(line.rows[0].product_id)
+      const available = await getSellableQuantity(pool, productId)
+      if (Number(quantity) > available) {
+        return sendError(res, 400, `Only ${available} units available in stock`)
+      }
       // Update quantity
       const { rows } = await pool.query(`
         UPDATE cart 

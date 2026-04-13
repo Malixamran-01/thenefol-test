@@ -11,6 +11,10 @@ export type Product = {
   details?: any
   created_at?: string
   csvProduct?: any
+  /** Sellable units (sum across variants: on hand − reserved). From /api/products. */
+  inventoryAvailable?: number
+  /** True when inventoryAvailable > 0 */
+  inStock?: boolean
 }
 
 

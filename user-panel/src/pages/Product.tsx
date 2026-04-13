@@ -263,7 +263,7 @@ export default function ProductPage() {
         const [productRes, csvData] = await Promise.all([
           fetch(`${apiBase}/api/products/slug/${slug}`, { 
             credentials: 'include',
-            cache: 'default' // Allow browser caching
+            cache: 'no-store',
           }),
           getCsvData(apiBase)
         ])
@@ -273,6 +273,7 @@ export default function ProductPage() {
           // Database product found
           
           if (data) {
+            const invAvail = Number(data.inventory_available ?? 0)
             const item: Product = {
               id: data.id,
               slug: data.slug,
@@ -283,9 +284,15 @@ export default function ProductPage() {
               pdpImages: normalizePdpImages(data.pdp_images, data.list_image),
               bannerImages: normalizeBannerImages(data.banner_images),
               description: data.description || '',
-              details: data.details
+              details: data.details,
+              inventoryAvailable: Number.isFinite(invAvail) ? Math.max(0, invAvail) : 0,
+              inStock: data.in_stock !== undefined ? !!data.in_stock : (Number.isFinite(invAvail) && invAvail > 0),
             }
             setProduct(item)
+            setQuantity((q) => {
+              const cap = Number.isFinite(invAvail) && invAvail > 0 ? Math.min(q, invAvail) : q
+              return Math.max(1, cap)
+            })
             // Product set from database
             
             // Reset reviews to show to 5 for new product
@@ -1255,32 +1262,55 @@ export default function ProductPage() {
               </div>
 
               {/* Quantity Selector */}
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <span className="text-sm font-medium text-gray-900">Unit:</span>
                 <div className="flex items-center border border-gray-300 rounded-md">
                   <button 
+                    type="button"
+                    disabled={!product?.inStock || quantity <= 1}
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-4 py-3 sm:px-3 sm:py-2 text-gray-600 hover:text-gray-900 active:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors"
+                    className="px-4 py-3 sm:px-3 sm:py-2 text-gray-600 hover:text-gray-900 active:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label="Decrease quantity"
                   >
                     -
                   </button>
                   <span className="px-4 py-2 text-gray-900 min-w-[3rem] text-center flex items-center justify-center min-h-[44px]">{quantity}</span>
                   <button 
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="px-4 py-3 sm:px-3 sm:py-2 text-gray-600 hover:text-gray-900 active:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors"
+                    type="button"
+                    disabled={
+                      !product?.inStock ||
+                      (product.inventoryAvailable != null && quantity >= product.inventoryAvailable)
+                    }
+                    onClick={() => {
+                      const max = product?.inventoryAvailable ?? 9999
+                      setQuantity(Math.min(max, quantity + 1))
+                    }}
+                    className="px-4 py-3 sm:px-3 sm:py-2 text-gray-600 hover:text-gray-900 active:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label="Increase quantity"
                   >
                     +
                   </button>
                 </div>
+                {product?.inventoryAvailable != null && (
+                  <span className="text-sm text-gray-600">
+                    {product.inStock ? (
+                      <>
+                        <span className="font-medium text-gray-800">{product.inventoryAvailable}</span> in stock
+                      </>
+                    ) : (
+                      <span className="font-medium text-red-700">Out of stock</span>
+                    )}
+                  </span>
+                )}
               </div>
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
                   <button 
+                    type="button"
+                    disabled={!product?.inStock}
                     onClick={() => {
-                      if (product && addItem) {
+                      if (product && addItem && product.inStock) {
                         try {
                           addItem(product, quantity)
                           // Track AddToCart event for Meta Pixel
@@ -1308,15 +1338,17 @@ export default function ProductPage() {
                       }
                     }}
                     data-add-to-cart
-                    className="flex-1 rounded-md px-4 sm:px-6 py-3.5 sm:py-3 font-semibold text-white transition-colors min-h-[48px] touch-manipulation text-base sm:text-sm"
+                    className="flex-1 rounded-md px-4 sm:px-6 py-3.5 sm:py-3 font-semibold text-white transition-colors min-h-[48px] touch-manipulation text-base sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
                   >
-                ADD TO CART
+                {product?.inStock ? 'ADD TO CART' : 'OUT OF STOCK'}
                   </button>
 
                   <button 
+                    type="button"
+                    disabled={!product?.inStock}
                     onClick={() => {
-                      if (product && addItem) {
+                      if (product && addItem && product.inStock) {
                         try {
                           addItem(product, quantity)
                           // Navigate to checkout immediately using hash-based routing
@@ -1327,10 +1359,10 @@ export default function ProductPage() {
                         }
                       }
                     }}
-                    className="flex-1 rounded-md px-4 sm:px-6 py-3.5 sm:py-3 font-semibold text-white transition-colors min-h-[48px] touch-manipulation text-base sm:text-sm"
+                    className="flex-1 rounded-md px-4 sm:px-6 py-3.5 sm:py-3 font-semibold text-white transition-colors min-h-[48px] touch-manipulation text-base sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
                   >
-                    BUY NOW
+                    {product?.inStock ? 'BUY NOW' : 'UNAVAILABLE'}
                   </button>
               </div>
 
@@ -2480,16 +2512,7 @@ export default function ProductPage() {
 
       {/* Sticky Add to Cart */}
       {product && (
-        <StickyAddToCart 
-          product={{
-            id: product.id,
-            title: product.title,
-            price: product.price,
-            slug: product.slug,
-            listImage: product.listImage
-          }}
-          quantity={quantity}
-        />
+        <StickyAddToCart product={product} quantity={quantity} />
       )}
 
       {/* Image Zoom Lightbox */}

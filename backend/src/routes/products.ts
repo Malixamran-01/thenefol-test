@@ -3,6 +3,23 @@ import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { handleGetAll, handleCreate, handleUpdate, sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 
+/** Sellable units across all variants (on hand − reserved). Drives storefront availability. */
+const SQL_INVENTORY_AVAILABLE = `
+  (SELECT COALESCE(SUM(GREATEST(COALESCE(inv.quantity, 0) - COALESCE(inv.reserved, 0), 0)), 0)::integer
+   FROM product_variants pv
+   LEFT JOIN inventory inv ON inv.variant_id = pv.id AND inv.product_id = pv.product_id
+   WHERE pv.product_id = p.id)
+  AS inventory_available`
+
+function attachStockFlags(product: any) {
+  const n = Number(product?.inventory_available ?? 0)
+  return {
+    ...product,
+    inventory_available: Number.isFinite(n) ? n : 0,
+    in_stock: Number.isFinite(n) ? n > 0 : false,
+  }
+}
+
 // Optimized GET /api/products
 export async function getProducts(pool: Pool, res: Response) {
   try {
@@ -10,6 +27,7 @@ export async function getProducts(pool: Pool, res: Response) {
     
     const { rows } = await pool.query(`
       SELECT p.*, 
+             ${SQL_INVENTORY_AVAILABLE},
              COALESCE(
                json_agg(
                  json_build_object('url', pi.url, 'type', COALESCE(pi.type, 'pdp'))
@@ -32,11 +50,13 @@ export async function getProducts(pool: Pool, res: Response) {
     console.log(`✅ Retrieved ${rows.length} products from database`)
     
     // Transform the data to match expected format
-    const products = rows.map((product: any) => ({
-      ...product,
-      pdp_images: product.pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
-      banner_images: product.banner_images.filter((img: any) => img.url).map((img: any) => img.url)
-    }))
+    const products = rows.map((product: any) =>
+      attachStockFlags({
+        ...product,
+        pdp_images: product.pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
+        banner_images: product.banner_images.filter((img: any) => img.url).map((img: any) => img.url),
+      })
+    )
     
     sendSuccess(res, products)
   } catch (err) {
@@ -57,6 +77,7 @@ export async function getProductById(pool: Pool, req: Request, res: Response) {
     
     const { rows } = await pool.query(`
       SELECT p.*, 
+             ${SQL_INVENTORY_AVAILABLE},
              COALESCE(
                json_agg(
                  json_build_object('url', pi.url, 'type', COALESCE(pi.type, 'pdp'))
@@ -80,11 +101,11 @@ export async function getProductById(pool: Pool, req: Request, res: Response) {
       return sendError(res, 404, 'Product not found')
     }
     
-    const product = {
+    const product = attachStockFlags({
       ...rows[0],
       pdp_images: rows[0].pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
-      banner_images: rows[0].banner_images.filter((img: any) => img.url).map((img: any) => img.url)
-    }
+      banner_images: rows[0].banner_images.filter((img: any) => img.url).map((img: any) => img.url),
+    })
     
     sendSuccess(res, product)
   } catch (err) {
@@ -104,6 +125,7 @@ export async function getProductBySlug(pool: Pool, req: Request, res: Response) 
     
     const { rows } = await pool.query(`
       SELECT p.*, 
+             ${SQL_INVENTORY_AVAILABLE},
              COALESCE(
                json_agg(
                  json_build_object('url', pi.url, 'type', COALESCE(pi.type, 'pdp'))
@@ -127,11 +149,11 @@ export async function getProductBySlug(pool: Pool, req: Request, res: Response) 
       return sendError(res, 404, 'Product not found')
     }
     
-    const product = {
+    const product = attachStockFlags({
       ...rows[0],
       pdp_images: rows[0].pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
-      banner_images: rows[0].banner_images.filter((img: any) => img.url).map((img: any) => img.url)
-    }
+      banner_images: rows[0].banner_images.filter((img: any) => img.url).map((img: any) => img.url),
+    })
     
     sendSuccess(res, product)
   } catch (err) {

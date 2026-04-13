@@ -265,11 +265,14 @@ export default function Shop() {
                         </div>
                         <div className="flex gap-3">
                           <button 
+                            type="button"
+                            disabled={product.inStock === false}
                             onClick={(e) => {
                               if (!isAuthenticated) {
                                 window.location.hash = '#/user/login'
                                 return
                               }
+                              if (product.inStock === false) return
                               if (addItem) {
                                 try {
                                   addItem(product)
@@ -287,7 +290,7 @@ export default function Shop() {
                                 }
                               }
                             }}
-                            className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900 rounded-xl"
+                            className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900 rounded-xl disabled:cursor-not-allowed disabled:opacity-50"
                             style={{
                               backgroundColor: 'rgb(75,151,201)',
                               color: '#FFFFFF',
@@ -301,7 +304,7 @@ export default function Shop() {
                               e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
                             }}
                           >
-                            Add to Cart
+                            {product.inStock === false ? 'Out of stock' : 'Add to Cart'}
                           </button>
                           <a 
                             href={`#/user/product/${product.slug}`}

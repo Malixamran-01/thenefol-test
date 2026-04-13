@@ -198,6 +198,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = async (p: Product, quantity: number = 1) => {
     console.log('🛒 Adding item to cart:', { product: p.title, quantity, isAuthenticated })
+
+    const avail = p.inventoryAvailable
+    if (p.inStock === false || (typeof avail === 'number' && avail <= 0)) {
+      setError('This product is out of stock')
+      return
+    }
+    if (typeof avail === 'number' && quantity > avail) {
+      setError(`Only ${avail} units available`)
+      return
+    }
     
     // Track cart action in real-time
     userSocketService.trackCartUpdate('add', { 
@@ -237,6 +247,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   const addItemLocally = (p: Product, quantity: number) => {
+    const avail = p.inventoryAvailable
+    if (p.inStock === false || (typeof avail === 'number' && avail <= 0)) {
+      setError('This product is out of stock')
+      return
+    }
+    if (typeof avail === 'number' && quantity > avail) {
+      setError(`Only ${avail} units available`)
+      return
+    }
     // Determine the correct price to use (discounted price if available)
     const getCorrectPrice = (product: Product) => {
       if (product.details?.mrp && product.details?.websitePrice) {

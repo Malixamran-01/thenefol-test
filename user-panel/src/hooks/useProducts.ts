@@ -29,6 +29,8 @@ export function useProducts() {
         const listImage = toAbs(r.list_image || '')
         const pdpImages = derivePdpImages(r, toAbs)
         const bannerImages = deriveBannerImages(r, toAbs)
+        const inv = Number(r.inventory_available ?? 0)
+        const inStock = r.in_stock !== undefined ? !!r.in_stock : inv > 0
         return {
           id: r.id,
           slug: r.slug,
@@ -39,7 +41,9 @@ export function useProducts() {
           pdpImages,
           bannerImages,
           description: r.description || '',
-          details: r.details || {}
+          details: r.details || {},
+          inventoryAvailable: Number.isFinite(inv) ? inv : 0,
+          inStock,
         }
       }).filter((p: Product) => p.slug && p.title)
       setItems(mapped)
