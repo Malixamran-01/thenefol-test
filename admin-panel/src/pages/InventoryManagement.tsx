@@ -1252,9 +1252,9 @@ export default function InventoryManagement() {
                                   {(variant.batch_count ?? 0).toLocaleString()} batch
                                   {(variant.batch_count ?? 0) === 1 ? '' : 'es'}
                                 </button>
-                                <p className="mt-1 max-w-[140px] text-[10px] leading-snug text-slate-500">
+                                {/* <p className="mt-1 max-w-[140px] text-[10px] leading-snug text-slate-500">
                                   FIFO by expiry; lower priority sells first when tied.
-                                </p>
+                                </p> */}
                               </td>
                               <td className="align-middle px-2 py-2 text-xs tabular-nums text-slate-700 sm:px-3 sm:text-sm">
                                 {variant.sold_30d != null ? Number(variant.sold_30d).toLocaleString() : '—'}
