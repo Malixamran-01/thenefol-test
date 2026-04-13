@@ -8,6 +8,7 @@ interface Variant {
   id: number
   sku: string
   attributes: any
+  hsn?: string | null
   price?: number
   mrp?: number
   is_active: boolean
@@ -32,6 +33,9 @@ interface Product {
   slug: string
   price: number
   list_image?: string
+  /** SKU stored on product.details (catalog / CSV import) — not the same as product_variants until synced */
+  catalog_sku?: string | null
+  catalog_hsn?: string | null
   variants: Variant[]
   total_stock: number
   total_available: number
@@ -274,7 +278,13 @@ export default function InventoryManagement() {
       })
       const raw = await parseJsonOk(res)
       if (raw.success === false) throw new Error((raw as any).error || 'Failed')
-      notify('success', 'Default SKU created. Set stock in the row below.')
+      const p = products.find((x) => x.product_id === productId)
+      notify(
+        'success',
+        p?.catalog_sku
+          ? 'Catalog SKU and HSN synced to inventory. Adjust quantities below.'
+          : 'Inventory SKU created. Set quantities below.'
+      )
       setExpandedProducts((prev) => new Set(prev).add(productId))
       await fetchProducts()
       await fetchDashboard()
@@ -286,11 +296,15 @@ export default function InventoryManagement() {
   }
 
   const formatAttributes = (attrs: any) => {
-    if (!attrs || typeof attrs !== 'object') return 'N/A'
+    if (!attrs || typeof attrs !== 'object') return '—'
     return Object.entries(attrs)
+      .filter(([key]) => String(key).toLowerCase() !== 'hsn')
       .map(([key, value]) => `${key}: ${value}`)
-      .join(', ')
+      .join(' · ') || '—'
   }
+
+  const displayHsn = (variant: Variant, product: Product) =>
+    variant.hsn || product.catalog_hsn || null
 
   const healthStyle = (health?: string) => {
     const h = (health || '').toLowerCase()
@@ -399,10 +413,11 @@ export default function InventoryManagement() {
 
       <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 space-y-3">
         <p>
-          <strong className="text-slate-900">Why do I see “0 variants”?</strong> Inventory rows attach to{' '}
-          <strong>product variants</strong> (SKUs). If a product was created in the catalog but no variant/SKU was generated,
-          there is nothing to hold stock yet—use <strong>Create default SKU</strong> for a single-SKU product, or open{' '}
-          <strong>Product Variants</strong> to configure sizes/options and generate SKUs.
+          <strong className="text-slate-900">SKU &amp; HSN from your catalog/CSV live on the product record</strong> (stored in{' '}
+          <code className="text-xs bg-slate-200/80 px-1 rounded">products.details</code>). <strong>Stock counts</strong> live on{' '}
+          <strong>inventory ↔ product variants</strong>. If you imported SKU/HSN but never created a variant row, this page
+          shows your catalog codes but <strong>0 inventory SKUs</strong> until you sync—use the teal button to create one
+          variant that reuses your catalog SKU and HSN.
         </p>
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-slate-500 text-xs uppercase tracking-wide">Shortcuts</span>
@@ -521,7 +536,7 @@ export default function InventoryManagement() {
         Metrics below are store-wide. Velocity uses order history (last {dashboard?.velocity_window_days ?? 30} days). Reorder suggestions use lead time + {dashboard?.safety_stock_days ?? 7} days safety stock (Amazon-style cover period).
         {dashboard != null && dashboard.sku_count === 0 && products.length > 0 && (
           <span className="block mt-1 text-amber-800">
-            No SKUs yet—create a default SKU per product below, or configure variants under Product Variants.
+            No inventory SKUs yet—sync from catalog (teal button per product) or use Product Variants for multi-SKU products.
           </span>
         )}
       </p>
@@ -583,8 +598,23 @@ export default function InventoryManagement() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg">{product.title}</h3>
                     <div className="text-sm text-gray-600 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                      <span>Stock: {product.total_available.toLocaleString()} available</span>
-                      <span>Total on hand: {product.total_stock.toLocaleString()}</span>
+                      <span>
+                        <span className="font-medium text-slate-800">{product.total_available.toLocaleString()}</span> units
+                        available
+                      </span>
+                      <span>On hand: {product.total_stock.toLocaleString()}</span>
+                      {(product.catalog_sku || product.catalog_hsn) && (
+                        <span className="text-slate-500">
+                          Catalog:{' '}
+                          {product.catalog_sku ? (
+                            <span className="font-mono text-slate-700">SKU {product.catalog_sku}</span>
+                          ) : null}
+                          {product.catalog_sku && product.catalog_hsn ? ' · ' : null}
+                          {product.catalog_hsn ? (
+                            <span className="font-mono text-slate-700">HSN {product.catalog_hsn}</span>
+                          ) : null}
+                        </span>
+                      )}
                       {product.low_stock_variants_count > 0 && (
                         <span className="text-orange-600 font-medium">
                           {product.low_stock_variants_count} SKU{product.low_stock_variants_count !== 1 ? 's' : ''} low
@@ -627,9 +657,14 @@ export default function InventoryManagement() {
                       type="button"
                       disabled={ensuringProductId === product.product_id}
                       onClick={() => ensureDefaultSku(product.product_id)}
-                      className="text-xs px-3 py-1.5 rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+                      className="text-xs px-3 py-1.5 rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium"
+                      title="Creates one product_variants row + inventory, using catalog SKU/HSN when present"
                     >
-                      {ensuringProductId === product.product_id ? 'Creating…' : 'Create default SKU'}
+                      {ensuringProductId === product.product_id
+                        ? 'Syncing…'
+                        : product.catalog_sku
+                          ? 'Sync catalog SKU → inventory'
+                          : 'Create inventory SKU'}
                     </button>
                   )}
                 </div>
@@ -640,87 +675,125 @@ export default function InventoryManagement() {
                 <div className="border-t bg-gray-50">
                   {product.variants && product.variants.length > 0 ? (
                     <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">SKU</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Attributes</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Available</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Reserved</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Threshold</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">30d sold</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Days cover</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Health</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Suggest reorder</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Actions</th>
+                      <table className="w-full min-w-[960px] border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-200 bg-white text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            <th className="px-3 py-2.5">SKU</th>
+                            <th className="px-3 py-2.5">HSN</th>
+                            <th className="px-3 py-2.5">Variant</th>
+                            <th className="px-3 py-2.5 w-[220px]">Units</th>
+                            <th className="px-3 py-2.5">30d</th>
+                            <th className="px-3 py-2.5">Cover</th>
+                            <th className="px-3 py-2.5">Health</th>
+                            <th className="px-3 py-2.5">Reorder</th>
+                            <th className="px-3 py-2.5">More</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody>
                           {product.variants.map((variant) => (
-                            <tr 
-                              key={variant.id} 
-                              className={variant.is_low_stock ? 'bg-orange-50' : ''}
+                            <tr
+                              key={variant.id}
+                              className={`border-b border-slate-100 ${variant.is_low_stock ? 'bg-amber-50/60' : 'bg-white hover:bg-slate-50/80'}`}
                             >
-                              <td className="px-4 py-3">
-                                <div className="text-sm font-medium">{variant.sku || 'N/A'}</div>
+                              <td className="px-3 py-3 align-top">
+                                <div className="font-mono text-sm font-medium text-slate-900">{variant.sku || '—'}</div>
                                 {variant.is_low_stock && (
-                                  <span className="text-xs text-orange-600 font-medium">Low Stock</span>
+                                  <span className="mt-1 inline-block text-[10px] font-semibold uppercase text-amber-800">
+                                    Low stock
+                                  </span>
                                 )}
                               </td>
-                              <td className="px-4 py-3">
-                                <div className="text-sm text-gray-600">{formatAttributes(variant.attributes)}</div>
+                              <td className="px-3 py-3 align-top font-mono text-sm text-slate-700">
+                                {displayHsn(variant, product) ?? '—'}
                               </td>
-                              <td className="px-4 py-3">
-                                <div className="text-sm font-semibold">{variant.available.toLocaleString()}</div>
-                                <div className="text-xs text-gray-500">of {variant.quantity.toLocaleString()}</div>
+                              <td className="px-3 py-3 align-top text-sm text-slate-600 max-w-[200px]">
+                                {formatAttributes(variant.attributes)}
                               </td>
-                              <td className="px-4 py-3">
-                                <div className="text-sm text-gray-600">{variant.reserved.toLocaleString()}</div>
+                              <td className="px-3 py-3 align-top">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                                    Available to sell
+                                  </div>
+                                  <div className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
+                                    {variant.available.toLocaleString()}
+                                  </div>
+                                  <div className="mt-1 text-xs text-slate-500">
+                                    On hand <span className="font-mono text-slate-700">{variant.quantity}</span>
+                                    {' · '}
+                                    Reserved <span className="font-mono text-slate-700">{variant.reserved}</span>
+                                    {' · '}
+                                    Alert ≤{' '}
+                                    <span className="font-mono text-slate-700">{variant.low_stock_threshold}</span>
+                                  </div>
+                                  <div className="mt-3 grid grid-cols-2 gap-1.5">
+                                    <button
+                                      type="button"
+                                      title="Add 1 unit"
+                                      onClick={() => adjustStock(product.product_id, variant.id, 1)}
+                                      className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-semibold text-emerald-700 shadow-sm hover:border-emerald-400 hover:bg-emerald-50"
+                                    >
+                                      +
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Remove 1 unit"
+                                      onClick={() => adjustStock(product.product_id, variant.id, -1)}
+                                      className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-semibold text-rose-700 shadow-sm hover:border-rose-400 hover:bg-rose-50"
+                                    >
+                                      −
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Add 10 units"
+                                      onClick={() => adjustStock(product.product_id, variant.id, 10)}
+                                      className="inline-flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-800 hover:bg-slate-100"
+                                    >
+                                      +10
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Remove 10 units"
+                                      onClick={() => adjustStock(product.product_id, variant.id, -10)}
+                                      className="inline-flex h-8 items-center justify-center rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-800 hover:bg-slate-100"
+                                    >
+                                      −10
+                                    </button>
+                                  </div>
+                                </div>
                               </td>
-                              <td className="px-4 py-3">
-                                <div className="text-sm text-gray-600">{variant.low_stock_threshold.toLocaleString()}</div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">
+                              <td className="px-3 py-3 align-top text-sm tabular-nums text-slate-700">
                                 {variant.sold_30d != null ? Number(variant.sold_30d).toLocaleString() : '—'}
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">
+                              <td className="px-3 py-3 align-top text-sm tabular-nums text-slate-700">
                                 {variant.days_of_supply != null ? `${variant.days_of_supply} d` : '—'}
                               </td>
-                              <td className="px-4 py-3">
-                                <span className={`text-xs px-2 py-1 rounded capitalize ${healthStyle(variant.inventory_health)}`}>
+                              <td className="px-3 py-3 align-top">
+                                <span
+                                  className={`inline-block text-[11px] px-2 py-1 rounded-md capitalize ${healthStyle(variant.inventory_health)}`}
+                                >
                                   {(variant.inventory_health || '—').replace(/_/g, ' ')}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-800">
+                              <td className="px-3 py-3 align-top text-sm font-medium tabular-nums text-slate-800">
                                 {variant.suggested_reorder_qty != null ? variant.suggested_reorder_qty.toLocaleString() : '—'}
                               </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-2 flex-wrap">
+                              <td className="px-3 py-3 align-top">
+                                <div className="flex flex-col gap-1.5">
                                   <button
+                                    type="button"
                                     onClick={() => handleStockEdit(product.product_id, variant.id, variant.quantity)}
-                                    className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                                    className="rounded-md bg-slate-800 px-2.5 py-1.5 text-center text-xs font-medium text-white hover:bg-slate-900"
                                   >
-                                    Set Qty
+                                    Set quantity…
                                   </button>
                                   <button
-                                    onClick={() => adjustStock(product.product_id, variant.id, 10)}
-                                    className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                                    title="Add 10"
+                                    type="button"
+                                    onClick={() =>
+                                      handleThresholdEdit(product.product_id, variant.id, variant.low_stock_threshold)
+                                    }
+                                    className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                                   >
-                                    +10
-                                  </button>
-                                  <button
-                                    onClick={() => adjustStock(product.product_id, variant.id, -10)}
-                                    className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-                                    title="Remove 10"
-                                  >
-                                    -10
-                                  </button>
-                                  <button
-                                    onClick={() => handleThresholdEdit(product.product_id, variant.id, variant.low_stock_threshold)}
-                                    className="px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
-                                  >
-                                    Threshold
+                                    Low-stock alert
                                   </button>
                                   <button
                                     type="button"
@@ -733,9 +806,9 @@ export default function InventoryManagement() {
                                         min_reorder_quantity: variant.min_reorder_quantity ?? 1,
                                       })
                                     }
-                                    className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                    className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-900 hover:bg-indigo-100"
                                   >
-                                    Replenish
+                                    Replenish rules
                                   </button>
                                 </div>
                               </td>
@@ -745,25 +818,40 @@ export default function InventoryManagement() {
                       </table>
                     </div>
                   ) : (
-                    <div className="p-6 text-center space-y-3 bg-amber-50/50 border-t border-amber-100">
-                      <p className="text-gray-800 font-medium">No SKUs for this product yet</p>
-                      <p className="text-sm text-gray-600 max-w-lg mx-auto">
-                        Stock is stored per variant. Create one default SKU for simple products, or define options under Product Variants.
-                      </p>
+                    <div className="p-6 space-y-4 bg-gradient-to-b from-amber-50/80 to-white border-t border-amber-100">
+                      <div className="text-center max-w-xl mx-auto space-y-2">
+                        <p className="text-slate-900 font-semibold">No inventory SKU row yet</p>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          Your catalog may already list SKU &amp; HSN (from CSV or the Products form). Those live on the product
+                          record. To track <strong>stock</strong>, we need one matching row in inventory—tap below to copy your
+                          catalog SKU/HSN into a variant + stock record.
+                        </p>
+                        {(product.catalog_sku || product.catalog_hsn) && (
+                          <p className="text-sm font-mono text-slate-800 bg-white/80 rounded-lg border border-amber-200/80 px-3 py-2 inline-block">
+                            {product.catalog_sku && <span>SKU {product.catalog_sku}</span>}
+                            {product.catalog_sku && product.catalog_hsn ? ' · ' : null}
+                            {product.catalog_hsn && <span>HSN {product.catalog_hsn}</span>}
+                          </p>
+                        )}
+                      </div>
                       <div className="flex flex-wrap justify-center gap-2">
                         <button
                           type="button"
                           disabled={ensuringProductId === product.product_id}
                           onClick={() => ensureDefaultSku(product.product_id)}
-                          className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm hover:bg-teal-700 disabled:opacity-50"
+                          className="px-5 py-2.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-50 shadow-sm"
                         >
-                          {ensuringProductId === product.product_id ? 'Creating…' : 'Create default SKU'}
+                          {ensuringProductId === product.product_id
+                            ? 'Syncing…'
+                            : product.catalog_sku
+                              ? 'Sync catalog SKU → inventory'
+                              : 'Create inventory SKU'}
                         </button>
                         <Link
                           to={`/admin/product-variants?product=${product.product_id}`}
-                          className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 hover:bg-gray-50"
+                          className="px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50"
                         >
-                          Open Product Variants
+                          Product Variants (multi-SKU)
                         </Link>
                       </div>
                     </div>

@@ -164,6 +164,8 @@ export async function getAllProductsWithInventory(pool: Pool, req: Request, res:
         p.slug,
         p.price,
         p.list_image,
+        NULLIF(TRIM(COALESCE(p.details->>'sku', p.details->>'SKU', '')), '') as catalog_sku,
+        NULLIF(TRIM(COALESCE(p.details->>'hsn', p.details->>'HSN Code', p.details->>'HSN', '')), '') as catalog_hsn,
         COALESCE(
           json_agg(
             json_build_object(
@@ -215,7 +217,8 @@ export async function getAllProductsWithInventory(pool: Pool, req: Request, res:
                     )::int
                   ) * GREATEST(COALESCE(i.case_pack_quantity, 1), 1)
                 )
-              END
+              END,
+              'hsn', NULLIF(TRIM(COALESCE(pv.attributes->>'HSN', pv.attributes->>'hsn', '')), '')
             ) ORDER BY pv.id
           ) FILTER (WHERE pv.id IS NOT NULL),
           '[]'::json
@@ -228,7 +231,7 @@ export async function getAllProductsWithInventory(pool: Pool, req: Request, res:
       LEFT JOIN inventory i ON i.variant_id = pv.id AND i.product_id = p.id
       LEFT JOIN variant_velocity vel ON vel.variant_id = pv.id
       WHERE 1=1 ${whereClause}
-      GROUP BY p.id, p.title, p.slug, p.price, p.list_image
+      GROUP BY p.id, p.title, p.slug, p.price, p.list_image, p.details
       ORDER BY p.title ASC
     `,
       params
@@ -503,7 +506,7 @@ export async function ensureDefaultVariant(pool: Pool, req: Request, res: Respon
       return sendError(res, 400, 'Invalid product id')
     }
 
-    const { rows: pRows } = await pool.query('select id, slug, title from products where id = $1', [pid])
+    const { rows: pRows } = await pool.query('select id, slug, title, details from products where id = $1', [pid])
     if (pRows.length === 0) return sendError(res, 404, 'Product not found')
 
     const { rows: cRows } = await pool.query(
@@ -518,14 +521,41 @@ export async function ensureDefaultVariant(pool: Pool, req: Request, res: Respon
       )
     }
 
+    const rawDetails = pRows[0].details
+    let details: Record<string, any> = {}
+    if (rawDetails && typeof rawDetails === 'object' && !Array.isArray(rawDetails)) {
+      details = rawDetails as Record<string, any>
+    } else if (typeof rawDetails === 'string') {
+      try {
+        details = JSON.parse(rawDetails)
+      } catch {
+        details = {}
+      }
+    }
+
+    const catalogSku = String(details.sku || details.SKU || '').trim()
+    const catalogHsn = String(details.hsn || details['HSN Code'] || details.HSN || '').trim()
+
     const slugPart = String(pRows[0].slug || pRows[0].title || `product-${pid}`)
       .replace(/[^a-z0-9]+/gi, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 48)
     const skuBase = slugPart || `P${pid}`
-    const sku = `NEF-${pid}-${skuBase.toUpperCase()}`.slice(0, 120)
+    let sku = catalogSku || `NEF-${pid}-${skuBase.toUpperCase()}`.slice(0, 120)
+    sku = sku.slice(0, 120)
 
-    const attrs = { Default: 'Standard' }
+    if (catalogSku) {
+      const { rows: taken } = await pool.query(
+        `select id from product_variants where product_id <> $1 and lower(trim(sku)) = lower(trim($2)) limit 1`,
+        [pid, catalogSku]
+      )
+      if (taken.length > 0) {
+        sku = `${catalogSku}-P${pid}`.slice(0, 120)
+      }
+    }
+
+    const attrs: Record<string, string> = { Default: 'Standard' }
+    if (catalogHsn) attrs.HSN = catalogHsn
     const { rows: vRows } = await pool.query(
       `insert into product_variants (product_id, sku, attributes, is_active)
        values ($1, $2, $3::jsonb, true)
