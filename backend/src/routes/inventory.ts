@@ -1,6 +1,15 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import {
+  adjustStockWithBatches,
+  createBatch,
+  deleteBatch,
+  ensureDefaultBatchForInventoryRow,
+  listBatchesOrdered,
+  setStockQuantityWithBatches,
+  updateBatch,
+} from '../services/inventoryBatchService'
 
 /** Safety buffer (days) on top of lead time for reorder target — similar to “cover period” in restock reports */
 const SAFETY_STOCK_DAYS = 7
@@ -75,32 +84,26 @@ export async function getInventorySummary(pool: Pool, req: Request, res: Respons
 export async function adjustStock(pool: Pool, req: Request, res: Response) {
   try {
     const { productId, variantId } = req.params as any
-    const { delta, reason = 'manual_adjustment', metadata } = req.body || {}
+    const { delta, reason = 'manual_adjustment', metadata, batch_id } = req.body || {}
     const validationError = validateRequired({ delta }, ['delta'])
     if (validationError) return sendError(res, 400, validationError)
 
-    await pool.query(
-      `insert into inventory (product_id, variant_id, quantity, reserved, low_stock_threshold)
-       values ($1, $2, 0, 0, 0)
-       on conflict (product_id, variant_id) do nothing`,
+    await adjustStockWithBatches(pool, Number(productId), Number(variantId), Number(delta), {
+      batch_id: batch_id != null ? Number(batch_id) : null,
+      reason,
+      metadata,
+    })
+
+    const { rows } = await pool.query(
+      `select * from inventory where product_id = $1 and variant_id = $2`,
       [productId, variantId]
     )
 
-    const { rows } = await pool.query(
-      `update inventory set quantity = quantity + $3, updated_at = now()
-       where product_id = $1 and variant_id = $2
-       returning *`,
-      [productId, variantId, Number(delta)]
-    )
-
-    await pool.query(
-      `insert into inventory_logs (product_id, variant_id, change, reason, metadata)
-       values ($1, $2, $3, $4, $5)`,
-      [productId, variantId, Number(delta), reason, metadata ? JSON.stringify(metadata) : null]
-    )
-
     jsonSuccess(res, rows[0])
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message?.includes('Insufficient batch stock')) {
+      return sendError(res, 400, err.message)
+    }
     sendError(res, 500, 'Failed to adjust stock', err)
   }
 }
@@ -218,6 +221,9 @@ export async function getAllProductsWithInventory(pool: Pool, req: Request, res:
                   ) * GREATEST(COALESCE(i.case_pack_quantity, 1), 1)
                 )
               END,
+              'batch_count', CASE WHEN i.id IS NULL THEN 0 ELSE (
+                SELECT COUNT(*)::int FROM inventory_batches ib WHERE ib.inventory_id = i.id
+              ) END,
               'hsn', NULLIF(TRIM(COALESCE(pv.attributes->>'HSN', pv.attributes->>'hsn', '')), '')
             ) ORDER BY pv.id
           ) FILTER (WHERE pv.id IS NOT NULL),
@@ -250,36 +256,78 @@ export async function setStockQuantity(pool: Pool, req: Request, res: Response) 
     const validationError = validateRequired({ quantity }, ['quantity'])
     if (validationError) return sendError(res, 400, validationError)
 
-    await pool.query(
-      `insert into inventory (product_id, variant_id, quantity, reserved, low_stock_threshold)
-       values ($1, $2, 0, 0, 0)
-       on conflict (product_id, variant_id) do nothing`,
-      [productId, variantId]
-    )
-
-    const { rows: currentRows } = await pool.query(
-      `SELECT quantity FROM inventory WHERE product_id = $1 AND variant_id = $2`,
-      [productId, variantId]
-    )
-    const currentQuantity = currentRows[0]?.quantity || 0
-    const delta = Number(quantity) - currentQuantity
+    await setStockQuantityWithBatches(pool, Number(productId), Number(variantId), Number(quantity), {
+      reason,
+      metadata,
+    })
 
     const { rows } = await pool.query(
-      `update inventory set quantity = $3, updated_at = now()
-       where product_id = $1 and variant_id = $2
-       returning *`,
-      [productId, variantId, Number(quantity)]
-    )
-
-    await pool.query(
-      `insert into inventory_logs (product_id, variant_id, change, reason, metadata)
-       values ($1, $2, $3, $4, $5)`,
-      [productId, variantId, delta, reason, metadata ? JSON.stringify(metadata) : null]
+      `select * from inventory where product_id = $1 and variant_id = $2`,
+      [productId, variantId]
     )
 
     jsonSuccess(res, rows[0])
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === 'MULTI_BATCH') {
+      return sendError(res, 400, err.message)
+    }
     sendError(res, 500, 'Failed to set stock quantity', err)
+  }
+}
+
+export async function listInventoryBatches(pool: Pool, req: Request, res: Response) {
+  try {
+    const { productId, variantId } = req.params as any
+    const invId = await pool.query(
+      `select id from inventory where product_id = $1 and variant_id = $2`,
+      [productId, variantId]
+    )
+    if (!invId.rows.length) {
+      return jsonSuccess(res, [])
+    }
+    await ensureDefaultBatchForInventoryRow(pool, invId.rows[0].id)
+    const rows = await listBatchesOrdered(pool, invId.rows[0].id)
+    jsonSuccess(res, rows)
+  } catch (err) {
+    sendError(res, 500, 'Failed to list batches', err)
+  }
+}
+
+export async function postInventoryBatch(pool: Pool, req: Request, res: Response) {
+  try {
+    const { productId, variantId } = req.params as any
+    const row = await createBatch(pool, Number(productId), Number(variantId), req.body || {})
+    jsonSuccess(res, row, 201)
+  } catch (err) {
+    sendError(res, 500, 'Failed to create batch', err)
+  }
+}
+
+export async function patchInventoryBatch(pool: Pool, req: Request, res: Response) {
+  try {
+    const { batchId } = req.params as any
+    const row = await updateBatch(pool, Number(batchId), req.body || {})
+    if (!row) return sendError(res, 404, 'Batch not found')
+    jsonSuccess(res, row)
+  } catch (err) {
+    sendError(res, 500, 'Failed to update batch', err)
+  }
+}
+
+export async function deleteInventoryBatch(pool: Pool, req: Request, res: Response) {
+  try {
+    const { batchId } = req.params as any
+    const mergeInto = req.query.merge_into != null ? Number(req.query.merge_into) : null
+    const result = await deleteBatch(pool, Number(batchId), mergeInto)
+    if (!result.ok) {
+      if (result.error === 'last_batch') {
+        return sendError(res, 400, 'Cannot delete the only batch for this SKU. Merge or zero out first.')
+      }
+      return sendError(res, 404, 'Batch not found')
+    }
+    jsonSuccess(res, result)
+  } catch (err) {
+    sendError(res, 500, 'Failed to delete batch', err)
   }
 }
 
@@ -569,6 +617,14 @@ export async function ensureDefaultVariant(pool: Pool, req: Request, res: Respon
        on conflict (product_id, variant_id) do nothing`,
       [pid, vRows[0].id]
     )
+
+    const { rows: invLookup } = await pool.query(
+      `select id from inventory where product_id = $1 and variant_id = $2`,
+      [pid, vRows[0].id]
+    )
+    if (invLookup[0]?.id) {
+      await ensureDefaultBatchForInventoryRow(pool, invLookup[0].id)
+    }
 
     jsonSuccess(res, vRows[0], 201)
   } catch (err: any) {

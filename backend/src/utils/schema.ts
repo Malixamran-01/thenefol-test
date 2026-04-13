@@ -75,6 +75,35 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_inventory_variant on inventory(variant_id);
     create index if not exists idx_inventory_logs_created_at on inventory_logs(created_at);
     
+    -- Stock batches (FIFO by expiry, then priority; sum of batch qty = inventory.quantity)
+    create table if not exists inventory_batches (
+      id serial primary key,
+      inventory_id integer not null references inventory(id) on delete cascade,
+      quantity integer not null default 0,
+      expiry_date date,
+      priority integer not null default 0,
+      label text,
+      is_restock_pool boolean not null default false,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      constraint inventory_batches_quantity_nonneg check (quantity >= 0)
+    );
+    create index if not exists idx_inventory_batches_inventory on inventory_batches(inventory_id);
+    create index if not exists idx_inventory_batches_fifo on inventory_batches (inventory_id, expiry_date nulls last, priority, id);
+    
+    do $$
+    begin
+      if exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'inventory_batches'
+      ) then
+        insert into inventory_batches (inventory_id, quantity, label, priority)
+        select i.id, greatest(i.quantity, 0), 'Opening stock', 0
+        from inventory i
+        where not exists (select 1 from inventory_batches b where b.inventory_id = i.id);
+      end if;
+    end $$;
+    
     -- Replenishment fields (Amazon-style: lead time, case pack, min reorder)
     do $$ 
     begin

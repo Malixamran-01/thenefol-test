@@ -44,17 +44,37 @@ export async function createReturn(pool: Pool, req: Request, res: Response) {
   }
 }
 
+const RESTOCK_RETURN_STATUSES = ['approved', 'received', 'completed', 'refunded'] as const
+
 export async function updateReturnStatus(pool: Pool, req: Request, res: Response) {
   try {
     await ensureTable(pool)
     const { id } = req.params as any
     const { status } = req.body || {}
     if (!status) return sendError(res, 400, 'status is required')
+    const { rows: prevRows } = await pool.query(
+      `select status, order_id, items from returns where id = $1`,
+      [id]
+    )
+    if (prevRows.length === 0) return sendError(res, 404, 'Return not found')
+    const prevStatus = String(prevRows[0].status || '')
     const { rows } = await pool.query(
       `update returns set status = $2, updated_at = now() where id = $1 returning *`,
       [id, status]
     )
     if (rows.length === 0) return sendError(res, 404, 'Return not found')
+    const nextNorm = String(status).toLowerCase()
+    const prevNorm = prevStatus.toLowerCase()
+    const shouldRestock =
+      RESTOCK_RETURN_STATUSES.some((s) => s === nextNorm) && !RESTOCK_RETURN_STATUSES.some((s) => s === prevNorm)
+    if (shouldRestock && prevRows[0].order_id) {
+      try {
+        const { restockFromReturnItems } = await import('../services/inventoryBatchService')
+        await restockFromReturnItems(pool, Number(prevRows[0].order_id), prevRows[0].items)
+      } catch (reErr) {
+        console.error('Restock after return approval failed:', reErr)
+      }
+    }
     sendSuccess(res, rows[0])
   } catch (err) {
     sendError(res, 500, 'Failed to update return status', err)

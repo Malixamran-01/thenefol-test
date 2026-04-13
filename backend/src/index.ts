@@ -1041,6 +1041,10 @@ app.patch('/api/inventory/:productId/:variantId/settings', (req, res) => invento
 app.post('/api/inventory/:productId/:variantId/adjust', (req, res) => inventoryRoutes.adjustStock(pool, req, res))
 app.post('/api/inventory/:productId/:variantId/low-threshold', (req, res) => inventoryRoutes.setLowStockThreshold(pool, req, res))
 app.put('/api/inventory/:productId/:variantId/quantity', (req, res) => inventoryRoutes.setStockQuantity(pool, req, res))
+app.get('/api/inventory/:productId/:variantId/batches', (req, res) => inventoryRoutes.listInventoryBatches(pool, req, res))
+app.post('/api/inventory/:productId/:variantId/batches', (req, res) => inventoryRoutes.postInventoryBatch(pool, req, res))
+app.patch('/api/inventory/batches/:batchId', (req, res) => inventoryRoutes.patchInventoryBatch(pool, req, res))
+app.delete('/api/inventory/batches/:batchId', (req, res) => inventoryRoutes.deleteInventoryBatch(pool, req, res))
 
 // ==================== SHIPROCKET ====================
 app.get('/api/shiprocket/config', authenticateAndAttach as any, requireRole(['admin']), (req, res) => shiprocketRoutes.getShiprocketConfig(pool, req, res))

@@ -235,6 +235,19 @@ export async function approveCancellation(pool: Pool, req: Request, res: Respons
 
     await flagCollabTasksForReturnedOrder(pool, Number(cancellation.order_id))
 
+    try {
+      const { rows: oRows } = await pool.query('SELECT * FROM orders WHERE id = $1', [cancellation.order_id])
+      if (oRows.length) {
+        const { restockFromCancellation } = await import('../services/inventoryBatchService')
+        await restockFromCancellation(pool, oRows[0], {
+          cancellation_type: cancellation.cancellation_type,
+          items_to_cancel: cancellation.items_to_cancel,
+        })
+      }
+    } catch (restockErr) {
+      console.error('Inventory restock after cancellation approval failed:', restockErr)
+    }
+
     // Initialize refund if payment was made via Razorpay
     if (cancellation.razorpay_payment_id && cancellation.payment_method !== 'cod') {
       try {
@@ -492,6 +505,19 @@ export async function cancelOrderImmediate(pool: Pool, req: Request, res: Respon
     )
 
     await flagCollabTasksForReturnedOrder(pool, Number(order.id))
+
+    try {
+      const { rows: oRows } = await pool.query('SELECT * FROM orders WHERE id = $1', [order.id])
+      if (oRows.length) {
+        const { restockFromCancellation } = await import('../services/inventoryBatchService')
+        await restockFromCancellation(pool, oRows[0], {
+          cancellation_type,
+          items_to_cancel,
+        })
+      }
+    } catch (restockErr) {
+      console.error('Inventory restock after immediate cancel failed:', restockErr)
+    }
 
     // Reverse coins if coins were used for payment
     if (order.coins_used && order.coins_used > 0) {

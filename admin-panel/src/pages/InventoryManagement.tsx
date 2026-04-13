@@ -5,6 +5,15 @@ import { useToast } from '../components/ToastProvider'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { getApiBaseUrl } from '../utils/apiUrl'
 
+interface StockBatch {
+  id: number
+  quantity: number
+  expiry_date: string | null
+  priority: number
+  label: string | null
+  is_restock_pool: boolean
+}
+
 interface Variant {
   id: number
   sku: string
@@ -26,6 +35,7 @@ interface Variant {
   days_of_supply?: number | null
   inventory_health?: string
   suggested_reorder_qty?: number | null
+  batch_count?: number
 }
 
 interface Product {
@@ -76,6 +86,95 @@ type InventoryLogRow = {
   sku?: string | null
 }
 
+function variantBatchKey(productId: number, variantId: number) {
+  return `${productId}-${variantId}`
+}
+
+function BatchEditRow({
+  batch,
+  onSave,
+  onDelete,
+}: {
+  batch: StockBatch
+  onSave: (patch: Partial<StockBatch>) => void
+  onDelete: () => void
+}) {
+  const [qty, setQty] = useState(batch.quantity)
+  const [expiry, setExpiry] = useState(batch.expiry_date ? String(batch.expiry_date).slice(0, 10) : '')
+  const [priority, setPriority] = useState(batch.priority)
+  const [label, setLabel] = useState(batch.label || '')
+
+  useEffect(() => {
+    setQty(batch.quantity)
+    setExpiry(batch.expiry_date ? String(batch.expiry_date).slice(0, 10) : '')
+    setPriority(batch.priority)
+    setLabel(batch.label || '')
+  }, [batch.id, batch.quantity, batch.expiry_date, batch.priority, batch.label])
+
+  return (
+    <tr className="border-b border-slate-50">
+      <td className="px-2 py-1">
+        <input
+          type="number"
+          min={0}
+          className="w-16 rounded border border-slate-200 px-1 py-0.5 tabular-nums"
+          value={qty}
+          onChange={(e) => setQty(Number(e.target.value))}
+        />
+      </td>
+      <td className="px-2 py-1">
+        <input
+          type="date"
+          className="rounded border border-slate-200 px-1 py-0.5"
+          value={expiry}
+          onChange={(e) => setExpiry(e.target.value)}
+        />
+      </td>
+      <td className="px-2 py-1">
+        <input
+          type="number"
+          className="w-14 rounded border border-slate-200 px-1 py-0.5 tabular-nums"
+          value={priority}
+          onChange={(e) => setPriority(Number(e.target.value))}
+        />
+      </td>
+      <td className="px-2 py-1">
+        <input
+          type="text"
+          className="w-36 max-w-full rounded border border-slate-200 px-1 py-0.5"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Label"
+        />
+      </td>
+      <td className="px-2 py-1 text-slate-600">{batch.is_restock_pool ? 'Returns' : '—'}</td>
+      <td className="whitespace-nowrap px-2 py-1">
+        <button
+          type="button"
+          onClick={() =>
+            onSave({
+              quantity: qty,
+              priority,
+              label: label.trim() || null,
+              expiry_date: expiry.trim() ? expiry : null,
+            })
+          }
+          className="mr-1 rounded bg-slate-800 px-2 py-0.5 text-[11px] text-white hover:bg-slate-900"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="rounded border border-rose-200 px-2 py-0.5 text-[11px] text-rose-800 hover:bg-rose-50"
+        >
+          Remove
+        </button>
+      </td>
+    </tr>
+  )
+}
+
 type InventoryModal =
   | { type: null; data: null }
   | {
@@ -116,6 +215,16 @@ export default function InventoryManagement() {
   const [restockLoading, setRestockLoading] = useState(false)
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLogRow[]>([])
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set())
+  const [batchPanelKey, setBatchPanelKey] = useState<string | null>(null)
+  const [batchCache, setBatchCache] = useState<Record<string, StockBatch[]>>({})
+  const [batchLoadingKey, setBatchLoadingKey] = useState<string | null>(null)
+  const [newBatchDraft, setNewBatchDraft] = useState<{
+    key: string
+    quantity: number
+    expiry_date: string
+    priority: number
+    label: string
+  } | null>(null)
   const closeModal = useCallback(() => setModal({ type: null, data: null }), [])
 
   // Use centralized API URL utility that respects VITE_API_URL
@@ -194,6 +303,116 @@ export default function InventoryManagement() {
     await fetchDashboard()
   }, [fetchProducts, fetchDashboard])
 
+  const loadBatches = useCallback(
+    async (productId: number, variantId: number) => {
+      const key = variantBatchKey(productId, variantId)
+      setBatchLoadingKey(key)
+      try {
+        const res = await fetch(`${apiBase}/inventory/${productId}/${variantId}/batches`, {
+          headers: authHeaders,
+        })
+        const raw = await parseJsonOk(res)
+        const arr = (raw as any)?.data ?? raw
+        setBatchCache((prev) => ({
+          ...prev,
+          [key]: Array.isArray(arr) ? (arr as StockBatch[]) : [],
+        }))
+      } catch (e: any) {
+        notify('error', e?.message || 'Failed to load batches')
+      } finally {
+        setBatchLoadingKey(null)
+      }
+    },
+    [apiBase, authHeaders, notify]
+  )
+
+  const toggleBatchPanel = useCallback(
+    async (productId: number, variantId: number) => {
+      const key = variantBatchKey(productId, variantId)
+      if (batchPanelKey === key) {
+        setBatchPanelKey(null)
+        return
+      }
+      setBatchPanelKey(key)
+      setNewBatchDraft({ key, quantity: 0, expiry_date: '', priority: 0, label: '' })
+      await loadBatches(productId, variantId)
+    },
+    [batchPanelKey, loadBatches]
+  )
+
+  const saveBatchPatch = useCallback(
+    async (productId: number, variantId: number, batch: StockBatch, patch: Partial<StockBatch>) => {
+      try {
+        const res = await fetch(`${apiBase}/inventory/batches/${batch.id}`, {
+          method: 'PATCH',
+          headers: authHeaders,
+          body: JSON.stringify({
+            quantity: patch.quantity ?? batch.quantity,
+            priority: patch.priority ?? batch.priority,
+            label: patch.label !== undefined ? patch.label : batch.label,
+            expiry_date:
+              patch.expiry_date !== undefined
+                ? patch.expiry_date
+                : batch.expiry_date,
+          }),
+        })
+        await parseJsonOk(res)
+        notify('success', 'Batch updated')
+        await loadBatches(productId, variantId)
+        await refreshAll()
+      } catch (e: any) {
+        notify('error', e?.message || 'Failed to update batch')
+      }
+    },
+    [apiBase, authHeaders, loadBatches, notify, refreshAll]
+  )
+
+  const addBatch = useCallback(
+    async (productId: number, variantId: number) => {
+      const key = variantBatchKey(productId, variantId)
+      const d = newBatchDraft
+      if (!d || d.key !== key) return
+      try {
+        const res = await fetch(`${apiBase}/inventory/${productId}/${variantId}/batches`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            quantity: d.quantity,
+            priority: d.priority,
+            label: d.label || null,
+            expiry_date: d.expiry_date.trim() ? d.expiry_date : null,
+          }),
+        })
+        await parseJsonOk(res)
+        notify('success', 'Batch added')
+        setNewBatchDraft({ key, quantity: 0, expiry_date: '', priority: 0, label: '' })
+        await loadBatches(productId, variantId)
+        await refreshAll()
+      } catch (e: any) {
+        notify('error', e?.message || 'Failed to add batch')
+      }
+    },
+    [apiBase, authHeaders, loadBatches, newBatchDraft, notify, refreshAll]
+  )
+
+  const removeBatch = useCallback(
+    async (productId: number, variantId: number, batchId: number) => {
+      try {
+        const res = await fetch(`${apiBase}/inventory/batches/${batchId}`, {
+          method: 'DELETE',
+          headers: authHeaders,
+        })
+        await parseJsonOk(res)
+        notify('success', 'Batch removed (stock merged into another line)')
+        await loadBatches(productId, variantId)
+        await refreshAll()
+      } catch (e: any) {
+        notify('error', e?.message || 'Failed to delete batch')
+      }
+    },
+    [apiBase, authHeaders, loadBatches, notify, refreshAll]
+  )
+
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search), 400)
     return () => window.clearTimeout(t)
@@ -242,7 +461,22 @@ export default function InventoryManagement() {
       closeModal()
       await refreshAll()
     } catch (err: any) {
-      notify('error', err?.message || 'Failed to update stock')
+      const msg = err?.message || 'Failed to update stock'
+      notify('error', msg)
+      if (
+        modal.type === 'stock' &&
+        /multiple stock batches/i.test(msg)
+      ) {
+        setBatchPanelKey(variantBatchKey(modal.data.productId, modal.data.variantId))
+        setNewBatchDraft({
+          key: variantBatchKey(modal.data.productId, modal.data.variantId),
+          quantity: 0,
+          expiry_date: '',
+          priority: 0,
+          label: '',
+        })
+        loadBatches(modal.data.productId, modal.data.variantId)
+      }
     }
   }
 
@@ -911,25 +1145,26 @@ export default function InventoryManagement() {
                 <div className="border-t bg-gray-50">
                   {product.variants && product.variants.length > 0 ? (
                     <div className="max-h-[min(60vh,540px)] overflow-auto overflow-x-auto rounded-b-xl">
-                      <table className="w-full min-w-[920px] border-collapse">
+                      <table className="w-full min-w-[980px] border-collapse text-[13px]">
                         <thead>
-                          <tr className="sticky top-0 z-10 border-b border-slate-200 bg-white text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm">
-                            <th className="min-w-[200px] px-2 py-2 sm:px-3">Product</th>
-                            <th className="px-2 py-2 sm:px-3">SKU</th>
-                            <th className="px-2 py-2 sm:px-3">HSN</th>
-                            <th className="min-w-[100px] px-2 py-2 sm:px-3">Variant</th>
-                            <th className="min-w-[280px] px-2 py-2 sm:px-3">Stock &amp; adjust</th>
-                            <th className="px-2 py-2 sm:px-3">30d</th>
-                            <th className="px-2 py-2 sm:px-3">Cover</th>
-                            <th className="px-2 py-2 sm:px-3">Health</th>
-                            <th className="px-2 py-2 sm:px-3">Reorder</th>
-                            <th className="min-w-[200px] px-2 py-2 sm:px-3">Actions</th>
+                          <tr className="sticky top-0 z-10 border-b border-slate-200 bg-white text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm">
+                            <th className="min-w-[180px] px-2 py-1.5 sm:px-2.5">Product</th>
+                            <th className="px-2 py-1.5 sm:px-2.5">SKU</th>
+                            <th className="px-2 py-1.5 sm:px-2.5">HSN</th>
+                            <th className="min-w-[88px] px-2 py-1.5 sm:px-2.5">Variant</th>
+                            <th className="min-w-[240px] px-2 py-1.5 sm:px-2.5">Stock</th>
+                            <th className="whitespace-nowrap px-2 py-1.5 sm:px-2.5">Batches</th>
+                            <th className="px-2 py-1.5 sm:px-2.5">30d</th>
+                            <th className="px-2 py-1.5 sm:px-2.5">Cover</th>
+                            <th className="px-2 py-1.5 sm:px-2.5">Health</th>
+                            <th className="px-2 py-1.5 sm:px-2.5">Reorder</th>
+                            <th className="min-w-[180px] px-2 py-1.5 sm:px-2.5">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {product.variants.map((variant) => (
+                            <React.Fragment key={variant.id}>
                             <tr
-                              key={variant.id}
                               className={`border-b border-slate-100 ${variant.is_low_stock ? 'bg-amber-50/50' : 'bg-white hover:bg-slate-50/90'}`}
                             >
                               <td className="align-middle px-2 py-2 sm:px-3">
@@ -1008,6 +1243,19 @@ export default function InventoryManagement() {
                                   </div>
                                 </div>
                               </td>
+                              <td className="align-middle px-2 py-2 sm:px-3">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleBatchPanel(product.product_id, variant.id)}
+                                  className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-800 hover:bg-slate-50"
+                                >
+                                  {(variant.batch_count ?? 0).toLocaleString()} batch
+                                  {(variant.batch_count ?? 0) === 1 ? '' : 'es'}
+                                </button>
+                                <p className="mt-1 max-w-[140px] text-[10px] leading-snug text-slate-500">
+                                  FIFO by expiry; lower priority sells first when tied.
+                                </p>
+                              </td>
                               <td className="align-middle px-2 py-2 text-xs tabular-nums text-slate-700 sm:px-3 sm:text-sm">
                                 {variant.sold_30d != null ? Number(variant.sold_30d).toLocaleString() : '—'}
                               </td>
@@ -1063,6 +1311,121 @@ export default function InventoryManagement() {
                                 </div>
                               </td>
                             </tr>
+                            {batchPanelKey === variantBatchKey(product.product_id, variant.id) && (
+                              <tr className="border-b border-slate-100 bg-slate-50/90">
+                                <td colSpan={11} className="px-3 py-2">
+                                  {batchLoadingKey === variantBatchKey(product.product_id, variant.id) ? (
+                                    <p className="text-xs text-slate-500">Loading batches…</p>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      <p className="text-[11px] font-medium text-slate-700">
+                                        Stock batches (sell order: earliest expiry first; undated / returns pool last)
+                                      </p>
+                                      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                                        <table className="w-full min-w-[640px] border-collapse text-xs">
+                                          <thead>
+                                            <tr className="border-b border-slate-100 bg-slate-50 text-left text-[10px] uppercase tracking-wide text-slate-500">
+                                              <th className="px-2 py-1.5">Qty</th>
+                                              <th className="px-2 py-1.5">Expiry</th>
+                                              <th className="px-2 py-1.5">Priority</th>
+                                              <th className="px-2 py-1.5">Label</th>
+                                              <th className="px-2 py-1.5">Pool</th>
+                                              <th className="px-2 py-1.5"> </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {(batchCache[variantBatchKey(product.product_id, variant.id)] || []).map(
+                                              (b) => (
+                                                <BatchEditRow
+                                                  key={b.id}
+                                                  batch={b}
+                                                  onSave={(patch) =>
+                                                    saveBatchPatch(product.product_id, variant.id, b, patch)
+                                                  }
+                                                  onDelete={() => removeBatch(product.product_id, variant.id, b.id)}
+                                                />
+                                              )
+                                            )}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                      {newBatchDraft?.key === variantBatchKey(product.product_id, variant.id) && (
+                                        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-slate-200 bg-white p-2">
+                                          <label className="text-[11px] text-slate-600">
+                                            Qty
+                                            <input
+                                              type="number"
+                                              min={0}
+                                              className="ml-1 w-16 rounded border border-slate-200 px-1 py-0.5"
+                                              value={newBatchDraft.quantity}
+                                              onChange={(e) =>
+                                                setNewBatchDraft((d) =>
+                                                  d
+                                                    ? {
+                                                        ...d,
+                                                        quantity: Number(e.target.value),
+                                                      }
+                                                    : d
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                          <label className="text-[11px] text-slate-600">
+                                            Expiry
+                                            <input
+                                              type="date"
+                                              className="ml-1 rounded border border-slate-200 px-1 py-0.5"
+                                              value={newBatchDraft.expiry_date}
+                                              onChange={(e) =>
+                                                setNewBatchDraft((d) =>
+                                                  d ? { ...d, expiry_date: e.target.value } : d
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                          <label className="text-[11px] text-slate-600">
+                                            Priority
+                                            <input
+                                              type="number"
+                                              className="ml-1 w-14 rounded border border-slate-200 px-1 py-0.5"
+                                              value={newBatchDraft.priority}
+                                              onChange={(e) =>
+                                                setNewBatchDraft((d) =>
+                                                  d
+                                                    ? { ...d, priority: Number(e.target.value) }
+                                                    : d
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                          <label className="text-[11px] text-slate-600">
+                                            Label
+                                            <input
+                                              type="text"
+                                              className="ml-1 w-32 rounded border border-slate-200 px-1 py-0.5"
+                                              value={newBatchDraft.label}
+                                              onChange={(e) =>
+                                                setNewBatchDraft((d) =>
+                                                  d ? { ...d, label: e.target.value } : d
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={() => addBatch(product.product_id, variant.id)}
+                                            className="rounded bg-teal-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-teal-700"
+                                          >
+                                            Add batch
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                            </React.Fragment>
                           ))}
                         </tbody>
                       </table>
