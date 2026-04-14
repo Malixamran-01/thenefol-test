@@ -21,8 +21,8 @@ export type SyncPlatform = 'website' | 'amazon' | 'flipkart'
 
 export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[]): Promise<{
   website?: { rows: number }
-  amazon?: { rows: number; skipped?: boolean }
-  flipkart?: { rows: number; skipped?: boolean }
+  amazon?: { rows: number; skipped?: boolean; logMessage?: string; error?: string }
+  flipkart?: { rows: number; skipped?: boolean; logMessage?: string; error?: string }
 }> {
   const out: any = {}
 
@@ -49,8 +49,10 @@ export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[])
         r.rows
       )
     } catch (e: any) {
-      await insertLog(pool, 'amazon', 'error', e?.message || String(e), 0)
-      throw e
+      const msg = e?.message || String(e)
+      await insertLog(pool, 'amazon', 'error', msg, 0)
+      out.amazon = { rows: 0, error: msg }
+      console.warn('[unified-sales] Amazon sync failed (other platforms still run):', msg)
     }
   }
 
@@ -66,8 +68,10 @@ export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[])
         r.rows
       )
     } catch (e: any) {
-      await insertLog(pool, 'flipkart', 'error', e?.message || String(e), 0)
-      throw e
+      const msg = e?.message || String(e)
+      await insertLog(pool, 'flipkart', 'error', msg, 0)
+      out.flipkart = { rows: 0, error: msg }
+      console.warn('[unified-sales] Flipkart sync failed (other platforms still run):', msg)
     }
   }
 
