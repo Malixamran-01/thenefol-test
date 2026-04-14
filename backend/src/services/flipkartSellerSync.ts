@@ -35,13 +35,38 @@ export function isFlipkartApiConfigured(): boolean {
   return true
 }
 
+/** Retries on transient 502/503/504 (load balancer / Flipkart outage). */
+async function flipkartHttpFetch(url: string, init: RequestInit, context: string): Promise<Response> {
+  const maxAttempts = 4
+  let lastStatus = 503
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const res = await fetch(url, init)
+    lastStatus = res.status
+    const transient = [503, 502, 504].includes(res.status)
+    if (!transient || attempt === maxAttempts - 1) {
+      return res
+    }
+    await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
+  }
+  throw new Error(`Flipkart ${context}: HTTP ${lastStatus} after retries — API still unavailable`)
+}
+
 /** Flipkart sometimes returns HTML (404/WAF/login). Never call res.json() blindly. */
 async function readFlipkartJsonBody(res: Response, context: string): Promise<Record<string, unknown>> {
   const text = await res.text()
   const trimmed = text.trim()
+
+  if (!res.ok && res.status >= 500 && res.status < 600 && !trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    throw new Error(
+      `Flipkart ${context}: HTTP ${res.status} — Flipkart marketplace API is temporarily unavailable. Try again in a few minutes.`
+    )
+  }
+
   if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
     const preview = trimmed.slice(0, 280).replace(/\s+/g, ' ')
-    const htmlHint = trimmed.startsWith('<') ? ' Response is HTML — check FLIPKART_API_BASE_URL, credentials, and that OAuth uses POST.' : ''
+    const htmlHint = trimmed.startsWith('<')
+      ? ' Response is HTML — check FLIPKART_API_BASE_URL and credentials; OAuth must be POST with form body.'
+      : ''
     throw new Error(
       `Flipkart ${context}: expected JSON, got HTTP ${res.status}.${htmlHint} Snippet: ${preview || '(empty)'}`
     )
@@ -68,15 +93,19 @@ async function flipkartClientCredentialsToken(): Promise<string> {
     scope,
   })
   const auth = Buffer.from(`${key}:${secret}`).toString('base64')
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
+  const res = await flipkartHttpFetch(
+    url,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body: body.toString(),
     },
-    body: body.toString(),
-  })
+    'oauth/token'
+  )
   const json = await readFlipkartJsonBody(res, 'oauth/token')
   if (!res.ok) {
     const msg =
@@ -134,15 +163,19 @@ async function postShipmentFilter(
         },
         pagination: { pageSize: 20 },
       })
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+  const res = await flipkartHttpFetch(
+    url,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body,
     },
-    body,
-  })
+    'shipments/filter'
+  )
   const json = await readFlipkartJsonBody(res, 'shipments/filter')
   if (!res.ok) {
     const msg = (json.message as string) || (json.error as string) || JSON.stringify(json)

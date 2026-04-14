@@ -91,15 +91,16 @@ export default function UnifiedSalesDashboard() {
   })
   const [gstData, setGstData] = useState<any>(null)
 
-  const authHeaders = useMemo(() => {
+  /** Fresh headers each call — avoids stale token and ensures RBAC headers are always sent. */
+  const getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem('auth_token')
     return {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       'x-user-permissions': 'orders:read,orders:update',
       'x-user-role': 'admin',
-    } as Record<string, string>
-  }, [])
+    }
+  }
 
   const parseJson = async (res: Response) => {
     const data = await res.json().catch(() => ({}))
@@ -111,10 +112,10 @@ export default function UnifiedSalesDashboard() {
     const params = new URLSearchParams()
     params.set('from', new Date(from + 'T00:00:00').toISOString())
     params.set('to', new Date(to + 'T23:59:59').toISOString())
-    const res = await fetch(`${apiBase}/sales/summary?${params}`, { headers: authHeaders })
+    const res = await fetch(`${apiBase}/sales/summary?${params}`, { headers: getAuthHeaders() })
     const data = await parseJson(res)
     setSummary(data as Summary)
-  }, [apiBase, authHeaders, from, to])
+  }, [apiBase, from, to])
 
   const loadCombined = useCallback(async () => {
     const params = new URLSearchParams()
@@ -123,17 +124,17 @@ export default function UnifiedSalesDashboard() {
     params.set('limit', '200')
     if (platformFilter) params.set('platform', platformFilter)
     if (search.trim()) params.set('q', search.trim())
-    const res = await fetch(`${apiBase}/sales/combined?${params}`, { headers: authHeaders })
+    const res = await fetch(`${apiBase}/sales/combined?${params}`, { headers: getAuthHeaders() })
     const data = await parseJson(res)
     setRows((data as any).rows || [])
     setTotal((data as any).total ?? 0)
-  }, [apiBase, authHeaders, from, to, platformFilter, search])
+  }, [apiBase, from, to, platformFilter, search])
 
   const loadLogs = useCallback(async () => {
-    const res = await fetch(`${apiBase}/sales/sync/logs?limit=30`, { headers: authHeaders })
+    const res = await fetch(`${apiBase}/sales/sync/logs?limit=30`, { headers: getAuthHeaders() })
     const data = await parseJson(res)
     setLogs(Array.isArray(data) ? data : [])
-  }, [apiBase, authHeaders])
+  }, [apiBase])
 
   const refreshAll = useCallback(async () => {
     setLoading(true)
@@ -181,7 +182,7 @@ export default function UnifiedSalesDashboard() {
     try {
       const res = await fetch(`${apiBase}/sales/sync/manual`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: getAuthHeaders(),
         body: JSON.stringify({ platforms: ['website', 'amazon', 'flipkart'] }),
       })
       await parseJson(res)
@@ -200,7 +201,7 @@ export default function UnifiedSalesDashboard() {
       params.set('from', new Date(from + 'T00:00:00').toISOString())
       params.set('to', new Date(to + 'T23:59:59').toISOString())
       if (platformFilter) params.set('platform', platformFilter)
-      const res = await fetch(`${apiBase}/sales/export.csv?${params}`, { headers: authHeaders })
+      const res = await fetch(`${apiBase}/sales/export.csv?${params}`, { headers: getAuthHeaders() })
       if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -218,7 +219,7 @@ export default function UnifiedSalesDashboard() {
   const loadGst = async () => {
     try {
       const res = await fetch(`${apiBase}/sales/reports/gst?month=${encodeURIComponent(gstMonth)}`, {
-        headers: authHeaders,
+        headers: getAuthHeaders(),
       })
       const data = await parseJson(res)
       setGstData(data)

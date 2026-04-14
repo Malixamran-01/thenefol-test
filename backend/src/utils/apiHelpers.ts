@@ -4,7 +4,11 @@ import { Pool } from 'pg'
 
 // Standardized error response
 export function sendError(res: Response, status: number, message: string, error?: any) {
-  console.error(`API Error [${status}]:`, message, error)
+  if (error !== undefined && error !== null && error !== '') {
+    console.error(`API Error [${status}]:`, message, error)
+  } else {
+    console.error(`API Error [${status}]:`, message)
+  }
   res.status(status).json({ error: message })
 }
 
@@ -89,20 +93,25 @@ export async function handleUpdate(
 
 // Authentication middleware
 export function authenticateToken(req: Request, res: Response, next: Function) {
-  const token = req.headers.authorization?.replace('Bearer ', '')
-  
+  const rawAuth = req.headers.authorization
+  const token = rawAuth?.startsWith('Bearer ') ? rawAuth.slice(7).trim() : rawAuth?.trim()
+
   // If admin/staff user via headers, allow through (token validation not needed)
-  const role = req.headers['x-user-role'] as string
-  const permissionsHeader = req.headers['x-user-permissions'] as string
+  const role = String(req.headers['x-user-role'] || '').trim()
+  const permissionsHeader = String(req.headers['x-user-permissions'] || '').trim()
   if (role && permissionsHeader) {
-    // Admin/staff user - allow through without token validation
     return next()
   }
-  
+
+  /** Admin JWT (three segments) + role header — some clients omit x-user-permissions */
+  if (token && role === 'admin' && /^[^\s]+\.[^\s]+\.[^\s]+$/.test(token)) {
+    return next()
+  }
+
   if (!token) {
     return sendError(res, 401, 'No token provided')
   }
-  
+
   const tokenParts = token.split('_')
   if (tokenParts.length < 3 || tokenParts[0] !== 'user' || tokenParts[1] !== 'token') {
     return sendError(res, 401, 'Invalid token format')
