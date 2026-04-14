@@ -45,7 +45,7 @@ export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[])
         pool,
         'amazon',
         r.skipped ? 'skipped' : 'success',
-        r.skipped ? 'SP-API not configured' : null,
+        r.skipped ? r.logMessage || 'SP-API not configured' : r.logMessage || null,
         r.rows
       )
     } catch (e: any) {
@@ -62,7 +62,7 @@ export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[])
         pool,
         'flipkart',
         r.skipped ? 'skipped' : 'success',
-        r.skipped ? 'Flipkart API not configured' : null,
+        r.skipped ? 'Flipkart API not configured' : r.logMessage || null,
         r.rows
       )
     } catch (e: any) {
