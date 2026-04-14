@@ -1,5 +1,6 @@
 export { default as Dashboard } from './Dashboard'
 export { default as Orders } from './sales/Orders'
+export { default as UnifiedSalesDashboard } from './sales/UnifiedSalesDashboard'
 export { default as Customers } from './crm/Customers'
 export { default as Users } from './Users'
 export { default as Categories } from './catalog/Categories'

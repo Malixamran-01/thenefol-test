@@ -14,6 +14,7 @@ import { createUserActivityTables } from './utils/userActivitySchema'
 import * as productRoutes from './routes/products'
 import * as variantRoutes from './routes/variants'
 import * as inventoryRoutes from './routes/inventory'
+import * as unifiedSalesRoutes from './routes/unifiedSales'
 import * as shiprocketRoutes from './routes/shiprocket'
 import * as amazonRoutes from './routes/amazon'
 import * as flipkartRoutes from './routes/flipkart'
@@ -1041,6 +1042,27 @@ app.patch('/api/inventory/:productId/:variantId/settings', (req, res) => invento
 app.post('/api/inventory/:productId/:variantId/adjust', (req, res) => inventoryRoutes.adjustStock(pool, req, res))
 app.post('/api/inventory/:productId/:variantId/low-threshold', (req, res) => inventoryRoutes.setLowStockThreshold(pool, req, res))
 app.put('/api/inventory/:productId/:variantId/quantity', (req, res) => inventoryRoutes.setStockQuantity(pool, req, res))
+app.get('/api/sales/combined', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+  unifiedSalesRoutes.getCombinedSales(pool, req, res)
+)
+app.get('/api/sales/export.csv', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+  unifiedSalesRoutes.exportUnifiedSalesCsv(pool, req, res)
+)
+app.get('/api/sales/platform/:platform', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+  unifiedSalesRoutes.getSalesByPlatform(pool, req, res)
+)
+app.get('/api/sales/summary', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+  unifiedSalesRoutes.getSalesSummary(pool, req, res)
+)
+app.get('/api/sales/sync/logs', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+  unifiedSalesRoutes.getSyncLogs(pool, req, res)
+)
+app.get('/api/sales/reports/gst', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+  unifiedSalesRoutes.getGstReport(pool, req, res)
+)
+app.post('/api/sales/sync/manual', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) =>
+  unifiedSalesRoutes.postManualSync(pool, req, res)
+)
 app.get('/api/inventory/:productId/:variantId/batches', (req, res) => inventoryRoutes.listInventoryBatches(pool, req, res))
 app.post('/api/inventory/:productId/:variantId/batches', (req, res) => inventoryRoutes.postInventoryBatch(pool, req, res))
 app.patch('/api/inventory/batches/:batchId', (req, res) => inventoryRoutes.patchInventoryBatch(pool, req, res))
@@ -1084,6 +1106,7 @@ app.post('/api/shiprocket/ndr/:awb/action', authenticateAndAttach as any, requir
 app.post('/api/shiprocket/rto/:orderId', authenticateAndAttach as any, requirePermission(['shipping:update']), (req, res) => shiprocketRoutes.markRto(pool, req, res))
 
 // ==================== AMAZON ====================
+app.get('/api/amazon/oauth/callback', (req, res) => amazonRoutes.amazonOAuthCallback(pool, req, res))
 app.post('/api/marketplaces/amazon/accounts', (req, res) => amazonRoutes.saveAmazonAccount(pool, req, res))
 app.get('/api/marketplaces/amazon/accounts', (req, res) => amazonRoutes.listAmazonAccounts(pool, req, res))
 app.post('/api/marketplaces/amazon/sync-products', (req, res) => amazonRoutes.syncProductsToAmazon(pool, req, res))
@@ -5303,6 +5326,16 @@ ensureSchema(pool)
   })
 
 let fbSyncLastRun: null | { time: number; result: any } = null
+
+// Unified sales: website + marketplace stubs (hourly)
+cron.schedule('0 * * * *', async () => {
+  try {
+    const { runHourlyUnifiedSalesSync } = await import('./services/runUnifiedSalesSync')
+    await runHourlyUnifiedSalesSync(pool)
+  } catch (err) {
+    console.error('[unified-sales] hourly sync failed:', err)
+  }
+})
 
 // Schedule Facebook stock/price sync hourly
 cron.schedule('0 * * * *', async () => {

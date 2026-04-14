@@ -122,6 +122,40 @@ export async function ensureSchema(pool: Pool) {
       end if;
     end $$;
     
+    -- Unified sales analytics (Nefol store + Amazon SP-API + Flipkart imports)
+    create table if not exists unified_sales (
+      id serial primary key,
+      platform text not null check (platform in ('website','amazon','flipkart')),
+      source_order_id text not null,
+      line_key text not null,
+      product_name text not null default '',
+      quantity integer not null default 0,
+      price numeric(14,2) not null default 0,
+      tax numeric(14,2) not null default 0,
+      shipping numeric(14,2) not null default 0,
+      total numeric(14,2) not null default 0,
+      city text,
+      order_date timestamptz not null,
+      currency text not null default 'INR',
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      unique(platform, line_key)
+    );
+    create index if not exists idx_unified_sales_platform_date on unified_sales(platform, order_date desc);
+    create index if not exists idx_unified_sales_order on unified_sales(platform, source_order_id);
+    create index if not exists idx_unified_sales_product on unified_sales(lower(product_name));
+
+    create table if not exists sales_sync_logs (
+      id serial primary key,
+      platform text not null,
+      status text not null,
+      message text,
+      rows_synced integer not null default 0,
+      started_at timestamptz not null default now(),
+      finished_at timestamptz
+    );
+    create index if not exists idx_sales_sync_logs_started on sales_sync_logs(started_at desc);
+    
     -- Replenishment fields (Amazon-style: lead time, case pack, min reorder)
     do $$ 
     begin

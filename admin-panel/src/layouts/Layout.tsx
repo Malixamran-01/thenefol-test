@@ -108,6 +108,13 @@ const Layout = () => {
       defaultOpen: false,
       items: [
         { name: 'Orders', href: '/admin/orders', icon: '📋', current: location.pathname === '/admin/orders' },
+        {
+          name: 'Unified sales',
+          href: '/admin/unified-sales',
+          icon: '📊',
+          badge: 'NEW',
+          current: location.pathname === '/admin/unified-sales',
+        },
         { name: 'Shipments', href: '/admin/shipments', icon: '🚚', current: location.pathname === '/admin/shipments' },
         { name: 'Returns', href: '/admin/returns', icon: '↩️', current: location.pathname === '/admin/returns' },
         { name: 'POS System', href: '/admin/pos', icon: '💳', current: location.pathname === '/admin/pos' },

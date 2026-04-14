@@ -8,7 +8,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import ToastProvider from './components/ToastProvider'
 import { socketService } from './services/socket'
 import { 
-  Dashboard, Orders, Customers, Users, Categories, Settings, Products,
+  Dashboard, Orders, UnifiedSalesDashboard, Customers, Users, Categories, Settings, Products,
   Analytics, Marketing, MetaAds, WhatsAppSubscriptions, Discounts, FacebookInstagram, OnlineStore, GoogleYouTube, Forms,
   Invoice, InvoiceSettings, Tax, Returns, Payment, UserProfiles, UserNotifications, LoyaltyProgramManagement,
   StaticPagesManagement, CommunityManagement, CartCheckoutManagement, AffiliateManagement, AffiliateRequests,
@@ -197,6 +197,7 @@ export default function App() {
             
             {/* ========== SALES & ORDERS ========== */}
             <Route path="orders" element={<Orders />} />
+            <Route path="unified-sales" element={<UnifiedSalesDashboard />} />
             <Route path="orders/:orderNumber" element={<OrderDetails />} />
             <Route path="shipments" element={<Shipments />} />
             <Route path="returns" element={<Returns />} />
