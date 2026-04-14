@@ -35,23 +35,55 @@ export function isFlipkartApiConfigured(): boolean {
   return true
 }
 
+/** Flipkart sometimes returns HTML (404/WAF/login). Never call res.json() blindly. */
+async function readFlipkartJsonBody(res: Response, context: string): Promise<Record<string, unknown>> {
+  const text = await res.text()
+  const trimmed = text.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    const preview = trimmed.slice(0, 280).replace(/\s+/g, ' ')
+    const htmlHint = trimmed.startsWith('<') ? ' Response is HTML — check FLIPKART_API_BASE_URL, credentials, and that OAuth uses POST.' : ''
+    throw new Error(
+      `Flipkart ${context}: expected JSON, got HTTP ${res.status}.${htmlHint} Snippet: ${preview || '(empty)'}`
+    )
+  }
+  try {
+    return JSON.parse(trimmed) as Record<string, unknown>
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    throw new Error(`Flipkart ${context}: invalid JSON (${res.status}): ${msg}`)
+  }
+}
+
+/**
+ * Client credentials token. Flipkart documents POST + form body; GET often returns an HTML page and breaks JSON.parse.
+ */
 async function flipkartClientCredentialsToken(): Promise<string> {
   const base = getFlipkartApiBaseUrl()
   const key = getFlipkartApiKey()
   const secret = getFlipkartApiSecret()
-  const scope = encodeURIComponent('Seller_Api,Default')
-  const url = `${base}/oauth-service/oauth/token?grant_type=client_credentials&scope=${scope}`
+  const scope = (process.env.FLIPKART_OAUTH_SCOPE || 'Seller_Api,Default').trim()
+  const url = `${base}/oauth-service/oauth/token`
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    scope,
+  })
   const auth = Buffer.from(`${key}:${secret}`).toString('base64')
   const res = await fetch(url, {
-    method: 'GET',
+    method: 'POST',
     headers: {
       Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json',
     },
+    body: body.toString(),
   })
-  const json = (await res.json()) as Record<string, unknown>
+  const json = await readFlipkartJsonBody(res, 'oauth/token')
   if (!res.ok) {
-    const msg = (json.message as string) || (json.error as string) || JSON.stringify(json)
+    const msg =
+      (json.message as string) ||
+      (json.error as string) ||
+      (json.error_description as string) ||
+      JSON.stringify(json)
     throw new Error(`Flipkart token failed (${res.status}): ${msg}`)
   }
   const token = json.access_token
@@ -111,7 +143,7 @@ async function postShipmentFilter(
     },
     body,
   })
-  const json = (await res.json()) as Record<string, unknown>
+  const json = await readFlipkartJsonBody(res, 'shipments/filter')
   if (!res.ok) {
     const msg = (json.message as string) || (json.error as string) || JSON.stringify(json)
     throw new Error(`Flipkart shipments filter failed (${res.status}): ${msg}`)
