@@ -90,29 +90,46 @@ export default function MetaAds() {
   }
 
   const loadData = async () => {
+    const parseJson = async (res: Response) => {
+      const text = await res.text()
+      const trimmed = text.trim()
+      if (!trimmed) return {}
+      if (trimmed.startsWith('<') || trimmed.startsWith('<!')) {
+        throw new Error(
+          'Server returned HTML instead of JSON. Check that the API is running and VITE_API_URL points to your backend.'
+        )
+      }
+      try {
+        return JSON.parse(text) as Record<string, unknown>
+      } catch {
+        throw new Error('Invalid JSON from server.')
+      }
+    }
+
     try {
       setLoading(true)
       setError('')
 
       if (activeTab === 'campaigns') {
         const res = await fetch(`${apiBase}/api/meta-ads/campaigns`)
-        const data = await res.json()
-        setCampaigns(Array.isArray(data.data) ? data.data : [])
+        const data = await parseJson(res)
+        setCampaigns(Array.isArray(data.data) ? (data.data as Campaign[]) : [])
       } else if (activeTab === 'adsets') {
         const res = await fetch(`${apiBase}/api/meta-ads/adsets`)
-        const data = await res.json()
-        setAdsets(Array.isArray(data.data) ? data.data : [])
+        const data = await parseJson(res)
+        setAdsets(Array.isArray(data.data) ? (data.data as AdSet[]) : [])
       } else if (activeTab === 'ads') {
         const res = await fetch(`${apiBase}/api/meta-ads/ads`)
-        const data = await res.json()
-        setAds(Array.isArray(data.data) ? data.data : [])
+        const data = await parseJson(res)
+        setAds(Array.isArray(data.data) ? (data.data as Ad[]) : [])
       } else if (activeTab === 'insights') {
         const res = await fetch(`${apiBase}/api/meta-ads/insights`)
-        const data = await res.json()
-        setInsights(Array.isArray(data.data) ? data.data : [])
+        const data = await parseJson(res)
+        setInsights(Array.isArray(data.data) ? (data.data as Insight[]) : [])
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load data')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load data'
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -257,11 +274,10 @@ export default function MetaAds() {
       <div className="admin-page-header">
         <div>
           <h1 
-            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-xl sm:text-2xl md:text-3xl font-light mb-2 tracking-[0.06em] sm:tracking-[0.1em] md:tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
-              letterSpacing: '0.15em'
             }}
           >
             Meta Ads Management
@@ -270,38 +286,45 @@ export default function MetaAds() {
             Create and manage your Facebook & Instagram ad campaigns
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <button
+            type="button"
             onClick={() => setShowConfigModal(true)}
-            className="btn-secondary flex items-center space-x-2"
+            className="btn-secondary flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-4 w-4 shrink-0" />
             <span>Settings</span>
           </button>
           {activeTab === 'campaigns' && (
             <button
+              type="button"
               onClick={() => setShowCreateModal(true)}
-              className="btn-primary flex items-center space-x-2"
+              className="btn-primary flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 shrink-0" />
               <span>Create Campaign</span>
             </button>
           )}
           {activeTab === 'insights' && (
             <button
+              type="button"
               onClick={syncInsights}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 sm:inline-flex sm:w-auto"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-4 w-4 shrink-0" />
               <span>Sync Insights</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex space-x-8">
+      {/* Tabs — scroll horizontally on narrow screens */}
+      <div className="-mx-1 border-b border-gray-200 px-1 dark:border-gray-700">
+        <nav
+          className="-mb-px flex gap-1 overflow-x-auto pb-px sm:gap-2 md:gap-6"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+          aria-label="Meta Ads sections"
+        >
           {[
             { id: 'campaigns', label: 'Campaigns', icon: Target },
             { id: 'adsets', label: 'Ad Sets', icon: Users },
@@ -312,18 +335,18 @@ export default function MetaAds() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? ''
-                    : 'border-transparent'
+                type="button"
+                onClick={() => setActiveTab(tab.id as 'campaigns' | 'adsets' | 'ads' | 'insights' | 'config')}
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-2 px-3 py-3 text-xs font-medium transition-colors sm:gap-2 sm:px-2 sm:py-4 sm:text-sm ${
+                  activeTab === tab.id ? '' : 'border-transparent'
                 }`}
-                style={activeTab === tab.id 
-                  ? { borderColor: 'var(--arctic-blue-primary)', color: 'var(--arctic-blue-primary-dark)' }
-                  : { color: 'var(--text-muted)' }
+                style={
+                  activeTab === tab.id
+                    ? { borderColor: 'var(--arctic-blue-primary)', color: 'var(--arctic-blue-primary-dark)' }
+                    : { color: 'var(--text-muted)' }
                 }
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4 shrink-0" />
                 <span>{tab.label}</span>
               </button>
             )
@@ -333,7 +356,7 @@ export default function MetaAds() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700 sm:px-4 break-words">
           {error}
         </div>
       )}
@@ -385,7 +408,7 @@ export default function MetaAds() {
                           </button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4 md:gap-4">
                         <div>
                           <p className="text-gray-600 dark:text-gray-400">Daily Budget</p>
                           <p className="font-semibold">
@@ -437,7 +460,7 @@ export default function MetaAds() {
                           {adset.status}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-3 md:gap-4">
                         <div>
                           <p className="text-gray-600 dark:text-gray-400">Daily Budget</p>
                           <p className="font-semibold">

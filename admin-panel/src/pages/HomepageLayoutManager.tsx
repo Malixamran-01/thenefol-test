@@ -1563,11 +1563,10 @@ export default function HomepageLayoutManager() {
       <div className="admin-page-header">
         <div>
           <h1 
-            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-xl sm:text-2xl md:text-3xl font-light mb-2 tracking-[0.06em] sm:tracking-[0.12em] md:tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
-              letterSpacing: '0.15em'
             }}
           >
             Homepage Layout Manager
@@ -1576,26 +1575,29 @@ export default function HomepageLayoutManager() {
             Drag and drop images to different sections or click to upload
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex w-full min-w-0 max-w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <button
+            type="button"
             onClick={() => setShowCreateSection(true)}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex w-full min-w-0 items-center justify-center gap-2 text-sm sm:inline-flex sm:w-auto sm:shrink-0"
           >
-            <Plus className="w-5 h-5" />
-            Create New Section
+            <Plus className="h-5 w-5 shrink-0" />
+            <span className="truncate">Create New Section</span>
           </button>
           <button
+            type="button"
             onClick={() => setPreviewMode(!previewMode)}
-            className="btn-secondary flex items-center gap-2"
+            className="btn-secondary flex w-full min-w-0 items-center justify-center gap-2 text-sm sm:inline-flex sm:w-auto sm:shrink-0"
           >
-            <Eye className="w-5 h-5" />
-            {previewMode ? 'Edit Mode' : 'Preview Mode'}
+            <Eye className="h-5 w-5 shrink-0" />
+            <span>{previewMode ? 'Edit Mode' : 'Preview Mode'}</span>
           </button>
           <button
+            type="button"
             onClick={initializeSections}
-            className="btn-secondary flex items-center gap-2"
+            className="btn-secondary flex w-full min-w-0 items-center justify-center gap-2 text-sm sm:inline-flex sm:w-auto sm:shrink-0"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="h-5 w-5 shrink-0" />
             Refresh
           </button>
         </div>
@@ -1609,13 +1611,13 @@ export default function HomepageLayoutManager() {
             onDragOver={(e) => handleDragOver(e, section.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, section.id)}
-            className={`border-2 rounded-lg p-6 transition-all ${
+            className={`border-2 rounded-lg p-3 sm:p-5 md:p-6 transition-all ${
               draggedOverSection === section.id
                 ? 'border-blue-500 bg-blue-50 border-dashed'
                 : 'border-gray-200 hover:border-gray-300'
             } ${uploading[section.id] ? 'opacity-50' : ''}`}
           >
-            <div className="flex items-start justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-lg font-semibold">
@@ -1701,22 +1703,23 @@ export default function HomepageLayoutManager() {
 
             {/* Scrolling Text Banner Input */}
             {section.id === 'scrolling_text_banner' && (
-              <div className="mt-4 p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="mt-4 rounded-lg border border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50 p-3 sm:p-4">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
                   Scrolling Text (Offers, Promotions, etc.)
                 </label>
                 <textarea
                   value={scrollingText}
                   onChange={(e) => setScrollingText(e.target.value)}
                   placeholder="Enter text to display in the scrolling banner. You can add multiple items separated by commas or new lines. Example: 'Free Shipping on Orders Above ₹500', 'Buy 2 Get 1 Free', 'New Arrivals - Shop Now!'"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-y min-h-[100px]"
+                  className="min-h-[100px] w-full min-w-0 resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500 sm:px-4 sm:py-3"
                   rows={4}
                 />
-                <div className="mt-3 admin-inline-row">
-                  <p className="text-xs text-gray-500">
+                <div className="mt-3 flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="min-w-0 flex-1 text-xs leading-relaxed text-gray-500">
                     This text will scroll continuously 24/7 on the homepage
                   </p>
                   <button
+                    type="button"
                     onClick={async () => {
                       try {
                         const scrollingSection = sections.find(s => s.id === 'scrolling_text_banner')
@@ -1727,9 +1730,9 @@ export default function HomepageLayoutManager() {
                         notify('error', 'Failed to save scrolling text')
                       }
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                    className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-yellow-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-yellow-700 sm:w-auto"
                   >
-                    <Save className="w-4 h-4" />
+                    <Save className="h-4 w-4 shrink-0" />
                     Save Text
                   </button>
                 </div>
@@ -1858,11 +1861,12 @@ export default function HomepageLayoutManager() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 admin-inline-row">
-                  <p className="text-xs text-gray-500">
+                <div className="mt-3 flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="min-w-0 flex-1 text-xs leading-relaxed text-gray-500">
                     Edit the text content, upload product image and logo for the WhatsApp subscription modal
                   </p>
                   <button
+                    type="button"
                     onClick={async () => {
                       try {
                         const whatsappSection = sections.find(s => s.id === 'whatsappsubscription')
@@ -1873,9 +1877,9 @@ export default function HomepageLayoutManager() {
                         notify('error', 'Failed to save WhatsApp subscription content')
                       }
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700 sm:w-auto"
                   >
-                    <Save className="w-4 h-4" />
+                    <Save className="h-4 w-4 shrink-0" />
                     Save Content
                   </button>
                 </div>
@@ -1884,15 +1888,17 @@ export default function HomepageLayoutManager() {
 
             {/* Splash Screen Manager */}
             {section.id === 'splash_screen' && (
-              <div className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
-                <div className="admin-inline-row mb-4">
-                  <div>
+              <div className="mt-4 rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50 p-3 sm:p-4">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <div className="min-w-0 flex-1">
                     <h4 className="text-base font-semibold text-purple-900">Splash Screen Videos</h4>
-                    <p className="text-sm text-slate-600">
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
                       Upload device-specific videos (MP4/WebM) to personalize the opening animation for every visitor.
                     </p>
                   </div>
-                  <span className="text-xs text-slate-500">Auto-plays for desktop, tablet & mobile users.</span>
+                  <span className="shrink-0 rounded-md bg-white/80 px-2 py-1 text-xs text-slate-600 ring-1 ring-purple-100 sm:max-w-[11rem] sm:text-right">
+                    Auto-plays for desktop, tablet & mobile users.
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1908,7 +1914,7 @@ export default function HomepageLayoutManager() {
                           <div className="relative group border border-purple-200 rounded-xl overflow-hidden bg-white shadow-sm">
                             <video
                               src={videoUrl}
-                              className="w-full h-48 object-cover bg-black"
+                              className="h-40 w-full bg-black object-cover sm:h-48"
                               controls
                               playsInline
                               muted
@@ -1956,7 +1962,7 @@ export default function HomepageLayoutManager() {
                                 e.currentTarget.value = ''
                               }}
                             />
-                            <div className="w-full h-48 border-2 border-dashed border-purple-200 rounded-xl flex flex-col items-center justify-center bg-white/70 hover:border-purple-400 hover:bg-purple-50 transition-colors">
+                            <div className="flex h-40 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-purple-200 bg-white/70 transition-colors hover:border-purple-400 hover:bg-purple-50 sm:h-48">
                               <Upload className="w-6 h-6 text-purple-400 mb-2" />
                               <p className="text-sm text-purple-700 font-medium">Upload {label} Video</p>
                               <p className="text-xs text-purple-500 mt-1 text-center px-4">
@@ -1978,17 +1984,18 @@ export default function HomepageLayoutManager() {
 
             {/* Top Media Carousel Settings Panel */}
             {section.id === 'top_media_carousel' && showTopMediaSettings && (
-              <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <div className="admin-inline-row mb-4">
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-5 h-5 text-blue-600" />
+              <div className="mb-4 rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3 sm:p-4">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Palette className="h-5 w-5 shrink-0 text-blue-600" />
                     <h4 className="font-semibold text-blue-900">Animation & Design Settings</h4>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setShowTopMediaSettings(false)}
-                    className="p-1 hover:bg-blue-200 rounded transition-colors"
+                    className="self-end rounded p-1 transition-colors hover:bg-blue-200 sm:self-auto"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
 
@@ -2156,17 +2163,18 @@ export default function HomepageLayoutManager() {
 
             {/* Hero Banner Settings Panel */}
             {section.id === 'hero_banner' && showHeroSettings && (
-              <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <div className="admin-inline-row mb-4">
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-5 h-5 text-blue-600" />
+              <div className="mb-4 rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3 sm:p-4">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Palette className="h-5 w-5 shrink-0 text-blue-600" />
                     <h4 className="font-semibold text-blue-900">Animation & Design Settings</h4>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setShowHeroSettings(false)}
-                    className="p-1 hover:bg-blue-200 rounded transition-colors"
+                    className="self-end rounded p-1 transition-colors hover:bg-blue-200 sm:self-auto"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
 
