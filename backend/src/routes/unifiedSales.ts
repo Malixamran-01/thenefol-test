@@ -48,7 +48,8 @@ export async function getCombinedSales(pool: Pool, req: Request, res: Response) 
     const limitIdx = params.length + 1
     const offsetIdx = params.length + 2
     const { rows } = await pool.query(
-      `select id, platform, source_order_id as line_order_id, product_name, quantity, price, tax, shipping, total, city, order_date, currency
+      `select id, platform, source_order_id as line_order_id, product_name, quantity, price, tax, shipping, total, city, order_date, currency,
+              order_status, business_type, shipping_state, quantity_shipped, line_note
        from unified_sales
        ${where}
        order by order_date desc, id desc
@@ -272,7 +273,8 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
     }
 
     const { rows } = await pool.query(
-      `select platform, source_order_id, product_name, quantity, price, tax, shipping, total, city, order_date, currency
+      `select platform, source_order_id, product_name, quantity, price, tax, shipping, total, city, order_date, currency,
+              order_status, business_type, shipping_state, quantity_shipped, line_note
        from unified_sales ${where}
        order by order_date desc, id desc
        limit 50000`,
@@ -291,6 +293,11 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
       'city',
       'order_date',
       'currency',
+      'order_status',
+      'business_type',
+      'shipping_state',
+      'quantity_shipped',
+      'line_note',
     ]
     const esc = (v: unknown) => {
       const s = v === null || v === undefined ? '' : String(v)
@@ -312,6 +319,11 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
           r.city,
           r.order_date ? new Date(r.order_date).toISOString() : '',
           r.currency,
+          r.order_status ?? '',
+          r.business_type ?? '',
+          r.shipping_state ?? '',
+          r.quantity_shipped ?? '',
+          r.line_note ?? '',
         ]
           .map(esc)
           .join(',')

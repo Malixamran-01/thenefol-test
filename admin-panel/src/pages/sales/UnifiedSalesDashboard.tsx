@@ -58,6 +58,11 @@ type CombinedRow = {
   city: string | null
   order_date: string
   currency: string
+  order_status?: string | null
+  business_type?: string | null
+  shipping_state?: string | null
+  quantity_shipped?: number | null
+  line_note?: string | null
 }
 
 type SyncLog = {
@@ -519,6 +524,19 @@ export default function UnifiedSalesDashboard() {
                 <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-600">
                   <span>Qty: {r.quantity}</span>
                   <span className="text-right">{r.city || '—'}</span>
+                  {r.platform === 'amazon' &&
+                  (r.order_status || r.business_type || r.shipping_state || r.line_note) ? (
+                    <>
+                      <span className="col-span-2 text-slate-600">
+                        {[r.order_status && `Status: ${r.order_status}`, r.business_type, r.shipping_state]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                      {r.line_note ? (
+                        <span className="col-span-2 text-amber-800/90">{r.line_note}</span>
+                      ) : null}
+                    </>
+                  ) : null}
                   <span className="col-span-2 text-slate-500">
                     {r.order_date ? new Date(r.order_date).toLocaleString() : '—'}
                   </span>
@@ -532,7 +550,7 @@ export default function UnifiedSalesDashboard() {
 
           {/* Desktop: table */}
           <div className="mt-3 hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
-            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                   <th className="px-3 py-2.5">Platform</th>
@@ -540,7 +558,11 @@ export default function UnifiedSalesDashboard() {
                   <th className="px-3 py-2.5">Product</th>
                   <th className="px-3 py-2.5 text-right">Qty</th>
                   <th className="px-3 py-2.5 text-right">Total</th>
-                  <th className="px-3 py-2.5">City</th>
+                  <th className="px-3 py-2.5">Ship to</th>
+                  <th className="whitespace-nowrap px-3 py-2.5">Status</th>
+                  <th className="whitespace-nowrap px-3 py-2.5">B2B/B2C</th>
+                  <th className="whitespace-nowrap px-3 py-2.5">State</th>
+                  <th className="min-w-[7rem] px-3 py-2.5">Note</th>
                   <th className="whitespace-nowrap px-3 py-2.5">Date</th>
                 </tr>
               </thead>
@@ -565,6 +587,10 @@ export default function UnifiedSalesDashboard() {
                     <td className="px-3 py-2 text-right tabular-nums">{r.quantity}</td>
                     <td className="px-3 py-2 text-right font-medium tabular-nums">{fmt(r.total)}</td>
                     <td className="max-w-[8rem] px-3 py-2 align-top text-slate-600">{r.city || '—'}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-700">{r.order_status || '—'}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-700">{r.business_type || '—'}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-700">{r.shipping_state || '—'}</td>
+                    <td className="max-w-[10rem] px-3 py-2 align-top text-xs text-slate-600">{r.line_note || '—'}</td>
                     <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-600">
                       {r.order_date ? new Date(r.order_date).toLocaleString() : '—'}
                     </td>

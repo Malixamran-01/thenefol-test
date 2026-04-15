@@ -137,6 +137,11 @@ export async function ensureSchema(pool: Pool) {
       city text,
       order_date timestamptz not null,
       currency text not null default 'INR',
+      order_status text,
+      business_type text,
+      shipping_state text,
+      quantity_shipped integer,
+      line_note text,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now(),
       unique(platform, line_key)
@@ -155,6 +160,26 @@ export async function ensureSchema(pool: Pool) {
       finished_at timestamptz
     );
     create index if not exists idx_sales_sync_logs_started on sales_sync_logs(started_at desc);
+    
+    do $$
+    begin
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'order_status') then
+        alter table unified_sales add column order_status text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'business_type') then
+        alter table unified_sales add column business_type text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'shipping_state') then
+        alter table unified_sales add column shipping_state text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'quantity_shipped') then
+        alter table unified_sales add column quantity_shipped integer;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'line_note') then
+        alter table unified_sales add column line_note text;
+      end if;
+    end $$;
+    create index if not exists idx_unified_sales_amazon_state on unified_sales(shipping_state) where platform = 'amazon';
     
     -- Replenishment fields (Amazon-style: lead time, case pack, min reorder)
     do $$ 

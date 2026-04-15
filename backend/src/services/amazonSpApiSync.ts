@@ -5,8 +5,6 @@ import { getMaxUnifiedOrderDate, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './
 /** India marketplace (sellercentral.amazon.in). Override with AMAZON_MARKETPLACE_ID. */
 const DEFAULT_MARKETPLACE_IN = 'A21TJRUUN4KGV'
 
-const SKIP_ORDER_STATUS = new Set(['Canceled', 'Cancelled'])
-
 /** SP-API returns no orders older than ~2 years for most marketplaces. */
 const MAX_LOOKBACK_DAYS = 730
 
@@ -49,6 +47,21 @@ function lookbackDays(): number {
   return Math.min(MAX_LOOKBACK_DAYS, Math.max(1, n))
 }
 
+function addressFetchEnabled(): boolean {
+  return process.env.AMAZON_UNIFIED_SALES_FETCH_ADDRESS !== '0' && process.env.AMAZON_UNIFIED_SALES_FETCH_ADDRESS !== 'false'
+}
+
+function orderApiDelayMs(): number {
+  const raw = process.env.AMAZON_ORDER_API_DELAY_MS || '200'
+  const n = parseInt(String(raw), 10)
+  if (!Number.isFinite(n) || n < 0) return 200
+  return Math.min(2000, n)
+}
+
+async function sleep(ms: number) {
+  await new Promise((r) => setTimeout(r, ms))
+}
+
 async function resolveRefreshToken(pool: Pool): Promise<string | undefined> {
   const debug = process.env.AMAZON_SP_API_DEBUG === '1' || process.env.AMAZON_SP_API_DEBUG === 'true'
   const env = process.env.AMAZON_SP_API_REFRESH_TOKEN?.trim()
@@ -83,13 +96,44 @@ function moneyAmount(m: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/** B2B vs B2C from Orders API `IsBusinessOrder`. */
+function amazonBusinessType(o: Record<string, unknown> | null | undefined): string | null {
+  if (!o) return null
+  const v = o.IsBusinessOrder
+  if (v === true) return 'B2B'
+  if (v === false) return 'B2C'
+  return null
+}
+
+function pickShippingFromAddressResponse(res: unknown): { city: string | null; state: string | null } {
+  const r = res as Record<string, unknown> | undefined
+  const raw = (r?.payload as Record<string, unknown> | undefined) ?? r
+  const a = (raw?.ShippingAddress as Record<string, unknown> | undefined) ?? (raw?.shippingAddress as Record<string, unknown> | undefined)
+  if (!a || typeof a !== 'object') return { city: null, state: null }
+  const state = String(a.StateOrRegion || (a as any).stateOrRegion || '').trim() || null
+  const city = String(a.City || (a as any).city || '').trim() || null
+  return { city, state }
+}
+
+/** Buyer-requested cancel on an order item (not the same as post-delivery FBA returns — those often need reports). */
+function formatBuyerCancelNote(it: Record<string, unknown>): string | null {
+  const brc = it.BuyerRequestedCancel
+  if (!brc || typeof brc !== 'object') return null
+  const o = brc as Record<string, unknown>
+  if (o.IsBuyerRequestedCancel === true) {
+    const r = o.BuyerCancelReason != null ? String(o.BuyerCancelReason) : ''
+    return r ? `Buyer cancel: ${r}` : 'Buyer requested cancel'
+  }
+  return null
+}
+
 export type AmazonSyncResult = { rows: number; skipped: boolean; logMessage?: string }
 
 /**
  * Upserts `unified_sales` rows for platform `amazon` from Orders API.
- * - First run (no rows yet): full lookback (AMAZON_UNIFIED_SALES_LOOKBACK_DAYS, max 730) in 30-day chunks.
- * - Later runs: **incremental** — only orders after the latest stored `order_date` (minus overlap), so syncs do not re-scan the whole history.
- * - Set `AMAZON_UNIFIED_SALES_FULL_SYNC=1` to force a full lookback again.
+ * Includes **cancelled** orders and line items when the API returns them.
+ * Ship-to **state** uses `getOrderAddress` (needs Direct-to-Consumer Shipping / PII roles — otherwise columns stay null).
+ * B2B/B2C from `IsBusinessOrder` on the order (with optional `getOrder` if missing from list).
  */
 export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResult> {
   const refresh_token = await resolveRefreshToken(pool)
@@ -111,6 +155,8 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
   const region = (process.env.AMAZON_SP_API_REGION || 'eu').trim()
   const marketplaceId = (process.env.AMAZON_MARKETPLACE_ID || DEFAULT_MARKETPLACE_IN).trim()
   const days = lookbackDays()
+  const delayMs = orderApiDelayMs()
+  const fetchAddr = addressFetchEnabled()
 
   const sp = new SellingPartner({
     region,
@@ -128,7 +174,6 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
   const MS_DAY = 24 * 60 * 60 * 1000
   const lookbackMs = Math.min(days * MS_DAY, MAX_LOOKBACK_DAYS * MS_DAY)
   const fullLookbackMinTime = Date.now() - lookbackMs
-  /** SP-API typically does not return orders older than ~2 years — do not request further back. */
   const catalogMinTime = Date.now() - MAX_LOOKBACK_DAYS * MS_DAY
   const chunkMs = CHUNK_DAYS * MS_DAY
 
@@ -139,13 +184,11 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
     maxStored != null &&
     maxStored.getTime() < Date.now() - 60 * 1000
 
-  /** Start of time range to request from SP-API (Orders). */
   const minTime = useIncremental
     ? Math.max(catalogMinTime, maxStored!.getTime() - UNIFIED_SALES_INCREMENTAL_OVERLAP_MS)
     : fullLookbackMinTime
 
   let inserted = 0
-  /** Walk backwards from “now” in chunks so we cover the full lookback window. */
   let chunkEnd = Date.now() - 2 * 60 * 1000
 
   while (chunkEnd > minTime) {
@@ -172,55 +215,108 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
       for (const order of orders) {
         const orderId = String(order.AmazonOrderId || '')
         if (!orderId) continue
-        const st = String(order.OrderStatus || '')
-        if (SKIP_ORDER_STATUS.has(st)) continue
+
+        const orderStatus = String(order.OrderStatus || '').trim() || null
+        let businessType = amazonBusinessType(order)
+        let shipCity: string | null = null
+        let shipState: string | null = null
+
+        if (businessType == null) {
+          try {
+            const ordRes = await sp.callAPI({
+              operation: 'getOrder',
+              endpoint: 'orders',
+              path: { orderId },
+            })
+            const ord =
+              (ordRes?.payload?.Order as Record<string, unknown> | undefined) ||
+              (ordRes?.Order as Record<string, unknown> | undefined) ||
+              (ordRes?.payload as Record<string, unknown> | undefined)
+            businessType = amazonBusinessType(ord)
+            if (ord && typeof ord === 'object') {
+              const embedded = pickShippingFromAddressResponse({ payload: { ShippingAddress: (ord as any).ShippingAddress } })
+              if (embedded.state) shipState = embedded.state
+              if (embedded.city) shipCity = embedded.city
+            }
+          } catch {
+            /* ignore */
+          }
+          await sleep(delayMs)
+        }
+
+        if (fetchAddr && (shipState == null || shipCity == null)) {
+          try {
+            const addrRes = await sp.callAPI({
+              operation: 'getOrderAddress',
+              endpoint: 'orders',
+              path: { orderId },
+            })
+            const picked = pickShippingFromAddressResponse(addrRes)
+            if (picked.state) shipState = picked.state
+            if (picked.city) shipCity = picked.city
+          } catch {
+            /* PII / role / order type — leave null */
+          }
+          await sleep(delayMs)
+        }
 
         const purchaseDate = order.PurchaseDate ? new Date(String(order.PurchaseDate)) : new Date()
         let itemsNext: string | undefined
-        do {
-          const itemsRes = await sp.callAPI({
-            operation: 'getOrderItems',
-            endpoint: 'orders',
-            path: { orderId },
-            query: itemsNext ? { NextToken: itemsNext } : {},
-          })
-          const orderItems = (itemsRes.OrderItems || []) as Record<string, unknown>[]
-          itemsNext = itemsRes.NextToken as string | undefined
-
-          for (let i = 0; i < orderItems.length; i++) {
-            const it = orderItems[i]
-            const oid = String(it.OrderItemId || `${orderId}:${i}`)
-            const qty = Math.max(1, Math.floor(Number(it.QuantityOrdered ?? 1)))
-            const title = String(it.Title || 'Amazon item').slice(0, 500)
-            const itemPrice = moneyAmount(it.ItemPrice)
-            const itemTax = moneyAmount(it.ItemTax)
-            const shipPrice = moneyAmount(it.ShippingPrice)
-            const unit = qty > 0 ? Math.round((itemPrice / qty) * 100) / 100 : itemPrice
-            const total = Math.round((itemPrice + itemTax + shipPrice) * 100) / 100
-            const lineKey = `amazon:${orderId}:${oid}`
-
-            await upsertUnifiedSaleLine(pool, {
-              platform: 'amazon',
-              source_order_id: orderId,
-              line_key: lineKey,
-              product_name: title,
-              quantity: qty,
-              price: unit,
-              tax: itemTax,
-              shipping: shipPrice,
-              total,
-              city: null,
-              order_date: purchaseDate,
-              currency: 'INR',
+        try {
+          do {
+            const itemsRes = await sp.callAPI({
+              operation: 'getOrderItems',
+              endpoint: 'orders',
+              path: { orderId },
+              query: itemsNext ? { NextToken: itemsNext } : {},
             })
-            inserted += 1
-          }
-        } while (itemsNext)
+            const orderItems = (itemsRes.OrderItems || []) as Record<string, unknown>[]
+            itemsNext = itemsRes.NextToken as string | undefined
+
+            for (let i = 0; i < orderItems.length; i++) {
+              const it = orderItems[i]
+              const oid = String(it.OrderItemId || `${orderId}:${i}`)
+              const qty = Math.max(0, Math.floor(Number(it.QuantityOrdered ?? 0)))
+              const qtyShipped = Math.max(0, Math.floor(Number(it.QuantityShipped ?? 0)))
+              const title = String(it.Title || 'Amazon item').slice(0, 500)
+              const itemPrice = moneyAmount(it.ItemPrice)
+              const itemTax = moneyAmount(it.ItemTax)
+              const shipPrice = moneyAmount(it.ShippingPrice)
+              const unit = qty > 0 ? Math.round((itemPrice / qty) * 100) / 100 : Math.round(itemPrice * 100) / 100
+              const total = Math.round((itemPrice + itemTax + shipPrice) * 100) / 100
+              const lineKey = `amazon:${orderId}:${oid}`
+              const lineNote = formatBuyerCancelNote(it)
+              const cityDisplay = shipCity ? (shipState ? `${shipCity}, ${shipState}` : shipCity) : null
+
+              await upsertUnifiedSaleLine(pool, {
+                platform: 'amazon',
+                source_order_id: orderId,
+                line_key: lineKey,
+                product_name: title,
+                quantity: qty,
+                price: unit,
+                tax: itemTax,
+                shipping: shipPrice,
+                total,
+                city: cityDisplay,
+                order_date: purchaseDate,
+                currency: 'INR',
+                order_status: orderStatus,
+                business_type: businessType,
+                shipping_state: shipState,
+                quantity_shipped: qtyShipped,
+                line_note: lineNote,
+              })
+              inserted += 1
+            }
+          } while (itemsNext)
+        } catch {
+          /* No items (e.g. some pending/cancel edge cases) — skip order */
+        }
       }
     } while (ordersNext)
 
     chunkEnd = chunkStart - 1
-    /** Gentle pacing between windows (SP-API orders rate is low). */
     await new Promise((r) => setTimeout(r, 400))
   }
 
