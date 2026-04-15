@@ -22,11 +22,11 @@ export default function PageWrapper({ children, title, description, actions }: P
       `}</style>
       
       {(title || description || actions) && (
-        <div className="flex items-center justify-between">
+        <div className="admin-page-header">
           <div>
             {title && (
               <h1 
-                className="text-3xl font-light mb-2 tracking-[0.15em]" 
+                className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
                 style={{
                   color: 'var(--text-primary)',
                   fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',

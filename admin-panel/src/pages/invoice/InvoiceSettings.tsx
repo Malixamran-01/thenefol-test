@@ -303,10 +303,10 @@ const InvoiceSettingsPage: React.FC = () => {
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -726,7 +726,7 @@ const InvoiceSettingsPage: React.FC = () => {
       {showImageModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
+            <div className="admin-page-header mb-6">
               <h2 className="text-2xl font-bold text-brand-primary">Upload Invoice Images</h2>
               <button
                 onClick={() => setShowImageModal(false)}

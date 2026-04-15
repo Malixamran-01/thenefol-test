@@ -80,10 +80,10 @@ export default function FacebookInstagram() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -120,7 +120,7 @@ export default function FacebookInstagram() {
         <div className="space-y-6">
           {/* Connection Status */}
           <div className="metric-card">
-            <div className="flex items-center justify-between">
+            <div className="admin-page-header">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-lg">f</span>
@@ -143,7 +143,7 @@ export default function FacebookInstagram() {
               { title: 'Reach', value: '8.7K', icon: '👁️' }
             ].map((stat, index) => (
               <div key={index} className="metric-card">
-                <div className="flex items-center justify-between">
+                <div className="admin-page-header">
                   <div>
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
@@ -156,7 +156,7 @@ export default function FacebookInstagram() {
 
           {/* Recent Posts */}
           <div className="metric-card">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Recent Posts</h2>
               <button className="btn-primary">Create Post</button>
             </div>

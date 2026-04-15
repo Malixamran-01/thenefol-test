@@ -144,7 +144,7 @@ export default function PaymentOptions() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Payment Options</h1>
           <p className="text-slate-600 dark:text-slate-400">Manage payment gateways and processing fees</p>
@@ -179,7 +179,7 @@ export default function PaymentOptions() {
             const typeInfo = getPaymentTypeInfo(gateway.type)
             return (
               <div key={gateway.id} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="admin-page-header mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg ${typeInfo.color} flex items-center justify-center text-white text-lg`}>
                       {typeInfo.icon}

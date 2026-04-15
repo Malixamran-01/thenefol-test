@@ -235,10 +235,10 @@ export default function AdminManagement() {
         }
       `}</style>
 
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -265,7 +265,7 @@ export default function AdminManagement() {
       {/* Bulk Create Form */}
       {showBulkForm && (
         <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
+          <div className="admin-page-header mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Bulk Create Admin Users</h2>
             <div className="flex gap-2">
               <button
@@ -451,7 +451,7 @@ export default function AdminManagement() {
                               ).map(([section, pages]) => (
                                 <div key={section} className="mb-4 last:mb-0">
                                   <div className="text-xs font-semibold text-gray-700 mb-2 px-1 border-b border-gray-200 pb-1">{section}</div>
-                                  <div className="grid grid-cols-2 gap-1">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                                     {pages.map(page => (
                                       <label key={page.path} className="flex items-center space-x-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
                                         <input

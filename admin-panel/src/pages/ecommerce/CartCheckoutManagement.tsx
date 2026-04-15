@@ -176,7 +176,7 @@ export default function CartCheckoutManagement() {
       `}</style>
       <div>
         <h1 
-          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -524,7 +524,7 @@ export default function CartCheckoutManagement() {
               <div className="space-y-4">
                 {selectedCartItem ? (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Product</p>
                         <p className="text-sm text-gray-900 dark:text-white">{selectedCartItem.product_name}</p>
@@ -536,7 +536,7 @@ export default function CartCheckoutManagement() {
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Quantity</p>
                         <p className="text-sm text-gray-900 dark:text-white">{selectedCartItem.quantity}</p>
@@ -559,7 +559,7 @@ export default function CartCheckoutManagement() {
                   </>
                 ) : selectedSession ? (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Session ID</p>
                         <p className="text-sm text-gray-900 dark:text-white">{selectedSession.session_id}</p>
@@ -571,7 +571,7 @@ export default function CartCheckoutManagement() {
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Amount</p>
                         <p className="text-sm text-gray-900 dark:text-white">₹{selectedSession.total_amount.toLocaleString()}</p>

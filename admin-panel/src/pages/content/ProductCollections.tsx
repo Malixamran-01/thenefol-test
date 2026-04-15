@@ -272,10 +272,10 @@ export default function ProductCollections() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -813,7 +813,7 @@ function CollectionForm({
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-        <div className="flex justify-between items-center mb-4">
+        <div className="admin-page-header mb-4">
           <h3 className="text-lg font-bold">
             {isEditing ? 'Edit' : 'Add'} {isRecommendationPost ? 'Recommendation Post' : 'Collection Item'}
           </h3>
@@ -897,7 +897,7 @@ function CollectionForm({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Code</label>
                   <input
@@ -918,7 +918,7 @@ function CollectionForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Discount %</label>
                   <input
@@ -1080,7 +1080,7 @@ function CollectionForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Order Index</label>
               <input

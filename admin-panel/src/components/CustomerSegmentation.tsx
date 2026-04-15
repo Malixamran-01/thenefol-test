@@ -208,7 +208,7 @@ export default function CustomerSegmentation() {
     return (
       <div className="max-w-7xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">Error</h3>
               <p className="text-red-700 dark:text-red-300">{error}</p>
@@ -228,7 +228,7 @@ export default function CustomerSegmentation() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Customer Segmentation
@@ -258,7 +258,7 @@ export default function CustomerSegmentation() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Segments</h3>
               <p className="text-3xl font-bold">{totalStats.totalSegments}</p>
@@ -268,7 +268,7 @@ export default function CustomerSegmentation() {
         </div>
 
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Customers</h3>
               <p className="text-3xl font-bold">{(analyticsOverview?.customers ?? totalStats.totalCustomers).toLocaleString()}</p>
@@ -278,7 +278,7 @@ export default function CustomerSegmentation() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Active Segments</h3>
               <p className="text-3xl font-bold">{totalStats.activeSegments}</p>
@@ -288,7 +288,7 @@ export default function CustomerSegmentation() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Revenue</h3>
               <p className="text-3xl font-bold">
@@ -333,7 +333,7 @@ export default function CustomerSegmentation() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {segments.map((segment) => (
                   <div key={segment.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="admin-page-header mb-3">
                       <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                         {segment.name}
                       </h3>
@@ -402,7 +402,7 @@ export default function CustomerSegmentation() {
           {/* Customers Tab */}
           {activeTab === 'customers' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="admin-page-header">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Customer List
                 </h3>
@@ -506,7 +506,7 @@ export default function CustomerSegmentation() {
                       .sort((a, b) => b.stats.totalRevenue - a.stats.totalRevenue)
                       .slice(0, 3)
                       .map((segment, index) => (
-                        <div key={segment.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                        <div key={segment.id} className="admin-inline-row p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                               <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
@@ -540,25 +540,25 @@ export default function CustomerSegmentation() {
                     Segment Analytics
                   </h3>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Total Segments</span>
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {totalStats.totalSegments}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Active Segments</span>
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {totalStats.activeSegments}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Total Customers</span>
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {analyticsOverview?.customers ?? totalStats.totalCustomers}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Total Revenue</span>
                       <span className="font-semibold text-green-600">
                         {analyticsOverview?.revenue !== undefined
@@ -578,7 +578,7 @@ export default function CustomerSegmentation() {
       {showSegmentDetails && selectedSegment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Segment Details: {selectedSegment.name}
               </h3>

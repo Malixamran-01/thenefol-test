@@ -135,7 +135,7 @@ export default function NotificationBell() {
           {/* Dropdown */}
           <div className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] max-w-[calc(100vw-1rem)] rounded-lg border border-gray-200 bg-white shadow-xl">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="admin-page-header p-4 border-b border-gray-200">
               <div className="flex items-center space-x-2">
                 <Bell className="w-5 h-5 text-gray-600" />
                 <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>

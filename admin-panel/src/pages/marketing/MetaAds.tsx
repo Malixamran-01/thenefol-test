@@ -254,10 +254,10 @@ export default function MetaAds() {
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -360,7 +360,7 @@ export default function MetaAds() {
                 <div className="grid gap-4">
                   {campaigns.map((campaign) => (
                     <div key={campaign.campaign_id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="admin-page-header mb-4">
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{campaign.name}</h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -428,7 +428,7 @@ export default function MetaAds() {
                 <div className="grid gap-4">
                   {adsets.map((adset) => (
                     <div key={adset.adset_id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="admin-page-header mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{adset.name}</h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Campaign ID: {adset.campaign_id}</p>
@@ -472,7 +472,7 @@ export default function MetaAds() {
                 <div className="grid gap-4">
                   {ads.map((ad) => (
                     <div key={ad.ad_id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="admin-page-header mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{ad.name}</h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -508,7 +508,7 @@ export default function MetaAds() {
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between">
+                  <div className="admin-inline-row">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Impressions</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -519,7 +519,7 @@ export default function MetaAds() {
                   </div>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between">
+                  <div className="admin-inline-row">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Clicks</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -530,7 +530,7 @@ export default function MetaAds() {
                   </div>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between">
+                  <div className="admin-inline-row">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Spend</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -541,7 +541,7 @@ export default function MetaAds() {
                   </div>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between">
+                  <div className="admin-inline-row">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Conversions</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -651,7 +651,7 @@ export default function MetaAds() {
                   <option value="OUTCOME_APP_PROMOTION">App Promotion</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Daily Budget (₹)</label>
                   <input
@@ -673,7 +673,7 @@ export default function MetaAds() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Start Date</label>
                   <input

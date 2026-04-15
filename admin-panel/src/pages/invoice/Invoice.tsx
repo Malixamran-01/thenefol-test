@@ -201,10 +201,10 @@ const Invoice = () => {
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -241,7 +241,7 @@ const Invoice = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Invoices</p>
               <p className="text-2xl font-bold text-brand-primary">{invoices.length}</p>
@@ -253,7 +253,7 @@ const Invoice = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Amount</p>
               <p className="text-2xl font-bold text-brand-primary">${totalAmount.toFixed(2)}</p>
@@ -265,7 +265,7 @@ const Invoice = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">Paid Amount</p>
               <p className="text-2xl font-bold text-green-600">${paidAmount.toFixed(2)}</p>
@@ -277,7 +277,7 @@ const Invoice = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">Overdue Amount</p>
               <p className="text-2xl font-bold text-red-600">${overdueAmount.toFixed(2)}</p>
@@ -455,7 +455,7 @@ const CreateInvoiceModal = ({ onClose, onSubmit, loading }: {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="admin-page-header mb-6">
           <h2 className="text-2xl font-bold text-brand-primary">Create Invoice</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -624,7 +624,7 @@ const EditInvoiceModal = ({ invoice, onClose, onSubmit, loading }: {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="admin-page-header mb-6">
           <h2 className="text-2xl font-bold text-brand-primary">Edit Invoice</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

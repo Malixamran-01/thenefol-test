@@ -217,10 +217,10 @@ const Returns = () => {
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -245,7 +245,7 @@ const Returns = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Total Returns</p>
               <p className="text-2xl font-light" style={{ color: 'var(--arctic-blue-primary-dark)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>{totalReturns}</p>
@@ -257,7 +257,7 @@ const Returns = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Pending Returns</p>
               <p className="text-2xl font-light" style={{ color: '#D97706', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>{pendingReturns}</p>
@@ -269,7 +269,7 @@ const Returns = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Total Refunds</p>
               <p className="text-2xl font-light" style={{ color: '#DC2626', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>₹{totalRefundAmount.toFixed(2)}</p>
@@ -281,7 +281,7 @@ const Returns = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Avg Refund</p>
               <p className="text-2xl font-light" style={{ color: 'var(--arctic-blue-primary-dark)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>₹{averageRefundAmount.toFixed(2)}</p>
@@ -512,7 +512,7 @@ const CreateReturnModal = ({ onClose, onSubmit, loading }: {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="admin-page-header mb-6">
           <h2 className="text-2xl font-bold text-brand-primary">Process Return</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -703,7 +703,7 @@ const EditReturnModal = ({ returnItem, onClose, onSubmit, loading }: {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <div className="flex items-center justify-between mb-6">
+        <div className="admin-page-header mb-6">
           <h2 className="text-2xl font-bold text-brand-primary">Edit Return</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

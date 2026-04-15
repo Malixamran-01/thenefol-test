@@ -722,7 +722,7 @@ export default function CollabRequests() {
 
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--arctic-blue-background)' }}>
-      <div className="flex items-center justify-between mb-6">
+      <div className="admin-page-header mb-6">
         <div>
           <h1 className="text-3xl font-light tracking-[0.12em]" style={{ fontFamily: 'var(--font-heading-family)' }}>
             Collab Requests
@@ -983,7 +983,7 @@ export default function CollabRequests() {
             {/* Location */}
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Location</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <select value={filterCountryCode} onChange={(e) => {
                   const code = e.target.value
                   const name = allCountries.find((c) => c.isoCode === code)?.name || ''

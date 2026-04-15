@@ -127,7 +127,7 @@ export default function AnnouncementBar() {
       
       <div className="relative z-10">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div className="flex items-center space-x-3 flex-1">
               {currentAnnouncement.icon && (
                 <div className="flex-shrink-0">
@@ -225,7 +225,7 @@ export function AnnouncementBarAdmin() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
           Announcement Bar Management
         </h1>

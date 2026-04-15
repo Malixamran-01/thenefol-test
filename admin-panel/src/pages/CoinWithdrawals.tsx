@@ -214,10 +214,10 @@ export default function CoinWithdrawals() {
       `}</style>
       {/* Header */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <div>
             <h1 
-              className="text-3xl font-light mb-2 tracking-[0.15em]" 
+              className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
               style={{
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -370,7 +370,7 @@ export default function CoinWithdrawals() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">{selectedWithdrawal.user_email}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Amount</p>
                   <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">₹{((Number(selectedWithdrawal.amount) || 0) / 10).toFixed(2)}</p>

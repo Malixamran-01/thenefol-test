@@ -232,10 +232,10 @@ export default function Orders() {
             --arctic-blue-background: #F4F9F9;
           }
         `}</style>
-        <div className="flex items-center justify-between">
+        <div className="admin-page-header">
           <div>
             <h1 
-              className="text-3xl font-light mb-2 tracking-[0.15em]" 
+              className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
               style={{
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -358,7 +358,7 @@ export default function Orders() {
               <option value="true">COD</option>
               <option value="false">Prepaid</option>
             </select>
-            <div className="grid grid-cols-2 gap-3 md:col-span-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:col-span-5">
               <input 
                 type="date" 
                 value={from} 

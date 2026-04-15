@@ -257,10 +257,10 @@ export default function CMSManagement() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -391,7 +391,7 @@ export default function CMSManagement() {
               {pages.map((page) => (
                 <div
                   key={page.id}
-                  className={`p-3 rounded-lg cursor-pointer flex items-center justify-between ${
+                  className={`admin-inline-row cursor-pointer rounded-lg p-3 ${
                     selectedPage === page.page_name
                       ? 'bg-blue-100 border-blue-500 border'
                       : 'bg-gray-50 hover:bg-gray-100'
@@ -411,7 +411,7 @@ export default function CMSManagement() {
           <div className="lg:col-span-3">
             {selectedPage ? (
               <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="admin-page-header mb-6">
                   <h2 className="text-xl font-semibold">
                     Sections for {pages.find(p => p.page_name === selectedPage)?.page_title || selectedPage}
                   </h2>
@@ -580,7 +580,7 @@ function PageFormModal({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="admin-page-header mb-6">
           <h2 className="text-2xl font-bold">{page ? 'Edit Page' : 'Create New Page'}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded">
             <X className="w-6 h-6" />
@@ -699,7 +699,7 @@ function SectionFormModal({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="admin-page-header mb-6">
           <h2 className="text-2xl font-bold">{section ? 'Edit Section' : 'Create New Section'}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded">
             <X className="w-6 h-6" />
@@ -759,7 +759,7 @@ function SectionFormModal({
             <p className="text-xs text-gray-500 mt-1">Enter valid JSON content for this section</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Order Index</label>
               <input

@@ -121,7 +121,7 @@ export default function LiveMonitoring() {
       {/* Live Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="metric-card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-blue-200 dark:border-blue-700">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-blue-600 dark:text-blue-300 mb-2">Live Users</p>
               <p className="text-4xl font-bold text-blue-900 dark:text-blue-100">{liveUsers}</p>
@@ -138,7 +138,7 @@ export default function LiveMonitoring() {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Total Page Views</p>
               <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">
@@ -154,7 +154,7 @@ export default function LiveMonitoring() {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Cart Events</p>
               <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">{cartEvents}</p>
@@ -172,7 +172,7 @@ export default function LiveMonitoring() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Live Activity Feed */}
         <div className="metric-card">
-          <div className="flex items-center justify-between mb-4">
+          <div className="admin-page-header mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center">
               <Activity className="h-5 w-5 mr-2 text-purple-500" />
               Live Activity Feed
@@ -225,7 +225,7 @@ export default function LiveMonitoring() {
               </div>
             ) : (
               topPages.map(([page, count], index) => (
-                <div key={page} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div key={page} className="admin-inline-row p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-full font-bold text-sm">
                       {index + 1}

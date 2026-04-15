@@ -33,10 +33,10 @@ export default function Products() {
             --arctic-blue-background: #F4F9F9;
           }
         `}</style>
-        <div className="flex items-center justify-between">
+        <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -853,7 +853,7 @@ function ProductsManager() {
         {selected && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
             <div className="w-full max-w-2xl rounded-lg border border-gray-300 bg-white p-6 shadow-xl">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 admin-page-header">
                 <h3 className="text-lg font-semibold text-gray-900">Manage Images — {selected.title}</h3>
                 <button onClick={()=>setSelected(null)} className="rounded bg-gray-200 px-3 py-1 text-sm text-gray-700 hover:bg-gray-300">Close</button>
               </div>
@@ -1169,7 +1169,7 @@ function ProductsManager() {
           <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 overflow-y-auto">
             <div className="w-full max-w-4xl rounded-lg border border-gray-300 bg-white shadow-xl my-8">
               {/* Sticky Header */}
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10 flex items-center justify-between rounded-t-lg">
+              <div className="admin-page-header sticky top-0 z-10 rounded-t-lg border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
                 <h3 className="text-lg font-semibold text-gray-900">Edit Product - {editing.title}</h3>
                 <button onClick={()=>setEditing(null)} className="rounded bg-gray-200 px-3 py-1 text-sm text-gray-700 hover:bg-gray-300">Close</button>
               </div>
@@ -1302,7 +1302,7 @@ function ProductsManager() {
                   </div>
                   {editing.details?.mrp && editing.details?.websitePrice && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
-                      <div className="flex items-center justify-between">
+                      <div className="admin-inline-row">
                         <div>
                           <div className="text-sm text-gray-600">Discount Amount</div>
                           <div className="text-lg font-semibold text-green-600">

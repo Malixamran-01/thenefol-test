@@ -103,10 +103,10 @@ export default function Marketing() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -162,7 +162,7 @@ export default function Marketing() {
               { title: 'Conversion Rate', value: '3.2%', icon: '🎯' }
             ].map((stat, index) => (
               <div key={index} className="metric-card">
-                <div className="flex items-center justify-between">
+                <div className="admin-inline-row">
                   <div>
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
@@ -234,7 +234,7 @@ export default function Marketing() {
       {/* Templates Tab */}
       {activeTab === 'templates' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <h2 className="text-lg font-semibold text-gray-900">Email Templates</h2>
             <button className="btn-primary">Create Template</button>
           </div>
@@ -245,7 +245,7 @@ export default function Marketing() {
                 <h3 className="font-semibold text-gray-900 mb-2">{template.name}</h3>
                 <p className="text-sm text-gray-600 mb-2">{template.subject}</p>
                 <p className="text-sm text-gray-500 mb-4">{template.preview}</p>
-                <div className="flex justify-between items-center">
+                <div className="admin-inline-row">
                   <span className="text-xs text-gray-500">{new Date(template.createdAt).toLocaleDateString()}</span>
                   <div className="flex space-x-2">
                     <button className="btn-secondary text-xs px-2 py-1">Edit</button>
@@ -261,7 +261,7 @@ export default function Marketing() {
       {/* Audiences Tab */}
       {activeTab === 'audiences' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <h2 className="text-lg font-semibold text-gray-900">Audience Segments</h2>
             <button className="btn-primary">Create Audience</button>
           </div>

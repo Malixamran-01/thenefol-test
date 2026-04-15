@@ -442,7 +442,7 @@ const Layout = () => {
       >
         <div className="flex flex-col h-full min-h-0 w-full">
           {/* Logo */}
-          <div className="flex items-center justify-between gap-2 p-4 sm:p-6 border-b border-[var(--brand-border)]">
+          <div className="admin-inline-row gap-2 p-4 sm:p-6 border-b border-[var(--brand-border)]">
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
               <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold text-sm">N</span>
@@ -506,22 +506,22 @@ const Layout = () => {
       {/* Main: full width on mobile; offset only when sidebar is docked on lg+ */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:ml-72">
         {/* Top Header */}
-        <header className="flex-shrink-0 bg-[var(--brand-surface)] border-b border-[var(--brand-border)] px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center sm:gap-4">
-              <button
-                type="button"
-                onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden flex-shrink-0 rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]"
-                aria-label="Open menu"
-              >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
+        <header className="flex-shrink-0 border-b border-[var(--brand-border)] bg-[var(--brand-surface)] px-2 py-2.5 sm:px-4 sm:py-3 lg:px-6">
+          {/* Single navbar row on all breakpoints: menu | search | actions */}
+          <div className="flex w-full min-w-0 items-center gap-1.5 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex-shrink-0 rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)] lg:hidden"
+              aria-label="Open menu"
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
 
-              {/* Search Bar */}
-              <div className="search-container relative min-w-0 flex-1 max-w-full sm:max-w-xl lg:max-w-2xl">
+            {/* Search Bar */}
+            <div className="search-container relative min-w-0 flex-1 sm:max-w-xl lg:max-w-2xl">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 sm:h-5 sm:w-5 -translate-y-1/2 text-[var(--text-muted)]" />
                   <input
@@ -591,25 +591,23 @@ const Layout = () => {
                   </div>
                 )}
               </div>
-            </div>
-            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3 lg:gap-4">
-              <div className="hidden items-center gap-2 sm:flex">
+
+            <div className="flex flex-shrink-0 items-center gap-0.5 sm:gap-2 md:gap-3">
+              <div className="hidden items-center gap-2 lg:flex">
                 <div className="h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
-                <span className="max-w-[9rem] truncate text-xs text-[var(--text-muted)] sm:max-w-none sm:text-sm">
-                  2 live visitors
-                </span>
+                <span className="max-w-[9rem] truncate text-sm text-[var(--text-muted)]">2 live visitors</span>
               </div>
               <NotificationBell />
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(prev => !prev)}
-                  className="flex max-w-[100%] items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--brand-highlight)] focus:outline-none sm:px-3"
+                  className="flex max-w-[100%] items-center gap-1.5 rounded-lg p-1 hover:bg-[var(--brand-highlight)] focus:outline-none sm:gap-2 sm:px-2"
                 >
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-secondary">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-secondary sm:h-9 sm:w-9">
                     <span className="text-xs font-bold text-white sm:text-sm">{userInitials}</span>
                   </div>
-                  <div className="hidden min-w-0 text-left sm:block">
+                  <div className="hidden min-w-0 text-left md:block">
                     <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{user?.name || 'Admin'}</p>
                     <p className="text-xs text-[var(--text-muted)]">{user?.role || 'admin'}</p>
                   </div>

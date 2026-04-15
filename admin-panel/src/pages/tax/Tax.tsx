@@ -334,10 +334,10 @@ const Tax = () => {
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -386,7 +386,7 @@ const Tax = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Products</p>
               <p className="text-2xl font-bold text-brand-primary">{stats.total}</p>
@@ -398,7 +398,7 @@ const Tax = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">0% GST</p>
               <p className="text-2xl font-bold text-green-600">{stats.byRate[0] || 0}</p>
@@ -407,7 +407,7 @@ const Tax = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">5% GST</p>
               <p className="text-2xl font-bold text-orange-600">{stats.byRate[5] || 0}</p>
@@ -416,7 +416,7 @@ const Tax = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">12% GST</p>
               <p className="text-2xl font-bold text-yellow-600">{stats.byRate[12] || 0}</p>
@@ -425,7 +425,7 @@ const Tax = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium text-gray-600">18% GST</p>
               <p className="text-2xl font-bold text-purple-600">{stats.byRate[18] || 0}</p>
@@ -434,7 +434,7 @@ const Tax = () => {
         </div>
 
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <p className="text-sm font-medium text-gray-600">28% GST</p>
               <p className="text-2xl font-bold text-red-600">{stats.byRate[28] || 0}</p>
@@ -446,7 +446,7 @@ const Tax = () => {
       {/* Bulk Edit Mode Controls */}
       {bulkEditMode && (
         <div className="metric-card bg-yellow-50 border-2 border-yellow-200">
-          <div className="flex items-center justify-between mb-4">
+          <div className="admin-page-header mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Bulk Edit Mode - {selectedProducts.size} product(s) selected
             </h3>

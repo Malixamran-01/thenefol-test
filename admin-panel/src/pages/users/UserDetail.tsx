@@ -296,7 +296,7 @@ export default function UserDetail() {
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/admin/users')}
@@ -307,7 +307,7 @@ export default function UserDetail() {
           </button>
           <div>
             <h1 
-              className="text-3xl font-light mb-2 tracking-[0.15em]" 
+              className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
               style={{
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -339,7 +339,7 @@ export default function UserDetail() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Orders</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total_orders || 0}</p>
@@ -348,7 +348,7 @@ export default function UserDetail() {
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Spent</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.total_spent)}</p>
@@ -357,7 +357,7 @@ export default function UserDetail() {
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Page Views</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total_page_views || 0}</p>
@@ -366,7 +366,7 @@ export default function UserDetail() {
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Loyalty Points</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{user.loyalty_points || 0}</p>
@@ -537,9 +537,9 @@ export default function UserDetail() {
                   {/* Activity Summary */}
                   <div>
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Activity Summary</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {activitySummary.slice(0, 6).map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div key={index} className="admin-inline-row p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-lg ${getActivityColor(item.activity_type)}`}>
                               {getActivityIcon(item.activity_type)}
@@ -566,7 +566,7 @@ export default function UserDetail() {
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Most Viewed Pages</h4>
                     <div className="space-y-2">
                       {topPages.slice(0, 5).map((page, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div key={index} className="admin-inline-row p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                               {page.page_title || page.page_url}
@@ -589,7 +589,7 @@ export default function UserDetail() {
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Product Interactions</h4>
                     <div className="space-y-2">
                       {productInteractions.slice(0, 5).map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div key={index} className="admin-inline-row p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{item.product_name}</p>
                             <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
@@ -612,7 +612,7 @@ export default function UserDetail() {
                   ) : (
                     orders.map((order) => (
                       <div key={order.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="admin-inline-row mb-3">
                           <div>
                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
                               Order #{order.order_number}
@@ -698,7 +698,7 @@ export default function UserDetail() {
                   ) : (
                     sessions.map((session) => (
                       <div key={session.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="admin-inline-row mb-2">
                           <div className="flex items-center gap-2">
                             <Hash className="h-4 w-4 text-gray-400" />
                             <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
@@ -711,7 +711,7 @@ export default function UserDetail() {
                             <span className="text-xs text-green-600 dark:text-green-400">Active</span>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                           <div>
                             <p className="text-gray-600 dark:text-gray-400">Started</p>
                             <p className="text-gray-900 dark:text-white">{formatDate(session.started_at)}</p>

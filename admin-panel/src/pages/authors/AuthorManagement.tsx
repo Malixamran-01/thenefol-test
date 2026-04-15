@@ -808,7 +808,7 @@ export default function AuthorManagement() {
                   {detail.stats && (
                     <section className="space-y-2">
                       <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Cached stats</h3>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         {Object.entries(detail.stats).map(([k, v]) => (
                           <div key={k} className="rounded-lg border border-slate-100 bg-white px-2 py-2">
                             <div className="text-slate-500">{k}</div>
@@ -821,7 +821,7 @@ export default function AuthorManagement() {
 
                   <section className="space-y-2">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Blog summary</h3>
-                    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
                       {Object.entries(detail.blog).map(([k, v]) => (
                         <div key={k} className="rounded-lg border border-slate-100 bg-white px-2 py-2">
                           <div className="capitalize text-slate-500">{k.replace(/_/g, ' ')}</div>

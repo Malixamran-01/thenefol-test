@@ -501,7 +501,7 @@ export default function WhatsAppNotifications() {
     return (
       <div className="max-w-7xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">Error</h3>
               <p className="text-red-700 dark:text-red-300">{error}</p>
@@ -531,10 +531,10 @@ export default function WhatsAppNotifications() {
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -578,7 +578,7 @@ export default function WhatsAppNotifications() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Notifications</h3>
               <p className="text-3xl font-bold">{totalStats.totalNotifications}</p>
@@ -588,7 +588,7 @@ export default function WhatsAppNotifications() {
         </div>
 
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Recipients</h3>
               <p className="text-3xl font-bold">{totalStats.totalRecipients.toLocaleString()}</p>
@@ -598,7 +598,7 @@ export default function WhatsAppNotifications() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Avg Delivery Rate</h3>
               <p className="text-3xl font-bold">{totalStats.averageDeliveryRate.toFixed(1)}%</p>
@@ -608,7 +608,7 @@ export default function WhatsAppNotifications() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Revenue</h3>
               <p className="text-3xl font-bold">₹{totalStats.totalRevenue.toLocaleString()}</p>
@@ -623,7 +623,7 @@ export default function WhatsAppNotifications() {
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
           Quick Send Notification
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           {['welcome', 'add_to_cart', 'purchase', 'review', 'promotion', 'cancellation', 'push'].map((type) => (
             <button
               key={type}
@@ -645,7 +645,7 @@ export default function WhatsAppNotifications() {
 
       {/* Settings Status */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Notification Settings
           </h2>
@@ -726,7 +726,7 @@ export default function WhatsAppNotifications() {
 
       {/* Recent Notifications */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Recent Notifications
           </h2>
@@ -860,7 +860,7 @@ export default function WhatsAppNotifications() {
 
       {/* Templates Section */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             WhatsApp Templates
           </h2>
@@ -885,7 +885,7 @@ export default function WhatsAppNotifications() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map((template) => (
             <div key={template.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="admin-page-header mb-2">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                   {template.name}
                 </h3>
@@ -928,7 +928,7 @@ export default function WhatsAppNotifications() {
 
       {/* Automations Section */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             WhatsApp Automations
           </h2>
@@ -975,7 +975,7 @@ export default function WhatsAppNotifications() {
           <div className="space-y-4">
             {automations.map((automation) => (
               <div key={automation.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
+                <div className="admin-page-header mb-3">
                   <div className="flex items-center space-x-3">
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                       {automation.name}
@@ -1023,7 +1023,7 @@ export default function WhatsAppNotifications() {
                   </div>
                 </div>
                 
-                <div className="mt-3 flex items-center justify-between text-sm">
+                <div className="mt-3 admin-inline-row text-sm">
                   <div className="flex space-x-4">
                     <span className="text-slate-600 dark:text-slate-400">
                       Messages Sent: <span className="font-semibold">{automation.messagesSent}</span>
@@ -1136,7 +1136,7 @@ export default function WhatsAppNotifications() {
               Notification Details
             </h3>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Type</p>
                   <p className="text-sm text-slate-900 dark:text-slate-100">{getTypeLabel(selectedNotification.type)}</p>
@@ -1154,7 +1154,7 @@ export default function WhatsAppNotifications() {
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Message</p>
                 <p className="text-sm text-slate-900 dark:text-slate-100">{selectedNotification.message}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Recipients</p>
                   <p className="text-sm text-slate-900 dark:text-slate-100">{selectedNotification.recipients}</p>
@@ -1197,7 +1197,7 @@ export default function WhatsAppNotifications() {
               WhatsApp Notification Settings
             </h3>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Enable WhatsApp Notifications</span>
                 <input 
                   type="checkbox" 
@@ -1206,7 +1206,7 @@ export default function WhatsAppNotifications() {
                   className="rounded" 
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Allow Welcome Messages</span>
                 <input 
                   type="checkbox" 
@@ -1215,7 +1215,7 @@ export default function WhatsAppNotifications() {
                   className="rounded" 
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Allow Promotional</span>
                 <input 
                   type="checkbox" 
@@ -1224,7 +1224,7 @@ export default function WhatsAppNotifications() {
                   className="rounded" 
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Allow Transactional</span>
                 <input 
                   type="checkbox" 
@@ -1233,7 +1233,7 @@ export default function WhatsAppNotifications() {
                   className="rounded" 
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Allow Cart Notifications</span>
                 <input 
                   type="checkbox" 

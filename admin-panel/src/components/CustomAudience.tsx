@@ -123,7 +123,7 @@ export default function CustomAudience() {
     return (
       <div className="max-w-7xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">Error</h3>
               <p className="text-red-700 dark:text-red-300">{error}</p>
@@ -143,7 +143,7 @@ export default function CustomAudience() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Custom Audience Targeting
@@ -173,7 +173,7 @@ export default function CustomAudience() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Audiences</h3>
               <p className="text-3xl font-bold">{totalStats.totalAudiences}</p>
@@ -183,7 +183,7 @@ export default function CustomAudience() {
         </div>
 
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Size</h3>
               <p className="text-3xl font-bold">{totalStats.totalSize.toLocaleString()}</p>
@@ -193,7 +193,7 @@ export default function CustomAudience() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Active Audiences</h3>
               <p className="text-3xl font-bold">{totalStats.activeAudiences}</p>
@@ -203,7 +203,7 @@ export default function CustomAudience() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Revenue Generated</h3>
               <p className="text-3xl font-bold">₹{(totalStats.totalRevenue / 100000).toFixed(1)}L</p>
@@ -241,7 +241,7 @@ export default function CustomAudience() {
           {/* Custom Audiences Tab */}
           {activeTab === 'audiences' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="admin-page-header">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Custom Audiences
                 </h3>
@@ -258,7 +258,7 @@ export default function CustomAudience() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {audiences.map((audience) => (
                   <div key={audience.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-6">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="admin-inline-row mb-3">
                       <h4 className="font-semibold text-slate-900 dark:text-slate-100">
                         {audience.name}
                       </h4>
@@ -395,7 +395,7 @@ export default function CustomAudience() {
                       .sort((a, b) => b.performance.revenue - a.performance.revenue)
                       .slice(0, 3)
                       .map((audience, index) => (
-                        <div key={audience.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg">
+                        <div key={audience.id} className="admin-inline-row p-3 bg-white dark:bg-slate-800 rounded-lg">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                               <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
@@ -429,25 +429,25 @@ export default function CustomAudience() {
                     Audience Analytics
                   </h4>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Total Audiences</span>
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {totalStats.totalAudiences}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Active Audiences</span>
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {totalStats.activeAudiences}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Total Members</span>
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {totalStats.totalSize.toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Total Revenue</span>
                       <span className="font-semibold text-green-600">
                         ₹{(totalStats.totalRevenue / 100000).toFixed(1)}L
@@ -465,7 +465,7 @@ export default function CustomAudience() {
       {selectedAudience && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Audience Details: {selectedAudience.name}
               </h3>

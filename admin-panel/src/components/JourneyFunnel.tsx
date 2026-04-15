@@ -80,7 +80,7 @@ export default function JourneyFunnel() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Customer Journey Funnel
@@ -110,7 +110,7 @@ export default function JourneyFunnel() {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Visitors</h3>
               <p className="text-3xl font-bold">{totalVisitors.toLocaleString()}</p>
@@ -120,7 +120,7 @@ export default function JourneyFunnel() {
         </div>
 
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Conversions</h3>
               <p className="text-3xl font-bold">{totalConversions.toLocaleString()}</p>
@@ -130,7 +130,7 @@ export default function JourneyFunnel() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Overall Conversion</h3>
               <p className="text-3xl font-bold">{overallConversionRate.toFixed(1)}%</p>
@@ -140,7 +140,7 @@ export default function JourneyFunnel() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Drop-off Rate</h3>
               <p className="text-3xl font-bold">{(100 - overallConversionRate).toFixed(1)}%</p>
@@ -191,7 +191,7 @@ export default function JourneyFunnel() {
                           {index + 1}
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="admin-inline-row mb-2">
                             <h4 className="font-semibold text-slate-900 dark:text-slate-100">
                               {stage.name}
                             </h4>

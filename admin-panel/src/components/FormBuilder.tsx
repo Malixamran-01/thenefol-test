@@ -355,7 +355,7 @@ export default function FormBuilder() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Form Builder
@@ -385,7 +385,7 @@ export default function FormBuilder() {
       {/* Submissions View */}
       {showSubmissions && (
         <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-4">
+          <div className="admin-page-header mb-4">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
               All Form Submissions
             </h2>
@@ -402,7 +402,7 @@ export default function FormBuilder() {
             ) : (
               submissions.map((submission) => (
                 <div key={submission.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="admin-page-header mb-2">
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                       {submission.form_name || `Form #${submission.form_id}`}
                     </h3>
@@ -446,7 +446,7 @@ export default function FormBuilder() {
               const formSubmissions = getFormSubmissions(form.id)
               return (
                 <div key={form.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="admin-page-header mb-3">
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                       {form.name}
                     </h3>
@@ -459,7 +459,7 @@ export default function FormBuilder() {
                     </span>
                   </div>
                   
-                  <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-500 mb-4">
+                  <div className="admin-inline-row text-sm text-slate-500 dark:text-slate-500 mb-4">
                     <span>{formSubmissions.length} submissions</span>
                     <span>{form.fields?.length || 0} fields</span>
                   </div>
@@ -529,7 +529,7 @@ export default function FormBuilder() {
 
           {/* Form Fields */}
           <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Form Fields: {selectedForm.name}
               </h3>
@@ -563,7 +563,7 @@ export default function FormBuilder() {
                   const IconComponent = getFieldIcon(field.type)
                   return (
                     <div key={field.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="admin-inline-row mb-2">
                         <div className="flex items-center space-x-2 flex-1">
                           <GripVertical className="h-4 w-4 text-slate-400 cursor-move" />
                           <IconComponent className="h-4 w-4 text-slate-600 dark:text-slate-400" />
@@ -712,7 +712,7 @@ export default function FormBuilder() {
       {showFormPreview && selectedForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Form Preview: {selectedForm.name}
               </h3>

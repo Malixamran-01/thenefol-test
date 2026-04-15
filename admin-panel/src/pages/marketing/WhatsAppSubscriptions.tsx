@@ -217,7 +217,7 @@ export default function WhatsAppSubscriptions() {
       `}</style>
       <div>
         <h1 
-          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -365,7 +365,7 @@ export default function WhatsAppSubscriptions() {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-200 admin-page-header">
             <div className="text-sm text-gray-600">
               Showing page {page} of {pagination.totalPages} ({pagination.total} total)
             </div>

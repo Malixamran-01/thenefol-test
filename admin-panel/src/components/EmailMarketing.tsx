@@ -125,7 +125,7 @@ export default function EmailMarketing() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Email Marketing
@@ -154,7 +154,7 @@ export default function EmailMarketing() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Campaigns</h3>
               <p className="text-3xl font-bold">{totalStats.totalCampaigns}</p>
@@ -164,7 +164,7 @@ export default function EmailMarketing() {
         </div>
 
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Recipients</h3>
               <p className="text-3xl font-bold">{totalStats.totalRecipients.toLocaleString()}</p>
@@ -174,7 +174,7 @@ export default function EmailMarketing() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Avg Open Rate</h3>
               <p className="text-3xl font-bold">{totalStats.averageOpenRate.toFixed(1)}%</p>
@@ -184,7 +184,7 @@ export default function EmailMarketing() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Revenue</h3>
               <p className="text-3xl font-bold">₹{totalStats.totalRevenue.toLocaleString()}</p>
@@ -196,7 +196,7 @@ export default function EmailMarketing() {
 
       {/* Campaigns */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Email Campaigns
           </h2>
@@ -296,7 +296,7 @@ export default function EmailMarketing() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {templates.map((template) => (
             <div key={template.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="admin-page-header mb-2">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                   {template.name}
                 </h3>
@@ -322,7 +322,7 @@ export default function EmailMarketing() {
 
       {/* Email Automations */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Email Automations
           </h2>
@@ -338,7 +338,7 @@ export default function EmailMarketing() {
         <div className="space-y-4">
           {automations.map((automation) => (
             <div key={automation.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="admin-page-header mb-3">
                 <div className="flex items-center space-x-3">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                     {automation.name}
@@ -380,7 +380,7 @@ export default function EmailMarketing() {
                 </div>
               </div>
               
-              <div className="mt-3 flex items-center justify-between text-sm">
+              <div className="mt-3 admin-inline-row text-sm">
                 <div className="flex space-x-4">
                   <span className="text-slate-600 dark:text-slate-400">
                     Emails Sent: <span className="font-semibold">{automation.emailsSent}</span>
@@ -410,7 +410,7 @@ export default function EmailMarketing() {
                 .sort((a, b) => b.conversionRate - a.conversionRate)
                 .slice(0, 3)
                 .map((campaign, index) => (
-                  <div key={campaign.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <div key={campaign.id} className="admin-inline-row p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                         <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
@@ -444,25 +444,25 @@ export default function EmailMarketing() {
               Email Metrics
             </h3>
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
+              <div className="admin-inline-row">
                 <span className="text-slate-600 dark:text-slate-400">Average Open Rate</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {totalStats.averageOpenRate.toFixed(1)}%
                 </span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="admin-inline-row">
                 <span className="text-slate-600 dark:text-slate-400">Average Click Rate</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {campaigns.reduce((sum, c) => sum + c.clickRate, 0) / campaigns.length}%
                 </span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="admin-inline-row">
                 <span className="text-slate-600 dark:text-slate-400">Average Conversion Rate</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {campaigns.reduce((sum, c) => sum + c.conversionRate, 0) / campaigns.length}%
                 </span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="admin-inline-row">
                 <span className="text-slate-600 dark:text-slate-400">Total Revenue</span>
                 <span className="font-semibold text-green-600">
                   ₹{totalStats.totalRevenue.toLocaleString()}

@@ -94,10 +94,10 @@ export default function LoyaltyProgram() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -200,7 +200,7 @@ export default function LoyaltyProgram() {
             <div className="p-4 text-slate-600 dark:text-slate-300">No programs configured.</div>
           ) : (
             programs.map(p => (
-              <div key={p.id} className="p-4 flex items-center justify-between">
+              <div key={p.id} className="p-4 admin-inline-row">
                 <div>
                   <div className="font-medium text-slate-900 dark:text-slate-100">{p.name}</div>
                   <div className="text-sm text-slate-600 dark:text-slate-300">

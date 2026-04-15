@@ -203,10 +203,10 @@ export default function AdvancedAnalytics() {
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -249,7 +249,7 @@ export default function AdvancedAnalytics() {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Revenue</h3>
               <p className="text-3xl font-bold">{formatCurrency(analyticsData.revenue.total)}</p>
@@ -265,7 +265,7 @@ export default function AdvancedAnalytics() {
         </div>
 
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Orders</h3>
               <p className="text-3xl font-bold">{formatNumber(analyticsData.orders.total)}</p>
@@ -281,7 +281,7 @@ export default function AdvancedAnalytics() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Customers</h3>
               <p className="text-3xl font-bold">{formatNumber(analyticsData.customers.total)}</p>
@@ -297,7 +297,7 @@ export default function AdvancedAnalytics() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Conversion Rate</h3>
               <p className="text-3xl font-bold">{analyticsData.orders.conversion}%</p>
@@ -450,25 +450,25 @@ export default function AdvancedAnalytics() {
             Email Marketing
           </h2>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Sent</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {formatNumber(analyticsData.marketing.email.sent)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Open Rate</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {((analyticsData.marketing.email.opened / analyticsData.marketing.email.sent) * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Click Rate</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {((analyticsData.marketing.email.clicked / analyticsData.marketing.email.sent) * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-page-header">
               <span className="text-slate-600 dark:text-slate-400">Conversions</span>
               <span className="font-semibold text-green-600">
                 {formatNumber(analyticsData.marketing.email.conversion)}
@@ -482,25 +482,25 @@ export default function AdvancedAnalytics() {
             SMS Marketing
           </h2>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Sent</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {formatNumber(analyticsData.marketing.sms.sent)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Delivery Rate</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {((analyticsData.marketing.sms.delivered / analyticsData.marketing.sms.sent) * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Click Rate</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {((analyticsData.marketing.sms.clicked / analyticsData.marketing.sms.sent) * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-page-header">
               <span className="text-slate-600 dark:text-slate-400">Conversions</span>
               <span className="font-semibold text-green-600">
                 {formatNumber(analyticsData.marketing.sms.conversion)}
@@ -514,25 +514,25 @@ export default function AdvancedAnalytics() {
             Push Notifications
           </h2>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Sent</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {formatNumber(analyticsData.marketing.push.sent)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Open Rate</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {((analyticsData.marketing.push.opened / analyticsData.marketing.push.sent) * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Click Rate</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {((analyticsData.marketing.push.clicked / analyticsData.marketing.push.sent) * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-page-header">
               <span className="text-slate-600 dark:text-slate-400">Conversions</span>
               <span className="font-semibold text-green-600">
                 {formatNumber(analyticsData.marketing.push.conversion)}
@@ -549,25 +549,25 @@ export default function AdvancedAnalytics() {
             Customer Breakdown
           </h2>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Total Customers</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {formatNumber(analyticsData.customers.total)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">New Customers</span>
               <span className="font-semibold text-blue-600">
                 {formatNumber(analyticsData.customers.new)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Returning Customers</span>
               <span className="font-semibold text-green-600">
                 {formatNumber(analyticsData.customers.returning)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Customer Growth</span>
               <div className="flex items-center">
                 {getGrowthIcon(analyticsData.customers.growth)}
@@ -584,25 +584,25 @@ export default function AdvancedAnalytics() {
             Engagement Metrics
           </h2>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Page Views</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {formatNumber(analyticsData.engagement.pageViews)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Bounce Rate</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {analyticsData.engagement.bounceRate}%
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-inline-row">
               <span className="text-slate-600 dark:text-slate-400">Session Duration</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {analyticsData.engagement.sessionDuration}m
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="admin-page-header">
               <span className="text-slate-600 dark:text-slate-400">Pages per Session</span>
               <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {analyticsData.engagement.pagesPerSession}

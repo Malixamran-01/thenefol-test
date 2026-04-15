@@ -120,10 +120,10 @@ export default function UsersPage() {
         }
       `}</style>
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -136,7 +136,7 @@ export default function UsersPage() {
             Manage your customer base
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <button
             onClick={() => setShowFormSubmissions(!showFormSubmissions)}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
@@ -154,7 +154,7 @@ export default function UsersPage() {
       {/* Form Submissions Section */}
       {showFormSubmissions && (
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+          <div className="admin-page-header mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               Form Submissions
             </h2>
@@ -177,7 +177,7 @@ export default function UsersPage() {
                 
                 return (
                   <div key={submission.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="admin-page-header mb-2">
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">
                           {submission.form_name || `Form #${submission.form_id}`}

@@ -302,7 +302,7 @@ export default function OrderDetails() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 
-            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',

@@ -425,10 +425,10 @@ export default function AffiliateRequests() {
       {/* Header */}
       <div className="metric-card border-b" style={{ borderColor: 'var(--arctic-blue-light)' }}>
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h1 
-                className="text-3xl font-light mb-2 tracking-[0.15em]" 
+                className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
                 style={{
                   color: 'var(--text-primary)',
                   fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -463,7 +463,7 @@ export default function AffiliateRequests() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Requests</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -480,7 +480,7 @@ export default function AffiliateRequests() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Review</p>
                 <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
@@ -497,7 +497,7 @@ export default function AffiliateRequests() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Approved</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -514,7 +514,7 @@ export default function AffiliateRequests() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Rejected</p>
                 <p className="text-2xl font-bold text-red-600 dark:text-red-400">
@@ -799,7 +799,7 @@ export default function AffiliateRequests() {
                                     ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 shadow-lg ring-2 ring-blue-200 dark:ring-blue-800' 
                                     : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                                 }`}>
-                                  <div className="flex items-center justify-between mb-2">
+                                  <div className="admin-inline-row mb-2">
                                     <div className="flex items-center gap-2">
                                       <span className={`text-sm font-semibold ${
                                         recentlyRegenerated.has(application.id)
@@ -948,7 +948,7 @@ export default function AffiliateRequests() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6">
+          <div className="admin-inline-row mt-6">
             <div className="text-sm text-gray-700 dark:text-gray-300">
               Showing page {currentPage} of {totalPages}
             </div>
@@ -977,7 +977,7 @@ export default function AffiliateRequests() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="admin-page-header mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {modalType === 'view' && 'Application Details'}
                   {modalType === 'approve' && 'Approve Application'}

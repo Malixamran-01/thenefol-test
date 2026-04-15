@@ -199,7 +199,7 @@ export default function CustomerJourneyTracking() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Customer Journey Tracking
@@ -229,7 +229,7 @@ export default function CustomerJourneyTracking() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Customers</h3>
               <p className="text-3xl font-bold">{totalStats.totalCustomers}</p>
@@ -239,7 +239,7 @@ export default function CustomerJourneyTracking() {
         </div>
 
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Events</h3>
               <p className="text-3xl font-bold">{totalStats.totalEvents}</p>
@@ -249,7 +249,7 @@ export default function CustomerJourneyTracking() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Value</h3>
               <p className="text-3xl font-bold">₹{(totalStats.totalValue / 100000).toFixed(1)}L</p>
@@ -259,7 +259,7 @@ export default function CustomerJourneyTracking() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Active Customers</h3>
               <p className="text-3xl font-bold">{totalStats.activeCustomers}</p>
@@ -297,7 +297,7 @@ export default function CustomerJourneyTracking() {
           {/* Customer Journeys Tab */}
           {activeTab === 'journeys' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="admin-page-header">
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Customer Journeys
                 </h3>
@@ -343,7 +343,7 @@ export default function CustomerJourneyTracking() {
                 <div className="space-y-4">
                   {journeys.map((journey) => (
                     <div key={journey.customerId} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="admin-inline-row mb-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center">
                             <span className="text-blue-600 dark:text-blue-200 font-bold">
@@ -374,7 +374,7 @@ export default function CustomerJourneyTracking() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="admin-inline-row mb-4">
                         <div className="flex space-x-4 text-sm text-slate-600 dark:text-slate-400">
                           <span>First seen: {new Date(journey.firstSeen).toLocaleDateString()}</span>
                           <span>Last seen: {new Date(journey.lastSeen).toLocaleDateString()}</span>
@@ -463,7 +463,7 @@ export default function CustomerJourneyTracking() {
               </h3>
               
               <div className="bg-white dark:bg-slate-800 rounded-lg p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="admin-inline-row mb-6">
                   <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                     Customer Journey Flow
                   </h4>
@@ -508,7 +508,7 @@ export default function CustomerJourneyTracking() {
       {selectedJourney && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Journey Details: {selectedJourney.customerName}
               </h3>

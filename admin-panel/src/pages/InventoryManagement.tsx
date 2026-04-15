@@ -837,7 +837,7 @@ export default function InventoryManagement() {
       
       <div className="mb-6">
         <h1 
-          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -1766,7 +1766,7 @@ export default function InventoryManagement() {
       {modal.type === 'restock' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
+            <div className="admin-inline-row p-4 border-b">
               <div>
                 <h3 className="text-lg font-semibold">Restock report</h3>
                 <p className="text-sm text-gray-600">Suggested reorder rounds up to case packs and respects minimum reorder.</p>
@@ -1822,7 +1822,7 @@ export default function InventoryManagement() {
       {modal.type === 'logs' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-3xl w-full max-h-[85vh] flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
+            <div className="admin-inline-row p-4 border-b">
               <h3 className="text-lg font-semibold">Inventory activity</h3>
               <button
                 type="button"

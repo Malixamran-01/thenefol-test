@@ -82,10 +82,10 @@ export default function GoogleYouTube() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -158,7 +158,7 @@ export default function GoogleYouTube() {
           {/* Connection Status */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="metric-card">
-              <div className="flex items-center justify-between">
+              <div className="admin-page-header">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
                     <span className="text-white font-bold text-lg">Y</span>
@@ -172,7 +172,7 @@ export default function GoogleYouTube() {
               </div>
             </div>
             <div className="metric-card">
-              <div className="flex items-center justify-between">
+              <div className="admin-page-header">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
                     <span className="text-white font-bold text-lg">G</span>
@@ -196,7 +196,7 @@ export default function GoogleYouTube() {
               { title: 'Conversions', value: analytics.conversions.toString(), icon: '🎯' }
             ].map((stat, index) => (
               <div key={index} className="metric-card">
-                <div className="flex items-center justify-between">
+                <div className="admin-page-header">
                   <div>
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
@@ -209,7 +209,7 @@ export default function GoogleYouTube() {
 
           {/* Recent Campaigns */}
           <div className="metric-card">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Recent Campaigns</h2>
               <button className="btn-primary">Create Campaign</button>
             </div>
@@ -218,7 +218,7 @@ export default function GoogleYouTube() {
               {campaigns.length > 0 ? (
                 campaigns.map((campaign, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="admin-page-header">
                     <div>
                       <h3 className="font-semibold text-gray-900">{campaign.name}</h3>
                       <p className="text-sm text-gray-600">{campaign.platform}</p>

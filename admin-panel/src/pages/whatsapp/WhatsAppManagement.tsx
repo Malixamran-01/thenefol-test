@@ -594,7 +594,7 @@ export default function WhatsAppManagement() {
       {viewTemplate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="admin-page-header">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{viewTemplate.name}</h2>
                 <p className="text-xs text-slate-500">
@@ -636,7 +636,7 @@ export default function WhatsAppManagement() {
 
   const renderAutomationsTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="admin-page-header">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">WhatsApp Automations</h3>
           <p className="text-sm text-slate-600 dark:text-slate-400">Automate messages based on triggers</p>
@@ -659,7 +659,7 @@ export default function WhatsAppManagement() {
         <div className="space-y-4">
           {automations.map((automation) => (
             <div key={automation.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex justify-between items-start">
+              <div className="admin-inline-row">
                 <div>
                   <div className="flex items-center space-x-2 mb-2">
                     <h4 className="font-semibold text-slate-900 dark:text-slate-100">{automation.name}</h4>
@@ -710,7 +710,7 @@ export default function WhatsAppManagement() {
         <div className="space-y-3">
           {sessions.map((session) => (
             <div key={session.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start">
+              <div className="admin-inline-row">
                 <div>
                   <h4 className="font-semibold text-slate-900 dark:text-slate-100">{session.customerName}</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-400">{session.customerPhone}</p>
@@ -781,7 +781,7 @@ export default function WhatsAppManagement() {
       {/* Header */}
       <div>
         <h1 
-          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -847,7 +847,7 @@ export default function WhatsAppManagement() {
       {showTestModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Send Test Message</h2>
               <button onClick={() => setShowTestModal(false)}>
                 <XCircle className="h-6 w-6 text-slate-500" />
@@ -889,7 +889,7 @@ export default function WhatsAppManagement() {
       {showTemplateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="admin-page-header">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create WhatsApp Template</h2>
                 <p className="text-sm text-slate-500">
@@ -990,7 +990,7 @@ export default function WhatsAppManagement() {
                   placeholder="Hello {{1}}, your order {{2}} has been packed."
                 />
                 <div className="mt-2 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="admin-inline-row">
                     <span className="text-xs text-slate-500">Example values for placeholders</span>
                     <button
                       type="button"
@@ -1088,7 +1088,7 @@ export default function WhatsAppManagement() {
       {showAutomationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create Automation</h2>
               <button onClick={() => setShowAutomationModal(false)}>
                 <XCircle className="h-6 w-6 text-slate-500" />

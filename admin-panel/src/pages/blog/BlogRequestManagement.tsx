@@ -709,7 +709,7 @@ export default function BlogRequestManagement() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Pending review</p>
             <p className="text-2xl font-light text-amber-950">{counts.pending}</p>
@@ -992,7 +992,7 @@ export default function BlogRequestManagement() {
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
           <div className="flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <div className="admin-page-header border-b border-slate-200 px-4 py-3">
               <div className="min-w-0 pr-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Post #{selected.id}</p>
                 <h2 className="truncate text-lg font-semibold text-[#1B4965]">{stripHtml(selected.title)}</h2>

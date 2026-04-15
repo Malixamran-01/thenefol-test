@@ -523,10 +523,10 @@ export default function AffiliateManagement() {
       {/* Header */}
       <div className="metric-card border-b" style={{ borderColor: 'var(--arctic-blue-light)' }}>
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h1 
-                className="text-3xl font-light mb-2 tracking-[0.15em]" 
+                className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
                 style={{
                   color: 'var(--text-primary)',
                   fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -570,7 +570,7 @@ export default function AffiliateManagement() {
 
       {/* Commission Settings Bar */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-3">
-        <div className="flex items-center justify-between">
+        <div className="admin-inline-row">
           <div className="flex items-center gap-4">
             {/* Commission Settings */}
             <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
@@ -697,7 +697,7 @@ export default function AffiliateManagement() {
                       className="p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       onClick={() => toggleAffiliateDetails(affiliate.id)}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="admin-page-header">
                         <div className="flex-1">
                           <div className="flex items-center gap-4 mb-2">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -988,7 +988,7 @@ export default function AffiliateManagement() {
             {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Applications</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -1005,7 +1005,7 @@ export default function AffiliateManagement() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Review</p>
                 <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
@@ -1022,7 +1022,7 @@ export default function AffiliateManagement() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Approved</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -1039,7 +1039,7 @@ export default function AffiliateManagement() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Rejected</p>
                 <p className="text-2xl font-bold text-red-600 dark:text-red-400">
@@ -1237,7 +1237,7 @@ export default function AffiliateManagement() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div className="text-sm text-slate-700 dark:text-slate-300">
                 Page {currentPage} of {totalPages}
               </div>
@@ -1267,7 +1267,7 @@ export default function AffiliateManagement() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-slate-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="admin-page-header mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {modalType === 'view' && 'Application Details'}
                   {modalType === 'approve' && 'Approve Application'}

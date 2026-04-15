@@ -361,10 +361,10 @@ export default function Discounts() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -439,7 +439,7 @@ export default function Discounts() {
               { title: 'Total Saved', value: `₹${(Array.isArray(usage) ? usage.reduce((sum, u) => sum + (Number(u.discount_amount) || 0), 0) : 0).toFixed(2)}`, icon: '💰' }
             ].map((stat, index) => (
               <div key={index} className="metric-card">
-                <div className="flex items-center justify-between">
+                <div className="admin-inline-row">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
@@ -565,7 +565,7 @@ export default function Discounts() {
       {/* Usage Tab */}
       {activeTab === 'usage' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <h2 className="text-lg font-semibold text-gray-900">Discount Usage History</h2>
             <button className="btn-secondary">Export</button>
           </div>

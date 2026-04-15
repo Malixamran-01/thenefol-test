@@ -247,7 +247,7 @@ export default function LiveChat() {
         <div className="w-1/3 border-r border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col">
           {/* Header */}
           <div className="p-4 bg-green-600 dark:bg-green-700">
-            <div className="flex items-center justify-between mb-3">
+            <div className="admin-page-header mb-3">
               <h1 className="text-xl font-semibold text-white">Chats</h1>
               <button
                 onClick={loadChatData}
@@ -295,7 +295,7 @@ export default function LiveChat() {
                     </div>
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="admin-page-header mb-1">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {session.customerName || session.customerEmail || 'User'}
                         </h3>
@@ -329,7 +329,7 @@ export default function LiveChat() {
           {currentSession ? (
             <>
               {/* Chat Header */}
-              <div className="bg-green-600 dark:bg-green-700 px-4 py-3 flex items-center justify-between border-b border-green-700 dark:border-green-800">
+              <div className="admin-inline-row bg-green-600 dark:bg-green-700 px-4 py-3 border-b border-green-700 dark:border-green-800">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {/* Avatar */}
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0">

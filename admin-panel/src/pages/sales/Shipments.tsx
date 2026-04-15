@@ -153,10 +153,10 @@ export default function Shipments() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -262,19 +262,19 @@ export default function Shipments() {
                       </div>
                       
                       <div className="space-y-1.5 mt-3">
-                        <div className="flex justify-between items-center">
+                        <div className="admin-inline-row">
                           <span className="text-xs text-slate-600 dark:text-slate-400">Rate:</span>
                           <span className="font-bold text-slate-900 dark:text-slate-100">₹{courier.rate || courier.freight_charge}</span>
                         </div>
                         
-                        <div className="flex justify-between items-center">
+                        <div className="admin-inline-row">
                           <span className="text-xs text-slate-600 dark:text-slate-400">Delivery:</span>
                           <span className="text-xs font-medium text-slate-900 dark:text-slate-100">
                             {courier.etd || `${courier.estimated_delivery_days} days`}
                           </span>
                         </div>
                         
-                        <div className="flex justify-between items-center">
+                        <div className="admin-inline-row">
                           <span className="text-xs text-slate-600 dark:text-slate-400">COD:</span>
                           <span className={`text-xs font-medium ${courier.cod ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {courier.cod ? 'Available' : 'Not Available'}
@@ -282,14 +282,14 @@ export default function Shipments() {
                         </div>
                         
                         {courier.cod_charges > 0 && (
-                          <div className="flex justify-between items-center">
+                          <div className="admin-inline-row">
                             <span className="text-xs text-slate-600 dark:text-slate-400">COD Charges:</span>
                             <span className="text-xs text-slate-900 dark:text-slate-100">₹{courier.cod_charges}</span>
                           </div>
                         )}
                         
                         {courier.rating && (
-                          <div className="flex justify-between items-center">
+                          <div className="admin-inline-row">
                             <span className="text-xs text-slate-600 dark:text-slate-400">Rating:</span>
                             <span className="text-xs font-medium text-slate-900 dark:text-slate-100">
                               ⭐ {courier.rating.toFixed(1)}
@@ -297,13 +297,13 @@ export default function Shipments() {
                           </div>
                         )}
                         
-                        <div className="flex justify-between items-center text-xs">
+                        <div className="admin-inline-row text-xs">
                           <span className="text-slate-600 dark:text-slate-400">Tracking:</span>
                           <span className="text-slate-900 dark:text-slate-100">{courier.realtime_tracking || 'N/A'}</span>
                         </div>
                         
                         {courier.cutoff_time && (
-                          <div className="flex justify-between items-center text-xs">
+                          <div className="admin-inline-row text-xs">
                             <span className="text-slate-600 dark:text-slate-400">Cutoff:</span>
                             <span className="text-slate-900 dark:text-slate-100">{courier.cutoff_time}</span>
                           </div>

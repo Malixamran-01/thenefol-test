@@ -110,7 +110,7 @@ export default function FBShopIntegration() {
       `}</style>
       <div>
         <h1 
-          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -198,7 +198,7 @@ export default function FBShopIntegration() {
       </div>
 
       <div className="p-4 bg-white rounded border">
-        <div className="flex items-center justify-between mb-3">
+        <div className="admin-page-header mb-3">
           <h2 className="font-semibold">Sync Errors</h2>
           <div className="flex items-center gap-2">
             <button onClick={loadErrors} className="px-3 py-1 border rounded">Refresh</button>

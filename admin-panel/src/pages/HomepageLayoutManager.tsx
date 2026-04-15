@@ -1560,10 +1560,10 @@ export default function HomepageLayoutManager() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -1712,7 +1712,7 @@ export default function HomepageLayoutManager() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-y min-h-[100px]"
                   rows={4}
                 />
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-3 admin-inline-row">
                   <p className="text-xs text-gray-500">
                     This text will scroll continuously 24/7 on the homepage
                   </p>
@@ -1793,7 +1793,7 @@ export default function HomepageLayoutManager() {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-2">
                         Product Image
@@ -1858,7 +1858,7 @@ export default function HomepageLayoutManager() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-3 admin-inline-row">
                   <p className="text-xs text-gray-500">
                     Edit the text content, upload product image and logo for the WhatsApp subscription modal
                   </p>
@@ -1885,7 +1885,7 @@ export default function HomepageLayoutManager() {
             {/* Splash Screen Manager */}
             {section.id === 'splash_screen' && (
               <div className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="admin-inline-row mb-4">
                   <div>
                     <h4 className="text-base font-semibold text-purple-900">Splash Screen Videos</h4>
                     <p className="text-sm text-slate-600">
@@ -1979,7 +1979,7 @@ export default function HomepageLayoutManager() {
             {/* Top Media Carousel Settings Panel */}
             {section.id === 'top_media_carousel' && showTopMediaSettings && (
               <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="admin-inline-row mb-4">
                   <div className="flex items-center gap-2">
                     <Palette className="w-5 h-5 text-blue-600" />
                     <h4 className="font-semibold text-blue-900">Animation & Design Settings</h4>
@@ -2157,7 +2157,7 @@ export default function HomepageLayoutManager() {
             {/* Hero Banner Settings Panel */}
             {section.id === 'hero_banner' && showHeroSettings && (
               <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between mb-4">
+                <div className="admin-inline-row mb-4">
                   <div className="flex items-center gap-2">
                     <Palette className="w-5 h-5 text-blue-600" />
                     <h4 className="font-semibold text-blue-900">Animation & Design Settings</h4>
@@ -2525,7 +2525,7 @@ export default function HomepageLayoutManager() {
       {showCreateSection && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
+            <div className="admin-page-header mb-6">
               <h2 className="text-2xl font-bold">Create New Section</h2>
               <button
                 onClick={() => {
@@ -2660,7 +2660,7 @@ export default function HomepageLayoutManager() {
       {showSizeSelector && pendingUpload && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <div>
                 <h3 className="text-lg font-semibold">Choose Image Size</h3>
                 {(() => {
@@ -2756,7 +2756,7 @@ export default function HomepageLayoutManager() {
       {editingTiming && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h3 className="text-lg font-semibold">Set Media Timing</h3>
               <button
                 onClick={() => {

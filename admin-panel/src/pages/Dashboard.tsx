@@ -278,7 +278,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {dashboardMetrics.map((metric, index) => (
           <div key={index} className="metric-card">
-            <div className="flex items-center justify-between mb-6">
+            <div className="admin-page-header mb-6">
               <div className="flex items-center space-x-3">
                 <span className="text-2xl">{metric.icon}</span>
                 <h3 className="text-sm font-medium" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>{metric.title}</h3>
@@ -318,7 +318,7 @@ const Dashboard = () => {
 
       {/* Performance Chart */}
       <div className="metric-card">
-        <div className="flex items-center justify-between mb-6">
+        <div className="admin-page-header mb-6">
           <h2 className="text-xl font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)', letterSpacing: '0.15em' }}>Sessions</h2>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
@@ -452,7 +452,7 @@ const Dashboard = () => {
               className={`metric-card ${item.href ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
               onClick={item.href ? () => navigate(item.href!) : undefined}
             >
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <div className="flex items-center space-x-3">
                   <span className="text-2xl">{item.icon}</span>
                   <span className={`font-medium ${item.color}`}>{item.title}</span>
@@ -471,7 +471,7 @@ const Dashboard = () => {
       {/* Congratulations Card */}
       {showCongrats && metrics && metrics.orders >= 10 && (
         <div className="metric-card relative" style={{ background: 'linear-gradient(135deg, var(--arctic-blue-lighter) 0%, var(--arctic-blue-light) 100%)', borderColor: 'var(--arctic-blue-primary)' }}>
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div className="flex-1">
               <h3 className="text-xl font-light mb-3" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)', letterSpacing: '0.15em' }}>
                 Congratulations on reaching {metrics.orders || 0} orders!

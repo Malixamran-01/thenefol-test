@@ -83,7 +83,7 @@ export default function ActionableAnalytics() {
     return (
       <div className="max-w-7xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">Error</h3>
               <p className="text-red-700 dark:text-red-300">{error}</p>
@@ -128,7 +128,7 @@ export default function ActionableAnalytics() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Actionable Analytics
@@ -174,7 +174,7 @@ export default function ActionableAnalytics() {
           const IconComponent = metric.icon
           return (
             <div key={metric.id} className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">{metric.name}</p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -240,15 +240,15 @@ export default function ActionableAnalytics() {
                     Revenue Trends
                   </h4>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Monthly Revenue</span>
                       <span className="font-semibold text-green-600">₹2.5M</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Growth Rate</span>
                       <span className="font-semibold text-green-600">+12.5%</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Target Achievement</span>
                       <span className="font-semibold text-blue-600">95%</span>
                     </div>
@@ -260,15 +260,15 @@ export default function ActionableAnalytics() {
                     Customer Metrics
                   </h4>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">New Customers</span>
                       <span className="font-semibold text-blue-600">1,250</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-inline-row">
                       <span className="text-slate-600 dark:text-slate-400">Retention Rate</span>
                       <span className="font-semibold text-green-600">78.5%</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="admin-page-header">
                       <span className="text-slate-600 dark:text-slate-400">Churn Rate</span>
                       <span className="font-semibold text-red-600">5.2%</span>
                     </div>
@@ -321,7 +321,7 @@ export default function ActionableAnalytics() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
+                    <div className="admin-inline-row">
                       <div className="flex items-center space-x-2">
                         <Eye className="h-4 w-4 text-slate-400" />
                         <span className="text-sm text-slate-600 dark:text-slate-400">

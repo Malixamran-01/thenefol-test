@@ -195,6 +195,50 @@
     }
   }
 
+  /**
+   * Page title row: stack on phones, horizontal from sm+.
+   * Use on top-level headers with title + actions (not inside metric stat rows).
+   */
+  .admin-page-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .admin-page-header {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
+  /** Full-width action groups under title on narrow screens */
+  .admin-page-header > *:last-child:not(:only-child) {
+    width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .admin-page-header > *:last-child:not(:only-child) {
+      width: auto;
+      flex-shrink: 0;
+    }
+  }
+
+  /** Stat / card rows that must stay left–right on all breakpoints */
+  .admin-inline-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+  }
+
   .metric-card {
     background-color: var(--brand-surface);
     border-radius: 16px;

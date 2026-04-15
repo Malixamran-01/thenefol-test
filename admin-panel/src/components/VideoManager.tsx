@@ -413,7 +413,7 @@ const VideoManager: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
+        <div className="admin-page-header mb-2">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Video Manager</h1>
           <div className="flex gap-2">
             <button
@@ -453,7 +453,7 @@ const VideoManager: React.FC = () => {
       {/* Carousel Settings Panel */}
       {showSettings && (
         <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
+          <div className="admin-page-header mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Carousel Animation Settings</h2>
             <button
               onClick={() => setShowSettings(false)}
@@ -719,7 +719,7 @@ const VideoManager: React.FC = () => {
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{video.title}</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{video.description}</p>
               
-              <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-3">
+              <div className="admin-inline-row text-sm text-gray-500 dark:text-gray-400 mb-3">
                 <span>👁️ {video.views} views</span>
                 <span>❤️ {video.likes} likes</span>
                 <span className="font-bold text-green-600">{video.price}</span>

@@ -316,7 +316,7 @@ export default function VideoCropper({ videoUrl, aspectRatio = 16/9, onCrop, onC
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="admin-page-header p-4 border-b">
           <h3 className="text-lg font-semibold">
             Crop Video ({aspectRatio === 1 ? '1:1' : aspectRatio === 16/9 ? '16:9' : aspectRatio === 4/5 ? '4:5' : aspectRatio === 5/4 ? '5:4' : aspectRatio === 4/3 ? '4:3' : aspectRatio.toFixed(2) + ':1'} Aspect Ratio)
           </h3>
@@ -425,7 +425,7 @@ export default function VideoCropper({ videoUrl, aspectRatio = 16/9, onCrop, onC
           </div>
         )}
         
-        <div className="p-4 border-t flex items-center justify-between relative z-10 bg-white">
+        <div className="admin-inline-row p-4 border-t relative z-10 bg-white">
           <div className="flex items-center gap-2">
             <button
               onClick={togglePlayPause}

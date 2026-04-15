@@ -164,7 +164,7 @@ export default function CashbackSystem() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div className="text-center flex-1">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Nefol Coins Program
@@ -181,7 +181,7 @@ export default function CashbackSystem() {
       {/* Points Wallet Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Available Coins</h3>
               <p className="text-3xl font-bold">{formatCoins(cashbackWallet.availableBalance)}</p>
@@ -191,7 +191,7 @@ export default function CashbackSystem() {
         </div>
 
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Earned</h3>
               <p className="text-3xl font-bold">{formatCoins(cashbackWallet.totalEarned)}</p>
@@ -201,7 +201,7 @@ export default function CashbackSystem() {
         </div>
 
         <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Pending</h3>
               <p className="text-3xl font-bold">{formatCoins(cashbackWallet.pendingAmount)}</p>
@@ -211,7 +211,7 @@ export default function CashbackSystem() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Used</h3>
               <p className="text-3xl font-bold">{formatCoins(cashbackWallet.usedAmount)}</p>
@@ -223,7 +223,7 @@ export default function CashbackSystem() {
 
       {/* Redeem Points */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Redeem Points
           </h2>
@@ -271,7 +271,7 @@ export default function CashbackSystem() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {cashbackOffers.map((offer) => (
             <div key={offer.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="admin-page-header mb-3">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                   {offer.title}
                 </h3>
@@ -299,7 +299,7 @@ export default function CashbackSystem() {
                 </div>
               </div>
               
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
                   {offer.category}
                 </span>
@@ -341,7 +341,7 @@ export default function CashbackSystem() {
           </div>
         </div>
         <div className="mt-4 p-4 bg-green-50 dark:bg-green-900 rounded-lg">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <span className="text-green-800 dark:text-green-200 font-semibold">
               Estimated Cashback:
             </span>

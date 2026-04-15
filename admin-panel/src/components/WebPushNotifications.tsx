@@ -152,7 +152,7 @@ export default function WebPushNotifications() {
     return (
       <div className="max-w-7xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">Error</h3>
               <p className="text-red-700 dark:text-red-300">{error}</p>
@@ -172,7 +172,7 @@ export default function WebPushNotifications() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Web Push Notifications
@@ -209,7 +209,7 @@ export default function WebPushNotifications() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Notifications</h3>
               <p className="text-3xl font-bold">{totalStats.totalNotifications}</p>
@@ -219,7 +219,7 @@ export default function WebPushNotifications() {
         </div>
 
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Recipients</h3>
               <p className="text-3xl font-bold">{totalStats.totalRecipients.toLocaleString()}</p>
@@ -229,7 +229,7 @@ export default function WebPushNotifications() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Avg Delivery Rate</h3>
               <p className="text-3xl font-bold">{totalStats.averageDeliveryRate.toFixed(1)}%</p>
@@ -239,7 +239,7 @@ export default function WebPushNotifications() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Revenue</h3>
               <p className="text-3xl font-bold">₹{totalStats.totalRevenue.toLocaleString()}</p>
@@ -251,7 +251,7 @@ export default function WebPushNotifications() {
 
       {/* Notification Settings Status */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Notification Settings
           </h2>
@@ -313,7 +313,7 @@ export default function WebPushNotifications() {
 
       {/* Notifications */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Push Notifications
           </h2>
@@ -413,7 +413,7 @@ export default function WebPushNotifications() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {templates.map((template) => (
             <div key={template.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="admin-page-header mb-2">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                   {template.name}
                 </h3>
@@ -444,7 +444,7 @@ export default function WebPushNotifications() {
 
       {/* Push Automations */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Push Automations
           </h2>
@@ -460,7 +460,7 @@ export default function WebPushNotifications() {
         <div className="space-y-4">
           {automations.map((automation) => (
             <div key={automation.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="admin-page-header mb-3">
                 <div className="flex items-center space-x-3">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                     {automation.name}
@@ -502,7 +502,7 @@ export default function WebPushNotifications() {
                 </div>
               </div>
               
-              <div className="mt-3 flex items-center justify-between text-sm">
+              <div className="mt-3 admin-inline-row text-sm">
                 <div className="flex space-x-4">
                   <span className="text-slate-600 dark:text-slate-400">
                     Notifications Sent: <span className="font-semibold">{automation.notificationsSent}</span>
@@ -532,7 +532,7 @@ export default function WebPushNotifications() {
                 .sort((a, b) => b.conversionRate - a.conversionRate)
                 .slice(0, 3)
                 .map((notification, index) => (
-                  <div key={notification.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <div key={notification.id} className="admin-inline-row p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                         <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
@@ -566,25 +566,25 @@ export default function WebPushNotifications() {
               Push Metrics
             </h3>
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
+              <div className="admin-inline-row">
                 <span className="text-slate-600 dark:text-slate-400">Average Delivery Rate</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {totalStats.averageDeliveryRate.toFixed(1)}%
                 </span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="admin-inline-row">
                 <span className="text-slate-600 dark:text-slate-400">Average Open Rate</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {notifications.reduce((sum, n) => sum + n.openRate, 0) / notifications.length}%
                 </span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="admin-inline-row">
                 <span className="text-slate-600 dark:text-slate-400">Average Click Rate</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-100">
                   {notifications.reduce((sum, n) => sum + n.clickRate, 0) / notifications.length}%
                 </span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="admin-page-header">
                 <span className="text-slate-600 dark:text-slate-400">Total Revenue</span>
                 <span className="font-semibold text-green-600">
                   ₹{totalStats.totalRevenue.toLocaleString()}
@@ -721,19 +721,19 @@ export default function WebPushNotifications() {
               Push Notification Settings
             </h3>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Enable Push Notifications</span>
                 <input type="checkbox" checked={settings.isEnabled} className="rounded" />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Allow Promotional</span>
                 <input type="checkbox" checked={settings.allowPromotional} className="rounded" />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Allow Transactional</span>
                 <input type="checkbox" checked={settings.allowTransactional} className="rounded" />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="admin-inline-row">
                 <span className="text-slate-700 dark:text-slate-300">Allow Reminders</span>
                 <input type="checkbox" checked={settings.allowReminders} className="rounded" />
               </div>

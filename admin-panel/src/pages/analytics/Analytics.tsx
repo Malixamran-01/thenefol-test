@@ -209,10 +209,10 @@ export default function Analytics() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -247,7 +247,7 @@ export default function Analytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((metric, index) => (
           <div key={index} className="metric-card">
-            <div className="flex items-center justify-between">
+            <div className="admin-inline-row">
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{metric.title}</p>
                 <p className="text-2xl font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>{metric.value}</p>
@@ -308,7 +308,7 @@ export default function Analytics() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(5)].map((_, index) => (
-              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0 animate-pulse">
+              <div key={index} className="admin-inline-row py-2 border-b border-gray-100 last:border-b-0 animate-pulse">
                 <div>
                   <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
                   <div className="h-3 bg-gray-200 rounded w-24"></div>
@@ -323,7 +323,7 @@ export default function Analytics() {
         ) : topPages.length > 0 ? (
           <div className="space-y-3">
             {topPages.map((page, index) => (
-              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+              <div key={index} className="admin-inline-row py-2 border-b border-gray-100 last:border-b-0">
                 <div>
                   <p className="font-medium text-gray-900">{page.page}</p>
                   <p className="text-sm text-gray-500">{page.unique} unique views</p>

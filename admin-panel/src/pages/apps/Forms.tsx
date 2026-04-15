@@ -94,10 +94,10 @@ export default function Forms() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -185,7 +185,7 @@ export default function Forms() {
               { title: 'Avg. Submissions', value: forms.length > 0 ? Math.round(forms.reduce((sum, f) => sum + f.submissions, 0) / forms.length) : 0, icon: '📈' }
             ].map((stat, index) => (
               <div key={index} className="metric-card">
-                <div className="flex items-center justify-between">
+                <div className="admin-inline-row">
                   <div>
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
@@ -250,7 +250,7 @@ export default function Forms() {
       {/* Submissions Tab */}
       {!loading && !error && activeTab === 'submissions' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <h2 className="text-lg font-semibold text-gray-900">Recent Submissions</h2>
             <button className="btn-secondary">Export All</button>
           </div>

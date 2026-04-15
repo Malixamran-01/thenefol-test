@@ -132,7 +132,7 @@ export default function UserProfiles() {
       `}</style>
       <div>
         <h1 
-          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -456,7 +456,7 @@ export default function UserProfiles() {
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
                     <p className="text-sm text-gray-900 dark:text-white">{selectedProfile.email}</p>

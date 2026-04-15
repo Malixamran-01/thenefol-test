@@ -29,10 +29,10 @@ export default function OnlineStore() {
           --arctic-blue-background: #F4F9F9;
         }
       `}</style>
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 
-            className="text-3xl font-light mb-2 tracking-[0.15em]" 
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -54,7 +54,7 @@ export default function OnlineStore() {
       {/* Store Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Store Status</p>
               <p className="text-2xl font-light" style={{ color: '#059669', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>Live</p>
@@ -63,7 +63,7 @@ export default function OnlineStore() {
           </div>
         </div>
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-inline-row">
             <div>
               <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Domain</p>
               <p className="text-lg font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>nefol.com</p>
@@ -72,7 +72,7 @@ export default function OnlineStore() {
           </div>
         </div>
         <div className="metric-card">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Theme</p>
               <p className="text-lg font-light" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)' }}>Nefol Classic</p>
@@ -158,7 +158,7 @@ export default function OnlineStore() {
                 className="w-full h-32 object-cover rounded mb-3"
               />
               <h3 className="font-semibold text-gray-900 mb-2">{theme.name}</h3>
-              <div className="flex justify-between items-center">
+              <div className="admin-inline-row">
                 <span className={`px-2 py-1 text-xs rounded-full ${
                   theme.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                 }`}>

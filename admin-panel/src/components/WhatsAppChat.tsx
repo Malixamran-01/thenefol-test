@@ -309,7 +309,7 @@ export default function WhatsAppChat() {
     return (
       <div className="max-w-7xl mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">Error</h3>
               <p className="text-red-700 dark:text-red-300">{error}</p>
@@ -329,7 +329,7 @@ export default function WhatsAppChat() {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             WhatsApp Chat Support
@@ -373,7 +373,7 @@ export default function WhatsAppChat() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Sessions</h3>
               <p className="text-3xl font-bold">{totalStats.totalSessions}</p>
@@ -383,7 +383,7 @@ export default function WhatsAppChat() {
         </div>
 
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Active</h3>
               <p className="text-3xl font-bold">{totalStats.activeSessions}</p>
@@ -393,7 +393,7 @@ export default function WhatsAppChat() {
         </div>
 
         <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Waiting</h3>
               <p className="text-3xl font-bold">{totalStats.waitingSessions}</p>
@@ -403,7 +403,7 @@ export default function WhatsAppChat() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Resolved</h3>
               <p className="text-3xl font-bold">{totalStats.resolvedSessions}</p>
@@ -437,7 +437,7 @@ export default function WhatsAppChat() {
                   currentSession?.id === session.id ? 'bg-blue-50 dark:bg-blue-900' : ''
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="admin-page-header mb-2">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                     {session.customerName}
                   </h3>
@@ -456,7 +456,7 @@ export default function WhatsAppChat() {
                 <p className="text-sm text-slate-500 dark:text-slate-500 truncate">
                   {session.lastMessage}
                 </p>
-                <div className="flex items-center justify-between mt-2">
+                <div className="admin-inline-row mt-2">
                   <span className="text-xs text-slate-500 dark:text-slate-500">
                     {session.lastMessageTime}
                   </span>
@@ -481,7 +481,7 @@ export default function WhatsAppChat() {
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between">
+                <div className="admin-page-header">
                   <div>
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                       {currentSession.customerName}
@@ -583,7 +583,7 @@ export default function WhatsAppChat() {
 
       {/* WhatsApp Templates */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             WhatsApp Templates
           </h2>
@@ -602,7 +602,7 @@ export default function WhatsAppChat() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {templates.map((template) => (
             <div key={template.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="admin-page-header mb-2">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                   {template.name}
                 </h3>
@@ -636,7 +636,7 @@ export default function WhatsAppChat() {
 
       {/* WhatsApp Automations */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             WhatsApp Automations
           </h2>
@@ -655,7 +655,7 @@ export default function WhatsAppChat() {
           <div className="space-y-4">
             {automations.map((automation) => (
             <div key={automation.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="admin-page-header mb-3">
                 <div className="flex items-center space-x-3">
                   <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                     {automation.name}
@@ -697,7 +697,7 @@ export default function WhatsAppChat() {
                 </div>
               </div>
               
-              <div className="mt-3 flex items-center justify-between text-sm">
+              <div className="mt-3 admin-inline-row text-sm">
                 <div className="flex space-x-4">
                   <span className="text-slate-600 dark:text-slate-400">
                     Messages Sent: <span className="font-semibold">{automation.messagesSent}</span>
@@ -751,7 +751,7 @@ export default function WhatsAppChat() {
       {showCreateTemplate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create WhatsApp Template</h2>
               <button onClick={() => setShowCreateTemplate(false)} className="text-slate-500 hover:text-slate-700 dark:text-slate-400">
                 <XCircle className="h-6 w-6" />
@@ -810,7 +810,7 @@ export default function WhatsAppChat() {
               </div>
 
               {newTemplateIsScheduled && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Scheduled Date</label>
                     <input
@@ -855,7 +855,7 @@ export default function WhatsAppChat() {
       {showCreateAutomation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Create WhatsApp Automation</h2>
               <button onClick={() => setShowCreateAutomation(false)} className="text-slate-500 hover:text-slate-700 dark:text-slate-400">
                 <XCircle className="h-6 w-6" />
@@ -899,7 +899,7 @@ export default function WhatsAppChat() {
               </div>
 
               {newAutoIsScheduled && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Scheduled Date</label>
                     <input
@@ -944,7 +944,7 @@ export default function WhatsAppChat() {
       {showTestModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="admin-page-header mb-4">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 Test WhatsApp Message
               </h2>

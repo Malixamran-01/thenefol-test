@@ -163,7 +163,7 @@ export default function AffiliateMarketing() {
       {/* Header */}
       <div className="text-center">
         <h1 
-          className="text-3xl font-light mb-2 tracking-[0.15em]" 
+          className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
@@ -180,7 +180,7 @@ export default function AffiliateMarketing() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Earnings</h3>
               <p className="text-3xl font-bold">₹{affiliateStats.totalEarnings.toLocaleString()}</p>
@@ -190,7 +190,7 @@ export default function AffiliateMarketing() {
         </div>
 
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Total Clicks</h3>
               <p className="text-3xl font-bold">{affiliateStats.totalClicks.toLocaleString()}</p>
@@ -200,7 +200,7 @@ export default function AffiliateMarketing() {
         </div>
 
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Conversions</h3>
               <p className="text-3xl font-bold">{affiliateStats.totalConversions}</p>
@@ -210,7 +210,7 @@ export default function AffiliateMarketing() {
         </div>
 
         <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="admin-page-header">
             <div>
               <h3 className="text-lg font-semibold">Conversion Rate</h3>
               <p className="text-3xl font-bold">{affiliateStats.conversionRate}%</p>
@@ -222,7 +222,7 @@ export default function AffiliateMarketing() {
 
       {/* Current Tier */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Your Affiliate Tier
           </h2>
@@ -285,7 +285,7 @@ export default function AffiliateMarketing() {
 
       {/* Affiliate Links */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+        <div className="admin-page-header mb-4">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
             Your Affiliate Links
           </h2>
@@ -355,7 +355,7 @@ export default function AffiliateMarketing() {
         </h2>
         <div className="space-y-4">
           {affiliateStats.topProducts.map((product, index) => (
-            <div key={index} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
+            <div key={index} className="admin-page-header p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
               <div className="flex items-center space-x-4">
                 <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                   <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
@@ -397,7 +397,7 @@ export default function AffiliateMarketing() {
                 tier.tier === userTier ? 'ring-2 ring-white' : ''
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="admin-page-header mb-2">
                 <h3 className="font-bold">{tier.tier}</h3>
                 {tier.tier === userTier && <Award className="h-5 w-5" />}
               </div>
