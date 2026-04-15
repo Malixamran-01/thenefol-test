@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
+import { getMaxUnifiedOrderDate, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
 
 /**
  * Flipkart Seller / Sales API credentials — read from the **backend** `.env` (same folder as `backend/package.json`).
@@ -160,14 +161,24 @@ function isoDaysAgo(days: number): string {
   return d.toISOString()
 }
 
+function flipkartLookbackDays(): number {
+  const raw = process.env.FLIPKART_UNIFIED_SALES_LOOKBACK_DAYS || '90'
+  const n = parseInt(String(raw), 10)
+  if (!Number.isFinite(n) || n < 1) return 90
+  return Math.min(730, Math.max(1, n))
+}
+
 function isoNow(): string {
   return new Date().toISOString()
 }
 
-type FlipkartFilter = {
+type FlipkartFilterBase = {
   type: 'preDispatch' | 'postDispatch'
   states: string[]
-  orderDate?: { from: string; to: string }
+}
+
+type FlipkartFilter = FlipkartFilterBase & {
+  orderDate: { from: string; to: string }
 }
 
 function resolveFlipkartUrl(u: string): string {
@@ -191,7 +202,7 @@ async function postShipmentFilter(
     : JSON.stringify({
         filter: {
           ...filter,
-          orderDate: filter.orderDate || { from: isoDaysAgo(90), to: isoNow() },
+          orderDate: filter.orderDate!,
         },
         pagination: { pageSize: 20 },
       })
@@ -269,6 +280,9 @@ export type FlipkartSyncResult = { rows: number; skipped: boolean; logMessage?: 
 
 /**
  * Pulls shipments via Order Management filter API and maps lines into unified_sales.
+ * First run: orderDate window = last FLIPKART_UNIFIED_SALES_LOOKBACK_DAYS (default 90).
+ * Later runs: **incremental** — orderDate.from = last stored order_date minus overlap (only new/changed shipments in range).
+ * FLIPKART_UNIFIED_SALES_FULL_SYNC=1 forces the full lookback window again.
  */
 export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSyncResult> {
   if (isFlipkartUnifiedSalesSyncDisabled()) {
@@ -284,8 +298,26 @@ export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSync
 
   const accessToken = await flipkartClientCredentialsToken()
 
+  const lookbackDays = flipkartLookbackDays()
+  const forceFull = process.env.FLIPKART_UNIFIED_SALES_FULL_SYNC === '1'
+  const maxStored = await getMaxUnifiedOrderDate(pool, 'flipkart')
+  const useIncremental =
+    !forceFull &&
+    maxStored != null &&
+    maxStored.getTime() < Date.now() - 60 * 1000
+
+  const orderDateRange = useIncremental
+    ? {
+        from: new Date(maxStored!.getTime() - UNIFIED_SALES_INCREMENTAL_OVERLAP_MS).toISOString(),
+        to: isoNow(),
+      }
+    : {
+        from: isoDaysAgo(lookbackDays),
+        to: isoNow(),
+      }
+
   const seenShipmentIds = new Set<string>()
-  const filters: FlipkartFilter[] = [
+  const filters: FlipkartFilterBase[] = [
     {
       type: 'preDispatch',
       states: ['APPROVED', 'PACKING_IN_PROGRESS', 'PACKED', 'FORM_FAILED', 'READY_TO_DISPATCH'],
@@ -298,9 +330,10 @@ export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSync
 
   let inserted = 0
   for (const filter of filters) {
+    const filterWithDates: FlipkartFilter = { ...filter, orderDate: orderDateRange }
     let next: string | null | undefined
     do {
-      const page = await postShipmentFilter(accessToken, filter, next)
+      const page = await postShipmentFilter(accessToken, filterWithDates, next)
       const shipments = page.shipments || []
       next = page.nextPageUrl || null
 

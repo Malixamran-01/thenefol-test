@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
+import { getMaxUnifiedOrderDate, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
 
 /** India marketplace (sellercentral.amazon.in). Override with AMAZON_MARKETPLACE_ID. */
 const DEFAULT_MARKETPLACE_IN = 'A21TJRUUN4KGV'
@@ -86,7 +87,9 @@ export type AmazonSyncResult = { rows: number; skipped: boolean; logMessage?: st
 
 /**
  * Upserts `unified_sales` rows for platform `amazon` from Orders API.
- * Fetches orders in time windows (default lookback: AMAZON_UNIFIED_SALES_LOOKBACK_DAYS, max 730).
+ * - First run (no rows yet): full lookback (AMAZON_UNIFIED_SALES_LOOKBACK_DAYS, max 730) in 30-day chunks.
+ * - Later runs: **incremental** — only orders after the latest stored `order_date` (minus overlap), so syncs do not re-scan the whole history.
+ * - Set `AMAZON_UNIFIED_SALES_FULL_SYNC=1` to force a full lookback again.
  */
 export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResult> {
   const refresh_token = await resolveRefreshToken(pool)
@@ -124,8 +127,22 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
 
   const MS_DAY = 24 * 60 * 60 * 1000
   const lookbackMs = Math.min(days * MS_DAY, MAX_LOOKBACK_DAYS * MS_DAY)
-  const minTime = Date.now() - lookbackMs
+  const fullLookbackMinTime = Date.now() - lookbackMs
+  /** SP-API typically does not return orders older than ~2 years — do not request further back. */
+  const catalogMinTime = Date.now() - MAX_LOOKBACK_DAYS * MS_DAY
   const chunkMs = CHUNK_DAYS * MS_DAY
+
+  const forceFull = process.env.AMAZON_UNIFIED_SALES_FULL_SYNC === '1'
+  const maxStored = await getMaxUnifiedOrderDate(pool, 'amazon')
+  const useIncremental =
+    !forceFull &&
+    maxStored != null &&
+    maxStored.getTime() < Date.now() - 60 * 1000
+
+  /** Start of time range to request from SP-API (Orders). */
+  const minTime = useIncremental
+    ? Math.max(catalogMinTime, maxStored!.getTime() - UNIFIED_SALES_INCREMENTAL_OVERLAP_MS)
+    : fullLookbackMinTime
 
   let inserted = 0
   /** Walk backwards from “now” in chunks so we cover the full lookback window. */
@@ -207,9 +224,10 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
     await new Promise((r) => setTimeout(r, 400))
   }
 
+  const modeHint = useIncremental ? 'incremental (new since last sync)' : `full lookback ${days}d`
   const logMessage =
     inserted === 0
-      ? `No Amazon order lines in the last ${days} day(s) (or empty API response for this marketplace)`
+      ? `No Amazon order lines (${modeHint}; or empty API response for this marketplace)`
       : undefined
 
   return { rows: inserted, skipped: false, logMessage }

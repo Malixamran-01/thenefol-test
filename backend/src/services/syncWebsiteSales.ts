@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
+import { getMaxUnifiedOrderDate, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
 
 function parseItems(raw: unknown): any[] {
   if (Array.isArray(raw)) return raw
@@ -25,17 +26,38 @@ function cityFromAddress(addr: unknown): string {
 const EXCLUDED = new Set(['cancelled', 'refunded', 'void', 'canceled'])
 
 /**
- * Full refresh of website rows in unified_sales from orders table.
+ * Upserts website rows in `unified_sales` from the `orders` table.
+ * - First run (no website rows): imports orders from the last **3 years**.
+ * - Later runs: **incremental** — only orders with `created_at` after the latest stored line (minus overlap), so each sync does not rebuild the whole history.
+ * - `WEBSITE_UNIFIED_SALES_FULL_SYNC=1`: deletes all website unified rows and re-imports the last 3 years (use after bulk edits/cancellations).
  */
 export async function syncWebsiteSales(pool: Pool): Promise<{ rows: number }> {
-  await pool.query(`delete from unified_sales where platform = 'website'`)
+  const full = process.env.WEBSITE_UNIFIED_SALES_FULL_SYNC === '1'
+  if (full) {
+    await pool.query(`delete from unified_sales where platform = 'website'`)
+  }
 
-  const { rows: orders } = await pool.query(`
+  const maxStored = await getMaxUnifiedOrderDate(pool, 'website')
+  const useIncremental =
+    !full && maxStored != null && maxStored.getTime() < Date.now() - 60 * 1000
+
+  const cursorIso = useIncremental
+    ? new Date(maxStored!.getTime() - UNIFIED_SALES_INCREMENTAL_OVERLAP_MS).toISOString()
+    : null
+
+  const { rows: orders } = await pool.query(
+    `
     select id, order_number, items, subtotal, tax, shipping, total, shipping_address, created_at, status
     from orders
-    where created_at >= now() - interval '3 years'
+    where
+      case
+        when $1::timestamptz is null then created_at >= now() - interval '3 years'
+        else created_at >= $1::timestamptz
+      end
     order by id asc
-  `)
+    `,
+    [cursorIso]
+  )
 
   let inserted = 0
   for (const o of orders) {
