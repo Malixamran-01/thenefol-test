@@ -25,7 +25,8 @@ interface NavigationItem {
 const Layout = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  /** Mobile drawer: closed by default. Desktop (lg+) sidebar is always visible via CSS. */
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -397,30 +398,62 @@ const Layout = () => {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  /** Close mobile drawer on navigation */
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false)
+    }
+  }, [location.pathname])
+
+  /** Prevent background scroll when mobile drawer is open */
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const apply = () => {
+      if (mq.matches && isSidebarOpen) {
+        document.body.style.overflow = 'hidden'
+      } else {
+        document.body.style.overflow = ''
+      }
+    }
+    apply()
+    mq.addEventListener('change', apply)
+    return () => {
+      mq.removeEventListener('change', apply)
+      document.body.style.overflow = ''
+    }
+  }, [isSidebarOpen])
+
   return (
-    <div className="flex h-screen bg-[var(--brand-background)] text-[var(--text-primary)]">
-      {/* Mobile Overlay */}
+    <div className="flex min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden bg-[var(--brand-background)] text-[var(--text-primary)]">
+      {/* Mobile overlay — only when drawer open */}
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          aria-hidden="true"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-      
-      {/* Sidebar */}
-      <div className={`sidebar w-72 h-screen fixed left-0 top-0 z-50 overflow-y-auto border-r border-[var(--brand-border)] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out`}>
-        <div className="flex flex-col h-full">
+
+      {/* Sidebar: off-canvas on mobile; always visible lg+ */}
+      <div
+        className={`sidebar flex h-screen w-[min(18rem,88vw)] max-w-[100vw] flex-shrink-0 fixed left-0 top-0 z-50 overflow-y-auto border-r border-[var(--brand-border)] transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex flex-col h-full min-h-0 w-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-6 border-b border-[var(--brand-border)]">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center">
+          <div className="flex items-center justify-between gap-2 p-4 sm:p-6 border-b border-[var(--brand-border)]">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold text-sm">N</span>
               </div>
-              <span className="text-xl font-bold text-[var(--text-primary)]">NEFOL® Admin</span>
+              <span className="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">NEFOL® Admin</span>
             </div>
             <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden flex-shrink-0 p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--brand-highlight)]"
+              aria-label="Close menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -442,8 +475,7 @@ const Layout = () => {
                         : 'text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
                     }`}
                     onClick={() => {
-                      // Close mobile menu when item is clicked
-                      if (window.innerWidth < 1024) {
+                      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
                         setIsSidebarOpen(false)
                       }
                     }}
@@ -471,50 +503,54 @@ const Layout = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden ml-72 lg:ml-72 md:ml-0">
+      {/* Main: full width on mobile; offset only when sidebar is docked on lg+ */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:ml-72">
         {/* Top Header */}
-        <header className="bg-[var(--brand-surface)] border-b border-[var(--brand-border)] px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <header className="flex-shrink-0 bg-[var(--brand-surface)] border-b border-[var(--brand-border)] px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center sm:gap-4">
               <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                type="button"
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden flex-shrink-0 rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]"
+                aria-label="Open menu"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-              
+
               {/* Search Bar */}
-              <div className="search-container relative">
+              <div className="search-container relative min-w-0 flex-1 max-w-full sm:max-w-xl lg:max-w-2xl">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] w-5 h-5" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 sm:h-5 sm:w-5 -translate-y-1/2 text-[var(--text-muted)]" />
                   <input
                     type="text"
-                    placeholder="Search admin options... (e.g., Products, Orders, Analytics, Marketing)"
+                    placeholder="Search… (Ctrl+K)"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
-                    className="search-input w-96 pl-10 pr-20 py-2 border border-[var(--brand-border)] bg-[var(--brand-surface)] text-[var(--text-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]"
+                    className="search-input w-full min-w-0 pl-9 sm:pl-10 pr-10 sm:pr-20 py-2 text-sm sm:text-base border border-[var(--brand-border)] bg-[var(--brand-surface)] text-[var(--text-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]"
                   />
                   {searchQuery && (
                     <button
+                      type="button"
                       onClick={handleSearchClear}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] p-1"
+                      aria-label="Clear search"
                     >
-                      <X className="w-5 h-5" />
+                      <X className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
                   )}
                   {!searchQuery && (
-                    <div className="absolute right-3 top-2.5 text-xs text-[var(--text-muted)]">
-                      <kbd className="px-2 py-1 bg-[var(--brand-highlight)] rounded text-xs">Ctrl+K</kbd>
+                    <div className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 sm:block">
+                      <kbd className="rounded bg-[var(--brand-highlight)] px-2 py-1 text-[10px] text-[var(--text-muted)] sm:text-xs">Ctrl+K</kbd>
                     </div>
                   )}
                 </div>
                 
                 {/* Search Results Dropdown */}
                 {showSearchResults && searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 z-[60] mt-2 max-h-[min(24rem,70vh)] overflow-y-auto rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] shadow-xl">
                     {searchResults.map((option, index) => (
                       <button
                         key={index}
@@ -535,7 +571,7 @@ const Layout = () => {
                 
                 {/* No Results */}
                 {showSearchResults && searchResults.length === 0 && searchQuery.length >= 2 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg shadow-xl z-50 p-4">
+                  <div className="absolute top-full left-0 right-0 z-[60] mt-2 rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] p-4 shadow-xl">
                     <div className="text-[var(--text-muted)] text-center">
                       <Search className="w-8 h-8 mx-auto mb-2 opacity-50 text-[var(--text-muted)]" />
                       <p>No options found for "{searchQuery}"</p>
@@ -556,27 +592,30 @@ const Layout = () => {
                 )}
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-[var(--text-muted)]">2 live visitors</span>
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3 lg:gap-4">
+              <div className="hidden items-center gap-2 sm:flex">
+                <div className="h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
+                <span className="max-w-[9rem] truncate text-xs text-[var(--text-muted)] sm:max-w-none sm:text-sm">
+                  2 live visitors
+                </span>
               </div>
               <NotificationBell />
               <div className="relative" ref={userMenuRef}>
                 <button
+                  type="button"
                   onClick={() => setIsUserMenuOpen(prev => !prev)}
-                  className="flex items-center space-x-2 px-3 py-1 rounded-lg hover:bg-[var(--brand-highlight)] focus:outline-none"
+                  className="flex max-w-[100%] items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--brand-highlight)] focus:outline-none sm:px-3"
                 >
-                  <div className="w-8 h-8 bg-brand-secondary rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">{userInitials}</span>
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-secondary">
+                    <span className="text-xs font-bold text-white sm:text-sm">{userInitials}</span>
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">{user?.name || 'Admin'}</p>
+                  <div className="hidden min-w-0 text-left sm:block">
+                    <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{user?.name || 'Admin'}</p>
                     <p className="text-xs text-[var(--text-muted)]">{user?.role || 'admin'}</p>
                   </div>
                 </button>
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg shadow-lg z-50">
+                  <div className="absolute right-0 z-[70] mt-2 w-[min(16rem,calc(100vw-1.5rem))] rounded-lg border border-gray-100 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">{user?.name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
@@ -606,8 +645,8 @@ const Layout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto bg-[var(--brand-background)]">
-          <div className="page-container">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-[var(--brand-background)]">
+          <div className="page-container w-full max-w-[100vw] min-w-0">
             <Outlet />
           </div>
         </main>

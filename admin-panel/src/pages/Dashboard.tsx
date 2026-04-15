@@ -206,11 +206,11 @@ const Dashboard = () => {
       <LiveMonitoring />
       
       {/* Header Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <button 
             onClick={() => navigate('/admin/analytics')}
-            className="flex items-center space-x-2 px-4 py-2 border rounded-xl hover:bg-[var(--arctic-blue-lighter)] transition-all duration-300"
+            className="flex items-center space-x-2 px-3 py-2 sm:px-4 border rounded-xl hover:bg-[var(--arctic-blue-lighter)] transition-all duration-300 text-sm sm:text-base"
             style={{ 
               borderColor: 'var(--arctic-blue-light)',
               color: 'var(--arctic-blue-primary-dark)'
@@ -224,7 +224,7 @@ const Dashboard = () => {
           </button>
           <button 
             onClick={() => navigate('/admin/analytics')}
-            className="flex items-center space-x-2 px-4 py-2 border rounded-xl hover:bg-[var(--arctic-blue-lighter)] transition-all duration-300"
+            className="flex items-center space-x-2 px-3 py-2 sm:px-4 border rounded-xl hover:bg-[var(--arctic-blue-lighter)] transition-all duration-300 text-sm sm:text-base"
             style={{ 
               borderColor: 'var(--arctic-blue-light)',
               color: 'var(--arctic-blue-primary-dark)'
@@ -237,9 +237,9 @@ const Dashboard = () => {
             </svg>
           </button>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{liveVisitors} live visitors</span>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="h-2 w-2 flex-shrink-0 rounded-full bg-green-500 animate-pulse" />
+          <span className="truncate text-xs sm:text-sm" style={{ color: 'var(--text-muted)' }}>{liveVisitors} live visitors</span>
         </div>
       </div>
 

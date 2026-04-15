@@ -26,9 +26,25 @@ export function getFlipkartApiSecret(): string {
   return (process.env.FLIPKART_API_SECRET || process.env.FLIPKART_SALES_SECRET || '').trim()
 }
 
+/**
+ * Production: https://api.flipkart.net · Sandbox: https://sandbox-api.flipkart.net
+ * Normalizes to **scheme + host only** so values like `.../sellers` or trailing slashes cannot break
+ * `${base}/oauth-service/oauth/token` (Flipkart may return 404 "Invalid url provided").
+ */
 export function getFlipkartApiBaseUrl(): string {
-  const raw = (process.env.FLIPKART_API_BASE_URL || 'https://api.flipkart.net').trim().replace(/\/$/, '')
-  return raw
+  const fallback = 'https://api.flipkart.net'
+  const raw = (process.env.FLIPKART_API_BASE_URL || fallback).trim()
+  if (!raw) return fallback
+  let s = raw.replace(/\/+$/, '')
+  if (!/^https?:\/\//i.test(s)) {
+    s = `https://${s}`
+  }
+  try {
+    const u = new URL(s)
+    return `${u.protocol}//${u.host}`
+  } catch {
+    return fallback
+  }
 }
 
 export function isFlipkartApiConfigured(): boolean {
@@ -94,6 +110,9 @@ async function flipkartClientCredentialsToken(): Promise<string> {
   const secret = getFlipkartApiSecret()
   const scope = (process.env.FLIPKART_OAUTH_SCOPE || 'Seller_Api,Default').trim()
   const url = `${base}/oauth-service/oauth/token`
+  if (process.env.FLIPKART_API_DEBUG === '1' || process.env.FLIPKART_API_DEBUG === 'true') {
+    console.log('[flipkart] OAuth token URL:', url, '| base from env normalized to:', base)
+  }
   const body = new URLSearchParams({
     grant_type: 'client_credentials',
     scope,
@@ -119,7 +138,11 @@ async function flipkartClientCredentialsToken(): Promise<string> {
       (json.error as string) ||
       (json.error_description as string) ||
       JSON.stringify(json)
-    throw new Error(`Flipkart token failed (${res.status}): ${msg}`)
+    const hint404 =
+      res.status === 404 || /invalid url/i.test(String(msg))
+        ? ` — Check FLIPKART_API_BASE_URL is exactly https://api.flipkart.net or https://sandbox-api.flipkart.net (host only). Token URL used: ${url}. Use app id/secret from Seller Hub → Developer → My Apps.`
+        : ''
+    throw new Error(`Flipkart token failed (${res.status}): ${msg}${hint404}`)
   }
   const token = json.access_token
   if (!token || typeof token !== 'string') {
