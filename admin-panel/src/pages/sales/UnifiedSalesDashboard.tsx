@@ -76,6 +76,12 @@ const PLATFORM_COLORS: Record<string, string> = {
   flipkart: '#eab308',
 }
 
+/** Safe display for sync log messages (legacy rows may contain HTML). */
+function formatSyncMessage(m: string | null | undefined): string {
+  if (!m) return ''
+  return m.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export default function UnifiedSalesDashboard() {
   const { notify } = useToast()
   const apiBase = getApiBaseUrl()
@@ -252,7 +258,7 @@ export default function UnifiedSalesDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/80 p-6" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="min-h-screen bg-slate-50/80 p-3 sm:p-6" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div className="mx-auto max-w-[1400px] space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -314,7 +320,8 @@ export default function UnifiedSalesDashboard() {
           <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-900">Last import (sync)</h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              Explains zero revenue for Amazon / Flipkart: skipped = not configured; error = API failed; success with 0 rows = no orders in lookback.
+              Skipped = not configured · Error = API failed · Success with 0 rows = empty response. Amazon/Flipkart rows accumulate in the database on each sync; date filters below only change what you{' '}
+              <em>view</em>.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               {summary.syncStatus.map((s) => {
@@ -330,7 +337,7 @@ export default function UnifiedSalesDashboard() {
                       {typeof s.rows_synced === 'number' ? ` · ${s.rows_synced} line(s)` : null}
                     </div>
                     {s.message ? (
-                      <p className="mt-1 text-xs leading-snug text-slate-700">{s.message}</p>
+                      <p className="mt-1 break-words text-xs leading-snug text-slate-700">{formatSyncMessage(s.message)}</p>
                     ) : s.status === 'success' && s.rows_synced === 0 && (s.platform === 'amazon' || s.platform === 'flipkart') ? (
                       <p className="mt-1 text-xs text-slate-600">No lines imported (no orders in range or API returned empty).</p>
                     ) : null}
@@ -417,23 +424,30 @@ export default function UnifiedSalesDashboard() {
         </div>
 
         {summary?.topProducts?.length ? (
-          <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-4">
             <h2 className="text-sm font-semibold text-slate-900">Top products (by revenue)</h2>
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full min-w-[480px] text-left text-sm">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full min-w-[min(100%,520px)] border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
-                    <th className="py-2">Product</th>
-                    <th className="py-2">Units</th>
-                    <th className="py-2">Revenue</th>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    <th className="px-3 py-2.5 sm:px-4">Product</th>
+                    <th className="px-3 py-2.5 text-right sm:px-4">Units</th>
+                    <th className="px-3 py-2.5 text-right sm:px-4">Revenue</th>
                   </tr>
                 </thead>
                 <tbody>
                   {summary.topProducts.map((p, i) => (
-                    <tr key={i} className="border-b border-slate-50">
-                      <td className="max-w-md truncate py-2 text-slate-800">{p.product_name}</td>
-                      <td className="py-2 tabular-nums text-slate-600">{p.units}</td>
-                      <td className="py-2 tabular-nums font-medium text-slate-900">{fmt(p.revenue)}</td>
+                    <tr
+                      key={i}
+                      className="border-b border-slate-100 text-slate-800 odd:bg-white even:bg-slate-50/60 last:border-0"
+                    >
+                      <td className="max-w-[min(100vw-2rem,36rem)] px-3 py-2.5 align-top text-[13px] leading-snug sm:px-4 sm:text-sm">
+                        {p.product_name}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-slate-700 sm:px-4">{p.units}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-sm font-semibold tabular-nums text-slate-900 sm:px-4">
+                        {fmt(p.revenue)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -442,7 +456,7 @@ export default function UnifiedSalesDashboard() {
           </div>
         ) : null}
 
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-slate-900">Unified sales lines</h2>
             <div className="flex flex-wrap gap-2">
@@ -480,23 +494,60 @@ export default function UnifiedSalesDashboard() {
             </div>
           </div>
           <p className="mt-1 text-xs text-slate-500">{total.toLocaleString()} line(s) in range</p>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
+
+          {/* Mobile: card list */}
+          <div className="mt-3 space-y-3 md:hidden">
+            {rows.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-lg border border-slate-200 bg-slate-50/40 p-3 text-sm shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span
+                    className="inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize"
+                    style={{
+                      backgroundColor: `${PLATFORM_COLORS[r.platform] || '#64748b'}22`,
+                      color: PLATFORM_COLORS[r.platform] || '#64748b',
+                    }}
+                  >
+                    {r.platform}
+                  </span>
+                  <span className="text-right text-xs font-semibold tabular-nums text-slate-900">{fmt(r.total)}</span>
+                </div>
+                <p className="mt-2 font-mono text-[11px] text-slate-600 break-all">{r.line_order_id}</p>
+                <p className="mt-1 text-[13px] leading-snug text-slate-800">{r.product_name}</p>
+                <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-600">
+                  <span>Qty: {r.quantity}</span>
+                  <span className="text-right">{r.city || '—'}</span>
+                  <span className="col-span-2 text-slate-500">
+                    {r.order_date ? new Date(r.order_date).toLocaleString() : '—'}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {rows.length === 0 && !loading && (
+              <p className="py-8 text-center text-sm text-slate-500">No rows. Sync your store data or extend the date range.</p>
+            )}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="mt-3 hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
+            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
-                  <th className="py-2">Platform</th>
-                  <th className="py-2">Order</th>
-                  <th className="py-2">Product</th>
-                  <th className="py-2">Qty</th>
-                  <th className="py-2">Total</th>
-                  <th className="py-2">City</th>
-                  <th className="py-2">Date</th>
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <th className="px-3 py-2.5">Platform</th>
+                  <th className="px-3 py-2.5">Order</th>
+                  <th className="px-3 py-2.5">Product</th>
+                  <th className="px-3 py-2.5 text-right">Qty</th>
+                  <th className="px-3 py-2.5 text-right">Total</th>
+                  <th className="px-3 py-2.5">City</th>
+                  <th className="whitespace-nowrap px-3 py-2.5">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-slate-50">
-                    <td className="py-2">
+                  <tr key={r.id} className="border-b border-slate-100 odd:bg-white even:bg-slate-50/50">
+                    <td className="px-3 py-2 align-top">
                       <span
                         className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium capitalize"
                         style={{
@@ -507,12 +558,14 @@ export default function UnifiedSalesDashboard() {
                         {r.platform}
                       </span>
                     </td>
-                    <td className="font-mono text-xs text-slate-700">{r.line_order_id}</td>
-                    <td className="max-w-[220px] truncate text-slate-800">{r.product_name}</td>
-                    <td className="tabular-nums">{r.quantity}</td>
-                    <td className="tabular-nums font-medium">{fmt(r.total)}</td>
-                    <td className="text-slate-600">{r.city || '—'}</td>
-                    <td className="whitespace-nowrap text-slate-600">
+                    <td className="max-w-[10rem] px-3 py-2 align-top font-mono text-xs text-slate-700 break-all">{r.line_order_id}</td>
+                    <td className="max-w-xs px-3 py-2 align-top text-slate-800 lg:max-w-md">
+                      <span className="line-clamp-3 sm:line-clamp-none">{r.product_name}</span>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.quantity}</td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums">{fmt(r.total)}</td>
+                    <td className="max-w-[8rem] px-3 py-2 align-top text-slate-600">{r.city || '—'}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-600">
                       {r.order_date ? new Date(r.order_date).toLocaleString() : '—'}
                     </td>
                   </tr>

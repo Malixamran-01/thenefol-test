@@ -15,6 +15,17 @@ function warnMarketplaceFailure(platform: 'amazon' | 'flipkart', msg: string) {
   console.warn(`[unified-sales] ${platform} sync failed (other platforms still run):`, msg)
 }
 
+/** Strip HTML / huge payloads from sync log messages shown in admin UI */
+function sanitizeSyncMessage(msg: string | null | undefined): string | null {
+  if (msg == null || msg === '') return null
+  let s = String(msg)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (s.length > 420) s = `${s.slice(0, 417)}...`
+  return s || null
+}
+
 async function insertLog(
   pool: Pool,
   platform: string,
@@ -25,7 +36,7 @@ async function insertLog(
   await pool.query(
     `insert into sales_sync_logs (platform, status, message, rows_synced, finished_at)
      values ($1, $2, $3, $4, now())`,
-    [platform, status, message, rowsSynced]
+    [platform, status, sanitizeSyncMessage(message), rowsSynced]
   )
 }
 

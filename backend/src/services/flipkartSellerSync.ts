@@ -1,4 +1,5 @@
 import { Pool } from 'pg'
+import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
 
 /**
  * Flipkart Seller / Sales API credentials — read from the **backend** `.env` (same folder as `backend/package.json`).
@@ -85,13 +86,15 @@ async function readFlipkartJsonBody(res: Response, context: string): Promise<Rec
   }
 
   if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-    const preview = trimmed.slice(0, 280).replace(/\s+/g, ' ')
-    const htmlHint = trimmed.startsWith('<')
-      ? ' Response is HTML — check FLIPKART_API_BASE_URL and credentials; OAuth must be POST with form body.'
+    const debug = process.env.FLIPKART_API_DEBUG === '1' || process.env.FLIPKART_API_DEBUG === 'true'
+    if (debug) {
+      const preview = trimmed.slice(0, 400).replace(/\s+/g, ' ')
+      console.warn(`[flipkart] ${context}: non-JSON HTTP ${res.status}:`, preview)
+    }
+    const hint = trimmed.startsWith('<')
+      ? ' (server returned HTML — check FLIPKART_API_BASE_URL and OAuth credentials)'
       : ''
-    throw new Error(
-      `Flipkart ${context}: expected JSON, got HTTP ${res.status}.${htmlHint} Snippet: ${preview || '(empty)'}`
-    )
+    throw new Error(`Flipkart ${context}: expected JSON, got HTTP ${res.status}${hint}`)
   }
   try {
     return JSON.parse(trimmed) as Record<string, unknown>
@@ -280,7 +283,6 @@ export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSync
   }
 
   const accessToken = await flipkartClientCredentialsToken()
-  await pool.query(`delete from unified_sales where platform = 'flipkart'`)
 
   const seenShipmentIds = new Set<string>()
   const filters: FlipkartFilter[] = [
@@ -328,24 +330,20 @@ export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSync
           const { price, tax, shipping, total } = lineTotalFromItem(it)
           const lineKey = `flipkart:${shipmentId}:${orderItemId}`
 
-          await pool.query(
-            `insert into unified_sales (
-              platform, source_order_id, line_key, product_name, quantity, price, tax, shipping, total, city, order_date, currency
-            ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'INR')`,
-            [
-              'flipkart',
-              shipmentId,
-              lineKey,
-              title,
-              qty,
-              price,
-              tax,
-              shipping,
-              total,
-              city || null,
-              orderDate,
-            ]
-          )
+          await upsertUnifiedSaleLine(pool, {
+            platform: 'flipkart',
+            source_order_id: shipmentId,
+            line_key: lineKey,
+            product_name: title,
+            quantity: qty,
+            price,
+            tax,
+            shipping,
+            total,
+            city: city || null,
+            order_date: orderDate,
+            currency: 'INR',
+          })
           inserted += 1
         }
       }
@@ -354,7 +352,7 @@ export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSync
 
   const logMessage =
     inserted === 0
-      ? 'Connected but no shipment lines in the last ~90 days (check filters / seller account)'
+      ? 'No Flipkart shipment lines returned (filters / account / API access)'
       : undefined
 
   return { rows: inserted, skipped: false, logMessage }

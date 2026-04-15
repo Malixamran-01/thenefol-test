@@ -1,4 +1,5 @@
 import { Pool } from 'pg'
+import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
 
 function parseItems(raw: unknown): any[] {
   if (Array.isArray(raw)) return raw
@@ -69,24 +70,20 @@ export async function syncWebsiteSales(pool: Pool): Promise<{ rows: number }> {
         String(it.title || it.name || it.product_name || it.slug || 'Product').slice(0, 500)
       const lineKey = `website:${orderNumber}:${idx}`
 
-      await pool.query(
-        `insert into unified_sales (
-          platform, source_order_id, line_key, product_name, quantity, price, tax, shipping, total, city, order_date, currency
-        ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'INR')`,
-        [
-          'website',
-          orderNumber,
-          lineKey,
-          name,
-          qty,
-          unit,
-          Math.round(lineTax * 100) / 100,
-          Math.round(lineShip * 100) / 100,
-          Math.round(lineTotal * 100) / 100,
-          city || null,
-          created,
-        ]
-      )
+      await upsertUnifiedSaleLine(pool, {
+        platform: 'website',
+        source_order_id: orderNumber,
+        line_key: lineKey,
+        product_name: name,
+        quantity: qty,
+        price: unit,
+        tax: Math.round(lineTax * 100) / 100,
+        shipping: Math.round(lineShip * 100) / 100,
+        total: Math.round(lineTotal * 100) / 100,
+        city: city || null,
+        order_date: created,
+        currency: 'INR',
+      })
       inserted += 1
     }
   }
