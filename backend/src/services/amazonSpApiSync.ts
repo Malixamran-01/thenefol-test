@@ -1,6 +1,13 @@
 import { Pool } from 'pg'
 import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
 import { getMaxUnifiedOrderDate, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
+import {
+  extractBuyerGstinFromBuyerInfoResponse,
+  moneyAmount,
+  normalizeGstin,
+  parseIndiaGstFromOrderItem,
+  sumGstComponents,
+} from './amazonOrderItemTax'
 
 /** India marketplace (sellercentral.amazon.in). Override with AMAZON_MARKETPLACE_ID. */
 const DEFAULT_MARKETPLACE_IN = 'A21TJRUUN4KGV'
@@ -51,6 +58,10 @@ function addressFetchEnabled(): boolean {
   return process.env.AMAZON_UNIFIED_SALES_FETCH_ADDRESS !== '0' && process.env.AMAZON_UNIFIED_SALES_FETCH_ADDRESS !== 'false'
 }
 
+function buyerInfoFetchEnabled(): boolean {
+  return process.env.AMAZON_UNIFIED_SALES_FETCH_BUYER_INFO !== '0' && process.env.AMAZON_UNIFIED_SALES_FETCH_BUYER_INFO !== 'false'
+}
+
 function orderApiDelayMs(): number {
   const raw = process.env.AMAZON_ORDER_API_DELAY_MS || '200'
   const n = parseInt(String(raw), 10)
@@ -90,10 +101,8 @@ async function resolveRefreshToken(pool: Pool): Promise<string | undefined> {
   return hasRt ? String(rt) : undefined
 }
 
-function moneyAmount(m: unknown): number {
-  if (!m || typeof m !== 'object') return 0
-  const n = Number((m as { Amount?: string }).Amount)
-  return Number.isFinite(n) ? n : 0
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
 }
 
 /** B2B vs B2C from Orders API `IsBusinessOrder`. */
@@ -134,6 +143,8 @@ export type AmazonSyncResult = { rows: number; skipped: boolean; logMessage?: st
  * Includes **cancelled** orders and line items when the API returns them.
  * Ship-to **state** uses `getOrderAddress` (needs Direct-to-Consumer Shipping / PII roles — otherwise columns stay null).
  * B2B/B2C from `IsBusinessOrder` on the order (with optional `getOrder` if missing from list).
+ * **B2B GSTIN** via `getOrderBuyerInfo` (TaxClassifications — needs Tax Invoicing / appropriate roles).
+ * **SKU, ASIN, IGST/CGST/SGST/UTGST/CESS, taxable value, tax %** from `getOrderItems` (deep-scan of tax nodes; breakdown may not appear on all orders).
  */
 export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResult> {
   const refresh_token = await resolveRefreshToken(pool)
@@ -157,6 +168,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
   const days = lookbackDays()
   const delayMs = orderApiDelayMs()
   const fetchAddr = addressFetchEnabled()
+  const fetchBuyerInfo = buyerInfoFetchEnabled()
 
   const sp = new SellingPartner({
     region,
@@ -260,6 +272,21 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
           await sleep(delayMs)
         }
 
+        let buyerGstin: string | null = null
+        if (fetchBuyerInfo && businessType === 'B2B') {
+          try {
+            const buyerRes = await sp.callAPI({
+              operation: 'getOrderBuyerInfo',
+              endpoint: 'orders',
+              path: { orderId },
+            })
+            buyerGstin = normalizeGstin(extractBuyerGstinFromBuyerInfoResponse(buyerRes))
+          } catch {
+            /* Roles / restricted */
+          }
+          await sleep(delayMs)
+        }
+
         const purchaseDate = order.PurchaseDate ? new Date(String(order.PurchaseDate)) : new Date()
         let itemsNext: string | undefined
         try {
@@ -274,7 +301,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
             itemsNext = itemsRes.NextToken as string | undefined
 
             for (let i = 0; i < orderItems.length; i++) {
-              const it = orderItems[i]
+              const it = orderItems[i] as Record<string, unknown>
               const oid = String(it.OrderItemId || `${orderId}:${i}`)
               const qty = Math.max(0, Math.floor(Number(it.QuantityOrdered ?? 0)))
               const qtyShipped = Math.max(0, Math.floor(Number(it.QuantityShipped ?? 0)))
@@ -282,11 +309,27 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
               const itemPrice = moneyAmount(it.ItemPrice)
               const itemTax = moneyAmount(it.ItemTax)
               const shipPrice = moneyAmount(it.ShippingPrice)
+              const shippingTax = moneyAmount(it.ShippingTax)
               const unit = qty > 0 ? Math.round((itemPrice / qty) * 100) / 100 : Math.round(itemPrice * 100) / 100
-              const total = Math.round((itemPrice + itemTax + shipPrice) * 100) / 100
+              const total = Math.round((itemPrice + itemTax + shipPrice + shippingTax) * 100) / 100
               const lineKey = `amazon:${orderId}:${oid}`
               const lineNote = formatBuyerCancelNote(it)
               const cityDisplay = shipCity ? (shipState ? `${shipCity}, ${shipState}` : shipCity) : null
+
+              const gst = parseIndiaGstFromOrderItem(it)
+              const gstSum = sumGstComponents(gst)
+              const hasGstSplit = gstSum > 0.0001
+
+              const principal = itemPrice > 0 ? itemPrice : Math.max(0, total - itemTax - shippingTax - shipPrice)
+              const taxableValue = principal > 0 ? round2(principal) : null
+              const totalLineTax = itemTax + shippingTax
+              let taxRatePct: number | null = null
+              if (taxableValue != null && taxableValue > 0 && totalLineTax > 0) {
+                taxRatePct = Math.round(((totalLineTax / taxableValue) * 100) * 10000) / 10000
+              }
+
+              const sku = String(it.SellerSKU || '').trim().slice(0, 120) || null
+              const asin = String(it.ASIN || '').trim().slice(0, 20) || null
 
               await upsertUnifiedSaleLine(pool, {
                 platform: 'amazon',
@@ -306,6 +349,16 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
                 shipping_state: shipState,
                 quantity_shipped: qtyShipped,
                 line_note: lineNote,
+                buyer_gstin: buyerGstin,
+                seller_sku: sku,
+                asin,
+                igst: hasGstSplit ? round2(gst.igst) : null,
+                cgst: hasGstSplit ? round2(gst.cgst) : null,
+                sgst: hasGstSplit ? round2(gst.sgst) : null,
+                utgst: hasGstSplit ? round2(gst.utgst) : null,
+                cess: hasGstSplit ? round2(gst.cess) : null,
+                tax_rate_pct: taxRatePct,
+                taxable_value: taxableValue,
               })
               inserted += 1
             }

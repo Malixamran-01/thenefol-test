@@ -49,7 +49,8 @@ export async function getCombinedSales(pool: Pool, req: Request, res: Response) 
     const offsetIdx = params.length + 2
     const { rows } = await pool.query(
       `select id, platform, source_order_id as line_order_id, product_name, quantity, price, tax, shipping, total, city, order_date, currency,
-              order_status, business_type, shipping_state, quantity_shipped, line_note
+              order_status, business_type, shipping_state, quantity_shipped, line_note,
+              buyer_gstin, seller_sku, asin, igst, cgst, sgst, utgst, cess, tax_rate_pct, taxable_value
        from unified_sales
        ${where}
        order by order_date desc, id desc
@@ -274,7 +275,8 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
 
     const { rows } = await pool.query(
       `select platform, source_order_id, product_name, quantity, price, tax, shipping, total, city, order_date, currency,
-              order_status, business_type, shipping_state, quantity_shipped, line_note
+              order_status, business_type, shipping_state, quantity_shipped, line_note,
+              buyer_gstin, seller_sku, asin, igst, cgst, sgst, utgst, cess, tax_rate_pct, taxable_value
        from unified_sales ${where}
        order by order_date desc, id desc
        limit 50000`,
@@ -298,6 +300,16 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
       'shipping_state',
       'quantity_shipped',
       'line_note',
+      'buyer_gstin',
+      'seller_sku',
+      'asin',
+      'igst',
+      'cgst',
+      'sgst',
+      'utgst',
+      'cess',
+      'tax_rate_pct',
+      'taxable_value',
     ]
     const esc = (v: unknown) => {
       const s = v === null || v === undefined ? '' : String(v)
@@ -324,6 +336,16 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
           r.shipping_state ?? '',
           r.quantity_shipped ?? '',
           r.line_note ?? '',
+          r.buyer_gstin ?? '',
+          r.seller_sku ?? '',
+          r.asin ?? '',
+          r.igst ?? '',
+          r.cgst ?? '',
+          r.sgst ?? '',
+          r.utgst ?? '',
+          r.cess ?? '',
+          r.tax_rate_pct ?? '',
+          r.taxable_value ?? '',
         ]
           .map(esc)
           .join(',')

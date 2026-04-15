@@ -142,6 +142,16 @@ export async function ensureSchema(pool: Pool) {
       shipping_state text,
       quantity_shipped integer,
       line_note text,
+      buyer_gstin text,
+      seller_sku text,
+      asin text,
+      igst numeric(14,2),
+      cgst numeric(14,2),
+      sgst numeric(14,2),
+      utgst numeric(14,2),
+      cess numeric(14,2),
+      tax_rate_pct numeric(10,4),
+      taxable_value numeric(14,2),
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now(),
       unique(platform, line_key)
@@ -177,6 +187,36 @@ export async function ensureSchema(pool: Pool) {
       end if;
       if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'line_note') then
         alter table unified_sales add column line_note text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'buyer_gstin') then
+        alter table unified_sales add column buyer_gstin text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'seller_sku') then
+        alter table unified_sales add column seller_sku text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'asin') then
+        alter table unified_sales add column asin text;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'igst') then
+        alter table unified_sales add column igst numeric(14,2);
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'cgst') then
+        alter table unified_sales add column cgst numeric(14,2);
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'sgst') then
+        alter table unified_sales add column sgst numeric(14,2);
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'utgst') then
+        alter table unified_sales add column utgst numeric(14,2);
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'cess') then
+        alter table unified_sales add column cess numeric(14,2);
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'tax_rate_pct') then
+        alter table unified_sales add column tax_rate_pct numeric(10,4);
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'taxable_value') then
+        alter table unified_sales add column taxable_value numeric(14,2);
       end if;
     end $$;
     create index if not exists idx_unified_sales_amazon_state on unified_sales(shipping_state) where platform = 'amazon';

@@ -63,6 +63,16 @@ type CombinedRow = {
   shipping_state?: string | null
   quantity_shipped?: number | null
   line_note?: string | null
+  buyer_gstin?: string | null
+  seller_sku?: string | null
+  asin?: string | null
+  igst?: string | number | null
+  cgst?: string | number | null
+  sgst?: string | number | null
+  utgst?: string | number | null
+  cess?: string | number | null
+  tax_rate_pct?: string | number | null
+  taxable_value?: string | number | null
 }
 
 type SyncLog = {
@@ -525,13 +535,32 @@ export default function UnifiedSalesDashboard() {
                   <span>Qty: {r.quantity}</span>
                   <span className="text-right">{r.city || '—'}</span>
                   {r.platform === 'amazon' &&
-                  (r.order_status || r.business_type || r.shipping_state || r.line_note) ? (
+                  (r.order_status ||
+                    r.business_type ||
+                    r.shipping_state ||
+                    r.line_note ||
+                    r.buyer_gstin ||
+                    r.seller_sku) ? (
                     <>
                       <span className="col-span-2 text-slate-600">
                         {[r.order_status && `Status: ${r.order_status}`, r.business_type, r.shipping_state]
                           .filter(Boolean)
                           .join(' · ')}
                       </span>
+                      {r.buyer_gstin ? (
+                        <span className="col-span-2 font-mono text-[11px] text-slate-700">GSTIN: {r.buyer_gstin}</span>
+                      ) : null}
+                      {r.seller_sku ? (
+                        <span className="col-span-2 font-mono text-[11px] text-slate-600">SKU: {r.seller_sku}</span>
+                      ) : null}
+                      {r.taxable_value != null ? (
+                        <span className="col-span-2 text-xs text-slate-600">
+                          Taxable {fmt(r.taxable_value)}
+                          {r.igst != null || r.cgst != null
+                            ? ` · IGST ${r.igst != null ? fmt(r.igst) : '—'} CGST ${r.cgst != null ? fmt(r.cgst) : '—'} SGST ${r.sgst != null ? fmt(r.sgst) : '—'}`
+                            : ''}
+                        </span>
+                      ) : null}
                       {r.line_note ? (
                         <span className="col-span-2 text-amber-800/90">{r.line_note}</span>
                       ) : null}
@@ -550,7 +579,7 @@ export default function UnifiedSalesDashboard() {
 
           {/* Desktop: table */}
           <div className="mt-3 hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
-            <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1680px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                   <th className="px-3 py-2.5">Platform</th>
@@ -563,6 +592,16 @@ export default function UnifiedSalesDashboard() {
                   <th className="whitespace-nowrap px-3 py-2.5">B2B/B2C</th>
                   <th className="whitespace-nowrap px-3 py-2.5">State</th>
                   <th className="min-w-[7rem] px-3 py-2.5">Note</th>
+                  <th className="whitespace-nowrap px-3 py-2.5">Buyer GSTIN</th>
+                  <th className="max-w-[6rem] px-3 py-2.5">SKU</th>
+                  <th className="px-3 py-2.5">ASIN</th>
+                  <th className="px-3 py-2.5 text-right">Taxable</th>
+                  <th className="px-3 py-2.5 text-right">IGST</th>
+                  <th className="px-3 py-2.5 text-right">CGST</th>
+                  <th className="px-3 py-2.5 text-right">SGST</th>
+                  <th className="px-3 py-2.5 text-right">UTGST</th>
+                  <th className="px-3 py-2.5 text-right">CESS</th>
+                  <th className="px-3 py-2.5 text-right">Tax %</th>
                   <th className="whitespace-nowrap px-3 py-2.5">Date</th>
                 </tr>
               </thead>
@@ -591,6 +630,18 @@ export default function UnifiedSalesDashboard() {
                     <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-700">{r.business_type || '—'}</td>
                     <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-700">{r.shipping_state || '—'}</td>
                     <td className="max-w-[10rem] px-3 py-2 align-top text-xs text-slate-600">{r.line_note || '—'}</td>
+                    <td className="max-w-[9rem] px-3 py-2 align-top font-mono text-[11px] text-slate-700">{r.buyer_gstin || '—'}</td>
+                    <td className="max-w-[6rem] px-3 py-2 align-top font-mono text-[11px] text-slate-700 break-all">{r.seller_sku || '—'}</td>
+                    <td className="px-3 py-2 align-top font-mono text-[11px] text-slate-700">{r.asin || '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-xs">{r.taxable_value != null ? fmt(r.taxable_value) : '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-xs">{r.igst != null ? fmt(r.igst) : '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-xs">{r.cgst != null ? fmt(r.cgst) : '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-xs">{r.sgst != null ? fmt(r.sgst) : '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-xs">{r.utgst != null ? fmt(r.utgst) : '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-xs">{r.cess != null ? fmt(r.cess) : '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-xs">
+                      {r.tax_rate_pct != null ? `${Number(r.tax_rate_pct).toFixed(2)}%` : '—'}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-600">
                       {r.order_date ? new Date(r.order_date).toLocaleString() : '—'}
                     </td>
