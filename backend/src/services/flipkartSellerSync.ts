@@ -11,7 +11,13 @@ import { Pool } from 'pg'
  * Enable/disable:
  * - If both key and secret are set, sync is considered **on** unless you set `FLIPKART_API_ENABLED=0`
  *   or `FLIPKART_SALES_API_ENABLED=0`.
+ * - Set `FLIPKART_UNIFIED_SALES_SYNC=0` to skip only the **unified sales** Flipkart import (e.g. during API outages)
+ *   without removing API keys from the environment.
  */
+export function isFlipkartUnifiedSalesSyncDisabled(): boolean {
+  return process.env.FLIPKART_UNIFIED_SALES_SYNC === '0'
+}
+
 export function getFlipkartApiKey(): string {
   return (process.env.FLIPKART_API_KEY || process.env.FLIPKART_SALES_API_KEY || '').trim()
 }
@@ -239,6 +245,13 @@ export type FlipkartSyncResult = { rows: number; skipped: boolean; logMessage?: 
  * Pulls shipments via Order Management filter API and maps lines into unified_sales.
  */
 export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSyncResult> {
+  if (isFlipkartUnifiedSalesSyncDisabled()) {
+    return {
+      rows: 0,
+      skipped: true,
+      logMessage: 'Unified sales Flipkart sync disabled (FLIPKART_UNIFIED_SALES_SYNC=0)',
+    }
+  }
   if (!isFlipkartApiConfigured()) {
     return { rows: 0, skipped: true }
   }

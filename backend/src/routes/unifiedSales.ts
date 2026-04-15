@@ -138,15 +138,15 @@ export async function getSalesSummary(pool: Pool, req: Request, res: Response) {
 
     const { rows: totals } = await pool.query(
       `select
-         coalesce(sum(total), 0)::numeric as revenue,
-         coalesce(sum(tax), 0)::numeric as tax,
-         coalesce(sum(shipping), 0)::numeric as shipping,
-         (select count(*)::int from (
-           select distinct platform, source_order_id from unified_sales
-           where order_date >= $3 and order_date <= $4
-         ) x) as orders_estimate
-       from unified_sales
-       where order_date >= $1 and order_date <= $2`,
+        coalesce(sum(total), 0)::numeric as revenue,
+        coalesce(sum(tax), 0)::numeric as tax,
+        coalesce(sum(shipping), 0)::numeric as shipping,
+        (select count(*)::int from (
+          select distinct platform, source_order_id from unified_sales
+          where order_date >= $3 and order_date <= $4
+        ) x) as orders_estimate
+      from unified_sales
+      where order_date >= $1 and order_date <= $2`,
       [fromD, toD, fromD, toD]
     )
 
@@ -155,12 +155,73 @@ export async function getSalesSummary(pool: Pool, req: Request, res: Response) {
       Number(totals[0]?.tax ?? 0) -
       Number(totals[0]?.shipping ?? 0)
 
+    const platforms = ['website', 'amazon', 'flipkart'] as const
+    const byPlatformMap = new Map((byPlatform as { platform: string }[]).map((r) => [r.platform, r]))
+    const mergedByPlatform = platforms.map((p) => {
+      const r = byPlatformMap.get(p) as Record<string, unknown> | undefined
+      if (r) return r
+      return {
+        platform: p,
+        line_count: 0,
+        units: '0',
+        revenue: '0',
+        tax_total: '0',
+        shipping_total: '0',
+      }
+    })
+
+    const orderCountMap = new Map((orderCounts as { platform: string; orders: number }[]).map((r) => [r.platform, r.orders]))
+    const mergedOrderCounts = platforms.map((p) => ({
+      platform: p,
+      orders: orderCountMap.get(p) ?? 0,
+    }))
+
+    const { rows: syncLogRows } = await pool.query<{
+      platform: string
+      status: string
+      message: string | null
+      rows_synced: number
+      at: Date
+    }>(
+      `select distinct on (platform)
+         platform,
+         status,
+         message,
+         rows_synced,
+         coalesce(finished_at, started_at) as at
+       from sales_sync_logs
+       where platform = any($1::text[])
+       order by platform, coalesce(finished_at, started_at) desc nulls last, id desc`,
+      [['website', 'amazon', 'flipkart']]
+    )
+    const syncMap = new Map(syncLogRows.map((r) => [r.platform, r]))
+    const syncStatus = platforms.map((platform) => {
+      const r = syncMap.get(platform)
+      if (!r) {
+        return {
+          platform,
+          status: null as string | null,
+          message: null as string | null,
+          rows_synced: 0,
+          at: null as string | null,
+        }
+      }
+      return {
+        platform: r.platform,
+        status: r.status,
+        message: r.message,
+        rows_synced: r.rows_synced,
+        at: r.at ? new Date(r.at).toISOString() : null,
+      }
+    })
+
     sendSuccess(res, {
       range: { from: fromD.toISOString(), to: toD.toISOString() },
-      byPlatform,
-      orderCounts,
+      byPlatform: mergedByPlatform,
+      orderCounts: mergedOrderCounts,
       daily,
       topProducts,
+      syncStatus,
       totals: {
         ...totals[0],
         profit_ex_tax_and_shipping: Math.round(profitApprox * 100) / 100,

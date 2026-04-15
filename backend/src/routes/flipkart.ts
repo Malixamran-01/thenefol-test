@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { syncFlipkartUnifiedSales } from '../services/flipkartSellerSync'
 
 export async function saveFlipkartAccount(pool: Pool, req: Request, res: Response) {
   try {
@@ -48,19 +49,33 @@ export async function syncProductsToFlipkart(pool: Pool, req: Request, res: Resp
   }
 }
 
+/**
+ * Runs the same unified-sales Flipkart import as the hourly job (env credentials).
+ * `accountId` is optional (legacy); unified sync does not filter by account yet.
+ */
 export async function importFlipkartOrders(pool: Pool, req: Request, res: Response) {
   try {
-    const { accountId } = req.query as any
-    if (!accountId) return sendError(res, 400, 'accountId is required')
-    await pool.query(
-      `insert into channel_orders (channel, account_id, external_order_id, status, imported_at, updated_at)
-       values ('flipkart', $1, $2, 'imported', now(), now())
-       on conflict (channel, external_order_id) do nothing`,
-      [accountId, `FK-${Date.now()}`]
-    )
-    sendSuccess(res, { message: 'Order import triggered (stub)' })
-  } catch (err) {
-    sendError(res, 500, 'Failed to import Flipkart orders', err)
+    // query.accountId reserved for future per-account routing; unified sync uses FLIPKART_* env
+    const result = await syncFlipkartUnifiedSales(pool)
+    if (result.skipped) {
+      return sendSuccess(res, {
+        ok: true,
+        skipped: true,
+        rows: result.rows,
+        logMessage: result.logMessage || 'Flipkart API not configured or unified sync disabled',
+      })
+    }
+    sendSuccess(res, {
+      ok: true,
+      skipped: false,
+      rows: result.rows,
+      logMessage: result.logMessage || null,
+      message: `Imported ${result.rows} line(s) into unified_sales`,
+    })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[Flipkart] importFlipkartOrders / syncFlipkartUnifiedSales:', err)
+    sendError(res, 500, msg || 'Failed to run Flipkart unified import', err)
   }
 }
 

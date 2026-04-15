@@ -3,6 +3,18 @@ import { syncWebsiteSales } from './syncWebsiteSales'
 import { syncAmazonUnifiedSales } from './amazonSpApiSync'
 import { syncFlipkartUnifiedSales } from './flipkartSellerSync'
 
+/** Avoid spamming logs every hour when a marketplace API is down (same message ≤1/hour per platform). */
+const MARKETPLACE_WARN_COOLDOWN_MS = 60 * 60 * 1000
+const lastMarketplaceWarnAt: Partial<Record<'amazon' | 'flipkart', number>> = {}
+
+function warnMarketplaceFailure(platform: 'amazon' | 'flipkart', msg: string) {
+  const now = Date.now()
+  const last = lastMarketplaceWarnAt[platform] || 0
+  if (now - last < MARKETPLACE_WARN_COOLDOWN_MS) return
+  lastMarketplaceWarnAt[platform] = now
+  console.warn(`[unified-sales] ${platform} sync failed (other platforms still run):`, msg)
+}
+
 async function insertLog(
   pool: Pool,
   platform: string,
@@ -52,7 +64,7 @@ export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[])
       const msg = e?.message || String(e)
       await insertLog(pool, 'amazon', 'error', msg, 0)
       out.amazon = { rows: 0, error: msg }
-      console.warn('[unified-sales] Amazon sync failed (other platforms still run):', msg)
+      warnMarketplaceFailure('amazon', msg)
     }
   }
 
@@ -64,14 +76,14 @@ export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[])
         pool,
         'flipkart',
         r.skipped ? 'skipped' : 'success',
-        r.skipped ? 'Flipkart API not configured' : r.logMessage || null,
+        r.skipped ? r.logMessage || 'Flipkart API not configured' : r.logMessage || null,
         r.rows
       )
     } catch (e: any) {
       const msg = e?.message || String(e)
       await insertLog(pool, 'flipkart', 'error', msg, 0)
       out.flipkart = { rows: 0, error: msg }
-      console.warn('[unified-sales] Flipkart sync failed (other platforms still run):', msg)
+      warnMarketplaceFailure('flipkart', msg)
     }
   }
 

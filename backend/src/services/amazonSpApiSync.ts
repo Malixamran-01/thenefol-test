@@ -35,8 +35,14 @@ function getLwaClientSecret(): string {
 }
 
 async function resolveRefreshToken(pool: Pool): Promise<string | undefined> {
+  const debug = process.env.AMAZON_SP_API_DEBUG === '1' || process.env.AMAZON_SP_API_DEBUG === 'true'
   const env = process.env.AMAZON_SP_API_REFRESH_TOKEN?.trim()
-  if (env) return env
+  if (env) {
+    if (debug) {
+      console.log('[amazonSpApiSync] refresh_token source: AMAZON_SP_API_REFRESH_TOKEN env (length:', env.length, ')')
+    }
+    return env
+  }
   const { rows } = await pool.query<{ credentials: Record<string, unknown> | null }>(
     `select credentials from marketplace_accounts
      where channel = 'amazon' and coalesce(is_active, true) = true
@@ -44,7 +50,16 @@ async function resolveRefreshToken(pool: Pool): Promise<string | undefined> {
      limit 1`
   )
   const rt = rows[0]?.credentials?.refresh_token
-  return rt != null && String(rt).length > 0 ? String(rt) : undefined
+  const hasRt = rt != null && String(rt).length > 0
+  if (debug) {
+    console.log(
+      '[amazonSpApiSync] refresh_token source: marketplace_accounts | rows:',
+      rows.length,
+      '| credentials.refresh_token present:',
+      hasRt
+    )
+  }
+  return hasRt ? String(rt) : undefined
 }
 
 function moneyAmount(m: unknown): number {
@@ -68,7 +83,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
   }
 
   if (process.env.AMAZON_SP_API_ENABLED === '0') {
-    return { rows: 0, skipped: true }
+    return { rows: 0, skipped: true, logMessage: 'Amazon SP-API sync disabled (AMAZON_SP_API_ENABLED=0)' }
   }
 
   const region = (process.env.AMAZON_SP_API_REGION || 'eu').trim()

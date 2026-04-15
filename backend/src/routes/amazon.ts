@@ -4,7 +4,11 @@ import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 
 const LWA_TOKEN_URL = 'https://api.amazon.com/auth/o2/token'
 
-/** Amazon redirects here with spapi_oauth_code after seller authorizes SP-API. */
+/**
+ * Amazon redirects here with spapi_oauth_code after seller authorizes SP-API.
+ * For refresh_token to be stored in DB, the authorize URL must include `state=<marketplace_accounts.name>`
+ * for an existing `channel = 'amazon'` row; otherwise exchange succeeds but tokens are only returned in JSON/HTML.
+ */
 export async function amazonOAuthCallback(pool: Pool, req: Request, res: Response) {
   try {
     const spapi_oauth_code = req.query.spapi_oauth_code as string | undefined

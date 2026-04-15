@@ -28,6 +28,14 @@ type Summary = {
   orderCounts: Array<{ platform: string; orders: number }>
   daily: Array<{ day: string; platform: string; revenue: string }>
   topProducts: Array<{ product_name: string; units: string; revenue: string }>
+  /** Latest row per platform from sales_sync_logs (why Amazon/Flipkart may be ₹0). */
+  syncStatus?: Array<{
+    platform: string
+    status: string | null
+    message: string | null
+    rows_synced: number
+    at: string | null
+  }>
   totals: {
     revenue: string
     tax: string
@@ -185,8 +193,18 @@ export default function UnifiedSalesDashboard() {
         headers: getAuthHeaders(),
         body: JSON.stringify({ platforms: ['website', 'amazon', 'flipkart'] }),
       })
-      await parseJson(res)
-      notify('success', 'Sync completed')
+      const data = await parseJson(res)
+      const r = (data as any)?.result
+      const amzErr = r?.amazon?.error
+      const fkErr = r?.flipkart?.error
+      if (amzErr || fkErr) {
+        notify(
+          'error',
+          [amzErr && `Amazon: ${amzErr}`, fkErr && `Flipkart: ${fkErr}`].filter(Boolean).join(' · ') || 'Sync completed with warnings'
+        )
+      } else {
+        notify('success', 'Sync completed')
+      }
       await refreshAll()
     } catch (e: any) {
       notify('error', e?.message || 'Sync failed')
@@ -240,8 +258,8 @@ export default function UnifiedSalesDashboard() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Unified sales analytics</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Nefol store, Amazon SP-API, and Flipkart — one view. Website orders sync hourly; marketplace APIs
-              activate when credentials are set in environment.
+              Nefol store, Amazon SP-API, and Flipkart — one view. Revenue is only shown after a successful import;
+              check <strong className="font-medium text-slate-700">Last import</strong> below if a marketplace stays at ₹0.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -291,6 +309,40 @@ export default function UnifiedSalesDashboard() {
             Apply range
           </button>
         </div>
+
+        {summary?.syncStatus?.length ? (
+          <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-900">Last import (sync)</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Explains zero revenue for Amazon / Flipkart: skipped = not configured; error = API failed; success with 0 rows = no orders in lookback.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {summary.syncStatus.map((s) => {
+                const label = s.platform.charAt(0).toUpperCase() + s.platform.slice(1)
+                const st = (s.status || '—').toLowerCase()
+                const isBad = st === 'error' || st === 'skipped'
+                const border = isBad ? 'border-amber-200 bg-amber-50/80' : st === 'success' ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200 bg-slate-50/80'
+                return (
+                  <div key={s.platform} className={`rounded-lg border px-3 py-2 text-sm ${border}`}>
+                    <div className="font-medium text-slate-900">{label}</div>
+                    <div className="mt-0.5 text-xs capitalize text-slate-600">
+                      Status: <span className="font-medium">{s.status || 'never'}</span>
+                      {typeof s.rows_synced === 'number' ? ` · ${s.rows_synced} line(s)` : null}
+                    </div>
+                    {s.message ? (
+                      <p className="mt-1 text-xs leading-snug text-slate-700">{s.message}</p>
+                    ) : s.status === 'success' && s.rows_synced === 0 && (s.platform === 'amazon' || s.platform === 'flipkart') ? (
+                      <p className="mt-1 text-xs text-slate-600">No lines imported (no orders in range or API returned empty).</p>
+                    ) : null}
+                    {s.at ? (
+                      <p className="mt-1 text-[11px] text-slate-500">{new Date(s.at).toLocaleString()}</p>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
 
         {summary && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
