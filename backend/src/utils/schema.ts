@@ -2885,6 +2885,20 @@ export async function ensureSchema(pool: Pool) {
     
     CREATE INDEX IF NOT EXISTS idx_ai_tasks_status ON ai_tasks(status);
     CREATE INDEX IF NOT EXISTS idx_ai_tasks_priority ON ai_tasks(priority);
+
+    -- Brand / admin Instagram (single row) — same OAuth app as creator collab
+    CREATE TABLE IF NOT EXISTS admin_brand_instagram (
+      id integer PRIMARY KEY CHECK (id = 1),
+      instagram_connected boolean NOT NULL DEFAULT false,
+      fb_user_access_token text,
+      fb_page_access_token text,
+      ig_user_id text,
+      ig_username text,
+      token_expires_at timestamptz,
+      token_updated_at timestamptz,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now()
+    );
   `)
   
   console.log('✅ Phase 3 & 4 tables created successfully')

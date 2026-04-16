@@ -38,7 +38,14 @@ import * as affiliateRoutes from './routes/affiliate'
 import collabRouter, * as collabRoutes from './routes/collab'
 import * as collabTaskRoutes from './routes/collabTasks'
 import * as adminAuthorRoutes from './routes/adminAuthors'
-import instagramRouter, { refreshExpiringTokens } from './routes/instagram'
+import instagramRouter, {
+  refreshExpiringTokens,
+  handleAdminBrandConnect,
+  handleAdminBrandStatus,
+  handleAdminBrandDisconnect,
+  handleAdminBrandReels,
+  handleAdminBrandDashboard,
+} from './routes/instagram'
 import { refreshAllCollabStats } from './routes/collab'
 import createPlatformRouter from './routes/platform'
 import { refreshAllPlatformStats } from './jobs/refreshPlatformStats'
@@ -941,6 +948,20 @@ app.post('/api/collab/tasks/:id/submit', authenticateToken, (req: any, res) => {
 })
 app.use('/api/collab', collabRouter(pool))
 app.use('/api/instagram', instagramRouter(pool))
+
+app.get('/api/admin/instagram/connect', (req, res) => handleAdminBrandConnect(pool, req, res))
+app.get('/api/admin/instagram/status', authenticateAndAttach as any, (req, res) =>
+  handleAdminBrandStatus(pool, req, res)
+)
+app.post('/api/admin/instagram/disconnect', authenticateAndAttach as any, (req, res) =>
+  handleAdminBrandDisconnect(pool, req, res)
+)
+app.get('/api/admin/instagram/reels', authenticateAndAttach as any, (req, res) =>
+  handleAdminBrandReels(pool, req, res)
+)
+app.get('/api/admin/instagram/dashboard', authenticateAndAttach as any, (req, res) =>
+  handleAdminBrandDashboard(pool, req, res)
+)
 app.use('/api/platform', createPlatformRouter(pool))
 app.get('/api/admin/collab-applications', (req, res) => collabRoutes.getCollabApplications(pool, req, res))
 app.get('/api/admin/collab-applications/export.csv', (req, res) => collabRoutes.exportCollabApplications(pool, req, res))

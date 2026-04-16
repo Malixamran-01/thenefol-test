@@ -20,6 +20,7 @@ import { Pool } from 'pg'
 import { assertCollabNotBlockedByAppId } from '../utils/collabBlocks'
 import { normalizeHandle, parseInstagramHandles } from '../utils/instagramHandles'
 import { normalizeCollabContentUrl } from './platform'
+import { getStaffContextByToken } from './staff'
 
 // Instagram API endpoints (direct, no Facebook)
 const IG_OAUTH   = 'https://api.instagram.com'
@@ -30,6 +31,14 @@ export const NEFOL_KEYWORDS = ['nefol', 'neföl', '#nefol', '#neföl', 'nefol sk
 
 const IG_DUPLICATE_MSG =
   'This Instagram account is already linked to another Nefol account. Each creator must use their own Instagram.'
+
+/** OAuth `state` value for brand/admin Instagram (same redirect URI as collab). */
+export const ADMIN_BRAND_OAUTH_STATE = 'admin_brand'
+
+export function getAdminPanelBaseUrl(): string {
+  const u = process.env.ADMIN_PANEL_URL || process.env.VITE_ADMIN_URL || 'http://localhost:5173'
+  return String(u).replace(/\/$/, '')
+}
 
 /**
  * One Instagram identity (IG user id and/or @handle) may not be tied to two different collab applications
@@ -259,6 +268,289 @@ export async function getPageTokenForCollab(
   } catch { return null }
 }
 
+// ═══════════════════════ Admin brand Instagram (NEFOL® official account) ═══
+
+export async function getAdminBrandRow(pool: Pool) {
+  const { rows } = await pool.query(
+    `SELECT instagram_connected, ig_username, ig_user_id, fb_page_access_token, token_expires_at, token_updated_at, updated_at
+     FROM admin_brand_instagram WHERE id = 1`
+  )
+  return rows[0] || null
+}
+
+/** GET /api/admin/instagram/connect?token=staff_… — browser redirect; validates staff session then sends user to Meta OAuth. */
+export async function handleAdminBrandConnect(pool: Pool, req: Request, res: Response) {
+  const token = String(req.query.token || '').trim()
+  if (!token.startsWith('staff_')) {
+    return res.status(401).send('Sign in to the admin panel first, then use Connect Instagram from Facebook & Instagram.')
+  }
+  const ctx = await getStaffContextByToken(pool, token)
+  if (!ctx) {
+    return res.status(401).send('Invalid or expired admin session. Please sign in again.')
+  }
+
+  const appId = process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID
+  if (!appId) return res.status(500).send('META_APP_ID / INSTAGRAM_APP_ID not configured')
+
+  const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 2000}`
+  const redirectUri = `${backendUrl}/api/instagram/callback`
+  const scope = ['instagram_business_basic', 'instagram_business_manage_insights'].join(',')
+
+  const oauthUrl =
+    `${IG_OAUTH}/oauth/authorize?` +
+    `client_id=${appId}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&scope=${encodeURIComponent(scope)}` +
+    `&response_type=code` +
+    `&state=${encodeURIComponent(ADMIN_BRAND_OAUTH_STATE)}`
+
+  console.log('🔗 Admin brand Instagram OAuth redirect')
+  return res.redirect(oauthUrl)
+}
+
+export async function handleAdminBrandStatus(pool: Pool, _req: Request, res: Response) {
+  try {
+    const row = await getAdminBrandRow(pool)
+    if (!row) {
+      return res.json({
+        connected: false,
+        ig_username: null,
+        ig_user_id: null,
+        token_expires_at: null,
+      })
+    }
+    return res.json({
+      connected: !!row.instagram_connected,
+      ig_username: row.ig_username || null,
+      ig_user_id: row.ig_user_id || null,
+      token_expires_at: row.token_expires_at || null,
+      token_updated_at: row.token_updated_at || null,
+    })
+  } catch (e) {
+    console.error('handleAdminBrandStatus:', e)
+    return res.status(500).json({ message: 'Failed to load status' })
+  }
+}
+
+export async function handleAdminBrandDisconnect(pool: Pool, _req: Request, res: Response) {
+  try {
+    await pool.query(
+      `UPDATE admin_brand_instagram SET
+        instagram_connected = false,
+        fb_user_access_token = NULL,
+        fb_page_access_token = NULL,
+        ig_user_id = NULL,
+        ig_username = NULL,
+        token_expires_at = NULL,
+        token_updated_at = NULL,
+        updated_at = NOW()
+       WHERE id = 1`
+    )
+    return res.json({ ok: true, message: 'Instagram disconnected' })
+  } catch (e) {
+    console.error('handleAdminBrandDisconnect:', e)
+    return res.status(500).json({ message: 'Failed to disconnect' })
+  }
+}
+
+export async function handleAdminBrandReels(pool: Pool, _req: Request, res: Response) {
+  try {
+    const row = await getAdminBrandRow(pool)
+    if (!row?.instagram_connected || !row.fb_page_access_token || !row.ig_user_id) {
+      return res.status(403).json({ message: 'Instagram not connected for brand account.' })
+    }
+    const token = row.fb_page_access_token as string
+    const igUserId = String(row.ig_user_id)
+    const since = new Date(0)
+    const reels = await fetchEligibleReels(token, igUserId, since)
+    return res.json({
+      reels,
+      nefol_keywords: NEFOL_KEYWORDS.filter((k) => k.startsWith('#')),
+    })
+  } catch (e) {
+    console.error('handleAdminBrandReels:', e)
+    return res.status(500).json({ message: 'Failed to fetch reels' })
+  }
+}
+
+export async function handleAdminBrandDashboard(pool: Pool, _req: Request, res: Response) {
+  try {
+    const row = await getAdminBrandRow(pool)
+    const connected = !!(row?.instagram_connected && row?.fb_page_access_token && row?.ig_user_id)
+
+    let reels: Awaited<ReturnType<typeof fetchEligibleReels>> = []
+    if (connected) {
+      reels = await fetchEligibleReels(row!.fb_page_access_token as string, String(row!.ig_user_id), new Date(0))
+    }
+
+    const topCollabs = await pool.query(`
+      SELECT
+        ca.id,
+        ca.name,
+        ca.email,
+        ca.ig_username,
+        ca.instagram_connected,
+        COUNT(cr.id)::int AS reel_count,
+        COALESCE(SUM(cr.views_count), 0)::bigint AS total_views,
+        COALESCE(SUM(cr.likes_count), 0)::bigint AS total_likes
+      FROM collab_applications ca
+      LEFT JOIN collab_reels cr ON cr.collab_application_id = ca.id
+        AND (cr.platform = 'instagram' OR cr.platform IS NULL)
+      WHERE ca.status = 'approved'
+      GROUP BY ca.id, ca.name, ca.email, ca.ig_username, ca.instagram_connected
+      ORDER BY COALESCE(SUM(cr.views_count), 0) DESC NULLS LAST
+      LIMIT 15
+    `)
+
+    const summary = await pool.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM collab_applications WHERE status = 'approved' AND instagram_connected = true) AS creators_with_ig,
+        (SELECT COUNT(*)::int FROM collab_reels WHERE platform = 'instagram' OR platform IS NULL) AS collab_reels_tracked,
+        (SELECT COALESCE(SUM(views_count), 0)::bigint FROM collab_reels WHERE platform = 'instagram' OR platform IS NULL) AS collab_total_views
+    `)
+
+    const s = summary.rows[0] || {}
+
+    return res.json({
+      brand: {
+        connected,
+        ig_username: row?.ig_username || null,
+        ig_user_id: row?.ig_user_id || null,
+        token_expires_at: row?.token_expires_at || null,
+      },
+      reels: reels.slice(0, 60),
+      reel_totals: {
+        count: reels.length,
+        views: reels.reduce((a, r) => a + (r.views || 0), 0),
+        likes: reels.reduce((a, r) => a + (r.likes || 0), 0),
+      },
+      top_collabs: topCollabs.rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        ig_username: r.ig_username,
+        instagram_connected: r.instagram_connected,
+        reel_count: Number(r.reel_count) || 0,
+        total_views: Number(r.total_views) || 0,
+        total_likes: Number(r.total_likes) || 0,
+      })),
+      summary: {
+        creators_with_ig: Number(s.creators_with_ig) || 0,
+        collab_reels_tracked: Number(s.collab_reels_tracked) || 0,
+        collab_total_views: Number(s.collab_total_views) || 0,
+      },
+    })
+  } catch (e) {
+    console.error('handleAdminBrandDashboard:', e)
+    return res.status(500).json({ message: 'Failed to load dashboard' })
+  }
+}
+
+async function upsertAdminBrandInstagram(
+  pool: Pool,
+  igUserToken: string,
+  igUserId: string,
+  igUsername: string,
+  tokenExpiresAt: Date
+) {
+  await pool.query(
+    `INSERT INTO admin_brand_instagram (
+      id, instagram_connected, fb_user_access_token, fb_page_access_token, ig_user_id, ig_username,
+      token_expires_at, token_updated_at, updated_at
+    ) VALUES (
+      1, true, $1, $1, $2, $3, $4, NOW(), NOW()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      instagram_connected = true,
+      fb_user_access_token = EXCLUDED.fb_user_access_token,
+      fb_page_access_token = EXCLUDED.fb_page_access_token,
+      ig_user_id = EXCLUDED.ig_user_id,
+      ig_username = EXCLUDED.ig_username,
+      token_expires_at = EXCLUDED.token_expires_at,
+      token_updated_at = NOW(),
+      updated_at = NOW()`,
+    [igUserToken, igUserId, igUsername, tokenExpiresAt]
+  )
+}
+
+async function handleCallbackAdminBrand(
+  pool: Pool,
+  _req: Request,
+  res: Response,
+  code: string,
+  backendUrl: string,
+  adminUrl: string
+) {
+  try {
+    const redirectUri = `${backendUrl}/api/instagram/callback`
+
+    const tokenBody = new URLSearchParams({
+      client_id: process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID || '',
+      client_secret: process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET || '',
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+      code,
+    })
+
+    const tokenRes = await fetch(`${IG_OAUTH}/oauth/access_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenBody.toString(),
+    })
+    const tokenData = (await tokenRes.json()) as any
+
+    if (tokenData.error_type || !tokenData.access_token) {
+      console.error('IG token exchange error (admin brand):', tokenData)
+      return res.redirect(
+        `${adminUrl}/#/admin/facebook?ig_error=${encodeURIComponent('Token exchange failed. Please try again.')}`
+      )
+    }
+
+    const shortToken: string = tokenData.access_token
+    const igUserIdFromToken: string = String(tokenData.user_id || '')
+
+    const longTokenData = await exchangeForLongLivedToken(shortToken)
+    const igUserToken = longTokenData?.access_token || shortToken
+    const expiresIn = longTokenData?.expires_in || 3600
+    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000)
+
+    const profileRes = await fetch(
+      `${IG_GRAPH}/me?fields=user_id,username,account_type&access_token=${igUserToken}`
+    )
+    const profile = (await profileRes.json()) as any
+
+    if (profile.error) {
+      console.error('IG profile fetch error (admin brand):', profile.error)
+      return res.redirect(
+        `${adminUrl}/#/admin/facebook?ig_error=${encodeURIComponent(
+          'Could not read Instagram profile. Use a Creator or Business Instagram account.'
+        )}`
+      )
+    }
+
+    const igUserId: string = String(profile.user_id || igUserIdFromToken)
+    const igUsername: string = profile.username || ''
+    const accountType: string = (profile.account_type || '').toLowerCase()
+
+    if (accountType === 'personal') {
+      return res.redirect(
+        `${adminUrl}/#/admin/facebook?ig_error=${encodeURIComponent(
+          'Personal Instagram accounts cannot be used. Switch to Professional (Creator or Business) in Instagram settings.'
+        )}`
+      )
+    }
+
+    await upsertAdminBrandInstagram(pool, igUserToken, igUserId, igUsername, tokenExpiresAt)
+    console.log(`✅ Admin brand Instagram connected: @${igUsername} (${accountType})`)
+    return res.redirect(`${adminUrl}/#/admin/facebook?ig_connected=1`)
+  } catch (err) {
+    console.error('Instagram admin brand callback error:', err)
+    return res.redirect(
+      `${adminUrl}/#/admin/facebook?ig_error=${encodeURIComponent('Connection failed. Please try again.')}`
+    )
+  }
+}
+
 // ═══════════════════════ Route Handlers ═══════════════════════════════════════
 
 export async function handleConnect(pool: Pool, req: Request, res: Response) {
@@ -301,17 +593,28 @@ export async function handleConnect(pool: Pool, req: Request, res: Response) {
 }
 
 export async function handleCallback(pool: Pool, req: Request, res: Response) {
-  const { code, state: collabId, error, error_description } = req.query as Record<string, string>
+  const { code, state: stateRaw, error, error_description } = req.query as Record<string, string>
+  const stateStr = String(stateRaw || '')
+  const isAdminBrand = stateStr === ADMIN_BRAND_OAUTH_STATE
 
   const frontendUrl = process.env.USER_PANEL_URL || process.env.FRONTEND_URL || process.env.CLIENT_ORIGIN || 'http://localhost:2001'
-  const backendUrl  = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 2000}`
+  const adminUrl = getAdminPanelBaseUrl()
+  const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 2000}`
 
   if (error || !code) {
     console.error('Instagram OAuth error:', error, error_description)
-    return res.redirect(
-      `${frontendUrl}/#/user/collab?ig_error=${encodeURIComponent(error_description || error || 'OAuth failed')}`
-    )
+    const errQ = encodeURIComponent(error_description || error || 'OAuth failed')
+    if (isAdminBrand) {
+      return res.redirect(`${adminUrl}/#/admin/facebook?ig_error=${errQ}`)
+    }
+    return res.redirect(`${frontendUrl}/#/user/collab?ig_error=${errQ}`)
   }
+
+  if (isAdminBrand) {
+    return handleCallbackAdminBrand(pool, req, res, String(code), backendUrl, adminUrl)
+  }
+
+  const collabId = stateStr
 
   try {
     const blocked = await assertCollabNotBlockedByAppId(pool, String(collabId))
@@ -583,6 +886,44 @@ export async function refreshExpiringTokens(pool: Pool) {
     }
 
     if (refreshed > 0) console.log(`✅ Refreshed ${refreshed} expiring IG tokens`)
+
+    const { rows: adminRows } = await pool.query(`
+      SELECT id, fb_page_access_token
+      FROM admin_brand_instagram
+      WHERE id = 1 AND instagram_connected = true
+        AND fb_page_access_token IS NOT NULL
+        AND token_expires_at IS NOT NULL
+        AND token_expires_at < NOW() + INTERVAL '7 days'
+    `)
+    for (const row of adminRows) {
+      try {
+        const url = new URL(`${IG_GRAPH}/refresh_access_token`)
+        url.searchParams.set('grant_type', 'ig_refresh_token')
+        url.searchParams.set('access_token', row.fb_page_access_token)
+
+        const resFetch = await fetch(url.toString())
+        const data = (await resFetch.json()) as any
+        if (data.error || !data.access_token) {
+          console.warn('Admin brand IG token refresh failed:', data.error?.message)
+          continue
+        }
+
+        const newExpiry = new Date(Date.now() + (data.expires_in || 5184000) * 1000)
+        await pool.query(
+          `UPDATE admin_brand_instagram
+           SET fb_page_access_token = $1,
+               fb_user_access_token = $1,
+               token_expires_at     = $2,
+               token_updated_at     = NOW(),
+               updated_at           = NOW()
+           WHERE id = $3`,
+          [data.access_token, newExpiry, row.id]
+        )
+        console.log('✅ Refreshed admin brand Instagram token')
+      } catch (e) {
+        console.warn('Admin brand IG token refresh error:', e)
+      }
+    }
   } catch (err) {
     console.error('refreshExpiringTokens error:', err)
   }
