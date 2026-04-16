@@ -1,20 +1,45 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import {
+  getMetaAdsAccessTokenFromEnv,
+  getMetaAdsAppId,
+  getMetaAdsPixelId,
+} from '../config/metaAdsEnv'
+import { sendError, sendSuccess } from '../utils/apiHelpers'
 
 // Meta Marketing API base URL
 const META_API_VERSION = 'v21.0'
 const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`
 
-// Helper function to get Meta access token from config
+function normalizeAdAccountId(id: string | null | undefined): string | null {
+  if (!id || typeof id !== 'string') return null
+  const t = id.trim()
+  if (!t) return null
+  return t.startsWith('act_') ? t : `act_${t.replace(/^act_/i, '')}`
+}
+
+// Helper function to get Meta access token (Meta Ads config first, then Facebook catalog config, then env)
 async function getMetaAccessToken(pool: Pool): Promise<string | null> {
+  try {
+    const { rows } = await pool.query(`
+      SELECT access_token FROM meta_ads_config
+      WHERE access_token IS NOT NULL AND trim(access_token) <> ''
+      ORDER BY updated_at DESC NULLS LAST, created_at DESC
+      LIMIT 1
+    `)
+    if (rows[0]?.access_token) return rows[0].access_token
+  } catch {
+    /* table may not exist yet */
+  }
+  const envAdsToken = getMetaAdsAccessTokenFromEnv()
+  if (envAdsToken) return envAdsToken
   try {
     const { rows } = await pool.query(
       'SELECT access_token FROM facebook_config ORDER BY created_at DESC LIMIT 1'
     )
-    return rows[0]?.access_token || process.env.META_ADS_ACCESS_TOKEN || null
+    return rows[0]?.access_token || null
   } catch {
-    return process.env.META_ADS_ACCESS_TOKEN || null
+    return null
   }
 }
 
@@ -22,12 +47,21 @@ async function getMetaAccessToken(pool: Pool): Promise<string | null> {
 async function getAdAccountId(pool: Pool): Promise<string | null> {
   try {
     const { rows } = await pool.query(
+      'SELECT ad_account_id FROM meta_ads_config ORDER BY updated_at DESC NULLS LAST LIMIT 1'
+    )
+    const fromMeta = normalizeAdAccountId(rows[0]?.ad_account_id)
+    if (fromMeta) return fromMeta
+  } catch {
+    /* ignore */
+  }
+  try {
+    const { rows } = await pool.query(
       'SELECT value FROM facebook_field_mapping WHERE key = $1',
       ['ad_account_id']
     )
-    return rows[0]?.value || process.env.META_AD_ACCOUNT_ID || null
+    return normalizeAdAccountId(rows[0]?.value) || process.env.META_AD_ACCOUNT_ID || null
   } catch {
-    return process.env.META_AD_ACCOUNT_ID || null
+    return normalizeAdAccountId(process.env.META_AD_ACCOUNT_ID) || null
   }
 }
 
@@ -38,7 +72,7 @@ async function callMetaAPI(
   body?: any,
   accessToken?: string
 ): Promise<any> {
-  const token = accessToken || process.env.META_ADS_ACCESS_TOKEN
+  const token = accessToken || getMetaAdsAccessTokenFromEnv()
   if (!token) {
     throw new Error('Meta access token not configured')
   }
@@ -52,10 +86,9 @@ async function callMetaAPI(
   }
 
   try {
-    if (method === 'GET') {
-      // For GET requests, append params to URL
+    if (method === 'GET' || method === 'DELETE') {
       const params = new URLSearchParams()
-      if (body && typeof body === 'object') {
+      if (body && typeof body === 'object' && method === 'GET') {
         for (const [key, value] of Object.entries(body)) {
           if (value !== undefined && value !== null) {
             if (typeof value === 'object') {
@@ -68,26 +101,25 @@ async function callMetaAPI(
       }
       params.append('access_token', token)
       const fullUrl = `${url}?${params.toString()}`
-      const response = await fetch(fullUrl, options)
+      const response = await fetch(fullUrl, { ...options, method })
       const data = await response.json() as any
-      
+
       if (!response.ok && data.error) {
         throw new Error(data.error.message || 'API request failed')
       }
-      
+
       return data
     } else {
-      // For POST/PUT/DELETE, include access_token in body
       const requestBody = body ? { ...body, access_token: token } : { access_token: token }
       options.body = JSON.stringify(requestBody)
-      
+
       const response = await fetch(url, options)
       const data = await response.json() as any
-      
+
       if (!response.ok && data.error) {
         throw new Error(data.error.message || 'API request failed')
       }
-      
+
       return data
     }
   } catch (error: any) {
@@ -201,28 +233,39 @@ export async function saveAdsConfig(pool: Pool, req: Request, res: Response) {
   try {
     await ensureTables(pool)
     const { ad_account_id, pixel_id, access_token } = req.body || {}
-    
-    if (!ad_account_id) {
+
+    if (!ad_account_id || typeof ad_account_id !== 'string') {
       return sendError(res, 400, 'Ad account ID is required')
     }
 
-    // Save to config table
-    await pool.query(`
-      INSERT INTO meta_ads_config (ad_account_id, pixel_id, access_token, updated_at)
-      VALUES ($1, $2, $3, NOW())
-      ON CONFLICT (id) DO UPDATE SET
-        ad_account_id = EXCLUDED.ad_account_id,
-        pixel_id = EXCLUDED.pixel_id,
-        access_token = EXCLUDED.access_token,
-        updated_at = NOW()
-    `, [ad_account_id, pixel_id || null, access_token || null])
+    const normalizedAd = normalizeAdAccountId(ad_account_id)
+    if (!normalizedAd) {
+      return sendError(res, 400, 'Invalid ad account ID')
+    }
 
-    // Also save ad_account_id to field mapping for easy access
-    await pool.query(`
+    let tokenToSave: string | null = typeof access_token === 'string' ? access_token.trim() : null
+    if (!tokenToSave) {
+      const { rows: prev } = await pool.query(
+        'SELECT access_token FROM meta_ads_config ORDER BY updated_at DESC NULLS LAST LIMIT 1'
+      )
+      tokenToSave = prev[0]?.access_token || null
+    }
+
+    await pool.query('DELETE FROM meta_ads_config')
+    await pool.query(
+      `INSERT INTO meta_ads_config (ad_account_id, pixel_id, access_token, updated_at)
+       VALUES ($1, $2, $3, NOW())`,
+      [normalizedAd, pixel_id || null, tokenToSave]
+    )
+
+    await pool.query(
+      `
       INSERT INTO facebook_field_mapping (key, value, updated_at)
       VALUES ('ad_account_id', $1, NOW())
       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-    `, [ad_account_id])
+    `,
+      [normalizedAd]
+    )
 
     sendSuccess(res, { success: true }, 201)
   } catch (err: any) {
@@ -236,7 +279,23 @@ export async function getAdsConfig(pool: Pool, req: Request, res: Response) {
     const { rows } = await pool.query(
       'SELECT * FROM meta_ads_config ORDER BY created_at DESC LIMIT 1'
     )
-    sendSuccess(res, rows[0] || {})
+    const row = rows[0]
+    const defaultPixel = getMetaAdsPixelId() || ''
+    const metaAppId = getMetaAdsAppId() || ''
+    if (!row) {
+      return sendSuccess(res, {
+        ad_account_id: '',
+        pixel_id: defaultPixel,
+        access_token_set: false,
+        meta_app_id: metaAppId,
+      })
+    }
+    sendSuccess(res, {
+      ad_account_id: row.ad_account_id || '',
+      pixel_id: (row.pixel_id && String(row.pixel_id).trim()) || defaultPixel,
+      access_token_set: !!(row.access_token && String(row.access_token).trim()),
+      meta_app_id: metaAppId,
+    })
   } catch (err: any) {
     sendError(res, 500, 'Failed to get Meta Ads config', err)
   }
@@ -1043,6 +1102,320 @@ export async function deleteAd(pool: Pool, req: Request, res: Response) {
   }
 }
 
+// ==================== AD ACCOUNTS & SYNC FROM META ====================
+
+async function fetchGraphPagedList(
+  accessToken: string,
+  path: string,
+  queryParams: Record<string, string>
+): Promise<any[]> {
+  const out: any[] = []
+  let nextUrl: string | null = `${META_API_BASE}/${path}?${new URLSearchParams({
+    ...queryParams,
+    access_token: accessToken,
+  }).toString()}`
+
+  while (nextUrl) {
+    const response = await fetch(nextUrl)
+    const data = (await response.json()) as any
+    if (data.error) {
+      throw new Error(data.error.message || 'Graph API error')
+    }
+    const chunk = Array.isArray(data.data) ? data.data : []
+    out.push(...chunk)
+    nextUrl = data.paging?.next || null
+  }
+  return out
+}
+
+/** List ad accounts visible to the access token (for setup / validation). */
+export async function listAdAccounts(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureTables(pool)
+    const accessToken = await getMetaAccessToken(pool)
+    if (!accessToken) {
+      return sendError(res, 400, 'Meta access token not configured')
+    }
+    const rows = await fetchGraphPagedList(accessToken, 'me/adaccounts', {
+      fields: 'id,name,account_id,currency,account_status,business_name',
+      limit: '100',
+    })
+    sendSuccess(res, rows)
+  } catch (err: any) {
+    sendError(res, 500, err.message || 'Failed to list ad accounts', err)
+  }
+}
+
+async function runSyncCampaignsFromMeta(
+  pool: Pool,
+  accessToken: string,
+  adAccountId: string
+): Promise<number> {
+  const fields =
+    'id,name,objective,status,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time'
+  const campaigns = await fetchGraphPagedList(accessToken, `${adAccountId}/campaigns`, {
+    fields,
+    limit: '100',
+  })
+
+  for (const c of campaigns) {
+    await pool.query(
+      `
+      INSERT INTO meta_ad_campaigns (
+        campaign_id, name, objective, status, daily_budget, lifetime_budget,
+        start_time, stop_time, created_time, updated_time, meta_data
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (campaign_id) DO UPDATE SET
+        name = EXCLUDED.name,
+        objective = EXCLUDED.objective,
+        status = EXCLUDED.status,
+        daily_budget = EXCLUDED.daily_budget,
+        lifetime_budget = EXCLUDED.lifetime_budget,
+        start_time = EXCLUDED.start_time,
+        stop_time = EXCLUDED.stop_time,
+        updated_time = EXCLUDED.updated_time,
+        meta_data = EXCLUDED.meta_data,
+        updated_at = NOW()
+    `,
+      [
+        c.id,
+        c.name || 'Campaign',
+        c.objective || null,
+        c.status || null,
+        c.daily_budget ?? null,
+        c.lifetime_budget ?? null,
+        c.start_time || null,
+        c.stop_time || null,
+        c.created_time || null,
+        c.updated_time || null,
+        JSON.stringify(c),
+      ]
+    )
+  }
+
+  return campaigns.length
+}
+
+export async function syncCampaignsFromMeta(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureTables(pool)
+    const accessToken = await getMetaAccessToken(pool)
+    const adAccountId = await getAdAccountId(pool)
+    if (!accessToken || !adAccountId) {
+      return sendError(res, 400, 'Meta Ads not configured (ad account ID and access token required)')
+    }
+
+    const n = await runSyncCampaignsFromMeta(pool, accessToken, adAccountId)
+    sendSuccess(res, { synced: n })
+  } catch (err: any) {
+    sendError(res, 500, 'Failed to sync campaigns from Meta', err)
+  }
+}
+
+async function runSyncAdSetsFromMeta(
+  pool: Pool,
+  accessToken: string,
+  req: Request
+): Promise<{ synced: number; campaigns_processed: number }> {
+  const campaignId =
+    (req.query.campaign_id as string) ||
+    (req.body && typeof req.body.campaign_id === 'string' ? req.body.campaign_id : '')
+
+  let campaignIds: string[] = []
+  if (campaignId) {
+    campaignIds = [campaignId]
+  } else {
+    const { rows } = await pool.query(
+      'SELECT campaign_id FROM meta_ad_campaigns ORDER BY updated_at DESC'
+    )
+    campaignIds = rows.map((r: any) => r.campaign_id).filter(Boolean)
+  }
+
+  const fields =
+    'id,name,campaign_id,status,daily_budget,lifetime_budget,billing_event,optimization_goal,targeting,start_time,end_time,created_time,updated_time,bid_strategy'
+  let total = 0
+
+  for (const cid of campaignIds) {
+    const adsets = await fetchGraphPagedList(accessToken, `${cid}/adsets`, {
+      fields,
+      limit: '100',
+    })
+    for (const a of adsets) {
+      total += 1
+      const targetingJson =
+        typeof a.targeting === 'object' ? JSON.stringify(a.targeting) : a.targeting || '{}'
+      await pool.query(
+        `
+        INSERT INTO meta_ad_sets (
+          adset_id, campaign_id, name, status, daily_budget, lifetime_budget,
+          billing_event, optimization_goal, targeting, start_time, end_time,
+          created_time, updated_time, meta_data
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14)
+        ON CONFLICT (adset_id) DO UPDATE SET
+          name = EXCLUDED.name,
+          status = EXCLUDED.status,
+          daily_budget = EXCLUDED.daily_budget,
+          lifetime_budget = EXCLUDED.lifetime_budget,
+          targeting = EXCLUDED.targeting,
+          updated_time = EXCLUDED.updated_time,
+          meta_data = EXCLUDED.meta_data,
+          updated_at = NOW()
+      `,
+        [
+          a.id,
+          a.campaign_id || cid,
+          a.name || 'Ad set',
+          a.status || null,
+          a.daily_budget ?? null,
+          a.lifetime_budget ?? null,
+          a.billing_event || null,
+          a.optimization_goal || null,
+          targetingJson,
+          a.start_time || null,
+          a.end_time || null,
+          a.created_time || null,
+          a.updated_time || null,
+          JSON.stringify(a),
+        ]
+      )
+    }
+  }
+
+  return { synced: total, campaigns_processed: campaignIds.length }
+}
+
+export async function syncAdSetsFromMeta(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureTables(pool)
+    const accessToken = await getMetaAccessToken(pool)
+    if (!accessToken) {
+      return sendError(res, 400, 'Meta access token not configured')
+    }
+
+    const result = await runSyncAdSetsFromMeta(pool, accessToken, req)
+    sendSuccess(res, result)
+  } catch (err: any) {
+    sendError(res, 500, 'Failed to sync ad sets from Meta', err)
+  }
+}
+
+async function runSyncAdsFromMeta(
+  pool: Pool,
+  accessToken: string,
+  req: Request
+): Promise<{ synced: number; adsets_processed: number }> {
+  const adsetId =
+    (req.query.adset_id as string) ||
+    (req.body && typeof req.body.adset_id === 'string' ? req.body.adset_id : '')
+
+  let adsetIds: string[] = []
+  if (adsetId) {
+    adsetIds = [adsetId]
+  } else {
+    const { rows } = await pool.query('SELECT adset_id FROM meta_ad_sets ORDER BY updated_at DESC')
+    adsetIds = rows.map((r: any) => r.adset_id).filter(Boolean)
+  }
+
+  const fields = 'id,name,adset_id,campaign_id,status,creative,preview_url,created_time,updated_time'
+  let total = 0
+
+  for (const aid of adsetIds) {
+    const adsList = await fetchGraphPagedList(accessToken, `${aid}/ads`, {
+      fields,
+      limit: '100',
+    })
+    for (const ad of adsList) {
+      total += 1
+      await pool.query(
+        `
+        INSERT INTO meta_ads (
+          ad_id, adset_id, campaign_id, name, status, creative, preview_url,
+          created_time, updated_time, meta_data
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ON CONFLICT (ad_id) DO UPDATE SET
+          name = EXCLUDED.name,
+          status = EXCLUDED.status,
+          creative = EXCLUDED.creative,
+          preview_url = EXCLUDED.preview_url,
+          updated_time = EXCLUDED.updated_time,
+          meta_data = EXCLUDED.meta_data,
+          updated_at = NOW()
+      `,
+        [
+          ad.id,
+          ad.adset_id || aid,
+          ad.campaign_id || null,
+          ad.name || 'Ad',
+          ad.status || null,
+          ad.creative ? JSON.stringify(ad.creative) : null,
+          ad.preview_url || null,
+          ad.created_time || null,
+          ad.updated_time || null,
+          JSON.stringify(ad),
+        ]
+      )
+    }
+  }
+
+  return { synced: total, adsets_processed: adsetIds.length }
+}
+
+export async function syncAdsFromMeta(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureTables(pool)
+    const accessToken = await getMetaAccessToken(pool)
+    if (!accessToken) {
+      return sendError(res, 400, 'Meta access token not configured')
+    }
+
+    const result = await runSyncAdsFromMeta(pool, accessToken, req)
+    sendSuccess(res, result)
+  } catch (err: any) {
+    sendError(res, 500, 'Failed to sync ads from Meta', err)
+  }
+}
+
+export async function syncAllFromMeta(pool: Pool, req: Request, res: Response) {
+  try {
+    await ensureTables(pool)
+    const accessToken = await getMetaAccessToken(pool)
+    const adAccountId = await getAdAccountId(pool)
+    if (!accessToken || !adAccountId) {
+      return sendError(res, 400, 'Meta Ads not configured (ad account ID and access token required)')
+    }
+
+    const campaigns = await runSyncCampaignsFromMeta(pool, accessToken, adAccountId)
+    const adsets = await runSyncAdSetsFromMeta(pool, accessToken, req)
+    const ads = await runSyncAdsFromMeta(pool, accessToken, req)
+
+    sendSuccess(res, {
+      success: true,
+      campaigns_synced: campaigns,
+      adsets_synced: adsets.synced,
+      ads_synced: ads.synced,
+    })
+  } catch (err: any) {
+    sendError(res, 500, 'Failed full Meta sync', err)
+  }
+}
+
+function sumPurchaseActions(actions: any[]): { count: number; value: number } {
+  let count = 0
+  let value = 0
+  if (!Array.isArray(actions)) return { count, value }
+  for (const a of actions) {
+    const t = String(a.action_type || '')
+    if (
+      t.includes('purchase') ||
+      t.includes('omni_purchase') ||
+      t.includes('offsite_conversion.fb_pixel_purchase')
+    ) {
+      count += parseInt(String(a.value || '0'), 10) || 0
+    }
+  }
+  return { count, value }
+}
+
 // ==================== INSIGHTS / PERFORMANCE ====================
 
 export async function getInsights(pool: Pool, req: Request, res: Response) {
@@ -1097,69 +1470,154 @@ export async function syncInsights(pool: Pool, req: Request, res: Response) {
       return sendError(res, 400, 'Meta access token not configured')
     }
 
-    const { campaign_id, adset_id, ad_id, date_start, date_stop } = req.query as any
+    const body = req.body && typeof req.body === 'object' ? req.body : {}
+    const q = req.query as any
 
-    const level = ad_id ? 'ad' : adset_id ? 'adset' : 'campaign'
-    const id = ad_id || adset_id || campaign_id
+    const dateStart =
+      req.body?.date_start ||
+      q.date_start ||
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const dateStop = req.body?.date_stop || q.date_stop || new Date().toISOString().split('T')[0]
 
-    if (!id) {
-      return sendError(res, 400, 'Campaign ID, Ad Set ID, or Ad ID is required')
+    const qAdset = q.adset_id
+    const qAd = q.ad_id
+    let adsetId =
+      typeof body.adset_id === 'string'
+        ? body.adset_id
+        : typeof qAdset === 'string'
+          ? qAdset
+          : Array.isArray(qAdset)
+            ? String(qAdset[0] || '')
+            : ''
+    let adId =
+      typeof body.ad_id === 'string'
+        ? body.ad_id
+        : typeof qAd === 'string'
+          ? qAd
+          : Array.isArray(qAd)
+            ? String(qAd[0] || '')
+            : ''
+
+    let campaignIds: string[] = []
+    if (Array.isArray(body.campaign_ids)) {
+      campaignIds = body.campaign_ids.filter((x: any) => typeof x === 'string' && x.trim())
+    } else if (typeof body.campaign_id === 'string' && body.campaign_id.trim()) {
+      campaignIds = [body.campaign_id.trim()]
+    } else if (typeof q.campaign_id === 'string' && q.campaign_id.trim()) {
+      campaignIds = q.campaign_id
+        .split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean)
     }
 
-    const fields = 'impressions,clicks,spend,reach,cpm,cpc,ctr,actions,conversions'
-    const params: any = {
+    const fields = 'impressions,clicks,spend,reach,cpm,cpc,ctr,actions,action_values'
+    const timeParams: any = {
       fields,
       time_range: JSON.stringify({
-        since: date_start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        until: date_stop || new Date().toISOString().split('T')[0],
+        since: dateStart,
+        until: dateStop,
       }),
     }
 
-    const result = await callMetaAPI(
-      `${id}/insights`,
-      'GET',
-      params,
-      accessToken
-    )
+    const storeRows: any[] = []
 
-    if (result.error) {
-      return sendError(res, 400, result.error.message || 'Failed to fetch insights')
+    async function fetchAndStoreForObject(
+      id: string,
+      campaignId: string | null,
+      adsetIdVal: string | null,
+      adIdVal: string | null
+    ) {
+      const result = await callMetaAPI(`${id}/insights`, 'GET', timeParams, accessToken as string)
+      if (result.error) {
+        throw new Error(result.error.message || 'Failed to fetch insights')
+      }
+      const insights = Array.isArray(result.data) ? result.data : [result]
+      for (const insight of insights) {
+        const purchaseCount = sumPurchaseActions(insight.actions || [])
+        let conversionValue = 0
+        if (Array.isArray(insight.action_values)) {
+          for (const av of insight.action_values) {
+            const t = String(av.action_type || '')
+            if (t.includes('purchase') || t.includes('omni_purchase')) {
+              conversionValue += parseFloat(String(av.value || '0')) || 0
+            }
+          }
+        }
+
+        await pool.query(
+          `
+          DELETE FROM meta_ad_insights
+          WHERE campaign_id IS NOT DISTINCT FROM $1::text
+            AND adset_id IS NOT DISTINCT FROM $2::text
+            AND ad_id IS NOT DISTINCT FROM $3::text
+            AND date_start = $4::date
+            AND date_stop = $5::date
+        `,
+          [
+            campaignId,
+            adsetIdVal,
+            adIdVal,
+            insight.date_start || null,
+            insight.date_stop || null,
+          ]
+        )
+
+        await pool.query(
+          `
+          INSERT INTO meta_ad_insights (
+            campaign_id, adset_id, ad_id, date_start, date_stop,
+            impressions, clicks, spend, reach, cpm, cpc, ctr,
+            conversions, conversion_value, meta_data
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        `,
+          [
+            campaignId,
+            adsetIdVal,
+            adIdVal,
+            insight.date_start || null,
+            insight.date_stop || null,
+            insight.impressions || 0,
+            insight.clicks || 0,
+            insight.spend ? parseFloat(String(insight.spend)) : 0,
+            insight.reach || 0,
+            insight.cpm ? parseFloat(String(insight.cpm)) : 0,
+            insight.cpc ? parseFloat(String(insight.cpc)) : 0,
+            insight.ctr ? parseFloat(String(insight.ctr)) : 0,
+            purchaseCount.count,
+            conversionValue,
+            JSON.stringify(insight),
+          ]
+        )
+        storeRows.push(insight)
+      }
     }
 
-    const insights = Array.isArray(result.data) ? result.data : [result]
-
-    // Save insights to database
-    for (const insight of insights) {
-      const conversions = insight.actions?.find((a: any) => a.action_type === 'purchase')?.value || 0
-      const conversionValue = insight.action_values?.find((a: any) => a.action_type === 'purchase')?.value || 0
-
-      await pool.query(`
-        INSERT INTO meta_ad_insights (
-          campaign_id, adset_id, ad_id, date_start, date_stop,
-          impressions, clicks, spend, reach, cpm, cpc, ctr,
-          conversions, conversion_value, meta_data
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        ON CONFLICT DO NOTHING
-      `, [
-        campaign_id || null,
-        adset_id || null,
-        ad_id || null,
-        insight.date_start || null,
-        insight.date_stop || null,
-        insight.impressions || 0,
-        insight.clicks || 0,
-        insight.spend ? parseFloat(insight.spend) : 0,
-        insight.reach || 0,
-        insight.cpm ? parseFloat(insight.cpm) : 0,
-        insight.cpc ? parseFloat(insight.cpc) : 0,
-        insight.ctr ? parseFloat(insight.ctr) : 0,
-        conversions,
-        conversionValue,
-        JSON.stringify(insight),
-      ])
+    if (adId) {
+      await fetchAndStoreForObject(adId, campaignIds[0] || null, adsetId || null, adId)
+    } else if (adsetId) {
+      await fetchAndStoreForObject(adsetId, campaignIds[0] || null, adsetId, null)
+    } else if (campaignIds.length > 0) {
+      for (const cid of campaignIds) {
+        await fetchAndStoreForObject(cid, cid, null, null)
+      }
+    } else {
+      const { rows } = await pool.query(
+        'SELECT campaign_id FROM meta_ad_campaigns ORDER BY updated_at DESC LIMIT 50'
+      )
+      const ids = rows.map((r: any) => r.campaign_id).filter(Boolean)
+      if (ids.length === 0) {
+        return sendError(
+          res,
+          400,
+          'No campaign IDs provided. Sync campaigns from Meta first or pass campaign_ids in the request body.'
+        )
+      }
+      for (const cid of ids) {
+        await fetchAndStoreForObject(cid, cid, null, null)
+      }
     }
 
-    sendSuccess(res, { synced: insights.length, insights })
+    sendSuccess(res, { synced: storeRows.length, rows: storeRows })
   } catch (err: any) {
     sendError(res, 500, 'Failed to sync insights', err)
   }
@@ -1199,9 +1657,18 @@ export async function trackPixelEvent(pool: Pool, req: Request, res: Response) {
       req.ip || req.socket.remoteAddress || null,
     ])
 
-    // Forward to Meta Pixel API if configured
-    const pixelId = process.env.META_PIXEL_ID
     const accessToken = await getMetaAccessToken(pool)
+    let pixelId: string | null = null
+    try {
+      const { rows: pr } = await pool.query(
+        'SELECT pixel_id FROM meta_ads_config ORDER BY updated_at DESC NULLS LAST LIMIT 1'
+      )
+      const fromDb = pr[0]?.pixel_id
+      if (fromDb && String(fromDb).trim()) pixelId = String(fromDb).trim()
+    } catch {
+      /* ignore */
+    }
+    if (!pixelId) pixelId = getMetaAdsPixelId() || null
 
     if (pixelId && accessToken) {
       try {

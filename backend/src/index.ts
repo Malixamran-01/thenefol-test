@@ -1159,43 +1159,50 @@ app.post('/api/facebook/field-mapping', (req, res) => facebookRoutes.saveFieldMa
 app.get('/api/facebook/field-mapping', (req, res) => facebookRoutes.getFieldMapping(pool, req, res))
 app.post('/api/facebook/webhook', (req, res) => facebookRoutes.webhook(pool, req, res))
 
-// ==================== META ADS ====================
+// ==================== META ADS (admin session required except storefront pixel POST) ====================
 // Configuration
-app.post('/api/meta-ads/config', (req, res) => metaAdsRoutes.saveAdsConfig(pool, req, res))
-app.get('/api/meta-ads/config', (req, res) => metaAdsRoutes.getAdsConfig(pool, req, res))
+app.post('/api/meta-ads/config', authenticateAndAttach as any, (req, res) => metaAdsRoutes.saveAdsConfig(pool, req, res))
+app.get('/api/meta-ads/config', authenticateAndAttach as any, (req, res) => metaAdsRoutes.getAdsConfig(pool, req, res))
+
+// Discovery & sync from Marketing API
+app.get('/api/meta-ads/ad-accounts', authenticateAndAttach as any, (req, res) => metaAdsRoutes.listAdAccounts(pool, req, res))
+app.post('/api/meta-ads/sync/campaigns', authenticateAndAttach as any, (req, res) => metaAdsRoutes.syncCampaignsFromMeta(pool, req, res))
+app.post('/api/meta-ads/sync/adsets', authenticateAndAttach as any, (req, res) => metaAdsRoutes.syncAdSetsFromMeta(pool, req, res))
+app.post('/api/meta-ads/sync/ads', authenticateAndAttach as any, (req, res) => metaAdsRoutes.syncAdsFromMeta(pool, req, res))
+app.post('/api/meta-ads/sync/all', authenticateAndAttach as any, (req, res) => metaAdsRoutes.syncAllFromMeta(pool, req, res))
 
 // Campaigns
-app.get('/api/meta-ads/campaigns', (req, res) => metaAdsRoutes.getCampaigns(pool, req, res))
-app.post('/api/meta-ads/campaigns', (req, res) => metaAdsRoutes.createCampaign(pool, req, res))
-app.put('/api/meta-ads/campaigns/:id', (req, res) => metaAdsRoutes.updateCampaign(pool, req, res))
-app.delete('/api/meta-ads/campaigns/:id', (req, res) => metaAdsRoutes.deleteCampaign(pool, req, res))
+app.get('/api/meta-ads/campaigns', authenticateAndAttach as any, (req, res) => metaAdsRoutes.getCampaigns(pool, req, res))
+app.post('/api/meta-ads/campaigns', authenticateAndAttach as any, (req, res) => metaAdsRoutes.createCampaign(pool, req, res))
+app.put('/api/meta-ads/campaigns/:id', authenticateAndAttach as any, (req, res) => metaAdsRoutes.updateCampaign(pool, req, res))
+app.delete('/api/meta-ads/campaigns/:id', authenticateAndAttach as any, (req, res) => metaAdsRoutes.deleteCampaign(pool, req, res))
 
 // Ad Sets
-app.get('/api/meta-ads/adsets', (req, res) => metaAdsRoutes.getAdSets(pool, req, res))
-app.post('/api/meta-ads/adsets', (req, res) => metaAdsRoutes.createAdSet(pool, req, res))
-app.put('/api/meta-ads/adsets/:id', (req, res) => metaAdsRoutes.updateAdSet(pool, req, res))
-app.delete('/api/meta-ads/adsets/:id', (req, res) => metaAdsRoutes.deleteAdSet(pool, req, res))
+app.get('/api/meta-ads/adsets', authenticateAndAttach as any, (req, res) => metaAdsRoutes.getAdSets(pool, req, res))
+app.post('/api/meta-ads/adsets', authenticateAndAttach as any, (req, res) => metaAdsRoutes.createAdSet(pool, req, res))
+app.put('/api/meta-ads/adsets/:id', authenticateAndAttach as any, (req, res) => metaAdsRoutes.updateAdSet(pool, req, res))
+app.delete('/api/meta-ads/adsets/:id', authenticateAndAttach as any, (req, res) => metaAdsRoutes.deleteAdSet(pool, req, res))
 
 // Ads
-app.get('/api/meta-ads/ads', (req, res) => metaAdsRoutes.getAds(pool, req, res))
-app.post('/api/meta-ads/ads', (req, res) => metaAdsRoutes.createAd(pool, req, res))
-app.put('/api/meta-ads/ads/:id', (req, res) => metaAdsRoutes.updateAd(pool, req, res))
-app.delete('/api/meta-ads/ads/:id', (req, res) => metaAdsRoutes.deleteAd(pool, req, res))
+app.get('/api/meta-ads/ads', authenticateAndAttach as any, (req, res) => metaAdsRoutes.getAds(pool, req, res))
+app.post('/api/meta-ads/ads', authenticateAndAttach as any, (req, res) => metaAdsRoutes.createAd(pool, req, res))
+app.put('/api/meta-ads/ads/:id', authenticateAndAttach as any, (req, res) => metaAdsRoutes.updateAd(pool, req, res))
+app.delete('/api/meta-ads/ads/:id', authenticateAndAttach as any, (req, res) => metaAdsRoutes.deleteAd(pool, req, res))
 
 // Ad Creatives
-app.post('/api/meta-ads/creatives', (req, res) => metaAdsRoutes.createAdCreative(pool, req, res))
+app.post('/api/meta-ads/creatives', authenticateAndAttach as any, (req, res) => metaAdsRoutes.createAdCreative(pool, req, res))
 
 // Insights/Performance
-app.get('/api/meta-ads/insights', (req, res) => metaAdsRoutes.getInsights(pool, req, res))
-app.post('/api/meta-ads/insights/sync', (req, res) => metaAdsRoutes.syncInsights(pool, req, res))
+app.get('/api/meta-ads/insights', authenticateAndAttach as any, (req, res) => metaAdsRoutes.getInsights(pool, req, res))
+app.post('/api/meta-ads/insights/sync', authenticateAndAttach as any, (req, res) => metaAdsRoutes.syncInsights(pool, req, res))
 
-// Pixel Events
+// Pixel Events (POST may be called from website without admin session)
 app.post('/api/meta-ads/pixel/events', (req, res) => metaAdsRoutes.trackPixelEvent(pool, req, res))
-app.get('/api/meta-ads/pixel/events', (req, res) => metaAdsRoutes.getPixelEvents(pool, req, res))
+app.get('/api/meta-ads/pixel/events', authenticateAndAttach as any, (req, res) => metaAdsRoutes.getPixelEvents(pool, req, res))
 
 // Custom Audiences
-app.get('/api/meta-ads/audiences', (req, res) => metaAdsRoutes.getAudiences(pool, req, res))
-app.post('/api/meta-ads/audiences/sync', (req, res) => metaAdsRoutes.syncCustomAudience(pool, req, res))
+app.get('/api/meta-ads/audiences', authenticateAndAttach as any, (req, res) => metaAdsRoutes.getAudiences(pool, req, res))
+app.post('/api/meta-ads/audiences/sync', authenticateAndAttach as any, (req, res) => metaAdsRoutes.syncCustomAudience(pool, req, res))
 
 // ==================== NOTIFICATIONS (WhatsApp + SMTP) ====================
 app.get('/api/alerts/config', (req, res) => notificationRoutes.getConfig(pool, req, res))
