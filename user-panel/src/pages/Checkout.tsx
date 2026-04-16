@@ -701,11 +701,11 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
     ? roundPrice(Math.min(coinsToUse / 10, calcSubtotal - segmentDiscountAmount - discountAmount))
     : 0
   
-  // After loyalty segment discount and coupon (for coins cap)
+  // After segment (if enabled) checkout discount and coupon (for coins cap)
   const finalSubtotal = roundPrice(calcSubtotal - segmentDiscountAmount - discountAmount)
   
   // IMPORTANT: GST is already included in calcSubtotal (MRP includes GST)
-  // Net Payable = Subtotal + Shipping − Loyalty − Coupon − Coins
+  // Net Payable = Subtotal + Shipping − Segment discount − Coupon − Coins
   const grandTotalBeforeDiscounts = roundPrice(calcSubtotal + shipping)
   
   const grandTotal = roundPrice(
@@ -1444,7 +1444,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                 {segmentDiscountAmount > 0 && (
                   <div className="flex justify-between text-emerald-700">
                     <span>
-                      Loyalty pricing
+                      Segment offer
                       {segmentPricing?.segment_name ? ` (${segmentPricing.segment_name})` : ''} (−)
                     </span>
                     <span>−₹{formatPrice(roundPrice(segmentDiscountAmount))}</span>

@@ -91,6 +91,7 @@ export async function getCart(pool: Pool, req: Request, res: Response) {
         segment_name: seg?.name ?? null,
         discount_percent: pct,
         discount_amount: segmentDiscountAmount,
+        segment_discount_enabled: Boolean(seg?.segment_discount_enabled),
         /** Rules reminder for UI */
         min_lifetime_spend: seg != null ? Number(seg.min_lifetime_spend) : null,
         min_orders: seg != null ? Number(seg.min_orders) : null,

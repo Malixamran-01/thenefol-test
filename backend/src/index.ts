@@ -3189,7 +3189,11 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS segment_discount NUMERIC(12,2) NOT NULL DEFAULT 0`)
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_segment_label TEXT`)
 
-    const { computeSegmentDiscountAmount, resolveBestSegmentForUser } = await import('./services/customerSegmentService')
+    const {
+      computeSegmentDiscountAmount,
+      getSegmentDiscountPercentForUser,
+      resolveBestSegmentForUser,
+    } = await import('./services/customerSegmentService')
     const subNum = Math.round(Number(subtotal) || 0)
     let segment_discount = 0
     let customer_segment_label: string | null = null
@@ -3210,10 +3214,9 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
 
     if (customerUserId != null) {
       const seg = await resolveBestSegmentForUser(pool, customerUserId)
-      const pct = seg ? Number(seg.discount_percent) : 0
-      const p = Number.isFinite(pct) && pct > 0 ? Math.min(100, pct) : 0
-      segment_discount = computeSegmentDiscountAmount(subNum, p)
       customer_segment_label = seg?.name ?? null
+      const pct = await getSegmentDiscountPercentForUser(pool, customerUserId)
+      segment_discount = computeSegmentDiscountAmount(subNum, pct)
     }
 
     const shipNum = Number(shipping) || 0

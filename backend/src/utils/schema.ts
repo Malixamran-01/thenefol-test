@@ -1586,6 +1586,7 @@ export async function ensureSchema(pool: Pool) {
       min_lifetime_spend numeric(14,2) not null default 0,
       min_orders integer not null default 0,
       discount_percent numeric(5,2) not null default 0,
+      segment_discount_enabled boolean not null default false,
       tier_priority integer not null default 0,
       is_active boolean not null default true,
       created_at timestamptz default now(),
@@ -1594,6 +1595,9 @@ export async function ensureSchema(pool: Pool) {
     
     do $$
     begin
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'customer_segments' and column_name = 'segment_discount_enabled') then
+        alter table customer_segments add column segment_discount_enabled boolean not null default false;
+      end if;
       if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'customer_segments' and column_name = 'min_lifetime_spend') then
         alter table customer_segments add column min_lifetime_spend numeric(14,2) not null default 0;
       end if;
@@ -1611,13 +1615,13 @@ export async function ensureSchema(pool: Pool) {
       end if;
     end $$;
     
-    insert into customer_segments (name, description, criteria, min_lifetime_spend, min_orders, discount_percent, tier_priority, is_active, customer_count)
+    insert into customer_segments (name, description, criteria, min_lifetime_spend, min_orders, discount_percent, segment_discount_enabled, tier_priority, is_active, customer_count)
     select * from (values
-      ('VIP', 'Lifetime spend ₹5,000+ — best loyalty pricing', '{}'::jsonb, 5000::numeric, 1, 12::numeric, 100, true, 0),
-      ('Loyal', 'Spend ₹1,500+ with 2+ orders', '{}'::jsonb, 1500::numeric, 2, 6::numeric, 60, true, 0),
-      ('Returning', 'At least one completed order', '{}'::jsonb, 0::numeric, 1, 3::numeric, 30, true, 0),
-      ('Welcome', 'All customers (base tier)', '{}'::jsonb, 0::numeric, 0, 0::numeric, 0, true, 0)
-    ) as v(name, description, criteria, min_lifetime_spend, min_orders, discount_percent, tier_priority, is_active, customer_count)
+      ('VIP', 'Lifetime spend ₹5,000+ with at least one order', '{}'::jsonb, 5000::numeric, 1, 12::numeric, false, 100, true, 0),
+      ('Loyal', 'Spend ₹1,500+ with 2+ orders', '{}'::jsonb, 1500::numeric, 2, 6::numeric, false, 60, true, 0),
+      ('Returning', 'At least one completed order', '{}'::jsonb, 0::numeric, 1, 3::numeric, false, 30, true, 0),
+      ('Welcome', 'All registered customers (fallback)', '{}'::jsonb, 0::numeric, 0, 0::numeric, false, 0, true, 0)
+    ) as v(name, description, criteria, min_lifetime_spend, min_orders, discount_percent, segment_discount_enabled, tier_priority, is_active, customer_count)
     where not exists (select 1 from customer_segments limit 1);
     
     create table if not exists customer_journeys (

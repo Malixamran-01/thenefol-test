@@ -355,6 +355,8 @@ export type CartSegmentPricing = {
   segment_name: string | null
   discount_percent: number
   discount_amount: number
+  /** Admin must enable per segment; otherwise 0% at checkout */
+  segment_discount_enabled?: boolean
   min_lifetime_spend: number | null
   min_orders: number | null
 }

@@ -34,9 +34,9 @@ type CartContextValue = {
   tax: number
   total: number
   coinsEarned: number
-  /** Loyalty tier pricing from backend (purchase-based segments) */
+  /** Segment assignment + optional checkout discount (only if enabled in admin) */
   segmentPricing: CartSegmentPricing | null
-  /** Extra cart discount from segment %; matches server for current line subtotal */
+  /** Checkout discount from segment % when admin enables it; matches server */
   segmentDiscountAmount: number
 }
 

@@ -4,6 +4,8 @@ import apiService from '../services/api'
 
 type TierStats = {
   discountPercent?: number
+  /** When true, `discountPercent` is applied at checkout for customers in this segment */
+  segmentDiscountEnabled?: boolean
   minLifetimeSpend?: number
   minOrders?: number
   tierPriority?: number
@@ -38,6 +40,7 @@ const emptyForm = () => ({
   min_lifetime_spend: 0,
   min_orders: 0,
   discount_percent: 0,
+  segment_discount_enabled: false,
   tier_priority: 0,
   is_active: true,
 })
@@ -103,6 +106,7 @@ export default function CustomerSegmentation() {
       min_lifetime_spend: t.stats?.minLifetimeSpend ?? 0,
       min_orders: t.stats?.minOrders ?? 0,
       discount_percent: t.stats?.discountPercent ?? 0,
+      segment_discount_enabled: t.stats?.segmentDiscountEnabled ?? false,
       tier_priority: t.stats?.tierPriority ?? 0,
       is_active: t.isActive,
     })
@@ -121,6 +125,7 @@ export default function CustomerSegmentation() {
       min_lifetime_spend: Number(form.min_lifetime_spend) || 0,
       min_orders: Math.max(0, Math.floor(Number(form.min_orders) || 0)),
       discount_percent: Math.min(100, Math.max(0, Number(form.discount_percent) || 0)),
+      segment_discount_enabled: Boolean(form.segment_discount_enabled),
       tier_priority: Math.floor(Number(form.tier_priority) || 0),
       is_active: form.is_active,
     }
@@ -165,12 +170,14 @@ export default function CustomerSegmentation() {
       <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">
-            Customer tiers
+            Customer segments
           </h1>
           <p className="mt-1 text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl">
-            Shoppers are grouped by <strong className="font-medium">lifetime spend</strong> and{' '}
-            <strong className="font-medium">completed orders</strong>. The highest-priority tier they qualify for
-            applies. Tier discount is a percentage off cart subtotal at checkout (e.g. VIP gets the best price).
+            Customers are placed into segments using <strong className="font-medium">lifetime spend</strong> and{' '}
+            <strong className="font-medium">completed orders</strong> (highest matching priority wins). Checkout
+            discounts are <strong className="font-medium">not</strong> applied automatically: turn on{' '}
+            <strong className="font-medium">Offer checkout discount</strong> for a segment and set the percentage
+            when you want that segment to receive it.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -191,7 +198,7 @@ export default function CustomerSegmentation() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
-            Add tier
+            Add segment
           </button>
         </div>
       </header>
@@ -204,7 +211,7 @@ export default function CustomerSegmentation() {
 
       <section aria-labelledby="tiers-heading" className="space-y-4">
         <h2 id="tiers-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Tiers & pricing
+          Segments & checkout offers
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {tiers.length === 0 && (
@@ -245,8 +252,10 @@ export default function CustomerSegmentation() {
                   <dd className="font-medium tabular-nums">{t.stats?.minOrders ?? 0}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500 dark:text-slate-400">Cart discount</dt>
-                  <dd className="font-medium tabular-nums">{t.stats?.discountPercent ?? 0}%</dd>
+                  <dt className="text-slate-500 dark:text-slate-400">Checkout discount</dt>
+                  <dd className="font-medium tabular-nums">
+                    {t.stats?.segmentDiscountEnabled ? `${t.stats?.discountPercent ?? 0}%` : 'Off'}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-slate-500 dark:text-slate-400">Priority</dt>
@@ -288,7 +297,8 @@ export default function CustomerSegmentation() {
           {customersLoading && <span className="text-xs text-slate-500">Updating…</span>}
         </div>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Up to 500 accounts by spend. Tier shows the best matching rule from purchase history.
+          Up to 500 accounts by spend. Segment column shows the best matching rule. Discount column reflects checkout
+          only if that segment has an enabled offer.
         </p>
 
         <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
@@ -299,7 +309,7 @@ export default function CustomerSegmentation() {
                 <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Tier</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Orders</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Spent</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Discount</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Offer %</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -312,7 +322,9 @@ export default function CustomerSegmentation() {
                   <td className="px-4 py-3 text-slate-800 dark:text-slate-200">{c.segment}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{c.totalOrders}</td>
                   <td className="px-4 py-3 text-right tabular-nums">₹{Number(c.totalSpent).toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{c.discount_percent}%</td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {c.discount_percent > 0 ? `${c.discount_percent}%` : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -329,12 +341,12 @@ export default function CustomerSegmentation() {
               <div className="text-xs text-slate-500 break-all">{c.email}</div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-slate-500">Tier</span>
+                  <span className="text-slate-500">Segment</span>
                   <div className="font-medium">{c.segment}</div>
                 </div>
                 <div className="text-right">
-                  <span className="text-slate-500">Discount</span>
-                  <div className="font-medium">{c.discount_percent}%</div>
+                  <span className="text-slate-500">Offer %</span>
+                  <div className="font-medium">{c.discount_percent > 0 ? `${c.discount_percent}%` : '—'}</div>
                 </div>
                 <div>
                   <span className="text-slate-500">Orders</span>
@@ -360,7 +372,7 @@ export default function CustomerSegmentation() {
           >
             <div className="p-4 sm:p-6 space-y-4">
               <h3 id="tier-form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                {editingId ? 'Edit tier' : 'New tier'}
+                {editingId ? 'Edit segment' : 'New segment'}
               </h3>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Name</span>
@@ -401,9 +413,21 @@ export default function CustomerSegmentation() {
                   />
                 </label>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-600 p-3 space-y-2">
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Checkout offer (optional)</p>
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={form.segment_discount_enabled}
+                    onChange={(e) => setForm((f) => ({ ...f, segment_discount_enabled: e.target.checked }))}
+                  />
+                  <span className="text-slate-700 dark:text-slate-300">
+                    Apply the discount percentage below at checkout for customers in this segment
+                  </span>
+                </label>
                 <label className="block text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Cart discount %</span>
+                  <span className="text-slate-600 dark:text-slate-400">Discount % (subtotal)</span>
                   <input
                     type="number"
                     min={0}
@@ -414,24 +438,24 @@ export default function CustomerSegmentation() {
                     onChange={(e) => setForm((f) => ({ ...f, discount_percent: Number(e.target.value) }))}
                   />
                 </label>
-                <label className="block text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Tier priority</span>
-                  <input
-                    type="number"
-                    className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2"
-                    value={form.tier_priority}
-                    onChange={(e) => setForm((f) => ({ ...f, tier_priority: Number(e.target.value) }))}
-                  />
-                  <span className="text-xs text-slate-500">Higher wins when multiple match</span>
-                </label>
               </div>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Match priority</span>
+                <input
+                  type="number"
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2"
+                  value={form.tier_priority}
+                  onChange={(e) => setForm((f) => ({ ...f, tier_priority: Number(e.target.value) }))}
+                />
+                <span className="text-xs text-slate-500">Higher number wins when a customer matches more than one segment</span>
+              </label>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={form.is_active}
                   onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
                 />
-                <span className="text-slate-700 dark:text-slate-300">Active</span>
+                <span className="text-slate-700 dark:text-slate-300">Segment active (used for assignment)</span>
               </label>
               <div className="flex gap-2 pt-2">
                 <button

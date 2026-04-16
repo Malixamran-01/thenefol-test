@@ -7,6 +7,8 @@ export type CustomerSegmentRule = {
   min_lifetime_spend: number
   min_orders: number
   discount_percent: number
+  /** When true, `discount_percent` applies at cart/checkout for users in this segment. */
+  segment_discount_enabled: boolean
   tier_priority: number
   is_active: boolean
 }
@@ -14,7 +16,9 @@ export type CustomerSegmentRule = {
 /** Load active segments: highest tier_priority first (VIP before welcome). */
 export async function getActiveSegmentsOrdered(pool: Pool): Promise<CustomerSegmentRule[]> {
   const { rows } = await pool.query<CustomerSegmentRule>(
-    `select id, name, description, min_lifetime_spend, min_orders, discount_percent, tier_priority, is_active
+    `select id, name, description, min_lifetime_spend, min_orders, discount_percent,
+            coalesce(segment_discount_enabled, false) as segment_discount_enabled,
+            tier_priority, is_active
      from customer_segments
      where coalesce(is_active, true) = true
      order by tier_priority desc, id asc`
@@ -67,6 +71,7 @@ export async function resolveBestSegmentForUser(
 export async function getSegmentDiscountPercentForUser(pool: Pool, userId: number): Promise<number> {
   const seg = await resolveBestSegmentForUser(pool, userId)
   if (!seg) return 0
+  if (!seg.segment_discount_enabled) return 0
   const p = Number(seg.discount_percent)
   return Number.isFinite(p) && p > 0 ? Math.min(100, p) : 0
 }

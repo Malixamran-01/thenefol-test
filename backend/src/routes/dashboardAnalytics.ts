@@ -98,6 +98,7 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
           { field: 'min_lifetime_spend', operator: 'greater_than', value: String(seg.min_lifetime_spend) },
           { field: 'min_orders', operator: 'greater_than', value: String(seg.min_orders) },
         ]
+        const enabled = Boolean(seg.segment_discount_enabled)
         return {
           id: String(seg.id),
           name: seg.name,
@@ -106,13 +107,16 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
           customerCount,
           lastUpdated: new Date().toISOString(),
           isActive: seg.is_active,
-          tags: [`${Number(seg.discount_percent)}% cart discount`, `priority ${seg.tier_priority}`],
+          tags: enabled
+            ? [`${Number(seg.discount_percent)}% at checkout`, `priority ${seg.tier_priority}`]
+            : ['Checkout discount off', `priority ${seg.tier_priority}`],
           stats: {
             totalOrders,
             totalRevenue,
             averageOrderValue,
             lastPurchaseDate: null,
             discountPercent: Number(seg.discount_percent),
+            segmentDiscountEnabled: enabled,
             minLifetimeSpend: Number(seg.min_lifetime_spend),
             minOrders: Number(seg.min_orders),
             tierPriority: Number(seg.tier_priority),
@@ -153,13 +157,15 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
       }
       const out = rows.map((u) => {
         const seg = bestForUser(u)
+        const pct =
+          seg != null && seg.segment_discount_enabled ? Number(seg.discount_percent) : 0
         return {
           id: String(u.id),
           name: u.name,
           email: u.email,
           segment: seg?.name || '—',
           segment_id: seg?.id ?? null,
-          discount_percent: seg != null ? Number(seg.discount_percent) : 0,
+          discount_percent: Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 0,
           totalOrders: Number(u.total_orders) || 0,
           totalSpent: Number(u.total_spent) || 0,
           lastOrderDate: u.last_order_date,
