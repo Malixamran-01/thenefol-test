@@ -45,6 +45,8 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   const subtotal = cartContext?.subtotal || 0
   const tax = cartContext?.tax || 0
   const total = cartContext?.total || 0
+  const segmentDiscountAmount = cartContext?.segmentDiscountAmount ?? 0
+  const segmentPricing = cartContext?.segmentPricing ?? null
   const clear = cartContext?.clear
   const { user, isAuthenticated } = useAuth()
   const [buySlug, setBuySlug] = useState<string | null>(null)
@@ -541,8 +543,11 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   const calculateFinalTotal = () => {
     const discountAmount = calculateDiscountAmount()
     // 1 rupee = 10 coins, so coins discount = coinsToUse / 10 (in rupees)
-    const coinsDiscount = selectedPayment === 'coins' ? Math.min(coinsToUse / 10, calcSubtotal - discountAmount) : 0
-    return Math.max(0, calcSubtotal - discountAmount - coinsDiscount)
+    const coinsDiscount =
+      selectedPayment === 'coins'
+        ? Math.min(coinsToUse / 10, calcSubtotal - segmentDiscountAmount - discountAmount)
+        : 0
+    return Math.max(0, calcSubtotal - segmentDiscountAmount - discountAmount - coinsDiscount)
   }
 
   const shipping = 0
@@ -692,18 +697,20 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   const mrpTotal = calculateMrpTotal()
   const productDiscount = calculateProductDiscount()
   // 1 rupee = 10 coins, so coins discount = coinsToUse / 10 (in rupees)
-  const coinsDiscount = useCoins ? roundPrice(Math.min(coinsToUse / 10, calcSubtotal - discountAmount)) : 0
+  const coinsDiscount = useCoins
+    ? roundPrice(Math.min(coinsToUse / 10, calcSubtotal - segmentDiscountAmount - discountAmount))
+    : 0
   
-  // Final subtotal after coupon discount (for coins calculation)
-  const finalSubtotal = roundPrice(calcSubtotal - discountAmount)
+  // After loyalty segment discount and coupon (for coins cap)
+  const finalSubtotal = roundPrice(calcSubtotal - segmentDiscountAmount - discountAmount)
   
   // IMPORTANT: GST is already included in calcSubtotal (MRP includes GST)
-  // Grand Total = Subtotal + Shipping (GST already included, don't add it again)
-  // Coupon and Coins are deducted from Grand Total
+  // Net Payable = Subtotal + Shipping − Loyalty − Coupon − Coins
   const grandTotalBeforeDiscounts = roundPrice(calcSubtotal + shipping)
   
-  // Net Payable = Grand Total - Coupon - Coins
-  const grandTotal = roundPrice(Math.max(0, grandTotalBeforeDiscounts - discountAmount - coinsDiscount))
+  const grandTotal = roundPrice(
+    Math.max(0, grandTotalBeforeDiscounts - segmentDiscountAmount - discountAmount - coinsDiscount)
+  )
 
   // Payment rules: <1000 prepaid/postpaid, >1000 prepaid only
   const canUsePostpaid = grandTotal < 1000
@@ -831,6 +838,8 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         discount_code: appliedDiscount?.code || null,
         discount_amount: discountAmount > 0 ? roundPrice(discountAmount) : 0,
         coins_used: useCoins ? coinsToUse : 0, // Coins used for partial payment
+        segment_discount: segmentDiscountAmount > 0 ? roundPrice(segmentDiscountAmount) : 0,
+        customer_segment_label: segmentPricing?.segment_name ?? null,
         collab_purchase_token: readCollabPurchaseToken(),
       }
 
@@ -1185,6 +1194,8 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           discount_code: appliedDiscount?.code || null,
           discount_amount: discountAmount > 0 ? roundPrice(discountAmount) : 0,
           coins_used: useCoins ? coinsToUse : 0,
+          segment_discount: segmentDiscountAmount > 0 ? roundPrice(segmentDiscountAmount) : 0,
+          customer_segment_label: segmentPricing?.segment_name ?? null,
           collab_purchase_token: readCollabPurchaseToken(),
         }
         
@@ -1293,6 +1304,8 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         discount_code: appliedDiscount?.code || null,
         discount_amount: discountAmount > 0 ? roundPrice(discountAmount) : 0,
         coins_used: useCoins ? coinsToUse : 0,
+        segment_discount: segmentDiscountAmount > 0 ? roundPrice(segmentDiscountAmount) : 0,
+        customer_segment_label: segmentPricing?.segment_name ?? null,
         collab_purchase_token: readCollabPurchaseToken(),
       }
       
@@ -1427,6 +1440,16 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                     {shipping > 0 ? `₹${formatPrice(roundPrice(shipping))}` : 'Free'}
                   </span>
                 </div>
+
+                {segmentDiscountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>
+                      Loyalty pricing
+                      {segmentPricing?.segment_name ? ` (${segmentPricing.segment_name})` : ''} (−)
+                    </span>
+                    <span>−₹{formatPrice(roundPrice(segmentDiscountAmount))}</span>
+                  </div>
+                )}
                 
                 {/* 6. GST (Included in MRP - shown for transparency) - Amount shown inline */}
                 {gstBreakdown.length > 0 && (
@@ -1442,11 +1465,13 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   </div>
                 )}
                 
-                {/* 7. Grand Total (before coupon and coins) - GST already included in subtotal */}
+                {/* 7. Order total before coupon and coins — GST already included in subtotal */}
                 <div className="border-t border-gray-300 pt-2 mt-2">
                   <div className="flex justify-between text-lg font-bold">
-                    <span className="text-black">Grand Total</span>
-                    <span className="text-black">₹{formatPrice(roundPrice(calcSubtotal + shipping))}</span>
+                    <span className="text-black">Order total</span>
+                    <span className="text-black">
+                      ₹{formatPrice(roundPrice(calcSubtotal + shipping - segmentDiscountAmount))}
+                    </span>
                   </div>
                 </div>
                 

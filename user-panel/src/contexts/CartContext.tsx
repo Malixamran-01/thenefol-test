@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useMemo, useState, useEffect } from 'react'
 import type { Product } from '../types'
 import { calculatePurchaseCoins } from '../utils/points'
-import { cartAPI } from '../services/api'
+import { cartAPI, type CartSegmentPricing } from '../services/api'
+import { computeSegmentDiscountAmount } from '../utils/segmentPricing'
 import { useAuth } from './AuthContext'
 import { userSocketService } from '../services/socket'
 
@@ -33,6 +34,10 @@ type CartContextValue = {
   tax: number
   total: number
   coinsEarned: number
+  /** Loyalty tier pricing from backend (purchase-based segments) */
+  segmentPricing: CartSegmentPricing | null
+  /** Extra cart discount from segment %; matches server for current line subtotal */
+  segmentDiscountAmount: number
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined)
@@ -42,9 +47,15 @@ const CART_STORAGE_KEY = 'nefol_cart_items'
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [segmentPricing, setSegmentPricing] = useState<CartSegmentPricing | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { isAuthenticated } = useAuth()
+
+  const applyCartPayload = (payload: { items: CartItem[]; segment_pricing: CartSegmentPricing | null }) => {
+    setItems(payload.items)
+    setSegmentPricing(payload.segment_pricing)
+  }
 
   // Load cart from backend or localStorage
   const loadCart = async () => {
@@ -68,7 +79,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
         
         // Load user cart from backend
-        const cartItems = await cartAPI.getCart()
+        const cartPayload = await cartAPI.getCart()
+        const cartItems = cartPayload.items
         
         // Merge guest cart with user cart
         if (guestItems.length > 0) {
@@ -111,13 +123,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           
           // Reload cart from backend to get updated state
           const updatedCart = await cartAPI.getCart()
-          setItems(updatedCart)
+          applyCartPayload(updatedCart)
           
           // Clear guest cart from localStorage after successful merge
           localStorage.removeItem(CART_STORAGE_KEY)
           console.log('✅ Guest cart merged successfully')
         } else {
-          setItems(cartItems)
+          applyCartPayload(cartPayload)
         }
       } catch (err: any) {
         console.error('Failed to load cart from backend:', err)
@@ -128,6 +140,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
       }
     } else {
+      setSegmentPricing(null)
       loadFromLocalStorage()
     }
   }
@@ -359,6 +372,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setError(null)
         await cartAPI.clearCart()
         setItems([])
+        setSegmentPricing(null)
       } catch (err: any) {
         console.error('Failed to clear cart:', err)
         setError(err.message)
@@ -414,6 +428,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   
   // Total remains the same as subtotal since MRP already includes tax
   const total = useMemo(() => roundPrice(subtotal), [subtotal])
+
+  const segmentDiscountAmount = useMemo(() => {
+    const pct = segmentPricing?.discount_percent ?? 0
+    if (!pct) return 0
+    return computeSegmentDiscountAmount(Math.round(subtotal), pct)
+  }, [subtotal, segmentPricing])
   
   const coinsEarned = useMemo(() => calculatePurchaseCoins(total), [total])
 
@@ -429,8 +449,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     subtotal, 
     tax, 
     total, 
-    coinsEarned 
-  }), [items, loading, error, subtotal, tax, total, coinsEarned])
+    coinsEarned,
+    segmentPricing,
+    segmentDiscountAmount,
+  }), [items, loading, error, subtotal, tax, total, coinsEarned, segmentPricing, segmentDiscountAmount])
   
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

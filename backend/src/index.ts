@@ -3186,6 +3186,45 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS billing_address JSONB`)
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS coins_used INTEGER DEFAULT 0`)
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS invoice_number TEXT`)
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS segment_discount NUMERIC(12,2) NOT NULL DEFAULT 0`)
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_segment_label TEXT`)
+
+    const { computeSegmentDiscountAmount, resolveBestSegmentForUser } = await import('./services/customerSegmentService')
+    const subNum = Math.round(Number(subtotal) || 0)
+    let segment_discount = 0
+    let customer_segment_label: string | null = null
+
+    let customerUserId: number | null = null
+    const uidRaw = (req as any).userId
+    if (uidRaw != null && String(uidRaw).trim() !== '') {
+      const n = Number(uidRaw)
+      if (Number.isFinite(n) && n > 0) {
+        const ur = await pool.query('SELECT id FROM users WHERE id = $1', [n])
+        if (ur.rows.length) customerUserId = n
+      }
+    }
+    if (customerUserId == null && customer_email) {
+      const ur = await pool.query('SELECT id FROM users WHERE lower(trim(email)) = lower(trim($1))', [String(customer_email)])
+      if (ur.rows.length) customerUserId = Number(ur.rows[0].id)
+    }
+
+    if (customerUserId != null) {
+      const seg = await resolveBestSegmentForUser(pool, customerUserId)
+      const pct = seg ? Number(seg.discount_percent) : 0
+      const p = Number.isFinite(pct) && pct > 0 ? Math.min(100, pct) : 0
+      segment_discount = computeSegmentDiscountAmount(subNum, p)
+      customer_segment_label = seg?.name ?? null
+    }
+
+    const shipNum = Number(shipping) || 0
+    const discNum = Number(discount_amount) || 0
+    const coinsNum = Number(coins_used) || 0
+    const coinsRupee = coinsNum / 10
+    const expectedTotal = Math.max(0, Math.round(subNum + shipNum - segment_discount - discNum - coinsRupee))
+    const clientTotal = Math.round(Number(total))
+    if (Math.abs(expectedTotal - clientTotal) > 2) {
+      return sendError(res, 400, 'Order total does not match. Please refresh and try again.')
+    }
 
     // Import order number generation utilities
     const { generateOrderNumber, generateNewInvoiceNumber } = await import('./utils/invoiceUtils')
@@ -3198,8 +3237,8 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     const invoiceNumber = await generateNewInvoiceNumber(pool, shipping_address)
 
     const { rows } = await pool.query(`
-      INSERT INTO orders (order_number, invoice_number, customer_name, customer_email, shipping_address, billing_address, items, subtotal, shipping, tax, total, payment_method, payment_type, payment_status, cod, affiliate_id, discount_code, discount_amount, coins_used)
-      VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      INSERT INTO orders (order_number, invoice_number, customer_name, customer_email, shipping_address, billing_address, items, subtotal, shipping, tax, total, payment_method, payment_type, payment_status, cod, affiliate_id, discount_code, discount_amount, coins_used, segment_discount, customer_segment_label)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
       RETURNING *
     `, [
       generatedOrderNumber, 
@@ -3212,7 +3251,7 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       subtotal, 
       shipping, 
       tax, 
-      total, 
+      expectedTotal, 
       payment_method, 
       payment_type, 
       payment_status, 
@@ -3220,7 +3259,9 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       affiliate_id || null,
       discount_code || null,
       discount_amount || 0,
-      coins_used || 0
+      coins_used || 0,
+      segment_discount,
+      customer_segment_label
     ])
     
     const order = rows[0]

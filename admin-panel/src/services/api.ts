@@ -415,6 +415,11 @@ class ApiService {
     return this.request('/api/customer_segments/aggregate')
   }
 
+  /** Purchase-based tier per customer (limit 500); requires auth */
+  async getCustomerSegmentCustomers() {
+    return this.request('/api/customer_segments/customers')
+  }
+
   async updateCustomerSegment(id: string | number, data: any) {
     return this.request(`/api/customer_segments/${id}`, {
       method: 'PUT',

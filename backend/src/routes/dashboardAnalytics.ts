@@ -1,6 +1,7 @@
 import express from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, authenticateToken } from '../utils/apiHelpers'
+import { getActiveSegmentsOrdered } from '../services/customerSegmentService'
 
 export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Pool) {
   // Dashboard metrics
@@ -63,7 +64,7 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
     }
   })
 
-  // Customer segments aggregator
+  // Customer segments: counts per tier from `customer_segments` rules (purchase-based)
   app.get('/api/customer_segments/aggregate', async (_req, res) => {
     try {
       const { rows } = await pool.query(`
@@ -71,28 +72,103 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
                COALESCE(SUM(o.total), 0) AS total_spent,
                COALESCE(COUNT(o.id), 0) AS total_orders,
                MAX(o.created_at) AS last_order_date
-        FROM users u LEFT JOIN orders o ON o.customer_email = u.email
+        FROM users u
+        LEFT JOIN orders o ON o.customer_email = u.email
+          AND coalesce(lower(o.status), '') NOT IN ('cancelled', 'canceled', 'refunded', 'void')
         GROUP BY u.id, u.name, u.email, u.created_at
       `)
-      const now = new Date()
-      const daysSince = (d?: Date | string | null) => { if (!d) return Infinity; const dt = new Date(d as any); return Math.floor((now.getTime() - dt.getTime()) / (1000 * 60 * 60 * 24)) }
-      const segments = [
-        { id: 'vip', name: 'VIP Customers', description: 'Customers with lifetime spend ≥ ₹5,000', match: (u: any) => Number(u.total_spent) >= 5000, criteria: [{ field: 'total_spent', operator: 'greater_than', value: 5000 }], tags: ['vip','high-value'] },
-        { id: 'repeat', name: 'Repeat Buyers', description: 'Customers with 2 or more orders', match: (u: any) => Number(u.total_orders) >= 2, criteria: [{ field: 'total_orders', operator: 'greater_than', value: 1 }], tags: ['repeat'] },
-        { id: 'new', name: 'New Customers', description: 'Joined in the last 30 days', match: (u: any) => daysSince(u.created_at) <= 30, criteria: [{ field: 'registration_date', operator: 'greater_than', value: '30d_ago' }], tags: ['new'] },
-        { id: 'at_risk', name: 'At-Risk Customers', description: 'No purchases in the last 60 days (but has orders)', match: (u: any) => Number(u.total_orders) > 0 && daysSince(u.last_order_date) > 60, criteria: [{ field: 'last_order_date', operator: 'less_than', value: '60d_ago' }], tags: ['churn-risk'] }
-      ]
-      const results = segments.map(seg => {
-        const members = rows.filter(seg.match)
+      const segments = await getActiveSegmentsOrdered(pool)
+      const bestForUser = (u: { total_spent: unknown; total_orders: unknown }) => {
+        const spent = Number(u.total_spent) || 0
+        const ord = Number(u.total_orders) || 0
+        for (const seg of segments) {
+          const minSpend = Number(seg.min_lifetime_spend) || 0
+          const minOrd = Number(seg.min_orders) || 0
+          if (spent >= minSpend && ord >= minOrd) return seg
+        }
+        return null
+      }
+      const results = segments.map((seg) => {
+        const members = rows.filter((u) => bestForUser(u)?.id === seg.id)
         const customerCount = members.length
         const totalOrders = members.reduce((s, u) => s + Number(u.total_orders || 0), 0)
         const totalRevenue = members.reduce((s, u) => s + Number(u.total_spent || 0), 0)
         const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
-        return { id: seg.id, name: seg.name, description: seg.description, criteria: seg.criteria, customerCount, lastUpdated: new Date().toISOString(), isActive: true, tags: seg.tags, stats: { totalOrders, totalRevenue, averageOrderValue, lastPurchaseDate: null } }
+        const criteria = [
+          { field: 'min_lifetime_spend', operator: 'greater_than', value: String(seg.min_lifetime_spend) },
+          { field: 'min_orders', operator: 'greater_than', value: String(seg.min_orders) },
+        ]
+        return {
+          id: String(seg.id),
+          name: seg.name,
+          description: seg.description || '',
+          criteria,
+          customerCount,
+          lastUpdated: new Date().toISOString(),
+          isActive: seg.is_active,
+          tags: [`${Number(seg.discount_percent)}% cart discount`, `priority ${seg.tier_priority}`],
+          stats: {
+            totalOrders,
+            totalRevenue,
+            averageOrderValue,
+            lastPurchaseDate: null,
+            discountPercent: Number(seg.discount_percent),
+            minLifetimeSpend: Number(seg.min_lifetime_spend),
+            minOrders: Number(seg.min_orders),
+            tierPriority: Number(seg.tier_priority),
+          },
+        }
       })
       sendSuccess(res, results)
     } catch (err) {
       sendError(res, 500, 'Failed to aggregate customer segments', err)
+    }
+  })
+
+  /** Customers with resolved tier (admin token). */
+  app.get('/api/customer_segments/customers', authenticateToken, async (_req, res) => {
+    try {
+      const { rows } = await pool.query(`
+        SELECT u.id, u.name, u.email, u.created_at,
+               COALESCE(SUM(o.total), 0) AS total_spent,
+               COALESCE(COUNT(o.id), 0) AS total_orders,
+               MAX(o.created_at) AS last_order_date
+        FROM users u
+        LEFT JOIN orders o ON o.customer_email = u.email
+          AND coalesce(lower(o.status), '') NOT IN ('cancelled', 'canceled', 'refunded', 'void')
+        GROUP BY u.id, u.name, u.email, u.created_at
+        ORDER BY total_spent DESC NULLS LAST
+        LIMIT 500
+      `)
+      const segments = await getActiveSegmentsOrdered(pool)
+      const bestForUser = (u: (typeof rows)[0]) => {
+        const spent = Number(u.total_spent) || 0
+        const ord = Number(u.total_orders) || 0
+        for (const seg of segments) {
+          const minSpend = Number(seg.min_lifetime_spend) || 0
+          const minOrd = Number(seg.min_orders) || 0
+          if (spent >= minSpend && ord >= minOrd) return seg
+        }
+        return null
+      }
+      const out = rows.map((u) => {
+        const seg = bestForUser(u)
+        return {
+          id: String(u.id),
+          name: u.name,
+          email: u.email,
+          segment: seg?.name || '—',
+          segment_id: seg?.id ?? null,
+          discount_percent: seg != null ? Number(seg.discount_percent) : 0,
+          totalOrders: Number(u.total_orders) || 0,
+          totalSpent: Number(u.total_spent) || 0,
+          lastOrderDate: u.last_order_date,
+          created_at: u.created_at,
+        }
+      })
+      sendSuccess(res, out)
+    } catch (err) {
+      sendError(res, 500, 'Failed to load customers for segmentation', err)
     }
   })
 

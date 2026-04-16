@@ -1,811 +1,461 @@
-import React, { useState, useEffect } from 'react'
-import { Users, Target, Filter, Plus, Edit, Trash2, Eye, BarChart3, TrendingUp, Calendar, MapPin, ShoppingCart, Heart, Star, Clock } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Users, Plus, Edit, Trash2, RefreshCw, Sparkles } from 'lucide-react'
 import apiService from '../services/api'
 
-interface CustomerSegment {
+type TierStats = {
+  discountPercent?: number
+  minLifetimeSpend?: number
+  minOrders?: number
+  tierPriority?: number
+  totalRevenue?: number
+  totalOrders?: number
+  averageOrderValue?: number
+}
+
+type TierRow = {
   id: string
   name: string
   description: string
-  criteria: SegmentCriteria[]
   customerCount: number
-  lastUpdated: string
   isActive: boolean
-  tags: string[]
-  stats: {
-    totalOrders: number
-    totalRevenue: number
-    averageOrderValue: number
-    lastPurchaseDate: string
-  }
+  stats: TierStats
 }
 
-interface SegmentCriteria {
-  field: string
-  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater_than' | 'less_than' | 'between' | 'in' | 'not_in'
-  value: any
-  value2?: any // For 'between' operator
-}
-
-interface Customer {
+type CustomerRow = {
   id: string
   name: string
   email: string
   segment: string
+  discount_percent: number
   totalOrders: number
   totalSpent: number
-  lastOrderDate: string
-  location: string
-  tags: string[]
+  lastOrderDate: string | null
 }
 
-export default function CustomerSegmentation() {
-  const [segments, setSegments] = useState<CustomerSegment[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [analyticsOverview, setAnalyticsOverview] = useState<{ orders?: number; revenue?: number; customers?: number } | null>(null)
-  const [selectedSegment, setSelectedSegment] = useState<CustomerSegment | null>(null)
-  const [showCreateSegment, setShowCreateSegment] = useState(false)
-  const [showSegmentDetails, setShowSegmentDetails] = useState(false)
-  const [activeTab, setActiveTab] = useState('segments')
-  const [segmentForm, setSegmentForm] = useState<{ name: string; description: string; criteria: SegmentCriteria[] }>({
-    name: '',
-    description: '',
-    criteria: []
-  })
+const emptyForm = () => ({
+  name: '',
+  description: '',
+  min_lifetime_spend: 0,
+  min_orders: 0,
+  discount_percent: 0,
+  tier_priority: 0,
+  is_active: true,
+})
 
-  useEffect(() => {
-    loadSegmentsData()
-    // Also fetch analytics so top stats can show real data even if segments are empty
-    loadAnalytics()
+export default function CustomerSegmentation() {
+  const [tiers, setTiers] = useState<TierRow[]>([])
+  const [customers, setCustomers] = useState<CustomerRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [customersLoading, setCustomersLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(emptyForm())
+
+  const loadTiers = useCallback(async () => {
+    setError('')
+    const data = await apiService.getCustomerSegmentAggregates().catch(() => [])
+    const list = Array.isArray(data) ? data : []
+    setTiers(list as TierRow[])
   }, [])
 
-  const loadSegmentsData = async () => {
+  const loadCustomers = useCallback(async () => {
+    setCustomersLoading(true)
     try {
-      setLoading(true)
-      setError('')
-      const data = await apiService.getCustomerSegments().catch(() => [])
-      let list = Array.isArray(data) ? data : []
-      // If no saved segments, fallback to aggregator
-      if (!list || list.length === 0) {
-        const agg = await apiService.getCustomerSegmentAggregates().catch(() => [])
-        list = Array.isArray(agg) ? agg : []
-      }
-      setSegments(list)
-      setCustomers([]) // Customers would be loaded per segment
-    } catch (err) {
-      console.error('Failed to load segments data:', err)
-      setError('Failed to load segments data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadCustomers = async () => {
-    try {
-      setError('')
-      const data: any[] = await (apiService as any).getUsers()
-      const mapped: Customer[] = (Array.isArray(data) ? data : []).map((u: any) => ({
-        id: String(u.id),
-        name: u.name,
-        email: u.email,
-        segment: 'All',
-        totalOrders: parseInt(String(u.total_orders || 0), 10) || 0,
-        totalSpent: parseFloat(String(u.total_spent || 0)) || 0,
-        lastOrderDate: u.last_order_date || u.member_since,
-        location: u.city || 'N/A',
-        tags: []
-      }))
-      setCustomers(mapped)
-    } catch (err) {
-      console.error('Failed to load customers:', err)
+      const data = await apiService.getCustomerSegmentCustomers().catch(() => [])
+      setCustomers(Array.isArray(data) ? (data as CustomerRow[]) : [])
+    } catch {
       setCustomers([])
+    } finally {
+      setCustomersLoading(false)
     }
-  }
-
-  const loadAnalytics = async () => {
-    try {
-      const data: any = await (apiService as any).getAnalytics()
-      const overview = data?.overview || null
-      setAnalyticsOverview(overview)
-    } catch (err) {
-      console.error('Failed to load analytics:', err)
-      setAnalyticsOverview(null)
-    }
-  }
+  }, [])
 
   useEffect(() => {
-    if (activeTab === 'customers') {
-      loadCustomers()
-    } else if (activeTab === 'analytics') {
-      loadAnalytics()
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        await loadTiers()
+        if (!cancelled) await loadCustomers()
+      } catch (e) {
+        if (!cancelled) setError('Failed to load segmentation data')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [activeTab])
+  }, [loadTiers, loadCustomers])
 
-  const totalStats = {
-    totalSegments: segments.length,
-    totalCustomers: segments.reduce((sum, s) => sum + s.customerCount, 0),
-    activeSegments: segments.filter(s => s.isActive).length,
-    totalRevenue: segments.reduce((sum, s) => sum + s.stats.totalRevenue, 0)
+  const openCreate = () => {
+    setEditingId(null)
+    setForm(emptyForm())
+    setShowForm(true)
   }
 
-  const getOperatorLabel = (operator: string) => {
-    switch (operator) {
-      case 'equals': return 'equals'
-      case 'not_equals': return 'does not equal'
-      case 'contains': return 'contains'
-      case 'not_contains': return 'does not contain'
-      case 'greater_than': return 'is greater than'
-      case 'less_than': return 'is less than'
-      case 'between': return 'is between'
-      case 'in': return 'is in'
-      case 'not_in': return 'is not in'
-      default: return operator
-    }
-  }
-
-  const getFieldLabel = (field: string) => {
-    switch (field) {
-      case 'total_spent': return 'Total Spent'
-      case 'total_orders': return 'Total Orders'
-      case 'registration_date': return 'Registration Date'
-      case 'last_order_date': return 'Last Order Date'
-      case 'category_preference': return 'Category Preference'
-      case 'location': return 'Location'
-      case 'age': return 'Age'
-      case 'gender': return 'Gender'
-      default: return field
-    }
-  }
-
-  const handleCreateSegment = () => {
-    setShowCreateSegment(true)
-  }
-
-  const handleEditSegment = (segment: CustomerSegment) => {
-    setSelectedSegment(segment)
-    setShowCreateSegment(true)
-    setSegmentForm({
-      name: segment.name,
-      description: segment.description,
-      criteria: segment.criteria || []
+  const openEdit = (t: TierRow) => {
+    setEditingId(t.id)
+    setForm({
+      name: t.name,
+      description: t.description || '',
+      min_lifetime_spend: t.stats?.minLifetimeSpend ?? 0,
+      min_orders: t.stats?.minOrders ?? 0,
+      discount_percent: t.stats?.discountPercent ?? 0,
+      tier_priority: t.stats?.tierPriority ?? 0,
+      is_active: t.isActive,
     })
+    setShowForm(true)
   }
 
-  const handleDeleteSegment = (segmentId: string) => {
-    if (!segmentId) return
-    if (!confirm('Delete this segment?')) return
-    apiService.deleteCustomerSegment(segmentId)
-      .then(() => loadSegmentsData())
-      .catch(() => alert('Failed to delete segment'))
+  const saveTier = async () => {
+    if (!form.name.trim()) {
+      alert('Name is required')
+      return
+    }
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      criteria: {},
+      min_lifetime_spend: Number(form.min_lifetime_spend) || 0,
+      min_orders: Math.max(0, Math.floor(Number(form.min_orders) || 0)),
+      discount_percent: Math.min(100, Math.max(0, Number(form.discount_percent) || 0)),
+      tier_priority: Math.floor(Number(form.tier_priority) || 0),
+      is_active: form.is_active,
+    }
+    try {
+      if (editingId) {
+        await apiService.updateCustomerSegment(editingId, payload)
+      } else {
+        await apiService.createCustomerSegment(payload)
+      }
+      setShowForm(false)
+      await loadTiers()
+      await loadCustomers()
+    } catch {
+      alert('Failed to save tier')
+    }
   }
 
-  const handleViewSegment = (segment: CustomerSegment) => {
-    setSelectedSegment(segment)
-    setShowSegmentDetails(true)
+  const deleteTier = async (id: string) => {
+    if (!confirm('Delete this tier?')) return
+    try {
+      await apiService.deleteCustomerSegment(id)
+      await loadTiers()
+      await loadCustomers()
+    } catch {
+      alert('Failed to delete')
+    }
   }
-
-  const tabs = [
-    { id: 'segments', label: 'Segments', icon: Target },
-    { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 }
-  ]
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-slate-600 dark:text-slate-400">Loading segments...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div className="admin-page-header">
-            <div>
-              <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">Error</h3>
-              <p className="text-red-700 dark:text-red-300">{error}</p>
-            </div>
-            <button
-              onClick={loadSegmentsData}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
+      <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6">
+        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3 text-slate-600 dark:text-slate-400">
+          <div className="h-10 w-10 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" />
+          <p>Loading tiers…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div className="admin-page-header">
+    <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 space-y-8">
+      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-            Customer Segmentation
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">
+            Customer tiers
           </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            Create targeted customer segments for personalized marketing
+          <p className="mt-1 text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl">
+            Shoppers are grouped by <strong className="font-medium">lifetime spend</strong> and{' '}
+            <strong className="font-medium">completed orders</strong>. The highest-priority tier they qualify for
+            applies. Tier discount is a percentage off cart subtotal at checkout (e.g. VIP gets the best price).
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <button
-            onClick={loadSegmentsData}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+            type="button"
+            onClick={() => {
+              void loadTiers()
+              void loadCustomers()
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
-            <Target className="h-4 w-4" />
-            <span>Refresh</span>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
           </button>
           <button
-            onClick={handleCreateSegment}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            type="button"
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
-            <span>Create Segment</span>
+            Add tier
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-6 text-white">
-          <div className="admin-page-header">
-            <div>
-              <h3 className="text-lg font-semibold">Total Segments</h3>
-              <p className="text-3xl font-bold">{totalStats.totalSegments}</p>
-            </div>
-            <Target className="h-8 w-8" />
-          </div>
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/40 dark:border-red-800 px-4 py-3 text-red-800 dark:text-red-200 text-sm">
+          {error}
         </div>
+      )}
 
-        <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-6 text-white">
-          <div className="admin-page-header">
-            <div>
-              <h3 className="text-lg font-semibold">Total Customers</h3>
-              <p className="text-3xl font-bold">{(analyticsOverview?.customers ?? totalStats.totalCustomers).toLocaleString()}</p>
-            </div>
-            <Users className="h-8 w-8" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white">
-          <div className="admin-page-header">
-            <div>
-              <h3 className="text-lg font-semibold">Active Segments</h3>
-              <p className="text-3xl font-bold">{totalStats.activeSegments}</p>
-            </div>
-            <TrendingUp className="h-8 w-8" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-6 text-white">
-          <div className="admin-page-header">
-            <div>
-              <h3 className="text-lg font-semibold">Total Revenue</h3>
-              <p className="text-3xl font-bold">
-                {analyticsOverview?.revenue !== undefined
-                  ? `₹${Number(analyticsOverview.revenue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : `₹${(totalStats.totalRevenue / 100000).toFixed(1)}L`}
-              </p>
-            </div>
-            <ShoppingCart className="h-8 w-8" />
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg">
-        <div className="border-b border-slate-200 dark:border-slate-700">
-          <nav className="flex space-x-8 px-6">
-            {tabs.map((tab) => {
-              const IconComponent = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+      <section aria-labelledby="tiers-heading" className="space-y-4">
+        <h2 id="tiers-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Tiers & pricing
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {tiers.length === 0 && (
+            <p className="text-slate-600 dark:text-slate-400 text-sm col-span-full">
+              No tiers yet. Add one or run DB seed for default VIP / Loyal / Returning / Welcome tiers.
+            </p>
+          )}
+          {tiers.map((t) => (
+            <article
+              key={t.id}
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-4 sm:p-5 flex flex-col gap-3"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+                    {t.name}
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{t.description}</p>
+                </div>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                    t.isActive
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                   }`}
                 >
-                  <IconComponent className="h-4 w-4" />
-                  <span>{tab.label}</span>
+                  {t.isActive ? 'Active' : 'Off'}
+                </span>
+              </div>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                <div>
+                  <dt className="text-slate-500 dark:text-slate-400">Min spend (₹)</dt>
+                  <dd className="font-medium tabular-nums">{t.stats?.minLifetimeSpend ?? 0}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500 dark:text-slate-400">Min orders</dt>
+                  <dd className="font-medium tabular-nums">{t.stats?.minOrders ?? 0}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500 dark:text-slate-400">Cart discount</dt>
+                  <dd className="font-medium tabular-nums">{t.stats?.discountPercent ?? 0}%</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500 dark:text-slate-400">Priority</dt>
+                  <dd className="font-medium tabular-nums">{t.stats?.tierPriority ?? 0}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-slate-500 dark:text-slate-400">Customers in tier</dt>
+                  <dd className="font-medium tabular-nums">{t.customerCount}</dd>
+                </div>
+              </dl>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => openEdit(t)}
+                  className="flex-1 inline-flex items-center justify-center gap-1 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
                 </button>
-              )
-            })}
-          </nav>
+                <button
+                  type="button"
+                  onClick={() => deleteTier(t.id)}
+                  className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-red-200 text-red-700 dark:border-red-800 dark:text-red-300 text-sm"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="customers-heading" className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="customers-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Users className="h-5 w-5 text-slate-500" />
+            Customers (sample)
+          </h2>
+          {customersLoading && <span className="text-xs text-slate-500">Updating…</span>}
+        </div>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Up to 500 accounts by spend. Tier shows the best matching rule from purchase history.
+        </p>
+
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-800/80">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Customer</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Tier</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Orders</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Spent</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Discount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+              {customers.map((c) => (
+                <tr key={c.id}>
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{c.name}</div>
+                    <div className="text-slate-500 dark:text-slate-400 text-xs">{c.email}</div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-800 dark:text-slate-200">{c.segment}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{c.totalOrders}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">₹{Number(c.totalSpent).toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{c.discount_percent}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        <div className="p-6">
-          {/* Segments Tab */}
-          {activeTab === 'segments' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {segments.map((segment) => (
-                  <div key={segment.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                    <div className="admin-page-header mb-3">
-                      <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                        {segment.name}
-                      </h3>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        segment.isActive 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                      }`}>
-                        {segment.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                      {segment.description}
-                    </p>
-                    
-                    <div className="space-y-2 mb-4 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600 dark:text-slate-400">Customers:</span>
-                        <span className="font-semibold">{segment.customerCount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600 dark:text-slate-400">Revenue:</span>
-                        <span className="font-semibold text-green-600">₹{(segment.stats.totalRevenue / 100000).toFixed(1)}L</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600 dark:text-slate-400">Avg Order:</span>
-                        <span className="font-semibold">₹{segment.stats.averageOrderValue}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {segment.tags.map((tag, index) => (
-                        <span key={index} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewSegment(segment)}
-                        className="flex-1 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleEditSegment(segment)}
-                        className="px-3 py-1 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSegment(segment.id)}
-                        className="px-3 py-1 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 text-sm rounded hover:bg-red-50 dark:hover:bg-red-900 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Customers Tab */}
-          {activeTab === 'customers' && (
-            <div className="space-y-6">
-              <div className="admin-page-header">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  Customer List
-                </h3>
-                <div className="flex space-x-2">
-                  <select className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100">
-                    <option>All Segments</option>
-                    <option>VIP Customers</option>
-                    <option>New Customers</option>
-                    <option>At-Risk Customers</option>
-                    <option>Skincare Enthusiasts</option>
-                  </select>
-                  <button className="px-3 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    <Filter className="h-4 w-4" />
-                  </button>
+        <ul className="md:hidden space-y-3">
+          {customers.map((c) => (
+            <li
+              key={c.id}
+              className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-900/50"
+            >
+              <div className="font-medium text-slate-900 dark:text-slate-100">{c.name}</div>
+              <div className="text-xs text-slate-500 break-all">{c.email}</div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-slate-500">Tier</span>
+                  <div className="font-medium">{c.segment}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500">Discount</span>
+                  <div className="font-medium">{c.discount_percent}%</div>
+                </div>
+                <div>
+                  <span className="text-slate-500">Orders</span>
+                  <div className="font-medium tabular-nums">{c.totalOrders}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500">Spent</span>
+                  <div className="font-medium tabular-nums">₹{Number(c.totalSpent).toLocaleString('en-IN')}</div>
                 </div>
               </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50 dark:bg-slate-700">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Customer
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Segment
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Orders
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Total Spent
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Last Order
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Location
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {customers.map((customer) => (
-                      <tr key={customer.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                              {customer.name}
-                            </div>
-                            <div className="text-sm text-slate-500 dark:text-slate-400">
-                              {customer.email}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-                            {customer.segment}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-                          {customer.totalOrders}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                          ₹{customer.totalSpent.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-                          {new Date(customer.lastOrderDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-                          {customer.location}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button className="text-blue-600 hover:text-blue-900 mr-3">
-                            View
-                          </button>
-                          <button className="text-green-600 hover:text-green-900">
-                            Message
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+            </li>
+          ))}
+        </ul>
+      </section>
 
-          {/* Analytics Tab */}
-          {activeTab === 'analytics' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                    Segment Performance
-                  </h3>
-                  <div className="space-y-3">
-                    {segments
-                      .sort((a, b) => b.stats.totalRevenue - a.stats.totalRevenue)
-                      .slice(0, 3)
-                      .map((segment, index) => (
-                        <div key={segment.id} className="admin-inline-row p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                              <span className="text-blue-600 dark:text-blue-400 font-semibold text-sm">
-                                {index + 1}
-                              </span>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-slate-900 dark:text-slate-100">
-                                {segment.name}
-                              </h4>
-                              <p className="text-sm text-slate-600 dark:text-slate-400">
-                                {segment.customerCount} customers
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-green-600">
-                              ₹{(segment.stats.totalRevenue / 100000).toFixed(1)}L
-                            </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                              Revenue
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-                
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                    Segment Analytics
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="admin-inline-row">
-                      <span className="text-slate-600 dark:text-slate-400">Total Segments</span>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {totalStats.totalSegments}
-                      </span>
-                    </div>
-                    <div className="admin-inline-row">
-                      <span className="text-slate-600 dark:text-slate-400">Active Segments</span>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {totalStats.activeSegments}
-                      </span>
-                    </div>
-                    <div className="admin-inline-row">
-                      <span className="text-slate-600 dark:text-slate-400">Total Customers</span>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {analyticsOverview?.customers ?? totalStats.totalCustomers}
-                      </span>
-                    </div>
-                    <div className="admin-inline-row">
-                      <span className="text-slate-600 dark:text-slate-400">Total Revenue</span>
-                      <span className="font-semibold text-green-600">
-                        {analyticsOverview?.revenue !== undefined
-                          ? `₹${Number(analyticsOverview.revenue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : `₹${(totalStats.totalRevenue / 100000).toFixed(1)}L`}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Segment Details Modal */}
-      {showSegmentDetails && selectedSegment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="admin-page-header mb-4">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Segment Details: {selectedSegment.name}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+          <div
+            className="bg-white dark:bg-slate-900 w-full sm:max-w-md sm:rounded-xl rounded-t-xl border border-slate-200 dark:border-slate-700 shadow-xl max-h-[90vh] overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tier-form-title"
+          >
+            <div className="p-4 sm:p-6 space-y-4">
+              <h3 id="tier-form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {editingId ? 'Edit tier' : 'New tier'}
               </h3>
-              <button
-                onClick={() => setShowSegmentDetails(false)}
-                className="text-2xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                  Description
-                </h4>
-                <p className="text-slate-600 dark:text-slate-400">
-                  {selectedSegment.description}
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                  Segmentation Criteria
-                </h4>
-                <div className="space-y-2">
-                  {selectedSegment.criteria.map((criterion, index) => (
-                    <div key={index} className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
-                      <span className="font-medium text-slate-900 dark:text-slate-100">
-                        {getFieldLabel(criterion.field)}
-                      </span>
-                      <span className="mx-2 text-slate-600 dark:text-slate-400">
-                        {getOperatorLabel(criterion.operator)}
-                      </span>
-                      <span className="font-medium text-slate-900 dark:text-slate-100">
-                        {criterion.value}
-                        {criterion.value2 && ` and ${criterion.value2}`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                  Segment Statistics
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-blue-600">{selectedSegment.customerCount}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Customers</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-green-600">{selectedSegment.stats.totalOrders}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Total Orders</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-purple-600">₹{(selectedSegment.stats.totalRevenue / 100000).toFixed(1)}L</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Revenue</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-orange-600">₹{selectedSegment.stats.averageOrderValue}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg Order Value</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Segment Modal */}
-      {showCreateSegment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-              {selectedSegment ? 'Edit Segment' : 'Create New Segment'}
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Segment Name
-                </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Name</span>
                 <input
-                  type="text"
-                  value={segmentForm.name}
-                  onChange={(e) => setSegmentForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter segment name"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Description
-                </label>
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Description</span>
                 <textarea
-                  rows={3}
-                  value={segmentForm.description}
-                  onChange={(e) => setSegmentForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter segment description"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                  rows={2}
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2"
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Criteria
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-sm">
+                  <span className="text-slate-600 dark:text-slate-400">Min lifetime spend (₹)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2"
+                    value={form.min_lifetime_spend}
+                    onChange={(e) => setForm((f) => ({ ...f, min_lifetime_spend: Number(e.target.value) }))}
+                  />
                 </label>
-                <div className="space-y-2">
-                  <div className="flex space-x-2">
-                    <select
-                      className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                      onChange={(e) => setSegmentForm(prev => ({
-                        ...prev,
-                        criteria: [{ field: e.target.value, operator: 'greater_than', value: '' }]
-                      }))}
-                      value={segmentForm.criteria[0]?.field || ''}
-                    >
-                      <option value="">Select field</option>
-                      <option value="total_spent">Total Spent</option>
-                      <option value="total_orders">Total Orders</option>
-                      <option value="registration_date">Registration Date</option>
-                      <option value="last_order_date">Last Order Date</option>
-                      <option value="category_preference">Category Preference</option>
-                    </select>
-                    <select
-                      className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                      onChange={(e) => setSegmentForm(prev => ({
-                        ...prev,
-                        criteria: [{ ...(prev.criteria[0] || { field: '', operator: 'greater_than', value: '' }), operator: (e.target.value as any) }]
-                      }))}
-                      value={segmentForm.criteria[0]?.operator || 'greater_than'}
-                    >
-                      <option value="greater_than">is greater than</option>
-                      <option value="less_than">is less than</option>
-                      <option value="equals">equals</option>
-                      <option value="contains">contains</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Value"
-                      value={segmentForm.criteria[0]?.value || ''}
-                      onChange={(e) => setSegmentForm(prev => ({
-                        ...prev,
-                        criteria: [{ ...(prev.criteria[0] || { field: '', operator: 'greater_than', value: '' }), value: e.target.value }]
-                      }))}
-                      className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                    />
-                  </div>
-                </div>
+                <label className="block text-sm">
+                  <span className="text-slate-600 dark:text-slate-400">Min orders</span>
+                  <input
+                    type="number"
+                    min={0}
+                    className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2"
+                    value={form.min_orders}
+                    onChange={(e) => setForm((f) => ({ ...f, min_orders: Number(e.target.value) }))}
+                  />
+                </label>
               </div>
-            </div>
-            <div className="flex space-x-4 mt-6">
-              <button
-                onClick={() => {
-                  setShowCreateSegment(false)
-                  setSelectedSegment(null)
-                  setSegmentForm({ name: '', description: '', criteria: [] })
-                }}
-                className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    if (!segmentForm.name.trim()) return alert('Segment name is required')
-                    const payload = {
-                      name: segmentForm.name.trim(),
-                      description: segmentForm.description.trim(),
-                      criteria: segmentForm.criteria,
-                      is_active: true
-                    }
-                    if (selectedSegment) {
-                      await apiService.updateCustomerSegment(selectedSegment.id, payload)
-                    } else {
-                      await apiService.createCustomerSegment(payload)
-                    }
-                    await loadSegmentsData()
-                    setShowCreateSegment(false)
-                    setSelectedSegment(null)
-                    setSegmentForm({ name: '', description: '', criteria: [] })
-                  } catch (e) {
-                    alert('Failed to save segment')
-                  }
-                }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {selectedSegment ? 'Update Segment' : 'Create Segment'}
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-sm">
+                  <span className="text-slate-600 dark:text-slate-400">Cart discount %</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2"
+                    value={form.discount_percent}
+                    onChange={(e) => setForm((f) => ({ ...f, discount_percent: Number(e.target.value) }))}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="text-slate-600 dark:text-slate-400">Tier priority</span>
+                  <input
+                    type="number"
+                    className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2"
+                    value={form.tier_priority}
+                    onChange={(e) => setForm((f) => ({ ...f, tier_priority: Number(e.target.value) }))}
+                  />
+                  <span className="text-xs text-slate-500">Higher wins when multiple match</span>
+                </label>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+                />
+                <span className="text-slate-700 dark:text-slate-300">Active</span>
+              </label>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  className="flex-1 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600"
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingId(null)
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => void saveTier()}
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Customer Segmentation Best Practices */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
-        <h2 className="text-2xl font-bold mb-4">Customer Segmentation Best Practices</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span className="text-xl font-bold">1</span>
-            </div>
-            <h3 className="font-semibold mb-2">Define Clear Criteria</h3>
-            <p className="text-sm opacity-90">
-              Use specific, measurable criteria to create meaningful customer segments.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span className="text-xl font-bold">2</span>
-            </div>
-            <h3 className="font-semibold mb-2">Regular Updates</h3>
-            <p className="text-sm opacity-90">
-              Regularly update segments based on changing customer behavior and preferences.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span className="text-xl font-bold">3</span>
-            </div>
-            <h3 className="font-semibold mb-2">Personalized Marketing</h3>
-            <p className="text-sm opacity-90">
-              Use segments to deliver personalized marketing messages and offers.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

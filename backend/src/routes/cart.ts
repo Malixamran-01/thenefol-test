@@ -9,6 +9,11 @@ import { WhatsAppService } from '../services/whatsappService'
 import { verifyOtp } from '../services/otpService'
 import { sendWhatsAppTemplate, TemplateVariable } from '../utils/whatsappTemplateHelper'
 import { generateUniqueUserId } from '../utils/generateUserId'
+import {
+  computeSegmentDiscountAmount,
+  getSegmentDiscountPercentForUser,
+  resolveBestSegmentForUser,
+} from '../services/customerSegmentService'
 
 const SALT_ROUNDS = 10
 
@@ -39,6 +44,7 @@ export async function getCart(pool: Pool, req: Request, res: Response) {
     `, [userId])
     
     // Transform the data to match frontend expectations
+    let subtotalForSegment = 0
     const transformedRows = rows.map((row: any) => {
       const details = row.details || {}
       let finalPrice = row.price
@@ -51,6 +57,9 @@ export async function getCart(pool: Pool, req: Request, res: Response) {
       // Ensure MRP is properly extracted and converted to string
       const mrpValue = details.mrp || null
       
+      const line = parseFloat(String(finalPrice)) || 0
+      subtotalForSegment += line * (Number(row.quantity) || 1)
+
       return {
         id: row.id,
         product_id: row.product_id,
@@ -69,8 +78,24 @@ export async function getCart(pool: Pool, req: Request, res: Response) {
         updated_at: row.updated_at
       }
     })
-    
-    sendSuccess(res, transformedRows)
+
+    const uid = Number(userId)
+    const pct = Number.isFinite(uid) && uid > 0 ? await getSegmentDiscountPercentForUser(pool, uid) : 0
+    const seg = Number.isFinite(uid) && uid > 0 ? await resolveBestSegmentForUser(pool, uid) : null
+    const segmentDiscountAmount = computeSegmentDiscountAmount(Math.round(subtotalForSegment), pct)
+
+    sendSuccess(res, {
+      items: transformedRows,
+      segment_pricing: {
+        segment_id: seg?.id ?? null,
+        segment_name: seg?.name ?? null,
+        discount_percent: pct,
+        discount_amount: segmentDiscountAmount,
+        /** Rules reminder for UI */
+        min_lifetime_spend: seg != null ? Number(seg.min_lifetime_spend) : null,
+        min_orders: seg != null ? Number(seg.min_orders) : null,
+      },
+    })
   } catch (err) {
     sendError(res, 500, 'Failed to fetch cart', err)
   }

@@ -350,12 +350,41 @@ export const productsAPI = {
 }
 
 // Cart API (Backend Integration)
+export type CartSegmentPricing = {
+  segment_id: number | null
+  segment_name: string | null
+  discount_percent: number
+  discount_amount: number
+  min_lifetime_spend: number | null
+  min_orders: number | null
+}
+
+export type CartResponse = {
+  items: any[]
+  segment_pricing: CartSegmentPricing | null
+}
+
+function normalizeCartResponse(raw: unknown): CartResponse {
+  if (Array.isArray(raw)) {
+    return { items: raw, segment_pricing: null }
+  }
+  if (raw && typeof raw === 'object' && Array.isArray((raw as CartResponse).items)) {
+    const o = raw as CartResponse
+    return {
+      items: o.items,
+      segment_pricing: o.segment_pricing ?? null,
+    }
+  }
+  return { items: [], segment_pricing: null }
+}
+
 export const cartAPI = {
-  async getCart() {
+  async getCart(): Promise<CartResponse> {
     const response = await fetch(`${getApiBaseUrl()}/api/cart`, {
       headers: getAuthHeaders()
     })
-    return handleResponse(response)
+    const data = await handleResponse(response)
+    return normalizeCartResponse(data)
   },
 
   async addToCart(productId: number, quantity: number = 1) {
@@ -469,6 +498,9 @@ export const ordersAPI = {
     discount_amount?: number
     coins_used?: number
     billing_address?: any
+    /** Informational; server recomputes from logged-in user + subtotal */
+    segment_discount?: number
+    customer_segment_label?: string | null
   }) {
     const response = await fetch(`${getApiBaseUrl()}/api/orders`, {
       method: 'POST',

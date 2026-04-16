@@ -598,6 +598,16 @@ export async function ensureSchema(pool: Pool) {
       end if;
     end $$;
     
+    do $$
+    begin
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'orders' and column_name = 'segment_discount') then
+        alter table orders add column segment_discount numeric(12,2) not null default 0;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'orders' and column_name = 'customer_segment_label') then
+        alter table orders add column customer_segment_label text;
+      end if;
+    end $$;
+    
     -- Add tracking column to orders table for WhatsApp notifications
     do $$ 
     begin
@@ -1573,9 +1583,42 @@ export async function ensureSchema(pool: Pool) {
       description text,
       criteria jsonb default '{}'::jsonb,
       customer_count integer default 0,
+      min_lifetime_spend numeric(14,2) not null default 0,
+      min_orders integer not null default 0,
+      discount_percent numeric(5,2) not null default 0,
+      tier_priority integer not null default 0,
+      is_active boolean not null default true,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
+    
+    do $$
+    begin
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'customer_segments' and column_name = 'min_lifetime_spend') then
+        alter table customer_segments add column min_lifetime_spend numeric(14,2) not null default 0;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'customer_segments' and column_name = 'min_orders') then
+        alter table customer_segments add column min_orders integer not null default 0;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'customer_segments' and column_name = 'discount_percent') then
+        alter table customer_segments add column discount_percent numeric(5,2) not null default 0;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'customer_segments' and column_name = 'tier_priority') then
+        alter table customer_segments add column tier_priority integer not null default 0;
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'customer_segments' and column_name = 'is_active') then
+        alter table customer_segments add column is_active boolean not null default true;
+      end if;
+    end $$;
+    
+    insert into customer_segments (name, description, criteria, min_lifetime_spend, min_orders, discount_percent, tier_priority, is_active, customer_count)
+    select * from (values
+      ('VIP', 'Lifetime spend ₹5,000+ — best loyalty pricing', '{}'::jsonb, 5000::numeric, 1, 12::numeric, 100, true, 0),
+      ('Loyal', 'Spend ₹1,500+ with 2+ orders', '{}'::jsonb, 1500::numeric, 2, 6::numeric, 60, true, 0),
+      ('Returning', 'At least one completed order', '{}'::jsonb, 0::numeric, 1, 3::numeric, 30, true, 0),
+      ('Welcome', 'All customers (base tier)', '{}'::jsonb, 0::numeric, 0, 0::numeric, 0, true, 0)
+    ) as v(name, description, criteria, min_lifetime_spend, min_orders, discount_percent, tier_priority, is_active, customer_count)
+    where not exists (select 1 from customer_segments limit 1);
     
     create table if not exists customer_journeys (
       id serial primary key,
