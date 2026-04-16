@@ -81,7 +81,7 @@ export default function FacebookInstagram() {
   const loadDashboard = useCallback(async () => {
     try {
       setError('')
-      const res = await fetch(`${apiBase}/api/admin/instagram/dashboard`, { headers: authHeaders() })
+      const res = await fetch(`${apiBase}/admin/instagram/dashboard`, { headers: authHeaders() })
       if (!res.ok) {
         const t = await res.text()
         throw new Error(t || `HTTP ${res.status}`)
@@ -123,13 +123,13 @@ export default function FacebookInstagram() {
       setError('Please sign in to the admin panel with a staff account, then try again.')
       return
     }
-    window.location.href = `${apiBase}/api/admin/instagram/connect?token=${encodeURIComponent(token)}`
+    window.location.href = `${apiBase}/admin/instagram/connect?token=${encodeURIComponent(token)}`
   }
 
   const disconnect = async () => {
     if (!confirm('Disconnect the brand Instagram account from the admin panel?')) return
     try {
-      const res = await fetch(`${apiBase}/api/admin/instagram/disconnect`, {
+      const res = await fetch(`${apiBase}/admin/instagram/disconnect`, {
         method: 'POST',
         headers: authHeaders(),
       })
