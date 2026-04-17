@@ -1,10 +1,7 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import {
-  getMetaAdsAccessTokenFromEnv,
-  getMetaAdsAppId,
-  getMetaAdsPixelId,
-} from '../config/metaAdsEnv'
+import { getMetaAdsAccessTokenFromEnv, getMetaAdsAppId, getMetaAdsPixelId } from '../config/metaAdsEnv'
+import { getMetaGraphAccessToken } from '../utils/metaAccessToken'
 import { sendError, sendSuccess } from '../utils/apiHelpers'
 
 // Meta Marketing API base URL
@@ -18,30 +15,7 @@ function normalizeAdAccountId(id: string | null | undefined): string | null {
   return t.startsWith('act_') ? t : `act_${t.replace(/^act_/i, '')}`
 }
 
-// Helper function to get Meta access token (Meta Ads config first, then Facebook catalog config, then env)
-async function getMetaAccessToken(pool: Pool): Promise<string | null> {
-  try {
-    const { rows } = await pool.query(`
-      SELECT access_token FROM meta_ads_config
-      WHERE access_token IS NOT NULL AND trim(access_token) <> ''
-      ORDER BY updated_at DESC NULLS LAST, created_at DESC
-      LIMIT 1
-    `)
-    if (rows[0]?.access_token) return rows[0].access_token
-  } catch {
-    /* table may not exist yet */
-  }
-  const envAdsToken = getMetaAdsAccessTokenFromEnv()
-  if (envAdsToken) return envAdsToken
-  try {
-    const { rows } = await pool.query(
-      'SELECT access_token FROM facebook_config ORDER BY created_at DESC LIMIT 1'
-    )
-    return rows[0]?.access_token || null
-  } catch {
-    return null
-  }
-}
+const getMetaAccessToken = getMetaGraphAccessToken
 
 // Helper function to get ad account ID
 async function getAdAccountId(pool: Pool): Promise<string | null> {

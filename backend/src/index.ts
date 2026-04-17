@@ -20,6 +20,7 @@ import * as amazonRoutes from './routes/amazon'
 import * as flipkartRoutes from './routes/flipkart'
 import * as facebookRoutes from './routes/facebook'
 import * as metaAdsRoutes from './routes/metaAds'
+import * as metaBusinessSuiteRoutes from './routes/metaBusinessSuite'
 import * as bulkRoutes from './routes/bulk'
 import * as staffRoutes from './routes/staff'
 import * as warehouseRoutes from './routes/warehouses'
@@ -962,6 +963,45 @@ app.get('/api/admin/instagram/reels', authenticateAndAttach as any, (req, res) =
 app.get('/api/admin/instagram/dashboard', authenticateAndAttach as any, (req, res) =>
   handleAdminBrandDashboard(pool, req, res)
 )
+
+// Meta Business Suite (Graph API — shared token with Meta Ads settings)
+app.get('/api/admin/meta-business/overview', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteOverview(pool, req, res)
+)
+app.get('/api/admin/meta-business/me', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteMe(pool, req, res)
+)
+app.get('/api/admin/meta-business/businesses', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteBusinesses(pool, req, res)
+)
+app.get('/api/admin/meta-business/pages', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suitePages(pool, req, res)
+)
+app.get('/api/admin/meta-business/page/:pageId', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suitePageDetail(pool, req, res)
+)
+app.get('/api/admin/meta-business/page/:pageId/conversations', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suitePageConversations(pool, req, res)
+)
+app.get('/api/admin/meta-business/instagram/:igUserId/media', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteIgMedia(pool, req, res)
+)
+app.get('/api/admin/meta-business/instagram/:igUserId/insights', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteIgInsights(pool, req, res)
+)
+app.get('/api/admin/meta-business/ad-account/:adAccountId', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteAdAccount(pool, req, res)
+)
+app.get('/api/admin/meta-business/ad-account/:adAccountId/pixels', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteAdPixels(pool, req, res)
+)
+app.get('/api/admin/meta-business/ad-account/:adAccountId/product-catalogs', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteProductCatalogs(pool, req, res)
+)
+app.get('/api/admin/meta-business/business/:businessId/owned-ad-accounts', authenticateAndAttach as any, (req, res) =>
+  metaBusinessSuiteRoutes.suiteBusinessOwnedAdAccounts(pool, req, res)
+)
+
 app.use('/api/platform', createPlatformRouter(pool))
 app.get('/api/admin/collab-applications', (req, res) => collabRoutes.getCollabApplications(pool, req, res))
 app.get('/api/admin/collab-applications/export.csv', (req, res) => collabRoutes.exportCollabApplications(pool, req, res))

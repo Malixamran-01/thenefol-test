@@ -9,7 +9,7 @@ import ToastProvider from './components/ToastProvider'
 import { socketService } from './services/socket'
 import { 
   Dashboard, Orders, UnifiedSalesDashboard, Customers, Users, Categories, Settings, Products,
-  Analytics, Marketing, MetaAds, WhatsAppSubscriptions, Discounts, FacebookInstagram, OnlineStore, GoogleYouTube, Forms,
+  Analytics, Marketing, MetaAds, MetaBusinessSuite, WhatsAppSubscriptions, Discounts, FacebookInstagram, OnlineStore, GoogleYouTube, Forms,
   Invoice, InvoiceSettings, Tax, Returns, Payment, UserProfiles, UserNotifications, LoyaltyProgramManagement,
   StaticPagesManagement, CommunityManagement, CartCheckoutManagement, AffiliateManagement, AffiliateRequests,
   CollabRequests,
@@ -221,6 +221,7 @@ export default function App() {
             {/* ========== MARKETING & COMMUNICATIONS ========== */}
             <Route path="marketing" element={<Marketing />} />
             <Route path="meta-ads" element={<MetaAds />} />
+            <Route path="meta-business" element={<MetaBusinessSuite />} />
             <Route path="discounts" element={<Discounts />} />
             <Route path="whatsapp-subscriptions" element={<WhatsAppSubscriptions />} />
             <Route path="whatsapp-notifications" element={<WhatsAppNotifications />} />
