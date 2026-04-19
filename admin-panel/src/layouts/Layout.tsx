@@ -80,8 +80,16 @@ const Layout = () => {
         { name: 'Product Collections', href: '/admin/product-collections', icon: '🎁', badge: 'NEW', current: location.pathname === '/admin/product-collections' },
         { name: 'Marketplaces', href: '/admin/marketplaces', icon: '🌐', badge: 'NEW', current: location.pathname === '/admin/marketplaces' },
         { name: 'FB Shop Integration', href: '/admin/fb-shop', icon: '🛒', badge: 'NEW', current: location.pathname === '/admin/fb-shop' },
-        { name: 'Meta Ads', href: '/admin/meta-ads', icon: '📘', badge: 'NEW', current: location.pathname === '/admin/meta-ads' },
-        { name: 'Meta Business', href: '/admin/meta-business', icon: '🏢', badge: 'NEW', current: location.pathname === '/admin/meta-business' },
+        {
+          name: 'Meta',
+          href: '/admin/meta',
+          icon: '📘',
+          badge: 'NEW',
+          current:
+            location.pathname === '/admin/meta' ||
+            location.pathname === '/admin/meta-ads' ||
+            location.pathname === '/admin/meta-business',
+        },
         { name: 'Google & YouTube', href: '/admin/google', icon: '🔍', current: location.pathname === '/admin/google' },
         { name: 'Facebook & Instagram', href: '/admin/facebook', icon: '📘', current: location.pathname === '/admin/facebook' },
         { name: 'Loyalty Program', href: '/admin/loyalty-program', icon: '⭐', current: location.pathname === '/admin/loyalty-program' },

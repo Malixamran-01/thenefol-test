@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Building2,
   LayoutGrid,
@@ -163,7 +163,10 @@ const DOC_LINKS: { title: string; href: string; blurb: string }[] = [
   },
 ]
 
-export default function MetaBusinessSuite() {
+type MetaBusinessSuiteProps = { embedded?: boolean }
+
+export default function MetaBusinessSuite({ embedded = false }: MetaBusinessSuiteProps) {
+  const [searchParams] = useSearchParams()
   const [section, setSection] = useState<SectionId>('overview')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -206,6 +209,13 @@ export default function MetaBusinessSuite() {
   useEffect(() => {
     if (section === 'overview') loadOverview()
   }, [section, loadOverview])
+
+  useEffect(() => {
+    const s = searchParams.get('section')
+    if (s && SECTIONS.some((x) => x.id === s)) {
+      setSection(s as SectionId)
+    }
+  }, [searchParams])
 
   const loadBusinesses = async () => {
     setLoading(true)
@@ -295,10 +305,12 @@ export default function MetaBusinessSuite() {
 
   return (
     <div
-      className="min-h-screen bg-[var(--arctic-blue-background,#F4F9F9)] dark:bg-gray-950"
+      className={`${embedded ? 'min-h-0' : 'min-h-screen'} bg-[var(--arctic-blue-background,#F4F9F9)] dark:bg-gray-950`}
       style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}
     >
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-8 lg:flex-row lg:gap-8">
+      <div
+        className={`mx-auto flex max-w-[1600px] flex-col gap-6 px-4 ${embedded ? 'py-4' : 'py-8'} lg:flex-row lg:gap-8`}
+      >
         {/* Side nav */}
         <aside className="w-full shrink-0 lg:w-64">
           <div
@@ -306,16 +318,18 @@ export default function MetaBusinessSuite() {
             style={{ fontFamily: 'var(--font-heading-family, serif)' }}
           >
             <h1 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-              Meta Business
+              Business Suite
             </h1>
             <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              Graph user token (<code className="rounded bg-gray-100 px-0.5 dark:bg-gray-800">META_GRAPH_ACCESS_TOKEN</code>)
-              for overview and Pages; Page token (<code className="rounded bg-gray-100 px-0.5 dark:bg-gray-800">META_PAGE_ACCESS_TOKEN</code>)
-              for inbox. Shared app context with{' '}
-              <Link to="/admin/meta-ads" className="text-cyan-700 underline dark:text-cyan-400">
-                Meta Ads
-              </Link>
-              .
+              Uses your Meta access token (e.g. long-lived system user in{' '}
+              <code className="rounded bg-gray-100 px-0.5 dark:bg-gray-800">META_GRAPH_ACCESS_TOKEN</code>) for Graph user
+              endpoints. Inbox may also use{' '}
+              <code className="rounded bg-gray-100 px-0.5 dark:bg-gray-800">META_PAGE_ACCESS_TOKEN</code> when required.
+              Open{' '}
+              <Link to="/admin/meta?view=ads" className="text-cyan-700 underline dark:text-cyan-400">
+                Ads manager
+              </Link>{' '}
+              from the Meta hub.
             </p>
             <nav className="mt-4 space-y-1" aria-label="Business Suite sections">
               {SECTIONS.map((s) => {
@@ -345,11 +359,18 @@ export default function MetaBusinessSuite() {
               <p className="text-[11px] text-gray-500">Shortcuts</p>
               <div className="mt-2 flex flex-col gap-1.5 text-xs">
                 <Link
-                  to="/admin/meta-ads"
+                  to="/admin/meta?view=ads"
                   className="inline-flex items-center gap-1 text-cyan-700 hover:underline dark:text-cyan-400"
                 >
                   <Megaphone className="h-3.5 w-3.5" />
                   Ads campaigns
+                </Link>
+                <Link
+                  to="/admin/meta?view=home"
+                  className="inline-flex items-center gap-1 text-cyan-700 hover:underline dark:text-cyan-400"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Meta dashboard
                 </Link>
                 <Link
                   to="/admin/facebook"
@@ -410,11 +431,13 @@ export default function MetaBusinessSuite() {
                   <p className="mt-2 text-xs text-gray-500">From server env (META_ADS_APP_ID)</p>
                 </div>
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/80">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Graph user token</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Meta access token</p>
                   <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
                     {overview?.token_configured ? 'Configured' : 'Missing'}
                   </p>
-                  <p className="mt-2 text-xs text-gray-500">META_GRAPH_ACCESS_TOKEN (or DB / Meta Ads settings)</p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    System user / long-lived token via META_GRAPH_ACCESS_TOKEN (same as Ads)
+                  </p>
                 </div>
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/80">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Page token</p>
@@ -424,7 +447,7 @@ export default function MetaBusinessSuite() {
                   <p className="mt-2 text-xs text-gray-500">META_PAGE_ACCESS_TOKEN — inbox / Page API</p>
                 </div>
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/80">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Graph user</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Token identity (me)</p>
                   <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{overview?.me?.name || '—'}</p>
                   <p className="mt-1 font-mono text-xs text-gray-500">{overview?.me?.id}</p>
                 </div>
@@ -715,8 +738,8 @@ export default function MetaBusinessSuite() {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Uses Marketing API objects tied to <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">act_…</code>
                 . Full campaign editing lives in{' '}
-                <Link to="/admin/meta-ads" className="text-cyan-700 underline dark:text-cyan-400">
-                  Meta Ads
+                <Link to="/admin/meta?view=ads" className="text-cyan-700 underline dark:text-cyan-400">
+                  Ads manager
                 </Link>
                 .
               </p>

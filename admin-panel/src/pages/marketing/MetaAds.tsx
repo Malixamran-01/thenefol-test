@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Plus,
   Trash2,
@@ -124,7 +125,9 @@ interface AudienceRow {
 
 type TabId = 'overview' | 'campaigns' | 'adsets' | 'ads' | 'insights' | 'audiences'
 
-export default function MetaAds() {
+type MetaAdsProps = { embeddedInHub?: boolean }
+
+export default function MetaAds({ embeddedInHub = false }: MetaAdsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [adsets, setAdsets] = useState<AdSet[]>([])
@@ -498,41 +501,83 @@ export default function MetaAds() {
 
   return (
     <div className="space-y-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
-      <div className="admin-page-header">
-        <div>
-          <h1
-            className="text-xl sm:text-2xl md:text-3xl font-light mb-2 tracking-[0.06em] sm:tracking-[0.1em] md:tracking-[0.15em]"
-            style={{
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
-            }}
-          >
-            Meta Ads
-          </h1>
-          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)' }}>
-            Marketing API: campaigns, ad sets, ads, insights, and audiences
-          </p>
+      {embeddedInHub ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Ads manager</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Same token as the Meta hub — system user / long-lived access with{' '}
+              <code className="rounded bg-gray-100 px-1 text-xs dark:bg-gray-800">ads_read</code> &amp;{' '}
+              <code className="rounded bg-gray-100 px-1 text-xs dark:bg-gray-800">ads_management</code>.
+            </p>
+            <Link
+              to="/admin/meta?view=home"
+              className="mt-1 inline-block text-sm text-cyan-700 underline dark:text-cyan-400"
+            >
+              ← Meta dashboard
+            </Link>
+          </div>
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setShowConfigModal(true)}
+              className="btn-secondary flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto"
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              <span>Settings</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => postSync('/sync/all', 'Syncing from Meta…')}
+              disabled={!!busy}
+              className="btn-primary flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto"
+            >
+              <CloudDownload className="h-4 w-4 shrink-0" />
+              <span>Sync all from Meta</span>
+            </button>
+          </div>
         </div>
-        <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <button
-            type="button"
-            onClick={() => setShowConfigModal(true)}
-            className="btn-secondary flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto"
-          >
-            <Settings className="h-4 w-4 shrink-0" />
-            <span>Settings</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => postSync('/sync/all', 'Syncing from Meta…')}
-            disabled={!!busy}
-            className="btn-primary flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto"
-          >
-            <CloudDownload className="h-4 w-4 shrink-0" />
-            <span>Sync all from Meta</span>
-          </button>
+      ) : (
+        <div className="admin-page-header">
+          <div>
+            <h1
+              className="text-xl sm:text-2xl md:text-3xl font-light mb-2 tracking-[0.06em] sm:tracking-[0.1em] md:tracking-[0.15em]"
+              style={{
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
+              }}
+            >
+              Meta Ads
+            </h1>
+            <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)' }}>
+              Marketing API: campaigns, ad sets, ads, insights, and audiences — also available under{' '}
+              <Link to="/admin/meta?view=ads" className="underline">
+                Meta hub
+              </Link>
+              .
+            </p>
+          </div>
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setShowConfigModal(true)}
+              className="btn-secondary flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto"
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              <span>Settings</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => postSync('/sync/all', 'Syncing from Meta…')}
+              disabled={!!busy}
+              className="btn-primary flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto"
+            >
+              <CloudDownload className="h-4 w-4 shrink-0" />
+              <span>Sync all from Meta</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {busy && (
         <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-100">

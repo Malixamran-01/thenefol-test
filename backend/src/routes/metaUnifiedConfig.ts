@@ -50,9 +50,17 @@ export async function getMetaUnifiedStatus(pool: Pool, _req: Request, res: Respo
     }
 
     const d = debug?.data
+    const expRaw = d?.expires_at
+    const expiresAtIso =
+      expRaw != null && Number(expRaw) > 0 ? new Date(Number(expRaw) * 1000).toISOString() : null
     payload.debug = {
       is_valid: d?.is_valid ?? null,
-      expires_at: d?.expires_at ? new Date(d.expires_at * 1000).toISOString() : null,
+      /** null when token does not expire (e.g. some system user tokens) or missing */
+      expires_at: expiresAtIso,
+      /** Raw Graph value: 0 often means no expiry */
+      expires_at_raw: expRaw ?? null,
+      /** e.g. USER, PAGE, SYSTEM_USER — depends on Meta debug_token payload */
+      type: d?.type ?? null,
       scopes: d?.scopes ?? null,
       granular_scopes: d?.granular_scopes ?? null,
       user_id: d?.user_id ?? null,

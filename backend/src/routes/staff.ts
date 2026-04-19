@@ -731,7 +731,7 @@ export async function listAdminPanelPages(pool: Pool, req: Request, res: Respons
       { path: '/admin/product-collections', name: 'Product Collections', section: 'Dashboard' },
       { path: '/admin/marketplaces', name: 'Marketplaces', section: 'Dashboard' },
       { path: '/admin/fb-shop', name: 'FB Shop Integration', section: 'Dashboard' },
-      { path: '/admin/meta-ads', name: 'Meta Ads', section: 'Dashboard' },
+      { path: '/admin/meta', name: 'Meta (Business & Ads)', section: 'Dashboard' },
       { path: '/admin/google', name: 'Google & YouTube', section: 'Dashboard' },
       { path: '/admin/facebook', name: 'Facebook & Instagram', section: 'Dashboard' },
       { path: '/admin/loyalty-program', name: 'Loyalty Program', section: 'Dashboard' },
