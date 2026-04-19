@@ -20,6 +20,7 @@ import { getApiBaseUrl } from '../../utils/apiUrl'
 
 const apiBase = getApiBaseUrl()
 const meta = (path: string) => `${apiBase}/meta-ads${path.startsWith('/') ? path : `/${path}`}`
+const metaAdmin = (path: string) => `${apiBase}/admin/meta${path.startsWith('/') ? path : `/${path}`}`
 
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem('auth_token')
@@ -145,7 +146,18 @@ export default function MetaAds() {
     access_token: '',
     access_token_set: false,
     meta_app_id: '',
+    meta_fb_page_id: '',
+    meta_use_env_only: false,
+    token_source: '' as string,
   })
+  const [tokenStatus, setTokenStatus] = useState<{
+    debug?: {
+      expires_at?: string | null
+      scopes?: string[] | null
+      is_valid?: boolean | null
+    } | null
+    token_source_hint?: string
+  } | null>(null)
   const [adsetFilterCampaign, setAdsetFilterCampaign] = useState('')
   const [insightStart, setInsightStart] = useState(() => {
     const d = new Date()
@@ -207,9 +219,33 @@ export default function MetaAds() {
         access_token: '',
         access_token_set: Boolean(data.access_token_set),
         meta_app_id: String(data.meta_app_id || ''),
+        meta_fb_page_id: String(data.meta_fb_page_id || ''),
+        meta_use_env_only: Boolean(data.meta_use_env_only),
+        token_source: String(data.token_source || ''),
       })
     } catch (err) {
       console.error('Failed to load config:', err)
+    }
+  }, [])
+
+  const loadTokenStatus = useCallback(async () => {
+    try {
+      const res = await fetch(metaAdmin('/config/status'), { headers: authHeaders() })
+      const raw = (await parseJson(res)) as Record<string, unknown>
+      if (!res.ok) {
+        setTokenStatus(null)
+        return
+      }
+      setTokenStatus({
+        debug: raw.debug as {
+          expires_at?: string | null
+          scopes?: string[] | null
+          is_valid?: boolean | null
+        } | null,
+        token_source_hint: String(raw.token_source_hint || ''),
+      })
+    } catch {
+      setTokenStatus(null)
     }
   }, [])
 
@@ -235,6 +271,7 @@ export default function MetaAds() {
 
       if (activeTab === 'overview') {
         await loadConfig()
+        await loadTokenStatus()
         await loadAdAccounts()
         return
       }
@@ -262,7 +299,7 @@ export default function MetaAds() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, loadAdAccounts, loadConfig])
+  }, [activeTab, loadAdAccounts, loadConfig, loadTokenStatus])
 
   useEffect(() => {
     loadTabData()
@@ -586,6 +623,38 @@ export default function MetaAds() {
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                   Pixel ID: {config.pixel_id || '—'}
                 </p>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                  Facebook Page ID (env):{' '}
+                  <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-900">
+                    {config.meta_fb_page_id || '—'}
+                  </code>
+                </p>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                  Token source:{' '}
+                  <span className="font-medium">
+                    {config.token_source === 'env'
+                      ? '.env (META_GRAPH_ACCESS_TOKEN)'
+                      : config.token_source === 'database'
+                        ? 'Database (admin save)'
+                        : config.token_source || '—'}
+                  </span>
+                </p>
+                {config.meta_use_env_only && (
+                  <p className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                    META_USE_ENV_ONLY: settings form is disabled — change backend .env only.
+                  </p>
+                )}
+                {tokenStatus?.debug?.expires_at && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Token expires (approx):{' '}
+                    {new Date(tokenStatus.debug.expires_at).toLocaleString()}
+                  </p>
+                )}
+                {tokenStatus?.debug?.scopes && tokenStatus.debug.scopes.length > 0 && (
+                  <p className="mt-1 text-[11px] leading-snug text-gray-500">
+                    Scopes: {tokenStatus.debug.scopes.join(', ')}
+                  </p>
+                )}
                 {lastFullSync && (
                   <p className="mt-3 text-xs text-gray-500">Last full sync: {new Date(lastFullSync).toLocaleString()}</p>
                 )}
@@ -1258,6 +1327,13 @@ export default function MetaAds() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
             <h2 className="mb-4 text-xl font-semibold dark:text-gray-100">Meta Ads settings</h2>
+            {config.meta_use_env_only ? (
+              <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                <strong>META_USE_ENV_ONLY</strong> is on. Edit <code className="text-xs">META_GRAPH_ACCESS_TOKEN</code>,{' '}
+                <code className="text-xs">META_AD_ACCOUNT_ID</code>, <code className="text-xs">META_FB_PAGE_ID</code> in{' '}
+                <code className="text-xs">backend/.env</code> and restart the server.
+              </p>
+            ) : null}
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium">Ad account ID</label>
@@ -1265,7 +1341,8 @@ export default function MetaAds() {
                   value={config.ad_account_id}
                   onChange={(e) => setConfig({ ...config, ad_account_id: e.target.value })}
                   placeholder="act_123456789"
-                  className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-800"
+                  disabled={config.meta_use_env_only}
+                  className="w-full rounded-lg border px-3 py-2 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800"
                 />
               </div>
               <div>
@@ -1273,7 +1350,8 @@ export default function MetaAds() {
                 <input
                   value={config.pixel_id}
                   onChange={(e) => setConfig({ ...config, pixel_id: e.target.value })}
-                  className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-800"
+                  disabled={config.meta_use_env_only}
+                  className="w-full rounded-lg border px-3 py-2 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800"
                 />
               </div>
               <div>
@@ -1287,7 +1365,8 @@ export default function MetaAds() {
                   value={config.access_token}
                   onChange={(e) => setConfig({ ...config, access_token: e.target.value })}
                   placeholder={config.access_token_set ? '•••••••• (leave blank to keep)' : 'Paste token'}
-                  className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-800"
+                  disabled={config.meta_use_env_only}
+                  className="w-full rounded-lg border px-3 py-2 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -1298,7 +1377,12 @@ export default function MetaAds() {
                 >
                   Cancel
                 </button>
-                <button type="button" className="rounded-lg bg-cyan-600 px-4 py-2 text-white" onClick={saveConfig}>
+                <button
+                  type="button"
+                  className="rounded-lg bg-cyan-600 px-4 py-2 text-white disabled:opacity-50"
+                  disabled={config.meta_use_env_only}
+                  onClick={saveConfig}
+                >
                   Save
                 </button>
               </div>

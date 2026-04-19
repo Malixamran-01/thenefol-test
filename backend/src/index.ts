@@ -21,6 +21,7 @@ import * as flipkartRoutes from './routes/flipkart'
 import * as facebookRoutes from './routes/facebook'
 import * as metaAdsRoutes from './routes/metaAds'
 import * as metaBusinessSuiteRoutes from './routes/metaBusinessSuite'
+import * as metaUnifiedConfigRoutes from './routes/metaUnifiedConfig'
 import * as bulkRoutes from './routes/bulk'
 import * as staffRoutes from './routes/staff'
 import * as warehouseRoutes from './routes/warehouses'
@@ -1000,6 +1001,14 @@ app.get('/api/admin/meta-business/ad-account/:adAccountId/product-catalogs', aut
 )
 app.get('/api/admin/meta-business/business/:businessId/owned-ad-accounts', authenticateAndAttach as any, (req, res) =>
   metaBusinessSuiteRoutes.suiteBusinessOwnedAdAccounts(pool, req, res)
+)
+
+// Unified Meta .env config — status + long-lived exchange
+app.get('/api/admin/meta/config/status', authenticateAndAttach as any, (req, res) =>
+  metaUnifiedConfigRoutes.getMetaUnifiedStatus(pool, req, res)
+)
+app.post('/api/admin/meta/token/exchange', authenticateAndAttach as any, (req, res) =>
+  metaUnifiedConfigRoutes.postMetaTokenExchange(pool, req, res)
 )
 
 app.use('/api/platform', createPlatformRouter(pool))
@@ -5520,6 +5529,15 @@ cron.schedule('0 2 * * *', async () => {
     await refreshExpiringTokens(pool)
   } catch (err) {
     console.error('IG token refresh cron failed:', err)
+  }
+})
+
+// Meta Graph long-lived token health (logs expiry ~60d tokens)
+cron.schedule('0 4 * * *', async () => {
+  try {
+    await metaUnifiedConfigRoutes.runMetaTokenHealthCheck(pool)
+  } catch (err) {
+    console.error('Meta token health cron failed:', err)
   }
 })
 

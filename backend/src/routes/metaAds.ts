@@ -1,6 +1,13 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import { getMetaAdsAccessTokenFromEnv, getMetaAdsAppId, getMetaAdsPixelId } from '../config/metaAdsEnv'
+import {
+  getMetaAdsAppId,
+  getMetaAdsPixelId,
+  getMetaAdAccountIdFromEnv,
+  getMetaFbPageIdFromEnv,
+  getMetaUnifiedAccessTokenFromEnv,
+  isMetaEnvOnlyMode,
+} from '../config/metaAdsEnv'
 import { getMetaGraphAccessToken } from '../utils/metaAccessToken'
 import { sendError, sendSuccess } from '../utils/apiHelpers'
 
@@ -17,8 +24,10 @@ function normalizeAdAccountId(id: string | null | undefined): string | null {
 
 const getMetaAccessToken = getMetaGraphAccessToken
 
-// Helper function to get ad account ID
+// Helper function to get ad account ID (env META_AD_ACCOUNT_ID wins when set)
 async function getAdAccountId(pool: Pool): Promise<string | null> {
+  const envAd = normalizeAdAccountId(getMetaAdAccountIdFromEnv() || null)
+  if (envAd) return envAd
   try {
     const { rows } = await pool.query(
       'SELECT ad_account_id FROM meta_ads_config ORDER BY updated_at DESC NULLS LAST LIMIT 1'
@@ -33,9 +42,9 @@ async function getAdAccountId(pool: Pool): Promise<string | null> {
       'SELECT value FROM facebook_field_mapping WHERE key = $1',
       ['ad_account_id']
     )
-    return normalizeAdAccountId(rows[0]?.value) || process.env.META_AD_ACCOUNT_ID || null
+    return normalizeAdAccountId(rows[0]?.value) || null
   } catch {
-    return normalizeAdAccountId(process.env.META_AD_ACCOUNT_ID) || null
+    return null
   }
 }
 
@@ -46,7 +55,7 @@ async function callMetaAPI(
   body?: any,
   accessToken?: string
 ): Promise<any> {
-  const token = accessToken || getMetaAdsAccessTokenFromEnv()
+  const token = accessToken || getMetaUnifiedAccessTokenFromEnv()
   if (!token) {
     throw new Error('Meta access token not configured')
   }
@@ -103,7 +112,7 @@ async function callMetaAPI(
 }
 
 // Ensure database tables exist
-async function ensureTables(pool: Pool) {
+export async function ensureTables(pool: Pool) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS meta_ads_config (
       id SERIAL PRIMARY KEY,
@@ -206,6 +215,13 @@ async function ensureTables(pool: Pool) {
 export async function saveAdsConfig(pool: Pool, req: Request, res: Response) {
   try {
     await ensureTables(pool)
+    if (isMetaEnvOnlyMode()) {
+      return sendError(
+        res,
+        400,
+        'META_USE_ENV_ONLY is enabled: ad account, page ID, and token must be set in .env only. Disable META_USE_ENV_ONLY or remove it to use Admin → Meta Ads settings.'
+      )
+    }
     const { ad_account_id, pixel_id, access_token } = req.body || {}
 
     if (!ad_account_id || typeof ad_account_id !== 'string') {
@@ -256,19 +272,20 @@ export async function getAdsConfig(pool: Pool, req: Request, res: Response) {
     const row = rows[0]
     const defaultPixel = getMetaAdsPixelId() || ''
     const metaAppId = getMetaAdsAppId() || ''
-    if (!row) {
-      return sendSuccess(res, {
-        ad_account_id: '',
-        pixel_id: defaultPixel,
-        access_token_set: false,
-        meta_app_id: metaAppId,
-      })
-    }
-    sendSuccess(res, {
-      ad_account_id: row.ad_account_id || '',
-      pixel_id: (row.pixel_id && String(row.pixel_id).trim()) || defaultPixel,
-      access_token_set: !!(row.access_token && String(row.access_token).trim()),
+    const envPage = getMetaFbPageIdFromEnv() || ''
+    const envAd = getMetaAdAccountIdFromEnv() || ''
+    const envTok = !!getMetaUnifiedAccessTokenFromEnv()
+    const dbTok = !!(row?.access_token && String(row.access_token).trim())
+    const accessTokenSet = envTok || dbTok
+
+    return sendSuccess(res, {
+      ad_account_id: envAd || row?.ad_account_id || '',
+      pixel_id: (row?.pixel_id && String(row.pixel_id).trim()) || defaultPixel,
+      access_token_set: accessTokenSet,
       meta_app_id: metaAppId,
+      meta_fb_page_id: envPage,
+      meta_use_env_only: isMetaEnvOnlyMode(),
+      token_source: envTok ? 'env' : dbTok ? 'database' : 'none',
     })
   } catch (err: any) {
     sendError(res, 500, 'Failed to get Meta Ads config', err)

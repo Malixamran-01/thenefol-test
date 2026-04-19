@@ -1,11 +1,21 @@
 import { Pool } from 'pg'
-import { getMetaAdsAccessTokenFromEnv } from '../config/metaAdsEnv'
+import { getMetaUnifiedAccessTokenFromEnv, isMetaEnvOnlyMode } from '../config/metaAdsEnv'
 
 /**
- * Access token for Meta Graph API calls (Marketing API, Pages, Instagram Graph, etc.):
- * meta_ads_config → META_ADS_ACCESS_TOKEN → facebook_config (legacy catalog).
+ * Access token for Meta Graph API calls (Marketing API, Pages, Instagram Graph, etc.).
+ *
+ * Resolution order:
+ * 1. META_USE_ENV_ONLY=1 → only META_GRAPH_ACCESS_TOKEN / META_ADS_ACCESS_TOKEN
+ * 2. Else if META_GRAPH_ACCESS_TOKEN or META_ADS_ACCESS_TOKEN is set → env wins over DB (single .env source)
+ * 3. Else meta_ads_config (admin UI)
+ * 4. Else facebook_config (legacy catalog)
  */
 export async function getMetaGraphAccessToken(pool: Pool): Promise<string | null> {
+  const envTok = getMetaUnifiedAccessTokenFromEnv()
+  if (isMetaEnvOnlyMode()) {
+    return envTok || null
+  }
+  if (envTok) return envTok
   try {
     const { rows } = await pool.query(`
       SELECT access_token FROM meta_ads_config
@@ -17,8 +27,8 @@ export async function getMetaGraphAccessToken(pool: Pool): Promise<string | null
   } catch {
     /* table may not exist yet */
   }
-  const envAdsToken = getMetaAdsAccessTokenFromEnv()
-  if (envAdsToken) return envAdsToken
+  const envAgain = getMetaUnifiedAccessTokenFromEnv()
+  if (envAgain) return envAgain
   try {
     const { rows } = await pool.query(
       'SELECT access_token FROM facebook_config ORDER BY created_at DESC LIMIT 1'
