@@ -8,6 +8,7 @@ import {
   getMetaAdsAppId,
   getMetaAdsPixelId,
   getMetaFbPageIdFromEnv,
+  getMetaPageAccessTokenFromEnv,
   getMetaUnifiedAccessTokenFromEnv,
   isMetaEnvOnlyMode,
 } from '../config/metaAdsEnv'
@@ -30,6 +31,7 @@ export async function getMetaUnifiedStatus(pool: Pool, _req: Request, res: Respo
       meta_fb_page_id: getMetaFbPageIdFromEnv() || null,
       meta_use_env_only: isMetaEnvOnlyMode(),
       env_token_set: !!getMetaUnifiedAccessTokenFromEnv(),
+      page_access_token_set: !!getMetaPageAccessTokenFromEnv(),
       token_resolved: !!token,
       token_source_hint: getMetaUnifiedAccessTokenFromEnv()
         ? 'env'

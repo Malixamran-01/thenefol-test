@@ -1,8 +1,9 @@
 /**
  * Meta unified config — one place in .env for Graph + Marketing + Page features:
  *
- *   META_GRAPH_ACCESS_TOKEN   (preferred) long-lived user token (~60 days)
- *   META_ADS_ACCESS_TOKEN     (alias)
+ *   META_GRAPH_ACCESS_TOKEN   (preferred) long-lived **user** token for Graph user context
+ *   META_ADS_ACCESS_TOKEN     (alias for the same user token)
+ *   META_PAGE_ACCESS_TOKEN    Page access token for Page-scoped calls (conversations / inbox). Never substitute user token.
  *   META_ADS_APP_ID / META_ADS_APP_SECRET
  *   META_AD_ACCOUNT_ID        act_… or digits
  *   META_FB_PAGE_ID           Facebook Page ID (Page / IG tools)
@@ -57,4 +58,9 @@ export function getMetaAdAccountIdFromEnv(): string | undefined {
 /** Facebook Page ID from env (Graph Page features, messaging, IG linkage). */
 export function getMetaFbPageIdFromEnv(): string | undefined {
   return trimEnv('META_FB_PAGE_ID')
+}
+
+/** Page access token from env — required for `/PAGE_ID/conversations` and other Page-as-user endpoints. */
+export function getMetaPageAccessTokenFromEnv(): string | undefined {
+  return trimEnv('META_PAGE_ACCESS_TOKEN')
 }

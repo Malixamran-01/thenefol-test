@@ -1,5 +1,9 @@
 import { Pool } from 'pg'
-import { getMetaUnifiedAccessTokenFromEnv, isMetaEnvOnlyMode } from '../config/metaAdsEnv'
+import {
+  getMetaPageAccessTokenFromEnv,
+  getMetaUnifiedAccessTokenFromEnv,
+  isMetaEnvOnlyMode,
+} from '../config/metaAdsEnv'
 
 /**
  * Access token for Meta Graph API calls (Marketing API, Pages, Instagram Graph, etc.).
@@ -37,4 +41,13 @@ export async function getMetaGraphAccessToken(pool: Pool): Promise<string | null
   } catch {
     return null
   }
+}
+
+/**
+ * Page access token for Page-as-user Graph calls (messaging inbox, etc.).
+ * Resolved only from META_PAGE_ACCESS_TOKEN — never falls back to the user Graph token.
+ */
+export async function getMetaPageAccessToken(_pool: Pool): Promise<string | null> {
+  const t = getMetaPageAccessTokenFromEnv()
+  return t || null
 }

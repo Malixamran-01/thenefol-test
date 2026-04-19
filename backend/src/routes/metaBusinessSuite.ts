@@ -1,12 +1,13 @@
 /**
- * Meta Business Suite–style Graph API proxy for the admin panel.
- * Uses the same access token resolution as Meta Ads (meta_ads_config + META_ADS_ACCESS_TOKEN).
- * Many endpoints require specific permissions (pages_show_list, pages_read_engagement, business_management,
- * instagram_basic, instagram_manage_messages, pages_messaging, ads_read, etc.).
+ * Meta Business Suite–style Graph API proxy for the admin panel (user access token).
+ * Token: getMetaGraphAccessToken → META_GRAPH_ACCESS_TOKEN / DB (see metaAccessToken).
+ *
+ * Also mounted at `/api/admin/meta/graph/*` (see metaGraphUser.ts). Page inbox lives under
+ * `/api/admin/meta/page/*` and uses META_PAGE_ACCESS_TOKEN only.
  */
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import { getMetaAdsAppId } from '../config/metaAdsEnv'
+import { getMetaAdsAppId, getMetaPageAccessTokenFromEnv } from '../config/metaAdsEnv'
 import { sendError, sendSuccess } from '../utils/apiHelpers'
 import { getMetaGraphAccessToken } from '../utils/metaAccessToken'
 
@@ -60,6 +61,7 @@ export async function suiteOverview(pool: Pool, _req: Request, res: Response) {
     sendSuccess(res, {
       meta_app_id: getMetaAdsAppId() || null,
       token_configured: true,
+      page_access_token_set: !!getMetaPageAccessTokenFromEnv(),
       me,
       businesses: businesses.data || [],
       businesses_error: businessesErr,
@@ -152,22 +154,6 @@ export async function suiteIgInsights(pool: Pool, req: Request, res: Response) {
     sendSuccess(res, data)
   } catch (err: any) {
     sendError(res, 400, err.message || 'Failed to load Instagram insights', err)
-  }
-}
-
-/** GET /api/admin/meta-business/page/:pageId/conversations — Messenger (requires pages_messaging) */
-export async function suitePageConversations(pool: Pool, req: Request, res: Response) {
-  try {
-    const { pageId } = req.params
-    const limit = String(req.query.limit || '10')
-    const data = await graphGet(pool, `${pageId}/conversations`, {
-      fields: 'id,updated_time,snippet,message_count,senders{name,id}',
-      platform: 'MESSENGER',
-      limit,
-    })
-    sendSuccess(res, data)
-  } catch (err: any) {
-    sendError(res, 400, err.message || 'Failed to load conversations (check pages_messaging + Page role)', err)
   }
 }
 

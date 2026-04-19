@@ -20,6 +20,21 @@ import { getApiBaseUrl } from '../../utils/apiUrl'
 
 const api = getApiBaseUrl()
 const mb = (path: string) => `${api}/admin/meta-business${path.startsWith('/') ? path : `/${path}`}`
+/** Page access token routes (META_PAGE_ACCESS_TOKEN) — inbox, etc. */
+const mpage = (path: string) => `${api}/admin/meta/page${path.startsWith('/') ? path : `/${path}`}`
+
+type MetaConversationSender = { name?: string; email?: string; id?: string }
+type MetaConversationThread = {
+  id?: string
+  updated_time?: string
+  snippet?: string
+  message_count?: number
+  senders?: { data?: MetaConversationSender[] }
+}
+type MetaConversationsPayload = {
+  data?: MetaConversationThread[]
+  paging?: { cursors?: { before?: string; after?: string }; next?: string }
+}
 
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem('auth_token')
@@ -80,7 +95,7 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof LayoutGrid; desc: s
   { id: 'businesses', label: 'Business portfolio', icon: Building2, desc: 'BM + owned assets' },
   { id: 'pages', label: 'Facebook Pages', icon: Facebook, desc: 'Pages you manage' },
   { id: 'instagram', label: 'Instagram', icon: Instagram, desc: 'Media & insights' },
-  { id: 'messaging', label: 'Messenger inbox', icon: MessageCircle, desc: 'Page conversations' },
+  { id: 'messaging', label: 'Inbox', icon: MessageCircle, desc: 'Messenger & Instagram' },
   { id: 'ads', label: 'Ads & catalog', icon: Megaphone, desc: 'Pixels & catalogs' },
   { id: 'reference', label: 'API map', icon: BookOpen, desc: 'Meta API surface' },
 ]
@@ -156,6 +171,7 @@ export default function MetaBusinessSuite() {
   const [overview, setOverview] = useState<{
     meta_app_id?: string | null
     token_configured?: boolean
+    page_access_token_set?: boolean
     me?: { id?: string; name?: string; email?: string }
     businesses?: unknown[]
     businesses_error?: string | null
@@ -169,7 +185,8 @@ export default function MetaBusinessSuite() {
   const [igMedia, setIgMedia] = useState<unknown>(null)
   const [igInsights, setIgInsights] = useState<unknown>(null)
   const [msgPageId, setMsgPageId] = useState('')
-  const [conversations, setConversations] = useState<unknown>(null)
+  const [msgPlatform, setMsgPlatform] = useState<'messenger' | 'instagram'>('messenger')
+  const [conversations, setConversations] = useState<MetaConversationsPayload | null>(null)
   const [msgError, setMsgError] = useState('')
   const [adAccountId, setAdAccountId] = useState('')
   const [adAccountDetail, setAdAccountDetail] = useState<unknown>(null)
@@ -235,8 +252,13 @@ export default function MetaBusinessSuite() {
     if (!msgPageId.trim()) return
     setLoading(true)
     setMsgError('')
-    const r = await fetchJson(mb(`/page/${encodeURIComponent(msgPageId.trim())}/conversations`))
-    if (r.ok) {
+    const q = new URLSearchParams({
+      page_id: msgPageId.trim(),
+      platform: msgPlatform,
+      limit: '50',
+    })
+    const r = await fetchJson<MetaConversationsPayload>(`${mpage('/conversations')}?${q.toString()}`)
+    if (r.ok && r.data) {
       setConversations(r.data)
       setMsgError('')
     } else {
@@ -287,7 +309,9 @@ export default function MetaBusinessSuite() {
               Meta Business
             </h1>
             <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              Facebook &amp; Instagram tools via Graph API — same token as{' '}
+              Graph user token (<code className="rounded bg-gray-100 px-0.5 dark:bg-gray-800">META_GRAPH_ACCESS_TOKEN</code>)
+              for overview and Pages; Page token (<code className="rounded bg-gray-100 px-0.5 dark:bg-gray-800">META_PAGE_ACCESS_TOKEN</code>)
+              for inbox. Shared app context with{' '}
               <Link to="/admin/meta-ads" className="text-cyan-700 underline dark:text-cyan-400">
                 Meta Ads
               </Link>
@@ -377,7 +401,7 @@ export default function MetaBusinessSuite() {
                   Refresh
                 </button>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/80">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">App</p>
                   <p className="mt-1 font-mono text-sm text-gray-900 dark:text-gray-100">
@@ -386,11 +410,18 @@ export default function MetaBusinessSuite() {
                   <p className="mt-2 text-xs text-gray-500">From server env (META_ADS_APP_ID)</p>
                 </div>
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/80">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Token</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Graph user token</p>
                   <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
                     {overview?.token_configured ? 'Configured' : 'Missing'}
                   </p>
-                  <p className="mt-2 text-xs text-gray-500">Meta Ads settings or META_ADS_ACCESS_TOKEN</p>
+                  <p className="mt-2 text-xs text-gray-500">META_GRAPH_ACCESS_TOKEN (or DB / Meta Ads settings)</p>
+                </div>
+                <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/80">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Page token</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {overview?.page_access_token_set ? 'Configured' : 'Missing'}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-500">META_PAGE_ACCESS_TOKEN — inbox / Page API</p>
                 </div>
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/80">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Graph user</p>
@@ -587,19 +618,36 @@ export default function MetaBusinessSuite() {
 
           {section === 'messaging' && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Messenger inbox (API)</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Inbox (Graph)</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Lists recent Page conversations. Requires Page token with{' '}
-                <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">pages_messaging</code> and app subscribed to
-                webhooks for production reply flows.
+                Uses <strong>META_PAGE_ACCESS_TOKEN</strong> on the server (not the user Graph token). Set it in backend
+                env for the Page this token belongs to. Messenger needs{' '}
+                <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">pages_messaging</code>; Instagram DMs need the
+                linked IG account and{' '}
+                <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">instagram_manage_messages</code> as
+                documented by Meta.
               </p>
-              <div className="flex flex-wrap gap-2">
-                <input
-                  value={msgPageId}
-                  onChange={(e) => setMsgPageId(e.target.value)}
-                  placeholder="Facebook Page ID"
-                  className="min-w-[240px] flex-1 rounded-lg border px-3 py-2 font-mono text-sm dark:border-gray-600 dark:bg-gray-900"
-                />
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="flex min-w-[200px] flex-1 flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Facebook Page ID
+                  <input
+                    value={msgPageId}
+                    onChange={(e) => setMsgPageId(e.target.value)}
+                    placeholder="Numeric Page ID"
+                    className="rounded-lg border px-3 py-2 font-mono text-sm dark:border-gray-600 dark:bg-gray-900"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Platform
+                  <select
+                    value={msgPlatform}
+                    onChange={(e) => setMsgPlatform(e.target.value as 'messenger' | 'instagram')}
+                    className="rounded-lg border px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+                  >
+                    <option value="messenger">Messenger</option>
+                    <option value="instagram">Instagram</option>
+                  </select>
+                </label>
                 <button
                   type="button"
                   onClick={loadConversations}
@@ -614,9 +662,50 @@ export default function MetaBusinessSuite() {
                   {msgError}
                 </div>
               )}
-              <pre className="max-h-[480px] overflow-auto rounded-2xl border border-gray-200 bg-gray-950/90 p-4 text-xs text-green-100">
-                {JSON.stringify(conversations, null, 2)}
-              </pre>
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900/80">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800/80 dark:text-gray-400">
+                    <tr>
+                      <th className="px-4 py-3">Updated</th>
+                      <th className="px-4 py-3">Preview</th>
+                      <th className="px-4 py-3">Msgs</th>
+                      <th className="px-4 py-3">Thread</th>
+                      <th className="px-4 py-3">Participants</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {(conversations?.data || []).map((row, idx) => {
+                      const senders = row.senders?.data || []
+                      const names = senders.map((s) => s.name || s.email || s.id || '—').join(', ')
+                      let updated = '—'
+                      if (row.updated_time) {
+                        const d = new Date(row.updated_time)
+                        if (!Number.isNaN(d.getTime())) updated = d.toLocaleString()
+                      }
+                      return (
+                        <tr key={row.id || `conv-${idx}`} className="bg-white dark:bg-gray-900/40">
+                          <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {updated}
+                          </td>
+                          <td className="max-w-md px-4 py-3">
+                            <span className="line-clamp-3 text-gray-900 dark:text-gray-100">
+                              {(row.snippet || '—').replace(/\n/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{row.message_count ?? '—'}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{row.id || '—'}</td>
+                          <td className="max-w-xs px-4 py-3 text-xs text-gray-700 dark:text-gray-300">{names || '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {!loading && (!conversations?.data || conversations.data.length === 0) && !msgError && (
+                  <p className="px-4 py-8 text-center text-sm text-gray-500">
+                    No rows yet — enter a Page ID and load (requires META_PAGE_ACCESS_TOKEN).
+                  </p>
+                )}
+              </div>
             </div>
           )}
 

@@ -21,6 +21,8 @@ import * as flipkartRoutes from './routes/flipkart'
 import * as facebookRoutes from './routes/facebook'
 import * as metaAdsRoutes from './routes/metaAds'
 import * as metaBusinessSuiteRoutes from './routes/metaBusinessSuite'
+import * as metaGraphUserRoutes from './routes/metaGraphUser'
+import * as metaPageAccessRoutes from './routes/metaPageAccess'
 import * as metaUnifiedConfigRoutes from './routes/metaUnifiedConfig'
 import * as bulkRoutes from './routes/bulk'
 import * as staffRoutes from './routes/staff'
@@ -981,8 +983,45 @@ app.get('/api/admin/meta-business/pages', authenticateAndAttach as any, (req, re
 app.get('/api/admin/meta-business/page/:pageId', authenticateAndAttach as any, (req, res) =>
   metaBusinessSuiteRoutes.suitePageDetail(pool, req, res)
 )
-app.get('/api/admin/meta-business/page/:pageId/conversations', authenticateAndAttach as any, (req, res) =>
-  metaBusinessSuiteRoutes.suitePageConversations(pool, req, res)
+
+// Graph **user** token — aliases (same handlers as /api/admin/meta-business/*)
+app.get('/api/admin/meta/graph/overview', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphOverview(pool, req, res)
+)
+app.get('/api/admin/meta/graph/me', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphMe(pool, req, res)
+)
+app.get('/api/admin/meta/graph/businesses', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphBusinesses(pool, req, res)
+)
+app.get('/api/admin/meta/graph/pages', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphPages(pool, req, res)
+)
+app.get('/api/admin/meta/graph/page/:pageId', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphPageDetail(pool, req, res)
+)
+app.get('/api/admin/meta/graph/instagram/:igUserId/media', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphIgMedia(pool, req, res)
+)
+app.get('/api/admin/meta/graph/instagram/:igUserId/insights', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphIgInsights(pool, req, res)
+)
+app.get('/api/admin/meta/graph/ad-account/:adAccountId', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphAdAccount(pool, req, res)
+)
+app.get('/api/admin/meta/graph/ad-account/:adAccountId/pixels', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphAdPixels(pool, req, res)
+)
+app.get('/api/admin/meta/graph/ad-account/:adAccountId/product-catalogs', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphProductCatalogs(pool, req, res)
+)
+app.get('/api/admin/meta/graph/business/:businessId/owned-ad-accounts', authenticateAndAttach as any, (req, res) =>
+  metaGraphUserRoutes.graphBusinessOwnedAdAccounts(pool, req, res)
+)
+
+// Page access token — inbox / Page-scoped only
+app.get('/api/admin/meta/page/conversations', authenticateAndAttach as any, (req, res) =>
+  metaPageAccessRoutes.pageConversations(pool, req, res)
 )
 app.get('/api/admin/meta-business/instagram/:igUserId/media', authenticateAndAttach as any, (req, res) =>
   metaBusinessSuiteRoutes.suiteIgMedia(pool, req, res)
