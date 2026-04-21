@@ -136,6 +136,49 @@ function formatBuyerCancelNote(it: Record<string, unknown>): string | null {
   return null
 }
 
+/** Best-effort: SP-API field names vary by marketplace; we pick string values under invoice-like keys. */
+function extractAmazonInvoiceNumber(
+  order: Record<string, unknown>,
+  item: Record<string, unknown>
+): string | null {
+  const take = (v: unknown): string | null => {
+    if (typeof v !== 'string') return null
+    const t = v.trim()
+    if (!t || t.length > 120 || /^https?:\/\//i.test(t)) return null
+    return t
+  }
+  const scan = (node: unknown, depth: number): string | null => {
+    if (depth > 8 || node == null) return null
+    if (typeof node !== 'object') return null
+    if (Array.isArray(node)) {
+      for (const el of node) {
+        const f = scan(el, depth + 1)
+        if (f) return f
+      }
+      return null
+    }
+    const o = node as Record<string, unknown>
+    for (const [k, v] of Object.entries(o)) {
+      if (
+        /invoice/i.test(k) &&
+        !/(status|url|method|history|preference|type|date|time)/i.test(k) &&
+        typeof v === 'string'
+      ) {
+        const t = take(v)
+        if (t) return t
+      }
+    }
+    for (const v of Object.values(o)) {
+      if (v && typeof v === 'object') {
+        const f = scan(v, depth + 1)
+        if (f) return f
+      }
+    }
+    return null
+  }
+  return scan(item, 0) || scan(order, 0)
+}
+
 export type AmazonSyncResult = { rows: number; skipped: boolean; logMessage?: string }
 
 /**
@@ -330,6 +373,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
 
               const sku = String(it.SellerSKU || '').trim().slice(0, 120) || null
               const asin = String(it.ASIN || '').trim().slice(0, 20) || null
+              const invoiceNo = extractAmazonInvoiceNumber(order, it)
 
               await upsertUnifiedSaleLine(pool, {
                 platform: 'amazon',
@@ -359,6 +403,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
                 cess: hasGstSplit ? round2(gst.cess) : null,
                 tax_rate_pct: taxRatePct,
                 taxable_value: taxableValue,
+                invoice_number: invoiceNo,
               })
               inserted += 1
             }

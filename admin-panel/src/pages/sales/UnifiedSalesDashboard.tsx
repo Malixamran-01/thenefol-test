@@ -73,6 +73,7 @@ type CombinedRow = {
   cess?: string | number | null
   tax_rate_pct?: string | number | null
   taxable_value?: string | number | null
+  invoice_number?: string | null
 }
 
 type SyncLog = {
@@ -530,6 +531,9 @@ export default function UnifiedSalesDashboard() {
                   <span className="text-right text-xs font-semibold tabular-nums text-slate-900">{fmt(r.total)}</span>
                 </div>
                 <p className="mt-2 font-mono text-[11px] text-slate-600 break-all">{r.line_order_id}</p>
+                {r.invoice_number ? (
+                  <p className="mt-0.5 font-mono text-[11px] text-slate-700">Invoice: {r.invoice_number}</p>
+                ) : null}
                 <p className="mt-1 text-[13px] leading-snug text-slate-800">{r.product_name}</p>
                 <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-600">
                   <span>Qty: {r.quantity}</span>
@@ -579,11 +583,12 @@ export default function UnifiedSalesDashboard() {
 
           {/* Desktop: table */}
           <div className="mt-3 hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
-            <table className="w-full min-w-[1680px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1760px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                   <th className="px-3 py-2.5">Platform</th>
                   <th className="px-3 py-2.5">Order</th>
+                  <th className="px-3 py-2.5">Invoice</th>
                   <th className="px-3 py-2.5">Product</th>
                   <th className="px-3 py-2.5 text-right">Qty</th>
                   <th className="px-3 py-2.5 text-right">Total</th>
@@ -620,6 +625,9 @@ export default function UnifiedSalesDashboard() {
                       </span>
                     </td>
                     <td className="max-w-[10rem] px-3 py-2 align-top font-mono text-xs text-slate-700 break-all">{r.line_order_id}</td>
+                    <td className="max-w-[9rem] px-3 py-2 align-top font-mono text-[11px] text-slate-700 break-all">
+                      {r.invoice_number || '—'}
+                    </td>
                     <td className="max-w-xs px-3 py-2 align-top text-slate-800 lg:max-w-md">
                       <span className="line-clamp-3 sm:line-clamp-none">{r.product_name}</span>
                     </td>

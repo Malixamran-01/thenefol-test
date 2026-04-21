@@ -152,6 +152,7 @@ export async function ensureSchema(pool: Pool) {
       cess numeric(14,2),
       tax_rate_pct numeric(10,4),
       taxable_value numeric(14,2),
+      invoice_number text,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now(),
       unique(platform, line_key)
@@ -217,6 +218,9 @@ export async function ensureSchema(pool: Pool) {
       end if;
       if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'taxable_value') then
         alter table unified_sales add column taxable_value numeric(14,2);
+      end if;
+      if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'unified_sales' and column_name = 'invoice_number') then
+        alter table unified_sales add column invoice_number text;
       end if;
     end $$;
     create index if not exists idx_unified_sales_amazon_state on unified_sales(shipping_state) where platform = 'amazon';

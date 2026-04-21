@@ -235,6 +235,40 @@ function num(x: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+function invoiceNumberFromFlipkart(
+  shipment: Record<string, unknown>,
+  item: Record<string, unknown>
+): string | null {
+  const fromObj = (inv: unknown): string | null => {
+    if (!inv || typeof inv !== 'object') return null
+    const o = inv as Record<string, unknown>
+    const keys = [
+      'invoiceNumber',
+      'invoiceId',
+      'taxInvoiceNumber',
+      'invoiceNo',
+      'number',
+      'gstInvoiceNumber',
+      'commercialInvoiceNumber',
+    ]
+    for (const k of keys) {
+      const v = o[k]
+      if (typeof v === 'string' && v.trim()) return v.trim().slice(0, 120)
+    }
+    return null
+  }
+  const direct =
+    fromObj(item.invoice) ||
+    fromObj(shipment.invoice) ||
+    (typeof shipment.invoiceNumber === 'string' && shipment.invoiceNumber.trim()
+      ? shipment.invoiceNumber.trim().slice(0, 120)
+      : null) ||
+    (typeof shipment.taxInvoiceNumber === 'string' && shipment.taxInvoiceNumber.trim()
+      ? shipment.taxInvoiceNumber.trim().slice(0, 120)
+      : null)
+  return direct
+}
+
 function lineTotalFromItem(item: Record<string, unknown>): { price: number; tax: number; shipping: number; total: number } {
   const invoice = item.invoice as Record<string, unknown> | undefined
   const sellingPrice = (item.sellingPrice as Record<string, unknown> | undefined)?.amount
@@ -362,6 +396,7 @@ export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSync
           ).slice(0, 500)
           const { price, tax, shipping, total } = lineTotalFromItem(it)
           const lineKey = `flipkart:${shipmentId}:${orderItemId}`
+          const invNo = invoiceNumberFromFlipkart(shipment, it as Record<string, unknown>)
 
           await upsertUnifiedSaleLine(pool, {
             platform: 'flipkart',
@@ -376,6 +411,7 @@ export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSync
             city: city || null,
             order_date: orderDate,
             currency: 'INR',
+            invoice_number: invNo,
           })
           inserted += 1
         }

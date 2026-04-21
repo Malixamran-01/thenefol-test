@@ -22,6 +22,34 @@ function normalizeAdAccountId(id: string | null | undefined): string | null {
   return t.startsWith('act_') ? t : `act_${t.replace(/^act_/i, '')}`
 }
 
+function metaMarketingErrorDetail(err: unknown): string {
+  if (err instanceof Error) return err.message
+  return String(err ?? 'Unknown error')
+}
+
+/** Marketing API permission / OAuth failures Meta often reports as (#200) or missing ads_* scopes on the ad account. */
+function isMetaMarketingPermissionError(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    message.includes('(#200)') ||
+    /not grant ads_management or ads_read/.test(m) ||
+    /ads_management or ads_read/.test(m) ||
+    /insufficient.?permission|missing permission to/i.test(m)
+  )
+}
+
+/**
+ * Returns Meta's message in the JSON `error` field (not only in server logs) and uses 403 for permission issues.
+ */
+function sendMetaMarketingApiError(res: Response, context: string, err: unknown): void {
+  const detail = metaMarketingErrorDetail(err)
+  const perm = isMetaMarketingPermissionError(detail)
+  const hint = perm
+    ? ' In Meta Business Suite: Business settings → Accounts → Ad accounts → select the account → Partners / People or connected apps: assign the same System user (or user) that owns this token, with access to that ad account. Token must include ads_read and ads_management. Set META_AD_ACCOUNT_ID to an act_ ID returned by GET /api/meta-ads/ad-accounts using this server token.'
+    : ''
+  sendError(res, perm ? 403 : 500, `${context}: ${detail}${hint}`, err)
+}
+
 const getMetaAccessToken = getMetaGraphAccessToken
 
 // Helper function to get ad account ID (env META_AD_ACCOUNT_ID wins when set)
@@ -1133,7 +1161,7 @@ export async function listAdAccounts(pool: Pool, req: Request, res: Response) {
     })
     sendSuccess(res, rows)
   } catch (err: any) {
-    sendError(res, 500, err.message || 'Failed to list ad accounts', err)
+    sendMetaMarketingApiError(res, 'Failed to list ad accounts', err)
   }
 }
 
@@ -1199,7 +1227,7 @@ export async function syncCampaignsFromMeta(pool: Pool, req: Request, res: Respo
     const n = await runSyncCampaignsFromMeta(pool, accessToken, adAccountId)
     sendSuccess(res, { synced: n })
   } catch (err: any) {
-    sendError(res, 500, 'Failed to sync campaigns from Meta', err)
+    sendMetaMarketingApiError(res, 'Failed to sync campaigns from Meta', err)
   }
 }
 
@@ -1286,7 +1314,7 @@ export async function syncAdSetsFromMeta(pool: Pool, req: Request, res: Response
     const result = await runSyncAdSetsFromMeta(pool, accessToken, req)
     sendSuccess(res, result)
   } catch (err: any) {
-    sendError(res, 500, 'Failed to sync ad sets from Meta', err)
+    sendMetaMarketingApiError(res, 'Failed to sync ad sets from Meta', err)
   }
 }
 
@@ -1362,7 +1390,7 @@ export async function syncAdsFromMeta(pool: Pool, req: Request, res: Response) {
     const result = await runSyncAdsFromMeta(pool, accessToken, req)
     sendSuccess(res, result)
   } catch (err: any) {
-    sendError(res, 500, 'Failed to sync ads from Meta', err)
+    sendMetaMarketingApiError(res, 'Failed to sync ads from Meta', err)
   }
 }
 
@@ -1386,7 +1414,7 @@ export async function syncAllFromMeta(pool: Pool, req: Request, res: Response) {
       ads_synced: ads.synced,
     })
   } catch (err: any) {
-    sendError(res, 500, 'Failed full Meta sync', err)
+    sendMetaMarketingApiError(res, 'Failed full Meta sync', err)
   }
 }
 

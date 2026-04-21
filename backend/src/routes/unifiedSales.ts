@@ -34,10 +34,11 @@ export async function getCombinedSales(pool: Pool, req: Request, res: Response) 
     }
     if (q && String(q).trim()) {
       const qq = `%${String(q).trim()}%`
-      params.push(qq, qq)
+      params.push(qq, qq, qq)
       const a = idx++
       const b = idx++
-      where += ` and (source_order_id ilike $${a} or product_name ilike $${b})`
+      const c = idx++
+      where += ` and (source_order_id ilike $${a} or product_name ilike $${b} or coalesce(invoice_number,'') ilike $${c})`
     }
 
     const { rows: countRows } = await pool.query(
@@ -50,7 +51,7 @@ export async function getCombinedSales(pool: Pool, req: Request, res: Response) 
     const { rows } = await pool.query(
       `select id, platform, source_order_id as line_order_id, product_name, quantity, price, tax, shipping, total, city, order_date, currency,
               order_status, business_type, shipping_state, quantity_shipped, line_note,
-              buyer_gstin, seller_sku, asin, igst, cgst, sgst, utgst, cess, tax_rate_pct, taxable_value
+              buyer_gstin, seller_sku, asin, igst, cgst, sgst, utgst, cess, tax_rate_pct, taxable_value, invoice_number
        from unified_sales
        ${where}
        order by order_date desc, id desc
@@ -274,9 +275,9 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
     }
 
     const { rows } = await pool.query(
-      `select platform, source_order_id, product_name, quantity, price, tax, shipping, total, city, order_date, currency,
+      `select platform, source_order_id, product_name, quantity, price, tax, shipping, total, city, currency,
               order_status, business_type, shipping_state, quantity_shipped, line_note,
-              buyer_gstin, seller_sku, asin, igst, cgst, sgst, utgst, cess, tax_rate_pct, taxable_value
+              buyer_gstin, seller_sku, asin, igst, cgst, sgst, utgst, cess, tax_rate_pct, taxable_value, invoice_number
        from unified_sales ${where}
        order by order_date desc, id desc
        limit 50000`,
@@ -293,7 +294,6 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
       'shipping',
       'total',
       'city',
-      'order_date',
       'currency',
       'order_status',
       'business_type',
@@ -310,6 +310,7 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
       'cess',
       'tax_rate_pct',
       'taxable_value',
+      'invoice_number',
     ]
     const esc = (v: unknown) => {
       const s = v === null || v === undefined ? '' : String(v)
@@ -329,7 +330,6 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
           r.shipping,
           r.total,
           r.city,
-          r.order_date ? new Date(r.order_date).toISOString() : '',
           r.currency,
           r.order_status ?? '',
           r.business_type ?? '',
@@ -346,6 +346,7 @@ export async function exportUnifiedSalesCsv(pool: Pool, req: Request, res: Respo
           r.cess ?? '',
           r.tax_rate_pct ?? '',
           r.taxable_value ?? '',
+          r.invoice_number ?? '',
         ]
           .map(esc)
           .join(',')

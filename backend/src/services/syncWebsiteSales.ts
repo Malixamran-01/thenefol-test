@@ -47,7 +47,7 @@ export async function syncWebsiteSales(pool: Pool): Promise<{ rows: number }> {
 
   const { rows: orders } = await pool.query(
     `
-    select id, order_number, items, subtotal, tax, shipping, total, shipping_address, created_at, status
+    select id, order_number, invoice_number, items, subtotal, tax, shipping, total, shipping_address, created_at, status
     from orders
     where
       case
@@ -68,6 +68,10 @@ export async function syncWebsiteSales(pool: Pool): Promise<{ rows: number }> {
     if (items.length === 0) continue
 
     const orderNumber = String(o.order_number || o.id)
+    const invoiceNum =
+      o.invoice_number != null && String(o.invoice_number).trim() !== ''
+        ? String(o.invoice_number).trim().slice(0, 120)
+        : null
     const subtotal = Number(o.subtotal) || 0
     const taxTotal = Number(o.tax) || 0
     const shipTotal = Number(o.shipping) || 0
@@ -105,6 +109,7 @@ export async function syncWebsiteSales(pool: Pool): Promise<{ rows: number }> {
         city: city || null,
         order_date: created,
         currency: 'INR',
+        invoice_number: invoiceNum,
       })
       inserted += 1
     }

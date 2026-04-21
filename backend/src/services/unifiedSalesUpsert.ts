@@ -30,6 +30,8 @@ export type UnifiedLineInput = {
   tax_rate_pct?: number | null
   /** Pre-tax line value (principal / taxable base) when known */
   taxable_value?: number | null
+  /** GST / marketplace invoice reference when provided by source API */
+  invoice_number?: string | null
 }
 
 /**
@@ -53,13 +55,14 @@ export async function upsertUnifiedSaleLine(pool: Pool, row: UnifiedLineInput): 
   const cess = row.cess ?? null
   const tax_rate_pct = row.tax_rate_pct ?? null
   const taxable_value = row.taxable_value ?? null
+  const invoice_number = row.invoice_number ?? null
 
   await pool.query(
     `insert into unified_sales (
         platform, source_order_id, line_key, product_name, quantity, price, tax, shipping, total, city, order_date, currency,
         order_status, business_type, shipping_state, quantity_shipped, line_note,
-        buyer_gstin, seller_sku, asin, igst, cgst, sgst, utgst, cess, tax_rate_pct, taxable_value
-      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+        buyer_gstin, seller_sku, asin, igst, cgst, sgst, utgst, cess, tax_rate_pct, taxable_value, invoice_number
+      ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
       on conflict (platform, line_key) do update set
         source_order_id = excluded.source_order_id,
         product_name = excluded.product_name,
@@ -86,6 +89,7 @@ export async function upsertUnifiedSaleLine(pool: Pool, row: UnifiedLineInput): 
         cess = excluded.cess,
         tax_rate_pct = excluded.tax_rate_pct,
         taxable_value = excluded.taxable_value,
+        invoice_number = excluded.invoice_number,
         updated_at = now()`,
     [
       row.platform,
@@ -115,6 +119,7 @@ export async function upsertUnifiedSaleLine(pool: Pool, row: UnifiedLineInput): 
       cess,
       tax_rate_pct,
       taxable_value,
+      invoice_number,
     ]
   )
 }
