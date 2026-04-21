@@ -406,14 +406,38 @@ const io = new SocketIOServer(server, {
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/nefol'
 
-// Check if this is a Supabase connection (requires SSL)
-const isSupabase = connectionString.includes('supabase.co') || connectionString.includes('pooler.supabase.com')
-const poolConfig = isSupabase 
-  ? { 
+/**
+ * Supabase-only pool options (TLS). Production / self-hosted Postgres: omit `ssl` and use URL as-is.
+ *
+ * - Default: detect Supabase from `DATABASE_URL` host (*.supabase.com / supabase.co).
+ * - `USE_SUPABASE_DB=1` — force Supabase SSL (e.g. nonstandard proxy host).
+ * - `USE_SUPABASE_DB=0` — force normal Postgres (no app-level SSL); use for local or RDS when URL accidentally matches.
+ */
+const supabaseFlag = process.env.USE_SUPABASE_DB?.trim().toLowerCase()
+const looksLikeSupabaseHost =
+  /\bsupabase\.com\b/i.test(connectionString) || connectionString.includes('supabase.co')
+const useSupabaseSsl =
+  supabaseFlag === '1' || supabaseFlag === 'true'
+    ? true
+    : supabaseFlag === '0' || supabaseFlag === 'false'
+      ? false
+      : looksLikeSupabaseHost
+
+const pgPoolMax = Math.min(100, Math.max(1, parseInt(process.env.PGPOOL_MAX || '20', 10) || 20))
+const pgConnTimeoutMs = Math.min(120_000, Math.max(2_000, parseInt(process.env.PG_CONNECTION_TIMEOUT_MS || '15000', 10) || 15_000))
+
+const poolConfig = useSupabaseSsl
+  ? {
       connectionString,
-      ssl: { rejectUnauthorized: false } // Supabase requires SSL
+      ssl: { rejectUnauthorized: false },
+      max: pgPoolMax,
+      connectionTimeoutMillis: pgConnTimeoutMs,
     }
-  : { connectionString }
+  : {
+      connectionString,
+      max: pgPoolMax,
+      connectionTimeoutMillis: pgConnTimeoutMs,
+    }
 
 const pool = new Pool(poolConfig)
 const staffAuthMiddleware = staffRoutes.createStaffAuthMiddleware(pool)
