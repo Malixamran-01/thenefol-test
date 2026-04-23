@@ -2,15 +2,19 @@ import { Pool } from 'pg'
 import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
 import { getMaxUnifiedOrderDate, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
 import {
+  createAmazonSellingPartner,
+  DEFAULT_MARKETPLACE_IN,
+  getLwaClientId,
+  getLwaClientSecret,
+  resolveAmazonRefreshToken,
+} from './amazonSpCommon'
+import {
   extractBuyerGstinFromBuyerInfoResponse,
   moneyAmount,
   normalizeGstin,
   parseIndiaGstFromOrderItem,
   sumGstComponents,
 } from './amazonOrderItemTax'
-
-/** India marketplace (sellercentral.amazon.in). Override with AMAZON_MARKETPLACE_ID. */
-const DEFAULT_MARKETPLACE_IN = 'A21TJRUUN4KGV'
 
 /**
  * All standard Order v0 statuses — if `getOrders` is called without this, some regions/accounts
@@ -33,35 +37,6 @@ const MAX_LOOKBACK_DAYS = 730
 
 /** Smaller windows reduce load and avoid undocumented range limits. */
 const CHUNK_DAYS = 30
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const SellingPartner = require('amazon-sp-api') as new (config: {
-  region: string
-  refresh_token: string
-  credentials: {
-    SELLING_PARTNER_APP_CLIENT_ID: string
-    SELLING_PARTNER_APP_CLIENT_SECRET: string
-  }
-  options?: { auto_request_tokens?: boolean; auto_request_throttled?: boolean }
-}) => { callAPI: (req: Record<string, unknown>) => Promise<any> }
-
-function getLwaClientId(): string {
-  return (
-    process.env.AMAZON_LWA_CLIENT_ID ||
-    process.env.LWA_CLIENT_ID ||
-    process.env.SELLING_PARTNER_APP_CLIENT_ID ||
-    ''
-  ).trim()
-}
-
-function getLwaClientSecret(): string {
-  return (
-    process.env.AMAZON_LWA_CLIENT_SECRET ||
-    process.env.LWA_CLIENT_SECRET ||
-    process.env.SELLING_PARTNER_APP_CLIENT_SECRET ||
-    ''
-  ).trim()
-}
 
 function lookbackDays(): number {
   const raw = process.env.AMAZON_UNIFIED_SALES_LOOKBACK_DAYS || process.env.AMAZON_ORDERS_LOOKBACK_DAYS || '365'
@@ -87,34 +62,6 @@ function orderApiDelayMs(): number {
 
 async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms))
-}
-
-async function resolveRefreshToken(pool: Pool): Promise<string | undefined> {
-  const debug = process.env.AMAZON_SP_API_DEBUG === '1' || process.env.AMAZON_SP_API_DEBUG === 'true'
-  const env = process.env.AMAZON_SP_API_REFRESH_TOKEN?.trim()
-  if (env) {
-    if (debug) {
-      console.log('[amazonSpApiSync] refresh_token source: AMAZON_SP_API_REFRESH_TOKEN env (length:', env.length, ')')
-    }
-    return env
-  }
-  const { rows } = await pool.query<{ credentials: Record<string, unknown> | null }>(
-    `select credentials from marketplace_accounts
-     where channel = 'amazon' and coalesce(is_active, true) = true
-     order by id asc
-     limit 1`
-  )
-  const rt = rows[0]?.credentials?.refresh_token
-  const hasRt = rt != null && String(rt).length > 0
-  if (debug) {
-    console.log(
-      '[amazonSpApiSync] refresh_token source: marketplace_accounts | rows:',
-      rows.length,
-      '| credentials.refresh_token present:',
-      hasRt
-    )
-  }
-  return hasRt ? String(rt) : undefined
 }
 
 function round2(n: number): number {
@@ -282,7 +229,7 @@ export type AmazonSyncResult = { rows: number; skipped: boolean; logMessage?: st
  * **Post-shipment FBA returns / settlements** may not appear on Orders/Items; use SP-API reports for full return ledgers.
  */
 export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResult> {
-  const refresh_token = await resolveRefreshToken(pool)
+  const refresh_token = await resolveAmazonRefreshToken(pool)
   const clientId = getLwaClientId()
   const clientSecret = getLwaClientSecret()
 
@@ -305,18 +252,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
   const fetchAddr = addressFetchEnabled()
   const fetchBuyerInfo = buyerInfoFetchEnabled()
 
-  const sp = new SellingPartner({
-    region,
-    refresh_token,
-    credentials: {
-      SELLING_PARTNER_APP_CLIENT_ID: clientId,
-      SELLING_PARTNER_APP_CLIENT_SECRET: clientSecret,
-    },
-    options: {
-      auto_request_tokens: true,
-      auto_request_throttled: true,
-    },
-  })
+  const sp = createAmazonSellingPartner(region, refresh_token)
 
   const MS_DAY = 24 * 60 * 60 * 1000
   const lookbackMs = Math.min(days * MS_DAY, MAX_LOOKBACK_DAYS * MS_DAY)

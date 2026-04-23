@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { syncWebsiteSales } from './syncWebsiteSales'
+import { syncAmazonInvoicingReports } from './amazonInvoicingReportSync'
 import { syncAmazonUnifiedSales } from './amazonSpApiSync'
 import { syncFlipkartUnifiedSales } from './flipkartSellerSync'
 
@@ -44,7 +45,13 @@ export type SyncPlatform = 'website' | 'amazon' | 'flipkart'
 
 export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[]): Promise<{
   website?: { rows: number }
-  amazon?: { rows: number; skipped?: boolean; logMessage?: string; error?: string }
+  amazon?: {
+    rows: number
+    skipped?: boolean
+    logMessage?: string
+    error?: string
+    invoicingReport?: { rowsUpdated: number; skipped?: boolean; logMessage?: string; detail?: string[] }
+  }
   flipkart?: { rows: number; skipped?: boolean; logMessage?: string; error?: string }
 }> {
   const out: any = {}
@@ -63,12 +70,37 @@ export async function runUnifiedSalesSync(pool: Pool, platforms: SyncPlatform[])
   if (platforms.includes('amazon')) {
     try {
       const r = await syncAmazonUnifiedSales(pool)
-      out.amazon = r
+      let inv: Awaited<ReturnType<typeof syncAmazonInvoicingReports>> | null = null
+      if (!r.skipped) {
+        try {
+          inv = await syncAmazonInvoicingReports(pool)
+        } catch (invErr: any) {
+          inv = {
+            rowsUpdated: 0,
+            skipped: true,
+            logMessage: invErr?.message || String(invErr),
+          }
+        }
+      }
+      out.amazon = {
+        ...r,
+        invoicingReport: inv || undefined,
+      }
+      const invMsg = inv
+        ? inv.skipped
+          ? inv.logMessage
+          : `Invoicing reports: ${inv.rowsUpdated} line(s) updated; ${(inv.detail || []).join(' · ').slice(0, 300)}`
+        : null
+      const combinedMsg = [r.skipped ? r.logMessage || 'SP-API not configured' : r.logMessage || null, invMsg]
+        .filter((x) => x && String(x).trim())
+        .join(' | ')
+        .slice(0, 500)
+        || null
       await insertLog(
         pool,
         'amazon',
-        r.skipped ? 'skipped' : 'success',
-        r.skipped ? r.logMessage || 'SP-API not configured' : r.logMessage || null,
+        r.skipped && (!inv || inv.skipped) ? 'skipped' : 'success',
+        combinedMsg,
         r.rows
       )
     } catch (e: any) {
