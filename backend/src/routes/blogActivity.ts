@@ -8,16 +8,6 @@ let pool: Pool
 
 export function initBlogActivityRouter(databasePool: Pool) {
   pool = databasePool
-  // Ensure reposts table exists (also created in blog.ts, but guard here too)
-  databasePool.query(`
-    CREATE TABLE IF NOT EXISTS blog_post_reposts (
-      id SERIAL PRIMARY KEY,
-      post_id TEXT NOT NULL,
-      user_id INTEGER NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE (post_id, user_id)
-    )
-  `).catch((err: Error) => console.error('Error ensuring blog_post_reposts table:', err))
 }
 
 const getUserIdFromToken = (req: express.Request): string | null => {

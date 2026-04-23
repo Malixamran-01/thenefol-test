@@ -6,6 +6,9 @@
       "env": {
         "TESTSPRITE_API_KEY": "${TESTSPRITE_API_KEY}"
       }
+    },
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=gtrthvbtphivkflkhrmc"
     }
   }
 }

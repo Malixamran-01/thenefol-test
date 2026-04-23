@@ -31,8 +31,8 @@ import * as returnRoutes from './routes/returns'
 import * as supplierRoutes from './routes/suppliers'
 import * as posRoutes from './routes/pos'
 import * as cartRoutes from './routes/cart'
-import createCMSRouter from './routes/cms'
-import blogRouter, { initBlogRouter, serveBlogMetaPage, cleanupOldDrafts } from './routes/blog'
+import createCMSRouter, { initCMSTables } from './routes/cms'
+import blogRouter, { initBlogRouter, ensureBlogAuxTables, serveBlogMetaPage, cleanupOldDrafts } from './routes/blog'
 import blogActivityRouter, { initBlogActivityRouter, serveAuthorMetaPage } from './routes/blogActivity'
 import blogNotificationsRouter, { initBlogNotificationsRouter } from './routes/blogNotifications'
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
@@ -424,22 +424,30 @@ const useSupabaseSsl =
       : looksLikeSupabaseHost
 
 const pgPoolMax = Math.min(100, Math.max(1, parseInt(process.env.PGPOOL_MAX || '20', 10) || 20))
-const pgConnTimeoutMs = Math.min(120_000, Math.max(2_000, parseInt(process.env.PG_CONNECTION_TIMEOUT_MS || '15000', 10) || 15_000))
+const pgConnTimeoutRaw = Math.min(120_000, Math.max(2_000, parseInt(process.env.PG_CONNECTION_TIMEOUT_MS || '15000', 10) || 15_000))
+/** Supabase over the public internet (e.g. Render → ap-south-1) often needs a higher connect budget. */
+const pgConnTimeoutMs = useSupabaseSsl ? Math.max(pgConnTimeoutRaw, 45_000) : pgConnTimeoutRaw
 
-const poolConfig = useSupabaseSsl
-  ? {
-      connectionString,
-      ssl: { rejectUnauthorized: false },
-      max: pgPoolMax,
-      connectionTimeoutMillis: pgConnTimeoutMs,
-    }
-  : {
-      connectionString,
-      max: pgPoolMax,
-      connectionTimeoutMillis: pgConnTimeoutMs,
-    }
+const poolConfig = {
+  connectionString,
+  max: pgPoolMax,
+  connectionTimeoutMillis: pgConnTimeoutMs,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
+  ...(useSupabaseSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+}
 
 const pool = new Pool(poolConfig)
+
+try {
+  const hostMatch = connectionString.match(/@([^/?]+)/)
+  const hostPart = hostMatch ? hostMatch[1].split(':')[0] : '?'
+  console.log(
+    `[DB] ${useSupabaseSsl ? 'TLS (Supabase-style)' : 'URL-only SSL'} → ${hostPart} · pool max=${pgPoolMax} connectTimeoutMs=${pgConnTimeoutMs}`
+  )
+} catch {
+  console.log('[DB] pool configured')
+}
 const staffAuthMiddleware = staffRoutes.createStaffAuthMiddleware(pool)
 
 // Register POST webhook route after pool is defined (must use raw body, not express.json())
@@ -5472,6 +5480,10 @@ if (fs.existsSync(indexPath)) {
 const port = Number(process.env.PORT || 2000)
 ensureSchema(pool)
   .then(async () => {
+    await initCMSTables(pool)
+    console.log('✅ CMS tables ready')
+    await ensureBlogAuxTables(pool)
+    console.log('✅ Blog aux tables ready')
     // Initialize blog notifications tables (for Activity tab)
     await initBlogNotificationsRouter(pool)
     console.log('✅ Blog notifications tables ready')

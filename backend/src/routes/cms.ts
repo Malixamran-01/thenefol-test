@@ -2,20 +2,9 @@ import { Router, Request, Response } from 'express'
 import { Pool } from 'pg'
 import { Server as SocketIOServer } from 'socket.io'
 
-export function createCMSRouter(pool: Pool, io?: SocketIOServer) {
-  const router = Router()
-  
-  // Helper function to broadcast CMS updates
-  const broadcastCMSUpdate = (event: string, data: any) => {
-    if (io) {
-      io.emit('cms-update', { event, data, timestamp: Date.now() })
-      console.log('📡 Broadcasting CMS update:', event)
-    }
-  }
-
-  // Initialize CMS tables
-  const initTables = async () => {
-    await pool.query(`
+/** CMS tables — call from index after `ensureSchema` (avoid racing the pool during startup). */
+export async function initCMSTables(pool: Pool): Promise<void> {
+  await pool.query(`
       CREATE TABLE IF NOT EXISTS cms_pages (
         id SERIAL PRIMARY KEY,
         slug VARCHAR(255) UNIQUE NOT NULL,
@@ -48,9 +37,18 @@ export function createCMSRouter(pool: Pool, io?: SocketIOServer) {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `)
-  }
+}
 
-  initTables().catch(console.error)
+export function createCMSRouter(pool: Pool, io?: SocketIOServer) {
+  const router = Router()
+  
+  // Helper function to broadcast CMS updates
+  const broadcastCMSUpdate = (event: string, data: any) => {
+    if (io) {
+      io.emit('cms-update', { event, data, timestamp: Date.now() })
+      console.log('📡 Broadcasting CMS update:', event)
+    }
+  }
 
   // GET all pages
   router.get('/pages', async (req: Request, res: Response) => {

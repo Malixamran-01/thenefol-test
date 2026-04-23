@@ -12,6 +12,22 @@ import {
 /** India marketplace (sellercentral.amazon.in). Override with AMAZON_MARKETPLACE_ID. */
 const DEFAULT_MARKETPLACE_IN = 'A21TJRUUN4KGV'
 
+/**
+ * All standard Order v0 statuses — if `getOrders` is called without this, some regions/accounts
+ * effectively return a narrow set (e.g. only Canceled). Explicit OR list widens the feed for tax/ops.
+ * @see https://developer-docs.amazon.com/sp-api/docs/orders-v0-api-reference#orderstatus
+ */
+const SP_GET_ORDERS_STATUSES = [
+  'PendingAvailability',
+  'Pending',
+  'Unshipped',
+  'PartiallyShipped',
+  'Shipped',
+  'InvoiceUnconfirmed',
+  'Canceled',
+  'Unfulfillable',
+] as const
+
 /** SP-API returns no orders older than ~2 years for most marketplaces. */
 const MAX_LOOKBACK_DAYS = 730
 
@@ -136,7 +152,52 @@ function formatBuyerCancelNote(it: Record<string, unknown>): string | null {
   return null
 }
 
-/** Best-effort: SP-API field names vary by marketplace; we pick string values under invoice-like keys. */
+/**
+ * If SP-API surfaces return/refund hints on a line, capture for tax context.
+ * Post-shipment FBA returns and settlements may only appear in reports / finance APIs.
+ */
+function formatReturnOrRefundLineNote(it: Record<string, unknown>): string | null {
+  const takeKey = (k: string) =>
+    /reimburs|refund|chargeback|reversal|return/i.test(k) && !/returnaddress|return_address|returnpolicy|returns_?policy/i.test(k)
+
+  const scan = (o: unknown, d: number): string | null => {
+    if (d > 6 || o == null) return null
+    if (typeof o !== 'object') return null
+    if (Array.isArray(o)) {
+      for (const el of o) {
+        const f = scan(el, d + 1)
+        if (f) return f
+      }
+      return null
+    }
+    const r = o as Record<string, unknown>
+    for (const [k, v] of Object.entries(r)) {
+      if (takeKey(k)) {
+        if (typeof v === 'string' && v.trim()) return `RMA/refund: ${v.trim().slice(0, 180)}`
+        if (v === true) return `RMA/refund: ${k}`
+        if (v && typeof v === 'object') {
+          const inner = JSON.stringify(v).slice(0, 200)
+          if (inner !== '{}') return `RMA/refund: ${inner}`
+        }
+      }
+    }
+    for (const v of Object.values(r)) {
+      if (v && typeof v === 'object') {
+        const f = scan(v, d + 1)
+        if (f) return f
+      }
+    }
+    return null
+  }
+  if (it.IsFreeReplacement === true) return 'Free replacement (line)'
+  if (it.IsReplacement === true) return 'Replacement (line)'
+  return scan(it, 0)
+}
+
+/**
+ * India GST / e-invoice and generic invoice hints from getOrder + getOrderItems payloads.
+ * Field names are not fully documented; we prefer explicit keys then deep-scan invoice-like names.
+ */
 function extractAmazonInvoiceNumber(
   order: Record<string, unknown>,
   item: Record<string, unknown>
@@ -147,8 +208,30 @@ function extractAmazonInvoiceNumber(
     if (!t || t.length > 120 || /^https?:\/\//i.test(t)) return null
     return t
   }
+
+  const explicitItemKeys = [
+    'TaxInvoiceNumber',
+    'taxInvoiceNumber',
+    'InvoiceNumber',
+    'invoiceNumber',
+    'CommercialInvoiceNumber',
+    'EInvoiceNumber',
+    'IRN', // India e-invoice IRN (if ever surfaced on item)
+  ] as const
+  for (const k of explicitItemKeys) {
+    const t = take((item as any)[k])
+    if (t) return t
+  }
+
+  const keyLooksInvoice = (k: string): boolean => {
+    if (/(^|_)(irn|einvoice|e_invoice|gstin)/i.test(k)) return true
+    if (!/invoice/i.test(k)) return false
+    if (/(status|url|method|history|date|time|type)$/i.test(k)) return false
+    return true
+  }
+
   const scan = (node: unknown, depth: number): string | null => {
-    if (depth > 8 || node == null) return null
+    if (depth > 10 || node == null) return null
     if (typeof node !== 'object') return null
     if (Array.isArray(node)) {
       for (const el of node) {
@@ -159,11 +242,7 @@ function extractAmazonInvoiceNumber(
     }
     const o = node as Record<string, unknown>
     for (const [k, v] of Object.entries(o)) {
-      if (
-        /invoice/i.test(k) &&
-        !/(status|url|method|history|preference|type|date|time)/i.test(k) &&
-        typeof v === 'string'
-      ) {
+      if (keyLooksInvoice(k) && typeof v === 'string') {
         const t = take(v)
         if (t) return t
       }
@@ -179,15 +258,28 @@ function extractAmazonInvoiceNumber(
   return scan(item, 0) || scan(order, 0)
 }
 
+function parseOrderFromGetOrderResponse(ordRes: any): Record<string, unknown> | null {
+  const ord =
+    ordRes?.payload?.Order ??
+    ordRes?.Order ??
+    (ordRes?.payload && typeof ordRes.payload === 'object' && !ordRes.payload.Order
+      ? ordRes.payload
+      : null)
+  return ord && typeof ord === 'object' ? (ord as Record<string, unknown>) : null
+}
+
 export type AmazonSyncResult = { rows: number; skipped: boolean; logMessage?: string }
 
 /**
  * Upserts `unified_sales` rows for platform `amazon` from Orders API.
- * Includes **cancelled** orders and line items when the API returns them.
- * Ship-to **state** uses `getOrderAddress` (needs Direct-to-Consumer Shipping / PII roles — otherwise columns stay null).
- * B2B/B2C from `IsBusinessOrder` on the order (with optional `getOrder` if missing from list).
- * **B2B GSTIN** via `getOrderBuyerInfo` (TaxClassifications — needs Tax Invoicing / appropriate roles).
- * **SKU, ASIN, IGST/CGST/SGST/UTGST/CESS, taxable value, tax %** from `getOrderItems` (deep-scan of tax nodes; breakdown may not appear on all orders).
+ * **List feed**: `getOrders` passes explicit `OrderStatuses` (all standard states) so the sync is not skewed to
+ * a single status. **Per-order detail**: for India by default, or with `AMAZON_UNIFIED_SALES_GET_ORDER=1`, we merge
+ * `getOrder` into the list row for invoice fields, `OrderStatus`, B2B flags, and embedded ship address when present.
+ * Set `AMAZON_UNIFIED_SALES_GET_ORDER=0` to skip extra getOrder calls (weaker invoice data).
+ * Ship-to **state** can use `getOrderAddress` (needs PII roles).
+ * **B2B GSTIN** via `getOrderBuyerInfo` when `business_type` is B2B.
+ * **Line taxes** from `getOrderItems` (India GST deep-scan; many orders lack split components).
+ * **Post-shipment FBA returns / settlements** may not appear on Orders/Items; use SP-API reports for full return ledgers.
  */
 export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResult> {
   const refresh_token = await resolveRefreshToken(pool)
@@ -260,6 +352,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
           MarketplaceIds: [marketplaceId],
           CreatedAfter: createdAfter,
           CreatedBefore: createdBefore,
+          OrderStatuses: [...SP_GET_ORDERS_STATUSES] as string[],
           ...(ordersNext ? { NextToken: ordersNext } : {}),
         },
       })
@@ -271,32 +364,41 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
         const orderId = String(order.AmazonOrderId || '')
         if (!orderId) continue
 
-        const orderStatus = String(order.OrderStatus || '').trim() || null
-        let businessType = amazonBusinessType(order)
-        let shipCity: string | null = null
-        let shipState: string | null = null
-
-        if (businessType == null) {
+        let mergedOrder: Record<string, unknown> = { ...order }
+        const getOrderOff = process.env.AMAZON_UNIFIED_SALES_GET_ORDER === '0'
+        const getOrderForMktOrFlag =
+          !getOrderOff &&
+          (marketplaceId === DEFAULT_MARKETPLACE_IN ||
+            process.env.AMAZON_UNIFIED_SALES_GET_ORDER === '1' ||
+            process.env.AMAZON_UNIFIED_SALES_GET_ORDER === 'true')
+        const needsGetOrder = getOrderForMktOrFlag || amazonBusinessType(mergedOrder) == null
+        if (needsGetOrder) {
           try {
             const ordRes = await sp.callAPI({
               operation: 'getOrder',
               endpoint: 'orders',
               path: { orderId },
             })
-            const ord =
-              (ordRes?.payload?.Order as Record<string, unknown> | undefined) ||
-              (ordRes?.Order as Record<string, unknown> | undefined) ||
-              (ordRes?.payload as Record<string, unknown> | undefined)
-            businessType = amazonBusinessType(ord)
-            if (ord && typeof ord === 'object') {
-              const embedded = pickShippingFromAddressResponse({ payload: { ShippingAddress: (ord as any).ShippingAddress } })
-              if (embedded.state) shipState = embedded.state
-              if (embedded.city) shipCity = embedded.city
+            const ord = parseOrderFromGetOrderResponse(ordRes)
+            if (ord) {
+              mergedOrder = { ...mergedOrder, ...ord }
             }
           } catch {
-            /* ignore */
+            /* throttled / 404 / roles */
           }
           await sleep(delayMs)
+        }
+
+        const orderStatus = String(mergedOrder.OrderStatus || order.OrderStatus || '').trim() || null
+        let businessType = amazonBusinessType(mergedOrder)
+        let shipCity: string | null = null
+        let shipState: string | null = null
+        {
+          const embedded = pickShippingFromAddressResponse({
+            payload: { ShippingAddress: (mergedOrder as { ShippingAddress?: unknown }).ShippingAddress },
+          })
+          if (embedded.state) shipState = embedded.state
+          if (embedded.city) shipCity = embedded.city
         }
 
         if (fetchAddr && (shipState == null || shipCity == null)) {
@@ -330,7 +432,11 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
           await sleep(delayMs)
         }
 
-        const purchaseDate = order.PurchaseDate ? new Date(String(order.PurchaseDate)) : new Date()
+        const purchaseDate = mergedOrder.PurchaseDate
+          ? new Date(String(mergedOrder.PurchaseDate))
+          : order.PurchaseDate
+            ? new Date(String(order.PurchaseDate))
+            : new Date()
         let itemsNext: string | undefined
         try {
           do {
@@ -356,7 +462,9 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
               const unit = qty > 0 ? Math.round((itemPrice / qty) * 100) / 100 : Math.round(itemPrice * 100) / 100
               const total = Math.round((itemPrice + itemTax + shipPrice + shippingTax) * 100) / 100
               const lineKey = `amazon:${orderId}:${oid}`
-              const lineNote = formatBuyerCancelNote(it)
+              const lineNote = [formatBuyerCancelNote(it), formatReturnOrRefundLineNote(it)]
+                .filter(Boolean)
+                .join(' · ') || null
               const cityDisplay = shipCity ? (shipState ? `${shipCity}, ${shipState}` : shipCity) : null
 
               const gst = parseIndiaGstFromOrderItem(it)
@@ -373,7 +481,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
 
               const sku = String(it.SellerSKU || '').trim().slice(0, 120) || null
               const asin = String(it.ASIN || '').trim().slice(0, 20) || null
-              const invoiceNo = extractAmazonInvoiceNumber(order, it)
+              const invoiceNo = extractAmazonInvoiceNumber(mergedOrder, it)
 
               await upsertUnifiedSaleLine(pool, {
                 platform: 'amazon',

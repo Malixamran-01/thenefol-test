@@ -46,11 +46,14 @@ const upload = multer({
 // Database pool (will be injected)
 let pool: Pool
 
-// Initialize database connection
+// Initialize database connection (assign pool only — DDL runs after ensureSchema via ensureBlogAuxTables)
 export function initBlogRouter(databasePool: Pool) {
   pool = databasePool
-  // Ensure reposts table exists
-  databasePool.query(`
+}
+
+/** Blog helper tables / columns — run after `ensureSchema` to avoid startup pool contention (e.g. Render + Supabase). */
+export async function ensureBlogAuxTables(databasePool: Pool): Promise<void> {
+  await databasePool.query(`
     CREATE TABLE IF NOT EXISTS blog_post_reposts (
       id SERIAL PRIMARY KEY,
       post_id TEXT NOT NULL,
@@ -58,16 +61,12 @@ export function initBlogRouter(databasePool: Pool) {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (post_id, user_id)
     )
-  `).catch((err: Error) => console.error('Error creating blog_post_reposts table:', err))
-  databasePool
-    .query(
-      `
+  `)
+  await databasePool.query(`
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_pending JSONB;
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_submitted_at TIMESTAMPTZ;
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_rejection_reason TEXT;
-  `
-    )
-    .catch((err: Error) => console.error('blog_posts revision columns:', err))
+  `)
 }
 
 const getUserIdFromToken = (req: express.Request): string | null => {
