@@ -360,6 +360,7 @@ class AuthService {
   hasPermission(permission: string): boolean {
     const user = this.authState.user
     if (!user) return false
+    if (user.role === 'admin') return true
     const permissions: string[] = Array.isArray(user.permissions)
       ? user.permissions
       : typeof (user as any).permissions === 'string'

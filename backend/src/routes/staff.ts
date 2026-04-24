@@ -2,6 +2,12 @@ import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import crypto from 'crypto'
+import {
+  ALL_RBAC_SEED_CODES,
+  BUSINESS_PERMISSION_CODES,
+  NAV_DIVISION_GROUPS,
+  ROLE_TEMPLATES,
+} from '../config/rbacCatalog'
 
 function hashPassword(plain: string): string {
   const salt = crypto.randomBytes(16).toString('hex')
@@ -537,14 +543,55 @@ export async function disableStaff(pool: Pool, req: Request, res: Response) {
 
 export async function seedStandardRolesAndPermissions(pool: Pool, req: Request, res: Response) {
   try {
-    const standardPerms = [
-      'products:read','products:update','orders:read','orders:update','shipping:read','shipping:update','invoices:read','returns:read','returns:update','returns:create','analytics:read','marketing:read','users:read','users:update','cms:read','payments:read','pos:read','pos:update'
-    ]
+    const standardPerms = ALL_RBAC_SEED_CODES
     const standardRoles: Record<string, string[]> = {
-      'admin': standardPerms,
-      'manager': ['products:read','products:update','orders:read','orders:update','shipping:read','shipping:update','invoices:read','returns:read','returns:update','analytics:read','marketing:read','users:read'],
-      'staff': ['orders:read','orders:update','shipping:read','shipping:update','invoices:read','returns:read','returns:update'],
-      'viewer': ['products:read','orders:read','analytics:read']
+      'admin': [...ALL_RBAC_SEED_CODES],
+      'manager': [
+        'products:read',
+        'products:update',
+        'orders:read',
+        'orders:update',
+        'shipping:read',
+        'shipping:update',
+        'invoices:read',
+        'returns:read',
+        'returns:update',
+        'analytics:read',
+        'marketing:read',
+        'users:read',
+        'discounts:read',
+        'nav:overview',
+        'nav:store',
+        'nav:channels',
+        'nav:catalog',
+        'nav:sales',
+        'nav:content',
+        'nav:crm',
+        'nav:finance',
+        'nav:marketing',
+        'nav:analytics',
+        'nav:settings',
+      ],
+      'staff': [
+        'orders:read',
+        'orders:update',
+        'shipping:read',
+        'shipping:update',
+        'invoices:read',
+        'returns:read',
+        'returns:update',
+        'nav:overview',
+        'nav:sales',
+        'nav:settings',
+      ],
+      'viewer': [
+        'products:read',
+        'orders:read',
+        'analytics:read',
+        'nav:overview',
+        'nav:analytics',
+        'nav:catalog',
+      ],
     }
     await pool.query('begin')
     // Ensure permissions
@@ -832,6 +879,73 @@ export async function assignPagePermissions(pool: Pool, req: Request, res: Respo
   } catch (err) {
     await pool.query('rollback')
     sendError(res, 500, 'Failed to assign page permissions', err)
+  }
+}
+
+/** Public catalog for role UI: nav divisions, business codes, quick-assign templates. */
+export async function getPermissionCatalog(pool: Pool, req: Request, res: Response) {
+  try {
+    sendSuccess(res, {
+      navDivisions: NAV_DIVISION_GROUPS,
+      businessPermissionCodes: BUSINESS_PERMISSION_CODES,
+      templates: ROLE_TEMPLATES,
+    })
+  } catch (err) {
+    sendError(res, 500, 'Failed to load permission catalog', err)
+  }
+}
+
+/** Idempotent: insert all known permission rows (codes) from rbac catalog. */
+export async function syncRbacCatalogPermissions(pool: Pool, req: Request, res: Response) {
+  try {
+    let n = 0
+    for (const code of ALL_RBAC_SEED_CODES) {
+      const r = await pool.query(
+        `insert into permissions (code) values ($1) on conflict (code) do nothing returning id`,
+        [code]
+      )
+      if (r.rowCount) n += 1
+    }
+    sendSuccess(res, { ok: true, knownCodes: ALL_RBAC_SEED_CODES.length, newlyInserted: n })
+  } catch (err) {
+    sendError(res, 500, 'Failed to sync RBAC permissions', err)
+  }
+}
+
+/** Apply a named template to a role (replaces that role’s permission set). */
+export async function applyRoleTemplate(pool: Pool, req: Request, res: Response) {
+  try {
+    const { roleId, templateId } = (req.body || {}) as { roleId?: number; templateId?: string }
+    const ve = validateRequired({ roleId, templateId }, ['roleId', 'templateId'])
+    if (ve) return sendError(res, 400, ve)
+    const tpl = ROLE_TEMPLATES.find((t) => t.id === templateId)
+    if (!tpl) return sendError(res, 400, 'Unknown templateId')
+
+    const codes = Array.from(new Set(tpl.permissionCodes))
+    const permissionIds: number[] = []
+    const missing: string[] = []
+    for (const code of codes) {
+      const { rows } = await pool.query('select id from permissions where code = $1', [code])
+      if (rows[0]?.id) permissionIds.push(rows[0].id)
+      else missing.push(code)
+    }
+
+    await pool.query('begin')
+    await pool.query('delete from role_permissions where role_id = $1', [roleId])
+    for (const pid of permissionIds) {
+      await pool.query(
+        'insert into role_permissions (role_id, permission_id) values ($1, $2) on conflict do nothing',
+        [roleId, pid]
+      )
+    }
+    await pool.query('commit')
+    await logStaff(pool, (req as any).staffId, 'apply_role_template', { roleId, templateId, missing })
+    sendSuccess(res, { roleId, templateId, permissionCount: permissionIds.length, missingCodes: missing })
+  } catch (err) {
+    try {
+      await pool.query('rollback')
+    } catch { /* */ }
+    sendError(res, 500, 'Failed to apply role template', err)
   }
 }
 

@@ -19,14 +19,23 @@ import {
   ClipboardList,
   UserCog,
   Settings,
+  Store,
+  Globe2,
+  Radio,
+  TextSearch,
+  Share2,
+  Gift,
 } from 'lucide-react'
 import NotificationBell from '../components/NotificationBell'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBaseUrl } from '../utils/apiUrl'
+import { Nav } from '../config/rbacNav'
 
 interface NavigationSection {
   title: string
   SectionIcon: LucideIcon
+  /** RBAC: `nav:*` code from rbac catalog; sidebar row hidden if missing (admins see all). */
+  requiredPermission: string
   items: NavigationItem[]
   defaultOpen?: boolean
 }
@@ -50,7 +59,8 @@ const Layout = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [pendingCollabCount, setPendingCollabCount] = useState(0)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  const { user, logout } = useAuth()
+  const { user, logout, hasPermission, hasRole } = useAuth()
+  const canNav = (code: string) => hasRole('admin') || hasPermission(code)
 
   // Fetch pending collab count for sidebar badge
   useEffect(() => {
@@ -83,20 +93,43 @@ const Layout = () => {
     navigate('/admin/login', { replace: true })
   }
 
-  // Define all admin options grouped by category. Sidebar always lists links; route access is enforced by page guards.
+  // Grouped by RBAC division (see backend `rbacCatalog.ts`). Admins bypass via `hasPermission` + role `admin`.
   const navigationSections: NavigationSection[] = [
     {
-      title: 'Dashboard',
+      title: 'Overview',
       SectionIcon: LayoutDashboard,
+      requiredPermission: Nav.overview,
       defaultOpen: true,
+      items: [{ name: 'Dashboard', href: '/admin/dashboard', current: location.pathname === '/admin/dashboard' }],
+    },
+    {
+      title: 'Store & homepage',
+      SectionIcon: Store,
+      requiredPermission: Nav.store,
+      defaultOpen: false,
       items: [
-        { name: 'Dashboard', href: '/admin/dashboard', current: location.pathname === '/admin/dashboard' },
         { name: 'Online store', href: '/admin/store', current: location.pathname === '/admin/store' },
         { name: 'Homepage layout', href: '/admin/homepage-layout', badge: 'NEW', current: location.pathname === '/admin/homepage-layout' },
+      ],
+    },
+    {
+      title: 'Sales channels',
+      SectionIcon: Globe2,
+      requiredPermission: Nav.channels,
+      defaultOpen: false,
+      items: [
         { name: 'Marketplaces', href: '/admin/marketplaces', badge: 'NEW', current: location.pathname === '/admin/marketplaces' },
         { name: 'FB Shop integration', href: '/admin/fb-shop', badge: 'NEW', current: location.pathname === '/admin/fb-shop' },
+      ],
+    },
+    {
+      title: 'Meta',
+      SectionIcon: Radio,
+      requiredPermission: Nav.meta,
+      defaultOpen: false,
+      items: [
         {
-          name: 'Meta',
+          name: 'Meta (Business & Ads)',
           href: '/admin/meta',
           badge: 'NEW',
           current:
@@ -104,8 +137,28 @@ const Layout = () => {
             location.pathname === '/admin/meta-ads' ||
             location.pathname === '/admin/meta-business',
         },
-        { name: 'Google & YouTube', href: '/admin/google', current: location.pathname === '/admin/google' },
-        { name: 'Facebook & Instagram', href: '/admin/facebook', current: location.pathname === '/admin/facebook' },
+      ],
+    },
+    {
+      title: 'Google & YouTube',
+      SectionIcon: TextSearch,
+      requiredPermission: Nav.google,
+      defaultOpen: false,
+      items: [{ name: 'Google & YouTube', href: '/admin/google', current: location.pathname === '/admin/google' }],
+    },
+    {
+      title: 'Facebook & Instagram',
+      SectionIcon: Share2,
+      requiredPermission: Nav.facebook,
+      defaultOpen: false,
+      items: [{ name: 'Facebook & Instagram', href: '/admin/facebook', current: location.pathname === '/admin/facebook' }],
+    },
+    {
+      title: 'Loyalty & rewards',
+      SectionIcon: Gift,
+      requiredPermission: Nav.loyalty,
+      defaultOpen: false,
+      items: [
         { name: 'Loyalty program', href: '/admin/loyalty-program', current: location.pathname === '/admin/loyalty-program' },
         { name: 'Cashback system', href: '/admin/cashback', current: location.pathname === '/admin/cashback' },
       ],
@@ -114,6 +167,7 @@ const Layout = () => {
     {
       title: 'Products & catalog',
       SectionIcon: Package,
+      requiredPermission: Nav.catalog,
       defaultOpen: true,
       items: [
         { name: 'Products', href: '/admin/products', current: location.pathname === '/admin/products' },
@@ -129,6 +183,7 @@ const Layout = () => {
     {
       title: 'Sales & e-commerce',
       SectionIcon: ShoppingCart,
+      requiredPermission: Nav.sales,
       defaultOpen: false,
       items: [
         { name: 'Orders', href: '/admin/orders', current: location.pathname === '/admin/orders' || location.pathname.startsWith('/admin/orders/') },
@@ -148,6 +203,7 @@ const Layout = () => {
     {
       title: 'Content & CMS',
       SectionIcon: FileText,
+      requiredPermission: Nav.content,
       defaultOpen: true,
       items: [
         { name: 'CMS', href: '/admin/cms', current: location.pathname === '/admin/cms' },
@@ -162,6 +218,7 @@ const Layout = () => {
     {
       title: 'Customer & CRM',
       SectionIcon: Users,
+      requiredPermission: Nav.crm,
       defaultOpen: true,
       items: [
         { name: 'Customers', href: '/admin/customers', current: location.pathname === '/admin/customers' },
@@ -183,6 +240,7 @@ const Layout = () => {
     {
       title: 'Finance & payments',
       SectionIcon: Wallet,
+      requiredPermission: Nav.finance,
       defaultOpen: false,
       items: [
         { name: 'Invoices', href: '/admin/invoices', current: location.pathname === '/admin/invoices' },
@@ -196,6 +254,7 @@ const Layout = () => {
     {
       title: 'Marketing',
       SectionIcon: Megaphone,
+      requiredPermission: Nav.marketing,
       defaultOpen: false,
       items: [{ name: 'Marketing', href: '/admin/marketing', current: location.pathname === '/admin/marketing' }],
     },
@@ -203,6 +262,7 @@ const Layout = () => {
     {
       title: 'Affiliate & monetization',
       SectionIcon: Handshake,
+      requiredPermission: Nav.affiliate,
       defaultOpen: false,
       items: [
         { name: 'Affiliate program', href: '/admin/affiliate-program', current: location.pathname === '/admin/affiliate-program' },
@@ -217,6 +277,7 @@ const Layout = () => {
     {
       title: 'Analytics & insights',
       SectionIcon: BarChart3,
+      requiredPermission: Nav.analytics,
       defaultOpen: false,
       items: [
         { name: 'Analytics', href: '/admin/analytics', current: location.pathname === '/admin/analytics' },
@@ -229,6 +290,7 @@ const Layout = () => {
     {
       title: 'Forms & communication',
       SectionIcon: ClipboardList,
+      requiredPermission: Nav.forms,
       defaultOpen: false,
       items: [
         { name: 'Forms', href: '/admin/forms', current: location.pathname === '/admin/forms' },
@@ -242,6 +304,7 @@ const Layout = () => {
     {
       title: 'Team & access',
       SectionIcon: UserCog,
+      requiredPermission: Nav.team,
       defaultOpen: false,
       items: [
         { name: 'Staff accounts', href: '/admin/system/staff', current: location.pathname === '/admin/system/staff' },
@@ -252,8 +315,7 @@ const Layout = () => {
     },
   ]
 
-  // Same sections for sidebar and search. Route access is enforced by page guards, not the sidebar.
-  const filteredNavigationSections = navigationSections
+  const filteredNavigationSections = navigationSections.filter((s) => canNav(s.requiredPermission))
 
   // Collapsible groups: `true` = expanded; when user has not toggled, we derive from defaultOpen + active route
   const [sectionOpenOverride, setSectionOpenOverride] = useState<Record<string, boolean>>({})
@@ -507,15 +569,17 @@ const Layout = () => {
           </nav>
 
           {/* Settings */}
-          <div className="border-t border-[var(--brand-border)] p-3">
-            <Link
-              to="/admin/settings"
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]"
-            >
-              <Settings className="h-4 w-4 flex-shrink-0 opacity-80" aria-hidden />
-              <span>Settings</span>
-            </Link>
-          </div>
+          {canNav(Nav.settings) && (
+            <div className="border-t border-[var(--brand-border)] p-3">
+              <Link
+                to="/admin/settings"
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]"
+              >
+                <Settings className="h-4 w-4 flex-shrink-0 opacity-80" aria-hidden />
+                <span>Settings</span>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

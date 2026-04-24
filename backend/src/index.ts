@@ -1355,6 +1355,15 @@ app.post('/api/staff/auth/change-password', staffAuthMiddleware as any, (req, re
 app.post('/api/staff/users/reset-password', (req, res) => staffRoutes.resetPassword(pool, req, res))
 app.post('/api/staff/users/disable', (req, res) => staffRoutes.disableStaff(pool, req, res))
 app.post('/api/staff/seed-standard', (req, res) => staffRoutes.seedStandardRolesAndPermissions(pool, req, res))
+app.get('/api/staff/permission-catalog', staffAuthMiddleware as any, (req, res) =>
+  staffRoutes.getPermissionCatalog(pool, req, res)
+)
+app.post('/api/staff/permissions/sync', staffAuthMiddleware as any, (req, res) =>
+  staffRoutes.syncRbacCatalogPermissions(pool, req, res)
+)
+app.post('/api/staff/roles/apply-template', staffAuthMiddleware as any, (req, res) =>
+  staffRoutes.applyRoleTemplate(pool, req, res)
+)
 app.post('/api/staff/users/bulk-create', (req, res) => staffRoutes.bulkCreateStaff(pool, req, res))
 app.get('/api/staff/layout-pages', (req, res) => staffRoutes.listLayoutPages(pool, req, res))
 app.post('/api/staff/layout-permissions', (req, res) => staffRoutes.assignLayoutPermissions(pool, req, res))
