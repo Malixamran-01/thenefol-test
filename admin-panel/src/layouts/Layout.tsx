@@ -1,14 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
-import { Search, X, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react'
+import {
+  Search,
+  X,
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  type LucideIcon,
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  FileText,
+  Users,
+  Wallet,
+  Megaphone,
+  Handshake,
+  BarChart3,
+  ClipboardList,
+  UserCog,
+  Settings,
+} from 'lucide-react'
 import NotificationBell from '../components/NotificationBell'
-import Can from '../components/Can'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface NavigationSection {
   title: string
-  icon: string
+  SectionIcon: LucideIcon
   items: NavigationItem[]
   defaultOpen?: boolean
 }
@@ -16,7 +34,6 @@ interface NavigationSection {
 interface NavigationItem {
   name: string
   href: string
-  icon: string
   description?: string
   badge?: string
   current?: boolean
@@ -33,7 +50,7 @@ const Layout = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [pendingCollabCount, setPendingCollabCount] = useState(0)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  const { user, logout, hasPageAccess } = useAuth()
+  const { user, logout } = useAuth()
 
   // Fetch pending collab count for sidebar badge
   useEffect(() => {
@@ -66,198 +83,176 @@ const Layout = () => {
     navigate('/admin/login', { replace: true })
   }
 
-  // Define all admin options grouped by category - REORGANIZED AS REQUESTED
+  // Define all admin options grouped by category. Sidebar always lists links; route access is enforced by page guards.
   const navigationSections: NavigationSection[] = [
-    // ========== DASHBOARD ==========
     {
       title: 'Dashboard',
-      icon: '🏠',
+      SectionIcon: LayoutDashboard,
       defaultOpen: true,
       items: [
-        { name: 'Dashboard', href: '/admin/dashboard', icon: '🏠', current: location.pathname === '/admin/dashboard' },
-        { name: 'Online Store', href: '/admin/store', icon: '🏪', current: location.pathname === '/admin/store' },
-        { name: 'Homepage Layout', href: '/admin/homepage-layout', icon: '🏠', badge: 'NEW', current: location.pathname === '/admin/homepage-layout' },
-        { name: 'Product Collections', href: '/admin/product-collections', icon: '🎁', badge: 'NEW', current: location.pathname === '/admin/product-collections' },
-        { name: 'Marketplaces', href: '/admin/marketplaces', icon: '🌐', badge: 'NEW', current: location.pathname === '/admin/marketplaces' },
-        { name: 'FB Shop Integration', href: '/admin/fb-shop', icon: '🛒', badge: 'NEW', current: location.pathname === '/admin/fb-shop' },
+        { name: 'Dashboard', href: '/admin/dashboard', current: location.pathname === '/admin/dashboard' },
+        { name: 'Online store', href: '/admin/store', current: location.pathname === '/admin/store' },
+        { name: 'Homepage layout', href: '/admin/homepage-layout', badge: 'NEW', current: location.pathname === '/admin/homepage-layout' },
+        { name: 'Marketplaces', href: '/admin/marketplaces', badge: 'NEW', current: location.pathname === '/admin/marketplaces' },
+        { name: 'FB Shop integration', href: '/admin/fb-shop', badge: 'NEW', current: location.pathname === '/admin/fb-shop' },
         {
           name: 'Meta',
           href: '/admin/meta',
-          icon: '📘',
           badge: 'NEW',
           current:
             location.pathname === '/admin/meta' ||
             location.pathname === '/admin/meta-ads' ||
             location.pathname === '/admin/meta-business',
         },
-        { name: 'Google & YouTube', href: '/admin/google', icon: '🔍', current: location.pathname === '/admin/google' },
-        { name: 'Facebook & Instagram', href: '/admin/facebook', icon: '📘', current: location.pathname === '/admin/facebook' },
-        { name: 'Loyalty Program', href: '/admin/loyalty-program', icon: '⭐', current: location.pathname === '/admin/loyalty-program' },
-        { name: 'Cashback System', href: '/admin/cashback', icon: '💰', current: location.pathname === '/admin/cashback' },
-      ]
+        { name: 'Google & YouTube', href: '/admin/google', current: location.pathname === '/admin/google' },
+        { name: 'Facebook & Instagram', href: '/admin/facebook', current: location.pathname === '/admin/facebook' },
+        { name: 'Loyalty program', href: '/admin/loyalty-program', current: location.pathname === '/admin/loyalty-program' },
+        { name: 'Cashback system', href: '/admin/cashback', current: location.pathname === '/admin/cashback' },
+      ],
     },
 
-    // ========== PRODUCTS & CATALOG ==========
     {
-      title: 'Products & Catalog',
-      icon: '📦',
+      title: 'Products & catalog',
+      SectionIcon: Package,
       defaultOpen: true,
       items: [
-        { name: 'Products', href: '/admin/products', icon: '📦', current: location.pathname === '/admin/products' },
-        { name: 'Categories', href: '/admin/categories', icon: '📁', current: location.pathname === '/admin/categories' },
-        { name: 'Product Variants', href: '/admin/product-variants', icon: '🔄', current: location.pathname === '/admin/product-variants' },
-        { name: 'Inventory', href: '/admin/inventory', icon: '📊', current: location.pathname === '/admin/inventory' },
-        { name: 'Warehouses', href: '/admin/warehouses', icon: '🏭', current: location.pathname === '/admin/warehouses' },
-      ]
+        { name: 'Products', href: '/admin/products', current: location.pathname === '/admin/products' },
+        { name: 'Catalog', href: '/admin/categories', current: location.pathname === '/admin/categories' },
+        { name: 'Product collections', href: '/admin/product-collections', badge: 'NEW', current: location.pathname === '/admin/product-collections' },
+        { name: 'Product variants', href: '/admin/product-variants', current: location.pathname === '/admin/product-variants' },
+        { name: 'Inventory', href: '/admin/inventory', current: location.pathname === '/admin/inventory' },
+        { name: 'Warehouses', href: '/admin/warehouses', current: location.pathname === '/admin/warehouses' },
+        { name: 'Discounts', href: '/admin/discounts', current: location.pathname === '/admin/discounts' },
+      ],
     },
 
-    // ========== SALES & ORDERS ==========
     {
       title: 'Sales & e-commerce',
-      icon: '🛒',
+      SectionIcon: ShoppingCart,
       defaultOpen: false,
       items: [
-        { name: 'Orders', href: '/admin/orders', icon: '📋', current: location.pathname === '/admin/orders' },
+        { name: 'Orders', href: '/admin/orders', current: location.pathname === '/admin/orders' || location.pathname.startsWith('/admin/orders/') },
         {
           name: 'Unified sales',
           href: '/admin/unified-sales',
-          icon: '📊',
           badge: 'NEW',
           current: location.pathname === '/admin/unified-sales',
         },
-        { name: 'Shipments', href: '/admin/shipments', icon: '🚚', current: location.pathname === '/admin/shipments' },
-        { name: 'Returns', href: '/admin/returns', icon: '↩️', current: location.pathname === '/admin/returns' },
-        { name: 'POS System', href: '/admin/pos', icon: '💳', current: location.pathname === '/admin/pos' },
-        { name: 'Cart & checkout', href: '/admin/cart-checkout', icon: '🛍️', current: location.pathname === '/admin/cart-checkout' },
-      ]
+        { name: 'Shipments', href: '/admin/shipments', current: location.pathname === '/admin/shipments' },
+        { name: 'Returns', href: '/admin/returns', current: location.pathname === '/admin/returns' },
+        { name: 'POS system', href: '/admin/pos', current: location.pathname === '/admin/pos' },
+        { name: 'Cart & checkout', href: '/admin/cart-checkout', current: location.pathname === '/admin/cart-checkout' },
+      ],
     },
 
-    // ========== CONTENT & CMS ==========
     {
       title: 'Content & CMS',
-      icon: '📄',
+      SectionIcon: FileText,
       defaultOpen: true,
       items: [
-        { name: 'CMS', href: '/admin/cms', icon: '📄', current: location.pathname === '/admin/cms' },
-        { name: 'Blog', href: '/admin/blog-requests', icon: '📝', current: location.pathname === '/admin/blog-requests' },
-        {
-          name: 'Authors',
-          href: '/admin/author-management',
-          icon: '✍️',
-          current: location.pathname === '/admin/author-management',
-        },
-        { name: 'Video Manager', href: '/admin/video-manager', icon: '🎬', current: location.pathname === '/admin/video-manager' },
-        { name: 'Static Pages', href: '/admin/static-pages', icon: '📃', current: location.pathname === '/admin/static-pages' },
-        { name: 'Community Management', href: '/admin/community-management', icon: '👥', current: location.pathname === '/admin/community-management' },
-      ]
+        { name: 'CMS', href: '/admin/cms', current: location.pathname === '/admin/cms' },
+        { name: 'Blog', href: '/admin/blog-requests', current: location.pathname === '/admin/blog-requests' },
+        { name: 'Authors', href: '/admin/author-management', current: location.pathname === '/admin/author-management' },
+        { name: 'Video manager', href: '/admin/video-manager', current: location.pathname === '/admin/video-manager' },
+        { name: 'Static pages', href: '/admin/static-pages', current: location.pathname === '/admin/static-pages' },
+        { name: 'Community management', href: '/admin/community-management', current: location.pathname === '/admin/community-management' },
+      ],
     },
-    
-    // ========== CUSTOMER & CRM ==========
+
     {
       title: 'Customer & CRM',
-      icon: '👤',
+      SectionIcon: Users,
       defaultOpen: true,
       items: [
-        { name: 'Customers', href: '/admin/customers', icon: '👥', current: location.pathname === '/admin/customers' },
-        { name: 'Users', href: '/admin/users', icon: '👤', current: location.pathname === '/admin/users' },
-        { name: 'User Profiles', href: '/admin/user-profiles', icon: '👤', current: location.pathname === '/admin/user-profiles' },
-        { name: 'User Notifications', href: '/admin/user-notifications', icon: '🔔', current: location.pathname === '/admin/user-notifications' },
-        { name: 'Customer Segmentation', href: '/admin/customer-segmentation', icon: '🎯', current: location.pathname === '/admin/customer-segmentation' },
-        { name: 'Custom Audience', href: '/admin/custom-audience', icon: '👥', current: location.pathname === '/admin/custom-audience' },
-        { name: 'WhatsApp Subscriptions', href: '/admin/whatsapp-subscriptions', icon: '📱', current: location.pathname === '/admin/whatsapp-subscriptions' },
-        { name: 'WhatsApp Chat', href: '/admin/whatsapp-chat', icon: '💬', current: location.pathname === '/admin/whatsapp-chat' },
-        { name: 'WhatsApp Management', href: '/admin/whatsapp-management', icon: '📱', current: location.pathname === '/admin/whatsapp-management' },
-        { name: 'WhatsApp Notifications', href: '/admin/whatsapp-notifications', icon: '📲', current: location.pathname === '/admin/whatsapp-notifications' },
-        { name: 'Journey Funnel', href: '/admin/journey-funnel', icon: '🔄', current: location.pathname === '/admin/journey-funnel' },
-        { name: 'Journey Tracking', href: '/admin/journey-tracking', icon: '🗺️', current: location.pathname === '/admin/journey-tracking' },
-        { name: 'Live Chat', href: '/admin/live-chat', icon: '🎧', current: location.pathname === '/admin/live-chat' },
-      ]
-    },
-    
-    // ========== FINANCE & PAYMENTS ==========
-    {
-      title: 'Finance & Payments',
-      icon: '💳',
-      defaultOpen: false,
-      items: [
-        { name: 'Invoices', href: '/admin/invoices', icon: '📄', current: location.pathname === '/admin/invoices' },
-        { name: 'Invoice Settings', href: '/admin/invoice-settings', icon: '⚙️', current: location.pathname === '/admin/invoice-settings' },
-        { name: 'Payment', href: '/admin/payment', icon: '💳', current: location.pathname === '/admin/payment' },
-        { name: 'Payment Options', href: '/admin/payment-options', icon: '💳', current: location.pathname === '/admin/payment-options' },
-        { name: 'Tax', href: '/admin/tax', icon: '💰', current: location.pathname === '/admin/tax' },
-      ]
+        { name: 'Customers', href: '/admin/customers', current: location.pathname === '/admin/customers' },
+        { name: 'Users', href: '/admin/users', current: location.pathname === '/admin/users' || location.pathname.startsWith('/admin/users/') },
+        { name: 'User profiles', href: '/admin/user-profiles', current: location.pathname === '/admin/user-profiles' },
+        { name: 'User notifications', href: '/admin/user-notifications', current: location.pathname === '/admin/user-notifications' },
+        { name: 'Customer segmentation', href: '/admin/customer-segmentation', current: location.pathname === '/admin/customer-segmentation' },
+        { name: 'Custom audience', href: '/admin/custom-audience', current: location.pathname === '/admin/custom-audience' },
+        { name: 'WhatsApp subscriptions', href: '/admin/whatsapp-subscriptions', current: location.pathname === '/admin/whatsapp-subscriptions' },
+        { name: 'WhatsApp chat', href: '/admin/whatsapp-chat', current: location.pathname === '/admin/whatsapp-chat' },
+        { name: 'WhatsApp management', href: '/admin/whatsapp-management', current: location.pathname === '/admin/whatsapp-management' },
+        { name: 'WhatsApp notifications', href: '/admin/whatsapp-notifications', current: location.pathname === '/admin/whatsapp-notifications' },
+        { name: 'Journey funnel', href: '/admin/journey-funnel', current: location.pathname === '/admin/journey-funnel' },
+        { name: 'Journey tracking', href: '/admin/journey-tracking', current: location.pathname === '/admin/journey-tracking' },
+        { name: 'Live chat', href: '/admin/live-chat', current: location.pathname === '/admin/live-chat' },
+      ],
     },
 
-    // ========== MARKETING ==========
+    {
+      title: 'Finance & payments',
+      SectionIcon: Wallet,
+      defaultOpen: false,
+      items: [
+        { name: 'Invoices', href: '/admin/invoices', current: location.pathname === '/admin/invoices' },
+        { name: 'Invoice settings', href: '/admin/invoice-settings', current: location.pathname === '/admin/invoice-settings' },
+        { name: 'Payment', href: '/admin/payment', current: location.pathname === '/admin/payment' },
+        { name: 'Payment options', href: '/admin/payment-options', current: location.pathname === '/admin/payment-options' },
+        { name: 'Tax', href: '/admin/tax', current: location.pathname === '/admin/tax' },
+      ],
+    },
+
     {
       title: 'Marketing',
-      icon: '📢',
+      SectionIcon: Megaphone,
       defaultOpen: false,
-      items: [
-        { name: 'Marketing', href: '/admin/marketing', icon: '📢', current: location.pathname === '/admin/marketing' },
-        { name: 'Discounts', href: '/admin/discounts', icon: '🏷️', current: location.pathname === '/admin/discounts' },
-      ]
+      items: [{ name: 'Marketing', href: '/admin/marketing', current: location.pathname === '/admin/marketing' }],
     },
 
-    // ========== AFFILIATE & MONETIZATION ==========
     {
-      title: 'Affiliate & Monetization',
-      icon: '🤝',
+      title: 'Affiliate & monetization',
+      SectionIcon: Handshake,
       defaultOpen: false,
       items: [
-        { name: 'Affiliate Program', href: '/admin/affiliate-program', icon: '🤝', current: location.pathname === '/admin/affiliate-program' },
-        { name: 'Affiliate Requests', href: '/admin/affiliate-requests', icon: '📋', badge: '3', current: location.pathname === '/admin/affiliate-requests' },
-        { name: 'Collab Requests', href: '/admin/collab-requests', icon: '🎬', badge: pendingCollabCount > 0 ? String(pendingCollabCount) : undefined, current: location.pathname === '/admin/collab-requests' },
-        { name: 'Collab Tasks', href: '/admin/collab-tasks', icon: '📋', current: location.pathname === '/admin/collab-tasks' },
-        { name: 'Coin Withdrawals', href: '/admin/coin-withdrawals', icon: '💸', current: location.pathname === '/admin/coin-withdrawals' },
-        { name: 'Loyalty Program Management', href: '/admin/loyalty-program-management', icon: '⭐', current: location.pathname === '/admin/loyalty-program-management' },
-      ]
+        { name: 'Affiliate program', href: '/admin/affiliate-program', current: location.pathname === '/admin/affiliate-program' },
+        { name: 'Affiliate requests', href: '/admin/affiliate-requests', badge: '3', current: location.pathname === '/admin/affiliate-requests' },
+        { name: 'Collab requests', href: '/admin/collab-requests', badge: pendingCollabCount > 0 ? String(pendingCollabCount) : undefined, current: location.pathname === '/admin/collab-requests' },
+        { name: 'Collab tasks', href: '/admin/collab-tasks', current: location.pathname === '/admin/collab-tasks' },
+        { name: 'Coin withdrawals', href: '/admin/coin-withdrawals', current: location.pathname === '/admin/coin-withdrawals' },
+        { name: 'Loyalty program management', href: '/admin/loyalty-program-management', current: location.pathname === '/admin/loyalty-program-management' },
+      ],
     },
-    
-    // ========== ANALYTICS & INSIGHTS ==========
+
     {
-      title: 'Analytics & Insights',
-      icon: '📈',
+      title: 'Analytics & insights',
+      SectionIcon: BarChart3,
       defaultOpen: false,
       items: [
-        { name: 'Analytics', href: '/admin/analytics', icon: '📊', current: location.pathname === '/admin/analytics' },
-        { name: 'Advanced Analytics', href: '/admin/advanced-analytics', icon: '📈', current: location.pathname === '/admin/advanced-analytics' },
-        { name: 'Actionable Analytics', href: '/admin/actionable-analytics', icon: '📈', current: location.pathname === '/admin/actionable-analytics' },
-        { name: 'Audit Logs', href: '/admin/system/audit-logs', icon: '📜', current: location.pathname === '/admin/system/audit-logs' },
-      ]
+        { name: 'Analytics', href: '/admin/analytics', current: location.pathname === '/admin/analytics' },
+        { name: 'Advanced analytics', href: '/admin/advanced-analytics', current: location.pathname === '/admin/advanced-analytics' },
+        { name: 'Actionable analytics', href: '/admin/actionable-analytics', current: location.pathname === '/admin/actionable-analytics' },
+        { name: 'Audit logs', href: '/admin/system/audit-logs', current: location.pathname === '/admin/system/audit-logs' },
+      ],
     },
-    
-    // ========== FORMS & COMMUNICATION ==========
+
     {
-      title: 'Forms & Communication',
-      icon: '📋',
+      title: 'Forms & communication',
+      SectionIcon: ClipboardList,
       defaultOpen: false,
       items: [
-        { name: 'Forms', href: '/admin/forms', icon: '📋', current: location.pathname === '/admin/forms' },
-        { name: 'Form Builder', href: '/admin/form-builder', icon: '📋', current: location.pathname === '/admin/form-builder' },
-        { name: 'Form Submissions', href: '/admin/form-submissions', icon: '📝', current: location.pathname === '/admin/form-submissions' },
-        { name: 'Contact Messages', href: '/admin/contact-messages', icon: '📧', current: location.pathname === '/admin/contact-messages' },
-        { name: 'Alert Settings', href: '/admin/system/alerts', icon: '🔔', current: location.pathname === '/admin/system/alerts' },
-      ]
+        { name: 'Forms', href: '/admin/forms', current: location.pathname === '/admin/forms' },
+        { name: 'Form builder', href: '/admin/form-builder', current: location.pathname === '/admin/form-builder' },
+        { name: 'Form submissions', href: '/admin/form-submissions', current: location.pathname === '/admin/form-submissions' },
+        { name: 'Contact messages', href: '/admin/contact-messages', current: location.pathname === '/admin/contact-messages' },
+        { name: 'Alert settings', href: '/admin/system/alerts', current: location.pathname === '/admin/system/alerts' },
+      ],
     },
-    
-    // ========== TEAM & ACCESS ==========
+
     {
-      title: 'Team & Access',
-      icon: '👥',
+      title: 'Team & access',
+      SectionIcon: UserCog,
       defaultOpen: false,
       items: [
-        { name: 'Staff Accounts', href: '/admin/system/staff', icon: '🧑‍💼', current: location.pathname === '/admin/system/staff' },
-        { name: 'Admin Management', href: '/admin/system/admin-management', icon: '👨‍💼', current: location.pathname === '/admin/system/admin-management' },
-        { name: 'Roles & Permissions', href: '/admin/system/roles', icon: '🗂️', current: location.pathname === '/admin/system/roles' },
-        { name: 'Account Security', href: '/admin/account-security', icon: '🔐', current: location.pathname === '/admin/account-security' },
-      ]
+        { name: 'Staff accounts', href: '/admin/system/staff', current: location.pathname === '/admin/system/staff' },
+        { name: 'Admin management', href: '/admin/system/admin-management', current: location.pathname === '/admin/system/admin-management' },
+        { name: 'Roles & permissions', href: '/admin/system/roles', current: location.pathname === '/admin/system/roles' },
+        { name: 'Account security', href: '/admin/account-security', current: location.pathname === '/admin/account-security' },
+      ],
     },
   ]
 
-  // Navigation sections used for sidebar and search.
-  // Page-level permission checks are handled by the <Can> component when rendering links,
-  // so we keep all items here to ensure they appear in the dropdown.
+  // Same sections for sidebar and search. Route access is enforced by page guards, not the sidebar.
   const filteredNavigationSections = navigationSections
 
   // Collapsible groups: `true` = expanded; when user has not toggled, we derive from defaultOpen + active route
@@ -300,41 +295,6 @@ const Layout = () => {
       description: `${section.title} - ${item.name}`,
     }))
   )
-
-  // Permission mapping by path
-  const permissionByHref: Record<string, { permission?: string; anyOf?: string[]; role?: string }> = {
-    '/admin/orders': { permission: 'orders:read' },
-    '/admin/shipments': { permission: 'shipping:read' },
-    '/admin/returns': { permission: 'returns:read' },
-    '/admin/products': { permission: 'products:read' },
-    '/admin/categories': { permission: 'products:read' },
-    '/admin/product-variants': { permission: 'products:read' },
-    '/admin/inventory': { permission: 'inventory:read' },
-    '/admin/warehouses': { permission: 'inventory:read' },
-    '/admin/analytics': { permission: 'analytics:read' },
-    '/admin/advanced-analytics': { permission: 'analytics:read' },
-    '/admin/marketing': { permission: 'marketing:read' },
-    '/admin/discounts': { permission: 'discounts:read' },
-    '/admin/users': { permission: 'users:read' },
-    '/admin/customers': { permission: 'users:read' },
-    '/admin/settings': { role: 'admin' },
-    '/admin/pos': { anyOf: ['pos:read','pos:update'] },
-    '/admin/marketplaces': { role: 'admin' },
-    '/admin/fb-shop': { role: 'admin' },
-    '/admin/payment-options': { permission: 'payments:read' },
-    '/admin/payment': { permission: 'payments:read' },
-    '/admin/invoices': { permission: 'payments:read' },
-    '/admin/cms': { permission: 'cms:read' },
-    '/admin/blog-requests': { permission: 'cms:read' },
-    '/admin/author-management': { permission: 'cms:read' },
-    '/admin/video-manager': { permission: 'cms:read' },
-    '/admin/static-pages': { permission: 'cms:read' },
-    '/admin/whatsapp-management': { permission: 'notifications:read' },
-    '/admin/whatsapp-notifications': { permission: 'notifications:read' },
-    '/admin/whatsapp-subscriptions': { permission: 'notifications:read' },
-    '/admin/whatsapp-chat': { permission: 'notifications:read' },
-  }
-
 
   // Search functionality
   const handleSearch = (query: string) => {
@@ -490,55 +450,55 @@ const Layout = () => {
             <div className="space-y-1">
               {filteredNavigationSections.map((section) => {
                 const open = isSectionOpen(section)
+                const SectionIcon = section.SectionIcon
+                const hasActiveChild = section.items.some((i) => i.current)
                 return (
                   <div key={section.title} className="rounded-lg">
                     <button
                       type="button"
                       onClick={() => toggleSection(section.title)}
-                      className="flex w-full items-center gap-1.5 rounded-lg px-2 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]"
+                      className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-semibold transition-colors ${
+                        hasActiveChild
+                          ? 'bg-[var(--brand-accent-soft)] text-[var(--brand-accent)]'
+                          : 'text-[var(--text-primary)] hover:bg-[var(--brand-highlight)]'
+                      }`}
                       aria-expanded={open}
                     >
                       {open ? (
-                        <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-[var(--text-muted)]" aria-hidden />
+                        <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-70" aria-hidden />
                       ) : (
-                        <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-[var(--text-muted)]" aria-hidden />
+                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-[var(--text-muted)]" aria-hidden />
                       )}
-                      <span className="text-sm leading-none" aria-hidden>
-                        {section.icon}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate leading-tight">{section.title}</span>
+                      <SectionIcon className="h-4 w-4 flex-shrink-0 opacity-80" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate leading-snug">{section.title}</span>
                     </button>
                     {open && (
-                      <div className="ml-0.5 mt-0.5 space-y-0.5 border-l border-[var(--brand-border)]/80 pl-2.5 pr-0.5 pb-1.5">
-                        {section.items.map((item) => {
-                          const gate = permissionByHref[item.href] || {}
-                          return (
-                            <Can key={item.href} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
-                              <Link
-                                to={item.href}
-                                className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
-                                  item.current
-                                    ? 'bg-[var(--brand-accent-soft)] text-[var(--brand-accent)] font-medium'
-                                    : 'text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
-                                }`}
-                                onClick={() => {
-                                  if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                                    setIsSidebarOpen(false)
-                                  }
-                                }}
-                              >
-                                <span className="text-base flex-shrink-0 leading-none">{item.icon}</span>
-                                <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                                {item.badge && (
-                                  <span className="flex-shrink-0 rounded-full bg-[var(--brand-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-xs">
-                                    {item.badge}
-                                  </span>
-                                )}
-                              </Link>
-                            </Can>
-                          )
-                        })}
-                      </div>
+                      <ul className="ml-1.5 mt-0.5 space-y-px border-l border-[var(--brand-border)] py-1 pl-2.5">
+                        {section.items.map((item) => (
+                          <li key={item.href}>
+                            <Link
+                              to={item.href}
+                              className={`flex items-center gap-2 rounded-md py-1.5 pl-1 pr-2 text-sm transition-colors ${
+                                item.current
+                                  ? 'bg-[var(--brand-accent-soft)] font-medium text-[var(--brand-accent)]'
+                                  : 'text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
+                              }`}
+                              onClick={() => {
+                                if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                                  setIsSidebarOpen(false)
+                                }
+                              }}
+                            >
+                              <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                              {item.badge && (
+                                <span className="flex-shrink-0 rounded-full bg-[var(--brand-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-xs">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 )
@@ -547,10 +507,13 @@ const Layout = () => {
           </nav>
 
           {/* Settings */}
-          <div className="p-4 border-t border-[var(--brand-border)]">
-            <Link to="/admin/settings" className="nav-item">
-              <span className="text-lg">⚙️</span>
-              <span className="font-medium">Settings</span>
+          <div className="border-t border-[var(--brand-border)] p-3">
+            <Link
+              to="/admin/settings"
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]"
+            >
+              <Settings className="h-4 w-4 flex-shrink-0 opacity-80" aria-hidden />
+              <span>Settings</span>
             </Link>
           </div>
         </div>
@@ -610,13 +573,13 @@ const Layout = () => {
                         onClick={() => handleSearchSelect(option)}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--brand-highlight)] text-left border-b border-[var(--brand-border)] last:border-b-0"
                       >
-                        <span className="text-lg">{option.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[var(--text-primary)] font-medium">{option.name}</div>
-                          <div className="text-sm text-[var(--text-muted)] truncate">{option.description}</div>
+                        <Search className="h-4 w-4 flex-shrink-0 text-[var(--text-muted)] opacity-60" aria-hidden />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-[var(--text-primary)]">{option.name}</div>
+                          <div className="truncate text-sm text-[var(--text-muted)]">{option.description}</div>
                           <div className="text-xs text-[var(--brand-accent)]">{option.category}</div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
+                        <ArrowRight className="h-4 w-4 flex-shrink-0 text-[var(--text-muted)]" aria-hidden />
                       </button>
                     ))}
                   </div>
