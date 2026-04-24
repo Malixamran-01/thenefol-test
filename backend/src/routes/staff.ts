@@ -5,6 +5,8 @@ import crypto from 'crypto'
 import {
   ALL_RBAC_SEED_CODES,
   BUSINESS_PERMISSION_CODES,
+  DIVISION_BUNDLES,
+  NAV_CATALOG_FINE,
   NAV_DIVISION_GROUPS,
   ROLE_TEMPLATES,
 } from '../config/rbacCatalog'
@@ -887,6 +889,8 @@ export async function getPermissionCatalog(pool: Pool, req: Request, res: Respon
   try {
     sendSuccess(res, {
       navDivisions: NAV_DIVISION_GROUPS,
+      navCatalogFine: NAV_CATALOG_FINE,
+      divisionBundles: DIVISION_BUNDLES,
       businessPermissionCodes: BUSINESS_PERMISSION_CODES,
       templates: ROLE_TEMPLATES,
     })

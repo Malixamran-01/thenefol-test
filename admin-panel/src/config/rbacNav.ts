@@ -21,3 +21,16 @@ export const Nav = {
   team: 'nav:team',
   settings: 'nav:settings',
 } as const
+
+/** Granular “Products & catalog” lines — any one shows that sidebar row without `nav:catalog`. */
+export const NavCatalog = {
+  products: 'nav:catalog:products',
+  categories: 'nav:catalog:categories',
+  collections: 'nav:catalog:collections',
+  variants: 'nav:catalog:variants',
+  inventory: 'nav:catalog:inventory',
+  warehouses: 'nav:catalog:warehouses',
+  discounts: 'nav:catalog:discounts',
+} as const
+
+export const NAV_CATALOG_FINE_CODES: string[] = Object.values(NavCatalog)

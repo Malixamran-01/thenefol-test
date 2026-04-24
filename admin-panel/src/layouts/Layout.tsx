@@ -29,13 +29,15 @@ import {
 import NotificationBell from '../components/NotificationBell'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBaseUrl } from '../utils/apiUrl'
-import { Nav } from '../config/rbacNav'
+import { Nav, NAV_CATALOG_FINE_CODES, NavCatalog } from '../config/rbacNav'
 
 interface NavigationSection {
   title: string
   SectionIcon: LucideIcon
   /** RBAC: `nav:*` code from rbac catalog; sidebar row hidden if missing (admins see all). */
   requiredPermission: string
+  /** If set, section is visible when the user has any of these permissions (e.g. parent or fine-grained). */
+  requiredAnyOf?: string[]
   items: NavigationItem[]
   defaultOpen?: boolean
 }
@@ -46,6 +48,8 @@ interface NavigationItem {
   description?: string
   badge?: string
   current?: boolean
+  /** Optional `nav:*` code for this line (e.g. `nav:catalog:products`). Parent `nav:catalog` still grants all lines. */
+  requiredPermission?: string
 }
 
 const Layout = () => {
@@ -61,6 +65,26 @@ const Layout = () => {
   const userMenuRef = useRef<HTMLDivElement>(null)
   const { user, logout, hasPermission, hasRole } = useAuth()
   const canNav = (code: string) => hasRole('admin') || hasPermission(code)
+
+  const canAccessSection = (s: NavigationSection) => {
+    if (hasRole('admin')) return true
+    if (s.requiredAnyOf?.length) return s.requiredAnyOf.some((code) => hasPermission(code))
+    return canNav(s.requiredPermission)
+  }
+
+  const canAccessCatalogItem = (item: NavigationItem) => {
+    if (hasRole('admin')) return true
+    if (hasPermission(Nav.catalog)) return true
+    if (item.requiredPermission) return hasPermission(item.requiredPermission)
+    return false
+  }
+
+  const getVisibleItems = (section: NavigationSection): NavigationItem[] => {
+    if (section.title === 'Products & catalog') {
+      return section.items.filter((item) => canAccessCatalogItem(item))
+    }
+    return section.items
+  }
 
   // Fetch pending collab count for sidebar badge
   useEffect(() => {
@@ -168,15 +192,27 @@ const Layout = () => {
       title: 'Products & catalog',
       SectionIcon: Package,
       requiredPermission: Nav.catalog,
+      requiredAnyOf: [Nav.catalog, ...NAV_CATALOG_FINE_CODES],
       defaultOpen: true,
       items: [
-        { name: 'Products', href: '/admin/products', current: location.pathname === '/admin/products' },
-        { name: 'Catalog', href: '/admin/categories', current: location.pathname === '/admin/categories' },
-        { name: 'Product collections', href: '/admin/product-collections', badge: 'NEW', current: location.pathname === '/admin/product-collections' },
-        { name: 'Product variants', href: '/admin/product-variants', current: location.pathname === '/admin/product-variants' },
-        { name: 'Inventory', href: '/admin/inventory', current: location.pathname === '/admin/inventory' },
-        { name: 'Warehouses', href: '/admin/warehouses', current: location.pathname === '/admin/warehouses' },
-        { name: 'Discounts', href: '/admin/discounts', current: location.pathname === '/admin/discounts' },
+        { name: 'Products', href: '/admin/products', requiredPermission: NavCatalog.products, current: location.pathname === '/admin/products' },
+        { name: 'Catalog', href: '/admin/categories', requiredPermission: NavCatalog.categories, current: location.pathname === '/admin/categories' },
+        {
+          name: 'Product collections',
+          href: '/admin/product-collections',
+          badge: 'NEW',
+          requiredPermission: NavCatalog.collections,
+          current: location.pathname === '/admin/product-collections',
+        },
+        {
+          name: 'Product variants',
+          href: '/admin/product-variants',
+          requiredPermission: NavCatalog.variants,
+          current: location.pathname === '/admin/product-variants',
+        },
+        { name: 'Inventory', href: '/admin/inventory', requiredPermission: NavCatalog.inventory, current: location.pathname === '/admin/inventory' },
+        { name: 'Warehouses', href: '/admin/warehouses', requiredPermission: NavCatalog.warehouses, current: location.pathname === '/admin/warehouses' },
+        { name: 'Discounts', href: '/admin/discounts', requiredPermission: NavCatalog.discounts, current: location.pathname === '/admin/discounts' },
       ],
     },
 
@@ -315,7 +351,10 @@ const Layout = () => {
     },
   ]
 
-  const filteredNavigationSections = navigationSections.filter((s) => canNav(s.requiredPermission))
+  const filteredNavigationSections = navigationSections
+    .filter((s) => canAccessSection(s))
+    .map((s) => ({ ...s, items: getVisibleItems(s) }))
+    .filter((s) => s.items.length > 0)
 
   // Collapsible groups: `true` = expanded; when user has not toggled, we derive from defaultOpen + active route
   const [sectionOpenOverride, setSectionOpenOverride] = useState<Record<string, boolean>>({})
@@ -334,12 +373,12 @@ const Layout = () => {
     setSectionOpenOverride((prev) => ({ ...prev, [title]: !wasOpen }))
   }
 
-  // When the route changes, expand the group that contains the current page
+  // When the route changes, expand the group that contains the current page (visible items only for gated sections)
   useEffect(() => {
     setSectionOpenOverride((prev) => {
       const next = { ...prev }
       for (const sec of navigationSections) {
-        if (sec.items.some((i) => i.current)) {
+        if (getVisibleItems(sec).some((i) => i.current)) {
           next[sec.title] = true
         }
       }
