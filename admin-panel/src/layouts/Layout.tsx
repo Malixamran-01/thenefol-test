@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
-import { Search, X, ArrowRight } from 'lucide-react'
+import { Search, X, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react'
 import NotificationBell from '../components/NotificationBell'
 import Can from '../components/Can'
 import { useAuth } from '../contexts/AuthContext'
@@ -113,7 +113,7 @@ const Layout = () => {
 
     // ========== SALES & ORDERS ==========
     {
-      title: 'Sales & Orders',
+      title: 'Sales & e-commerce',
       icon: '🛒',
       defaultOpen: false,
       items: [
@@ -128,6 +128,7 @@ const Layout = () => {
         { name: 'Shipments', href: '/admin/shipments', icon: '🚚', current: location.pathname === '/admin/shipments' },
         { name: 'Returns', href: '/admin/returns', icon: '↩️', current: location.pathname === '/admin/returns' },
         { name: 'POS System', href: '/admin/pos', icon: '💳', current: location.pathname === '/admin/pos' },
+        { name: 'Cart & checkout', href: '/admin/cart-checkout', icon: '🛍️', current: location.pathname === '/admin/cart-checkout' },
       ]
     },
 
@@ -154,7 +155,7 @@ const Layout = () => {
     // ========== CUSTOMER & CRM ==========
     {
       title: 'Customer & CRM',
-      icon: '📦',
+      icon: '👤',
       defaultOpen: true,
       items: [
         { name: 'Customers', href: '/admin/customers', icon: '👥', current: location.pathname === '/admin/customers' },
@@ -226,16 +227,6 @@ const Layout = () => {
       ]
     },
     
-    // ========== E-COMMERCE ==========
-    {
-      title: 'E-Commerce',
-      icon: '🛍️',
-      defaultOpen: false,
-      items: [
-        { name: 'Cart & Checkout', href: '/admin/cart-checkout', icon: '🛒', current: location.pathname === '/admin/cart-checkout' },
-      ]
-    },
-
     // ========== FORMS & COMMUNICATION ==========
     {
       title: 'Forms & Communication',
@@ -269,20 +260,44 @@ const Layout = () => {
   // so we keep all items here to ensure they appear in the dropdown.
   const filteredNavigationSections = navigationSections
 
+  // Collapsible groups: `true` = expanded; when user has not toggled, we derive from defaultOpen + active route
+  const [sectionOpenOverride, setSectionOpenOverride] = useState<Record<string, boolean>>({})
+
+  const isSectionOpen = (section: NavigationSection) => {
+    if (Object.prototype.hasOwnProperty.call(sectionOpenOverride, section.title)) {
+      return sectionOpenOverride[section.title]!
+    }
+    return section.items.some((i) => i.current) || section.defaultOpen === true
+  }
+
+  const toggleSection = (title: string) => {
+    const section = filteredNavigationSections.find((s) => s.title === title)
+    if (!section) return
+    const wasOpen = isSectionOpen(section)
+    setSectionOpenOverride((prev) => ({ ...prev, [title]: !wasOpen }))
+  }
+
+  // When the route changes, expand the group that contains the current page
+  useEffect(() => {
+    setSectionOpenOverride((prev) => {
+      const next = { ...prev }
+      for (const sec of navigationSections) {
+        if (sec.items.some((i) => i.current)) {
+          next[sec.title] = true
+        }
+      }
+      return next
+    })
+    // navigationSections is rebuilt each render with fresh `current` flags; we only need to react to URL changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
+
   // Flatten all options for search
-  const allOptions = filteredNavigationSections.flatMap(section =>
-    section.items.map(item => ({
+  const allOptions = filteredNavigationSections.flatMap((section) =>
+    section.items.map((item) => ({
       ...item,
       category: section.title,
-      description: `${section.title} - ${item.name}`
-    }))
-  )
-
-  // Flat list of navigation items for non-dropdown sidebar
-  const flatNavigationItems = filteredNavigationSections.flatMap(section =>
-    section.items.map(item => ({
-      ...item,
-      section: section.title,
+      description: `${section.title} - ${item.name}`,
     }))
   )
 
@@ -470,36 +485,65 @@ const Layout = () => {
             </button>
           </div>
 
-          {/* Flat Navigation (no dropdown sections) */}
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            {flatNavigationItems.map((item) => {
-              const gate = permissionByHref[item.href] || {}
-              return (
-                <Can key={item.href} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
-                  <Link
-                    to={item.href}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      item.current
-                        ? 'bg-[var(--brand-accent-soft)] text-[var(--brand-accent)] font-medium'
-                        : 'text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
-                    }`}
-                    onClick={() => {
-                      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                        setIsSidebarOpen(false)
-                      }
-                    }}
-                  >
-                    <span className="text-base flex-shrink-0">{item.icon}</span>
-                    <span className="flex-1 truncate">{item.name}</span>
-                    {item.badge && (
-                      <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold bg-[var(--brand-accent)] text-white rounded-full">
-                        {item.badge}
+          {/* Grouped navigation: collapsible sections */}
+          <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-3" aria-label="Main navigation">
+            <div className="space-y-1">
+              {filteredNavigationSections.map((section) => {
+                const open = isSectionOpen(section)
+                return (
+                  <div key={section.title} className="rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(section.title)}
+                      className="flex w-full items-center gap-1.5 rounded-lg px-2 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]"
+                      aria-expanded={open}
+                    >
+                      {open ? (
+                        <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-[var(--text-muted)]" aria-hidden />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-[var(--text-muted)]" aria-hidden />
+                      )}
+                      <span className="text-sm leading-none" aria-hidden>
+                        {section.icon}
                       </span>
+                      <span className="min-w-0 flex-1 truncate leading-tight">{section.title}</span>
+                    </button>
+                    {open && (
+                      <div className="ml-0.5 mt-0.5 space-y-0.5 border-l border-[var(--brand-border)]/80 pl-2.5 pr-0.5 pb-1.5">
+                        {section.items.map((item) => {
+                          const gate = permissionByHref[item.href] || {}
+                          return (
+                            <Can key={item.href} permission={gate.permission} anyOf={gate.anyOf} role={gate.role}>
+                              <Link
+                                to={item.href}
+                                className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
+                                  item.current
+                                    ? 'bg-[var(--brand-accent-soft)] text-[var(--brand-accent)] font-medium'
+                                    : 'text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]'
+                                }`}
+                                onClick={() => {
+                                  if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                                    setIsSidebarOpen(false)
+                                  }
+                                }}
+                              >
+                                <span className="text-base flex-shrink-0 leading-none">{item.icon}</span>
+                                <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                                {item.badge && (
+                                  <span className="flex-shrink-0 rounded-full bg-[var(--brand-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-xs">
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </Link>
+                            </Can>
+                          )
+                        })}
+                      </div>
                     )}
-                  </Link>
-                </Can>
-              )
-            })}
+                  </div>
+                )
+              })}
+            </div>
           </nav>
 
           {/* Settings */}
