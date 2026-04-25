@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Shield, Lock, Eye, EyeOff, Key, Smartphone, Mail } from 'lucide-react'
+import { Shield, Lock, Eye, EyeOff, Key, Smartphone, Mail, ArrowLeft } from 'lucide-react'
 
 export default function PrivacySecurity() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
@@ -35,6 +35,17 @@ export default function PrivacySecurity() {
   return (
     <main className="py-10 dark:bg-slate-900 min-h-screen">
       <div className="mx-auto max-w-4xl px-4">
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => (window.location.hash = '#/user/profile')}
+            className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 font-light tracking-wide transition-colors hover:opacity-70"
+            style={{ letterSpacing: '0.05em' }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back to Profile</span>
+          </button>
+        </div>
         {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-100 mb-6">

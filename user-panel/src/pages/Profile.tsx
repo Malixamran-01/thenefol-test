@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { User, CreditCard, MapPin, Phone, Mail, Package, Heart, Settings, LogOut, LogIn } from 'lucide-react'
+import { User, CreditCard, MapPin, Phone, Mail, Package, Heart, Settings, LogOut, LogIn, Shield } from 'lucide-react'
 import { formatCoins, formatCoinsWithValue, calculatePurchaseCoins } from '../utils/points'
 import ProfileAvatar from '../components/ProfileAvatar'
 import PhoneInput from '../components/PhoneInput'
@@ -469,6 +469,7 @@ export default function Profile() {
     { id: 'overview', label: 'Your Profile', icon: User },
     { id: 'address', label: 'Manage Address', icon: MapPin },
     { id: 'orders', label: 'Your Orders', icon: Package },
+    { id: 'privacy', label: 'Privacy & Security', icon: Shield },
     { id: 'wishlist', label: 'Wishlist', icon: Heart },
     { id: 'cards', label: 'Saved Cards', icon: CreditCard },
     { id: 'affiliate', label: 'Affiliate Partner', icon: Heart },
@@ -578,6 +579,8 @@ export default function Profile() {
                           window.location.hash = '#/user/contact'
                         } else if (tab.id === 'wishlist') {
                           window.location.hash = '#/user/wishlist'
+                        } else if (tab.id === 'privacy') {
+                          window.location.hash = '#/user/privacy-security'
                         } else {
                           setActiveTab(tab.id)
                           // Smooth scroll to content area
