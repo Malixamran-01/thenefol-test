@@ -3,6 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
+import { joinUploads } from '../config/uploadsRoot'
 import { v4 as uuidv4 } from 'uuid'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
@@ -17,7 +18,7 @@ const router = express.Router()
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads/blog')
+    const uploadDir = joinUploads('blog')
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true })
     }
@@ -257,7 +258,7 @@ const cleanupDeletedBlogPosts = async () => {
   for (const row of rows) {
     // Delete cover image
     if (row.cover_image) {
-      const coverPath = path.join(__dirname, '../../uploads/blog', path.basename(row.cover_image))
+      const coverPath = joinUploads('blog', path.basename(row.cover_image))
       if (fs.existsSync(coverPath)) {
         fs.unlinkSync(coverPath)
       }
@@ -265,7 +266,7 @@ const cleanupDeletedBlogPosts = async () => {
     
     // Delete detail image
     if (row.detail_image) {
-      const detailPath = path.join(__dirname, '../../uploads/blog', path.basename(row.detail_image))
+      const detailPath = joinUploads('blog', path.basename(row.detail_image))
       if (fs.existsSync(detailPath)) {
         fs.unlinkSync(detailPath)
       }
@@ -276,7 +277,7 @@ const cleanupDeletedBlogPosts = async () => {
       try {
         const imageArray = typeof row.images === 'string' ? JSON.parse(row.images) : row.images
         imageArray.forEach((imagePath: string) => {
-          const fullPath = path.join(__dirname, '../../uploads/blog', path.basename(imagePath))
+          const fullPath = joinUploads('blog', path.basename(imagePath))
           if (fs.existsSync(fullPath)) {
             fs.unlinkSync(fullPath)
           }

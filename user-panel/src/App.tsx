@@ -1090,6 +1090,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
   }
 
   if (lower.startsWith('/user/product/')) return <ProductPage />
+  if (lower.startsWith('/p/'))            return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
   if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout><BlogActivityPage /></BlogLayout>

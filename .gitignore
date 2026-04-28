@@ -40,8 +40,10 @@ security-audit.md
 node_modules
 
 # Large upload files (exceed GitHub 100MB limit)
-# Exclude entire uploads folder
+# Exclude entire uploads folder (legacy in-tree path)
 backend/uploads/
+# Default persistent uploads live beside backend/ (see backend/src/config/uploadsRoot.ts)
+uploads-data/
 
 # Exclude IMAGES folders
 /IMAGES

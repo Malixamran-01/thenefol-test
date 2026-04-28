@@ -841,6 +841,19 @@ function ProductsManager() {
                           }
                         }} className="rounded bg-white/10 px-3 py-1 text-xs hover:bg-white/15">Images</button>
                         <button onClick={()=>startEdit(p)} className="rounded bg-white/10 px-3 py-1 text-xs hover:bg-white/15">Edit</button>
+                        {p.details?.sku ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`https://thenefol.com/#/p/${p.details.sku}`)
+                              notify('success', 'QR link copied to clipboard')
+                            }}
+                            className="rounded bg-white/10 px-3 py-1 text-xs hover:bg-white/15"
+                            title={`Copy QR link: https://thenefol.com/#/p/${p.details.sku}`}
+                          >
+                            Copy QR
+                          </button>
+                        ) : null}
                         <button onClick={()=>setConfirmDeleteId(p.id)} className="rounded bg-red-600 px-3 py-1 text-xs hover:bg-red-700">Delete</button>
                       </div>
                     </td>
@@ -1185,7 +1198,25 @@ function ProductsManager() {
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Product Name *" value={editing.title||''} onChange={e=>setEditing(prev=>({...(prev as any), title:e.target.value}))} required />
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Slug *" value={editing.slug||''} onChange={e=>setEditing(prev=>({...(prev as any), slug:e.target.value}))} required />
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Brand Name" value={editing.details?.brand||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), brand:e.target.value}}))} />
-                    <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="SKU" value={editing.details?.sku||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), sku:e.target.value}}))} />
+                    <div className="space-y-1">
+                      <input className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="SKU" value={editing.details?.sku||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), sku:e.target.value}}))} />
+                      {editing.details?.sku && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-gray-500">QR link:</span>
+                          <code className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">https://thenefol.com/#/p/{editing.details.sku}</code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`https://thenefol.com/#/p/${editing.details?.sku}`)
+                              notify('success', 'QR link copied')
+                            }}
+                            className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-300"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="HSN Code" value={editing.details?.hsn||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), hsn:e.target.value}}))} />
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-3" placeholder="Product Title" value={editing.details?.productTitle||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), productTitle:e.target.value}}))} />
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-3" placeholder="Subtitle / Tagline" value={editing.details?.subtitle||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), subtitle:e.target.value}}))} />

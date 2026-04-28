@@ -6,12 +6,16 @@ import { Pool } from 'pg'
 import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
+import { ensureUploadsTree, getUploadsRoot } from './config/uploadsRoot'
 import { createServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
 import { createRoutes, createCRUDRoutes } from './routes'
 import { ensureSchema } from './utils/schema'
 
 const app = express()
+ensureUploadsTree()
+console.log('[uploads] Persistent storage root:', getUploadsRoot())
+
 app.use(express.json())
 
 const clientOrigin = process.env.CLIENT_ORIGIN || 'https://thenefol.com'
@@ -42,13 +46,8 @@ const db = {
   }
 }
 
-// File upload configuration
-const upload = multer({ dest: 'uploads/' })
-
-// Ensure uploads directory exists
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads')
-}
+// File upload configuration — files under persistent root (see UPLOADS_DIR)
+const upload = multer({ dest: path.join(getUploadsRoot()) })
 
 // Helper function to broadcast updates
 function broadcastUpdate(type: string, data: any) {

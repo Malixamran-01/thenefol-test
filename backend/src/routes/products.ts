@@ -113,6 +113,48 @@ export async function getProductById(pool: Pool, req: Request, res: Response) {
   }
 }
 
+// GET /api/products/sku/:sku — look up by details->>'sku' (JSONB)
+export async function getProductBySku(pool: Pool, req: Request, res: Response) {
+  try {
+    const { sku } = req.params
+    if (!sku || sku === 'undefined' || sku === 'null') {
+      return sendError(res, 400, 'Invalid product SKU')
+    }
+    const { rows } = await pool.query(`
+      SELECT p.*,
+             ${SQL_INVENTORY_AVAILABLE},
+             COALESCE(
+               json_agg(
+                 json_build_object('url', pi.url, 'type', COALESCE(pi.type, 'pdp'))
+               ) FILTER (WHERE pi.url IS NOT NULL AND (pi.type = 'pdp' OR pi.type IS NULL)),
+               '[]'::json
+             ) as pdp_images,
+             COALESCE(
+               json_agg(
+                 json_build_object('url', pi_banner.url, 'type', 'banner')
+               ) FILTER (WHERE pi_banner.url IS NOT NULL AND pi_banner.type = 'banner'),
+               '[]'::json
+             ) as banner_images
+      FROM products p
+      LEFT JOIN product_images pi ON p.id = pi.product_id AND (pi.type = 'pdp' OR pi.type IS NULL)
+      LEFT JOIN product_images pi_banner ON p.id = pi_banner.product_id AND pi_banner.type = 'banner'
+      WHERE p.details->>'sku' = $1
+      GROUP BY p.id
+    `, [sku])
+    if (rows.length === 0) {
+      return sendError(res, 404, 'Product not found')
+    }
+    const product = attachStockFlags({
+      ...rows[0],
+      pdp_images: rows[0].pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
+      banner_images: rows[0].banner_images.filter((img: any) => img.url).map((img: any) => img.url),
+    })
+    sendSuccess(res, product)
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch product by SKU', err)
+  }
+}
+
 // Optimized GET /api/products/slug/:slug
 export async function getProductBySlug(pool: Pool, req: Request, res: Response) {
   try {

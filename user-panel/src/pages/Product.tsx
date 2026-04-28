@@ -53,6 +53,9 @@ export default function ProductPage() {
   const [reviewsLoading, setReviewsLoading] = useState(false)
   const [reviewsToShow, setReviewsToShow] = useState(5)
   const [currentSlug, setCurrentSlug] = useState<string | null>(null)
+  const [currentSku, setCurrentSku]   = useState<string | null>(null)
+  const [identifierType, setIdentifierType] = useState<'slug' | 'sku'>('slug')
+  const currentIdentifier = identifierType === 'sku' ? currentSku : currentSlug
   const hasLoaded = useRef(false)
   const [hoverZoom, setHoverZoom] = useState({ show: false, x: 0, y: 0 })
   const mainImageRef = useRef<HTMLDivElement>(null)
@@ -200,12 +203,10 @@ export default function ProductPage() {
   }, [])
 
   // Extract load function to reuse it - optimized with parallel fetching
-  const loadProduct = useCallback(async (slug: string) => {
-      if (!slug) return
-      
-      // Prevent duplicate loading
-      if (loading && product?.slug === slug) return
-      
+  const loadProduct = useCallback(async (identifier: string, type: 'slug' | 'sku' = 'slug') => {
+      if (!identifier) return
+      const slug = type === 'slug' ? identifier : null
+
       const apiBase = getApiBase()
       
       // Loading product data for slug
@@ -260,10 +261,13 @@ export default function ProductPage() {
       // Fetch product and CSV data in parallel with caching
       try {
         setLoading(true)
+        const productUrl = type === 'sku'
+          ? `${apiBase}/api/products/sku/${encodeURIComponent(identifier)}`
+          : `${apiBase}/api/products/slug/${encodeURIComponent(identifier)}`
         const [productRes, csvData] = await Promise.all([
-          fetch(`${apiBase}/api/products/slug/${slug}`, { 
+          fetch(productUrl, { 
             credentials: 'include',
-            cache: 'no-store',
+            cache: 'default',
           }),
           getCsvData(apiBase)
         ])
@@ -351,8 +355,11 @@ export default function ProductPage() {
             // Process CSV data
             if (csvData && csvData.length > 0) {
               const csvMatch = csvData.find((csv: any) => {
+                if (type === 'sku') {
+                  return (csv['SKU'] || csv['sku'] || '') === identifier
+                }
                 const csvSlug = csv['Slug'] || csv['Product Name']?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
-                return csvSlug === slug
+                return csvSlug === identifier
               })
               
               if (csvMatch) {
@@ -427,49 +434,55 @@ export default function ProductPage() {
     }
   }, [])
 
-  // Extract slug from URL and update state
-  useEffect(() => {
+  // Parse the product identifier (slug or SKU) out of the hash URL
+  const parseProductPath = useCallback(() => {
     const hash = window.location.hash || '#/'
-    const match = hash.match(/^#\/user\/product\/([^?#]+)/)
-    const slug = match?.[1] || null
-    setCurrentSlug(slug)
+    const skuMatch  = hash.match(/^#\/p\/([^?#]+)/)
+    const slugMatch = hash.match(/^#\/user\/product\/([^?#]+)/)
+    if (skuMatch) {
+      setIdentifierType('sku')
+      setCurrentSku(decodeURIComponent(skuMatch[1]))
+      setCurrentSlug(null)
+    } else if (slugMatch) {
+      setIdentifierType('slug')
+      setCurrentSlug(decodeURIComponent(slugMatch[1]))
+      setCurrentSku(null)
+    } else {
+      setCurrentSlug(null)
+      setCurrentSku(null)
+    }
     captureCollabPurchaseTokenFromHash()
   }, [])
-  
-  // Listen for hash changes
+
+  useEffect(() => { parseProductPath() }, [])
+
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash || '#/'
-      const match = hash.match(/^#\/user\/product\/([^?#]+)/)
-      const slug = match?.[1] || null
-      setCurrentSlug(slug)
-      captureCollabPurchaseTokenFromHash()
-    }
-    
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [])
-  
-  // Load product when slug changes
+    window.addEventListener('hashchange', parseProductPath)
+    return () => window.removeEventListener('hashchange', parseProductPath)
+  }, [parseProductPath])
+
+  // Load product when the identifier (slug or SKU) changes
   useEffect(() => {
-    if (!currentSlug) {
+    if (!currentIdentifier) {
       setLoading(false)
       return
     }
-    
-    // Reset loading state and hasLoaded when slug changes
-    if (product?.slug !== currentSlug) {
+    const productSku = (product?.details as any)?.sku
+    const matchesCurrent =
+      identifierType === 'slug'
+        ? product?.slug === currentIdentifier
+        : productSku === currentIdentifier
+    if (!matchesCurrent) {
       hasLoaded.current = false
       setLoading(true)
       setProduct(null)
       setCsvProduct(null)
-      loadProduct(currentSlug)
+      loadProduct(currentIdentifier, identifierType)
     } else if (!hasLoaded.current) {
-      // Load if not already loaded for this slug
       hasLoaded.current = true
-      loadProduct(currentSlug)
+      loadProduct(currentIdentifier, identifierType)
     }
-  }, [currentSlug, product?.slug, loadProduct])
+  }, [currentIdentifier, identifierType, product?.slug, product?.details, loadProduct])
 
   // Memoize expensive review calculations - MUST be before any early returns
   // Cache static reviews to avoid loading heavy product_reviews file repeatedly
@@ -557,14 +570,21 @@ export default function ProductPage() {
   const refreshData = async () => {
     setIsRefreshing(true)
     const hash = window.location.hash || '#/'
-    const match = hash.match(/^#\/user\/product\/([^?#]+)/)
-    const slug = match?.[1]
-    if (!slug) return
+    const skuMatch  = hash.match(/^#\/p\/([^?#]+)/)
+    const slugMatch = hash.match(/^#\/user\/product\/([^?#]+)/)
+    const bySku = !!skuMatch
+    const identifier = skuMatch
+      ? decodeURIComponent(skuMatch[1])
+      : slugMatch ? decodeURIComponent(slugMatch[1] || '') : null
+    if (!identifier) return
     const apiBase = getApiBase()
-    
+
     try {
       // Refresh product from database
-      const res = await fetch(`${apiBase}/api/products/slug/${slug}?_=${Date.now()}`, { 
+      const productUrl = bySku
+        ? `${apiBase}/api/products/sku/${encodeURIComponent(identifier)}?_=${Date.now()}`
+        : `${apiBase}/api/products/slug/${encodeURIComponent(identifier)}?_=${Date.now()}`
+      const res = await fetch(productUrl, { 
         credentials: 'include',
         cache: 'no-store'
       })
@@ -627,8 +647,11 @@ export default function ProductPage() {
       if (csvRes.ok) {
         const csvData = await csvRes.json()
         const csvMatch = csvData.find((csv: any) => {
+          if (bySku) {
+            return (csv['SKU'] || csv['sku'] || '') === identifier
+          }
           const csvSlug = csv['Slug'] || csv['Product Name']?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
-          return csvSlug === slug
+          return csvSlug === identifier
         })
         
         if (csvMatch) {

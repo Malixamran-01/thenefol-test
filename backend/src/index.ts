@@ -6,6 +6,7 @@ import { Pool } from 'pg'
 import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
+import { ensureUploadsTree, getUploadsRoot } from './config/uploadsRoot'
 import { createServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
 import { ensureSchema } from './utils/schema'
@@ -97,6 +98,9 @@ declare global {
 }
 
 const app = express()
+
+ensureUploadsTree()
+console.log('[uploads] Persistent storage root:', getUploadsRoot(), '(set UPLOADS_DIR to override)')
 
 // Trust proxy for accurate IP detection behind reverse proxy (Nginx)
 // Required for express-rate-limit to work correctly with X-Forwarded-For header
@@ -194,7 +198,7 @@ app.use('/uploads', (req, res, next) => {
     return res.sendStatus(200)
   }
   next()
-}, express.static('uploads'))
+}, express.static(getUploadsRoot()))
 
 // Serve panel images with CORS headers from multiple possible locations
 // Priority: explicit env override -> built dist assets -> public fallbacks
@@ -615,7 +619,7 @@ const db = {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     try {
-      const uploadDir = path.resolve(process.cwd(), 'uploads')
+      const uploadDir = getUploadsRoot()
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true })
         console.log('Created uploads directory:', uploadDir)
@@ -691,19 +695,6 @@ const uploadCoverImage = multer({
     }
   }
 })
-
-// Ensure uploads directory exists
-const uploadsDir = path.resolve(process.cwd(), 'uploads')
-if (!fs.existsSync(uploadsDir)) {
-  try {
-    fs.mkdirSync(uploadsDir, { recursive: true })
-    console.log('Created uploads directory on startup:', uploadsDir)
-  } catch (error) {
-    console.error('Failed to create uploads directory:', error)
-  }
-} else {
-  console.log('Uploads directory exists:', uploadsDir)
-}
 
 // Helper function to broadcast updates to admin
 function broadcastUpdate(type: string, data: any) {
@@ -1137,6 +1128,7 @@ app.get('/api/products', (req, res) => productRoutes.getProducts(pool, res))
 // Specific routes must come before generic :id route
 app.post('/api/products/:productId/view', (req, res) => recommendationRoutes.trackProductView(pool, req, res))
 app.get('/api/products/slug/:slug', (req, res) => productRoutes.getProductBySlug(pool, req, res))
+app.get('/api/products/sku/:sku',  (req, res) => productRoutes.getProductBySku(pool, req, res))
 app.get('/api/products/:id', (req, res) => productRoutes.getProductById(pool, req, res))
 app.post('/api/products', (req, res) => productRoutes.createProduct(pool, req, res))
 app.put('/api/products/:id', (req, res) => productRoutes.updateProduct(pool, req, res, io))
