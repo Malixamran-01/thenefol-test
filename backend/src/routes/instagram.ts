@@ -88,7 +88,7 @@ async function exchangeForLongLivedToken(shortToken: string): Promise<{ access_t
   try {
     const url = new URL(`${IG_GRAPH}/access_token`)
     url.searchParams.set('grant_type', 'ig_exchange_token')
-    url.searchParams.set('client_secret', process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET || '')
+    url.searchParams.set('client_secret', process.env.INSTAGRAM_APP_SECRET || process.env.META_GRAPH_APP_SECRET || process.env.META_APP_SECRET || '')
     url.searchParams.set('access_token', shortToken)
     const res = await fetch(url.toString())
     const data = (await res.json()) as any
@@ -289,8 +289,8 @@ export async function handleAdminBrandConnect(pool: Pool, req: Request, res: Res
     return res.status(401).send('Invalid or expired admin session. Please sign in again.')
   }
 
-  const appId = process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID
-  if (!appId) return res.status(500).send('META_APP_ID / INSTAGRAM_APP_ID not configured')
+  const appId = process.env.INSTAGRAM_APP_ID || process.env.META_GRAPH_APP_ID || process.env.META_APP_ID
+  if (!appId) return res.status(500).send('META_GRAPH_APP_ID / INSTAGRAM_APP_ID not configured')
 
   const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 2000}`
   const redirectUri = `${backendUrl}/api/instagram/callback`
@@ -485,8 +485,8 @@ async function handleCallbackAdminBrand(
     const redirectUri = `${backendUrl}/api/instagram/callback`
 
     const tokenBody = new URLSearchParams({
-      client_id: process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID || '',
-      client_secret: process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET || '',
+      client_id: process.env.INSTAGRAM_APP_ID || process.env.META_GRAPH_APP_ID || process.env.META_APP_ID || '',
+      client_secret: process.env.INSTAGRAM_APP_SECRET || process.env.META_GRAPH_APP_SECRET || process.env.META_APP_SECRET || '',
       grant_type: 'authorization_code',
       redirect_uri: redirectUri,
       code,
@@ -566,9 +566,9 @@ export async function handleConnect(pool: Pool, req: Request, res: Response) {
     )
   }
 
-  // Use Instagram-specific App ID if configured (Business app Instagram product has its own ID)
-  const appId = process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID
-  if (!appId) return res.status(500).send('META_APP_ID not configured')
+  // Use Instagram-specific App ID if configured, then Graph app, then legacy fallback
+  const appId = process.env.INSTAGRAM_APP_ID || process.env.META_GRAPH_APP_ID || process.env.META_APP_ID
+  if (!appId) return res.status(500).send('META_GRAPH_APP_ID / INSTAGRAM_APP_ID not configured')
 
   const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 2000}`
   const redirectUri = `${backendUrl}/api/instagram/callback`
@@ -628,8 +628,8 @@ export async function handleCallback(pool: Pool, req: Request, res: Response) {
 
     // Step 1: Exchange authorization code → short-lived IG user token
     const tokenBody = new URLSearchParams({
-      client_id:     process.env.INSTAGRAM_APP_ID || process.env.META_APP_ID || '',
-      client_secret: process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET || '',
+      client_id:     process.env.INSTAGRAM_APP_ID || process.env.META_GRAPH_APP_ID || process.env.META_APP_ID || '',
+      client_secret: process.env.INSTAGRAM_APP_SECRET || process.env.META_GRAPH_APP_SECRET || process.env.META_APP_SECRET || '',
       grant_type:    'authorization_code',
       redirect_uri:  redirectUri,
       code,

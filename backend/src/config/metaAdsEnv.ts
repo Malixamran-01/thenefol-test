@@ -1,16 +1,21 @@
 /**
  * Meta unified config — one place in .env for Graph + Marketing + Page features:
  *
- *   META_GRAPH_ACCESS_TOKEN   (preferred) long-lived **user** token for Graph user context
- *   META_ADS_ACCESS_TOKEN     (alias for the same user token)
- *   META_PAGE_ACCESS_TOKEN    Page access token for Page-scoped calls (conversations / inbox). Never substitute user token.
- *   META_ADS_APP_ID / META_ADS_APP_SECRET
- *   META_AD_ACCOUNT_ID        act_… or digits
- *   META_FB_PAGE_ID           Facebook Page ID (Page / IG tools)
- *   META_ADS_PIXEL_ID         optional
- *   META_USE_ENV_ONLY=1       if set, token is read ONLY from env (never DB)
+ *   META_GRAPH_ACCESS_TOKEN      (preferred) long-lived user token for Graph user context
+ *   META_ADS_ACCESS_TOKEN        alias for the same user token
+ *   META_PAGE_ACCESS_TOKEN       Page access token (conversations / inbox). Never substitute user token.
+ *   META_ADS_APP_ID              Marketing / Ads API app (preferred for ad calls)
+ *   META_ADS_APP_SECRET
+ *   META_GRAPH_APP_ID            Graph / Instagram / Collab app (renamed from META_APP_ID to avoid
+ *                                conflict with old production app in env.backup = 1657567618607986)
+ *   META_GRAPH_APP_SECRET
+ *   META_AD_ACCOUNT_ID           act_… or digits
+ *   META_FB_PAGE_ID              Facebook Page ID (Page / IG tools)
+ *   META_ADS_PIXEL_ID            optional
+ *   META_USE_ENV_ONLY=1          if set, token is read ONLY from env (never DB)
  *
- * Falls back to legacy META_APP_ID / META_APP_SECRET / META_PIXEL_ID only if META_ADS_* unset.
+ * Fallback chain for app ID/secret:
+ *   META_ADS_APP_ID → META_GRAPH_APP_ID → META_APP_ID (legacy, kept for backward compat)
  */
 
 function trimEnv(key: string): string | undefined {
@@ -35,14 +40,34 @@ export function isMetaEnvOnlyMode(): boolean {
   return v === '1' || v === 'true' || v === 'yes'
 }
 
-/** Marketing API app ID (Meta Developer → your Ads app → Settings → Basic). */
+/**
+ * App ID for Marketing API (and token exchange / debug_token).
+ * Fallback chain: META_ADS_APP_ID → META_GRAPH_APP_ID → META_APP_ID (legacy).
+ */
 export function getMetaAdsAppId(): string | undefined {
-  return trimEnv('META_ADS_APP_ID') ?? trimEnv('META_APP_ID')
+  return trimEnv('META_ADS_APP_ID') ?? trimEnv('META_GRAPH_APP_ID') ?? trimEnv('META_APP_ID')
 }
 
-/** Marketing API app secret (server-side only; never expose to clients). */
+/**
+ * App secret for Marketing API.
+ * Fallback chain: META_ADS_APP_SECRET → META_GRAPH_APP_SECRET → META_APP_SECRET (legacy).
+ */
 export function getMetaAdsAppSecret(): string | undefined {
-  return trimEnv('META_ADS_APP_SECRET') ?? trimEnv('META_APP_SECRET')
+  return trimEnv('META_ADS_APP_SECRET') ?? trimEnv('META_GRAPH_APP_SECRET') ?? trimEnv('META_APP_SECRET')
+}
+
+/**
+ * App ID specifically for Graph / Instagram OAuth / Collab flows (formerly META_APP_ID in .env).
+ * Renamed to META_GRAPH_APP_ID to avoid conflict with old production app (env.backup META_APP_ID).
+ * Fallback: META_GRAPH_APP_ID → META_APP_ID (legacy).
+ */
+export function getMetaGraphAppId(): string | undefined {
+  return trimEnv('META_GRAPH_APP_ID') ?? trimEnv('META_APP_ID')
+}
+
+/** App secret for Graph / Instagram OAuth / Collab flows. */
+export function getMetaGraphAppSecret(): string | undefined {
+  return trimEnv('META_GRAPH_APP_SECRET') ?? trimEnv('META_APP_SECRET')
 }
 
 /** Pixel ID for Conversions API / events tied to the Ads app (optional). */
