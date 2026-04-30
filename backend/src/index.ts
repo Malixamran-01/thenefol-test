@@ -7,6 +7,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import { ensureUploadsTree, getUploadsRoot } from './config/uploadsRoot'
+import { convertToWebp, convertFilesToWebp } from './utils/toWebp'
 import { createServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
 import { ensureSchema } from './utils/schema'
@@ -1137,14 +1138,17 @@ app.post('/api/products/bulk-delete', (req, res) => productRoutes.bulkDeleteProd
 
 // Product images endpoints
 app.post('/api/products/:id/images', (req, res) => {
-  // Check if it's multipart form data
   if (req.headers['content-type']?.includes('multipart/form-data')) {
-    upload.array('images', 10)(req, res, (err) => {
+    upload.array('images', 10)(req, res, async (err) => {
       if (err) return sendError(res, 400, 'File upload error', err)
+      // Convert every uploaded product image to WebP before handing off
+      const files = (req as any).files as Express.Multer.File[] | undefined
+      if (files?.length) {
+        await convertFilesToWebp(files)
+      }
       productRoutes.uploadProductImages(pool, req, res)
     })
   } else {
-    // Handle JSON data
     productRoutes.uploadProductImages(pool, req, res)
   }
 })
@@ -2751,22 +2755,26 @@ app.post('/api/upload', (req, res, next) => {
     }
     next()
   })
-}, (req, res) => {
+}, async (req, res) => {
   try {
     const file = (req as any).file as Express.Multer.File | undefined
     if (!file) return sendError(res, 400, 'No file uploaded')
-    
-    const url = `/uploads/${file.filename}`
-    const isVideo = file.mimetype.startsWith('video/') || 
+
+    const isVideo = file.mimetype.startsWith('video/') ||
                     /\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(file.originalname)
-    
-    sendSuccess(res, { 
-      url, 
+
+    if (!isVideo) {
+      await convertFilesToWebp(file)
+    }
+
+    const url = `/uploads/${file.filename}`
+    sendSuccess(res, {
+      url,
       filename: file.filename,
       originalname: file.originalname,
       mimetype: file.mimetype,
       size: file.size,
-      isVideo: isVideo
+      isVideo,
     })
   } catch (err: any) {
     console.error('Upload processing error:', err)
@@ -2788,13 +2796,14 @@ app.post('/api/upload/profile-image', (req, res, next) => {
     }
     next()
   })
-}, (req, res) => {
+}, async (req, res) => {
   try {
     const file = (req as any).file as Express.Multer.File | undefined
     if (!file) return sendError(res, 400, 'No file uploaded')
     if (file.size < PROFILE_IMAGE_MIN) {
       return sendError(res, 400, 'Profile image must be at least 1KB.')
     }
+    await convertFilesToWebp(file)
     sendSuccess(res, { url: `/uploads/${file.filename}` })
   } catch (err: any) {
     sendError(res, 500, 'Failed to process profile image', err)
@@ -2815,13 +2824,14 @@ app.post('/api/upload/cover-image', (req, res, next) => {
     }
     next()
   })
-}, (req, res) => {
+}, async (req, res) => {
   try {
     const file = (req as any).file as Express.Multer.File | undefined
     if (!file) return sendError(res, 400, 'No file uploaded')
     if (file.size < COVER_IMAGE_MIN) {
       return sendError(res, 400, 'Cover image must be at least 1KB.')
     }
+    await convertFilesToWebp(file)
     sendSuccess(res, { url: `/uploads/${file.filename}` })
   } catch (err: any) {
     sendError(res, 500, 'Failed to process cover image', err)

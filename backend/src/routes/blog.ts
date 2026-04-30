@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
 import { joinUploads } from '../config/uploadsRoot'
+import { convertFilesToWebp } from '../utils/toWebp'
 import { v4 as uuidv4 } from 'uuid'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
@@ -338,7 +339,10 @@ router.post('/request', upload.fields([
     } = req.body
     
     const files = req.files as { [fieldname: string]: Express.Multer.File[] }
-    
+
+    // Convert all uploaded images to WebP before anything else
+    await convertFilesToWebp(files)
+
     // Extract different image types
     const coverImageFile = files?.coverImage?.[0]
     const detailImageFile = files?.detailImage?.[0]
@@ -362,7 +366,7 @@ router.post('/request', upload.fields([
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
-    // Generate URLs for different image types
+    // Generate URLs for different image types (filenames already updated to .webp by convertFilesToWebp)
     const coverImageUrl = `/uploads/blog/${coverImageFile.filename}`
     const detailImageUrl = detailImageFile ? `/uploads/blog/${detailImageFile.filename}` : null
     const ogImageUrl = ogImageFile
@@ -1360,6 +1364,10 @@ router.post(
       } = req.body
 
       const files = req.files as { [fieldname: string]: Express.Multer.File[] }
+
+      // Convert all uploaded images to WebP before using filenames
+      await convertFilesToWebp(files)
+
       const coverImageFile = files?.coverImage?.[0]
       const detailImageFile = files?.detailImage?.[0]
       const ogImageFile = files?.ogImage?.[0]
@@ -1388,6 +1396,7 @@ router.post(
         return res.status(400).json({ message: 'Cover image is required' })
       }
 
+      // Filenames are already updated to .webp by convertFilesToWebp
       let coverImageUrl = coverImageFile ? `/uploads/blog/${coverImageFile.filename}` : String(post.cover_image || '')
       const detailImageUrl: string | null = detailImageFile
         ? `/uploads/blog/${detailImageFile.filename}`
