@@ -72,12 +72,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
         {/* ── Agreement checkbox ── */}
         <div className="mb-5 rounded-xl border border-[#4B97C9]/30 bg-[#F0F9FF] p-4">
           <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={e => setAgreed(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9] flex-shrink-0"
-            />
+            
             <span className="text-sm text-gray-700 leading-relaxed">
               I have read and agree to the{' '}
               <a
@@ -103,6 +98,12 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
               </a>
               . I understand that by publishing content I irrevocably assign all rights to that content to Nefol Aesthetics Private Limited.
             </span>
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={e => setAgreed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9] flex-shrink-0"
+            />
           </label>
         </div>
 
