@@ -18,6 +18,7 @@ const AuthorOnboarding = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   // Step 1 data
   const [username, setUsername] = useState('')
@@ -790,6 +791,44 @@ const AuthorOnboarding = () => {
                 </ul>
               </div>
 
+              {/* ── Agreement checkbox ── */}
+              <div className="rounded-xl border border-[#4B97C9]/30 bg-[#F0F9FF] p-4 text-left">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={e => setAgreedToTerms(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9] flex-shrink-0"
+                  />
+                  <span className="text-sm text-gray-700 leading-relaxed">
+                    I have read and agree to the{' '}
+                    <a
+                      href="#/user/creator-agreement"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-[#4B97C9] underline underline-offset-2 hover:opacity-80"
+                    >
+                      Creator, Collab &amp; Affiliate Program Agreement
+                    </a>{' '}
+                    and the{' '}
+                    <a
+                      href="#/user/terms-of-service"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-[#4B97C9] underline underline-offset-2 hover:opacity-80"
+                    >
+                      Nefol Terms &amp; Conditions
+                    </a>
+                    . I understand that by publishing content I irrevocably assign all rights to that content to Nefol Aesthetics Private Limited.
+                  </span>
+                </label>
+                {!agreedToTerms && (
+                  <p className="mt-2 text-xs text-amber-600 pl-7">
+                    You must accept the Agreement to activate your author profile.
+                  </p>
+                )}
+              </div>
+
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -800,8 +839,8 @@ const AuthorOnboarding = () => {
                 </button>
                 <button
                   onClick={handleComplete}
-                  disabled={loading}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  disabled={loading || !agreedToTerms}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>

@@ -44,6 +44,7 @@ const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const RefundPolicy = lazy(() => import('./pages/RefundPolicy'))
 const ShippingPolicy = lazy(() => import('./pages/ShippingPolicy'))
 const TermsOfService = lazy(() => import('./pages/TermsOfService'))
+const CreatorAgreement = lazy(() => import('./pages/CreatorAgreement'))
 const Face = lazy(() => import('./pages/Face'))
 const Body = lazy(() => import('./pages/Body'))
 const Hair = lazy(() => import('./pages/Hair'))
@@ -1145,6 +1146,7 @@ function RouterView({ affiliateId }: RouterViewProps) {
     case '/user/refund-policy': return <RefundPolicy />
     case '/user/shipping-policy': return <ShippingPolicy />
     case '/user/terms-of-service': return <TermsOfService />
+    case '/user/creator-agreement': return <CreatorAgreement />
     case '/user/face': return <Face />
     case '/user/body': return <Body />
     case '/user/hair': return <Hair />
