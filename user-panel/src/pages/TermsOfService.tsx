@@ -1,5 +1,6 @@
 ﻿import React from 'react'
 import { FileText, Mail } from 'lucide-react'
+import { getSiteUrl } from '../utils/apiBase'
 
 const s = {
   body:    { color: '#555', letterSpacing: '0.04em', lineHeight: '1.75' } as React.CSSProperties,
@@ -33,6 +34,11 @@ function Bullet({ children }: { children: React.ReactNode }) {
 }
 
 export default function TermsOfService() {
+  const siteUrl   = getSiteUrl()
+  const tcHref    = '#/user/terms-of-service'
+  const ppHref    = '#/user/privacy-policy'
+  const ppFullUrl = `${siteUrl}/${ppHref}`
+
   return (
     <main
       className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20"
@@ -81,8 +87,9 @@ export default function TermsOfService() {
           </p>
           <p className="font-light text-sm sm:text-base leading-relaxed mt-3" style={s.body}>
             By accessing, browsing, or placing an order through the Site, you confirm that you have
-            read, understood, and agree to be bound by these Terms, our Privacy Policy, and any
-            other policies published on the Site. If you do not agree, please refrain from using the Site.
+            read, understood, and agree to be bound by these Terms, our{' '}
+            <a href={ppHref} style={{ color: s.blue }} className="underline underline-offset-2 hover:opacity-80 font-medium">Privacy Policy</a>,
+            {' '}and any other policies published on the Site. If you do not agree, please refrain from using the Site.
           </p>
         </div>
 
@@ -440,8 +447,12 @@ export default function TermsOfService() {
           <Section num="22" title="Privacy Policy">
             <p>
               Your use of the Site is also governed by our{' '}
-              <a href="#/user/privacy-policy" style={{ color: s.blue }} className="underline underline-offset-2 hover:opacity-80">
+              <a href={ppHref} style={{ color: s.blue }} className="underline underline-offset-2 hover:opacity-80">
                 Privacy Policy
+              </a>
+              , available at{' '}
+              <a href={ppHref} style={{ color: s.blue }} className="underline underline-offset-2 hover:opacity-80 text-xs">
+                {ppFullUrl.replace(/^https?:\/\//, '')}
               </a>
               , which is incorporated into these Terms by reference. The Privacy Policy describes how we
               collect, use, store, and share your personal data in compliance with applicable Indian law,

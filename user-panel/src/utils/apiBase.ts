@@ -36,3 +36,25 @@ export const getApiBase = () => {
 
 // Backward-compatible alias used by newer service modules.
 export const getApiBaseUrl = getApiBase
+
+/**
+ * Returns the absolute origin of the current site (no trailing slash, no path).
+ * Mirrors getApiBase() but for the *frontend* URL, not the backend API.
+ *
+ * Examples:
+ *   Production  → "https://thenefol.com"
+ *   Test/local  → "http://localhost:2001" or the Vercel preview URL
+ *
+ * Use this when you need to build a full absolute URL for display, sharing,
+ * or linking across environments (e.g. "https://thenefol.com/#/user/terms-of-service").
+ * For in-app SPA navigation just use hash links ("#/user/terms-of-service") — they
+ * are already environment-agnostic.
+ */
+export const getSiteUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location
+    const portSuffix = port && port !== '80' && port !== '443' ? `:${port}` : ''
+    return `${protocol}//${hostname}${portSuffix}`
+  }
+  return 'https://thenefol.com'
+}
