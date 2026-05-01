@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { authAPI } from '../services/api'
 import { Mail, Lock, User, Phone, Eye, EyeOff, ShoppingCart, AlertCircle, MessageCircle } from 'lucide-react'
@@ -317,7 +317,7 @@ export default function AuthGuard({ children, fallback }: AuthGuardProps) {
                     className="mt-2 text-sm font-light tracking-wide"
                     style={{ color: '#666', letterSpacing: '0.05em' }}
                   >
-                    {isSignup ? 'Join NEFOL® and start your beauty journey' : 'Welcome back to NEFOL®'}
+                    {isSignup ? 'Join NEFOL and start your beauty journey' : 'Welcome back to NEFOL'}
                   </p>
                 </div>
                 <button

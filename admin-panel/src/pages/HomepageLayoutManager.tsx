@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { Upload, X, Image as ImageIcon, Save, RefreshCw, Eye, Settings, Palette, Plus, Trash2, Crop, Clock } from 'lucide-react'
 import { useToast } from '../components/ToastProvider'
 import { uploadFile } from '../utils/upload'
@@ -134,9 +134,9 @@ export default function HomepageLayoutManager() {
   })
   const [scrollingText, setScrollingText] = useState<string>('')
   const [whatsappSubscriptionText, setWhatsappSubscriptionText] = useState({
-    heading: 'Join The NEFOL® Circle',
+    heading: 'Join The NEFOL Circle',
     description: 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-    footer: 'By subscribing, you agree to receive WhatsApp messages from NEFOL®.',
+    footer: 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
     logoName: 'NEFÖL'
   })
 
@@ -523,10 +523,10 @@ export default function HomepageLayoutManager() {
             
             if (cmsSection.content.heading || cmsSection.content.description || cmsSection.content.footer || cmsSection.content.logoName) {
               setWhatsappSubscriptionText({
-                heading: cmsSection.content.heading || 'Join The NEFOL® Circle',
+                heading: cmsSection.content.heading || 'Join The NEFOL Circle',
                 description: cmsSection.content.description || 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-                footer: cmsSection.content.footer || 'By subscribing, you agree to receive WhatsApp messages from NEFOL®.',
-                logoName: cmsSection.content.logoName || 'NEFOL®'
+                footer: cmsSection.content.footer || 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
+                logoName: cmsSection.content.logoName || 'NEFOL'
               })
             }
             return { ...section, images: images }
@@ -973,7 +973,7 @@ export default function HomepageLayoutManager() {
       } else if (section.sectionType === 'complete_kit') {
         content = {
           title: 'THE COMPLETE KIT',
-          description: 'Get the full NEFOL® experience in one curated bundle',
+          description: 'Get the full NEFOL experience in one curated bundle',
           buttonText: 'View Kit',
           buttonLink: '/combos',
           image: toRelativePath(imageUrl)
@@ -1754,7 +1754,7 @@ export default function HomepageLayoutManager() {
                       type="text"
                       value={whatsappSubscriptionText.heading}
                       onChange={(e) => setWhatsappSubscriptionText({ ...whatsappSubscriptionText, heading: e.target.value })}
-                      placeholder="Join The NEFOL® Circle"
+                      placeholder="Join The NEFOL Circle"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     />
                   </div>
@@ -1778,7 +1778,7 @@ export default function HomepageLayoutManager() {
                       type="text"
                       value={whatsappSubscriptionText.footer}
                       onChange={(e) => setWhatsappSubscriptionText({ ...whatsappSubscriptionText, footer: e.target.value })}
-                      placeholder="By subscribing, you agree to receive WhatsApp messages from NEFOL®."
+                      placeholder="By subscribing, you agree to receive WhatsApp messages from NEFOL."
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     />
                   </div>

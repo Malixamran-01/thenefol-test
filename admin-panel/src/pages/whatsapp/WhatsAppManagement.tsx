@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { 
   MessageCircle, Settings, Send, FileText, Zap, Users, BarChart3, 
   CheckCircle, XCircle, Save, RefreshCw, Eye, Edit, Trash2, Plus,
@@ -1026,7 +1026,7 @@ export default function WhatsAppManagement() {
                   value={newTemplate.footerText}
                   onChange={(e) => setNewTemplate({ ...newTemplate, footerText: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
-                  placeholder="Powered by NEFOL®"
+                  placeholder="Powered by NEFOL"
                 />
               </div>
 

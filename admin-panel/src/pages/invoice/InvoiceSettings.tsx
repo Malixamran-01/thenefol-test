@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { Settings, Save, Eye, Palette, FileText, Building2, Users, Receipt, Upload, X, Image as ImageIcon } from 'lucide-react'
 import { uploadFile } from '../../utils/upload'
 import { getApiBaseUrl } from '../../utils/apiUrl'
@@ -37,7 +37,7 @@ interface InvoiceSettings {
 const InvoiceSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<InvoiceSettings>({
     companyDetails: {
-      companyName: 'NEFOL®',
+      companyName: 'NEFOL',
       companyAddress: '',
       companyPhone: '7355384939',
       companyEmail: 'info@nefol.com',

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+﻿import React, { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { authAPI } from '../services/api'
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
@@ -308,7 +308,7 @@ export default function SignupPage() {
             >
               Create account
             </h1>
-            <p className="mt-1.5 text-sm text-slate-500">Join NEFOL® and start your beauty journey</p>
+            <p className="mt-1.5 text-sm text-slate-500">Join NEFOL and start your beauty journey</p>
             <p className="mt-3 text-sm text-slate-600">
               Already have an account?{' '}
               <button

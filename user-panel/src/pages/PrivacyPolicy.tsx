@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { Shield, Eye, Lock, Users, Globe, Mail } from 'lucide-react'
 
 export default function PrivacyPolicy() {
@@ -48,13 +48,13 @@ export default function PrivacyPolicy() {
               letterSpacing: '0.15em'
             }}
           >
-            NEFOL® Privacy Policy
+            NEFOL Privacy Policy
           </h2>
           <p 
             className="font-light leading-relaxed tracking-wide"
             style={{ color: '#666', letterSpacing: '0.05em' }}
           >
-            At NEFOL®, your privacy is of utmost importance to us. This Privacy Policy explains how we collect, 
+            At NEFOL, your privacy is of utmost importance to us. This Privacy Policy explains how we collect, 
             use, disclose, and safeguard your information when you visit our website www.thenefol.com or make 
             use of our services. Please read this policy carefully to understand our practices regarding your personal data.
           </p>
@@ -448,7 +448,7 @@ export default function PrivacyPolicy() {
               className="mt-6 text-sm sm:text-base font-light tracking-wide"
               style={{ color: '#666', letterSpacing: '0.05em' }}
             >
-              Thank you for trusting NEFOL®.
+              Thank you for trusting NEFOL.
             </p>
           </div>
         </div>

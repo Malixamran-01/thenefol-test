@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { getApiBaseUrl } from '../../utils/apiUrl'
 
 interface GoogleAnalytics {
@@ -165,7 +165,7 @@ export default function GoogleYouTube() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">YouTube Channel</h3>
-                    <p className="text-sm text-gray-600">NEFOL® Skincare</p>
+                    <p className="text-sm text-gray-600">NEFOL Skincare</p>
                   </div>
                 </div>
                 <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">Connected</span>
@@ -179,7 +179,7 @@ export default function GoogleYouTube() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Google Ads</h3>
-                    <p className="text-sm text-gray-600">NEFOL® Campaigns</p>
+                    <p className="text-sm text-gray-600">NEFOL Campaigns</p>
                   </div>
                 </div>
                 <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">Connected</span>

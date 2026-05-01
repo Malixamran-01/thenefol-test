@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Instagram Business Login — direct Instagram OAuth (no Facebook Page required)
  *
  * Uses api.instagram.com OAuth + graph.instagram.com for all API calls.
@@ -268,7 +268,7 @@ export async function getPageTokenForCollab(
   } catch { return null }
 }
 
-// ═══════════════════════ Admin brand Instagram (NEFOL® official account) ═══
+// ═══════════════════════ Admin brand Instagram (NEFOL official account) ═══
 
 export async function getAdminBrandRow(pool: Pool) {
   const { rows } = await pool.query(

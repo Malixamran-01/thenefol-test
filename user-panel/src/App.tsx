@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
+﻿import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Menu, X, Instagram, Facebook, Youtube, Linkedin } from 'lucide-react'
 import SplashScreen from './components/SplashScreen'
 import CartIcon from './components/CartIcon'
@@ -735,7 +735,7 @@ function AppContent() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
             {/* Brand Section */}
             <div className="md:col-span-1">
-              <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-light tracking-wide" style={{ color: 'var(--color-text-on-nav)', fontFamily: 'var(--font-heading-family)' }}>NEFOL®</h3>
+              <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-light tracking-wide" style={{ color: 'var(--color-text-on-nav)', fontFamily: 'var(--font-heading-family)' }}>NEFOL</h3>
               <p className="text-xs sm:text-sm font-light leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Natural and safe skincare for every skin type. Made with love and care.</p>
             </div>
 
@@ -782,7 +782,7 @@ function AppContent() {
                 <li><a href="#/user/privacy-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Privacy Policy</a></li>
                 <li><a href="#/user/refund-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Refund Policy</a></li>
                 <li><a href="#/user/shipping-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Shipping Policy</a></li>
-                <li><a href="#/user/terms-of-service" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Terms of Service</a></li>
+                <li><a href="#/user/terms-of-service" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Terms &amp; Conditions</a></li>
               </ul>
               
               {/* Social Media Icons */}
@@ -793,7 +793,7 @@ function AppContent() {
                     href="https://www.instagram.com/nefol_official?igsh=d2NkaXk2NW92emhq&utm_source=qr"
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="NEFOL® on Instagram"
+                    aria-label="NEFOL on Instagram"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
@@ -803,7 +803,7 @@ function AppContent() {
                     href="https://www.facebook.com/share/1H3dWrPgcY/?mibextid=wwXIfr"
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="NEFOL® on Facebook"
+                    aria-label="NEFOL on Facebook"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
@@ -813,7 +813,7 @@ function AppContent() {
                     href="https://x.com/nefol_official?s=21"
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="NEFOL® on X"
+                    aria-label="NEFOL on X"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
@@ -825,7 +825,7 @@ function AppContent() {
                     href="https://youtube.com/@nefol.official?si=4kDfx02DoJ8Lpx9F"
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="NEFOL® on YouTube"
+                    aria-label="NEFOL on YouTube"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
@@ -835,7 +835,7 @@ function AppContent() {
                     href="https://www.linkedin.com/company/nefol-aesthetics-pvt-ltd/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="NEFOL® on LinkedIn"
+                    aria-label="NEFOL on LinkedIn"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
@@ -845,7 +845,7 @@ function AppContent() {
                     href="https://vk.com/nefolclub"
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="NEFOL® club on VK"
+                    aria-label="NEFOL club on VK"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors text-[11px] font-semibold"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
@@ -855,7 +855,7 @@ function AppContent() {
                     href="https://pin.it/hfoLEqFgB"
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="NEFOL® on Pinterest"
+                    aria-label="NEFOL on Pinterest"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
@@ -881,7 +881,7 @@ function AppContent() {
                 }}
               >
                 <span className="inline-block max-w-full">
-                  ©2024-{new Date().getFullYear()} NEFOL® • powered by{' '}
+                  ©2024-{new Date().getFullYear()} NEFOL • powered by{' '}
                   <span className="inline-block">Divyan Technologies</span>{' '}
                   <span className="inline-block">Private Limited</span>
                 </span>

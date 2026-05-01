@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Star, ShoppingCart, ChevronLeft, ChevronRight, Eye, Heart } from 'lucide-react'
 import { api, reviewsAPI } from '../services/api'
@@ -490,9 +490,9 @@ export default function Home() {
   const [whatsappSubscription, setWhatsappSubscription] = useState({
     image: '/IMAGES/BANNER (1).webp',
     logo: '',
-    heading: 'Join The NEFOL® Circle',
+    heading: 'Join The NEFOL Circle',
     description: 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-    footer: 'By subscribing, you agree to receive WhatsApp messages from NEFOL®.',
+    footer: 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
     logoName: 'NEFÖL'
   })
   const [foreverFavorites, setForeverFavorites] = useState<any>({
@@ -720,10 +720,10 @@ export default function Home() {
           setWhatsappSubscription({
             image: whatsappSection.content.image ? normalizeUrl(whatsappSection.content.image) : '/IMAGES/BANNER (1).webp',
             logo: whatsappSection.content.logo ? normalizeUrl(whatsappSection.content.logo) : '',
-            heading: whatsappSection.content.heading || 'Join The NEFOL® Circle',
+            heading: whatsappSection.content.heading || 'Join The NEFOL Circle',
             description: whatsappSection.content.description || 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-            footer: whatsappSection.content.footer || 'By subscribing, you agree to receive WhatsApp messages from NEFOL®.',
-            logoName: whatsappSection.content.logoName || 'NEFOL®'
+            footer: whatsappSection.content.footer || 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
+            logoName: whatsappSection.content.logoName || 'NEFOL'
           })
         }
       }
@@ -1396,7 +1396,7 @@ export default function Home() {
                   >
                     THE COMPLETE KIT
                   </h2>
-                  <p className="complete-kit-description text-white/90 mb-6 sm:mb-8 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full NEFOL® experience in one curated bundle</p>
+                  <p className="complete-kit-description text-white/90 mb-6 sm:mb-8 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full NEFOL experience in one curated bundle</p>
                   <button
                     onClick={() => window.location.hash = '#/user/combos'}
                     className="complete-kit-button px-4 sm:px-6 md:px-8 py-2 sm:py-3 text-white font-medium tracking-wide uppercase transition-colors duration-200 rounded-xl"
@@ -1436,7 +1436,7 @@ export default function Home() {
                 >
                   THE COMPLETE KIT
                 </h2>
-                <p className="text-sm text-slate-600 mb-6 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full NEFOL® experience in one curated bundle</p>
+                <p className="text-sm text-slate-600 mb-6 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full NEFOL experience in one curated bundle</p>
                 <button
                   onClick={() => window.location.hash = '#/user/combos'}
                   className="px-6 py-3 text-white font-medium tracking-wide uppercase transition-colors duration-200 rounded-xl"

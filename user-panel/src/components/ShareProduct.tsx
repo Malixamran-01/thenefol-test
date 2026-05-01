@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { Share2, Copy, Check, Facebook, Mail, Instagram } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 
@@ -23,7 +23,7 @@ export default function ShareProduct({
   const [showInstagramOptions, setShowInstagramOptions] = useState(false)
 
   const productUrl = `${window.location.origin}/#/user/product/${productSlug}`
-  const shareText = `Check out ${productTitle} on NEFOL®! ${productUrl}`
+  const shareText = `Check out ${productTitle} on NEFOL! ${productUrl}`
   
   // Ensure image URL is absolute and accessible
   const getAbsoluteImageUrl = (img?: string): string | undefined => {
@@ -75,7 +75,7 @@ export default function ShareProduct({
         el.setAttribute('content', value)
       }
 
-      const desc = productDescription || 'Discover premium skincare from NEFOL®.'
+      const desc = productDescription || 'Discover premium skincare from NEFOL.'
 
       // Open Graph tags
       ensureMeta('property', 'og:type', 'product')
@@ -98,7 +98,7 @@ export default function ShareProduct({
       }
       
       // Additional meta tags for better compatibility
-      ensureMeta('property', 'og:site_name', 'NEFOL®')
+      ensureMeta('property', 'og:site_name', 'NEFOL')
       ensureMeta('name', 'description', desc)
     } catch (err) {
       // Fail silently – meta tags are a progressive enhancement
@@ -227,7 +227,7 @@ export default function ShareProduct({
   }
 
   const handleEmailShare = () => {
-    const subject = encodeURIComponent(`Check out ${productTitle} on NEFOL®!`)
+    const subject = encodeURIComponent(`Check out ${productTitle} on NEFOL!`)
     const emailBody = `${shareText}\n\n${productUrl}${absoluteImageUrl ? `\n\nView Product Image: ${absoluteImageUrl}` : ''}${productDescription ? `\n\n${productDescription}` : ''}`
     const body = encodeURIComponent(emailBody)
     const mailtoUrl = `mailto:?subject=${subject}&body=${body}`

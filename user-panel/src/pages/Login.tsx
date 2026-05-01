@@ -264,7 +264,7 @@ export default function LoginPage() {
             >
               Sign in
             </h1>
-            <p className="mt-1.5 text-sm text-slate-500">Welcome back to NEFOL®</p>
+            <p className="mt-1.5 text-sm text-slate-500">Welcome back to NEFOL</p>
             <p className="mt-3 text-sm text-slate-600">
               New here?{' '}
               <button

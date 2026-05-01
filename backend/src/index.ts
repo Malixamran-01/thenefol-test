@@ -1,4 +1,4 @@
-// Optimized main server file with centralized routes and utilities
+﻿// Optimized main server file with centralized routes and utilities
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
@@ -4575,7 +4575,7 @@ function generateInvoiceHTML(order: any, companyDetails: any, colors: any, taxSe
       <div class="invoice-container">
         <div class="header-section">
           <div class="logo-box">LOGO</div>
-          <div class="company-name">${companyDetails.companyName || 'NEFOL®'}</div>
+          <div class="company-name">${companyDetails.companyName || 'NEFOL'}</div>
           <div class="phone-bar">📞 ${companyDetails.companyPhone || '7355384939'}</div>
           <div class="invoice-title">Tax Invoice</div>
           <div class="invoice-details">
@@ -4592,7 +4592,7 @@ function generateInvoiceHTML(order: any, companyDetails: any, colors: any, taxSe
           <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px solid ${colors.primaryStart};">
             <h3 style="color: ${colors.primaryStart}; font-size: 16px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;">Seller Details</h3>
             <div style="color: #4a5568; font-size: 14px;">
-              <div style="margin-bottom: 5px;"><strong>Company:</strong> ${companyDetails.companyName || 'NEFOL®'}</div>
+              <div style="margin-bottom: 5px;"><strong>Company:</strong> ${companyDetails.companyName || 'NEFOL'}</div>
               ${companyDetails.companyAddress ? `<div style="margin-bottom: 5px;"><strong>Address:</strong><br/>${companyDetails.companyAddress.replace(/\n/g, '<br/>')}</div>` : ''}
               <div style="margin-bottom: 5px;"><strong>Phone:</strong> ${companyDetails.companyPhone || '7355384939'}</div>
               <div style="margin-bottom: 5px;"><strong>Email:</strong> ${companyDetails.companyEmail || 'info@nefol.com'}</div>
@@ -4684,7 +4684,7 @@ function generateInvoiceHTML(order: any, companyDetails: any, colors: any, taxSe
               <div>${terms}</div>
             </div>
             <div class="signature">
-              <div style="margin-bottom: 30px;">For: ${companyDetails.companyName || 'NEFOL®'}</div>
+              <div style="margin-bottom: 30px;">For: ${companyDetails.companyName || 'NEFOL'}</div>
               <div>${signature}</div>
             </div>
           </div>

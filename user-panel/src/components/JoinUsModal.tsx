@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { X, Video, Lock, Handshake } from 'lucide-react'
 
 interface JoinUsModalProps {
@@ -44,7 +44,7 @@ export default function JoinUsModal({
           Join Us
         </h2>
         <p className="mb-6 text-sm opacity-80">
-          Choose how you&apos;d like to partner with NEFOL®
+          Choose how you&apos;d like to partner with NEFOL
         </p>
 
         <div className="space-y-3">

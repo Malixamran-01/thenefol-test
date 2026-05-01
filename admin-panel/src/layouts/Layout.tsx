@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+﻿import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
 import {
   Search,
@@ -532,7 +532,7 @@ const Layout = () => {
               <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold text-sm">N</span>
               </div>
-              <span className="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">NEFOL® Admin</span>
+              <span className="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">NEFOL Admin</span>
             </div>
             <button
               type="button"
