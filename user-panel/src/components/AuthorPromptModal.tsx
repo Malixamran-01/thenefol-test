@@ -87,7 +87,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
                 onClick={e => e.stopPropagation()}
                 className="font-semibold text-[#4B97C9] underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
               >
-                Creator, Collab &amp; Affiliate Program Agreement
+                User Agreement
                 <ExternalLink className="w-3 h-3" />
               </a>{' '}
               and the{' '}
@@ -98,7 +98,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
                 onClick={e => e.stopPropagation()}
                 className="font-semibold text-[#4B97C9] underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
               >
-                Nefol Terms &amp; Conditions
+              Terms &amp; Conditions
                 <ExternalLink className="w-3 h-3" />
               </a>
               . I understand that by publishing content I irrevocably assign all rights to that content to Nefol Aesthetics Private Limited.
@@ -117,14 +117,14 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
             <ChevronRight className="h-5 w-5" />
           </button>
 
-          <button
+          {/* <button
             onClick={handleContinueWithoutProfile}
             disabled={!agreed}
             className="w-full rounded-lg border-2 border-gray-200 bg-gray-50 px-6 py-3 font-medium text-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-gray-100"
             title="Continue to blog request form"
           >
             Continue without profile
-          </button>
+          </button> */}
         </div>
 
         {!agreed && (
