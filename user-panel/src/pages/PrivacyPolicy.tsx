@@ -26,7 +26,7 @@ function Section({ num, title, children }: { num: string; title: string; childre
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2">
+    <li className="flex items-start gap-2" style={s.body}>
       <span className="mt-1.5 h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.blue }} />
       <span>{children}</span>
     </li>
@@ -98,7 +98,7 @@ export default function PrivacyPolicy() {
           <p className="font-light text-sm sm:text-base leading-relaxed mt-3" style={s.body}>
             This Policy applies to all individuals who interact with Nefol in any capacity, including:
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-1" style={s.body}>
             {[
               'Visitors and shoppers on thenefol.com',
               'Registered account holders and Author Account holders',

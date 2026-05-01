@@ -26,7 +26,7 @@ function Section({ num, title, children }: { num: string; title: string; childre
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2">
+    <li className="flex items-start gap-2" style={s.body}>
       <span className="mt-1.5 h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.blue }} />
       <span>{children}</span>
     </li>
