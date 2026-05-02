@@ -134,9 +134,9 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
           </p>
         )}
 
-        <p className="mt-4 text-center text-xs text-gray-500">
+        {/* <p className="mt-4 text-center text-xs text-gray-500">
           You can always create your author profile later from your account settings
-        </p>
+        </p> */}
       </div>
     </div>
   )

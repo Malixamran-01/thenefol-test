@@ -71,7 +71,7 @@ export default function TermsOfService() {
             <span className="hidden sm:inline">·</span>
             <span>Applicable to thenefol.com and all linked domains</span>
             <span className="hidden sm:inline">·</span>
-            <span>Governed by the laws of India</span>
+            {/* <span>Governed by the laws of India</span> */}
           </div>
         </div>
 
