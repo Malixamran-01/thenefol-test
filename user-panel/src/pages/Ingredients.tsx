@@ -4799,11 +4799,28 @@ export default function Ingredients() {
           </div>
         </div>
 
-        <IngredientsScrollytelling
-          ingredients={ingredients}
-          onNavigate={navigateToIngredient}
-          useMockImages
-        />
+        {/* ── Scrollytelling: each ingredient has its own scroll step ── */}
+        <div className="mt-16 md:mt-24">
+          <div className="text-center mb-8 md:mb-0">
+            <p className="text-xs font-medium tracking-[0.25em] uppercase mb-2" style={{ color: '#bfa45a' }}>
+              Explore all ingredients
+            </p>
+            <h2
+              className="text-2xl sm:text-3xl font-light tracking-[0.15em] hidden md:block"
+              style={{ color: '#1a1a1a', fontFamily: 'var(--font-heading-family)' }}
+            >
+              Scroll to discover
+            </h2>
+            <p className="text-sm font-light text-gray-400 mt-1 hidden md:block">
+              Each ingredient tells its own story — scroll through to explore them all
+            </p>
+          </div>
+          <IngredientsScrollytelling
+            ingredients={ingredients}
+            onNavigate={navigateToIngredient}
+            useMockImages
+          />
+        </div>
 
         {/* Benefits Section */}
         <div className="mt-16">

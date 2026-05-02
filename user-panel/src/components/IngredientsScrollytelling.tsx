@@ -22,29 +22,29 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
 }: IngredientsScrollytellingProps<T>) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [offset, setOffset] = useState(0)
-  const [isVisible, setIsVisible] = useState(false)
-  const scrollyRef = useRef<HTMLDivElement | null>(null)
   const stepRefs = useRef<Array<HTMLDivElement | null>>([])
+  const sectionRef = useRef<HTMLDivElement | null>(null)
 
+  // ── Colourful SVG mocks ──────────────────────────────────────────────────
   const mockImages = useMemo(() => {
     return ingredients.map((ingredient, index) => {
       const hue = (index * 33) % 360
       const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
           <defs>
-            <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id="g${index}" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="hsl(${hue},70%,65%)"/>
               <stop offset="100%" stop-color="hsl(${(hue + 40) % 360},70%,45%)"/>
             </linearGradient>
           </defs>
-          <rect width="100%" height="100%" fill="url(#g)"/>
+          <rect width="100%" height="100%" fill="url(#g${index})"/>
           <circle cx="150" cy="160" r="90" fill="rgba(255,255,255,0.18)"/>
           <circle cx="760" cy="220" r="140" fill="rgba(255,255,255,0.12)"/>
           <circle cx="580" cy="980" r="220" fill="rgba(255,255,255,0.08)"/>
-          <text x="60" y="700" font-family="Inter, Arial, sans-serif" font-size="64" fill="rgba(255,255,255,0.9)" letter-spacing="4">
-            ${ingredient.name.replace(/&/g, 'and')}
+          <text x="60" y="700" font-family="Inter, Arial, sans-serif" font-size="60" fill="rgba(255,255,255,0.9)" letter-spacing="4">
+            ${ingredient.name.replace(/&/g, 'and').slice(0, 22)}
           </text>
-          <text x="60" y="780" font-family="Inter, Arial, sans-serif" font-size="32" fill="rgba(255,255,255,0.7)">
+          <text x="60" y="780" font-family="Inter, Arial, sans-serif" font-size="30" fill="rgba(255,255,255,0.7)">
             Mock Image ${index + 1}
           </text>
         </svg>
@@ -53,237 +53,317 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
     })
   }, [ingredients])
 
+  // ── Scroll listener — no fixed positioning needed ────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!window.matchMedia('(min-width: 768px)').matches) return
 
     let ticking = false
     const handleScroll = () => {
-      if (!scrollyRef.current) return
       if (ticking) return
       ticking = true
-
       window.requestAnimationFrame(() => {
-        const containerRect = scrollyRef.current?.getBoundingClientRect()
-        const viewportCenter = window.innerHeight / 2
-        
-        // Check if component is in viewport
-        if (containerRect) {
-          const componentInView = containerRect.top < window.innerHeight && containerRect.bottom > 0
-          setIsVisible(componentInView)
-        }
+        const viewportMid = window.innerHeight / 2
 
         const rects = stepRefs.current
-          .map((el) => el?.getBoundingClientRect())
+          .map(el => el?.getBoundingClientRect())
           .filter(Boolean) as DOMRect[]
 
-        if (!rects.length) {
-          ticking = false
-          return
-        }
+        if (!rects.length) { ticking = false; return }
 
-        let closestIndex = 0
-        let closestDistance = Number.POSITIVE_INFINITY
-        rects.forEach((rect, index) => {
-          const center = rect.top + rect.height / 2
-          const distance = Math.abs(center - viewportCenter)
-          if (distance < closestDistance) {
-            closestDistance = distance
-            closestIndex = index
-          }
+        let closest = 0
+        let minDist = Infinity
+        rects.forEach((r, i) => {
+          const d = Math.abs(r.top + r.height / 2 - viewportMid)
+          if (d < minDist) { minDist = d; closest = i }
         })
 
-        const currentRect = rects[closestIndex]
-        const nextRect = rects[closestIndex + 1]
+        const cur  = rects[closest]
+        const next = rects[closest + 1]
         let nextOffset = 0
-
-        if (currentRect && nextRect) {
-          const currentCenter = currentRect.top + currentRect.height / 2
-          const nextCenter = nextRect.top + nextRect.height / 2
-          if (nextCenter !== currentCenter) {
-            nextOffset = (viewportCenter - currentCenter) / (nextCenter - currentCenter)
-          }
-          nextOffset = Math.max(0, Math.min(1, nextOffset))
+        if (cur && next) {
+          const cMid = cur.top  + cur.height  / 2
+          const nMid = next.top + next.height / 2
+          if (nMid !== cMid)
+            nextOffset = Math.max(0, Math.min(1, (viewportMid - cMid) / (nMid - cMid)))
         }
 
-        setCurrentIndex(closestIndex)
+        setCurrentIndex(closest)
         setOffset(nextOffset)
         ticking = false
       })
     }
 
-    const handleResize = () => handleScroll()
-
     window.addEventListener('scroll', handleScroll, { passive: true })
-    window.addEventListener('resize', handleResize)
+    window.addEventListener('resize', handleScroll)
     handleScroll()
-
     return () => {
       window.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('resize', handleScroll)
     }
   }, [])
 
-  const totalSteps = ingredients.length
+  const total = ingredients.length
+
+  // ── Progress bar width ──────────────────────────────────────────────────
+  const progressPct = total > 1
+    ? ((currentIndex + offset) / (total - 1)) * 100
+    : 100
 
   return (
-    <div ref={scrollyRef} className="hidden md:block relative w-full py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-12 gap-8">
-          {/* LEFT COLUMN – DETAILS */}
-          <div className="md:col-span-6">
-            <div className="relative">
-              <div className="absolute left-6 top-0 bottom-0 w-px bg-[#bfa45a]/20" />
+    <div ref={sectionRef} className="relative w-full">
+
+      {/* ── DESKTOP layout: sticky right panel ─────────────────────────── */}
+      <div className="hidden md:block">
+        {/* Thin progress bar at the very top of the section */}
+        <div className="w-full h-0.5 bg-[#bfa45a]/15 mb-0">
+          <div
+            className="h-full bg-[#bfa45a] transition-all duration-300"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+
+        <div className="w-full">
+          <div className="grid grid-cols-12 gap-6 xl:gap-10 items-start">
+
+            {/* ── LEFT: scrollable text steps ────────────────────────── */}
+            <div className="col-span-6 xl:col-span-7 relative">
+              {/* vertical timeline line */}
+              <div
+                className="absolute left-5 top-0 bottom-0 w-px"
+                style={{ background: 'linear-gradient(to bottom, transparent, #bfa45a40 8%, #bfa45a40 92%, transparent)' }}
+              />
 
               {ingredients.map((ingredient, index) => {
-              let opacity = 0.25
-              let scale = 0.96
-              let isActive = false
+                const isActive = index === currentIndex
+                let textOpacity = 0.28
+                let textScale   = 0.97
 
-              if (index === currentIndex) {
-                opacity = 1
-                scale = 1
-                isActive = true
-              } else if (index === currentIndex + 1) {
-                opacity = 0.25 + offset * 0.75
-                scale = 0.96 + offset * 0.04
-              } else if (index === currentIndex - 1) {
-                opacity = 1 - (1 - offset) * 0.75
-                scale = 1 - (1 - offset) * 0.04
-              }
+                if (isActive) {
+                  textOpacity = 1
+                  textScale   = 1
+                } else if (index === currentIndex + 1) {
+                  textOpacity = 0.28 + offset * 0.72
+                  textScale   = 0.97 + offset * 0.03
+                } else if (index === currentIndex - 1) {
+                  textOpacity = 1 - (1 - offset) * 0.72
+                  textScale   = 1 - (1 - offset) * 0.03
+                }
 
-              return (
-                <div
-                  key={ingredient.id}
-                  ref={(el) => {
-                    stepRefs.current[index] = el
-                  }}
-                  className="relative min-h-[80vh] flex items-center py-16"
-                  style={{
-                    opacity,
-                    transform: `scale(${scale})`,
-                    transition: 'opacity 0.12s linear, transform 0.12s linear'
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onNavigate(ingredient)}
-                    className="text-left w-full"
-                    style={{ cursor: 'pointer' }}
+                return (
+                  <div
+                    key={ingredient.id}
+                    ref={el => { stepRefs.current[index] = el }}
+                    className="relative flex items-center"
+                    style={{ minHeight: '90vh', paddingTop: '5vh', paddingBottom: '5vh' }}
                   >
-                    <div className="ml-12">
-                      <div className="text-[#2a0d0f] text-sm font-medium mb-2 tracking-wide">
-                        {String(index + 1).padStart(2, '0')}/{String(totalSteps).padStart(2, '0')}
-                      </div>
+                    {/* Timeline dot */}
+                    <div
+                      className="absolute left-[14px] w-3 h-3 rounded-full transition-all duration-400 flex-shrink-0"
+                      style={{
+                        backgroundColor: isActive ? '#bfa45a' : 'rgba(191,164,90,0.25)',
+                        boxShadow: isActive ? '0 0 0 4px rgba(191,164,90,0.18)' : 'none',
+                        transform: isActive ? 'scale(1.25)' : 'scale(1)',
+                        transition: 'all 0.3s ease',
+                      }}
+                    />
+
+                    {/* Text content */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(ingredient)}
+                      className="text-left w-full ml-12 focus:outline-none group"
+                      style={{
+                        opacity: textOpacity,
+                        transform: `scale(${textScale})`,
+                        transformOrigin: 'left center',
+                        transition: 'opacity 0.15s linear, transform 0.15s linear',
+                      }}
+                    >
+                      <p className="text-xs font-medium tracking-[0.2em] mb-2" style={{ color: '#bfa45a' }}>
+                        {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+                      </p>
 
                       <h3
-                        className={`text-4xl md:text-5xl font-bold mb-4 transition-colors duration-300 ${
-                          isActive ? 'text-[#bfa45a]' : 'text-[#1a1a1a]'
-                        }`}
+                        className="text-4xl lg:text-5xl font-bold mb-4 leading-tight transition-colors duration-300"
+                        style={{ color: isActive ? '#bfa45a' : '#1a1a1a' }}
                       >
                         {ingredient.name}
                       </h3>
 
                       <div
-                        className="text-[#666] text-lg leading-relaxed max-w-xl"
+                        className="text-base lg:text-lg font-light leading-relaxed max-w-lg"
+                        style={{ color: '#666' }}
                         dangerouslySetInnerHTML={{
-                          __html: ingredient.description.replace(
-                            /\*\*(.*?)\*\*/g,
-                            '<strong style="color: #1a1a1a;">$1</strong>'
-                          )
+                          __html: ingredient.description
+                            .split('\n')[0]
+                            .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#333;font-weight:600">$1</strong>')
                         }}
                       />
-                    </div>
-                  </button>
 
-                  <div
-                    className={`absolute left-5 w-3 h-3 rounded-full transition-all duration-300 ${
-                      isActive
-                        ? 'bg-[#bfa45a] ring-4 ring-white scale-125'
-                        : 'bg-[#bfa45a]/30 scale-100'
-                    }`}
-                  />
-                </div>
-              )
-            })}
-          </div>
-        </div>
+                      <span
+                        className="inline-flex items-center gap-2 mt-5 text-sm font-medium tracking-wider uppercase transition-opacity duration-200"
+                        style={{ color: '#bfa45a', opacity: isActive ? 1 : 0, letterSpacing: '0.12em' }}
+                      >
+                        Read more
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
 
-        {/* RIGHT COLUMN – FIXED FLOATING IMAGE (like navbar) */}
-        <div className="md:col-span-6">
-          {/* Placeholder to maintain grid layout */}
-          <div className="w-full h-[70vh]" />
-        </div>
-        </div>
-      </div>
-      
-      {/* FIXED FLOATING IMAGE FRAME */}
-      <div 
-        className="hidden md:block fixed right-[5%] top-[50%] -translate-y-1/2 w-[40vw] max-w-[480px] h-[70vh] z-50"
-        style={{
-          opacity: isVisible ? 1 : 0,
-          pointerEvents: isVisible ? 'auto' : 'none',
-          transform: `translateY(-50%) scale(${isVisible ? 1 : 0.95})`,
-          transition: 'opacity 0.5s ease, transform 0.5s ease'
-        }}
-      >
-          <div
-            className="relative w-full h-full overflow-hidden shadow-2xl border border-[#bfa45a]/20 bg-[#f0f9f9]"
-            style={{ borderRadius: '50% / 30%' }}
-          >
-                {ingredients.map((ingredient, index) => {
-                  let translateY = 100
-                  let opacity = 0
-                  let scale = 0.96
-                  let zIndex = index
-                  const isActive = index === currentIndex
-
-                  if (index <= currentIndex) {
-                    if (isActive) {
-                      opacity = 1
-                      translateY = 0
-                      scale = 1
-                    } else {
-                      opacity = Math.max(0.3, 1 - (currentIndex - index) * 0.15)
-                      scale = Math.max(0.9, 1 - (currentIndex - index) * 0.02)
-                      translateY = Math.min(20, (currentIndex - index) * 8)
-                    }
-                  } else if (index === currentIndex + 1) {
-                    translateY = (1 - offset) * 100
-                    opacity = 0.35 + offset * 0.65
-                    scale = 0.96 + offset * 0.04
-                  }
-
-              return (
+            {/* ── RIGHT: sticky image panel ───────────────────────────── */}
+            <div className="col-span-6 xl:col-span-5">
+              {/*
+                sticky: stays in view while the left column scrolls.
+                top-20 = 80px, clears the h-20 navbar.
+                Height = viewport minus navbar minus a little breathing room.
+              */}
+              <div
+                className="sticky top-20"
+                style={{ height: 'calc(100vh - 96px)' }}
+              >
+                {/* Blobs / decorative ring */}
                 <div
-                  key={ingredient.id}
-                  className="absolute inset-0"
+                  className="absolute -top-6 -right-6 w-32 h-32 rounded-full pointer-events-none"
+                  style={{ background: 'radial-gradient(circle, rgba(191,164,90,0.12) 0%, transparent 70%)' }}
+                />
+                <div
+                  className="absolute -bottom-6 -left-6 w-48 h-48 rounded-full pointer-events-none"
+                  style={{ background: 'radial-gradient(circle, rgba(75,151,201,0.1) 0%, transparent 70%)' }}
+                />
+
+                {/* Image frame */}
+                <div
+                  className="relative w-full h-full overflow-hidden shadow-2xl"
                   style={{
-                    transform: `translateY(${translateY}%) scale(${scale})`,
-                    opacity,
-                    zIndex: 10 + zIndex,
-                    transition: 'transform 0.45s ease, opacity 0.45s ease'
+                    borderRadius: '48% 52% 44% 56% / 38% 42% 58% 62%',
+                    border: '1px solid rgba(191,164,90,0.2)',
+                    background: '#f0f9f9',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => onNavigate(ingredient)}
-                    className="w-full h-full border-0 bg-transparent p-0 cursor-pointer"
-                    style={{ pointerEvents: isActive ? 'auto' : 'none' }}
-                    aria-label={`View ${ingredient.name} details`}
+                  {/* Counter badge */}
+                  <div
+                    className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-widest backdrop-blur-sm"
+                    style={{ background: 'rgba(255,255,255,0.85)', color: '#bfa45a', border: '1px solid rgba(191,164,90,0.3)' }}
                   >
-                    <img
-                      src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
-                      alt={ingredient.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30 pointer-events-none" />
-                  </button>
+                    <span>{String(currentIndex + 1).padStart(2, '0')}</span>
+                    <span style={{ color: '#ccc' }}>/</span>
+                    <span style={{ color: '#aaa' }}>{String(total).padStart(2, '0')}</span>
+                  </div>
+
+                  {/* Images — layered, slide-in from bottom */}
+                  {ingredients.map((ingredient, index) => {
+                    const isActive = index === currentIndex
+                    let translateY = 100
+                    let imgOpacity = 0
+                    let scale = 0.96
+
+                    if (index < currentIndex) {
+                      translateY = -8
+                      imgOpacity = Math.max(0, 1 - (currentIndex - index) * 0.6)
+                      scale = 0.98
+                    } else if (isActive) {
+                      translateY = 0
+                      imgOpacity = 1
+                      scale = 1
+                    } else if (index === currentIndex + 1) {
+                      translateY = 100 - offset * 100
+                      imgOpacity = offset * 0.9
+                      scale = 0.96 + offset * 0.04
+                    }
+
+                    return (
+                      <div
+                        key={ingredient.id}
+                        className="absolute inset-0"
+                        style={{
+                          transform: `translateY(${translateY}%) scale(${scale})`,
+                          opacity: imgOpacity,
+                          zIndex: 10 + index,
+                          transition: 'transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease',
+                          pointerEvents: isActive ? 'auto' : 'none',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onNavigate(ingredient)}
+                          className="w-full h-full p-0 border-0 bg-transparent cursor-pointer"
+                          aria-label={`View ${ingredient.name} details`}
+                        >
+                          <img
+                            src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
+                            alt={ingredient.name}
+                            className="w-full h-full object-cover"
+                            loading={index === 0 ? 'eager' : 'lazy'}
+                          />
+                          {/* subtle overlay so the badge is readable */}
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/20 pointer-events-none" />
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
+
+                {/* Ingredient name below image */}
+                <div className="mt-5 text-center px-4">
+                  <p
+                    className="text-sm font-light tracking-[0.2em] uppercase transition-all duration-300"
+                    style={{ color: '#bfa45a', letterSpacing: '0.18em' }}
+                  >
+                    {ingredients[currentIndex]?.name}
+                  </p>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
+      </div>
+
+      {/* ── MOBILE layout: simple stacked cards ────────────────────────── */}
+      <div className="md:hidden px-4 py-8 space-y-10">
+        {ingredients.map((ingredient, index) => (
+          <button
+            key={ingredient.id}
+            type="button"
+            onClick={() => onNavigate(ingredient)}
+            className="w-full text-left group block focus:outline-none rounded-2xl overflow-hidden bg-white border shadow-sm active:scale-[0.99] transition-transform"
+            style={{ borderColor: 'rgba(191,164,90,0.25)' }}
+          >
+            {/* Image */}
+            <div className="aspect-[4/3] overflow-hidden relative">
+              <img
+                src={useMockImages ? mockImages[index] : getOptimizedImage(ingredient.image)}
+                alt={ingredient.name}
+                className="w-full h-full object-cover"
+                loading={index < 2 ? 'eager' : 'lazy'}
+              />
+              <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-xs font-semibold tracking-widest bg-white/80 backdrop-blur-sm" style={{ color: '#bfa45a' }}>
+                {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+              </div>
+            </div>
+
+            {/* Text */}
+            <div className="p-5">
+              <h3 className="text-xl font-bold mb-2" style={{ color: '#bfa45a' }}>{ingredient.name}</h3>
+              <p className="text-sm font-light leading-relaxed line-clamp-3" style={{ color: '#666' }}>
+                {ingredient.description.split('\n')[0].replace(/\*\*(.*?)\*\*/g, '$1')}
+              </p>
+              <span className="inline-flex items-center gap-1 mt-3 text-xs font-medium tracking-wider uppercase" style={{ color: '#bfa45a' }}>
+                Read more
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+
     </div>
   )
 }
