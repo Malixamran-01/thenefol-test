@@ -1,87 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react'
+﻿import React, { useState, useEffect, useRef } from 'react'
 import { getOptimizedImage } from '../utils/imageOptimizer'
-import IngredientsScrollytelling from '../components/IngredientsScrollytelling'
-
-// Text Overlay Component with Sky Rocket Animation and Ingredient Name Display
-interface TextOverlayProps {
-  text: string
-  isVisible: boolean
-  onAnimationEnd: () => void
-  onClose: () => void
-}
-
-function TextOverlay({ text, isVisible, onAnimationEnd, onClose }: TextOverlayProps) {
-  const [showScrollHint, setShowScrollHint] = useState(true)
-  const contentRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    // Hide scroll hint after user starts scrolling
-    const handleScroll = () => {
-      setShowScrollHint(false)
-    }
-    
-    if (isVisible && contentRef.current) {
-      contentRef.current.addEventListener('scroll', handleScroll)
-      return () => {
-        if (contentRef.current) {
-          contentRef.current.removeEventListener('scroll', handleScroll)
-        }
-      }
-    }
-  }, [isVisible])
-
-  if (!isVisible) return null
-
-  return (
-    <div 
-      className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
-    >
-      {/* Detailed Ingredient Information Display */}
-      <div className="pointer-events-auto w-full h-full overflow-auto relative">
-        <div 
-          className="text-overlay text-black rounded-lg shadow-2xl transform animate-fadeIn p-8 max-w-4xl mx-auto relative"
-          style={{
-            backgroundColor: '#ffffff',
-            animation: 'fadeInScale 0.5s ease-out forwards',
-            maxHeight: '80vh',
-            overflowY: 'auto',
-            marginTop: '2rem',
-            marginBottom: '2rem'
-          }}
-          ref={contentRef}
-        >
-          {/* Scroll Indicator - Shows at top when content is scrollable */}
-          {showScrollHint && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-blue-500 text-white px-4 py-2 rounded-full text-xs font-medium shadow-lg animate-bounce">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-                <span>Scroll to read more</span>
-              </div>
-            </div>
-          )}
-
-          <div 
-            className="text-sm leading-relaxed whitespace-pre-line font-bold pr-12 pb-16"
-            dangerouslySetInnerHTML={{
-              __html: text.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #000000; font-size: 1.2em; font-weight: bold;">$1</strong>')
-            }}
-          />
-          
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export const ingredients = [
   {
     id: 'blue-tea',
     name: 'Blue Tea (Aprajita)',
     image: '/IMAGES/blue pea.webp',
-    description: `Known by various names across India — Blue Tea, Blue Pea, Aprajita (in Hindi), or Shankhpushpi in Ayurvedic tradition — this vibrant flower is more than just visually striking. Rich in powerful antioxidants such as anthocyanins, flavonoids, and polyphenols, Blue Tea is celebrated for its skin-brightening, anti-inflammatory, and soothing properties.
+    description: `Known by various names across India â€” Blue Tea, Blue Pea, Aprajita (in Hindi), or Shankhpushpi in Ayurvedic tradition â€” this vibrant flower is more than just visually striking. Rich in powerful antioxidants such as anthocyanins, flavonoids, and polyphenols, Blue Tea is celebrated for its skin-brightening, anti-inflammatory, and soothing properties.
 
 **Antioxidant Protection & Skin Radiance**
 Blue Tea is particularly rich in anthocyanins, compounds that help neutralize free radicals and protect the skin from oxidative stress caused by UV exposure and environmental pollution. This not only prevents premature aging but also revives dull, tired-looking skin, promoting a naturally radiant and even-toned complexion.
@@ -135,9 +60,9 @@ Recent scientific studies have validated many traditional uses:
 
 **Cognitive Enhancement**: Research published in the Journal of Ethnopharmacology (2018) demonstrated that Blue Tea extract improved memory consolidation and spatial learning in animal models. The study attributed these effects to increased acetylcholine levels and neuroprotective properties.
 
-**Antioxidant Activity**: A 2019 study in Food Chemistry showed that Blue Tea anthocyanins have higher antioxidant capacity than blueberries and blackberries, with ORAC values exceeding 20,000 μmol TE/g.
+**Antioxidant Activity**: A 2019 study in Food Chemistry showed that Blue Tea anthocyanins have higher antioxidant capacity than blueberries and blackberries, with ORAC values exceeding 20,000 Î¼mol TE/g.
 
-**Anti-Inflammatory Properties**: Research in the Journal of Medicinal Food (2020) found that Blue Tea extract significantly reduced inflammatory markers like TNF-α and IL-6, making it potentially beneficial for inflammatory skin conditions.
+**Anti-Inflammatory Properties**: Research in the Journal of Medicinal Food (2020) found that Blue Tea extract significantly reduced inflammatory markers like TNF-Î± and IL-6, making it potentially beneficial for inflammatory skin conditions.
 
 **Cardiovascular Benefits**: Studies indicate that regular consumption may help reduce blood pressure and improve endothelial function due to its nitric oxide-boosting properties.
 
@@ -243,7 +168,7 @@ Though known for its detox powers, charcoal also has calming effects. It may hel
     detailedInfo: `**CHARCOAL - COMPREHENSIVE DETAILED INFORMATION**
 
 **SCIENTIFIC CLASSIFICATION & ORIGIN**
-Activated charcoal, also known as activated carbon, is a form of carbon that has been processed to have an extremely large surface area and high porosity. It's typically derived from organic materials such as coconut shells, bamboo, wood, peat, or coal through a process called activation. This activation process creates millions of tiny pores between carbon atoms, dramatically increasing the surface area available for adsorption—the process by which molecules adhere to a surface.
+Activated charcoal, also known as activated carbon, is a form of carbon that has been processed to have an extremely large surface area and high porosity. It's typically derived from organic materials such as coconut shells, bamboo, wood, peat, or coal through a process called activation. This activation process creates millions of tiny pores between carbon atoms, dramatically increasing the surface area available for adsorptionâ€”the process by which molecules adhere to a surface.
 
 **HISTORICAL USES & TRADITIONAL MEDICINE**
 Charcoal has been used for medicinal and cosmetic purposes for thousands of years. Ancient Egyptians used charcoal for treating intestinal ailments and purifying water. In traditional Ayurvedic medicine, charcoal was used for detoxification and treating skin conditions. Native American tribes used charcoal poultices for treating wounds and infections. The modern use of activated charcoal in skincare represents a continuation of these ancient practices, now backed by scientific understanding of its adsorption properties.
@@ -251,7 +176,7 @@ Charcoal has been used for medicinal and cosmetic purposes for thousands of year
 **ACTIVATION PROCESS & MANUFACTURING**
 The activation process is crucial to charcoal's effectiveness:
 
-**Physical Activation**: Involves heating the source material (like coconut shells) to high temperatures (800-1000°C) in the presence of steam or carbon dioxide. This creates a network of pores and increases surface area to 500-2000 square meters per gram.
+**Physical Activation**: Involves heating the source material (like coconut shells) to high temperatures (800-1000Â°C) in the presence of steam or carbon dioxide. This creates a network of pores and increases surface area to 500-2000 square meters per gram.
 
 **Chemical Activation**: Uses chemical agents like phosphoric acid or zinc chloride to create porosity at lower temperatures. This method can produce even higher surface areas.
 
@@ -260,7 +185,7 @@ The activation process is crucial to charcoal's effectiveness:
 **CHEMICAL STRUCTURE & ADSORPTION MECHANISM**
 Activated charcoal's effectiveness comes from its unique structure:
 
-**Pore Structure**: Contains three types of pores—macropores (larger than 50 nm), mesopores (2-50 nm), and micropores (smaller than 2 nm). This hierarchical structure allows adsorption of molecules of various sizes.
+**Pore Structure**: Contains three types of poresâ€”macropores (larger than 50 nm), mesopores (2-50 nm), and micropores (smaller than 2 nm). This hierarchical structure allows adsorption of molecules of various sizes.
 
 **Surface Chemistry**: The carbon surface has areas of positive and negative charge, allowing it to attract both polar and non-polar molecules through van der Waals forces, electrostatic interactions, and hydrogen bonding.
 
@@ -275,7 +200,7 @@ Extensive research supports charcoal's efficacy in skincare:
 
 **Pore Cleansing**: A 2019 study in the Journal of Clinical and Aesthetic Dermatology showed that charcoal cleansers significantly reduced pore size appearance by removing debris and excess sebum. The effect was more pronounced in participants with larger pores.
 
-**Antimicrobial Properties**: Studies have shown that activated charcoal can adsorb bacteria and toxins, reducing bacterial load on the skin. However, it's important to note that charcoal itself doesn't kill bacteria—it removes them from the skin surface.
+**Antimicrobial Properties**: Studies have shown that activated charcoal can adsorb bacteria and toxins, reducing bacterial load on the skin. However, it's important to note that charcoal itself doesn't kill bacteriaâ€”it removes them from the skin surface.
 
 **DERMATOLOGICAL BENEFITS & SKINCARE APPLICATIONS**
 Charcoal offers multiple benefits for skin health:
@@ -368,7 +293,7 @@ Activated charcoal represents a time-tested, scientifically validated ingredient
     description: `Bursting with vitamin C and natural antioxidants, Yuja is a citrus fruit revered in traditional Eastern remedies and modern skincare alike. Known for its brightening and protective qualities, Yuja helps bring out your skin's natural glow while defending it from daily environmental stressors.
 
 **Brightens and Evens Skin Tone**
-Rich in ascorbic acid (vitamin C), Yuja helps neutralize free radicals and protect skin cells from oxidative damage caused by UV rays and pollution. It also helps fade hyperpigmentation, dark spots, and uneven skin tone by inhibiting tyrosinase, the enzyme responsible for melanin production—leading to a more radiant, luminous complexion.
+Rich in ascorbic acid (vitamin C), Yuja helps neutralize free radicals and protect skin cells from oxidative damage caused by UV rays and pollution. It also helps fade hyperpigmentation, dark spots, and uneven skin tone by inhibiting tyrosinase, the enzyme responsible for melanin productionâ€”leading to a more radiant, luminous complexion.
 
 **Powerful Antioxidant Defense**
 Yuja's high concentration of vitamin C and flavonoids provides robust antioxidant protection, helping to neutralize harmful free radicals that contribute to premature aging. This helps maintain skin's youthful appearance and vitality.
@@ -384,7 +309,7 @@ The fruit's natural acids gently exfoliate the skin, promoting cell turnover and
 Yuja, scientifically known as Citrus junos or Citrus medica, is a citrus fruit native to East Asia, particularly Korea, Japan, and China. Also called yuzu in Japan and citron in English, this aromatic fruit belongs to the Rutaceae family and is believed to be a hybrid of the Ichang papeda and sour mandarin. The fruit is highly valued in traditional Asian medicine and cuisine, and has gained recognition in modern skincare for its exceptional vitamin C content and antioxidant properties.
 
 **BOTANICAL CHARACTERISTICS**
-Yuja trees are small to medium-sized, reaching heights of 2-4 meters. The fruit is typically 5-8 cm in diameter, with a rough, bumpy yellow rind when ripe. Unlike other citrus fruits, yuja has a very thick rind (comprising up to 70% of the fruit) and relatively little pulp. The fruit is extremely aromatic, with a complex fragrance that combines notes of grapefruit, mandarin, and lime. The tree is cold-hardy and can survive temperatures as low as -10°C, making it adaptable to various climates.
+Yuja trees are small to medium-sized, reaching heights of 2-4 meters. The fruit is typically 5-8 cm in diameter, with a rough, bumpy yellow rind when ripe. Unlike other citrus fruits, yuja has a very thick rind (comprising up to 70% of the fruit) and relatively little pulp. The fruit is extremely aromatic, with a complex fragrance that combines notes of grapefruit, mandarin, and lime. The tree is cold-hardy and can survive temperatures as low as -10Â°C, making it adaptable to various climates.
 
 **CHEMICAL COMPOSITION & ACTIVE COMPOUNDS**
 Yuja is exceptionally rich in bioactive compounds that contribute to its skincare benefits:
@@ -397,7 +322,7 @@ Yuja is exceptionally rich in bioactive compounds that contribute to its skincar
 
 **Polyphenols**: Various polyphenolic compounds that contribute to antioxidant activity and help protect against UV-induced damage.
 
-**Essential Oils**: The rind contains volatile oils including limonene, γ-terpinene, and α-pinene, which have antimicrobial and aromatherapeutic properties.
+**Essential Oils**: The rind contains volatile oils including limonene, Î³-terpinene, and Î±-pinene, which have antimicrobial and aromatherapeutic properties.
 
 **Organic Acids**: Citric acid and malic acid provide gentle exfoliation and help maintain skin's pH balance.
 
@@ -417,13 +342,13 @@ Yuja has been integral to traditional medicine and culture in East Asia for cent
 **MODERN SCIENTIFIC RESEARCH & VALIDATION**
 Extensive research has validated yuja's therapeutic properties:
 
-**Antioxidant Activity**: A 2018 study published in the Journal of Food Science and Technology found that yuja extract exhibited significantly higher antioxidant activity than other citrus fruits, with ORAC (Oxygen Radical Absorbance Capacity) values exceeding 15,000 μmol TE/100g.
+**Antioxidant Activity**: A 2018 study published in the Journal of Food Science and Technology found that yuja extract exhibited significantly higher antioxidant activity than other citrus fruits, with ORAC (Oxygen Radical Absorbance Capacity) values exceeding 15,000 Î¼mol TE/100g.
 
 **Collagen Synthesis**: Research in the Journal of Dermatological Science (2019) demonstrated that vitamin C from yuja extract significantly increased collagen production in human dermal fibroblasts. The study showed a 30-40% increase in collagen synthesis after treatment.
 
 **Skin Brightening**: A 2020 study in the International Journal of Cosmetic Science found that yuja extract effectively inhibited tyrosinase activity, the enzyme responsible for melanin production. The extract reduced melanin synthesis by up to 45% in cell culture studies.
 
-**Anti-Inflammatory Properties**: Research published in the Journal of Ethnopharmacology (2017) showed that yuja extract reduced inflammatory markers (TNF-α, IL-6) in skin cells exposed to UV radiation, suggesting protective effects against photoaging.
+**Anti-Inflammatory Properties**: Research published in the Journal of Ethnopharmacology (2017) showed that yuja extract reduced inflammatory markers (TNF-Î±, IL-6) in skin cells exposed to UV radiation, suggesting protective effects against photoaging.
 
 **Antimicrobial Activity**: Studies have demonstrated that yuja essential oils are effective against various bacteria and fungi, including Staphylococcus aureus and Candida albicans, making it beneficial for acne-prone skin.
 
@@ -572,11 +497,11 @@ Extensive research has validated papaya's therapeutic properties:
 
 **Wound Healing**: Research in the Journal of Wound Care (2016) found that papaya extract accelerated wound healing in animal models by promoting collagen synthesis and reducing inflammation. The study attributed these effects to papain's ability to remove dead tissue and the fruit's high vitamin C content.
 
-**Antioxidant Activity**: A 2018 study in Food Chemistry found that papaya extract exhibited strong antioxidant activity, with ORAC values of 1,200-1,800 μmol TE/100g. The study identified beta-carotene and lycopene as the primary contributors to this activity.
+**Antioxidant Activity**: A 2018 study in Food Chemistry found that papaya extract exhibited strong antioxidant activity, with ORAC values of 1,200-1,800 Î¼mol TE/100g. The study identified beta-carotene and lycopene as the primary contributors to this activity.
 
 **Skin Brightening**: Research published in the International Journal of Cosmetic Science (2019) demonstrated that papaya extract inhibited tyrosinase activity and reduced melanin production in cell culture studies. The combination of vitamin C and papain was found to be particularly effective.
 
-**Anti-Inflammatory Properties**: A 2020 study in the Journal of Ethnopharmacology showed that papaya extract reduced inflammatory markers (TNF-α, IL-6) in skin cells, suggesting benefits for inflammatory skin conditions.
+**Anti-Inflammatory Properties**: A 2020 study in the Journal of Ethnopharmacology showed that papaya extract reduced inflammatory markers (TNF-Î±, IL-6) in skin cells, suggesting benefits for inflammatory skin conditions.
 
 **DERMATOLOGICAL BENEFITS & SKINCARE APPLICATIONS**
 Papaya offers comprehensive benefits for skin health:
@@ -712,13 +637,13 @@ Shea butter's unique composition makes it exceptional for skincare:
 **Fatty Acids**: Shea butter is composed of approximately 45-55% stearic acid, 35-45% oleic acid, 3-8% linoleic acid, and smaller amounts of palmitic and arachidic acids. This combination provides excellent emollient properties and skin barrier support.
 
 **Unsaponifiables**: This is what makes shea butter unique. The unsaponifiable fraction (5-17% of the butter) contains compounds that cannot be converted to soap and includes:
-- **Triterpenes**: Including lupeol, α-amyrin, and β-amyrin, which have anti-inflammatory and healing properties
-- **Sterols**: Including campesterol, stigmasterol, and β-sitosterol, which help reduce inflammation and support skin barrier function
+- **Triterpenes**: Including lupeol, Î±-amyrin, and Î²-amyrin, which have anti-inflammatory and healing properties
+- **Sterols**: Including campesterol, stigmasterol, and Î²-sitosterol, which help reduce inflammation and support skin barrier function
 - **Phenolic Compounds**: Including catechin and epicatechin, which provide antioxidant benefits
 
 **Vitamin A**: Shea butter contains provitamin A carotenoids that convert to vitamin A in the body. Vitamin A supports skin cell regeneration and helps maintain healthy skin.
 
-**Vitamin E (Tocopherols)**: Natural antioxidant that protects skin from free radical damage and supports skin repair. Shea butter contains both α-tocopherol and γ-tocopherol.
+**Vitamin E (Tocopherols)**: Natural antioxidant that protects skin from free radical damage and supports skin repair. Shea butter contains both Î±-tocopherol and Î³-tocopherol.
 
 **Vitamin F**: Refers to essential fatty acids (linoleic and linolenic acid) that support skin health and barrier function.
 
@@ -877,7 +802,7 @@ Coconut oil, derived from Cocos nucifera, is extracted from the meat of mature c
 **EXTRACTION METHODS & PROCESSING**
 Coconut oil can be extracted through various methods, each affecting its quality and properties:
 
-**Cold-Pressed Extraction**: This method involves pressing fresh coconut meat at low temperatures (below 120°F) without chemical solvents. Cold-pressed coconut oil retains more nutrients, has a lighter texture, and maintains its natural aroma. It's considered the highest quality form of coconut oil for skincare.
+**Cold-Pressed Extraction**: This method involves pressing fresh coconut meat at low temperatures (below 120Â°F) without chemical solvents. Cold-pressed coconut oil retains more nutrients, has a lighter texture, and maintains its natural aroma. It's considered the highest quality form of coconut oil for skincare.
 
 **Virgin Coconut Oil**: Made from fresh coconut meat without high heat or chemical processing. It contains more antioxidants and has a distinct coconut flavor and aroma. Virgin coconut oil is rich in medium-chain fatty acids and maintains its natural vitamin E content.
 
@@ -1726,7 +1651,7 @@ Blueberries are exceptionally rich in bioactive compounds:
 **ANTIOXIDANT PROPERTIES & FREE RADICAL SCAVENGING**
 Blueberries are among the most antioxidant-rich foods:
 
-**ORAC Value**: Blueberries have an exceptionally high ORAC (Oxygen Radical Absorbance Capacity) value, typically ranging from 4,000-9,000 μmol TE/100g, depending on the variety and ripeness. This makes them one of the highest antioxidant foods available.
+**ORAC Value**: Blueberries have an exceptionally high ORAC (Oxygen Radical Absorbance Capacity) value, typically ranging from 4,000-9,000 Î¼mol TE/100g, depending on the variety and ripeness. This makes them one of the highest antioxidant foods available.
 
 **Mechanisms of Action**: The antioxidants in blueberries work through multiple mechanisms: they directly scavenge free radicals, chelate metal ions that can generate free radicals, and upregulate the body's own antioxidant defense systems.
 
@@ -1762,7 +1687,7 @@ Extensive research validates blueberries' benefits:
 
 **Skin Health Research**: Research in the Journal of Medicinal Food (2014) showed that blueberry extract applied topically improved skin barrier function and reduced transepidermal water loss, indicating improved skin hydration.
 
-**Anti-Inflammatory Effects**: Studies have demonstrated that blueberry polyphenols can reduce inflammatory markers like TNF-α and IL-6, which are involved in various inflammatory skin conditions.
+**Anti-Inflammatory Effects**: Studies have demonstrated that blueberry polyphenols can reduce inflammatory markers like TNF-Î± and IL-6, which are involved in various inflammatory skin conditions.
 
 **ANTI-INFLAMMATORY PROPERTIES**
 Blueberries have significant anti-inflammatory effects:
@@ -2284,7 +2209,7 @@ Green tea has significant anti-inflammatory effects:
 
 **Enzyme Inhibition**: EGCG can inhibit inflammatory enzymes like cyclooxygenase (COX) and lipoxygenase (LOX), reducing inflammation.
 
-**NF-κB Pathway**: Green tea polyphenols can inhibit the NF-κB pathway, a key regulator of inflammation, providing comprehensive anti-inflammatory effects.
+**NF-ÎºB Pathway**: Green tea polyphenols can inhibit the NF-ÎºB pathway, a key regulator of inflammation, providing comprehensive anti-inflammatory effects.
 
 **Skin Conditions**: The anti-inflammatory properties make green tea beneficial for inflammatory skin conditions like acne, rosacea, eczema, and psoriasis.
 
@@ -4647,335 +4572,633 @@ Yellow Dragon stands as a vibrant, nutrient-rich ingredient for skincare, offeri
   }
 ]
 
-export default function Ingredients() {
-  const [selectedIngredient, setSelectedIngredient] = useState(ingredients[0])
 
-  const navigateToIngredient = (ingredient: typeof ingredients[number]) => {
-    window.location.hash = `#/user/ingredients/${ingredient.id}`
-  }
+// â”€â”€ Card Metadata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+interface IngredientMeta {
+  sci: string; tag: string; origin: string
+  snippet: string; benefits: string[]
+  bars: [string, number][]; stats: [string, string][]
+}
 
-  const handleImageClick = (ingredientId: string) => {
-    const ingredient = ingredients.find(ing => ing.id === ingredientId)
-    if (ingredient) navigateToIngredient(ingredient)
-  }
+const INGREDIENT_META: Record<string, IngredientMeta> = {
+  'blue-tea': {
+    sci: 'Clitoria ternatea', tag: 'antioxidant', origin: 'India / Southeast Asia',
+    snippet: 'Vibrant blue flower rich in anthocyanins â€” protects against oxidative stress, revives dull skin, and supports collagen integrity.',
+    benefits: ['Antioxidant', 'Anti-inflammatory', 'Collagen support', 'Brightening'],
+    bars: [['Antioxidant', 90], ['Brightening', 75], ['Soothing', 80], ['Anti-aging', 70]],
+    stats: [['3000+', 'Years of use'], ['Rich in', 'Anthocyanins'], ['5', 'Active compounds']],
+  },
+  'charcoal': {
+    sci: 'Activated carbon', tag: 'cleansing', origin: 'Coconut shell / Bamboo',
+    snippet: "Nature's most powerful pore magnet â€” draws out toxins, excess oil, and bacteria from deep within.",
+    benefits: ['Deep cleanse', 'Oil control', 'Pore purifying', 'Antibacterial'],
+    bars: [['Oil control', 95], ['Pore cleanse', 92], ['Antibacterial', 80], ['Exfoliation', 60]],
+    stats: [['200\u00d7', 'Oil absorption'], ['99%', 'Purification'], ['Sub-micron', 'Particle size']],
+  },
+  'yuja': {
+    sci: 'Citrus junos', tag: 'brightening', origin: 'Korea / Japan / China',
+    snippet: "East Asia's citrus treasure â€” 3\u00d7 more vitamin C than lemons, inhibiting melanin for a radiant, even tone.",
+    benefits: ['Vitamin C', 'Brightening', 'Collagen boost', 'Antioxidant'],
+    bars: [['Vitamin C', 95], ['Brightening', 90], ['Collagen boost', 85], ['Antioxidant', 88]],
+    stats: [['150\u2013200mg', 'Vit C / 100g'], ['3\u00d7', 'More than lemon'], ['AHA', 'Exfoliation']],
+  },
+  'papaya': {
+    sci: 'Carica papaya', tag: 'exfoliating', origin: 'Mexico / South America',
+    snippet: 'Papain enzyme gently dissolves dead skin protein \u2014 revealing smoother, brighter skin without abrasion.',
+    benefits: ['Enzyme exfoliation', 'Brightening', 'Anti-aging', 'Acne control'],
+    bars: [['Exfoliation', 92], ['Brightening', 82], ['Anti-aging', 75], ['Hydration', 60]],
+    stats: [['Papain', 'Key enzyme'], ['60\u201380mg', 'Vit C / 100g'], ['AHA', '+ enzyme combo']],
+  },
+  'shea-butter': {
+    sci: 'Vitellaria paradoxa', tag: 'moisturizing', origin: 'West Africa',
+    snippet: "West Africa's ancient skin balm \u2014 shea's unique unsaponifiables penetrate deep and fortify the barrier.",
+    benefits: ['Deep moisture', 'Barrier repair', 'Anti-inflammatory', 'Healing'],
+    bars: [['Moisture', 95], ['Barrier repair', 90], ['Anti-inflammatory', 80], ['Wound healing', 75]],
+    stats: [['5\u201317%', 'Unsaponifiable'], ['200yr', 'Tree lifespan'], ['SPF 3\u20136', 'Natural UV']],
+  },
+  'coconut-oil': {
+    sci: 'Cocos nucifera', tag: 'moisturizing', origin: 'Tropical Asia / Pacific',
+    snippet: 'Lauric acid \u2014 comprising 50% of the oil \u2014 delivers proven antimicrobial action against acne-causing bacteria.',
+    benefits: ['Antimicrobial', 'Moisturizing', 'Barrier support', 'Anti-aging'],
+    bars: [['Antimicrobial', 88], ['Moisture', 90], ['Barrier', 82], ['Antioxidant', 65]],
+    stats: [['50%', 'Lauric acid'], ['4000yr', 'Cultivation'], ['SPF 4\u20136', 'Natural UV']],
+  },
+  'aha-bha': {
+    sci: 'Alpha & Beta Hydroxy Acids', tag: 'exfoliating', origin: 'Sugar cane / Willow bark',
+    snippet: 'AHAs resurface the skin surface; BHA penetrates pores \u2014 the most researched chemical exfoliant duo.',
+    benefits: ['Exfoliation', 'Anti-aging', 'Acne control', 'Brightening'],
+    bars: [['Exfoliation', 95], ['Pore cleanse', 90], ['Anti-aging', 85], ['Brightening', 80]],
+    stats: [['30\u201370%', 'Clinic concentrations'], ['5%', 'OTC standard'], ['Dual action', 'Surface + pore']],
+  },
+  'amla': {
+    sci: 'Phyllanthus emblica', tag: 'antioxidant', origin: 'India / South Asia',
+    snippet: "The immortality fruit of Ayurveda \u2014 20\u00d7 the vitamin C of oranges, with tannin-stabilised potency.",
+    benefits: ['Vitamin C', 'Antioxidant', 'Hair strength', 'Brightening'],
+    bars: [['Vitamin C', 98], ['Antioxidant', 95], ['Hair health', 88], ['Brightening', 82]],
+    stats: [['600\u2013800mg', 'Vit C / 100g'], ['20\u00d7', 'More than orange'], ['3000yr', 'Ayurvedic use']],
+  },
+  'argan-oils': {
+    sci: 'Argania spinosa', tag: 'hydrating', origin: 'Morocco',
+    snippet: 'Liquid gold of Morocco \u2014 3\u00d7 more vitamin E than olive oil with unique spinasterol sterols.',
+    benefits: ['Hydrating', 'Anti-aging', 'Barrier repair', 'Antioxidant'],
+    bars: [['Vitamin E', 95], ['Hydration', 92], ['Anti-aging', 85], ['Hair shine', 90]],
+    stats: [['600\u2013900mg', 'Vit E / kg'], ['3\u00d7', 'More than olive'], ['UNESCO', 'Protected']],
+  },
+  'biotin': {
+    sci: 'Vitamin B7 / H', tag: 'strengthening', origin: 'Egg yolk / Almonds',
+    snippet: 'The beauty vitamin \u2014 cofactor for keratin synthesis that keeps hair, nails, and skin structurally strong.',
+    benefits: ['Hair growth', 'Nail strength', 'Skin barrier', 'Metabolic'],
+    bars: [['Hair strength', 90], ['Nail quality', 92], ['Skin barrier', 75], ['Cell growth', 80]],
+    stats: [['30mcg', 'Daily requirement'], ['91%', 'Nail improvement'], ['Keratin', 'Synthesis']],
+  },
+  'blueberry': {
+    sci: 'Vaccinium corymbosum', tag: 'antioxidant', origin: 'North America',
+    snippet: 'One of the most antioxidant-dense fruits \u2014 15+ anthocyanin types shield collagen from UV damage.',
+    benefits: ['Antioxidant', 'Anti-aging', 'Brightening', 'Anti-inflammatory'],
+    bars: [['Antioxidant', 92], ['Anti-aging', 85], ['Brightening', 75], ['Soothing', 70]],
+    stats: [['15+', 'Anthocyanin types'], ['ORAC', '9000 \u03bcmol/100g'], ['Native', '50,000yr use']],
+  },
+  'brahmi': {
+    sci: 'Bacopa monnieri', tag: 'soothing', origin: 'India / Southeast Asia',
+    snippet: 'The brain herb of Ayurveda \u2014 bacoside compounds protect skin cells and reduce stress-driven inflammation.',
+    benefits: ['Adaptogenic', 'Anti-inflammatory', 'Antioxidant', 'Stress relief'],
+    bars: [['Anti-inflammatory', 88], ['Antioxidant', 82], ['Stress relief', 90], ['Skin healing', 75]],
+    stats: [['Bacosides', 'Primary actives'], ['3000yr', 'Ayurvedic use'], ['Medhya', 'Brain tonic']],
+  },
+  'flaxseed': {
+    sci: 'Linum usitatissimum', tag: 'hydrating', origin: 'Central Asia / Mediterranean',
+    snippet: 'Rich in omega-3 ALA and lignans \u2014 flaxseed deeply nourishes skin and supports the barrier from within.',
+    benefits: ['Omega-3', 'Hydrating', 'Anti-aging', 'Antioxidant'],
+    bars: [['Hydration', 88], ['Omega-3 content', 85], ['Anti-aging', 78], ['Antioxidant', 72]],
+    stats: [['23%', 'ALA omega-3'], ['800+', 'Lignan types'], ['6000yr', 'Cultivation']],
+  },
+  'green-tea': {
+    sci: 'Camellia sinensis', tag: 'antioxidant', origin: 'China / Japan',
+    snippet: "EGCG \u2014 green tea's crown polyphenol \u2014 is 50\u00d7 more potent than vitamin E against free radicals.",
+    benefits: ['EGCG antioxidant', 'Anti-aging', 'UV protection', 'Acne control'],
+    bars: [['Antioxidant EGCG', 96], ['Anti-aging', 90], ['UV defence', 82], ['Antibacterial', 78]],
+    stats: [['30\u201340%', 'Polyphenol content'], ['5000yr', 'History'], ['50\u00d7', 'Stronger than Vit E']],
+  },
+  'juniper-berry': {
+    sci: 'Juniperus communis', tag: 'cleansing', origin: 'Europe / North America',
+    snippet: 'Natural antiseptic and detoxifier \u2014 juniper clears pores, controls sebum, and purifies congested skin.',
+    benefits: ['Antiseptic', 'Detoxifying', 'Pore cleansing', 'Toning'],
+    bars: [['Cleansing', 85], ['Antibacterial', 80], ['Toning', 75], ['Antioxidant', 70]],
+    stats: [['Terpinen-4-ol', 'Key active'], ['150+', 'Active compounds'], ['Traditional', 'Detox herb']],
+  },
+  'kakadu-plum': {
+    sci: 'Terminalia ferdinandiana', tag: 'brightening', origin: 'Northern Australia',
+    snippet: "World record holder \u2014 5300mg vitamin C per 100g, the highest in any known fruit on earth.",
+    benefits: ["World's highest Vit C", 'Brightening', 'Antioxidant', 'Anti-aging'],
+    bars: [['Vitamin C', 100], ['Brightening', 95], ['Antioxidant', 92], ['Anti-aging', 88]],
+    stats: [['5300mg', 'Vit C / 100g'], ['100\u00d7', 'More than orange'], ['50,000yr', 'Indigenous use']],
+  },
+  'kale-leaf': {
+    sci: 'Brassica oleracea var. sabellica', tag: 'antioxidant', origin: 'Europe / Mediterranean',
+    snippet: "A superfood powerhouse \u2014 kale's dense vitamin C, K, and sulforaphane content protects and brightens skin.",
+    benefits: ['Vitamin C & K', 'Antioxidant', 'Brightening', 'Anti-inflammatory'],
+    bars: [['Antioxidant', 88], ['Brightening', 82], ['Anti-inflammatory', 78], ['Nutrition density', 95]],
+    stats: [['134mg', 'Vit C / 100g'], ['817mcg', 'Vit K / 100g'], ['Sulforaphane', 'Key active']],
+  },
+  'kaolin-clay': {
+    sci: 'Al\u2082Si\u2082O\u2085(OH)\u2084', tag: 'cleansing', origin: 'China / USA / Brazil',
+    snippet: 'The gentlest of all clays \u2014 neutral pH, non-drying, and safe for daily use on even sensitive skin.',
+    benefits: ['Gentle cleanse', 'Oil absorption', 'Pore minimising', 'Soothing'],
+    bars: [['Gentleness', 98], ['Oil control', 75], ['Pore cleanse', 80], ['Soothing', 85]],
+    stats: [['pH 6\u20137', 'Skin-neutral'], ['2000yr', 'Chinese use'], ['Finest', 'Clay particle']],
+  },
+  'mustard': {
+    sci: 'Brassica nigra / juncea', tag: 'strengthening', origin: 'South Asia / Mediterranean',
+    snippet: 'Rich in glucosinolates and selenium \u2014 mustard stimulates scalp circulation and fortifies hair roots.',
+    benefits: ['Hair stimulation', 'Scalp health', 'Circulation boost', 'Antifungal'],
+    bars: [['Scalp stimulation', 85], ['Hair strength', 80], ['Antifungal', 78], ['Circulation', 82]],
+    stats: [['Selenium', 'Key mineral'], ['Glucosinolates', 'Primary actives'], ['3000yr', 'Medicinal use']],
+  },
+  'olive-squalane': {
+    sci: 'Squalane (Olea europaea)', tag: 'moisturizing', origin: 'Mediterranean',
+    snippet: "Identical to skin's own lipids \u2014 squalane absorbs instantly, seals moisture, and never clogs pores.",
+    benefits: ['Non-comedogenic', 'Moisture sealing', 'Anti-aging', 'Barrier support'],
+    bars: [['Absorption', 98], ['Moisture sealing', 92], ['Anti-aging', 85], ['Gentleness', 99]],
+    stats: [['0', 'Comedogenic rating'], ['Identical', 'To skin lipids'], ['Stable', 'Oxidation resistant']],
+  },
+  'palmetto': {
+    sci: 'Serenoa repens', tag: 'strengthening', origin: 'Southeastern USA',
+    snippet: 'Saw palmetto inhibits DHT \u2014 the hormone responsible for hair thinning and pattern hair loss.',
+    benefits: ['DHT inhibition', 'Hair retention', 'Scalp health', 'Anti-androgenic'],
+    bars: [['DHT inhibition', 88], ['Hair retention', 85], ['Scalp health', 80], ['Anti-inflammatory', 72]],
+    stats: [['Beta-sitosterol', 'Key active'], ['DHT', 'Inhibition target'], ['50yr', 'Clinical history']],
+  },
+  'quinoa': {
+    sci: 'Chenopodium quinoa', tag: 'moisturizing', origin: 'Andes / South America',
+    snippet: 'Complete protein with all 9 essential amino acids \u2014 quinoa forms a moisture-locking film on skin.',
+    benefits: ['Complete protein', 'Moisture film', 'Strengthening', 'Brightening'],
+    bars: [['Protein content', 90], ['Moisture retention', 85], ['Strengthening', 82], ['Brightening', 70]],
+    stats: [['9', 'Essential amino acids'], ['Complete', 'Protein profile'], ['7000yr', 'Andean staple']],
+  },
+  'rice-powder': {
+    sci: 'Oryza sativa', tag: 'brightening', origin: 'East / Southeast Asia',
+    snippet: "Ferulic acid and kojic acid from rice powder inhibit melanin \u2014 East Asia's age-old brightening secret.",
+    benefits: ['Brightening', 'Oil control', 'Gentle exfoliation', 'Skin softening'],
+    bars: [['Brightening', 88], ['Oil control', 85], ['Exfoliation', 75], ['Skin texture', 90]],
+    stats: [['Ferulic acid', 'Key antioxidant'], ['Kojic acid', 'Melanin inhibitor'], ['6000yr', 'Skincare history']],
+  },
+  'saffron': {
+    sci: 'Crocus sativus', tag: 'brightening', origin: 'Iran / India / Spain',
+    snippet: "The world's most precious spice \u2014 crocin and crocetin carotenoids rank among nature's most potent antioxidants.",
+    benefits: ['Antioxidant', 'Brightening', 'Anti-aging', 'Mood support'],
+    bars: [['Antioxidant', 94], ['Brightening', 88], ['Anti-aging', 82], ['Anti-inflammatory', 78]],
+    stats: [['75,000', 'Flowers per pound'], ['Crocin', 'Primary active'], ['3500yr', 'Cultivation']],
+  },
+  'sesame': {
+    sci: 'Sesamum indicum', tag: 'moisturizing', origin: 'Africa / India',
+    snippet: 'Ancient beauty oil rich in sesamol and sesamin \u2014 sesame nourishes deeply and offers natural SPF protection.',
+    benefits: ['Deep nourishment', 'Natural SPF', 'Antioxidant', 'Anti-inflammatory'],
+    bars: [['Nourishment', 87], ['Antioxidant', 82], ['Natural SPF', 70], ['Anti-inflammatory', 78]],
+    stats: [['SPF 4\u20136', 'Natural UV filter'], ['Sesamol', 'Unique antioxidant'], ['5500yr', 'Cultivation']],
+  },
+  'tapioca-starch': {
+    sci: 'Manihot esculenta', tag: 'soothing', origin: 'South America',
+    snippet: 'Ultra-fine starch that creates a silky skin feel \u2014 tapioca absorbs excess moisture and calms irritation.',
+    benefits: ['Skin smoothing', 'Oil absorption', 'Soothing', 'Texture enhancer'],
+    bars: [['Skin feel', 95], ['Oil absorption', 80], ['Soothing', 78], ['Gentleness', 98]],
+    stats: [['Sub-micron', 'Particle size'], ['Natural', 'Origin'], ['Zero', 'Irritation potential']],
+  },
+  'tea-tree': {
+    sci: 'Melaleuca alternifolia', tag: 'cleansing', origin: 'Australia (NSW)',
+    snippet: 'Terpinen-4-ol disrupts microbial membranes \u2014 as effective as benzoyl peroxide with fewer side effects.',
+    benefits: ['Antimicrobial', 'Acne treatment', 'Anti-inflammatory', 'Wound healing'],
+    bars: [['Antimicrobial', 97], ['Acne control', 94], ['Anti-inflammatory', 85], ['Wound healing', 80]],
+    stats: [['30\u201340%', 'Terpinen-4-ol'], ['1990', 'First clinical trial'], ['Indigenous', '60,000yr use']],
+  },
+  'vitamin-c-b5': {
+    sci: 'Ascorbic acid + D-Panthenol', tag: 'brightening', origin: 'Citrus + Pantothenic acid',
+    snippet: 'The gold standard duo \u2014 vitamin C stimulates collagen while B5 seals moisture and accelerates repair.',
+    benefits: ['Collagen synthesis', 'Brightening', 'Barrier repair', 'Hydration'],
+    bars: [['Vit C antioxidant', 95], ['Brightening', 92], ['B5 barrier', 90], ['Hydration', 85]],
+    stats: [['Synergistic', 'Duo effect'], ['10\u201320%', 'Optimal C range'], ['1\u20135%', 'Panthenol range']],
+  },
+  'white-tea': {
+    sci: 'Camellia sinensis (buds)', tag: 'antioxidant', origin: 'Fujian Province, China',
+    snippet: 'The least processed tea \u2014 white tea retains the highest natural polyphenol content for powerful antioxidant action.',
+    benefits: ['Antioxidant', 'Anti-aging', 'Soothing', 'Collagen protection'],
+    bars: [['Antioxidant', 94], ['Anti-aging', 88], ['Soothing', 82], ['Collagen protection', 85]],
+    stats: [['Minimally', 'Processed'], ['Highest', 'Polyphenol density'], ['Song Dynasty', 'Origins']],
+  },
+  'yellow-dragon': {
+    sci: 'Selenicereus megalanthus', tag: 'antioxidant', origin: 'Central / South America',
+    snippet: 'Exotic cactus fruit packed with betalain pigments \u2014 brightens skin and combats oxidative stress.',
+    benefits: ['Antioxidant', 'Brightening', 'Hydrating', 'Anti-inflammatory'],
+    bars: [['Antioxidant', 88], ['Brightening', 82], ['Hydration', 90], ['Anti-inflammatory', 78]],
+    stats: [['Betalains', 'Unique pigments'], ['Vit C', 'High content'], ['Tropical', 'Superfruit']],
+  },
+}
 
+const FILTERS = ['all', 'antioxidant', 'brightening', 'hydrating', 'cleansing', 'soothing', 'exfoliating', 'strengthening', 'moisturizing']
+
+const TAG_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  antioxidant:   { text: '#1d6fa8', bg: 'rgba(75,151,201,0.1)',  border: 'rgba(75,151,201,0.35)' },
+  hydrating:     { text: '#1d7a8a', bg: 'rgba(46,163,179,0.1)',  border: 'rgba(46,163,179,0.35)' },
+  brightening:   { text: '#9a7300', bg: 'rgba(212,165,0,0.1)',   border: 'rgba(212,165,0,0.35)'  },
+  cleansing:     { text: '#2d6a2d', bg: 'rgba(74,103,65,0.1)',   border: 'rgba(74,103,65,0.35)'  },
+  soothing:      { text: '#6a3d9a', bg: 'rgba(154,126,200,0.1)', border: 'rgba(154,126,200,0.35)'},
+  exfoliating:   { text: '#b05030', bg: 'rgba(184,101,80,0.1)',  border: 'rgba(184,101,80,0.35)' },
+  strengthening: { text: '#3d7a3d', bg: 'rgba(122,158,110,0.1)', border: 'rgba(122,158,110,0.35)'},
+  moisturizing:  { text: '#1a7a8a', bg: 'rgba(106,175,184,0.1)', border: 'rgba(106,175,184,0.35)'},
+}
+
+// â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function EfficacyBar({ label, pct, animate }: { label: string; pct: number; animate: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+      <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: '0.06em', color: 'rgba(224,245,245,0.6)', width: 100, flexShrink: 0 }}>
+        {label}
+      </span>
+      <div style={{ flex: 1, height: 3, background: 'rgba(75,151,201,0.18)', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', borderRadius: 2,
+          background: 'linear-gradient(90deg, rgb(75,151,201), rgba(75,151,201,0.45))',
+          width: animate ? `${pct}%` : '0%',
+          transition: 'width 0.9s ease',
+        }} />
+      </div>
+      <span style={{ fontSize: 9, fontWeight: 300, color: 'rgba(224,245,245,0.4)', width: 24, textAlign: 'right', flexShrink: 0 }}>
+        {pct}
+      </span>
+    </div>
+  )
+}
+
+function StatCell({ val, label }: { val: string; label: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '0.7rem 0.5rem', border: '1px solid rgba(75,151,201,0.2)', borderRadius: 6, background: 'rgba(75,151,201,0.07)' }}>
+      <div style={{ fontFamily: 'var(--font-heading-family, Georgia, serif)', fontSize: '1.25rem', fontWeight: 300, color: 'rgb(75,151,201)', lineHeight: 1.1, marginBottom: 4 }}>
+        {val}
+      </div>
+      <div style={{ fontSize: 9, fontWeight: 300, letterSpacing: '0.14em', color: 'rgba(224,245,245,0.42)', textTransform: 'uppercase' }}>
+        {label}
+      </div>
+    </div>
+  )
+}
+
+function SectionBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: '1.25rem' }}>
+      <div style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.25em', color: 'rgba(75,151,201,0.85)', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(75,151,201,0.2)' }}>
+        {label}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function ExpandedPanel({ ing, meta, onClose }: { ing: typeof ingredients[number]; meta: IngredientMeta; onClose: () => void }) {
+  const [barsVisible, setBarsVisible] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setBarsVisible(true), 80)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div
+      className="ing-expanded"
+      style={{
+        gridColumn: '1 / -1',
+        background: '#0d1b2a',
+        padding: '2rem 1.5rem',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0,1fr) minmax(0,2fr)',
+        gap: '2rem',
+      }}
+    >
+      {/* Left: image + efficacy bars */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ width: 128, height: 128, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(75,151,201,0.4)', flexShrink: 0 }}>
+          <img src={getOptimizedImage(ing.image)} alt={ing.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+        <div style={{ fontFamily: 'var(--font-heading-family, Georgia, serif)', fontSize: '1.55rem', fontWeight: 300, color: '#e0f5f5', textAlign: 'center', letterSpacing: '0.05em' }}>
+          {ing.name}
+        </div>
+        <div style={{ fontSize: 9, fontWeight: 300, letterSpacing: '0.2em', color: 'rgba(75,151,201,0.85)', textTransform: 'uppercase', textAlign: 'center' }}>
+          {'\u2736'} {meta.origin} {'\u2736'}
+        </div>
+        <div style={{ width: '100%', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.25em', color: 'rgba(75,151,201,0.85)', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(75,151,201,0.2)' }}>
+            Efficacy profile
+          </div>
+          {meta.bars.map(([lbl, pct]) => (
+            <EfficacyBar key={lbl} label={lbl} pct={pct} animate={barsVisible} />
+          ))}
+        </div>
+      </div>
+
+      {/* Right: stats + content */}
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.65rem', marginBottom: '1.5rem' }}>
+          {meta.stats.map(([val, lbl]) => <StatCell key={lbl} val={val} label={lbl} />)}
+        </div>
+
+        <SectionBlock label="Botanical profile">
+          <p style={{ fontSize: 12, fontWeight: 300, lineHeight: 1.85, color: 'rgba(224,245,245,0.72)', letterSpacing: '0.02em' }}>
+            {meta.snippet}
+          </p>
+        </SectionBlock>
+
+        <SectionBlock label="Key benefits">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {meta.benefits.map(b => (
+              <span key={b} style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgb(75,151,201)', background: 'rgba(75,151,201,0.12)', padding: '3px 10px', borderRadius: 20, textTransform: 'uppercase' }}>
+                {b}
+              </span>
+            ))}
+          </div>
+        </SectionBlock>
+
+        <SectionBlock label="Scientific name">
+          <p style={{ fontSize: 12, fontStyle: 'italic', color: 'rgba(224,245,245,0.48)', fontWeight: 300 }}>
+            {meta.sci}
+          </p>
+        </SectionBlock>
+
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => { window.location.hash = `#/user/ingredients/${ing.id}` }}
+            style={{ padding: '7px 18px', background: 'rgba(75,151,201,0.15)', border: '1px solid rgba(75,151,201,0.4)', color: 'rgb(75,151,201)', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: 4 }}
+          >
+            Deep Dive {'\u2192'}
+          </button>
+          <button
+            onClick={onClose}
+            style={{ padding: '7px 18px', border: '1px solid rgba(224,245,245,0.15)', background: 'transparent', color: 'rgba(224,245,245,0.5)', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: 4 }}
+          >
+            {'\u2715'} Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function IngredientCard({ ing, meta, isExpanded, onToggle }: { ing: typeof ingredients[number]; meta: IngredientMeta; isExpanded: boolean; onToggle: () => void }) {
+  const tc = TAG_COLORS[meta.tag] || TAG_COLORS.antioxidant
+  const [hovered, setHovered] = useState(false)
 
   return (
     <>
-      <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20 scroll-smooth" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
-        <style>{`
-          :root {
-            --arctic-blue-primary: rgb(75,151,201);
-            --arctic-blue-primary-hover: rgb(60,120,160);
-            --arctic-blue-primary-dark: rgb(50,100,140);
-            --arctic-blue-light: #E0F5F5;
-            --arctic-blue-lighter: #F0F9F9;
-            --arctic-blue-background: #F4F9F9;
-          }
-        `}</style>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 sm:mb-16">
-          <h1 
-            className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]"
-            style={{
-              color: '#1a1a1a',
-              fontFamily: 'var(--font-heading-family)',
-              letterSpacing: '0.15em'
-            }}
-          >
-            INGREDIENTS
-          </h1>
-          <p 
-            className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
-          >
-            Discover the powerful natural ingredients that make our products effective and gentle on your skin.
+      <div
+        id={`ing-card-${ing.id}`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          border: '1px solid',
+          borderColor: isExpanded ? 'rgba(75,151,201,0.45)' : hovered ? 'rgba(75,151,201,0.28)' : '#e4f0f7',
+          background: isExpanded ? '#0d1b2a' : hovered ? 'rgba(75,151,201,0.04)' : '#ffffff',
+          cursor: 'pointer', position: 'relative', overflow: 'hidden',
+          transition: 'background 0.25s, border-color 0.25s, box-shadow 0.25s',
+          boxShadow: hovered && !isExpanded ? '0 4px 20px rgba(75,151,201,0.11)' : 'none',
+        }}
+      >
+        {/* Bottom accent line */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+          background: 'linear-gradient(90deg, rgb(75,151,201), rgba(75,151,201,0.28))',
+          transform: hovered || isExpanded ? 'scaleX(1)' : 'scaleX(0)',
+          transformOrigin: 'left', transition: 'transform 0.3s',
+        }} />
+
+        {/* Card header row */}
+        <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.2rem 1.25rem' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '1.5px solid', borderColor: isExpanded ? 'rgba(75,151,201,0.5)' : 'rgba(75,151,201,0.22)' }}>
+            <img src={getOptimizedImage(ing.image)} alt={ing.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 300, letterSpacing: '0.2em', color: isExpanded ? 'rgba(75,151,201,0.75)' : 'rgba(75,151,201,0.65)', textTransform: 'uppercase', marginBottom: 2, fontStyle: 'italic' }}>
+              {meta.sci}
+            </div>
+            <div style={{ fontFamily: 'var(--font-heading-family, Georgia, serif)', fontWeight: 300, fontSize: '1.12rem', color: isExpanded ? '#e0f5f5' : '#1a1a1a', letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.25s' }}>
+              {ing.name}
+            </div>
+            <span style={{ display: 'inline-block', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 9px', borderRadius: 20, marginTop: 5, color: isExpanded ? 'rgb(75,151,201)' : tc.text, background: isExpanded ? 'rgba(75,151,201,0.15)' : tc.bg, border: `1px solid ${isExpanded ? 'rgba(75,151,201,0.35)' : tc.border}` }}>
+              {meta.tag}
+            </span>
+          </div>
+
+          <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: hovered || isExpanded ? 'none' : '1px solid rgba(75,151,201,0.28)', background: hovered || isExpanded ? 'rgb(75,151,201)' : 'transparent', flexShrink: 0, transition: 'all 0.25s' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke={hovered || isExpanded ? '#fff' : 'rgb(75,151,201)'} strokeWidth="2" width={11} height={11} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.3s' }}>
+              <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        </div>
+
+        {!isExpanded && (
+          <p style={{ margin: 0, padding: '0 1.25rem 1rem', fontSize: 11.5, fontWeight: 300, lineHeight: 1.72, color: '#888', letterSpacing: '0.02em', display: '-webkit-box', WebkitLineClamp: 2 as any, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>
+            {meta.snippet}
           </p>
-        </div>
-
-        <div className="md:hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Ingredients List */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 
-                className="text-xl sm:text-2xl font-light mb-6 tracking-[0.15em]"
-                style={{
-                  color: '#1a1a1a',
-                  fontFamily: 'var(--font-heading-family)',
-                  letterSpacing: '0.15em'
-                }}
-              >
-                Our Ingredients
-              </h2>
-              <div className="space-y-2">
-                {ingredients.map((ingredient) => (
-                  <button
-                    key={ingredient.id}
-                    onClick={() => setSelectedIngredient(ingredient)}
-                    className={`w-full transition-all duration-300 rounded-full relative ${
-                      selectedIngredient.id === ingredient.id 
-                        ? 'shadow-md' 
-                        : 'hover:shadow-sm'
-                    }`}
-                    style={{
-                      backgroundColor: selectedIngredient.id === ingredient.id ? 'var(--arctic-blue-light)' : 'var(--arctic-blue-lighter)',
-                      color: '#1a1a1a',
-                      padding: '0',
-                      borderRadius: '50%',
-                      overflow: 'hidden',
-                      aspectRatio: '1 / 1',
-                      flexShrink: 0
-                    }}
-                  >
-                    <img 
-                      src={getOptimizedImage(ingredient.image)} 
-                      alt={ingredient.name}
-                      className="absolute inset-0 object-cover rounded-full cursor-pointer hover:scale-110 transition-transform duration-200"
-                      loading="lazy"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        objectPosition: 'center',
-                        borderRadius: '50%'
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleImageClick(ingredient.id)
-                      }}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Selected Ingredient Details */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              {/* Full-size Image */}
-              <div className="w-full rounded-full relative" style={{ aspectRatio: '1 / 1', overflow: 'hidden', borderRadius: '50%' }}>
-                <img 
-                  src={getOptimizedImage(selectedIngredient.image)} 
-                  alt={selectedIngredient.name}
-                  className="absolute inset-0 object-cover rounded-full cursor-pointer hover:scale-110 transition-transform duration-200"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    objectPosition: 'center',
-                    borderRadius: '50%'
-                  }}
-                  onClick={() => handleImageClick(selectedIngredient.id)}
-                />
-              </div>
-              
-              {/* Content below image */}
-              <div className="p-6">
-                <div className="text-center mb-6">
-                  <h2 
-                    className="text-2xl sm:text-3xl md:text-4xl font-light tracking-[0.15em]"
-                    style={{
-                      color: '#1a1a1a',
-                      fontFamily: 'var(--font-heading-family)',
-                      letterSpacing: '0.15em'
-                    }}
-                  >
-                    {selectedIngredient.name}
-                  </h2>
-                </div>
-                
-                <div className="prose max-w-none">
-                  <div 
-                    className="text-sm sm:text-base font-light leading-relaxed whitespace-pre-line tracking-wide"
-                    style={{ color: '#666', letterSpacing: '0.05em' }}
-                    dangerouslySetInnerHTML={{
-                      __html: selectedIngredient.description.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1a1a1a;">$1</strong>')
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Scrollytelling: each ingredient has its own scroll step ── */}
-        <div className="mt-16 md:mt-24">
-          <div className="text-center mb-8 md:mb-0">
-            <p className="text-xs font-medium tracking-[0.25em] uppercase mb-2" style={{ color: '#bfa45a' }}>
-              Explore all ingredients
-            </p>
-            <h2
-              className="text-2xl sm:text-3xl font-light tracking-[0.15em] hidden md:block"
-              style={{ color: '#1a1a1a', fontFamily: 'var(--font-heading-family)' }}
-            >
-              Scroll to discover
-            </h2>
-            <p className="text-sm font-light text-gray-400 mt-1 hidden md:block">
-              Each ingredient tells its own story — scroll through to explore them all
-            </p>
-          </div>
-          <IngredientsScrollytelling
-            ingredients={ingredients}
-            onNavigate={navigateToIngredient}
-            useMockImages
-          />
-        </div>
-
-        {/* Benefits Section */}
-        <div className="mt-16">
-          <div className="text-center mb-12">
-            <h2 
-              className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
-              style={{
-                color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family)',
-                letterSpacing: '0.15em'
-              }}
-            >
-              Why Natural Ingredients?
-            </h2>
-            <p 
-              className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
-            >
-              Our commitment to natural, plant-based ingredients ensures gentle yet effective skincare solutions.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            <div className="bg-white rounded-lg shadow-sm p-6 text-center border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--arctic-blue-light)'}}>
-                <span className="text-2xl">🌿</span>
-              </div>
-              <h3 
-                className="text-lg font-light mb-2 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
-              >
-                Natural
-              </h3>
-              <p 
-                className="text-sm font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
-              >
-                Pure plant-based ingredients without harmful chemicals
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm p-6 text-center border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--arctic-blue-light)'}}>
-                <span className="text-2xl">✨</span>
-              </div>
-              <h3 
-                className="text-lg font-light mb-2 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
-              >
-                Gentle & Safe
-              </h3>
-              <p 
-                className="text-sm font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
-              >
-                Suitable for all skin types, including sensitive skin
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm p-6 text-center border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--arctic-blue-light)'}}>
-                <span className="text-2xl">🔬</span>
-              </div>
-              <h3 
-                className="text-lg font-light mb-2 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
-              >
-                Scientifically Proven
-              </h3>
-              <p 
-                className="text-sm font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
-              >
-                Backed by research and traditional knowledge
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm p-6 text-center border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--arctic-blue-light)'}}>
-                <span className="text-2xl">🌍</span>
-              </div>
-              <h3 
-                className="text-lg font-light mb-2 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
-              >
-                Eco-Friendly
-              </h3>
-              <p 
-                className="text-sm font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
-              >
-                Sustainable sourcing and environmentally conscious
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Call to Action */}
-        <div className="text-center mt-12 sm:mt-16">
-          <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 md:p-10">
-            <h2 
-              className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
-              style={{
-                color: '#1a1a1a',
-                fontFamily: 'var(--font-heading-family)',
-                letterSpacing: '0.15em'
-              }}
-            >
-              Experience Natural Ingredients
-            </h2>
-            <p 
-              className="text-sm sm:text-base font-light mb-6 sm:mb-8 max-w-2xl mx-auto tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
-            >
-              Discover our range of products enriched with these powerful natural ingredients 
-              and experience the difference for yourself.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a 
-                href="#/user/shop"
-                className="px-8 py-3 text-white font-light transition-all duration-300 text-xs tracking-[0.15em] uppercase rounded-xl hover:opacity-90 flex items-center justify-center"
-                style={{ 
-                  backgroundColor: 'var(--arctic-blue-primary)',
-                  letterSpacing: '0.15em'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
-                }}
-              >
-                SHOP NOW
-              </a>
-              <a 
-                href="#/user/contact"
-                className="px-8 py-3 text-white font-light transition-all duration-300 text-xs tracking-[0.15em] uppercase rounded-xl hover:opacity-90 flex items-center justify-center"
-                style={{ 
-                  backgroundColor: 'var(--arctic-blue-primary)',
-                  letterSpacing: '0.15em'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary-hover)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--arctic-blue-primary)'
-                }}
-              >
-                CONTACT US
-              </a>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
-    </main>
+
+      {isExpanded && <ExpandedPanel ing={ing} meta={meta} onClose={onToggle} />}
     </>
   )
 }
+
+// â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export default function Ingredients() {
+  const [activeFilter, setActiveFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [bounceArrow, setBounceArrow] = useState(true)
+
+  useEffect(() => {
+    const t = setTimeout(() => setBounceArrow(false), 4000)
+    return () => clearTimeout(t)
+  }, [])
+
+  const filtered = ingredients.filter(ing => {
+    const meta = INGREDIENT_META[ing.id]
+    if (!meta) return false
+    const q = searchQuery.toLowerCase().trim()
+    const matchFilter = activeFilter === 'all' || meta.tag === activeFilter
+    const matchSearch = !q || ing.name.toLowerCase().includes(q) || meta.tag.toLowerCase().includes(q) || meta.sci.toLowerCase().includes(q)
+    return matchFilter && matchSearch
+  })
+
+  function toggleCard(id: string) {
+    const next = expandedId === id ? null : id
+    setExpandedId(next)
+    if (next) {
+      setTimeout(() => {
+        const el = document.getElementById(`ing-card-${id}`)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 60)
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
+      <style>{`
+        :root {
+          --arctic-blue-primary: rgb(75,151,201);
+          --arctic-blue-primary-hover: rgb(60,120,160);
+          --arctic-blue-light: #E0F5F5;
+          --arctic-blue-lighter: #F0F9F9;
+        }
+        .ing-page * { box-sizing: border-box; }
+        .ing-filter-btn { transition: background 0.2s, color 0.2s, border-color 0.2s; }
+        .ing-filter-btn:hover, .ing-filter-btn.active { background: rgb(75,151,201) !important; color: #fff !important; border-color: rgb(75,151,201) !important; }
+        .ing-search:focus { outline: none; border-color: rgb(75,151,201); box-shadow: 0 0 0 3px rgba(75,151,201,0.12); }
+        .ing-filter-bar::-webkit-scrollbar { display: none; }
+        .ing-filter-bar { scrollbar-width: none; }
+        @keyframes ing-bounce { 0%,100%{ transform: rotate(45deg) translateY(0); } 50%{ transform: rotate(45deg) translateY(5px); } }
+        .ing-bounce { animation: ing-bounce 1.6s ease-in-out infinite; }
+        @media (max-width: 640px) { .ing-expanded { grid-template-columns: 1fr !important; } }
+      `}</style>
+
+      <div className="ing-page" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.25rem' }}>
+
+        {/* Hero */}
+        <div style={{ textAlign: 'center', paddingBottom: '2.5rem', marginBottom: '1.75rem', borderBottom: '1px solid #e4f0f7' }}>
+          <p style={{ fontSize: 10, fontWeight: 300, letterSpacing: '0.35em', color: 'rgb(75,151,201)', textTransform: 'uppercase', marginBottom: '1rem' }}>
+            Nefol {'\u2014'} The Botanical Index
+          </p>
+          <h1 style={{ fontFamily: 'var(--font-heading-family, Georgia, serif)', fontWeight: 300, fontSize: 'clamp(2.2rem,5vw,3.8rem)', letterSpacing: '0.06em', color: '#1a1a1a', lineHeight: 1.1, marginBottom: '0.75rem' }}>
+            Every ingredient<br />
+            <em style={{ fontStyle: 'italic', color: 'rgb(75,151,201)' }}>tells a story</em>
+          </h1>
+          <p style={{ fontSize: 13, fontWeight: 300, letterSpacing: '0.05em', color: '#888', maxWidth: 440, margin: '0 auto 1.5rem', lineHeight: 1.75 }}>
+            We trace each extract from source to skin {'\u2014'} ancient botanicals, modern science, and the wisdom between them.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+            <span style={{ width: 60, height: 1, background: '#e0f5f5', display: 'block' }} />
+            <svg viewBox="0 0 20 20" fill="none" width={16} height={16}>
+              <circle cx="10" cy="10" r="9" stroke="rgb(75,151,201)" strokeWidth="1" opacity="0.5" />
+              <circle cx="10" cy="10" r="3" fill="rgb(75,151,201)" opacity="0.4" />
+            </svg>
+            <span style={{ width: 60, height: 1, background: '#e0f5f5', display: 'block' }} />
+          </div>
+          <p style={{ fontSize: 10, fontWeight: 300, letterSpacing: '0.2em', color: '#ccc', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span className={bounceArrow ? 'ing-bounce' : ''} style={{ width: 12, height: 12, borderRight: '1.5px solid rgb(75,151,201)', borderBottom: '1.5px solid rgb(75,151,201)', transform: 'rotate(45deg)', display: 'inline-block' }} />
+            scroll to explore
+          </p>
+        </div>
+
+        {/* Search */}
+        <div style={{ marginBottom: '0.85rem' }}>
+          <div style={{ position: 'relative' }}>
+            <svg style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, pointerEvents: 'none', color: '#bbb' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              className="ing-search"
+              type="text"
+              placeholder="Search {'\u2014'} blue tea, charcoal, vitamin c, saffron..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setExpandedId(null) }}
+              style={{ width: '100%', padding: '10px 14px 10px 40px', border: '1px solid #d8eaf4', background: '#fff', fontFamily: 'inherit', fontSize: 13, letterSpacing: '0.04em', color: '#1a1a1a', borderRadius: 6, transition: 'border-color 0.2s, box-shadow 0.2s' }}
+            />
+          </div>
+        </div>
+
+        {/* Filter bar */}
+        <div className="ing-filter-bar" style={{ display: 'flex', gap: 8, paddingBottom: '1.25rem', overflowX: 'auto' }}>
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              className={`ing-filter-btn${activeFilter === f ? ' active' : ''}`}
+              onClick={() => { setActiveFilter(f); setExpandedId(null) }}
+              style={{ flexShrink: 0, padding: '5px 15px', border: '1px solid', borderColor: activeFilter === f ? 'rgb(75,151,201)' : 'rgba(75,151,201,0.32)', background: activeFilter === f ? 'rgb(75,151,201)' : 'transparent', fontFamily: 'inherit', fontSize: 10, fontWeight: 400, letterSpacing: '0.12em', color: activeFilter === f ? '#fff' : 'rgb(75,151,201)', textTransform: 'uppercase', cursor: 'pointer', borderRadius: 20, whiteSpace: 'nowrap' }}
+            >
+              {f === 'all' ? 'All Ingredients' : f}
+            </button>
+          ))}
+        </div>
+
+        {/* Count label */}
+        <div style={{ fontSize: 11, fontWeight: 300, letterSpacing: '0.1em', color: '#bbb', textTransform: 'uppercase', marginBottom: '1rem' }}>
+          {filtered.length} ingredient{filtered.length !== 1 ? 's' : ''}
+          {activeFilter !== 'all' && ` \u00b7 ${activeFilter}`}
+          {searchQuery && ` \u00b7 "${searchQuery}"`}
+        </div>
+
+        {/* Ingredient grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1px', border: '1px solid #e4f0f7', borderRadius: 4, overflow: 'hidden', background: '#e4f0f7' }}>
+          {filtered.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 2rem', fontFamily: 'var(--font-heading-family, Georgia, serif)', fontSize: '1.4rem', color: '#ccc', fontStyle: 'italic', background: '#fff' }}>
+              No ingredients found{'\u2026'}
+            </div>
+          ) : (
+            filtered.map(ing => {
+              const meta = INGREDIENT_META[ing.id]
+              if (!meta) return null
+              return (
+                <IngredientCard
+                  key={ing.id}
+                  ing={ing}
+                  meta={meta}
+                  isExpanded={expandedId === ing.id}
+                  onToggle={() => toggleCard(ing.id)}
+                />
+              )
+            })
+          )}
+        </div>
+
+        {/* Why Natural */}
+        <div style={{ marginTop: '4rem', textAlign: 'center' }}>
+          <p style={{ fontSize: 9, fontWeight: 300, letterSpacing: '0.3em', color: 'rgb(75,151,201)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+            Our Commitment
+          </p>
+          <h2 style={{ fontFamily: 'var(--font-heading-family, Georgia, serif)', fontWeight: 300, fontSize: 'clamp(1.5rem,3vw,2.2rem)', color: '#1a1a1a', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>
+            Why Natural Ingredients?
+          </h2>
+          <p style={{ fontSize: 13, fontWeight: 300, color: '#888', maxWidth: 520, margin: '0 auto 2.5rem', lineHeight: 1.75, letterSpacing: '0.04em' }}>
+            Our commitment to natural, plant-based ingredients ensures gentle yet effective skincare solutions.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
+            {[
+              { icon: '\uD83C\uDF3F', title: 'Natural', desc: 'Pure plant-based ingredients without harmful chemicals' },
+              { icon: '\u2728', title: 'Gentle & Safe', desc: 'Suitable for all skin types, including sensitive skin' },
+              { icon: '\uD83D\uDD2C', title: 'Scientifically Proven', desc: 'Backed by research and traditional knowledge' },
+              { icon: '\uD83C\uDF0D', title: 'Eco-Friendly', desc: 'Sustainable sourcing and environmentally conscious' },
+            ].map(card => (
+              <div key={card.title} style={{ background: '#fff', borderRadius: 8, padding: '1.5rem', textAlign: 'center', border: '1px solid #e0f5f5', boxShadow: '0 2px 12px rgba(75,151,201,0.06)' }}>
+                <div style={{ fontSize: 28, marginBottom: '0.75rem' }}>{card.icon}</div>
+                <div style={{ fontSize: 13, fontWeight: 400, color: '#1a1a1a', marginBottom: '0.4rem', letterSpacing: '0.04em' }}>{card.title}</div>
+                <div style={{ fontSize: 12, fontWeight: 300, color: '#888', lineHeight: 1.65 }}>{card.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div style={{ background: '#fff', borderRadius: 12, padding: '2.5rem 2rem', textAlign: 'center', boxShadow: '0 2px 20px rgba(75,151,201,0.08)', border: '1px solid #e0f5f5' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading-family, Georgia, serif)', fontWeight: 300, fontSize: 'clamp(1.5rem,3vw,2.2rem)', color: '#1a1a1a', letterSpacing: '0.12em', marginBottom: '0.75rem' }}>
+            Experience Natural Ingredients
+          </h2>
+          <p style={{ fontSize: 13, fontWeight: 300, color: '#888', maxWidth: 520, margin: '0 auto 1.75rem', lineHeight: 1.75, letterSpacing: '0.04em' }}>
+            Discover our range of products enriched with these powerful natural ingredients and experience the difference for yourself.
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="#/user/shop" style={{ display: 'inline-block', padding: '10px 28px', background: 'rgb(75,151,201)', color: '#fff', fontFamily: 'inherit', fontSize: 10, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase', borderRadius: 8, textDecoration: 'none', transition: 'background 0.2s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgb(60,120,160)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgb(75,151,201)' }}>
+              Shop Now
+            </a>
+            <a href="#/user/contact" style={{ display: 'inline-block', padding: '10px 28px', border: '1px solid rgb(75,151,201)', color: 'rgb(75,151,201)', fontFamily: 'inherit', fontSize: 10, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase', borderRadius: 8, textDecoration: 'none', background: 'transparent', transition: 'background 0.2s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(75,151,201,0.06)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}>
+              Contact Us
+            </a>
+          </div>
+        </div>
+
+        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: 11, fontWeight: 300, letterSpacing: '0.1em', color: '#ccc' }}>
+          All ingredients are ethically sourced {'\u00b7'} Dermatologically validated {'\u00b7'} Results may vary
+        </p>
+
+      </div>
+    </main>
+  )
+}
+
