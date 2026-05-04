@@ -94,6 +94,17 @@ async function fetchStaffWithAccess(pool: Pool, field: 'email' | 'id', value: st
   return rows[0] || null
 }
 
+/** Role priority order — earlier in this list = takes precedence as primaryRole */
+const ROLE_PRIORITY = ['admin', 'manager', 'staff', 'viewer']
+
+function resolvePrimaryRole(roles: string[]): string {
+  if (!roles.length) return 'admin'
+  for (const r of ROLE_PRIORITY) {
+    if (roles.includes(r)) return r
+  }
+  return roles[0]
+}
+
 function toStaffResponse(row: StaffAggregatedRow, pagePermissions?: string[]) {
   const roles = toStringArray(row.roles) || []
   const permissions = toStringArray(row.permissions) || []
@@ -101,7 +112,7 @@ function toStaffResponse(row: StaffAggregatedRow, pagePermissions?: string[]) {
     id: row.id,
     name: row.name,
     email: row.email,
-    role: roles[0] || 'admin',
+    role: resolvePrimaryRole(roles),
     roles,
     permissions,
     pagePermissions: pagePermissions || []
@@ -157,7 +168,7 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
     email: row.email,
     roles,
     permissions,
-    primaryRole: roles[0] || 'admin',
+    primaryRole: resolvePrimaryRole(roles),
     layoutPermissions,
     pagePermissions
   }

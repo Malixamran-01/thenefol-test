@@ -1,6 +1,15 @@
 // Authentication service for admin panel
 import apiService from './api'
 
+/** Role precedence: earlier = higher priority as the resolved primaryRole */
+const ROLE_PRIORITY = ['admin', 'manager', 'staff', 'viewer']
+function resolvePrimaryRole(roles: string[], fallback = ''): string {
+  for (const r of ROLE_PRIORITY) {
+    if (roles.includes(r)) return r
+  }
+  return roles[0] ?? fallback
+}
+
 const getApiBaseUrl = () => {
   // Priority 1: Use VITE_API_URL if set (for deployment flexibility)
   if (import.meta.env.VITE_API_URL) {
@@ -30,6 +39,7 @@ interface User {
   email: string
   name: string
   role: string
+  roles: string[]
   permissions: string[]
   pagePermissions?: string[]
 }
@@ -84,11 +94,15 @@ class AuthService {
       : typeof raw.pagePermissions === 'string'
         ? raw.pagePermissions.split(',').map((p: string) => p.trim()).filter(Boolean)
         : []
+    // Always resolve primaryRole by priority — never trust raw.role blindly
+    // (backend may send 'Blog Mod' if it's first in the DB join; admin must always win)
+    const primaryRole = resolvePrimaryRole(rolesArray, raw.role || rolesArray[0] || '')
     return {
       id: raw.id,
       email: raw.email,
       name: raw.name || raw.email,
-      role: raw.role || rolesArray[0] || 'admin',
+      role: primaryRole,
+      roles: rolesArray,
       permissions,
       pagePermissions
     }
@@ -186,18 +200,18 @@ class AuthService {
     return { ...this.authState }
   }
 
-  // Check if user has access to a specific page
+  // Check if user has access to a specific page — admin always has full access
   hasPageAccess(pagePath: string): boolean {
     const user = this.authState.user
     if (!user) return false
-    
-    // If user has pagePermissions assigned, check those permissions
+
+    // Admin role overrides all page restrictions
+    if (user.role === 'admin') return true
+    if (Array.isArray(user.roles) && user.roles.includes('admin')) return true
+
     const pagePermissions = user.pagePermissions || []
-    
-    // If no pagePermissions exist, treat as super admin (full access)
+    // If no pagePermissions assigned, grant full access (default open)
     if (pagePermissions.length === 0) return true
-    
-    // Check if page is in the assigned permissions
     return pagePermissions.includes(pagePath)
   }
 
@@ -356,11 +370,13 @@ class AuthService {
     return this.authState.user
   }
 
-  // Check if user has permission
+  // Check if user has permission — admin role always bypasses all permission checks
   hasPermission(permission: string): boolean {
     const user = this.authState.user
     if (!user) return false
+    // Admin overrides regardless of which field carries it
     if (user.role === 'admin') return true
+    if (Array.isArray(user.roles) && user.roles.includes('admin')) return true
     const permissions: string[] = Array.isArray(user.permissions)
       ? user.permissions
       : typeof (user as any).permissions === 'string'
@@ -369,10 +385,12 @@ class AuthService {
     return permissions.includes(permission)
   }
 
-  // Check if user has role
+  // Check if user has role — checks primary role AND full roles array
   hasRole(role: string): boolean {
     if (!this.authState.user) return false
-    return this.authState.user.role === role
+    if (this.authState.user.role === role) return true
+    if (Array.isArray(this.authState.user.roles) && this.authState.user.roles.includes(role)) return true
+    return false
   }
 
   // Update user profile

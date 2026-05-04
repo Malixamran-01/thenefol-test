@@ -31,6 +31,8 @@ export default defineConfig({
     strictPort: false
   },
   build: {
+    // Ensure compatibility with Safari 13+ and iOS 13+
+    target: ['es2019', 'safari13'],
     // Optimize chunk splitting for better caching
     rollupOptions: {
       output: {
@@ -40,6 +42,8 @@ export default defineConfig({
           // Large libraries in their own chunks
           'socket-vendor': ['socket.io-client'],
           'ui-vendor': ['lucide-react'],
+          // country-state-city is ~1.5MB — put in its own chunk so Collab lazy chunk stays small
+          'geo-vendor': ['country-state-city'],
         },
         // Optimize chunk file names
         chunkFileNames: 'assets/js/[name]-[hash].js',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback, Component } from 'react'
 import { Country, State, City } from 'country-state-city'
 import {
   Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
@@ -163,7 +163,7 @@ function Ring({ pct, color, size = 80, stroke = 7 }: { pct: number; color: strin
   )
 }
 
-export default function Collab(props: CollabProps = {}) {
+function Collab(props: CollabProps = {}) {
   const { initialProgramTab } = props
   const { isAuthenticated, user } = useAuth()
   const creatorBadges = useCreatorProgramBadges()
@@ -2002,12 +2002,14 @@ export default function Collab(props: CollabProps = {}) {
         <div
           onClick={(e) => { if (e.target === e.currentTarget) setShowTCModal(false) }}
           style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
+            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, zIndex: 9999,
             backgroundColor: 'rgba(15,23,42,0.55)',
             backdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
             padding: '16px',
             overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch' as any,
           }}
         >
           <div style={{
@@ -2018,8 +2020,10 @@ export default function Collab(props: CollabProps = {}) {
             boxShadow: '0 25px 60px rgba(0,0,0,0.18)',
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: 'calc(100vh - 48px)',
-            margin: 'auto',
+            maxHeight: 'calc(100dvh - 48px)',
+            margin: 'auto auto',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch' as any,
           }}>
             {/* Header */}
             <div style={{ padding: '28px 28px 20px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
@@ -2159,3 +2163,44 @@ export default function Collab(props: CollabProps = {}) {
     </main>
   )
 }
+
+/** Safari/iOS crash safety net: if anything in Collab throws during render, show a friendly fallback */
+class CollabErrorBoundary extends Component<{ children: React.ReactNode }, { crashed: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { crashed: false }
+  }
+  static getDerivedStateFromError() { return { crashed: true } }
+  componentDidCatch(err: unknown) { console.error('[Collab] render error:', err) }
+  render() {
+    if (this.state.crashed) {
+      return (
+        <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F4F9F9', padding: '24px' }}>
+          <div style={{ textAlign: 'center', maxWidth: 380 }}>
+            <Clapperboard style={{ width: 40, height: 40, color: '#4B97C9', margin: '0 auto 20px' }} />
+            <h2 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: '1.5rem', color: '#1B4965', marginBottom: 12 }}>
+              Creator Program
+            </h2>
+            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
+              Something went wrong loading this page. Please refresh to try again.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{ background: '#4B97C9', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Refresh Page
+            </button>
+          </div>
+        </main>
+      )
+    }
+    return this.props.children
+  }
+}
+
+const CollabWithBoundary = (props: CollabProps) => (
+  <CollabErrorBoundary>
+    <Collab {...props} />
+  </CollabErrorBoundary>
+)
+export { CollabWithBoundary as default }

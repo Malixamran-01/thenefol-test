@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useCallback, useState } from 'react'
+import React, { useEffect, useRef, useCallback, useState } from 'react'
 import { Shield, AlertCircle } from 'lucide-react'
 
 const SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY || '').trim()
@@ -86,7 +86,7 @@ export default function CollabTurnstile({ onToken }: Props) {
     }
   }, [])
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!SITE_KEY) {
       onTokenRef.current(null)
       return
