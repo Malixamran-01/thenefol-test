@@ -27,7 +27,13 @@ export function BlogNavListener() {
       }
 
       if (isBlogRoute(newHash) && oldHash && oldHash.startsWith('#/')) {
-        dispatch(pushToBackStack(oldHash))
+        // Never push the blog request/edit form onto the back-stack —
+        // pressing "back" from the form should always go somewhere meaningful,
+        // not loop back into the editor.
+        const oldPath = oldHash.replace('#', '').toLowerCase().split('?')[0]
+        if (oldPath !== '/user/blog/request') {
+          dispatch(pushToBackStack(oldHash))
+        }
       }
     }
 

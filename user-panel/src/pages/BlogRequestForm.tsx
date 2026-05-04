@@ -247,7 +247,9 @@ export default function BlogRequestForm() {
     if (hash.includes('?new=1')) {
       clearDraftSessionId()
       sessionIdRef.current = getOrCreateDraftSessionId()
-      window.location.hash = hash.replace(/\?new=1/, '') || '#/user/blog/request'
+      // Use replaceState so we don't fire a hashchange (which would push this form URL onto the back-stack)
+      const cleaned = hash.replace(/\?new=1/, '') || '#/user/blog/request'
+      window.history.replaceState(null, '', cleaned)
     }
   }, [])
 
@@ -1081,7 +1083,8 @@ export default function BlogRequestForm() {
             versionRef.current = draft.version ?? 0
             setLastSavedAt(new Date().toISOString())
             const cleanHash = hash.replace(/[?&]draft=\d+/, '').replace(/\?&/, '?').replace(/\?$/, '')
-            window.location.hash = cleanHash || '#/user/blog/request'
+            // Use replaceState so we don't fire a hashchange (which would push this form URL onto the back-stack)
+            window.history.replaceState(null, '', cleanHash || '#/user/blog/request')
           }).catch(() => {})
       }
       return
@@ -1402,7 +1405,7 @@ export default function BlogRequestForm() {
 .overflow-y-auto::-webkit-scrollbar { width: 6px; }
 .overflow-y-auto::-webkit-scrollbar-track { background: #f7fafc; }
 .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
-.title-scroll-wrapper { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.title-editable { white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; width: 100%; max-width: 100%; }
 .editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
 .editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
 .editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
@@ -1426,7 +1429,7 @@ export default function BlogRequestForm() {
 @media (max-width: 640px) {
   input, textarea, select, [contenteditable] { font-size: 16px !important; }
   .editor-content { max-width: 100vw; }
-  .title-editable { white-space: pre-wrap !important; width: 100% !important; word-break: break-word !important; overflow-wrap: break-word !important; }
+  .title-editable { font-size: clamp(1.5rem, 5vw, 2.25rem) !important; }
 }
 /* Toolbar expand/collapse transition */
 .toolbar-expanded { max-height: 200px; opacity: 1; }
@@ -1569,8 +1572,8 @@ export default function BlogRequestForm() {
             <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 min-w-0">
 
               {/* Title */}
-              <div className="title-scroll-wrapper overflow-x-auto overflow-y-hidden mb-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
-                <div ref={titleRef} contentEditable={!isSubmitting} onInput={() => titleRef.current && setFormData(prev => ({ ...prev, title: titleRef.current!.innerHTML }))} onFocus={updateToolbarState} onClick={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd && titleRef.current) { const payload = { ...fd, title: titleRef.current.innerHTML }; if (!isEditMode) { saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } } }} className="title-editable w-full min-w-full text-2xl sm:text-4xl font-bold text-gray-900 border-none focus:ring-0 focus:outline-none bg-transparent outline-none" style={{ width: 'max-content', minWidth: '100%' }} data-placeholder="Title" suppressContentEditableWarning />
+              <div className="mb-2 w-full">
+                <div ref={titleRef} contentEditable={!isSubmitting} onInput={() => titleRef.current && setFormData(prev => ({ ...prev, title: titleRef.current!.innerHTML }))} onFocus={updateToolbarState} onClick={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd && titleRef.current) { const payload = { ...fd, title: titleRef.current.innerHTML }; if (!isEditMode) { saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } } }} className="title-editable w-full text-2xl sm:text-4xl font-bold text-gray-900 border-none focus:ring-0 focus:outline-none bg-transparent outline-none" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }} data-placeholder="Title" suppressContentEditableWarning />
               </div>
 
               {/* Subtitle */}
