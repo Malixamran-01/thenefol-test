@@ -44,55 +44,55 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'home',
     label: 'Home',
-    icon: <Home strokeWidth={1.75} className="h-5 w-5" />,
+    icon: <Home strokeWidth={2.2} className="h-5 w-5" />,
     href: '#/user/blog',
   },
   {
     id: 'content',
     label: 'My Content',
-    icon: <FileText strokeWidth={1.75} className="h-5 w-5" />,
+    icon: <FileText strokeWidth={2.2} className="h-5 w-5" />,
     href: '#/user/blog/my-blogs',
     matchPrefix: '#/user/blog/my-blogs',
   },
   {
     id: 'notifications',
     label: 'Activity',
-    icon: <Bell strokeWidth={1.75} className="h-5 w-5" />,
+    icon: <Bell strokeWidth={2.2} className="h-5 w-5" />,
     href: '#/user/blog/activity',
     matchPrefix: '#/user/blog/activity',
   },
   {
     id: 'profile',
     label: 'My Profile',
-    icon: <User strokeWidth={1.75} className="h-5 w-5" />,
+    icon: <User strokeWidth={2.2} className="h-5 w-5" />,
     href: '#/user/login',
     matchPrefix: '#/user/author',
   },
   {
     id: 'explore',
     label: 'Explore',
-    icon: <Compass strokeWidth={1.75} className="h-5 w-5" />,
+    icon: <Compass strokeWidth={2.2} className="h-5 w-5" />,
     href: '#/user/blog/explore',
     matchPrefix: '#/user/blog/explore',
   },
   {
     id: 'analytics',
     label: 'Analytics',
-    icon: <BarChart3 strokeWidth={1.75} className="h-5 w-5" />,
+    icon: <BarChart3 strokeWidth={2.2} className="h-5 w-5" />,
     href: '#/user/blog/dashboard',
     matchPrefix: '#/user/blog/dashboard',
   },
   {
     id: 'settings',
     label: 'Settings',
-    icon: <Settings strokeWidth={1.75} className="h-5 w-5" />,
+    icon: <Settings strokeWidth={2.2} className="h-5 w-5" />,
     href: '#/user/blog/settings',
     matchPrefix: '#/user/blog/settings',
   },
   {
     id: 'creator-program',
     label: 'Creator Program',
-    icon: <Clapperboard strokeWidth={1.75} className="h-5 w-5" />,
+    icon: <Clapperboard strokeWidth={2.2} className="h-5 w-5" />,
     href: '#/user/collab',
     matchPrefix: '#/user/collab',
   },
@@ -250,7 +250,7 @@ function SidePanelNav({
               />
               <span className="truncate text-[15px] tracking-wide text-[#1B4965] leading-none">
                 <span className="font-bold">NEFOL</span>{' '}
-                <span className="font-normal opacity-70">Social</span>
+                <span className="font-semibold opacity-80">Social</span>
               </span>
             </a>
           )}
@@ -309,7 +309,7 @@ function SidePanelNav({
               <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-150 ${active ? 'h-6 bg-[#1B4965]' : 'h-0 bg-transparent'}`} />
 
               <span className={`relative flex-shrink-0 ${collapsed ? '' : 'pl-5'}`}>
-                <span className={`block transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-700'}`}>
+                <span className={`block transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-500 group-hover:text-gray-800'}`}>
                   {item.icon}
                 </span>
                 {item.id === 'notifications' && showUnreadBadge && collapsed && (
@@ -327,7 +327,7 @@ function SidePanelNav({
               {/* Label + badge (expanded only) */}
               {!collapsed && (
                 <>
-                  <span className={`flex-1 text-[14px] font-medium transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                  <span className={`flex-1 text-[14.5px] font-semibold transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-600 group-hover:text-gray-900'}`}>
                     {item.label}
                   </span>
                   {item.id === 'creator-program' && badgeDot(creatorBadge)}
@@ -602,16 +602,16 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
           />
           <span className="text-[14px] tracking-wide text-[#1B4965] leading-none">
             <span className="font-bold">NEFOL</span>{' '}
-            <span className="font-normal opacity-70">Social</span>
+            <span className="font-semibold opacity-80">Social</span>
           </span>
         </a>
 
         <a
           href="#/user/blog/activity"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50"
           title="Activity"
         >
-          <Bell className="h-5 w-5" />
+          <Bell strokeWidth={2.2} className="h-5 w-5" />
           {unreadCount > 0 && (
             <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
               {unreadCount > 99 ? '99+' : unreadCount}
