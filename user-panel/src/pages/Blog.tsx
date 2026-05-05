@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Plus, Calendar, User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { clearLocalDraft, getLocalDraft } from '../utils/blogDraft'
@@ -40,6 +40,136 @@ interface BlogDraft {
   status: 'auto' | 'manual'
   created_at: string
   updated_at: string
+}
+
+// ─── Dominant-colour extraction ─────────────────────────────────────────────
+// Samples the bottom-third of a cover image on a hidden canvas and returns
+// a darkened version of that colour so the title card is always on-theme yet
+// readable with white text.
+function useImageThemeColor(src: string | undefined): string {
+  const DEFAULT = 'rgba(28,28,28,0.88)'
+  const [bg, setBg] = useState(DEFAULT)
+  const prevSrc = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (!src || src === prevSrc.current) return
+    prevSrc.current = src
+
+    const img = new Image()
+    // Only set crossOrigin for truly external URLs; same-origin images work without it
+    if (src.startsWith('http') && !src.includes(window.location.hostname)) {
+      img.crossOrigin = 'anonymous'
+    }
+
+    img.onload = () => {
+      try {
+        const W = 80, H = 80
+        const canvas = document.createElement('canvas')
+        canvas.width = W
+        canvas.height = H
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(img, 0, 0, W, H)
+
+        // Sample the bottom 35% of the image (where the info bar sits)
+        const startY = Math.floor(H * 0.65)
+        const sampleH = H - startY
+        const { data } = ctx.getImageData(0, startY, W, sampleH)
+
+        let r = 0, g = 0, b = 0, n = 0
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i]; g += data[i + 1]; b += data[i + 2]; n++
+        }
+        if (n === 0) return
+
+        // Darken by ~55% so white text stays legible over any hue
+        const f = 0.45
+        setBg(`rgba(${Math.round(r / n * f)},${Math.round(g / n * f)},${Math.round(b / n * f)},0.97)`)
+      } catch {
+        // Canvas tainted (CORS) – fall back to default dark overlay
+        setBg(DEFAULT)
+      }
+    }
+    img.onerror = () => setBg(DEFAULT)
+    img.src = src
+  }, [src])
+
+  return bg
+}
+
+// ─── Individual post card ────────────────────────────────────────────────────
+function BlogPostCard({ post, likes, comments }: { post: BlogPost; likes: number; comments: number }) {
+  const coverImage = post.cover_image || (post.images && post.images[0]) || '/IMAGES/default-blog.jpg'
+  const cardBg = useImageThemeColor(coverImage)
+
+  return (
+    <article className="group relative h-[420px] overflow-hidden rounded-2xl bg-gray-900 shadow-sm transition-all duration-300 hover:shadow-lg">
+      {/* Cover image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.03]"
+        style={{ backgroundImage: `url(${coverImage})` }}
+      />
+
+      {/* Featured badge */}
+      {post.featured && (
+        <span className="absolute left-4 top-4 z-10 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white shadow">
+          Featured
+        </span>
+      )}
+
+      {/* Theme-coloured info card at the bottom */}
+      <div
+        className="absolute inset-x-0 bottom-0 flex flex-col justify-between overflow-hidden px-5 py-4"
+        style={{ background: cardBg, backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
+      >
+        <div className="flex-1 overflow-hidden">
+          <h3
+            className="mb-1.5 text-[15px] font-semibold leading-snug text-white"
+            style={{
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            }}
+          >
+            {post.title}
+          </h3>
+          <p
+            className="text-[13px] leading-relaxed text-white/75"
+            style={{
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {post.excerpt}
+          </p>
+        </div>
+        <div className="mt-3 flex items-center justify-between border-t border-white/15 pt-3">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 text-white/80">
+              <Heart className="h-4 w-4" />
+              <span className="text-sm font-medium">{likes}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-white/80">
+              <MessageCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">{comments}</span>
+            </div>
+          </div>
+          <a
+            href={`#/user/blog/${post.id}`}
+            className="rounded-lg bg-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-white hover:text-[#1B4965]"
+          >
+            Read more
+          </a>
+        </div>
+      </div>
+    </article>
+  )
 }
 
 export default function Blog() {
@@ -386,7 +516,6 @@ export default function Blog() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredPosts.map((post) => {
             const { likes, comments } = getPostStats(post)
-            const coverImage = post.cover_image || post.images[0] || '/IMAGES/default-blog.jpg'
             return (
               <div key={post.id} className="flex flex-col gap-3">
                 {/* Author Header */}
@@ -396,67 +525,7 @@ export default function Blog() {
                   authorName={post.author_name}
                   authorVerified={post.author_is_verified === true}
                 />
-
-                {/* Card */}
-                <article className="group relative h-[420px] overflow-hidden rounded-2xl bg-white bg-cover bg-center shadow-sm transition-all duration-300 hover:shadow-lg">
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${coverImage})` }}
-                  />
-                  <div className="absolute inset-0">
-                    {post.featured && (
-                      <span className="absolute left-4 top-4 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-                        Featured
-                      </span>
-                    )}
-                  </div>
-                  <div className="absolute inset-x-0 bottom-0 flex h-[35%] flex-col justify-between overflow-hidden bg-[#3C3936]/40 px-6 py-4 text-white backdrop-blur-sm">
-                    <div className="flex-1 overflow-hidden">
-                      <h3
-                        className="mb-2 text-lg font-semibold leading-tight"
-                        style={{
-                          display: '-webkit-box',
-                          WebkitBoxOrient: 'vertical',
-                          WebkitLineClamp: 2,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
-                        {post.title}
-                      </h3>
-                      <p
-                        className="text-sm leading-relaxed text-white/80"
-                        style={{
-                          display: '-webkit-box',
-                          WebkitBoxOrient: 'vertical',
-                          WebkitLineClamp: 2,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
-                        {post.excerpt}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-white/20 pt-3">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                          <Heart className="h-4 w-4" />
-                          <span className="text-sm font-medium">{likes}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <MessageCircle className="h-4 w-4" />
-                          <span className="text-sm font-medium">{comments}</span>
-                        </div>
-                      </div>
-                      <a
-                        href={`#/user/blog/${post.id}`}
-                        className="rounded-lg bg-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wide transition hover:bg-white hover:text-[#1B4965]"
-                      >
-                        Read more
-                      </a>
-                    </div>
-                  </div>
-                </article>
+                <BlogPostCard post={post} likes={likes} comments={comments} />
               </div>
             )
           })}
