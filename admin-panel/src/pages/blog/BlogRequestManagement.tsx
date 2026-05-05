@@ -305,7 +305,7 @@ export default function BlogRequestManagement() {
   const [seoSaving, setSeoSaving] = useState(false)
 
   const loadLibrary = useCallback(async () => {
-    setLoading(true)
+      setLoading(true)
     try {
       const r = await fetch(`${API_BASE}/blog/admin/posts`, { headers: authHeaders() })
       const data = await r.json()
@@ -670,17 +670,17 @@ export default function BlogRequestManagement() {
     <div className="min-h-screen bg-[#f4f9f9] p-4 sm:p-6 lg:p-8" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <div className="mx-auto max-w-[1400px] space-y-6">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1
+        <div>
+          <h1 
               className="text-2xl sm:text-3xl font-light tracking-[0.12em] text-[#1B4965]"
               style={{ fontFamily: 'var(--font-heading-family, Cormorant Garamond, serif)' }}
             >
               Blog management
-            </h1>
+          </h1>
             <p className="mt-1 text-sm text-slate-600 max-w-xl">
               Review submissions, preview rich posts like authors see them, edit SEO / Open Graph, moderate visibility, and manage trash — aligned with NEFOL Social authoring.
-            </p>
-          </div>
+          </p>
+        </div>
           <button
             type="button"
             onClick={() => {
@@ -733,8 +733,8 @@ export default function BlogRequestManagement() {
           <div className="rounded-xl border border-slate-300 bg-slate-100/80 px-4 py-3 col-span-2 sm:col-span-1 lg:col-span-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Trash</p>
             <p className="text-2xl font-light text-slate-900">{counts.trash}</p>
-          </div>
         </div>
+      </div>
 
         {/* Main tabs */}
         <div className="flex flex-wrap gap-2">
@@ -744,7 +744,7 @@ export default function BlogRequestManagement() {
           {tabBtn('rejected', 'Rejected', `${counts.rejected}`)}
           {tabBtn('all', 'All (active)', `${counts.total} rows`)}
           {tabBtn('trash', 'Trash', `${counts.trash} deleted`)}
-        </div>
+      </div>
 
         {/* Search */}
         <div className="relative">
@@ -756,7 +756,7 @@ export default function BlogRequestManagement() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm shadow-sm focus:border-[#4B97C9] focus:outline-none focus:ring-2 focus:ring-[#4B97C9]/20"
           />
-        </div>
+      </div>
 
         {/* List */}
         <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
@@ -764,7 +764,7 @@ export default function BlogRequestManagement() {
             <div className="flex flex-col items-center justify-center py-20 text-slate-500">
               <Loader2 className="h-10 w-10 animate-spin text-[#4B97C9] mb-3" />
               Loading posts…
-            </div>
+        </div>
           ) : mainTab === 'trash' && trashLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-500">
               <Loader2 className="h-10 w-10 animate-spin text-[#4B97C9] mb-3" />
@@ -774,8 +774,8 @@ export default function BlogRequestManagement() {
             <div className="py-16 text-center text-slate-500">
               <LayoutList className="mx-auto h-10 w-10 opacity-40 mb-2" />
               No posts in this view.
-            </div>
-          ) : (
+              </div>
+            ) : (
             <ul className="divide-y divide-slate-100">
               {visibleRows.map((post) => {
                 const rev = post.revision_pending as { cover_image?: string } | null | undefined
@@ -807,12 +807,12 @@ export default function BlogRequestManagement() {
                             }`}
                           >
                             {post.status}
-                          </span>
+                        </span>
                           {post.revision_pending != null && (
                             <span className="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-900">
                               Edit pending
-                            </span>
-                          )}
+                          </span>
+                        )}
                           {post.featured && (
                             <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-2 py-0.5 font-medium text-sky-900">
                               <Star className="h-3 w-3" /> Featured
@@ -829,7 +829,7 @@ export default function BlogRequestManagement() {
                               {c}
                             </span>
                           ))}
-                        </div>
+                      </div>
                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
                           <span className="inline-flex items-center gap-1">
                             <User className="h-3.5 w-3.5" />
@@ -841,8 +841,8 @@ export default function BlogRequestManagement() {
                             {new Date(post.created_at).toLocaleString()}
                           </span>
                         </div>
+                        </div>
                       </div>
-                    </div>
                     <div className="flex flex-1 flex-wrap items-center justify-between gap-2 sm:justify-end">
                       <div className="flex flex-wrap gap-3 text-xs text-slate-500">
                         <span className="inline-flex items-center gap-1" title="Views / reads (if tracked)">
@@ -858,20 +858,20 @@ export default function BlogRequestManagement() {
                           {post.admin_comments_count ?? 0}
                         </span>
                         <span>{estimateReadMinutes(post.content)} min read</span>
-                      </div>
+                        </div>
                       <div className="flex flex-wrap gap-2">
-                        <button
+                      <button
                           type="button"
                           disabled={busy}
-                          onClick={() => {
+                        onClick={() => {
                             setSelected(post)
                             setPanelTab('preview')
-                          }}
+                        }}
                           className="inline-flex items-center gap-1 rounded-lg bg-[#1B4965] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#163d54]"
-                        >
+                      >
                           <Eye className="h-3.5 w-3.5" />
                           Review & preview
-                        </button>
+                      </button>
                         {post.status === 'approved' && !post.is_deleted && (
                           <a
                             href={userBlogPostUrl(post.id)}
@@ -896,17 +896,17 @@ export default function BlogRequestManagement() {
                         ) : (
                           <>
                             {post.status === 'pending' && (
-                              <>
-                                <button
+                        <>
+                          <button
                                   type="button"
                                   disabled={!!actionBusy}
                                   onClick={() => approve(post, false)}
                                   className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                                 >
                                   <CheckCircle className="h-3.5 w-3.5" />
-                                  Approve
-                                </button>
-                                <button
+                            Approve
+                          </button>
+                          <button
                                   type="button"
                                   disabled={!!actionBusy}
                                   onClick={() => approve(post, true)}
@@ -914,19 +914,19 @@ export default function BlogRequestManagement() {
                                 >
                                   <Star className="h-3.5 w-3.5" />
                                   Feature
-                                </button>
-                                <button
+                          </button>
+                          <button
                                   type="button"
                                   disabled={!!actionBusy}
-                                  onClick={() => {
+                            onClick={() => {
                                     setRejectTarget(post)
                                     setRejectReason('')
                                     setRejectOpen(true)
-                                  }}
+                            }}
                                   className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
-                                >
+                          >
                                   <XCircle className="h-3.5 w-3.5" />
-                                  Reject
+                            Reject
                                 </button>
                               </>
                             )}
@@ -975,18 +975,18 @@ export default function BlogRequestManagement() {
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                               Trash
-                            </button>
-                          </>
-                        )}
-                      </div>
+                          </button>
+                        </>
+                      )}
                     </div>
+                  </div>
                   </li>
                 )
               })}
             </ul>
-          )}
-        </div>
-      </div>
+                  )}
+                </div>
+              </div>
 
       {/* Detail + preview drawer */}
       {selected && (
@@ -996,7 +996,7 @@ export default function BlogRequestManagement() {
               <div className="min-w-0 pr-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Post #{selected.id}</p>
                 <h2 className="truncate text-lg font-semibold text-[#1B4965]">{stripHtml(selected.title)}</h2>
-              </div>
+                      </div>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
@@ -1005,7 +1005,7 @@ export default function BlogRequestManagement() {
               >
                 <X className="h-5 w-5" />
               </button>
-            </div>
+                        </div>
             <div className="flex border-b border-slate-200 px-2">
               {(['preview', 'seo', 'moderation'] as PanelTab[]).map((t) => (
                 <button
@@ -1019,7 +1019,7 @@ export default function BlogRequestManagement() {
                   {t === 'seo' ? 'SEO & sharing' : t}
                 </button>
               ))}
-            </div>
+                        </div>
             <div className="flex-1 overflow-y-auto">
               {panelTab === 'preview' && (
                 <AdminBlogPreview
@@ -1083,7 +1083,7 @@ export default function BlogRequestManagement() {
                   >
                     {seoSaving ? 'Saving…' : 'Save SEO & categories'}
                   </button>
-                </div>
+                      </div>
               )}
               {panelTab === 'moderation' && (
                 <div className="space-y-6 p-6 max-w-xl">
@@ -1119,7 +1119,7 @@ export default function BlogRequestManagement() {
                         >
                           Reject revision…
                         </button>
-                      </div>
+                    </div>
                     </div>
                   )}
                   {selected.status === 'pending' && (
@@ -1159,7 +1159,7 @@ export default function BlogRequestManagement() {
                       <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                         <p className="text-sm font-semibold text-slate-800">Visibility</p>
                         <div className="flex flex-wrap gap-2">
-                          <button
+                      <button
                             type="button"
                             disabled={!!actionBusy}
                             onClick={() => patchPostStatus(selected, { is_active: !(selected.is_active !== false) })}
@@ -1182,9 +1182,9 @@ export default function BlogRequestManagement() {
                             className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
                           >
                             {selected.featured ? 'Remove featured' : 'Mark featured'}
-                          </button>
-                        </div>
-                      </div>
+                      </button>
+                    </div>
+                  </div>
                       <div className="rounded-xl border border-slate-200 p-4 space-y-2">
                         <p className="text-sm font-semibold text-slate-800">Comments</p>
                         <button
@@ -1195,7 +1195,7 @@ export default function BlogRequestManagement() {
                         >
                           {selected.allow_comments === false ? 'Enable comments' : 'Disable comments'}
                         </button>
-                      </div>
+                    </div>
                       <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 space-y-2">
                         <p className="text-sm font-semibold text-emerald-900">Creator rewards</p>
                         <p className="text-xs text-emerald-800">
@@ -1223,8 +1223,8 @@ export default function BlogRequestManagement() {
                     <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
                       <p className="text-xs font-semibold text-rose-900 uppercase">Rejection reason</p>
                       <p className="text-sm text-rose-800 mt-1">{selected.rejection_reason}</p>
-                    </div>
-                  )}
+                </div>
+          )}
                 </div>
               )}
             </div>
@@ -1326,7 +1326,7 @@ function AdminBlogPreview({
   const excerptHtml = post.excerpt || ''
   const mins = estimateReadMinutes(post.content)
 
-  return (
+      return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <style>{`
         .admin-blog-preview-content { line-height: 1.85; font-size: 1.0625rem; color: #1e293b; }
@@ -1362,7 +1362,7 @@ function AdminBlogPreview({
             Open live reader
           </button>
         )}
-      </div>
+        </div>
 
       {cats.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
@@ -1371,7 +1371,7 @@ function AdminBlogPreview({
               {c}
             </span>
           ))}
-        </div>
+            </div>
       )}
 
       <h1 className="text-3xl sm:text-4xl font-bold leading-tight text-[#1B4965] mb-4">
@@ -1404,19 +1404,19 @@ function AdminBlogPreview({
         <span className="inline-flex items-center gap-1">
           <MessageCircle className="h-4 w-4" /> {post.admin_comments_count ?? 0}
         </span>
-      </div>
+          </div>
 
       {cover && (
         <div className="mb-8 overflow-hidden rounded-2xl bg-slate-100">
           <img src={cover} alt="" className="w-full max-h-[420px] object-cover" />
-        </div>
-      )}
+            </div>
+          )}
 
       {detail && (
         <div className="mb-8 overflow-hidden rounded-2xl bg-slate-100 aspect-video">
           <img src={detail} alt="" className="h-full w-full object-cover" />
-        </div>
-      )}
+            </div>
+          )}
 
       {excerptHtml && (
         <div className="mb-8 text-lg text-slate-700 leading-relaxed">
@@ -1441,9 +1441,9 @@ function AdminBlogPreview({
               {parseImages(post.images).map((src, i) => (
                 <img key={i} src={toUploadUrl(apiBase, src)} alt="" className="rounded-lg object-cover h-24 w-full" />
               ))}
-            </div>
-          )}
         </div>
+          )}
+      </div>
       )}
     </div>
   )

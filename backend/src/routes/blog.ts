@@ -2756,6 +2756,13 @@ router.delete('/comments/:id', authenticateToken, async (req, res) => {
 router.get('/posts/:id/bookmarks', async (req, res) => {
   try {
     if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    // Ensure table exists — this endpoint is called on every card mount
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
+        id SERIAL PRIMARY KEY, post_id TEXT NOT NULL, user_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE (post_id, user_id)
+      )
+    `)
     const postId = req.params.id
     const userId = getUserIdFromToken(req)
     const { rows: countRows } = await pool.query(
@@ -2764,7 +2771,7 @@ router.get('/posts/:id/bookmarks', async (req, res) => {
     )
     const { rows: savedRows } = userId
       ? await pool.query(
-          `SELECT 1 FROM blog_post_bookmarks WHERE post_id = $1 AND user_id = $2 LIMIT 1`,
+          `SELECT 1 FROM blog_post_bookmarks WHERE post_id = $1 AND user_id = $2::int LIMIT 1`,
           [postId, userId]
         )
       : { rows: [] }
@@ -2787,7 +2794,7 @@ router.post('/posts/:id/bookmark', authenticateToken, async (req, res) => {
     const postId = req.params.id
     const userId = req.userId
     await pool.query(
-      `INSERT INTO blog_post_bookmarks (post_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      `INSERT INTO blog_post_bookmarks (post_id, user_id) VALUES ($1, $2::int) ON CONFLICT DO NOTHING`,
       [postId, userId]
     )
     const { rows } = await pool.query(
@@ -2813,7 +2820,7 @@ router.post('/posts/:id/unbookmark', authenticateToken, async (req, res) => {
     const postId = req.params.id
     const userId = req.userId
     await pool.query(
-      `DELETE FROM blog_post_bookmarks WHERE post_id = $1 AND user_id = $2`,
+      `DELETE FROM blog_post_bookmarks WHERE post_id = $1 AND user_id = $2::int`,
       [postId, userId]
     )
     const { rows } = await pool.query(
@@ -2856,7 +2863,7 @@ router.get('/bookmarks', authenticateToken, async (req, res) => {
        JOIN blog_posts p ON p.id = b.post_id
        LEFT JOIN author_profiles ap
          ON ap.user_id = p.user_id AND ap.status != 'deleted'
-       WHERE b.user_id = $1 AND p.status = 'approved'
+       WHERE b.user_id = $1::int AND p.status = 'approved'
        ORDER BY b.created_at DESC`,
       [userId]
     )

@@ -190,10 +190,14 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
     setActionPending('bookmark')
     try {
       const endpoint = wasSaved ? 'unbookmark' : 'bookmark'
-      await fetch(`${apiBase}/api/blog/posts/${post.id}/${endpoint}`, {
+      const res = await fetch(`${apiBase}/api/blog/posts/${post.id}/${endpoint}`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
       })
-      if (wasSaved && onUnsave) onUnsave()
+      if (!res.ok) {
+        setSaved(wasSaved) // revert optimistic update on server error
+      } else if (wasSaved && onUnsave) {
+        onUnsave()
+      }
     } catch { setSaved(wasSaved) }
     finally { setActionPending(null) }
   }, [saved, isLoggedIn, actionPending, apiBase, post.id, token, onUnsave])
@@ -327,6 +331,7 @@ export default function Blog() {
   const [showSaved, setShowSaved] = useState(false)
   const [savedPosts, setSavedPosts] = useState<BlogPost[]>([])
   const [savedLoading, setSavedLoading] = useState(false)
+  const [savedError, setSavedError] = useState('')
 
   // Fetch approved blog posts
   const fetchBlogPosts = async () => {
@@ -370,6 +375,7 @@ export default function Blog() {
     const token = localStorage.getItem('token')
     if (!token) { window.location.hash = '#/user/login'; return }
     setSavedLoading(true)
+    setSavedError('')
     try {
       const apiBase = getApiBase()
       const res = await fetch(`${apiBase}/api/blog/bookmarks`, {
@@ -377,15 +383,19 @@ export default function Blog() {
       })
       if (res.ok) {
         const data: BlogPost[] = await res.json()
-        // Resolve relative upload paths to absolute URLs
         const normalized = data.map((p) => ({
           ...p,
           cover_image: p.cover_image && p.cover_image.startsWith('/uploads/')
             ? `${apiBase}${p.cover_image}` : p.cover_image,
         }))
         setSavedPosts(normalized)
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setSavedError((err as any).message || `Server error (${res.status})`)
       }
-    } catch { /* silently ignore */ }
+    } catch (e) {
+      setSavedError('Could not reach the server. Make sure the backend is running.')
+    }
     finally { setSavedLoading(false) }
   }
 
@@ -721,6 +731,17 @@ export default function Blog() {
             <div className="text-center py-20">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[#1B4965] border-t-transparent mb-3" />
               <p className="text-sm" style={{ color: '#9DB4C0' }}>Loading your saved posts…</p>
+            </div>
+          ) : savedError ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-3">
+              <p className="text-sm font-medium text-red-500">{savedError}</p>
+              <button
+                onClick={loadSavedPosts}
+                className="px-5 py-2 rounded-full text-sm font-medium text-white"
+                style={{ backgroundColor: '#1B4965' }}
+              >
+                Try again
+              </button>
             </div>
           ) : savedPosts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
