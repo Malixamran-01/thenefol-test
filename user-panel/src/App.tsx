@@ -498,7 +498,7 @@ function AppContent() {
                   className="text-xs md:text-sm font-light tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
                   style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
                 >
-                  Blogs
+                  Social
                   <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
                 </a>
                 <a

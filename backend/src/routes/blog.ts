@@ -67,11 +67,26 @@ export async function ensureBlogAuxTables(databasePool: Pool): Promise<void> {
   await databasePool.query(`
     CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
       id SERIAL PRIMARY KEY,
-      post_id TEXT NOT NULL,
+      post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
       user_id INTEGER NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (post_id, user_id)
     )
+  `)
+  // Migrate post_id column from TEXT → INTEGER if it was created with the old schema
+  await databasePool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'blog_post_bookmarks'
+          AND column_name = 'post_id'
+          AND data_type = 'text'
+      ) THEN
+        ALTER TABLE blog_post_bookmarks
+          ALTER COLUMN post_id TYPE INTEGER USING post_id::integer;
+      END IF;
+    END $$;
   `)
   await databasePool.query(`
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_pending JSONB;
@@ -2759,19 +2774,19 @@ router.get('/posts/:id/bookmarks', async (req, res) => {
     // Ensure table exists — this endpoint is called on every card mount
     await pool.query(`
       CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
-        id SERIAL PRIMARY KEY, post_id TEXT NOT NULL, user_id INTEGER NOT NULL,
+        id SERIAL PRIMARY KEY, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE (post_id, user_id)
       )
     `)
     const postId = req.params.id
     const userId = getUserIdFromToken(req)
     const { rows: countRows } = await pool.query(
-      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1`,
+      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1::int`,
       [postId]
     )
     const { rows: savedRows } = userId
       ? await pool.query(
-          `SELECT 1 FROM blog_post_bookmarks WHERE post_id = $1 AND user_id = $2::int LIMIT 1`,
+          `SELECT 1 FROM blog_post_bookmarks WHERE post_id = $1::int AND user_id = $2::int LIMIT 1`,
           [postId, userId]
         )
       : { rows: [] }
@@ -2787,18 +2802,18 @@ router.post('/posts/:id/bookmark', authenticateToken, async (req, res) => {
     if (!pool) return res.status(500).json({ message: 'Database not initialized' })
     await pool.query(`
       CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
-        id SERIAL PRIMARY KEY, post_id TEXT NOT NULL, user_id INTEGER NOT NULL,
+        id SERIAL PRIMARY KEY, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE (post_id, user_id)
       )
     `)
     const postId = req.params.id
     const userId = req.userId
     await pool.query(
-      `INSERT INTO blog_post_bookmarks (post_id, user_id) VALUES ($1, $2::int) ON CONFLICT DO NOTHING`,
+      `INSERT INTO blog_post_bookmarks (post_id, user_id) VALUES ($1::int, $2::int) ON CONFLICT DO NOTHING`,
       [postId, userId]
     )
     const { rows } = await pool.query(
-      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1`,
+      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1::int`,
       [postId]
     )
     res.json({ count: rows[0]?.count || 0, saved: true })
@@ -2813,18 +2828,18 @@ router.post('/posts/:id/unbookmark', authenticateToken, async (req, res) => {
     if (!pool) return res.status(500).json({ message: 'Database not initialized' })
     await pool.query(`
       CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
-        id SERIAL PRIMARY KEY, post_id TEXT NOT NULL, user_id INTEGER NOT NULL,
+        id SERIAL PRIMARY KEY, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE (post_id, user_id)
       )
     `)
     const postId = req.params.id
     const userId = req.userId
     await pool.query(
-      `DELETE FROM blog_post_bookmarks WHERE post_id = $1 AND user_id = $2::int`,
+      `DELETE FROM blog_post_bookmarks WHERE post_id = $1::int AND user_id = $2::int`,
       [postId, userId]
     )
     const { rows } = await pool.query(
-      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1`,
+      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1::int`,
       [postId]
     )
     res.json({ count: rows[0]?.count || 0, saved: false })
@@ -2842,7 +2857,7 @@ router.get('/bookmarks', authenticateToken, async (req, res) => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
         id SERIAL PRIMARY KEY,
-        post_id TEXT NOT NULL,
+        post_id INTEGER NOT NULL,
         user_id INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (post_id, user_id)
@@ -2856,11 +2871,11 @@ router.get('/bookmarks', authenticateToken, async (req, res) => {
               COALESCE(ap.display_name, ap.pen_name, ap.username, p.author_name) AS resolved_author_name,
               ap.is_verified AS author_is_verified,
               ap.id AS author_profile_id,
-              (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id) AS likes_count,
-              (SELECT COUNT(*)::int FROM blog_comments    WHERE post_id = p.id AND is_deleted = false) AS comments_count,
-              (SELECT COUNT(*)::int FROM blog_post_reposts WHERE post_id = p.id) AS reposts_count
+              (SELECT COUNT(*)::int FROM blog_post_likes   WHERE post_id = p.id) AS likes_count,
+              (SELECT COUNT(*)::int FROM blog_comments     WHERE post_id = p.id AND is_deleted = false) AS comments_count,
+              (SELECT COUNT(*)::int FROM blog_post_reposts WHERE post_id = p.id::text) AS reposts_count
        FROM blog_post_bookmarks b
-       JOIN blog_posts p ON p.id = b.post_id
+       JOIN blog_posts p ON p.id = b.post_id  -- both INTEGER, no cast needed
        LEFT JOIN author_profiles ap
          ON ap.user_id = p.user_id AND ap.status != 'deleted'
        WHERE b.user_id = $1::int AND p.status = 'approved'
