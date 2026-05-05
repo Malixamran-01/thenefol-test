@@ -99,10 +99,12 @@ function useImageThemeColor(src: string | undefined): string {
 }
 
 // ─── Individual post card ────────────────────────────────────────────────────
-function BlogPostCard({ post, initialLikes, initialComments }: {
+function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUnsave }: {
   post: BlogPost
   initialLikes: number
   initialComments: number
+  initialSaved?: boolean
+  onUnsave?: () => void
 }) {
   const coverImage = post.cover_image || (post.images && post.images[0]) || '/IMAGES/default-blog.jpg'
   const cardBg = useImageThemeColor(coverImage)
@@ -113,7 +115,7 @@ function BlogPostCard({ post, initialLikes, initialComments }: {
   const [liked, setLiked] = useState(false)
   const [reposts, setReposts] = useState(post.reposts_count ?? 0)
   const [reposted, setReposted] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState(initialSaved ?? false)
   const [actionPending, setActionPending] = useState<'like' | 'repost' | 'bookmark' | null>(null)
 
   const token = localStorage.getItem('token')
@@ -191,9 +193,10 @@ function BlogPostCard({ post, initialLikes, initialComments }: {
       await fetch(`${apiBase}/api/blog/posts/${post.id}/${endpoint}`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
       })
+      if (wasSaved && onUnsave) onUnsave()
     } catch { setSaved(wasSaved) }
     finally { setActionPending(null) }
-  }, [saved, isLoggedIn, actionPending, apiBase, post.id, token])
+  }, [saved, isLoggedIn, actionPending, apiBase, post.id, token, onUnsave])
 
   return (
     <a
@@ -321,6 +324,9 @@ export default function Blog() {
   const [deletingDraftId, setDeletingDraftId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
+  const [showSaved, setShowSaved] = useState(false)
+  const [savedPosts, setSavedPosts] = useState<BlogPost[]>([])
+  const [savedLoading, setSavedLoading] = useState(false)
 
   // Fetch approved blog posts
   const fetchBlogPosts = async () => {
@@ -359,6 +365,45 @@ export default function Blog() {
   useEffect(() => {
     fetchBlogPosts()
   }, [])
+
+  const loadSavedPosts = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) { window.location.hash = '#/user/login'; return }
+    setSavedLoading(true)
+    try {
+      const res = await fetch(`${getApiBase()}/api/blog/bookmarks`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const apiBase = getApiBase()
+        const normalized = data.map((p: BlogPost) => ({
+          ...p,
+          cover_image: p.cover_image && p.cover_image.startsWith('/uploads/')
+            ? `${apiBase}${p.cover_image}` : p.cover_image,
+          images: p.images ?? [],
+          status: 'approved' as const,
+          author_name: p.author_name ?? '',
+          author_email: p.author_email ?? '',
+          content: p.content ?? '',
+          created_at: p.created_at ?? '',
+          updated_at: p.updated_at ?? '',
+          featured: p.featured ?? false,
+        }))
+        setSavedPosts(normalized)
+      }
+    } catch { /* silently ignore */ }
+    finally { setSavedLoading(false) }
+  }
+
+  const handleToggleSaved = () => {
+    if (!showSaved) {
+      setShowSaved(true)
+      loadSavedPosts()
+    } else {
+      setShowSaved(false)
+    }
+  }
 
   useEffect(() => {
     const hash = window.location.hash || ''
@@ -610,62 +655,133 @@ export default function Blog() {
           </div>
         ) : null}
 
-        {/* Category Filters */}
+        {/* Category Filters + Saved toggle */}
         <div className="mb-10">
           <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-sm uppercase tracking-widest" style={{ color: '#9DB4C0' }}>
-              <Tag className="h-4 w-4" />
-              Browse by category
+            <div className="flex items-center justify-between w-full max-w-3xl">
+              <div className="flex items-center gap-2 text-sm uppercase tracking-widest" style={{ color: '#9DB4C0' }}>
+                <Tag className="h-4 w-4" />
+                Browse by category
+              </div>
+              {/* Saved button */}
+              <button
+                type="button"
+                onClick={handleToggleSaved}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
+                  showSaved
+                    ? 'text-white border-transparent'
+                    : 'text-[#1B4965] border-[#DCE6EE] bg-white hover:border-[#1B4965]'
+                }`}
+                style={{ backgroundColor: showSaved ? '#1B4965' : 'white' }}
+              >
+                <Bookmark
+                  className="h-3.5 w-3.5"
+                  style={{ fill: showSaved ? 'white' : 'none', color: showSaved ? 'white' : '#1B4965' }}
+                />
+                Saved
+              </button>
             </div>
-            <div className="hidden sm:flex flex-wrap justify-center gap-3">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
-                    selectedCategory === category
-                      ? 'text-white border-transparent'
-                      : 'text-[#1B4965] border-[#DCE6EE] bg-white'
-                  }`}
-                  style={{
-                    backgroundColor: selectedCategory === category ? '#1B4965' : 'white'
-                  }}
-                >
-                  {category === 'All' ? 'All' : formatCategoryLabel(category)}
-                </button>
-              ))}
-            </div>
-            <div className="w-full sm:hidden">
-              <CustomSelect
-                value={selectedCategory}
-                onChange={setSelectedCategory}
-                options={categories.map(c => ({ value: c, label: c === 'All' ? 'All' : formatCategoryLabel(c) }))}
-                align="left"
-                className="w-full"
-              />
-            </div>
+
+            {!showSaved && (
+              <>
+                <div className="hidden sm:flex flex-wrap justify-center gap-3">
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setSelectedCategory(category)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
+                        selectedCategory === category
+                          ? 'text-white border-transparent'
+                          : 'text-[#1B4965] border-[#DCE6EE] bg-white'
+                      }`}
+                      style={{ backgroundColor: selectedCategory === category ? '#1B4965' : 'white' }}
+                    >
+                      {category === 'All' ? 'All' : formatCategoryLabel(category)}
+                    </button>
+                  ))}
+                </div>
+                <div className="w-full sm:hidden">
+                  <CustomSelect
+                    value={selectedCategory}
+                    onChange={setSelectedCategory}
+                    options={categories.map(c => ({ value: c, label: c === 'All' ? 'All' : formatCategoryLabel(c) }))}
+                    align="left"
+                    className="w-full"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Blog Posts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredPosts.map((post) => {
-            const { likes, comments } = getPostStats(post)
-            return (
-              <div key={post.id} className="flex flex-col gap-3">
-                {/* Author Header */}
-                <BlogCardAuthor
-                  authorId={post.author_id}
-                  authorUniqueUserId={post.author_unique_user_id}
-                  authorName={post.author_name}
-                  authorVerified={post.author_is_verified === true}
-                />
-                <BlogPostCard post={post} initialLikes={likes} initialComments={comments} />
+        {/* Saved Posts View */}
+        {showSaved ? (
+          savedLoading ? (
+            <div className="text-center py-20">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[#1B4965] border-t-transparent mb-3" />
+              <p className="text-sm" style={{ color: '#9DB4C0' }}>Loading your saved posts…</p>
+            </div>
+          ) : savedPosts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+              <div className="rounded-full bg-white p-5 shadow-sm">
+                <Bookmark className="h-10 w-10" style={{ color: '#9DB4C0' }} />
               </div>
-            )
-          })}
-        </div>
+              <p className="text-lg font-medium" style={{ color: '#1B4965' }}>No saved posts yet</p>
+              <p className="text-sm text-center max-w-xs" style={{ color: '#9DB4C0' }}>
+                Tap the bookmark icon on any post to save it here for later reading.
+              </p>
+              <button
+                onClick={() => setShowSaved(false)}
+                className="mt-2 px-5 py-2 rounded-full text-sm font-medium text-white"
+                style={{ backgroundColor: '#1B4965' }}
+              >
+                Browse posts
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {savedPosts.map((post) => {
+                const { likes, comments } = getPostStats(post)
+                return (
+                  <div key={post.id} className="flex flex-col gap-3">
+                    <BlogCardAuthor
+                      authorId={post.author_id}
+                      authorUniqueUserId={post.author_unique_user_id}
+                      authorName={post.author_name}
+                      authorVerified={post.author_is_verified === true}
+                    />
+                    <BlogPostCard
+                      post={post}
+                      initialLikes={likes}
+                      initialComments={comments}
+                      initialSaved={true}
+                      onUnsave={() => setSavedPosts(prev => prev.filter(p => p.id !== post.id))}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          )
+        ) : (
+          /* Normal Posts Grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredPosts.map((post) => {
+              const { likes, comments } = getPostStats(post)
+              return (
+                <div key={post.id} className="flex flex-col gap-3">
+                  <BlogCardAuthor
+                    authorId={post.author_id}
+                    authorUniqueUserId={post.author_unique_user_id}
+                    authorName={post.author_name}
+                    authorVerified={post.author_is_verified === true}
+                  />
+                  <BlogPostCard post={post} initialLikes={likes} initialComments={comments} />
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* Subscription Section */}
         <div className="mt-16">
