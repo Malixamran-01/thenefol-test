@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Plus, Calendar, User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X } from 'lucide-react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Plus, Calendar, User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X, Repeat2, Bookmark } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { clearLocalDraft, getLocalDraft } from '../utils/blogDraft'
 import { useAuth } from '../contexts/AuthContext'
@@ -30,6 +30,7 @@ interface BlogPost {
   categories?: string[] | string
   likes_count?: number
   comments_count?: number
+  reposts_count?: number
 }
 
 interface BlogDraft {
@@ -98,12 +99,108 @@ function useImageThemeColor(src: string | undefined): string {
 }
 
 // ─── Individual post card ────────────────────────────────────────────────────
-function BlogPostCard({ post, likes, comments }: { post: BlogPost; likes: number; comments: number }) {
+function BlogPostCard({ post, initialLikes, initialComments }: {
+  post: BlogPost
+  initialLikes: number
+  initialComments: number
+}) {
   const coverImage = post.cover_image || (post.images && post.images[0]) || '/IMAGES/default-blog.jpg'
   const cardBg = useImageThemeColor(coverImage)
+  const apiBase = getApiBase()
+
+  // ── Interaction state (optimistic) ──────────────────────────────────────
+  const [likes, setLikes] = useState(initialLikes)
+  const [liked, setLiked] = useState(false)
+  const [reposts, setReposts] = useState(post.reposts_count ?? 0)
+  const [reposted, setReposted] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [actionPending, setActionPending] = useState<'like' | 'repost' | 'bookmark' | null>(null)
+
+  const token = localStorage.getItem('token')
+  const isLoggedIn = !!token
+
+  // Fetch per-user status (liked / reposted / saved) once on mount
+  useEffect(() => {
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    Promise.all([
+      fetch(`${apiBase}/api/blog/posts/${post.id}/likes`, { headers }).then(r => r.ok ? r.json() : null),
+      fetch(`${apiBase}/api/blog/posts/${post.id}/reposts`, { headers }).then(r => r.ok ? r.json() : null),
+      fetch(`${apiBase}/api/blog/posts/${post.id}/bookmarks`, { headers }).then(r => r.ok ? r.json() : null),
+    ]).then(([likeData, repostData, bookmarkData]) => {
+      if (likeData) { setLikes(likeData.count); setLiked(!!likeData.liked) }
+      if (repostData) { setReposts(repostData.count); setReposted(!!repostData.reposted) }
+      if (bookmarkData) { setSaved(!!bookmarkData.saved) }
+    }).catch(() => {/* silently ignore */})
+  }, [post.id, apiBase, token])
+
+  const handleLike = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    if (!isLoggedIn) { window.location.hash = '#/user/login'; return }
+    if (actionPending === 'like') return
+    const wasLiked = liked
+    setLiked(!wasLiked)
+    setLikes(n => wasLiked ? n - 1 : n + 1)
+    setActionPending('like')
+    try {
+      const endpoint = wasLiked ? 'unlike' : 'like'
+      const res = await fetch(`${apiBase}/api/blog/posts/${post.id}/${endpoint}`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setLikes(data.count)
+      } else {
+        setLiked(wasLiked); setLikes(n => wasLiked ? n + 1 : n - 1)
+      }
+    } catch { setLiked(wasLiked); setLikes(n => wasLiked ? n + 1 : n - 1) }
+    finally { setActionPending(null) }
+  }, [liked, isLoggedIn, actionPending, apiBase, post.id, token])
+
+  const handleRepost = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    if (!isLoggedIn) { window.location.hash = '#/user/login'; return }
+    if (actionPending === 'repost') return
+    const wasReposted = reposted
+    setReposted(!wasReposted)
+    setReposts(n => wasReposted ? n - 1 : n + 1)
+    setActionPending('repost')
+    try {
+      const endpoint = wasReposted ? 'unrepost' : 'repost'
+      const res = await fetch(`${apiBase}/api/blog/posts/${post.id}/${endpoint}`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setReposts(data.count)
+      } else {
+        setReposted(wasReposted); setReposts(n => wasReposted ? n + 1 : n - 1)
+      }
+    } catch { setReposted(wasReposted); setReposts(n => wasReposted ? n + 1 : n - 1) }
+    finally { setActionPending(null) }
+  }, [reposted, isLoggedIn, actionPending, apiBase, post.id, token])
+
+  const handleBookmark = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    if (!isLoggedIn) { window.location.hash = '#/user/login'; return }
+    if (actionPending === 'bookmark') return
+    const wasSaved = saved
+    setSaved(!wasSaved)
+    setActionPending('bookmark')
+    try {
+      const endpoint = wasSaved ? 'unbookmark' : 'bookmark'
+      await fetch(`${apiBase}/api/blog/posts/${post.id}/${endpoint}`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      })
+    } catch { setSaved(wasSaved) }
+    finally { setActionPending(null) }
+  }, [saved, isLoggedIn, actionPending, apiBase, post.id, token])
 
   return (
-    <article className="group relative h-[420px] overflow-hidden rounded-2xl bg-gray-900 shadow-sm transition-all duration-300 hover:shadow-lg">
+    <a
+      href={`#/user/blog/${post.id}`}
+      className="group relative block h-[420px] overflow-hidden rounded-2xl bg-gray-900 shadow-sm transition-all duration-300 hover:shadow-lg cursor-pointer"
+      style={{ textDecoration: 'none' }}
+    >
       {/* Cover image */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.03]"
@@ -122,6 +219,7 @@ function BlogPostCard({ post, likes, comments }: { post: BlogPost; likes: number
         className="absolute inset-x-0 bottom-0 flex flex-col justify-between overflow-hidden px-5 py-4"
         style={{ background: cardBg, backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
       >
+        {/* Title & excerpt */}
         <div className="flex-1 overflow-hidden">
           <h3
             className="mb-1.5 text-[15px] font-semibold leading-snug text-white"
@@ -137,7 +235,7 @@ function BlogPostCard({ post, likes, comments }: { post: BlogPost; likes: number
             {post.title}
           </h3>
           <p
-            className="text-[13px] leading-relaxed text-white/75"
+            className="text-[13px] leading-relaxed text-white/70"
             style={{
               display: '-webkit-box',
               WebkitBoxOrient: 'vertical',
@@ -149,26 +247,64 @@ function BlogPostCard({ post, likes, comments }: { post: BlogPost; likes: number
             {post.excerpt}
           </p>
         </div>
+
+        {/* Action bar */}
         <div className="mt-3 flex items-center justify-between border-t border-white/15 pt-3">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 text-white/80">
-              <Heart className="h-4 w-4" />
-              <span className="text-sm font-medium">{likes}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-white/80">
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">{comments}</span>
-            </div>
+          <div className="flex items-center gap-1">
+            {/* Like */}
+            <button
+              onClick={handleLike}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/10 active:scale-95"
+              title={liked ? 'Unlike' : 'Like'}
+            >
+              <Heart
+                className="h-4 w-4 transition-colors"
+                style={{ color: liked ? '#ff5e7e' : 'rgba(255,255,255,0.85)', fill: liked ? '#ff5e7e' : 'none' }}
+              />
+              <span className="text-[12px] font-medium text-white/85 min-w-[14px] text-center">{likes}</span>
+            </button>
+
+            {/* Comment (navigates to post) */}
+            <button
+              onClick={(e) => { e.stopPropagation() }}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/10"
+              title="Comments"
+            >
+              <MessageCircle className="h-4 w-4 text-white/85" />
+              <span className="text-[12px] font-medium text-white/85 min-w-[14px] text-center">{initialComments}</span>
+            </button>
+
+            {/* Repost */}
+            <button
+              onClick={handleRepost}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/10 active:scale-95"
+              title={reposted ? 'Undo repost' : 'Repost'}
+            >
+              <Repeat2
+                className="h-4 w-4 transition-colors"
+                style={{ color: reposted ? '#4ade80' : 'rgba(255,255,255,0.85)' }}
+              />
+              <span
+                className="text-[12px] font-medium min-w-[14px] text-center"
+                style={{ color: reposted ? '#4ade80' : 'rgba(255,255,255,0.85)' }}
+              >{reposts}</span>
+            </button>
           </div>
-          <a
-            href={`#/user/blog/${post.id}`}
-            className="rounded-lg bg-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-white hover:text-[#1B4965]"
+
+          {/* Bookmark */}
+          <button
+            onClick={handleBookmark}
+            className="rounded-lg p-2 transition-colors hover:bg-white/10 active:scale-95"
+            title={saved ? 'Remove from saved' : 'Save for later'}
           >
-            Read more
-          </a>
+            <Bookmark
+              className="h-4 w-4 transition-colors"
+              style={{ color: saved ? '#fbbf24' : 'rgba(255,255,255,0.85)', fill: saved ? '#fbbf24' : 'none' }}
+            />
+          </button>
         </div>
       </div>
-    </article>
+    </a>
   )
 }
 
@@ -525,7 +661,7 @@ export default function Blog() {
                   authorName={post.author_name}
                   authorVerified={post.author_is_verified === true}
                 />
-                <BlogPostCard post={post} likes={likes} comments={comments} />
+                <BlogPostCard post={post} initialLikes={likes} initialComments={comments} />
               </div>
             )
           })}

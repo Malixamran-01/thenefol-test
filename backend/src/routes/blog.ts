@@ -65,6 +65,15 @@ export async function ensureBlogAuxTables(databasePool: Pool): Promise<void> {
     )
   `)
   await databasePool.query(`
+    CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
+      id SERIAL PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (post_id, user_id)
+    )
+  `)
+  await databasePool.query(`
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_pending JSONB;
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_submitted_at TIMESTAMPTZ;
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_rejection_reason TEXT;
@@ -2740,6 +2749,91 @@ router.delete('/comments/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error deleting comment:', error)
     res.status(500).json({ message: 'Failed to delete comment' })
+  }
+})
+
+// ─── Bookmarks (Save for Later) ────────────────────────────────────────────
+router.get('/posts/:id/bookmarks', async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const postId = req.params.id
+    const userId = getUserIdFromToken(req)
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1`,
+      [postId]
+    )
+    const { rows: savedRows } = userId
+      ? await pool.query(
+          `SELECT 1 FROM blog_post_bookmarks WHERE post_id = $1 AND user_id = $2 LIMIT 1`,
+          [postId, userId]
+        )
+      : { rows: [] }
+    res.json({ count: countRows[0]?.count || 0, saved: savedRows.length > 0 })
+  } catch (error) {
+    console.error('Error fetching bookmarks:', error)
+    res.status(500).json({ message: 'Failed to fetch bookmarks' })
+  }
+})
+
+router.post('/posts/:id/bookmark', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const postId = req.params.id
+    const userId = req.userId
+    await pool.query(
+      `INSERT INTO blog_post_bookmarks (post_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [postId, userId]
+    )
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1`,
+      [postId]
+    )
+    res.json({ count: rows[0]?.count || 0, saved: true })
+  } catch (error) {
+    console.error('Error bookmarking:', error)
+    res.status(500).json({ message: 'Failed to bookmark post' })
+  }
+})
+
+router.post('/posts/:id/unbookmark', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const postId = req.params.id
+    const userId = req.userId
+    await pool.query(
+      `DELETE FROM blog_post_bookmarks WHERE post_id = $1 AND user_id = $2`,
+      [postId, userId]
+    )
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_bookmarks WHERE post_id = $1`,
+      [postId]
+    )
+    res.json({ count: rows[0]?.count || 0, saved: false })
+  } catch (error) {
+    console.error('Error unbookmarking:', error)
+    res.status(500).json({ message: 'Failed to unbookmark post' })
+  }
+})
+
+// ─── Get all bookmarked posts for authenticated user ────────────────────────
+router.get('/bookmarks', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const userId = req.userId
+    const { rows } = await pool.query(
+      `SELECT p.id, p.title, p.excerpt, p.cover_image, p.created_at,
+              (SELECT COUNT(*)::int FROM blog_post_likes WHERE post_id = p.id) AS likes_count,
+              (SELECT COUNT(*)::int FROM blog_comments WHERE post_id = p.id) AS comments_count
+       FROM blog_post_bookmarks b
+       JOIN blog_posts p ON p.id = b.post_id
+       WHERE b.user_id = $1 AND p.status = 'approved'
+       ORDER BY b.created_at DESC`,
+      [userId]
+    )
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching saved posts:', error)
+    res.status(500).json({ message: 'Failed to fetch saved posts' })
   }
 })
 
