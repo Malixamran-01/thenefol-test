@@ -2778,6 +2778,12 @@ router.get('/posts/:id/bookmarks', async (req, res) => {
 router.post('/posts/:id/bookmark', authenticateToken, async (req, res) => {
   try {
     if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
+        id SERIAL PRIMARY KEY, post_id TEXT NOT NULL, user_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE (post_id, user_id)
+      )
+    `)
     const postId = req.params.id
     const userId = req.userId
     await pool.query(
@@ -2798,6 +2804,12 @@ router.post('/posts/:id/bookmark', authenticateToken, async (req, res) => {
 router.post('/posts/:id/unbookmark', authenticateToken, async (req, res) => {
   try {
     if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
+        id SERIAL PRIMARY KEY, post_id TEXT NOT NULL, user_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE (post_id, user_id)
+      )
+    `)
     const postId = req.params.id
     const userId = req.userId
     await pool.query(
@@ -2819,18 +2831,57 @@ router.post('/posts/:id/unbookmark', authenticateToken, async (req, res) => {
 router.get('/bookmarks', authenticateToken, async (req, res) => {
   try {
     if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    // Ensure the bookmarks table exists (safe to run repeatedly)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
+        id SERIAL PRIMARY KEY,
+        post_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (post_id, user_id)
+      )
+    `)
     const userId = req.userId
     const { rows } = await pool.query(
-      `SELECT p.id, p.title, p.excerpt, p.cover_image, p.created_at,
-              (SELECT COUNT(*)::int FROM blog_post_likes WHERE post_id = p.id) AS likes_count,
-              (SELECT COUNT(*)::int FROM blog_comments WHERE post_id = p.id) AS comments_count
+      `SELECT p.id, p.title, p.excerpt, p.cover_image, p.detail_image,
+              p.created_at, p.updated_at, p.featured, p.category, p.categories,
+              p.author_name, p.author_email, p.user_id AS author_user_id,
+              COALESCE(ap.display_name, ap.pen_name, ap.username, p.author_name) AS resolved_author_name,
+              ap.is_verified AS author_is_verified,
+              ap.id AS author_profile_id,
+              (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id) AS likes_count,
+              (SELECT COUNT(*)::int FROM blog_comments    WHERE post_id = p.id AND is_deleted = false) AS comments_count,
+              (SELECT COUNT(*)::int FROM blog_post_reposts WHERE post_id = p.id) AS reposts_count
        FROM blog_post_bookmarks b
        JOIN blog_posts p ON p.id = b.post_id
+       LEFT JOIN author_profiles ap
+         ON ap.user_id = p.user_id AND ap.status != 'deleted'
        WHERE b.user_id = $1 AND p.status = 'approved'
        ORDER BY b.created_at DESC`,
       [userId]
     )
-    res.json(rows)
+    res.json(rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      excerpt: r.excerpt,
+      content: '',
+      cover_image: r.cover_image,
+      detail_image: r.detail_image,
+      images: r.cover_image ? [r.cover_image] : [],
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      featured: r.featured,
+      category: r.category,
+      categories: r.categories,
+      status: 'approved',
+      author_name: r.resolved_author_name || r.author_name || 'Anonymous',
+      author_email: r.author_email || '',
+      author_id: r.author_profile_id,
+      author_is_verified: r.author_is_verified,
+      likes_count: r.likes_count,
+      comments_count: r.comments_count,
+      reposts_count: r.reposts_count,
+    })))
   } catch (error) {
     console.error('Error fetching saved posts:', error)
     res.status(500).json({ message: 'Failed to fetch saved posts' })

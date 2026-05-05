@@ -371,24 +371,17 @@ export default function Blog() {
     if (!token) { window.location.hash = '#/user/login'; return }
     setSavedLoading(true)
     try {
-      const res = await fetch(`${getApiBase()}/api/blog/bookmarks`, {
+      const apiBase = getApiBase()
+      const res = await fetch(`${apiBase}/api/blog/bookmarks`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
-        const data = await res.json()
-        const apiBase = getApiBase()
-        const normalized = data.map((p: BlogPost) => ({
+        const data: BlogPost[] = await res.json()
+        // Resolve relative upload paths to absolute URLs
+        const normalized = data.map((p) => ({
           ...p,
           cover_image: p.cover_image && p.cover_image.startsWith('/uploads/')
             ? `${apiBase}${p.cover_image}` : p.cover_image,
-          images: p.images ?? [],
-          status: 'approved' as const,
-          author_name: p.author_name ?? '',
-          author_email: p.author_email ?? '',
-          content: p.content ?? '',
-          created_at: p.created_at ?? '',
-          updated_at: p.updated_at ?? '',
-          featured: p.featured ?? false,
         }))
         setSavedPosts(normalized)
       }
@@ -655,65 +648,72 @@ export default function Blog() {
           </div>
         ) : null}
 
-        {/* Category Filters + Saved toggle */}
-        <div className="mb-10">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center justify-between w-full max-w-3xl">
+        {/* View tabs: All Posts / Saved */}
+        <div className="mb-6 flex items-center gap-1 rounded-xl bg-white border border-[#DCE6EE] p-1 w-fit shadow-sm">
+          <button
+            type="button"
+            onClick={() => setShowSaved(false)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              !showSaved ? 'text-white shadow-sm' : 'text-[#1B4965] hover:bg-[#F4F9F9]'
+            }`}
+            style={{ backgroundColor: !showSaved ? '#1B4965' : 'transparent' }}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            All Posts
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleSaved}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              showSaved ? 'text-white shadow-sm' : 'text-[#1B4965] hover:bg-[#F4F9F9]'
+            }`}
+            style={{ backgroundColor: showSaved ? '#1B4965' : 'transparent' }}
+          >
+            <Bookmark
+              className="h-3.5 w-3.5"
+              style={{ fill: showSaved ? 'white' : 'none' }}
+            />
+            Saved
+          </button>
+        </div>
+
+        {/* Category Filters (only in All Posts view) */}
+        {!showSaved && (
+          <div className="mb-10">
+            <div className="flex flex-col items-center gap-4">
               <div className="flex items-center gap-2 text-sm uppercase tracking-widest" style={{ color: '#9DB4C0' }}>
                 <Tag className="h-4 w-4" />
                 Browse by category
               </div>
-              {/* Saved button */}
-              <button
-                type="button"
-                onClick={handleToggleSaved}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
-                  showSaved
-                    ? 'text-white border-transparent'
-                    : 'text-[#1B4965] border-[#DCE6EE] bg-white hover:border-[#1B4965]'
-                }`}
-                style={{ backgroundColor: showSaved ? '#1B4965' : 'white' }}
-              >
-                <Bookmark
-                  className="h-3.5 w-3.5"
-                  style={{ fill: showSaved ? 'white' : 'none', color: showSaved ? 'white' : '#1B4965' }}
+              <div className="hidden sm:flex flex-wrap justify-center gap-3">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
+                      selectedCategory === category
+                        ? 'text-white border-transparent'
+                        : 'text-[#1B4965] border-[#DCE6EE] bg-white'
+                    }`}
+                    style={{ backgroundColor: selectedCategory === category ? '#1B4965' : 'white' }}
+                  >
+                    {category === 'All' ? 'All' : formatCategoryLabel(category)}
+                  </button>
+                ))}
+              </div>
+              <div className="w-full sm:hidden">
+                <CustomSelect
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
+                  options={categories.map(c => ({ value: c, label: c === 'All' ? 'All' : formatCategoryLabel(c) }))}
+                  align="left"
+                  className="w-full"
                 />
-                Saved
-              </button>
+              </div>
             </div>
-
-            {!showSaved && (
-              <>
-                <div className="hidden sm:flex flex-wrap justify-center gap-3">
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => setSelectedCategory(category)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
-                        selectedCategory === category
-                          ? 'text-white border-transparent'
-                          : 'text-[#1B4965] border-[#DCE6EE] bg-white'
-                      }`}
-                      style={{ backgroundColor: selectedCategory === category ? '#1B4965' : 'white' }}
-                    >
-                      {category === 'All' ? 'All' : formatCategoryLabel(category)}
-                    </button>
-                  ))}
-                </div>
-                <div className="w-full sm:hidden">
-                  <CustomSelect
-                    value={selectedCategory}
-                    onChange={setSelectedCategory}
-                    options={categories.map(c => ({ value: c, label: c === 'All' ? 'All' : formatCategoryLabel(c) }))}
-                    align="left"
-                    className="w-full"
-                  />
-                </div>
-              </>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Saved Posts View */}
         {showSaved ? (
