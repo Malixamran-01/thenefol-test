@@ -2866,7 +2866,7 @@ router.get('/bookmarks', authenticateToken, async (req, res) => {
     const userId = req.userId
     const { rows } = await pool.query(
       `SELECT p.id, p.title, p.excerpt, p.cover_image, p.detail_image,
-              p.created_at, p.updated_at, p.featured, p.category, p.categories,
+              p.created_at, p.updated_at, p.featured, p.categories,
               p.author_name, p.author_email, p.user_id AS author_user_id,
               COALESCE(ap.display_name, ap.pen_name, ap.username, p.author_name) AS resolved_author_name,
               ap.is_verified AS author_is_verified,
@@ -2893,7 +2893,7 @@ router.get('/bookmarks', authenticateToken, async (req, res) => {
       created_at: r.created_at,
       updated_at: r.updated_at,
       featured: r.featured,
-      category: r.category,
+
       categories: r.categories,
       status: 'approved',
       author_name: r.resolved_author_name || r.author_name || 'Anonymous',
