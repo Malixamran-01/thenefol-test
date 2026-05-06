@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHorizontal, Pencil, Check } from 'lucide-react'
+import { RepostButton } from '../components/RepostButton'
 import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import CustomSelect from '../components/CustomSelect'
 import { getApiBase } from '../utils/apiBase'
@@ -75,7 +76,7 @@ export default function BlogDetail() {
   const [expandedText, setExpandedText] = useState<Record<string, boolean>>({})
   const [commentSort, setCommentSort] = useState<'new' | 'old' | 'top' | 'replies'>('new')
   const [showShareMenu, setShowShareMenu] = useState(false)
-  const [copiedCommentId, setCopiedCommentId] = useState<string | null>(null)
+  // copiedCommentId removed — RepostButton handles its own state
 
   useEffect(() => {
     const loadBlogPost = async () => {
@@ -610,24 +611,7 @@ export default function BlogDetail() {
     }
   }, [isAuthenticated, comments, patchComment])
 
-  const handleCommentRepost = useCallback(async (commentId: string) => {
-    if (!post) return
-    const shareUrl = getShareUrl()
-    const fullUrl = `${shareUrl}#comment-${commentId}`
-    try {
-      await navigator.clipboard.writeText(fullUrl)
-    } catch {
-      // fallback — create a temp input
-      const el = document.createElement('input')
-      el.value = fullUrl
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
-    }
-    setCopiedCommentId(commentId)
-    setTimeout(() => setCopiedCommentId(null), 2000)
-  }, [post])
+  // handleCommentRepost removed — RepostButton handles full repost flow
 
   const buildCommentTree = (items: BlogComment[]) => {
     // Always use parent_id method since it works reliably
@@ -820,21 +804,16 @@ export default function BlogDetail() {
               )}
             </button>
 
-            {/* Copy link (styled as repost) */}
-            <button
-              onClick={() => handleCommentRepost(comment.id)}
-              className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-gray-100 transition-colors"
-              title="Copy link to comment"
-            >
-              {copiedCommentId === comment.id ? (
-                <>
-                  <Check className="w-[15px] h-[15px] text-green-500" />
-                  <span className="text-[11px] font-medium text-green-500">Copied</span>
-                </>
-              ) : (
-                <Repeat2 className="w-[15px] h-[15px]" />
-              )}
-            </button>
+            {/* Repost comment */}
+            <RepostButton
+              postId={Number(post!.id)}
+              postTitle={post!.title}
+              commentId={Number(comment.id)}
+              commentContent={comment.content}
+              commentAuthorName={comment.author_name}
+              variant="light"
+              showCount={false}
+            />
 
             {/* Share */}
             <button
@@ -1223,13 +1202,18 @@ export default function BlogDetail() {
               <MessageCircle className="w-[18px] h-[18px]" />
               <span>{comments.length}</span>
             </span>
-            <button
-              onClick={handleRepostToggle}
-              className="inline-flex items-center gap-2 hover:text-gray-900 transition-colors"
-            >
-              <Repeat2 className={`w-[18px] h-[18px] ${reposted ? 'text-green-500' : 'text-gray-500'}`} />
-              <span>{repostsCount}</span>
-            </button>
+            {post && (
+              <RepostButton
+                postId={Number(post.id)}
+                postTitle={post.title}
+                postCover={post.cover_image || post.images?.[0]}
+                initialReposted={reposted}
+                initialCount={repostsCount}
+                onCountChange={(count, isReposted) => { setRepostsCount(count); setReposted(isReposted) }}
+                variant="light"
+                showCount
+              />
+            )}
             {/* Share button — opens full share menu */}
             <div className="relative share-menu-container ml-auto">
               <button

@@ -93,6 +93,21 @@ export async function ensureBlogAuxTables(databasePool: Pool): Promise<void> {
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_submitted_at TIMESTAMPTZ;
     ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_rejection_reason TEXT;
   `)
+  // Rich reposts table — supports post reposts, comment reposts, and reposts with a note
+  await databasePool.query(`
+    CREATE TABLE IF NOT EXISTS blog_reposts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      post_id INTEGER NOT NULL,
+      comment_id INTEGER DEFAULT NULL,
+      note TEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await databasePool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS blog_reposts_unique_idx
+      ON blog_reposts (user_id, post_id, COALESCE(comment_id, -1))
+  `)
 }
 
 const getUserIdFromToken = (req: express.Request): string | null => {
@@ -2435,6 +2450,11 @@ router.post('/posts/:id/unrepost', authenticateToken, async (req, res) => {
       `DELETE FROM blog_post_reposts WHERE post_id = $1 AND user_id = $2`,
       [postId, userId]
     )
+    // Also remove from blog_reposts (post repost without comment)
+    await pool.query(
+      `DELETE FROM blog_reposts WHERE user_id = $1::int AND post_id = $2::int AND comment_id IS NULL`,
+      [userId, postId]
+    )
     const { rows } = await pool.query(
       `SELECT COUNT(*)::int AS count FROM blog_post_reposts WHERE post_id = $1`,
       [postId]
@@ -2443,6 +2463,121 @@ router.post('/posts/:id/unrepost', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error unreposting:', error)
     res.status(500).json({ message: 'Failed to unrepost' })
+  }
+})
+
+// ─── Rich Reposts (post reposts with note + comment reposts) ──────────────────
+
+// POST /api/blog/reposts — create a repost (post or comment, with optional note)
+router.post('/reposts', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const userId = req.userId
+    const { post_id, comment_id, note } = req.body as { post_id: number; comment_id?: number; note?: string }
+    if (!post_id) return res.status(400).json({ message: 'post_id is required' })
+
+    await pool.query(
+      `INSERT INTO blog_reposts (user_id, post_id, comment_id, note)
+       VALUES ($1::int, $2::int, $3, $4)
+       ON CONFLICT DO NOTHING`,
+      [userId, post_id, comment_id ?? null, note?.trim() || null]
+    )
+
+    // Keep blog_post_reposts in sync for count queries (post reposts only)
+    if (!comment_id) {
+      await pool.query(
+        `INSERT INTO blog_post_reposts (post_id, user_id) VALUES ($1::text, $2::int) ON CONFLICT DO NOTHING`,
+        [post_id, userId]
+      )
+    }
+
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_reposts WHERE post_id = $1::text`,
+      [post_id]
+    )
+
+    // Notification
+    try {
+      const { rows: postRows } = await pool.query(
+        `SELECT bp.title, COALESCE(ap.user_id, bp.user_id) AS recipient_user_id
+         FROM blog_posts bp
+         LEFT JOIN author_profiles ap ON ap.id::text = bp.author_id::text
+         WHERE bp.id = $1 LIMIT 1`,
+        [post_id]
+      )
+      if (postRows.length > 0 && postRows[0].recipient_user_id && postRows[0].recipient_user_id !== userId) {
+        const actor = await resolveActor(pool, userId)
+        await createNotification({
+          pool,
+          recipientUserId: postRows[0].recipient_user_id,
+          actorUserId: userId,
+          actorName: actor.name,
+          actorAvatar: actor.avatar,
+          type: comment_id ? 'comment_reposted' : 'post_reposted',
+          postId: String(post_id),
+          postTitle: postRows[0].title,
+          commentId: comment_id,
+        })
+      }
+    } catch { /* notification failure should not break the response */ }
+
+    res.json({ success: true, count: rows[0]?.count || 0, reposted: true })
+  } catch (error) {
+    console.error('Error creating repost:', error)
+    res.status(500).json({ message: 'Failed to create repost' })
+  }
+})
+
+// DELETE /api/blog/reposts — undo a repost
+router.delete('/reposts', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const userId = req.userId
+    const { post_id, comment_id } = req.body as { post_id: number; comment_id?: number }
+    if (!post_id) return res.status(400).json({ message: 'post_id is required' })
+
+    await pool.query(
+      `DELETE FROM blog_reposts
+       WHERE user_id = $1::int AND post_id = $2::int AND COALESCE(comment_id, -1) = COALESCE($3, -1)`,
+      [userId, post_id, comment_id ?? null]
+    )
+    // Keep blog_post_reposts in sync
+    if (!comment_id) {
+      await pool.query(
+        `DELETE FROM blog_post_reposts WHERE user_id = $1::int AND post_id = $2::text`,
+        [userId, post_id]
+      )
+    }
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM blog_post_reposts WHERE post_id = $1::text`,
+      [post_id]
+    )
+    res.json({ success: true, count: rows[0]?.count || 0, reposted: false })
+  } catch (error) {
+    console.error('Error removing repost:', error)
+    res.status(500).json({ message: 'Failed to remove repost' })
+  }
+})
+
+// GET /api/blog/reposts/check — check if authenticated user reposted a post or comment
+router.get('/reposts/check', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(500).json({ message: 'Database not initialized' })
+    const userId = req.userId
+    const postId = req.query.post_id ? Number(req.query.post_id) : null
+    const commentId = req.query.comment_id ? Number(req.query.comment_id) : null
+    if (!postId) return res.status(400).json({ message: 'post_id is required' })
+
+    const { rows } = await pool.query(
+      `SELECT id FROM blog_reposts
+       WHERE user_id = $1::int AND post_id = $2::int AND COALESCE(comment_id, -1) = COALESCE($3, -1)
+       LIMIT 1`,
+      [userId, postId, commentId]
+    )
+    res.json({ reposted: rows.length > 0 })
+  } catch (error) {
+    console.error('Error checking repost status:', error)
+    res.status(500).json({ message: 'Failed to check repost status' })
   }
 })
 

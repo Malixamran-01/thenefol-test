@@ -816,30 +816,65 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     )
     console.log(`[activity] resolvedId=${resolvedId} userIdOfAuthor=${userIdOfAuthor} publishedPosts=${publishedPosts.length}`)
 
-    // Get author's reposted posts (wrapped in try/catch so it won't break other activity types)
+    // Get author's reposted posts/comments — prefer blog_reposts (rich) then fall back to legacy blog_post_reposts
     let repostedPosts: any[] = []
     try {
-      const { rows } = await pool.query(
-        `SELECT 
-          'reposted_post' as activity_type,
-          bp.id::text as post_id,
-          bp.title as post_title,
-          bp.excerpt as post_excerpt,
+      // Rich reposts (blog_reposts) — includes comment reposts and reposts with a note
+      const { rows: richRows } = await pool.query(
+        `SELECT
+          CASE WHEN br.comment_id IS NULL THEN 'reposted_post' ELSE 'reposted_comment' END AS activity_type,
+          bp.id::text AS post_id,
+          bp.title AS post_title,
+          bp.excerpt AS post_excerpt,
           bp.cover_image,
-          bp.author_name as post_author_name,
-          bp.author_email as post_author_email,
-          ap.id as post_author_id,
-          bpr.created_at as activity_date
+          bp.author_name AS post_author_name,
+          bp.author_email AS post_author_email,
+          ap.id AS post_author_id,
+          br.comment_id,
+          bc.content AS comment_content,
+          bc.author_name AS comment_author_name,
+          br.note AS repost_note,
+          br.created_at AS activity_date
+         FROM blog_reposts br
+         JOIN blog_posts bp ON bp.id = br.post_id
+         LEFT JOIN author_profiles ap ON ap.user_id::text = bp.user_id::text
+         LEFT JOIN blog_comments bc ON bc.id = br.comment_id
+         WHERE br.user_id = $1::int
+           AND bp.is_deleted = false
+         ORDER BY br.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [userIdOfAuthor, limit, offset]
+      )
+
+      // Legacy reposts (blog_post_reposts) — only include if not already in blog_reposts
+      const richPostIds = new Set(richRows.filter(r => r.activity_type === 'reposted_post').map(r => r.post_id))
+      const { rows: legacyRows } = await pool.query(
+        `SELECT
+          'reposted_post' AS activity_type,
+          bp.id::text AS post_id,
+          bp.title AS post_title,
+          bp.excerpt AS post_excerpt,
+          bp.cover_image,
+          bp.author_name AS post_author_name,
+          bp.author_email AS post_author_email,
+          ap.id AS post_author_id,
+          NULL::integer AS comment_id,
+          NULL::text AS comment_content,
+          NULL::text AS comment_author_name,
+          NULL::text AS repost_note,
+          bpr.created_at AS activity_date
          FROM blog_post_reposts bpr
          JOIN blog_posts bp ON bpr.post_id::text = bp.id::text
-         LEFT JOIN author_profiles ap ON bp.author_id::text = ap.id::text
+         LEFT JOIN author_profiles ap ON ap.user_id::text = bp.user_id::text
          WHERE bpr.user_id::text = $1
            AND bp.is_deleted = false
          ORDER BY bpr.created_at DESC
          LIMIT $2 OFFSET $3`,
         [userIdOfAuthor, limit, offset]
       )
-      repostedPosts = rows
+
+      const deduped = legacyRows.filter(r => !richPostIds.has(r.post_id))
+      repostedPosts = [...richRows, ...deduped]
       console.log(`[activity] repostedPosts for user ${userIdOfAuthor}:`, repostedPosts.length)
     } catch (err) {
       console.error('[activity] Error fetching reposted posts:', err)

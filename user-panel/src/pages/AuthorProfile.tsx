@@ -1245,7 +1245,9 @@ export default function AuthorProfile() {
                   const isPublished = item.activity_type === 'published_post'
                   const isLiked = item.activity_type === 'liked_post'
                   const isCommented = item.activity_type === 'commented_on_post'
-                  const isReposted = item.activity_type === 'reposted_post'
+                  const isRepostedPost = item.activity_type === 'reposted_post'
+                  const isRepostedComment = item.activity_type === 'reposted_comment'
+                  const isReposted = isRepostedPost || isRepostedComment
                   const cover = item.cover_image
                     ? (item.cover_image.startsWith('/uploads/') ? `${getApiBase()}${item.cover_image}` : item.cover_image)
                     : null
@@ -1256,17 +1258,57 @@ export default function AuthorProfile() {
                     ? { text: 'liked', icon: <Heart className="h-3.5 w-3.5" /> }
                     : isCommented
                     ? { text: 'commented', icon: <MessageCircle className="h-3.5 w-3.5" /> }
-                    : isReposted
-                    ? { text: 'reposted', icon: <Repeat2 className="h-3.5 w-3.5" /> }
+                    : isRepostedComment
+                    ? { text: 'reposted a comment', icon: <Repeat2 className="h-3.5 w-3.5" /> }
+                    : isRepostedPost
+                    ? { text: item.repost_note ? 'reposted with note' : 'reposted', icon: <Repeat2 className="h-3.5 w-3.5" /> }
                     : { text: 'activity', icon: <Activity className="h-3.5 w-3.5" /> }
 
+                  const commentLink = isRepostedComment && item.comment_id
+                    ? `#/user/blog/${item.post_id}#comment-${item.comment_id}`
+                    : `#/user/blog/${item.post_id}`
+
                   return (
-                    <div key={`${item.activity_type}-${item.post_id}-${idx}`} className="border-b border-gray-200 py-4 last:border-0">
+                    <div key={`${item.activity_type}-${item.post_id}-${item.comment_id ?? ''}-${idx}`} className="border-b border-gray-200 py-4 last:border-0">
                       {/* Minimal action label row */}
                       <div className="mb-2.5 flex items-center gap-1.5 text-[12px] text-gray-400">
-                        <span className="text-gray-400">{actionLabel.icon}</span>
-                        <span className="font-medium text-gray-500">{actionLabel.text}</span>
+                        <span className={isReposted ? 'text-green-500' : 'text-gray-400'}>{actionLabel.icon}</span>
+                        <span className={`font-medium ${isReposted ? 'text-green-600' : 'text-gray-500'}`}>{actionLabel.text}</span>
                       </div>
+
+                      {/* Repost note (if any) */}
+                      {isReposted && item.repost_note && (
+                        <p className="mb-2.5 rounded-xl bg-green-50 border border-green-100 px-3 py-2 text-[13px] text-gray-700 leading-relaxed italic">
+                          "{item.repost_note}"
+                        </p>
+                      )}
+
+                      {/* Comment quote card for comment reposts */}
+                      {isRepostedComment && item.comment_content && (
+                        <a
+                          href={commentLink}
+                          className="mb-2.5 flex flex-col gap-1 rounded-xl border border-[#e6f0f8] bg-[#f4f9fc] p-3 transition-colors hover:bg-[#e8f2f9] -mx-0"
+                        >
+                          <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#4B97C9] uppercase tracking-wide mb-0.5">
+                            <MessageCircle className="h-3 w-3" />
+                            <span>Comment by {item.comment_author_name || 'Anonymous'}</span>
+                          </div>
+                          <p
+                            className="text-[13px] text-gray-700 leading-relaxed"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitBoxOrient: 'vertical',
+                              WebkitLineClamp: 3,
+                              overflow: 'hidden',
+                            } as React.CSSProperties}
+                          >
+                            {item.comment_content}
+                          </p>
+                          <p className="mt-1 text-[11px] text-gray-400">
+                            from: <span className="font-medium text-gray-500">{item.post_title}</span>
+                          </p>
+                        </a>
+                      )}
 
                       {/* Post card */}
                       <a
@@ -1290,7 +1332,7 @@ export default function AuthorProfile() {
                           </h3>
                           {isCommented && item.comment_content ? (
                             <p className="mt-1 line-clamp-1 text-xs text-gray-500 italic">"{item.comment_content}"</p>
-                          ) : item.post_excerpt ? (
+                          ) : !isRepostedComment && item.post_excerpt ? (
                             <p className="mt-1 line-clamp-1 text-xs text-gray-400">{item.post_excerpt}</p>
                           ) : null}
                           <p className="mt-1.5 text-[11px] text-gray-400">

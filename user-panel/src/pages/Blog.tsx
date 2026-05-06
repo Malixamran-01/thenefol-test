@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Plus, Calendar, User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X, Repeat2, Bookmark } from 'lucide-react'
+import { Plus, Calendar, User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X, Bookmark } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { clearLocalDraft, getLocalDraft } from '../utils/blogDraft'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,6 +7,7 @@ import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 import { authorAPI } from '../services/authorAPI'
 import AuthorPromptModal from '../components/AuthorPromptModal'
 import { BlogCardAuthor } from '../components/BlogCardAuthor'
+import { RepostButton } from '../components/RepostButton'
 import CustomSelect from '../components/CustomSelect'
 
 interface BlogPost {
@@ -116,7 +117,7 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
   const [reposts, setReposts] = useState(post.reposts_count ?? 0)
   const [reposted, setReposted] = useState(false)
   const [saved, setSaved] = useState(initialSaved ?? false)
-  const [actionPending, setActionPending] = useState<'like' | 'repost' | 'bookmark' | null>(null)
+  const [actionPending, setActionPending] = useState<'like' | 'bookmark' | null>(null)
 
   const token = localStorage.getItem('token')
   const isLoggedIn = !!token
@@ -158,28 +159,7 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
     finally { setActionPending(null) }
   }, [liked, isLoggedIn, actionPending, apiBase, post.id, token])
 
-  const handleRepost = useCallback(async (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation()
-    if (!isLoggedIn) { window.location.hash = '#/user/login'; return }
-    if (actionPending === 'repost') return
-    const wasReposted = reposted
-    setReposted(!wasReposted)
-    setReposts(n => wasReposted ? n - 1 : n + 1)
-    setActionPending('repost')
-    try {
-      const endpoint = wasReposted ? 'unrepost' : 'repost'
-      const res = await fetch(`${apiBase}/api/blog/posts/${post.id}/${endpoint}`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setReposts(data.count)
-      } else {
-        setReposted(wasReposted); setReposts(n => wasReposted ? n + 1 : n - 1)
-      }
-    } catch { setReposted(wasReposted); setReposts(n => wasReposted ? n + 1 : n - 1) }
-    finally { setActionPending(null) }
-  }, [reposted, isLoggedIn, actionPending, apiBase, post.id, token])
+  // Repost handled by RepostButton component
 
   const handleBookmark = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
@@ -282,20 +262,16 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
             </button>
 
             {/* Repost */}
-            <button
-              onClick={handleRepost}
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/10 active:scale-95"
-              title={reposted ? 'Undo repost' : 'Repost'}
-            >
-              <Repeat2
-                className="h-4 w-4 transition-colors"
-                style={{ color: reposted ? '#4ade80' : 'rgba(255,255,255,0.85)' }}
-              />
-              <span
-                className="text-[12px] font-medium min-w-[14px] text-center"
-                style={{ color: reposted ? '#4ade80' : 'rgba(255,255,255,0.85)' }}
-              >{reposts}</span>
-            </button>
+            <RepostButton
+              postId={Number(post.id)}
+              postTitle={post.title}
+              postCover={coverImage}
+              initialReposted={reposted}
+              initialCount={reposts}
+              onCountChange={(count, isReposted) => { setReposts(count); setReposted(isReposted) }}
+              variant="card"
+              showCount
+            />
           </div>
 
           {/* Bookmark */}
