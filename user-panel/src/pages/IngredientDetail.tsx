@@ -225,14 +225,14 @@ export default function IngredientDetail() {
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <button
+          {/* <button
             onClick={handleClose}
             className="inline-flex items-center gap-2 px-6 py-3 text-gray-700 font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90 border-2"
             style={{borderColor: '#1B4965', backgroundColor: 'transparent', color: '#1B4965'}}
           >
             <X className="w-4 h-4" />
             Close
-          </button>
+          </button> */}
         </div>
       </div>
     </main>

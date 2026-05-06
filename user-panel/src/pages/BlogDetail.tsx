@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHorizontal, Pencil } from 'lucide-react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHorizontal, Pencil, Check } from 'lucide-react'
 import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import CustomSelect from '../components/CustomSelect'
 import { getApiBase } from '../utils/apiBase'
@@ -75,6 +75,7 @@ export default function BlogDetail() {
   const [expandedText, setExpandedText] = useState<Record<string, boolean>>({})
   const [commentSort, setCommentSort] = useState<'new' | 'old' | 'top' | 'replies'>('new')
   const [showShareMenu, setShowShareMenu] = useState(false)
+  const [copiedCommentId, setCopiedCommentId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadBlogPost = async () => {
@@ -406,11 +407,17 @@ export default function BlogDetail() {
     }
   }
 
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     if (!post) return
     try {
       const apiBase = getApiBase()
-      const response = await fetch(`${apiBase}/api/blog/posts/${post.id}/comments?sort=${commentSort}`)
+      const token = localStorage.getItem('token')
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const response = await fetch(
+        `${apiBase}/api/blog/posts/${post.id}/comments?sort=${commentSort}`,
+        { headers }
+      )
       if (response.ok) {
         const data = await response.json()
         setComments(data)
@@ -418,7 +425,7 @@ export default function BlogDetail() {
     } catch (err) {
       console.error('Failed to load comments:', err)
     }
-  }
+  }, [post, commentSort])
 
   const handleLikeToggle = async () => {
     if (!post) return
@@ -567,29 +574,60 @@ export default function BlogDetail() {
     setExpandedText(prev => ({ ...prev, [commentId]: !prev[commentId] }))
   }
 
-  const toggleCommentLike = async (commentId: string, isLiked: boolean) => {
-    if (!post) return
+  // Recursively update a single comment's like state in the flat comments array
+  const patchComment = useCallback((id: string, patch: Partial<BlogComment>) => {
+    setComments(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c))
+  }, [])
+
+  const toggleCommentLike = useCallback(async (commentId: string, isLiked: boolean) => {
     if (!isAuthenticated) {
       sessionStorage.setItem('post_login_redirect', window.location.hash)
       window.location.hash = '#/user/login'
       return
     }
+    // Optimistic update
+    patchComment(commentId, {
+      liked: !isLiked,
+      like_count: Math.max(0, (comments.find(c => c.id === commentId)?.like_count ?? 0) + (isLiked ? -1 : 1))
+    })
     try {
       const apiBase = getApiBase()
       const token = localStorage.getItem('token')
-      const response = await fetch(`${apiBase}/api/blog/comments/${commentId}/${isLiked ? 'unlike' : 'like'}`, {
-        method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      })
-      if (response.ok) {
-        await fetchComments()
+      const res = await fetch(
+        `${apiBase}/api/blog/comments/${commentId}/${isLiked ? 'unlike' : 'like'}`,
+        { method: 'POST', headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        // Sync count with server truth
+        patchComment(commentId, { like_count: data.count, liked: !isLiked })
+      } else {
+        // Revert on failure
+        patchComment(commentId, { liked: isLiked })
       }
-    } catch (err) {
-      console.error('Failed to toggle comment like:', err)
+    } catch {
+      patchComment(commentId, { liked: isLiked })
     }
-  }
+  }, [isAuthenticated, comments, patchComment])
+
+  const handleCommentRepost = useCallback(async (commentId: string) => {
+    if (!post) return
+    const shareUrl = getShareUrl()
+    const fullUrl = `${shareUrl}#comment-${commentId}`
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+    } catch {
+      // fallback — create a temp input
+      const el = document.createElement('input')
+      el.value = fullUrl
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
+    setCopiedCommentId(commentId)
+    setTimeout(() => setCopiedCommentId(null), 2000)
+  }, [post])
 
   const buildCommentTree = (items: BlogComment[]) => {
     // Always use parent_id method since it works reliably
@@ -645,8 +683,10 @@ export default function BlogDetail() {
     const formatCommentDate = (dateStr: string) =>
       new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
+    const replyCount = replies.length
+
     return (
-      <div key={comment.id} className="border-b border-gray-100 last:border-b-0 py-5 first:pt-0">
+      <div key={comment.id} id={`comment-${comment.id}`} className="border-b border-gray-100 last:border-b-0 py-5 first:pt-0 scroll-mt-6">
         <div className={`flex gap-3 ${depth > 0 ? 'ml-6' : ''}`}>
           <div className="flex-shrink-0">
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-700" style={{ backgroundColor: '#E8F4F8' }}>
@@ -747,34 +787,71 @@ export default function BlogDetail() {
             </div>
           )}
 
-          <div className="mt-4 flex items-center gap-5 text-gray-500">
+          <div className="mt-4 flex items-center gap-4 text-gray-500">
+            {/* Like */}
             <button
               onClick={() => toggleCommentLike(comment.id, !!comment.liked)}
-              className="inline-flex items-center gap-2 hover:text-gray-800 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-gray-100 transition-colors group"
+              title={comment.liked ? 'Unlike' : 'Like'}
             >
-              <Heart className={`w-[17px] h-[17px] ${comment.liked ? 'text-red-500 fill-current' : ''}`} />
+              <Heart
+                className="w-[15px] h-[15px] transition-colors"
+                style={{
+                  color: comment.liked ? '#ef4444' : undefined,
+                  fill: comment.liked ? '#ef4444' : 'none',
+                }}
+              />
+              {(comment.like_count ?? 0) > 0 && (
+                <span className="text-[11px] font-medium" style={{ color: comment.liked ? '#ef4444' : undefined }}>
+                  {comment.like_count}
+                </span>
+              )}
             </button>
+
+            {/* Reply */}
             <button
               onClick={() => setActiveReplyId(activeReplyId === comment.id ? null : comment.id)}
-              className="inline-flex items-center gap-2 hover:text-gray-800 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-gray-100 transition-colors"
+              title="Reply"
             >
-              <MessageCircle className="w-[17px] h-[17px]" />
+              <MessageCircle className="w-[15px] h-[15px]" />
+              {replyCount > 0 && (
+                <span className="text-[11px] font-medium">{replyCount}</span>
+              )}
             </button>
-            <button className="inline-flex items-center gap-2 opacity-50 cursor-default">
-              <Repeat2 className="w-[17px] h-[17px]" />
+
+            {/* Copy link (styled as repost) */}
+            <button
+              onClick={() => handleCommentRepost(comment.id)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-gray-100 transition-colors"
+              title="Copy link to comment"
+            >
+              {copiedCommentId === comment.id ? (
+                <>
+                  <Check className="w-[15px] h-[15px] text-green-500" />
+                  <span className="text-[11px] font-medium text-green-500">Copied</span>
+                </>
+              ) : (
+                <Repeat2 className="w-[15px] h-[15px]" />
+              )}
             </button>
+
+            {/* Share */}
             <button
               onClick={() => handleShare()}
-              className="inline-flex items-center gap-2 hover:text-gray-800 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-gray-100 transition-colors"
+              title="Share post"
             >
-              <Share2 className="w-[17px] h-[17px]" />
+              <Share2 className="w-[15px] h-[15px]" />
             </button>
-            {replies.length > 0 && (
+
+            {/* Toggle replies — inline with action bar */}
+            {replyCount > 0 && (
               <button
                 onClick={() => toggleReplies(comment.id)}
-                className="ml-2 text-xs hover:text-gray-800 transition-colors"
+                className="ml-auto text-xs font-medium hover:text-gray-900 transition-colors"
               >
-                {isExpanded ? 'Hide replies' : 'Show replies'} ({replies.length})
+                {isExpanded ? `Hide ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}` : `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`}
               </button>
             )}
           </div>
