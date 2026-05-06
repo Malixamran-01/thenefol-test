@@ -1264,10 +1264,19 @@ export default function AuthorProfile() {
                     ? { text: item.repost_note ? 'reposted with note' : 'reposted', icon: <Repeat2 className="h-3.5 w-3.5" /> }
                     : { text: 'activity', icon: <Activity className="h-3.5 w-3.5" /> }
 
-                  const commentLink = isRepostedComment && item.comment_id
-                    ? `#/user/blog/${item.post_id}#comment-${item.comment_id}`
-                    : `#/user/blog/${item.post_id}`
+                  const commentDeepLink =
+                    isRepostedComment && item.comment_id != null
+                      ? `#/user/blog/${item.post_id}#comment-${item.comment_id}`
+                      : null
+                  const postOnlyLink = `#/user/blog/${item.post_id}`
 
+                  const commentProfileSlug =
+                    item.comment_author_profile_id != null
+                      ? String(item.comment_author_profile_id)
+                      : item.comment_author_user_id != null
+                        ? String(item.comment_author_user_id)
+                        : null
+                  const commentProfileHref = commentProfileSlug ? `#/user/author/${commentProfileSlug}` : null
                   return (
                     <div key={`${item.activity_type}-${item.post_id}-${item.comment_id ?? ''}-${idx}`} className="border-b border-gray-200 py-4 last:border-0">
                       {/* Minimal action label row */}
@@ -1284,17 +1293,28 @@ export default function AuthorProfile() {
                       )}
 
                       {/* Comment quote card for comment reposts */}
-                      {isRepostedComment && item.comment_content && (
-                        <a
-                          href={commentLink}
-                          className="mb-2.5 flex flex-col gap-1 rounded-xl border border-[#e6f0f8] bg-[#f4f9fc] p-3 transition-colors hover:bg-[#e8f2f9] -mx-0"
-                        >
-                          <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#4B97C9] uppercase tracking-wide mb-0.5">
-                            <MessageCircle className="h-3 w-3" />
-                            <span>Comment by {item.comment_author_name || 'Anonymous'}</span>
+                      {isRepostedComment && item.comment_content && commentDeepLink && (
+                        <div className="mb-2.5 flex flex-col gap-1 rounded-xl border border-[#e6f0f8] bg-[#f4f9fc] p-3 -mx-0">
+                          <div className="mb-0.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[#4B97C9] uppercase tracking-wide">
+                            <MessageCircle className="h-3 w-3 shrink-0" />
+                            <span>Comment by</span>
+                            {commentProfileHref ? (
+                              <a
+                                href={commentProfileHref}
+                                className="font-semibold text-[#1B4965] underline-offset-2 hover:underline normal-case tracking-normal"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {item.comment_author_name || 'Anonymous'}
+                              </a>
+                            ) : (
+                              <span className="font-semibold text-[#1B4965] normal-case tracking-normal">
+                                {item.comment_author_name || 'Anonymous'}
+                              </span>
+                            )}
                           </div>
-                          <p
-                            className="text-[13px] text-gray-700 leading-relaxed"
+                          <a
+                            href={commentDeepLink}
+                            className="-mx-1 rounded-lg px-1 py-0.5 text-[13px] text-gray-700 leading-relaxed transition-colors hover:bg-[#e8f2f9] hover:text-gray-900"
                             style={{
                               display: '-webkit-box',
                               WebkitBoxOrient: 'vertical',
@@ -1303,11 +1323,18 @@ export default function AuthorProfile() {
                             } as React.CSSProperties}
                           >
                             {item.comment_content}
-                          </p>
+                          </a>
                           <p className="mt-1 text-[11px] text-gray-400">
-                            from: <span className="font-medium text-gray-500">{item.post_title}</span>
+                            from:{' '}
+                            <a
+                              href={postOnlyLink}
+                              className="font-medium text-[#4B97C9] underline-offset-2 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {item.post_title}
+                            </a>
                           </p>
-                        </a>
+                        </div>
                       )}
 
                       {/* Post card */}

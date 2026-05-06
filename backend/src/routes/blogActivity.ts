@@ -833,12 +833,16 @@ router.get('/authors/:authorId/activity', async (req, res) => {
           br.comment_id,
           bc.content AS comment_content,
           bc.author_name AS comment_author_name,
+          bc.user_id AS comment_author_user_id,
+          cap.id AS comment_author_profile_id,
           br.note AS repost_note,
           br.created_at AS activity_date
          FROM blog_reposts br
          JOIN blog_posts bp ON bp.id = br.post_id
          LEFT JOIN author_profiles ap ON ap.user_id::text = bp.user_id::text
          LEFT JOIN blog_comments bc ON bc.id = br.comment_id
+         LEFT JOIN author_profiles cap
+           ON cap.user_id = bc.user_id AND cap.status != 'deleted'
          WHERE br.user_id = $1::int
            AND bp.is_deleted = false
          ORDER BY br.created_at DESC

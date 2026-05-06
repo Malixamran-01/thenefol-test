@@ -144,6 +144,21 @@ export default function BlogDetail() {
     fetchComments()
   }, [post, commentSort])
 
+  // Deep-link scroll when URL contains #comment-<id> (e.g. from profile activity)
+  useEffect(() => {
+    if (!post || comments.length === 0) return
+    const hash = window.location.hash || ''
+    const m = hash.match(/#comment-([^/?#]+)/)
+    if (!m) return
+    const commentId = m[1]
+    const el = document.getElementById(`comment-${commentId}`)
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+    }
+  }, [post, comments])
+
   // Record a "read" once the user has spent at least as long as the post's
   // estimated read time (word count ÷ 200 wpm). Minimum 30 s, max 10 min.
   useEffect(() => {
