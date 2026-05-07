@@ -743,6 +743,124 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     }
     const userIdOfAuthor = String(authorRows[0].user_id)
 
+    // ── Incoming: likes / comments / reposts on this author's posts (notifications-style) ──
+    const { rows: receivedLikes } = await pool.query(
+      `SELECT
+        'received_like' AS activity_type,
+        bp.id::text AS post_id,
+        bp.title AS post_title,
+        bp.excerpt AS post_excerpt,
+        bp.cover_image,
+        bp.author_name AS post_author_name,
+        bp.author_email AS post_author_email,
+        ap.id AS post_author_id,
+        bpl.created_at AS activity_date,
+        bpl.user_id AS actor_user_id,
+        actor_ap.id AS actor_author_profile_id,
+        COALESCE(
+          NULLIF(TRIM(actor_ap.display_name), ''),
+          NULLIF(TRIM(actor_ap.pen_name), ''),
+          NULLIF(TRIM(u.name), ''),
+          'Someone'
+        ) AS actor_name,
+        COALESCE(actor_ap.profile_image, u.profile_photo) AS actor_avatar
+       FROM blog_post_likes bpl
+       JOIN blog_posts bp ON bpl.post_id = bp.id
+       LEFT JOIN author_profiles ap ON ap.user_id::text = bp.user_id::text AND ap.status != 'deleted'
+       LEFT JOIN users u ON u.id = bpl.user_id
+       LEFT JOIN author_profiles actor_ap ON actor_ap.user_id = bpl.user_id AND actor_ap.status != 'deleted'
+       WHERE bp.status = 'approved'
+         AND bp.is_active = true
+         AND bp.is_deleted = false
+         AND (bp.author_id::text = $1 OR bp.user_id::text = $1)
+         AND bpl.user_id IS NOT NULL
+         AND bpl.user_id::text != $1
+       ORDER BY bpl.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userIdOfAuthor, limit, offset]
+    )
+
+    const { rows: receivedComments } = await pool.query(
+      `SELECT
+        'received_comment' AS activity_type,
+        bp.id::text AS post_id,
+        bp.title AS post_title,
+        bp.excerpt AS post_excerpt,
+        bp.cover_image,
+        bp.author_name AS post_author_name,
+        bp.author_email AS post_author_email,
+        ap.id AS post_author_id,
+        bc.id::text AS comment_id,
+        bc.content AS comment_content,
+        bc.created_at AS activity_date,
+        bc.user_id AS actor_user_id,
+        actor_ap.id AS actor_author_profile_id,
+        COALESCE(
+          NULLIF(TRIM(actor_ap.display_name), ''),
+          NULLIF(TRIM(actor_ap.pen_name), ''),
+          NULLIF(TRIM(u.name), ''),
+          NULLIF(TRIM(bc.author_name), ''),
+          'Someone'
+        ) AS actor_name,
+        COALESCE(actor_ap.profile_image, u.profile_photo) AS actor_avatar
+       FROM blog_comments bc
+       JOIN blog_posts bp ON bc.post_id = bp.id
+       LEFT JOIN author_profiles ap ON ap.user_id::text = bp.user_id::text AND ap.status != 'deleted'
+       LEFT JOIN users u ON u.id = bc.user_id
+       LEFT JOIN author_profiles actor_ap ON actor_ap.user_id = bc.user_id AND actor_ap.status != 'deleted'
+       WHERE bc.is_deleted = false
+         AND bp.status = 'approved'
+         AND bp.is_active = true
+         AND bp.is_deleted = false
+         AND (bp.author_id::text = $1 OR bp.user_id::text = $1)
+         AND (bc.user_id IS NULL OR bc.user_id::text != $1)
+       ORDER BY bc.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userIdOfAuthor, limit, offset]
+    )
+
+    let receivedReposts: any[] = []
+    try {
+      const { rows } = await pool.query(
+        `SELECT
+          'received_repost' AS activity_type,
+          bp.id::text AS post_id,
+          bp.title AS post_title,
+          bp.excerpt AS post_excerpt,
+          bp.cover_image,
+          bp.author_name AS post_author_name,
+          bp.author_email AS post_author_email,
+          ap.id AS post_author_id,
+          bpr.created_at AS activity_date,
+          bpr.user_id AS actor_user_id,
+          actor_ap.id AS actor_author_profile_id,
+          COALESCE(
+            NULLIF(TRIM(actor_ap.display_name), ''),
+            NULLIF(TRIM(actor_ap.pen_name), ''),
+            NULLIF(TRIM(u.name), ''),
+            'Someone'
+          ) AS actor_name,
+          COALESCE(actor_ap.profile_image, u.profile_photo) AS actor_avatar
+         FROM blog_post_reposts bpr
+         JOIN blog_posts bp ON bpr.post_id::text = bp.id::text
+         LEFT JOIN author_profiles ap ON ap.user_id::text = bp.user_id::text AND ap.status != 'deleted'
+         LEFT JOIN users u ON u.id = bpr.user_id
+         LEFT JOIN author_profiles actor_ap ON actor_ap.user_id = bpr.user_id AND actor_ap.status != 'deleted'
+         WHERE bp.is_deleted = false
+           AND bp.status = 'approved'
+           AND bp.is_active = true
+           AND (bp.author_id::text = $1 OR bp.user_id::text = $1)
+           AND bpr.user_id IS NOT NULL
+           AND bpr.user_id::text != $1
+         ORDER BY bpr.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [userIdOfAuthor, limit, offset]
+      )
+      receivedReposts = rows
+    } catch (err) {
+      console.error('[activity] Error fetching received reposts:', err)
+    }
+
     // Get author's liked posts
     const { rows: likedPosts } = await pool.query(
       `SELECT 
@@ -886,6 +1004,9 @@ router.get('/authors/:authorId/activity', async (req, res) => {
 
     // Combine all activities and sort by date
     const allActivities = [
+      ...receivedLikes,
+      ...receivedComments,
+      ...receivedReposts,
       ...likedPosts,
       ...commentedPosts,
       ...publishedPosts,
@@ -893,7 +1014,7 @@ router.get('/authors/:authorId/activity', async (req, res) => {
     ].sort((a, b) => new Date(b.activity_date).getTime() - new Date(a.activity_date).getTime())
       .slice(0, limit)
 
-    console.log(`[activity] total combined activities: ${allActivities.length} (liked=${likedPosts.length} commented=${commentedPosts.length} published=${publishedPosts.length} reposted=${repostedPosts.length})`)
+    console.log(`[activity] total combined activities: ${allActivities.length} (received_like=${receivedLikes.length} received_comment=${receivedComments.length} received_repost=${receivedReposts.length} liked=${likedPosts.length} commented=${commentedPosts.length} published=${publishedPosts.length} reposted=${repostedPosts.length})`)
     res.json(allActivities)
   } catch (error) {
     console.error('Error fetching author activity:', error)

@@ -1238,7 +1238,7 @@ export default function AuthorProfile() {
                 <div className="rounded-xl bg-gray-50 p-8 text-center">
                   <Activity className="mx-auto mb-3 h-10 w-10 text-gray-300" />
                   <p className="text-sm font-medium text-gray-500">No activity yet</p>
-                  <p className="mt-1 text-xs text-gray-400">Posts, likes, and reposts from this author will appear here.</p>
+                  <p className="mt-1 text-xs text-gray-400">Notifications on your posts, reposts, and your own activity appear here.</p>
                 </div>
               ) : (
                 activities.map((item: any, idx: number) => {
@@ -1248,6 +1248,12 @@ export default function AuthorProfile() {
                   const isRepostedPost = item.activity_type === 'reposted_post'
                   const isRepostedComment = item.activity_type === 'reposted_comment'
                   const isReposted = isRepostedPost || isRepostedComment
+
+                  const isReceivedLike = item.activity_type === 'received_like'
+                  const isReceivedComment = item.activity_type === 'received_comment'
+                  const isReceivedRepost = item.activity_type === 'received_repost'
+                  const isIncoming = isReceivedLike || isReceivedComment || isReceivedRepost
+
                   const cover = item.cover_image
                     ? (item.cover_image.startsWith('/uploads/') ? `${getApiBase()}${item.cover_image}` : item.cover_image)
                     : null
@@ -1264,11 +1270,11 @@ export default function AuthorProfile() {
                     ? { text: item.repost_note ? 'reposted with note' : 'reposted', icon: <Repeat2 className="h-3.5 w-3.5" /> }
                     : { text: 'activity', icon: <Activity className="h-3.5 w-3.5" /> }
 
-                  const commentDeepLink =
+                  const postOnlyLink = `#/user/blog/${item.post_id}`
+                  const recommentDeepLink =
                     isRepostedComment && item.comment_id != null
                       ? `#/user/blog/${item.post_id}#comment-${item.comment_id}`
                       : null
-                  const postOnlyLink = `#/user/blog/${item.post_id}`
 
                   const commentProfileSlug =
                     item.comment_author_profile_id != null
@@ -1277,96 +1283,205 @@ export default function AuthorProfile() {
                         ? String(item.comment_author_user_id)
                         : null
                   const commentProfileHref = commentProfileSlug ? `#/user/author/${commentProfileSlug}` : null
-                  return (
-                    <div key={`${item.activity_type}-${item.post_id}-${item.comment_id ?? ''}-${idx}`} className="border-b border-gray-200 py-4 last:border-0">
-                      {/* Minimal action label row */}
-                      <div className="mb-2.5 flex items-center gap-1.5 text-[12px] text-gray-400">
-                        <span className={isReposted ? 'text-green-500' : 'text-gray-400'}>{actionLabel.icon}</span>
-                        <span className={`font-medium ${isReposted ? 'text-green-600' : 'text-gray-500'}`}>{actionLabel.text}</span>
-                      </div>
 
-                      {/* Repost note (if any) */}
-                      {isReposted && item.repost_note && (
-                        <p className="mb-2.5 rounded-xl bg-green-50 border border-green-100 px-3 py-2 text-[13px] text-gray-700 leading-relaxed italic">
-                          "{item.repost_note}"
+                  const actorSlug =
+                    item.actor_author_profile_id != null
+                      ? String(item.actor_author_profile_id)
+                      : item.actor_user_id != null
+                        ? String(item.actor_user_id)
+                        : null
+                  const actorProfileHrefIn = actorSlug ? `#/user/author/${actorSlug}` : null
+                  const actorAvatarUrl = item.actor_avatar ? resolveImage(item.actor_avatar) : ''
+                  const actorInitial = (item.actor_name || '?').charAt(0).toUpperCase()
+
+                  const profileOwnerHref = isOwnProfile ? '#/user/author/me' : `#/user/author/${effectiveAuthorId}`
+                  const ownerInitial = (resolvedAuthor.name || '?').charAt(0).toUpperCase()
+
+                  const activityKey = `${item.activity_type}-${item.post_id}-${item.comment_id ?? ''}-${idx}-${item.activity_date ?? ''}`
+
+                  const postPreview = (
+                    <a
+                      href={postOnlyLink}
+                      className="mt-2 flex items-start gap-3 rounded-xl p-2 -mx-2 transition-colors hover:bg-[#f4f9fc]"
+                    >
+                      {cover ? (
+                        <img
+                          src={cover}
+                          alt=""
+                          className="h-16 w-16 flex-shrink-0 rounded-lg object-cover sm:h-[72px] sm:w-[72px]"
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-[#edf4f9] sm:h-[72px] sm:w-[72px]">
+                          <BookOpen className="h-5 w-5 text-[#4B97C9]/40" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 leading-snug">
+                          {item.post_title}
+                        </h3>
+                        {isIncoming || isRepostedComment ? null : isCommented && item.comment_content ? (
+                          <p className="mt-1 line-clamp-1 text-xs text-gray-500 italic">&quot;{item.comment_content}&quot;</p>
+                        ) : !isRepostedComment && item.post_excerpt ? (
+                          <p className="mt-1 line-clamp-1 text-xs text-gray-400">{item.post_excerpt}</p>
+                        ) : null}
+                        <p className="mt-1.5 text-[11px] text-gray-400">
+                          {new Date(item.activity_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
-                      )}
+                      </div>
+                    </a>
+                  )
 
-                      {/* Comment quote card for comment reposts */}
-                      {isRepostedComment && item.comment_content && commentDeepLink && (
-                        <div className="mb-2.5 flex flex-col gap-1 rounded-xl border border-[#e6f0f8] bg-[#f4f9fc] p-3 -mx-0">
-                          <div className="mb-0.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[#4B97C9] uppercase tracking-wide">
-                            <MessageCircle className="h-3 w-3 shrink-0" />
-                            <span>Comment by</span>
-                            {commentProfileHref ? (
-                              <a
-                                href={commentProfileHref}
-                                className="font-semibold text-[#1B4965] underline-offset-2 hover:underline normal-case tracking-normal"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {item.comment_author_name || 'Anonymous'}
-                              </a>
-                            ) : (
-                              <span className="font-semibold text-[#1B4965] normal-case tracking-normal">
-                                {item.comment_author_name || 'Anonymous'}
-                              </span>
-                            )}
-                          </div>
-                          <a
-                            href={commentDeepLink}
-                            className="-mx-1 rounded-lg px-1 py-0.5 text-[13px] text-gray-700 leading-relaxed transition-colors hover:bg-[#e8f2f9] hover:text-gray-900"
-                            style={{
-                              display: '-webkit-box',
-                              WebkitBoxOrient: 'vertical',
-                              WebkitLineClamp: 3,
-                              overflow: 'hidden',
-                            } as React.CSSProperties}
-                          >
-                            {item.comment_content}
-                          </a>
-                          <p className="mt-1 text-[11px] text-gray-400">
-                            from:{' '}
+                  if (isIncoming) {
+                    const inboundCommentHref =
+                      isReceivedComment && item.comment_id != null ? `${postOnlyLink}#comment-${item.comment_id}` : postOnlyLink
+                    return (
+                      <div key={activityKey} className="border-b border-gray-200 py-4 last:border-0">
+                        <div className="flex gap-3">
+                          {actorProfileHrefIn ? (
                             <a
-                              href={postOnlyLink}
-                              className="font-medium text-[#4B97C9] underline-offset-2 hover:underline"
-                              onClick={(e) => e.stopPropagation()}
+                              href={actorProfileHrefIn}
+                              className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
                             >
-                              {item.post_title}
+                              {actorAvatarUrl ? (
+                                <img
+                                  src={actorAvatarUrl}
+                                  alt=""
+                                  className="h-11 w-11 rounded-full object-cover border border-gray-100 bg-white"
+                                />
+                              ) : (
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-sm font-bold text-white">
+                                  {actorInitial}
+                                </div>
+                              )}
                             </a>
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Post card */}
-                      <a
-                        href={`#/user/blog/${item.post_id}`}
-                        className="flex items-start gap-3 rounded-xl p-2 -mx-2 transition-colors hover:bg-[#f4f9fc]"
-                      >
-                        {cover ? (
-                          <img
-                            src={cover}
-                            alt=""
-                            className="h-16 w-16 flex-shrink-0 rounded-lg object-cover sm:h-[72px] sm:w-[72px]"
-                          />
-                        ) : (
-                          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-[#edf4f9] sm:h-[72px] sm:w-[72px]">
-                            <BookOpen className="h-5 w-5 text-[#4B97C9]/40" />
+                          ) : (
+                            <div className="shrink-0">
+                              {actorAvatarUrl ? (
+                                <img
+                                  src={actorAvatarUrl}
+                                  alt=""
+                                  className="h-11 w-11 rounded-full object-cover border border-gray-100 bg-white"
+                                />
+                              ) : (
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-600">
+                                  {actorInitial}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] leading-snug text-gray-800">
+                              {actorProfileHrefIn ? (
+                                <a href={actorProfileHrefIn} className="font-semibold text-[#1B4965] hover:underline">
+                                  {item.actor_name || 'Someone'}
+                                </a>
+                              ) : (
+                                <span className="font-semibold text-gray-900">{item.actor_name || 'Someone'}</span>
+                              )}
+                              <span className="font-normal text-gray-500">
+                                {isReceivedLike && ' liked your post'}
+                                {isReceivedComment && ' commented on your post'}
+                                {isReceivedRepost && ' reposted your post'}
+                              </span>
+                            </p>
+                            {isReceivedComment && item.comment_content && (
+                              <a
+                                href={inboundCommentHref}
+                                className="mt-2 block rounded-lg border border-[#e6f0f8] bg-[#f4f9fc] px-3 py-2 text-[13px] text-gray-700 leading-relaxed transition-colors hover:bg-[#e8f2f9]"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitBoxOrient: 'vertical',
+                                  WebkitLineClamp: 4,
+                                  overflow: 'hidden',
+                                } as React.CSSProperties}
+                              >
+                                {item.comment_content}
+                              </a>
+                            )}
+                            {postPreview}
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 leading-snug">
-                            {item.post_title}
-                          </h3>
-                          {isCommented && item.comment_content ? (
-                            <p className="mt-1 line-clamp-1 text-xs text-gray-500 italic">"{item.comment_content}"</p>
-                          ) : !isRepostedComment && item.post_excerpt ? (
-                            <p className="mt-1 line-clamp-1 text-xs text-gray-400">{item.post_excerpt}</p>
-                          ) : null}
-                          <p className="mt-1.5 text-[11px] text-gray-400">
-                            {new Date(item.activity_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </p>
                         </div>
-                      </a>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={activityKey} className="border-b border-gray-200 py-4 last:border-0">
+                      <div className="flex gap-3">
+                        <a
+                          href={profileOwnerHref}
+                          className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
+                          title="View profile"
+                        >
+                          {profileImage ? (
+                            <img
+                              src={profileImage}
+                              alt=""
+                              className="h-11 w-11 rounded-full object-cover border border-gray-100 bg-white"
+                            />
+                          ) : (
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-sm font-bold text-white">
+                              {ownerInitial}
+                            </div>
+                          )}
+                        </a>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2.5 flex items-center gap-1.5 text-[12px] text-gray-400">
+                            <span className={isReposted ? 'text-green-500' : 'text-gray-400'}>{actionLabel.icon}</span>
+                            <span className={`font-medium ${isReposted ? 'text-green-600' : 'text-gray-500'}`}>{actionLabel.text}</span>
+                          </div>
+
+                          {isReposted && item.repost_note && (
+                            <p className="mb-2.5 rounded-xl bg-green-50 border border-green-100 px-3 py-2 text-[13px] text-gray-700 leading-relaxed italic">
+                              &quot;{item.repost_note}&quot;
+                            </p>
+                          )}
+
+                          {isRepostedComment && item.comment_content && recommentDeepLink && (
+                            <div className="mb-2.5 flex flex-col gap-1 rounded-xl border border-[#e6f0f8] bg-[#f4f9fc] p-3 -mx-0">
+                              <div className="mb-0.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[#4B97C9] uppercase tracking-wide">
+                                <MessageCircle className="h-3 w-3 shrink-0" />
+                                <span>Comment by</span>
+                                {commentProfileHref ? (
+                                  <a
+                                    href={commentProfileHref}
+                                    className="font-semibold text-[#1B4965] underline-offset-2 hover:underline normal-case tracking-normal"
+                                  >
+                                    {item.comment_author_name || 'Anonymous'}
+                                  </a>
+                                ) : (
+                                  <span className="font-semibold text-[#1B4965] normal-case tracking-normal">
+                                    {item.comment_author_name || 'Anonymous'}
+                                  </span>
+                                )}
+                              </div>
+                              <a
+                                href={recommentDeepLink}
+                                className="-mx-1 rounded-lg px-1 py-0.5 text-[13px] text-gray-700 leading-relaxed transition-colors hover:bg-[#e8f2f9] hover:text-gray-900"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitBoxOrient: 'vertical',
+                                  WebkitLineClamp: 3,
+                                  overflow: 'hidden',
+                                } as React.CSSProperties}
+                              >
+                                {item.comment_content}
+                              </a>
+                              <p className="mt-1 text-[11px] text-gray-400">
+                                from:{' '}
+                                <a
+                                  href={postOnlyLink}
+                                  className="font-medium text-[#4B97C9] underline-offset-2 hover:underline"
+                                >
+                                  {item.post_title}
+                                </a>
+                              </p>
+                            </div>
+                          )}
+
+                          {postPreview}
+                        </div>
+                      </div>
                     </div>
                   )
                 })
