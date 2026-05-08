@@ -1095,3 +1095,44 @@ export async function sendInvoicePDFEmail(
   }
 }
 
+export async function sendStaffAdminInvitationEmail({
+  to,
+  inviteUrl,
+  expiresInHours,
+}: {
+  to: string
+  inviteUrl: string
+  expiresInHours: number
+}): Promise<void> {
+  try {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8" /></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <p>You've been invited to join the NEFOL admin panel as a staff member.</p>
+        <p style="margin: 24px 0;">
+          <a href="${inviteUrl}" style="
+            display:inline-block;padding:12px 24px;
+            background:#1a1a1a;color:#fff;
+            border-radius:6px;text-decoration:none;font-weight:600
+          ">Accept invitation</a>
+        </p>
+        <p>This link expires in <strong>${expiresInHours} hours</strong>.</p>
+        <p style="color:#666;font-size:14px;">If you weren't expecting this, you can ignore this email.</p>
+      </body>
+      </html>
+    `
+    await transporter.sendMail({
+      from: `"NEFOL" <${getAdminEmail()}>`,
+      to,
+      subject: "You're invited to the NEFOL admin panel",
+      html,
+    })
+    console.log(`✅ Staff invitation email sent to: ${to}`)
+  } catch (error) {
+    console.error('❌ Error sending staff invitation email:', error)
+    throw error
+  }
+}
+

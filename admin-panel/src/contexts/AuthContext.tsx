@@ -1,16 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
-import authService from '../services/auth'
+import authService, { type User } from '../services/auth'
 
 export type Role = 'admin' | 'manager' | 'viewer'
-
-interface User {
-  id: number
-  email: string
-  name: string
-  role: string
-  permissions: string[]
-  pagePermissions?: string[]
-}
 
 type AuthContextValue = {
   isAuthenticated: boolean

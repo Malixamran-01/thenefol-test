@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function LoginPage() {
@@ -10,6 +10,9 @@ export default function LoginPage() {
   
   const { login, isAuthenticated, isLoading: authLoading } = useAuth()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const invitedOk = searchParams.get('invited') === '1'
+  const noPagesReason = searchParams.get('reason') === 'no_pages'
 
   // Redirect if already authenticated
   if (isAuthenticated) {
@@ -52,6 +55,16 @@ export default function LoginPage() {
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             Sign in to your admin account
           </p>
+          {invitedOk && (
+            <p className="mt-3 text-center text-sm text-emerald-600 dark:text-emerald-400">
+              Your account is ready. Sign in with the password you just created.
+            </p>
+          )}
+          {noPagesReason && (
+            <p className="mt-3 text-center text-sm text-amber-700 dark:text-amber-400">
+              You do not have access to any admin pages. Ask a super admin to assign page permissions or roles.
+            </p>
+          )}
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

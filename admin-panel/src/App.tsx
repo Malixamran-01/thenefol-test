@@ -21,6 +21,7 @@ import UserDetail from './pages/users/UserDetail'
 import Shipments from './pages/sales/Shipments'
 import OrderDetails from './pages/sales/OrderDetails'
 import LoginPage from './pages/Login'
+import AcceptInvite from './pages/AcceptInvite'
 import CMSManagement from './pages/cms/CMSManagement'
 import BlogRequestManagement from './pages/blog/BlogRequestManagement'
 import AuthorManagement from './pages/authors/AuthorManagement'
@@ -173,8 +174,9 @@ export default function App() {
     <AuthProvider>
       <ToastProvider>
       <Routes>
-        {/* Authentication */}
+        {/* Authentication & onboarding */}
         <Route path="/admin/login" element={<LoginPage />} />
+        <Route path="/admin/accept-invite" element={<AcceptInvite />} />
         
         {/* Protected Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute />}>
@@ -278,7 +280,14 @@ export default function App() {
             {/* ========== SYSTEM & SETTINGS ========== */}
             <Route path="settings" element={<Settings />} />
             <Route path="system/alerts" element={<Can role="admin"><AlertSettings /></Can>} />
-            <Route path="system/staff" element={<Can role="admin"><Staff /></Can>} />
+            <Route
+              path="system/staff"
+              element={
+                <Can anyOf={['staff:read', 'staff:invite', 'staff:manage', 'staff:delete']}>
+                  <Staff />
+                </Can>
+              }
+            />
             <Route path="system/admin-management" element={<Can role="admin"><AdminManagement /></Can>} />
             <Route path="system/roles" element={<Can role="admin"><RolesPermissions /></Can>} />
             <Route path="system/audit-logs" element={<Can role="admin"><AuditLogs /></Can>} />

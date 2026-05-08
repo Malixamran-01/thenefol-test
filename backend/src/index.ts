@@ -28,6 +28,8 @@ import * as metaPageAccessRoutes from './routes/metaPageAccess'
 import * as metaUnifiedConfigRoutes from './routes/metaUnifiedConfig'
 import * as bulkRoutes from './routes/bulk'
 import * as staffRoutes from './routes/staff'
+import * as staffInvitationRoutes from './routes/staffInvitations'
+import { seedSuperAdmin } from './seeds/seedSuperAdmin'
 import * as warehouseRoutes from './routes/warehouses'
 import * as returnRoutes from './routes/returns'
 import * as supplierRoutes from './routes/suppliers'
@@ -454,6 +456,9 @@ try {
   console.log('[DB] pool configured')
 }
 const staffAuthMiddleware = staffRoutes.createStaffAuthMiddleware(pool)
+const staffAuth = staffAuthMiddleware as any
+const staffPermLocal = (code: string) => staffRoutes.requireStaffPermission(code) as any
+const staffSuperLocal = staffRoutes.requireSuperAdmin() as any
 
 // Register POST webhook route after pool is defined (must use raw body, not express.json())
 // This route must be registered before other routes to ensure raw body middleware is used
@@ -1333,41 +1338,95 @@ app.post('/api/returns', authenticateAndAttach as any, requirePermission(['retur
 app.put('/api/returns/:id/status', authenticateAndAttach as any, requirePermission(['returns:update']), (req, res) => returnRoutes.updateReturnStatus(pool, req, res))
 app.post('/api/returns/:id/label', authenticateAndAttach as any, requirePermission(['returns:update']), (req, res) => returnRoutes.generateReturnLabel(pool, req, res))
 
-app.post('/api/staff/roles', (req, res) => staffRoutes.createRole(pool, req, res))
-app.get('/api/staff/roles', (req, res) => staffRoutes.listRoles(pool, req, res))
-app.post('/api/staff/permissions', (req, res) => staffRoutes.createPermission(pool, req, res))
-app.post('/api/staff/role-permissions', (req, res) => staffRoutes.assignPermissionToRole(pool, req, res))
-app.post('/api/staff/users', (req, res) => staffRoutes.createStaff(pool, req, res))
-app.post('/api/staff/user-roles', (req, res) => staffRoutes.assignRoleToStaff(pool, req, res))
-app.get('/api/staff/users', (req, res) => staffRoutes.listStaff(pool, req, res))
-app.get('/api/staff/permissions', (req, res) => staffRoutes.listPermissions(pool, req, res))
-app.get('/api/staff/role-permissions', (req, res) => staffRoutes.getRolePermissions(pool, req, res))
-app.post('/api/staff/role-permissions/set', (req, res) => staffRoutes.setRolePermissions(pool, req, res))
-app.get('/api/staff/activity', (req, res) => staffRoutes.listStaffActivity(pool, req, res))
+// Public staff routes
 app.post('/api/staff/auth/login', (req, res) => staffRoutes.staffLogin(pool, req, res))
-app.post('/api/staff/auth/logout', staffAuthMiddleware as any, (req, res) => staffRoutes.staffLogout(pool, req, res))
-app.get('/api/staff/auth/me', staffAuthMiddleware as any, (req, res) => staffRoutes.staffMe(pool, req, res))
-app.post('/api/staff/auth/change-password', staffAuthMiddleware as any, (req, res) => staffRoutes.staffChangePassword(pool, req, res))
-app.post('/api/staff/users/reset-password', (req, res) => staffRoutes.resetPassword(pool, req, res))
-app.post('/api/staff/users/disable', (req, res) => staffRoutes.disableStaff(pool, req, res))
-app.post('/api/staff/seed-standard', (req, res) => staffRoutes.seedStandardRolesAndPermissions(pool, req, res))
-app.get('/api/staff/permission-catalog', staffAuthMiddleware as any, (req, res) =>
+app.post('/api/staff/accept', (req, res) => staffInvitationRoutes.acceptInvitation(pool, req, res))
+
+// Invitations API (register before /api/staff/:staffId/…)
+app.post('/api/staff/invite', staffAuth, staffPermLocal('staff:invite'), (req, res) =>
+  staffInvitationRoutes.inviteStaff(pool, req, res)
+)
+app.get('/api/staff/invitations', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffInvitationRoutes.listInvitations(pool, req, res)
+)
+app.delete('/api/staff/invitations/:id', staffAuth, staffPermLocal('staff:delete'), (req, res) =>
+  staffInvitationRoutes.revokeInvitation(pool, req, res)
+)
+
+app.post('/api/staff/roles', staffAuth, staffPermLocal('permissions:manage'), (req, res) =>
+  staffRoutes.createRole(pool, req, res)
+)
+app.get('/api/staff/roles', staffAuth, staffPermLocal('staff:read'), (req, res) => staffRoutes.listRoles(pool, req, res))
+app.post('/api/staff/permissions', staffAuth, staffPermLocal('permissions:manage'), (req, res) =>
+  staffRoutes.createPermission(pool, req, res)
+)
+app.post('/api/staff/role-permissions', staffAuth, staffPermLocal('permissions:manage'), (req, res) =>
+  staffRoutes.assignPermissionToRole(pool, req, res)
+)
+app.post('/api/staff/users', staffAuth, staffSuperLocal, (req, res) => staffRoutes.createStaff(pool, req, res))
+app.post('/api/staff/user-roles', staffAuth, staffPermLocal('staff:manage'), (req, res) =>
+  staffRoutes.assignRoleToStaff(pool, req, res)
+)
+app.get('/api/staff/users', staffAuth, staffPermLocal('staff:read'), (req, res) => staffRoutes.listStaff(pool, req, res))
+app.get('/api/staff/permissions', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffRoutes.listPermissions(pool, req, res)
+)
+app.get('/api/staff/role-permissions', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffRoutes.getRolePermissions(pool, req, res)
+)
+app.post('/api/staff/role-permissions/set', staffAuth, staffPermLocal('permissions:manage'), (req, res) =>
+  staffRoutes.setRolePermissions(pool, req, res)
+)
+app.get('/api/staff/activity', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffRoutes.listStaffActivity(pool, req, res)
+)
+app.post('/api/staff/auth/logout', staffAuth, (req, res) => staffRoutes.staffLogout(pool, req, res))
+app.get('/api/staff/auth/me', staffAuth, (req, res) => staffRoutes.staffMe(pool, req, res))
+app.post('/api/staff/auth/change-password', staffAuth, (req, res) =>
+  staffRoutes.staffChangePassword(pool, req, res)
+)
+app.post('/api/staff/users/reset-password', staffAuth, staffPermLocal('staff:manage'), (req, res) =>
+  staffRoutes.resetPassword(pool, req, res)
+)
+app.post('/api/staff/users/disable', staffAuth, staffPermLocal('staff:delete'), (req, res) =>
+  staffRoutes.disableStaff(pool, req, res)
+)
+app.post('/api/staff/seed-standard', staffAuth, staffSuperLocal, (req, res) =>
+  staffRoutes.seedStandardRolesAndPermissions(pool, req, res)
+)
+app.get('/api/staff/permission-catalog', staffAuth, staffPermLocal('staff:read'), (req, res) =>
   staffRoutes.getPermissionCatalog(pool, req, res)
 )
-app.post('/api/staff/permissions/sync', staffAuthMiddleware as any, (req, res) =>
+app.post('/api/staff/permissions/sync', staffAuth, staffPermLocal('permissions:manage'), (req, res) =>
   staffRoutes.syncRbacCatalogPermissions(pool, req, res)
 )
-app.post('/api/staff/roles/apply-template', staffAuthMiddleware as any, (req, res) =>
+app.post('/api/staff/roles/apply-template', staffAuth, staffPermLocal('permissions:manage'), (req, res) =>
   staffRoutes.applyRoleTemplate(pool, req, res)
 )
-app.post('/api/staff/users/bulk-create', (req, res) => staffRoutes.bulkCreateStaff(pool, req, res))
-app.get('/api/staff/layout-pages', (req, res) => staffRoutes.listLayoutPages(pool, req, res))
-app.post('/api/staff/layout-permissions', (req, res) => staffRoutes.assignLayoutPermissions(pool, req, res))
-app.get('/api/staff/:staffId/layout-permissions', (req, res) => staffRoutes.getStaffLayoutPermissions(pool, req, res))
-app.get('/api/staff/users/with-layouts', (req, res) => staffRoutes.listStaffWithLayoutPermissions(pool, req, res))
-app.get('/api/staff/admin-pages', (req, res) => staffRoutes.listAdminPanelPages(pool, req, res))
-app.post('/api/staff/page-permissions', (req, res) => staffRoutes.assignPagePermissions(pool, req, res))
-app.get('/api/staff/:staffId/page-permissions', (req, res) => staffRoutes.getStaffPagePermissions(pool, req, res))
+app.post('/api/staff/users/bulk-create', staffAuth, staffSuperLocal, (req, res) =>
+  staffRoutes.bulkCreateStaff(pool, req, res)
+)
+app.get('/api/staff/layout-pages', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffRoutes.listLayoutPages(pool, req, res)
+)
+app.post('/api/staff/layout-permissions', staffAuth, staffPermLocal('staff:manage'), (req, res) =>
+  staffRoutes.assignLayoutPermissions(pool, req, res)
+)
+app.get('/api/staff/:staffId/layout-permissions', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffRoutes.getStaffLayoutPermissions(pool, req, res)
+)
+app.get('/api/staff/users/with-layouts', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffRoutes.listStaffWithLayoutPermissions(pool, req, res)
+)
+app.get('/api/staff/admin-pages', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffRoutes.listAdminPanelPages(pool, req, res)
+)
+app.post('/api/staff/page-permissions', staffAuth, staffPermLocal('staff:manage'), (req, res) =>
+  staffRoutes.assignPagePermissions(pool, req, res)
+)
+app.get('/api/staff/:staffId/page-permissions', staffAuth, staffPermLocal('staff:read'), (req, res) =>
+  staffRoutes.getStaffPagePermissions(pool, req, res)
+)
 
 // ==================== WAREHOUSES ====================
 app.post('/api/warehouses', (req, res) => warehouseRoutes.createWarehouse(pool, req, res))
@@ -5491,6 +5550,7 @@ if (fs.existsSync(indexPath)) {
 const port = Number(process.env.PORT || 2000)
 ensureSchema(pool)
   .then(async () => {
+    await seedSuperAdmin(pool)
     await initCMSTables(pool)
     console.log('✅ CMS tables ready')
     await ensureBlogAuxTables(pool)

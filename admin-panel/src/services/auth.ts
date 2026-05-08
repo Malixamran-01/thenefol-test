@@ -34,14 +34,16 @@ const getApiBaseUrl = () => {
 // Get API base URL at runtime, not build time
 const getApiBaseUrlRuntime = () => getApiBaseUrl()
 
-interface User {
+export interface User {
   id: number
   email: string
   name: string
   role: string
   roles: string[]
   permissions: string[]
-  pagePermissions?: string[]
+  /** null = unrestricted UI pages; [] = no pages; list = allowlist */
+  pagePermissions?: string[] | null
+  isSuperAdmin?: boolean
 }
 
 interface LoginCredentials {
@@ -89,11 +91,19 @@ class AuthService {
       : typeof raw.roles === 'string'
         ? raw.roles.split(',').map((r: string) => r.trim()).filter(Boolean)
         : []
-    const pagePermissions = Array.isArray(raw.pagePermissions)
-      ? raw.pagePermissions
-      : typeof raw.pagePermissions === 'string'
-        ? raw.pagePermissions.split(',').map((p: string) => p.trim()).filter(Boolean)
-        : []
+    const pagePermissions =
+      raw.pagePermissions === null
+        ? null
+        : Array.isArray(raw.pagePermissions)
+          ? raw.pagePermissions
+          : typeof raw.pagePermissions === 'string'
+            ? raw.pagePermissions.split(',').map((p: string) => p.trim()).filter(Boolean)
+            : undefined
+
+    // Undefined/absent pagePermissions (legacy) → treat as unrestricted
+    const resolvedPagePerms = pagePermissions === undefined ? null : pagePermissions
+
+    const isSuperAdmin = !!raw.isSuperAdmin
     // Always resolve primaryRole by priority — never trust raw.role blindly
     // (backend may send 'Blog Mod' if it's first in the DB join; admin must always win)
     const primaryRole = resolvePrimaryRole(rolesArray, raw.role || rolesArray[0] || '')
@@ -104,7 +114,8 @@ class AuthService {
       role: primaryRole,
       roles: rolesArray,
       permissions,
-      pagePermissions
+      isSuperAdmin,
+      pagePermissions: resolvedPagePerms
     }
   }
 
@@ -175,13 +186,18 @@ class AuthService {
     
     const perms1 = user1.permissions ? [...user1.permissions].sort() : []
     const perms2 = user2.permissions ? [...user2.permissions].sort() : []
-    
+
+    const pp1 = user1.pagePermissions === undefined ? null : user1.pagePermissions
+    const pp2 = user2.pagePermissions === undefined ? null : user2.pagePermissions
+
     return (
       user1.id === user2.id &&
       user1.email === user2.email &&
       user1.role === user2.role &&
       user1.name === user2.name &&
-      JSON.stringify(perms1) === JSON.stringify(perms2)
+      !!user1.isSuperAdmin === !!user2.isSuperAdmin &&
+      JSON.stringify(perms1) === JSON.stringify(perms2) &&
+      JSON.stringify(pp1) === JSON.stringify(pp2)
     )
   }
 
@@ -200,19 +216,20 @@ class AuthService {
     return { ...this.authState }
   }
 
-  // Check if user has access to a specific page — admin always has full access
+  // Check if user has access to a specific page
   hasPageAccess(pagePath: string): boolean {
     const user = this.authState.user
     if (!user) return false
 
-    // Admin role overrides all page restrictions
+    if (user.isSuperAdmin) return true
     if (user.role === 'admin') return true
     if (Array.isArray(user.roles) && user.roles.includes('admin')) return true
 
-    const pagePermissions = user.pagePermissions || []
-    // If no pagePermissions assigned, grant full access (default open)
-    if (pagePermissions.length === 0) return true
-    return pagePermissions.includes(pagePath)
+    const perms = user.pagePermissions
+    if (perms === null || perms === undefined) return true
+    if (perms.length === 0) return false
+
+    return perms.some((p: string) => pagePath === p || pagePath.startsWith(`${p}/`))
   }
 
   // Login user
@@ -370,11 +387,11 @@ class AuthService {
     return this.authState.user
   }
 
-  // Check if user has permission — admin role always bypasses all permission checks
+  // Check if user has permission — admin / super admin bypass
   hasPermission(permission: string): boolean {
     const user = this.authState.user
     if (!user) return false
-    // Admin overrides regardless of which field carries it
+    if (user.isSuperAdmin) return true
     if (user.role === 'admin') return true
     if (Array.isArray(user.roles) && user.roles.includes('admin')) return true
     const permissions: string[] = Array.isArray(user.permissions)

@@ -6,31 +6,30 @@ interface PageAccessGuardProps {
 }
 
 /**
- * Component to protect routes based on page permissions
- * If user has pagePermissions assigned, only allow access to those pages
- * If no pagePermissions, allow all pages (super admin)
+ * Route-level access: unrestricted (null / undefined pagePermissions), allowlisted paths,
+ * or explicit empty list (no pages — signed-in users are redirected away).
  */
 export default function PageAccessGuard({ children }: PageAccessGuardProps) {
   const { user, hasPageAccess } = useAuth()
   const location = useLocation()
 
-  // If no user, let ProtectedRoute handle it
   if (!user) {
     return <>{children}</>
   }
 
-  // If user has pagePermissions assigned, check access
-  const hasPagePerms = user.pagePermissions && user.pagePermissions.length > 0
-  
-  if (hasPagePerms) {
-    // Limited admin - check if they have access to this page
-    if (!hasPageAccess(location.pathname)) {
-      // Redirect to dashboard if they don't have access
-      return <Navigate to="/admin/dashboard" replace />
-    }
+  if (user.isSuperAdmin || user.role === 'admin' || (user.roles?.includes('admin') ?? false)) {
+    return <>{children}</>
   }
-  
-  // Super admin or has access - allow
+
+  const pp = user.pagePermissions
+  if (pp !== null && pp !== undefined && pp.length === 0) {
+    return <Navigate to="/admin/login?reason=no_pages" replace />
+  }
+
+  if (pp !== null && pp !== undefined && pp.length > 0 && !hasPageAccess(location.pathname)) {
+    return <Navigate to="/admin/dashboard" replace />
+  }
+
   return <>{children}</>
 }
 

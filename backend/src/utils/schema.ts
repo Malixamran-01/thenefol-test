@@ -2904,7 +2904,33 @@ export async function ensureSchema(pool: Pool) {
       updated_at timestamptz DEFAULT now()
     );
   `)
-  
+
+  await pool.query(`
+    ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS invited_by INTEGER REFERENCES staff_users(id);
+    ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS invitation_accepted_at TIMESTAMPTZ;
+    DO $$
+    BEGIN
+      ALTER TABLE staff_users ALTER COLUMN password DROP NOT NULL;
+    EXCEPTION
+      WHEN others THEN NULL;
+    END $$;
+
+    CREATE TABLE IF NOT EXISTS staff_invitations (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      invited_by INTEGER NOT NULL REFERENCES staff_users(id) ON DELETE CASCADE,
+      role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      accepted_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(email)
+    );
+    CREATE INDEX IF NOT EXISTS idx_staff_invitations_token ON staff_invitations(token);
+    CREATE INDEX IF NOT EXISTS idx_staff_invitations_email ON staff_invitations(email);
+  `)
+
   console.log('✅ Phase 3 & 4 tables created successfully')
   console.log('✅ Recently Viewed Products, Recommendations, and Subscriptions tables created')
   console.log('✅ Order Cancellations and Refunds tables created')

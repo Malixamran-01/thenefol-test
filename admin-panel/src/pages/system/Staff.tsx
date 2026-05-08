@@ -1,86 +1,182 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Can from '../../components/Can'
+import { useToast } from '../../components/ToastProvider'
 import { getApiBaseUrl } from '../../utils/apiUrl'
 
-type StaffUser = { id: number; name: string; email: string; roles: any[] }
+type StaffRow = {
+  id: number
+  name: string
+  email: string
+  password?: string | null
+  invitation_accepted_at?: string | null
+  is_super_admin?: boolean
+  roles?: { name?: string }[]
+}
+
+type InvitationRow = {
+  id: number
+  email: string
+  expires_at: string
+  accepted_at: string | null
+  invited_by_name?: string | null
+  pre_assigned_role?: string | null
+}
 
 export default function Staff() {
-  // Use centralized API URL utility that respects VITE_API_URL
   const apiBase = getApiBaseUrl()
-  const [users, setUsers] = useState<StaffUser[]>([])
-  const [roles, setRoles] = useState<any[]>([])
+  const { notify } = useToast()
+  const [users, setUsers] = useState<StaffRow[]>([])
+  const [invitations, setInvitations] = useState<InvitationRow[]>([])
+  const [roles, setRoles] = useState<{ id: number; name: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRoleId, setInviteRoleId] = useState<number | ''>('')
+  const [inviting, setInviting] = useState(false)
   const [newPassword, setNewPassword] = useState('')
-  const authHeaders = useMemo(() => ({ 'Content-Type': 'application/json', 'x-user-role': 'admin', 'x-user-permissions': 'users:update' }), [])
 
-  const load = async () => {
+  const authHeaders = useMemo(() => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    } as Record<string, string>
+  }, [])
+
+  const load = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
-      const [uRes, rRes] = await Promise.all([
-        fetch(`${apiBase}/staff/users`),
-        fetch(`${apiBase}/staff/roles`),
+      const [uRes, rRes, iRes] = await Promise.all([
+        fetch(`${apiBase}/staff/users`, { headers: authHeaders }),
+        fetch(`${apiBase}/staff/roles`, { headers: authHeaders }),
+        fetch(`${apiBase}/staff/invitations`, { headers: authHeaders }),
       ])
       const uData = await uRes.json()
       const rData = await rRes.json()
-      setUsers(uData?.data || uData || [])
-      setRoles(rData?.data || rData || [])
+      const iData = await iRes.json()
+      if (!uRes.ok) throw new Error(uData?.error || 'Failed to load staff')
+      if (!rRes.ok) throw new Error(rData?.error || 'Failed to load roles')
+      if (!iRes.ok) throw new Error(iData?.error || 'Failed to load invitations')
+      setUsers(Array.isArray(uData) ? uData : uData?.data || [])
+      setRoles(Array.isArray(rData) ? rData : rData?.data || [])
+      const inv = Array.isArray(iData) ? iData : iData?.data || []
+      setInvitations(inv)
     } catch (e: any) {
       setError(e?.message || 'Failed to load staff')
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiBase, authHeaders])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [load])
 
-  const createUser = async () => {
-    if (!form.name || !form.email || !form.password) return alert('Fill all fields')
+  const pendingInvites = useMemo(
+    () => invitations.filter((i) => !i.accepted_at && new Date(i.expires_at).getTime() > Date.now()),
+    [invitations]
+  )
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return
+    setInviting(true)
     try {
-      const res = await fetch(`${apiBase}/staff/users`, { method: 'POST', headers: authHeaders, body: JSON.stringify(form) })
-      if (!res.ok) throw new Error('Failed to create user')
-      setForm({ name: '', email: '', password: '' })
+      const body: { email: string; roleId?: number } = { email: inviteEmail.trim() }
+      if (inviteRoleId !== '') body.roleId = Number(inviteRoleId)
+      const res = await fetch(`${apiBase}/staff/invite`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to send invitation')
+      notify('success', data?.message || `Invitation sent to ${inviteEmail.trim()}`)
+      setInviteEmail('')
+      setInviteRoleId('')
       await load()
     } catch (e: any) {
-      alert(e?.message || 'Failed')
+      notify('error', e?.message || 'Failed to send invitation')
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  const revokeInvite = async (id: number) => {
+    if (!confirm('Revoke this invitation?')) return
+    try {
+      const res = await fetch(`${apiBase}/staff/invitations/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to revoke')
+      notify('success', 'Invitation revoked')
+      await load()
+    } catch (e: any) {
+      notify('error', e?.message || 'Failed')
     }
   }
 
   const assignRole = async (staffId: number, roleId: number) => {
     try {
-      const res = await fetch(`${apiBase}/staff/user-roles`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId, roleId }) })
-      if (!res.ok) throw new Error('Failed to assign role')
+      const res = await fetch(`${apiBase}/staff/user-roles`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ staffId, roleId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to assign role')
       await load()
     } catch (e: any) {
-      alert(e?.message || 'Failed')
+      notify('error', e?.message || 'Failed')
     }
   }
 
   const resetPassword = async (staffId: number) => {
-    if (!newPassword) return alert('Enter new password')
+    if (!newPassword) return notify('error', 'Enter new password first')
     try {
-      const res = await fetch(`${apiBase}/staff/users/reset-password`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId, newPassword }) })
-      const data = await res.json()
+      const res = await fetch(`${apiBase}/staff/users/reset-password`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ staffId, newPassword }),
+      })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || 'Failed to reset password')
       setNewPassword('')
-      alert('Password reset')
+      notify('success', 'Password reset')
     } catch (e: any) {
-      alert(e?.message || 'Failed')
+      notify('error', e?.message || 'Failed')
     }
   }
 
   const disableUser = async (staffId: number) => {
     if (!confirm('Disable this account?')) return
     try {
-      const res = await fetch(`${apiBase}/staff/users/disable`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ staffId }) })
-      const data = await res.json()
+      const res = await fetch(`${apiBase}/staff/users/disable`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ staffId }),
+      })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || 'Failed to disable')
       await load()
     } catch (e: any) {
-      alert(e?.message || 'Failed')
+      notify('error', e?.message || 'Failed')
     }
+  }
+
+  const statusBadge = (u: StaffRow) => {
+    if (u.is_super_admin) {
+      return <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-white">Super admin</span>
+    }
+    if (!u.password) {
+      return <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-900">Pending setup</span>
+    }
+    if (!u.invitation_accepted_at) {
+      return <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-900">Legacy</span>
+    }
+    return <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-900">Active</span>
   }
 
   return (
@@ -97,65 +193,157 @@ export default function Staff() {
       `}</style>
       <div className="admin-page-header">
         <div>
-          <h1 
-            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]" 
+          <h1
+            className="text-2xl sm:text-3xl font-light mb-2 tracking-[0.15em]"
             style={{
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading-family, "Cormorant Garamond", serif)',
-              letterSpacing: '0.15em'
+              letterSpacing: '0.15em',
             }}
           >
             Staff Accounts
           </h1>
           <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
-            Manage staff members and their access
+            Invite staff by email; they choose their own password from the link.
           </p>
         </div>
       </div>
+
       <div className="metric-card">
+        <h2 className="text-sm font-medium mb-3 uppercase tracking-wide text-gray-500">Invite staff</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input className="input" placeholder="Name" value={form.name} onChange={e=>setForm({ ...form, name: e.target.value })} />
-          <input className="input" placeholder="Email" value={form.email} onChange={e=>setForm({ ...form, email: e.target.value })} />
-          <input className="input" placeholder="Password" type="password" value={form.password} onChange={e=>setForm({ ...form, password: e.target.value })} />
-          <Can role="admin"><button onClick={createUser} className="btn-primary">Create Staff</button></Can>
+          <input
+            className="input"
+            type="email"
+            placeholder="Email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+          />
+          <select
+            className="input"
+            value={inviteRoleId}
+            onChange={(e) => setInviteRoleId(e.target.value === '' ? '' : Number(e.target.value))}
+          >
+            <option value="">Role (optional)</option>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <Can permission="staff:invite">
+            <button type="button" onClick={handleInvite} disabled={inviting} className="btn-primary">
+              {inviting ? 'Sending…' : 'Send invitation'}
+            </button>
+          </Can>
         </div>
       </div>
-      <div className="metric-card">
-        <div className="mb-3 flex items-center gap-2">
-          <input className="input" placeholder="New password (for reset)" value={newPassword} onChange={e=>setNewPassword(e.target.value)} />
-          <span className="text-xs text-gray-500">Enter before clicking Reset</span>
+
+      {pendingInvites.length > 0 && (
+        <div className="metric-card">
+          <h2 className="text-sm font-medium mb-3 uppercase tracking-wide text-gray-500">Pending invitations</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="py-2 pr-4 text-left">Email</th>
+                  <th className="py-2 pr-4 text-left">Expires</th>
+                  <th className="py-2 pr-4 text-left">Invited by</th>
+                  <th className="py-2 pr-4 text-left">Role</th>
+                  <th className="py-2 pr-4 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingInvites.map((i) => (
+                  <tr key={i.id} className="border-b">
+                    <td className="py-2 pr-4">{i.email}</td>
+                    <td className="py-2 pr-4">{new Date(i.expires_at).toLocaleString()}</td>
+                    <td className="py-2 pr-4">{i.invited_by_name || '—'}</td>
+                    <td className="py-2 pr-4">{i.pre_assigned_role || '—'}</td>
+                    <td className="py-2 pr-4">
+                      <Can permission="staff:delete">
+                        <button type="button" onClick={() => revokeInvite(i.id)} className="btn-secondary text-xs">
+                          Revoke
+                        </button>
+                      </Can>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-        {loading ? 'Loading...' : error ? <div className="text-red-600">{error}</div> : (
+      )}
+
+      <div className="metric-card">
+        <div className="mb-3 flex items-center gap-2 flex-wrap">
+          <input
+            className="input"
+            placeholder="New password (for reset)"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <span className="text-xs text-gray-500">Enter before clicking Reset on a user</span>
+        </div>
+        {loading ? (
+          'Loading…'
+        ) : error ? (
+          <div className="text-red-600">{error}</div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b text-xs uppercase text-gray-500">
                 <tr>
                   <th className="py-2 pr-4">Name</th>
                   <th className="py-2 pr-4">Email</th>
+                  <th className="py-2 pr-4">Status</th>
                   <th className="py-2 pr-4">Roles</th>
-                  <th className="py-2 pr-4">Assign Role</th>
+                  <th className="py-2 pr-4">Assign role</th>
                   <th className="py-2 pr-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => (
+                {users.map((u) => (
                   <tr key={u.id} className="border-b">
                     <td className="py-2 pr-4 font-medium">{u.name}</td>
                     <td className="py-2 pr-4">{u.email}</td>
-                    <td className="py-2 pr-4">{(u.roles||[]).map((r: any)=>r.name).join(', ') || '-'}</td>
+                    <td className="py-2 pr-4">{statusBadge(u)}</td>
+                    <td className="py-2 pr-4">
+                      {(u.roles || []).map((r: { name?: string }) => r.name).join(', ') || '—'}
+                    </td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-2 flex-wrap">
-                        {roles.map((r:any)=>(
-                          <Can key={r.id} role="admin">
-                            <button onClick={()=>assignRole(u.id, r.id)} className="btn-secondary text-xs">{r.name}</button>
-                          </Can>
-                        ))}
+                        {!u.is_super_admin &&
+                          roles.map((r) => (
+                            <Can key={r.id} permission="staff:manage">
+                              <button type="button" onClick={() => assignRole(u.id, r.id)} className="btn-secondary text-xs">
+                                {r.name}
+                              </button>
+                            </Can>
+                          ))}
                       </div>
                     </td>
                     <td className="py-2 pr-4">
                       <div className="flex gap-2 flex-wrap">
-                        <Can role="admin"><button onClick={()=>resetPassword(u.id)} className="btn-secondary text-xs">Reset Password</button></Can>
-                        <Can role="admin"><button onClick={()=>disableUser(u.id)} className="bg-red-600 text-white px-2 py-1 text-xs rounded">Disable</button></Can>
+                        {!u.is_super_admin && (
+                          <>
+                            <Can permission="staff:manage">
+                              <button type="button" onClick={() => resetPassword(u.id)} className="btn-secondary text-xs">
+                                Reset password
+                              </button>
+                            </Can>
+                            <Can permission="staff:delete">
+                              <button
+                                type="button"
+                                onClick={() => disableUser(u.id)}
+                                className="bg-red-600 text-white px-2 py-1 text-xs rounded"
+                              >
+                                Disable
+                              </button>
+                            </Can>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -168,5 +356,3 @@ export default function Staff() {
     </div>
   )
 }
-
-

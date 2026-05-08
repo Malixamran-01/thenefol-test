@@ -25,6 +25,12 @@ export const BUSINESS_PERMISSION_CODES = [
   'pos:update',
   'discounts:read',
   'notifications:read',
+  /** Staff / RBAC administration */
+  'staff:invite',
+  'staff:manage',
+  'staff:read',
+  'staff:delete',
+  'permissions:manage',
 ] as const
 
 /**

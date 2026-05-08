@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import crypto from 'crypto'
+import { hashPassword, verifyPassword } from '../utils/staffPassword'
 import {
   ALL_RBAC_SEED_CODES,
   BUSINESS_PERMISSION_CODES,
@@ -11,25 +12,7 @@ import {
   ROLE_TEMPLATES,
 } from '../config/rbacCatalog'
 
-function hashPassword(plain: string): string {
-  const salt = crypto.randomBytes(16).toString('hex')
-  const hash = crypto.scryptSync(plain, salt, 64).toString('hex')
-  return `${salt}:${hash}`
-}
-
-function verifyPassword(stored: string, plain: string): boolean {
-  try {
-    if (!stored?.includes(':')) return false
-    const [salt, originalHash] = stored.split(':')
-    const hashed = crypto.scryptSync(plain, salt, 64).toString('hex')
-    const originalBuffer = Buffer.from(originalHash, 'hex')
-    const hashedBuffer = Buffer.from(hashed, 'hex')
-    if (originalBuffer.length !== hashedBuffer.length) return false
-    return crypto.timingSafeEqual(originalBuffer, hashedBuffer)
-  } catch {
-    return false
-  }
-}
+export { hashPassword, verifyPassword }
 
 function toStringArray(value: any): string[] {
   if (Array.isArray(value)) {
@@ -50,6 +33,28 @@ function toStringArray(value: any): string[] {
 
 const SESSION_TTL_HOURS = Number(process.env.STAFF_SESSION_TTL_HOURS || 12)
 
+/** Admin UI paths that imply access to `/api/staff/*` management endpoints (not session-only routes). */
+const TEAM_SECTION_PAGE_PREFIXES = [
+  '/admin/system/staff',
+  '/admin/system/roles',
+  '/admin/system/admin-management',
+  '/admin/account-security',
+]
+
+const STAFF_AUTH_SESSION_PATHS = new Set([
+  '/api/staff/auth/me',
+  '/api/staff/auth/logout',
+  '/api/staff/auth/change-password',
+])
+
+function canAccessStaffManagementApis(pagePermissions: string[] | null): boolean {
+  if (pagePermissions === null) return true
+  if (pagePermissions.length === 0) return false
+  return pagePermissions.some((p) =>
+    TEAM_SECTION_PAGE_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))
+  )
+}
+
 type StaffAggregatedRow = {
   id: number
   name: string
@@ -69,8 +74,19 @@ export type StaffContext = {
   roles: string[]
   permissions: string[]
   primaryRole: string
+  isSuperAdmin: boolean
   layoutPermissions: string[]
-  pagePermissions: string[]
+  /** null = no row-level restriction (all admin pages OK); [] = explicitly no pages; non-empty = allowlist */
+  pagePermissions: string[] | null
+}
+
+async function resolveStaffPagePermissions(pool: Pool, staffId: number): Promise<string[] | null> {
+  const { rows } = await pool.query(
+    `SELECT page_path, can_access FROM staff_page_permissions WHERE staff_id = $1`,
+    [staffId]
+  )
+  if (rows.length === 0) return null
+  return rows.filter((r: { can_access: boolean }) => r.can_access).map((r: { page_path: string }) => r.page_path)
 }
 
 async function fetchStaffWithAccess(pool: Pool, field: 'email' | 'id', value: string | number): Promise<StaffAggregatedRow | null> {
@@ -105,9 +121,14 @@ function resolvePrimaryRole(roles: string[]): string {
   return roles[0]
 }
 
-function toStaffResponse(row: StaffAggregatedRow, pagePermissions?: string[]) {
+function toStaffResponse(
+  row: StaffAggregatedRow,
+  pagePermissions: string[] | null,
+  isSuperAdmin?: boolean
+) {
   const roles = toStringArray(row.roles) || []
   const permissions = toStringArray(row.permissions) || []
+  const sa = isSuperAdmin ?? !!(row as { is_super_admin?: boolean }).is_super_admin
   return {
     id: row.id,
     name: row.name,
@@ -115,7 +136,8 @@ function toStaffResponse(row: StaffAggregatedRow, pagePermissions?: string[]) {
     role: resolvePrimaryRole(roles),
     roles,
     permissions,
-    pagePermissions: pagePermissions || []
+    isSuperAdmin: sa,
+    pagePermissions,
   }
 }
 
@@ -131,10 +153,10 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
         su.name,
         su.email,
         su.is_active,
+        coalesce(su.is_super_admin, false) as is_super_admin,
         coalesce(json_agg(distinct r.name) filter (where r.id is not null), '[]'::json) as roles,
         coalesce(json_agg(distinct p.code) filter (where p.id is not null), '[]'::json) as permissions,
-        coalesce(json_agg(distinct slp.layout_page_slug) filter (where slp.id is not null), '[]'::json) as layout_permissions,
-        coalesce(json_agg(distinct spp.page_path) filter (where spp.id is not null and spp.can_access = true), '[]'::json) as page_permissions
+        coalesce(json_agg(distinct slp.layout_page_slug) filter (where slp.id is not null), '[]'::json) as layout_permissions
       from staff_sessions ss
       inner join staff_users su on su.id = ss.staff_id
       left join staff_roles sr on sr.staff_id = su.id
@@ -142,7 +164,6 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
       left join role_permissions rp on rp.role_id = r.id
       left join permissions p on p.id = rp.permission_id
       left join staff_layout_permissions slp on slp.staff_id = su.id
-      left join staff_page_permissions spp on spp.staff_id = su.id
       where ss.token = $1
       group by ss.id, su.id
     `,
@@ -158,7 +179,8 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
   const roles = toStringArray(row.roles)
   const permissions = toStringArray(row.permissions)
   const layoutPermissions = toStringArray(row.layout_permissions)
-  const pagePermissions = toStringArray(row.page_permissions)
+  const pagePermissions = await resolveStaffPagePermissions(pool, row.staff_id)
+  const isSuperAdmin = !!row.is_super_admin
 
   return {
     staffId: row.staff_id,
@@ -169,8 +191,9 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
     roles,
     permissions,
     primaryRole: resolvePrimaryRole(roles),
+    isSuperAdmin,
     layoutPermissions,
-    pagePermissions
+    pagePermissions,
   }
 }
 
@@ -185,6 +208,15 @@ export function createStaffAuthMiddleware(pool: Pool) {
       if (!context) {
         return sendError(res, 401, 'Invalid or expired admin session')
       }
+
+      const path = req.path || ''
+      if (!context.isSuperAdmin && path.startsWith('/api/staff')) {
+        const skipPageGate = STAFF_AUTH_SESSION_PATHS.has(path)
+        if (!skipPageGate && !canAccessStaffManagementApis(context.pagePermissions)) {
+          return sendError(res, 403, 'Page access denied')
+        }
+      }
+
       ;(req as any).staffId = context.staffId
       ;(req as any).staffSessionId = context.sessionId
       ;(req as any).staffSessionToken = context.token
@@ -201,6 +233,26 @@ export function createStaffAuthMiddleware(pool: Pool) {
   }
 }
 
+export function requireStaffPermission(permission: string) {
+  return (req: Request, res: Response, next: Function) => {
+    const ctx = (req as any).staffContext as StaffContext | undefined
+    if (!ctx) return sendError(res, 401, 'Unauthorized')
+    if (ctx.isSuperAdmin) return next()
+    if (!ctx.permissions.includes(permission)) {
+      return sendError(res, 403, `Missing permission: ${permission}`)
+    }
+    next()
+  }
+}
+
+export function requireSuperAdmin() {
+  return (req: Request, res: Response, next: Function) => {
+    const ctx = (req as any).staffContext as StaffContext | undefined
+    if (!ctx?.isSuperAdmin) return sendError(res, 403, 'Super admin access required')
+    next()
+  }
+}
+
 export async function staffLogin(pool: Pool, req: Request, res: Response) {
   try {
     const { email, password } = req.body || {}
@@ -210,6 +262,10 @@ export async function staffLogin(pool: Pool, req: Request, res: Response) {
     const staff = await fetchStaffWithAccess(pool, 'email', String(email))
     if (!staff || !staff.is_active) {
       return sendError(res, 401, 'Invalid credentials')
+    }
+
+    if (!staff.password) {
+      return sendError(res, 401, 'Complete your account setup using the invitation link emailed to you')
     }
 
     const passwordOk = verifyPassword(staff.password, String(password))
@@ -243,16 +299,12 @@ export async function staffLogin(pool: Pool, req: Request, res: Response) {
 
     await logStaff(pool, staff.id, 'login', { ipAddress })
 
-    // Get page permissions for this staff
-    const pagePermsResult = await pool.query(
-      `select page_path from staff_page_permissions where staff_id = $1 and can_access = true`,
-      [staff.id]
-    )
-    const pagePermissions = pagePermsResult.rows.map(r => r.page_path)
+    const pagePermissions = await resolveStaffPagePermissions(pool, staff.id)
+    const isSuperAdmin = !!(staff as { is_super_admin?: boolean }).is_super_admin
 
     sendSuccess(res, {
       token: sessionToken,
-      user: toStaffResponse(staff, pagePermissions)
+      user: toStaffResponse(staff, pagePermissions, isSuperAdmin),
     })
   } catch (err) {
     console.error('Failed to login staff:', err)
@@ -340,11 +392,22 @@ export async function createStaff(pool: Pool, req: Request, res: Response) {
   }
 }
 
+async function loadStaffFlags(pool: Pool, staffId: number): Promise<{ is_super_admin: boolean } | null> {
+  const { rows } = await pool.query(`SELECT coalesce(is_super_admin, false) AS is_super_admin FROM staff_users WHERE id = $1`, [
+    staffId,
+  ])
+  return rows[0] || null
+}
+
 export async function assignRoleToStaff(pool: Pool, req: Request, res: Response) {
   try {
     const { staffId, roleId } = req.body || {}
     const validationError = validateRequired({ staffId, roleId }, ['staffId', 'roleId'])
     if (validationError) return sendError(res, 400, validationError)
+    const flags = await loadStaffFlags(pool, Number(staffId))
+    if (flags?.is_super_admin) {
+      return sendError(res, 403, 'Super admin roles cannot be changed')
+    }
     await pool.query(
       `insert into staff_roles (staff_id, role_id) values ($1, $2) on conflict do nothing`,
       [staffId, roleId]
@@ -459,13 +522,9 @@ export async function staffMe(pool: Pool, req: Request, res: Response) {
     if (!staff) {
       return sendError(res, 404, 'Staff account not found')
     }
-    // Get page permissions for this staff
-    const pagePermsResult = await pool.query(
-      `select page_path from staff_page_permissions where staff_id = $1 and can_access = true`,
-      [staffId]
-    )
-    const pagePermissions = pagePermsResult.rows.map(r => r.page_path)
-    sendSuccess(res, { user: toStaffResponse(staff, pagePermissions) })
+    const pagePermissions = await resolveStaffPagePermissions(pool, staffId)
+    const isSuperAdmin = !!(staff as { is_super_admin?: boolean }).is_super_admin
+    sendSuccess(res, { user: toStaffResponse(staff, pagePermissions, isSuperAdmin) })
   } catch (err) {
     sendError(res, 500, 'Failed to fetch admin profile', err)
   }
@@ -530,6 +589,10 @@ export async function resetPassword(pool: Pool, req: Request, res: Response) {
     const { staffId, newPassword } = req.body || {}
     const validationError = validateRequired({ staffId, newPassword }, ['staffId', 'newPassword'])
     if (validationError) return sendError(res, 400, validationError)
+    const flags = await loadStaffFlags(pool, Number(staffId))
+    if (flags?.is_super_admin) {
+      return sendError(res, 403, 'Super admin password cannot be reset via this endpoint')
+    }
     const hashed = hashPassword(newPassword)
     const { rows } = await pool.query(`update staff_users set password = $2, updated_at = now() where id = $1 returning id`, [staffId, hashed])
     if (rows.length === 0) return sendError(res, 404, 'Staff not found')
@@ -545,6 +608,10 @@ export async function disableStaff(pool: Pool, req: Request, res: Response) {
     const { staffId } = req.body || {}
     const validationError = validateRequired({ staffId }, ['staffId'])
     if (validationError) return sendError(res, 400, validationError)
+    const flags = await loadStaffFlags(pool, Number(staffId))
+    if (flags?.is_super_admin) {
+      return sendError(res, 403, 'Super admin account cannot be disabled')
+    }
     const { rows } = await pool.query(`update staff_users set is_active = false, updated_at = now() where id = $1 returning id`, [staffId])
     if (rows.length === 0) return sendError(res, 404, 'Staff not found')
     await logStaff(pool, staffId, 'disable_account')
@@ -701,6 +768,11 @@ export async function assignLayoutPermissions(pool: Pool, req: Request, res: Res
     const { staffId, layoutPageSlugs } = req.body || {}
     const validationError = validateRequired({ staffId }, ['staffId'])
     if (validationError) return sendError(res, 400, validationError)
+
+    const flags = await loadStaffFlags(pool, Number(staffId))
+    if (flags?.is_super_admin) {
+      return sendError(res, 403, 'Super admin layout permissions cannot be changed')
+    }
 
     const slugs = Array.isArray(layoutPageSlugs) ? layoutPageSlugs : []
     
@@ -867,6 +939,11 @@ export async function assignPagePermissions(pool: Pool, req: Request, res: Respo
     const { staffId, pagePaths } = req.body || {}
     const validationError = validateRequired({ staffId }, ['staffId'])
     if (validationError) return sendError(res, 400, validationError)
+
+    const flags = await loadStaffFlags(pool, Number(staffId))
+    if (flags?.is_super_admin) {
+      return sendError(res, 403, 'Super admin page permissions cannot be changed')
+    }
 
     const paths = Array.isArray(pagePaths) ? pagePaths : []
     
