@@ -1339,6 +1339,7 @@ app.put('/api/returns/:id/status', authenticateAndAttach as any, requirePermissi
 app.post('/api/returns/:id/label', authenticateAndAttach as any, requirePermission(['returns:update']), (req, res) => returnRoutes.generateReturnLabel(pool, req, res))
 
 // Public staff routes
+app.get('/api/staff/invite/status', (req, res) => staffInvitationRoutes.getInviteStatus(pool, req, res))
 app.post('/api/staff/auth/login', (req, res) => staffRoutes.staffLogin(pool, req, res))
 app.post('/api/staff/accept', (req, res) => staffInvitationRoutes.acceptInvitation(pool, req, res))
 

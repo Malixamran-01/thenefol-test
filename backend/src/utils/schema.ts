@@ -2929,6 +2929,12 @@ export async function ensureSchema(pool: Pool) {
     );
     CREATE INDEX IF NOT EXISTS idx_staff_invitations_token ON staff_invitations(token);
     CREATE INDEX IF NOT EXISTS idx_staff_invitations_email ON staff_invitations(email);
+
+    ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS phone TEXT;
+    ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+    ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS job_title TEXT;
+    ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
+    ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
   `)
 
   console.log('✅ Phase 3 & 4 tables created successfully')

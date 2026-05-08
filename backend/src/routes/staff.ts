@@ -113,8 +113,9 @@ async function fetchStaffWithAccess(pool: Pool, field: 'email' | 'id', value: st
 /** Role priority order — earlier in this list = takes precedence as primaryRole */
 const ROLE_PRIORITY = ['admin', 'manager', 'staff', 'viewer']
 
-function resolvePrimaryRole(roles: string[]): string {
-  if (!roles.length) return 'admin'
+function resolvePrimaryRole(roles: string[], isSuperAdmin: boolean): string {
+  if (isSuperAdmin) return 'admin'
+  if (!roles.length) return 'pending'
   for (const r of ROLE_PRIORITY) {
     if (roles.includes(r)) return r
   }
@@ -133,7 +134,7 @@ function toStaffResponse(
     id: row.id,
     name: row.name,
     email: row.email,
-    role: resolvePrimaryRole(roles),
+    role: resolvePrimaryRole(roles, sa),
     roles,
     permissions,
     isSuperAdmin: sa,
@@ -182,6 +183,10 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
   const pagePermissions = await resolveStaffPagePermissions(pool, row.staff_id)
   const isSuperAdmin = !!row.is_super_admin
 
+  if (!isSuperAdmin && roles.length === 0) {
+    return null
+  }
+
   return {
     staffId: row.staff_id,
     sessionId: row.session_id,
@@ -190,7 +195,7 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
     email: row.email,
     roles,
     permissions,
-    primaryRole: resolvePrimaryRole(roles),
+    primaryRole: resolvePrimaryRole(roles, isSuperAdmin),
     isSuperAdmin,
     layoutPermissions,
     pagePermissions,
@@ -278,6 +283,16 @@ export async function staffLogin(pool: Pool, req: Request, res: Response) {
       return sendError(res, 401, 'Invalid credentials')
     }
 
+    const rolesArr = toStringArray(staff.roles)
+    const isSuperAdmin = !!(staff as { is_super_admin?: boolean }).is_super_admin
+    if (!isSuperAdmin && rolesArr.length === 0) {
+      return sendError(
+        res,
+        403,
+        'Your account is not ready yet. An administrator must assign your roles before you can sign in.'
+      )
+    }
+
     const sessionToken = `staff_${crypto.randomBytes(48).toString('hex')}`
     const expiresAt = new Date(Date.now() + SESSION_TTL_HOURS * 60 * 60 * 1000)
     const userAgent = req.headers['user-agent'] || null
@@ -300,7 +315,6 @@ export async function staffLogin(pool: Pool, req: Request, res: Response) {
     await logStaff(pool, staff.id, 'login', { ipAddress })
 
     const pagePermissions = await resolveStaffPagePermissions(pool, staff.id)
-    const isSuperAdmin = !!(staff as { is_super_admin?: boolean }).is_super_admin
 
     sendSuccess(res, {
       token: sessionToken,

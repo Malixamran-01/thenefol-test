@@ -21,7 +21,7 @@ import UserDetail from './pages/users/UserDetail'
 import Shipments from './pages/sales/Shipments'
 import OrderDetails from './pages/sales/OrderDetails'
 import LoginPage from './pages/Login'
-import AcceptInvite from './pages/AcceptInvite'
+import StaffOnboarding from './pages/StaffOnboarding'
 import CMSManagement from './pages/cms/CMSManagement'
 import BlogRequestManagement from './pages/blog/BlogRequestManagement'
 import AuthorManagement from './pages/authors/AuthorManagement'
@@ -176,7 +176,8 @@ export default function App() {
       <Routes>
         {/* Authentication & onboarding */}
         <Route path="/admin/login" element={<LoginPage />} />
-        <Route path="/admin/accept-invite" element={<AcceptInvite />} />
+        <Route path="/admin/staff-onboarding" element={<StaffOnboarding />} />
+        <Route path="/admin/accept-invite" element={<StaffOnboarding />} />
         
         {/* Protected Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute />}>

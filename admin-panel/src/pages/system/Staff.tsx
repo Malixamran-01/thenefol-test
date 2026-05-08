@@ -7,6 +7,9 @@ type StaffRow = {
   id: number
   name: string
   email: string
+  phone?: string | null
+  date_of_birth?: string | null
+  job_title?: string | null
   password?: string | null
   invitation_accepted_at?: string | null
   is_super_admin?: boolean
@@ -19,7 +22,6 @@ type InvitationRow = {
   expires_at: string
   accepted_at: string | null
   invited_by_name?: string | null
-  pre_assigned_role?: string | null
 }
 
 export default function Staff() {
@@ -31,7 +33,6 @@ export default function Staff() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRoleId, setInviteRoleId] = useState<number | ''>('')
   const [inviting, setInviting] = useState(false)
   const [newPassword, setNewPassword] = useState('')
 
@@ -82,8 +83,7 @@ export default function Staff() {
     if (!inviteEmail.trim()) return
     setInviting(true)
     try {
-      const body: { email: string; roleId?: number } = { email: inviteEmail.trim() }
-      if (inviteRoleId !== '') body.roleId = Number(inviteRoleId)
+      const body = { email: inviteEmail.trim() }
       const res = await fetch(`${apiBase}/staff/invite`, {
         method: 'POST',
         headers: authHeaders,
@@ -93,7 +93,6 @@ export default function Staff() {
       if (!res.ok) throw new Error(data?.error || 'Failed to send invitation')
       notify('success', data?.message || `Invitation sent to ${inviteEmail.trim()}`)
       setInviteEmail('')
-      setInviteRoleId('')
       await load()
     } catch (e: any) {
       notify('error', e?.message || 'Failed to send invitation')
@@ -167,11 +166,15 @@ export default function Staff() {
   }
 
   const statusBadge = (u: StaffRow) => {
+    const hasRoles = (u.roles || []).length > 0
     if (u.is_super_admin) {
       return <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-white">Super admin</span>
     }
     if (!u.password) {
       return <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-900">Pending setup</span>
+    }
+    if (!hasRoles) {
+      return <span className="text-xs px-2 py-0.5 rounded bg-violet-100 text-violet-900">Awaiting roles</span>
     }
     if (!u.invitation_accepted_at) {
       return <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-900">Legacy</span>
@@ -204,14 +207,14 @@ export default function Staff() {
             Staff Accounts
           </h1>
           <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
-            Invite staff by email; they choose their own password from the link.
+            Send a secure onboarding link by email. New staff complete their profile and agreement, then you assign roles here.
           </p>
         </div>
       </div>
 
       <div className="metric-card">
         <h2 className="text-sm font-medium mb-3 uppercase tracking-wide text-gray-500">Invite staff</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
           <input
             className="input"
             type="email"
@@ -219,21 +222,9 @@ export default function Staff() {
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
           />
-          <select
-            className="input"
-            value={inviteRoleId}
-            onChange={(e) => setInviteRoleId(e.target.value === '' ? '' : Number(e.target.value))}
-          >
-            <option value="">Role (optional)</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
           <Can permission="staff:invite">
             <button type="button" onClick={handleInvite} disabled={inviting} className="btn-primary">
-              {inviting ? 'Sending…' : 'Send invitation'}
+              {inviting ? 'Sending…' : 'Send onboarding link'}
             </button>
           </Can>
         </div>
@@ -249,7 +240,6 @@ export default function Staff() {
                   <th className="py-2 pr-4 text-left">Email</th>
                   <th className="py-2 pr-4 text-left">Expires</th>
                   <th className="py-2 pr-4 text-left">Invited by</th>
-                  <th className="py-2 pr-4 text-left">Role</th>
                   <th className="py-2 pr-4 text-left">Actions</th>
                 </tr>
               </thead>
@@ -259,7 +249,6 @@ export default function Staff() {
                     <td className="py-2 pr-4">{i.email}</td>
                     <td className="py-2 pr-4">{new Date(i.expires_at).toLocaleString()}</td>
                     <td className="py-2 pr-4">{i.invited_by_name || '—'}</td>
-                    <td className="py-2 pr-4">{i.pre_assigned_role || '—'}</td>
                     <td className="py-2 pr-4">
                       <Can permission="staff:delete">
                         <button type="button" onClick={() => revokeInvite(i.id)} className="btn-secondary text-xs">
@@ -297,6 +286,7 @@ export default function Staff() {
                 <tr>
                   <th className="py-2 pr-4">Name</th>
                   <th className="py-2 pr-4">Email</th>
+                  <th className="py-2 pr-4">Phone</th>
                   <th className="py-2 pr-4">Status</th>
                   <th className="py-2 pr-4">Roles</th>
                   <th className="py-2 pr-4">Assign role</th>
@@ -308,6 +298,7 @@ export default function Staff() {
                   <tr key={u.id} className="border-b">
                     <td className="py-2 pr-4 font-medium">{u.name}</td>
                     <td className="py-2 pr-4">{u.email}</td>
+                    <td className="py-2 pr-4">{u.phone || '—'}</td>
                     <td className="py-2 pr-4">{statusBadge(u)}</td>
                     <td className="py-2 pr-4">
                       {(u.roles || []).map((r: { name?: string }) => r.name).join(', ') || '—'}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import authService from '../services/auth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const invitedOk = searchParams.get('invited') === '1'
+  const onboardedOk = searchParams.get('onboarded') === '1'
   const noPagesReason = searchParams.get('reason') === 'no_pages'
 
   // Redirect if already authenticated
@@ -28,7 +30,7 @@ export default function LoginPage() {
     try {
       const success = await login(email, password)
       if (!success) {
-        setError('Invalid email or password')
+        setError(authService.getAuthState().error || 'Invalid email or password')
       }
     } catch (err) {
       setError('Login failed. Please try again.')
@@ -55,7 +57,12 @@ export default function LoginPage() {
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             Sign in to your admin account
           </p>
-          {invitedOk && (
+          {onboardedOk && (
+            <p className="mt-3 text-center text-sm text-emerald-600 dark:text-emerald-400">
+              Account created. Sign in after an administrator assigns your roles — you will not have access until then.
+            </p>
+          )}
+          {invitedOk && !onboardedOk && (
             <p className="mt-3 text-center text-sm text-emerald-600 dark:text-emerald-400">
               Your account is ready. Sign in with the password you just created.
             </p>
