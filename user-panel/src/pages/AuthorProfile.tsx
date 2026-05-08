@@ -25,6 +25,11 @@ import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import CustomSelect from '../components/CustomSelect'
 import { useBlogBack } from '../hooks/useBlogBack'
+import {
+  useAuthorUsernameAvailability,
+  usernameAvailabilityMessage,
+  isUsernameReadyForSubmit,
+} from '../hooks/useAuthorUsernameAvailability'
 import { useDispatch, useSelector } from 'react-redux'
 import { blogActivityAPI, uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
 import { setFollowStatus } from '../store/followSlice'
@@ -183,6 +188,10 @@ function EditAuthorProfileModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const usernameAvailability = useAuthorUsernameAvailability(username, true)
+  const usernameHint = usernameAvailabilityMessage(usernameAvailability)
+  const usernameOk = isUsernameReadyForSubmit(usernameAvailability, username)
+
   const uploadProfilePic = async (file: File) => {
     const url = await uploadAuthorProfileImage(file)
     setProfileImage(url)
@@ -194,6 +203,10 @@ function EditAuthorProfileModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!usernameOk) {
+      setError('Choose an available username before saving.')
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -260,6 +273,15 @@ function EditAuthorProfileModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
             <input type="text" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} className="w-full rounded-lg border border-gray-300 px-3 py-2" required />
+            {usernameHint && (
+              <p
+                className={`mt-1 text-xs font-medium ${
+                  usernameAvailability === 'available' ? 'text-emerald-600' : usernameAvailability === 'checking' ? 'text-gray-500' : 'text-red-600'
+                }`}
+              >
+                {usernameHint}
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Display Name *</label>
@@ -296,7 +318,11 @@ function EditAuthorProfileModal({
 
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-            <button type="submit" disabled={loading} className="flex-1 rounded-lg bg-[#4B97C9] px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={loading || !usernameOk || usernameAvailability === 'checking'}
+              className="flex-1 rounded-lg bg-[#4B97C9] px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50"
+            >
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>

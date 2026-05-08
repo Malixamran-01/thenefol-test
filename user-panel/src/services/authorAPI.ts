@@ -62,6 +62,34 @@ export const authorAPI = {
   },
 
   /**
+   * Live username availability (authenticated). Uses same rules as onboarding step 1.
+   */
+  async checkUsernameAvailability(
+    username: string,
+    signal?: AbortSignal
+  ): Promise<{
+    available: boolean
+    username?: string
+    reason?: 'too_short' | 'too_long' | 'invalid_format' | 'taken'
+    minLength?: number
+    maxLength?: number
+  }> {
+    const q = encodeURIComponent(username.trim())
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/authors/username-availability?username=${q}`,
+      {
+        headers: getAuthHeaders(),
+        signal,
+      }
+    )
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error((err as { message?: string }).message || 'Failed to check username')
+    }
+    return response.json()
+  },
+
+  /**
    * Step 1: Identity (username, display name, profile image, cover image)
    */
   async submitStep1(data: {

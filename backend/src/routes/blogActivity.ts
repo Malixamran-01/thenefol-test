@@ -1478,6 +1478,14 @@ router.post('/authors/create', authenticateToken, async (req, res) => {
     const userEmail = userRows[0]?.email || null
     const uniqueUserId = userRows[0]?.unique_user_id || null
 
+    const { rows: takenRows } = await pool.query(
+      `SELECT id FROM author_profiles WHERE lower(username) = lower($1)`,
+      [username]
+    )
+    if (takenRows.length > 0) {
+      return res.status(409).json({ message: 'Username already taken' })
+    }
+
     // Create author profile
     const { rows } = await pool.query(
       `INSERT INTO author_profiles (
@@ -1522,6 +1530,16 @@ router.patch('/authors/update', authenticateToken, async (req, res) => {
     }
 
     const authorId = authorRows[0].id
+
+    if (updates.username !== undefined && updates.username !== null) {
+      const { rows: clash } = await pool.query(
+        `SELECT id FROM author_profiles WHERE lower(username) = lower($1) AND id <> $2::integer`,
+        [updates.username, authorId]
+      )
+      if (clash.length > 0) {
+        return res.status(409).json({ message: 'Username already taken' })
+      }
+    }
 
     // Build dynamic update query
     const allowedFields = ['username', 'display_name', 'pen_name', 'real_name', 'bio', 'profile_image', 'cover_image', 'website', 'location', 'writing_categories', 'writing_languages', 'social_links', 'email_visible']

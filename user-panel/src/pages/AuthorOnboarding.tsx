@@ -4,6 +4,11 @@ import { authorAPI } from '../services/authorAPI'
 import { uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
+import {
+  useAuthorUsernameAvailability,
+  usernameAvailabilityMessage,
+  isUsernameReadyForSubmit,
+} from '../hooks/useAuthorUsernameAvailability'
 
 interface OnboardingStep {
   number: number
@@ -46,6 +51,10 @@ const AuthorOnboarding = () => {
   const [allowSubscriptions, setAllowSubscriptions] = useState(true)
   const [allowPaidSubscriptions, setAllowPaidSubscriptions] = useState(false)
   const [showProducts, setShowProducts] = useState(false)
+
+  const usernameAvailability = useAuthorUsernameAvailability(username, currentStep === 1)
+  const usernameHint = usernameAvailabilityMessage(usernameAvailability)
+  const usernameOk = isUsernameReadyForSubmit(usernameAvailability, username)
 
   const categories = ['Tech', 'Mental health', 'Diaries', 'Business', 'Poetry', 'Lifestyle', 'Health', 'Travel']
   const languages = ['English', 'Urdu', 'Hindi', 'Arabic', 'Spanish', 'French']
@@ -103,6 +112,10 @@ const AuthorOnboarding = () => {
     e.preventDefault()
     if (!username || !displayName) {
       setError('Username and display name are required')
+      return
+    }
+    if (!usernameOk) {
+      setError('Choose an available username before continuing.')
       return
     }
 
@@ -302,8 +315,24 @@ const AuthorOnboarding = () => {
                   placeholder="@yourusername"
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
                   required
+                  autoComplete="off"
                 />
                 <p className="mt-1 text-xs text-gray-500">This will be your unique URL: @{username || 'yourusername'}</p>
+                {usernameHint && (
+                  <p
+                    className={`mt-1 text-xs font-medium ${
+                      usernameAvailability === 'available'
+                        ? 'text-emerald-600'
+                        : usernameAvailability === 'checking'
+                          ? 'text-gray-500'
+                          : usernameAvailability === 'idle'
+                            ? 'text-gray-500'
+                            : 'text-red-600'
+                    }`}
+                  >
+                    {usernameHint}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -429,7 +458,7 @@ const AuthorOnboarding = () => {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !usernameOk || usernameAvailability === 'checking'}
                 className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? (

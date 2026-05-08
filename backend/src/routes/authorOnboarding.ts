@@ -59,6 +59,50 @@ router.get('/check-eligibility', authenticateToken, async (req, res) => {
 })
 
 /**
+ * Real-time username availability for onboarding / profile edit (excludes current user's row).
+ */
+router.get('/username-availability', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(500).json({ message: 'Database not initialized' })
+    }
+    const userId = req.userId
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' })
+    }
+
+    const raw = String(req.query.username ?? '')
+      .trim()
+      .replace(/^@+/, '')
+      .toLowerCase()
+
+    if (raw.length < 3) {
+      return res.json({ available: false, reason: 'too_short', minLength: 3 })
+    }
+    if (raw.length > 30) {
+      return res.json({ available: false, reason: 'too_long', maxLength: 30 })
+    }
+    if (!/^[a-z0-9_]+$/.test(raw)) {
+      return res.json({ available: false, reason: 'invalid_format' })
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id FROM author_profiles WHERE lower(username) = lower($1) AND user_id <> $2::integer`,
+      [raw, userId]
+    )
+
+    res.json({
+      available: rows.length === 0,
+      username: raw,
+      ...(rows.length > 0 ? { reason: 'taken' as const } : {}),
+    })
+  } catch (error) {
+    console.error('username-availability:', error)
+    res.status(500).json({ message: 'Failed to check username' })
+  }
+})
+
+/**
  * Step 1: Identity (Pen name, username, profile picture)
  */
 router.post('/onboarding/step1', authenticateToken, async (req, res) => {
@@ -78,9 +122,9 @@ router.post('/onboarding/step1', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Username and display name are required' })
     }
 
-    // Check if username is taken
+    // Check if username is taken (case-insensitive; must match availability endpoint)
     const { rows: existingRows } = await pool.query(
-      `SELECT id FROM author_profiles WHERE username = $1 AND user_id != $2`,
+      `SELECT id FROM author_profiles WHERE lower(username) = lower($1) AND user_id != $2`,
       [username, userId]
     )
 
