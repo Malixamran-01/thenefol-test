@@ -27,6 +27,24 @@ function extractUploadUrlsFromHtml(html: string): string[] {
   return [...new Set(out)]
 }
 
+/** Multipart `images` order must match blob <img> order in HTML so the server can rewrite src="/uploads/...". */
+function orderContentImagesForSubmit(editor: HTMLElement | null, images: ContentImageItem[]): ContentImageItem[] {
+  if (!editor || images.length === 0) return images
+  const byId = new Map(images.map((i) => [i.id, i]))
+  const ordered: ContentImageItem[] = []
+  editor.querySelectorAll('img[src^="blob:"]').forEach((el) => {
+    const id = el.getAttribute('data-image-id')
+    if (!id) return
+    const item = byId.get(id)
+    if (item) {
+      ordered.push(item)
+      byId.delete(id)
+    }
+  })
+  byId.forEach((item) => ordered.push(item))
+  return ordered
+}
+
 interface ImageEditorCtx {
   source: string
   editingImageId: string | null
@@ -1319,7 +1337,8 @@ export default function BlogRequestForm() {
       if (formData.coverImage) formDataToSend.append('coverImage', formData.coverImage)
       if (isEditMode && !formData.coverImage && existingCoverUrl) formDataToSend.append('keep_existing_cover', '1')
       if (formData.detailImage) formDataToSend.append('detailImage', formData.detailImage)
-      formData.images.forEach(image => formDataToSend.append('images', image.file))
+      const imagesForSubmit = orderContentImagesForSubmit(editorRef.current, formData.images)
+      imagesForSubmit.forEach((image) => formDataToSend.append('images', image.file))
       if (isEditMode && editPostId != null) {
         formDataToSend.append('existing_image_urls', JSON.stringify(extractUploadUrlsFromHtml(content)))
       }

@@ -351,6 +351,56 @@ export async function cleanupOldDrafts(dbPool: Pool): Promise<{ auto: number; ma
   return { auto: autoCount ?? 0, manual: manualCount ?? 0 }
 }
 
+/**
+ * Persistable blog HTML must not contain blob: URLs (invalid off the author's machine).
+ * Replace each blob src in document order with the matching multipart `images` upload (WebP filenames from multer).
+ * Then fix bare filenames or junk src by resolving basenames against `knownImageUrls` (e.g. merged inline image list).
+ */
+function normalizeBlogPostInlineImages(
+  html: string,
+  newContentImageFiles: Express.Multer.File[],
+  knownImageUrls: string[]
+): string {
+  let out = html || ''
+  if (newContentImageFiles.length > 0) {
+    let i = 0
+    out = out.replace(/src\s*=\s*(["'])blob:[^"']*\1/gi, (_full, quote: string) => {
+      const file = newContentImageFiles[i++]
+      return file ? `src=${quote}/uploads/blog/${file.filename}${quote}` : _full
+    })
+    if (i !== newContentImageFiles.length) {
+      console.warn(
+        `[blog] inline image upload count (${newContentImageFiles.length}) does not match blob src replacements (${i}) — client/server ordering may be out of sync`
+      )
+    }
+  }
+  const basenameToUrl = new Map<string, string>()
+  for (const raw of knownImageUrls) {
+    const s = String(raw || '').trim()
+    if (!s) continue
+    let pathPart = s
+    if (/^https?:\/\//i.test(s)) {
+      try {
+        pathPart = new URL(s).pathname
+      } catch {
+        continue
+      }
+    }
+    const normalized = pathPart.startsWith('/') ? pathPart : `/${pathPart.replace(/^\/+/, '')}`
+    const base = normalized.split('/').pop()
+    if (base) basenameToUrl.set(base.toLowerCase(), normalized)
+  }
+  out = out.replace(/src\s*=\s*(["'])([^"']+)\1/gi, (full, quote: string, src: string) => {
+    if (/^blob:/i.test(src)) return full
+    if (/^https?:\/\//i.test(src)) return full
+    if (src.startsWith('/')) return full
+    const key = src.split('/').pop()?.toLowerCase() || ''
+    const fixed = basenameToUrl.get(key)
+    return fixed ? `src=${quote}${fixed}${quote}` : full
+  })
+  return out
+}
+
 // Submit blog request
 router.post('/request', upload.fields([
   { name: 'coverImage', maxCount: 1 },
@@ -412,6 +462,7 @@ router.post('/request', upload.fields([
       ? `/uploads/blog/${ogImageFile.filename}`
       : (og_image && String(og_image).trim()) || null
     const contentImageUrls = contentImages.map(img => `/uploads/blog/${img.filename}`)
+    const contentForDb = normalizeBlogPostInlineImages(String(content), contentImages, contentImageUrls)
 
     // Use author_id from body, or from token, or null for guest
     const userId = authorId ?? getUserIdFromToken(req)
@@ -465,7 +516,7 @@ router.post('/request', upload.fields([
       RETURNING id, created_at
     `, [
       title,
-      content,
+      contentForDb,
       excerpt,
       author_name,
       authorEmailForDb ?? '',
@@ -1456,13 +1507,14 @@ router.post(
       }
       const newContentUrls = contentImages.map((img) => `/uploads/blog/${img.filename}`)
       const mergedImages = [...existingUrls, ...newContentUrls]
+      const normalizedContent = normalizeBlogPostInlineImages(String(content), contentImages, mergedImages)
 
       const parsedCategories = parseBlogStringArray(categories)
       const parsedKeywords = parseBlogStringArray(meta_keywords)
 
       const revision = {
         title: String(title),
-        content: String(content),
+        content: normalizedContent,
         excerpt: String(excerpt),
         author_name: author_name != null && String(author_name).trim() ? String(author_name) : String(post.author_name || ''),
         cover_image: coverImageUrl,
@@ -2003,6 +2055,7 @@ router.post('/admin/posts/:id/approve-revision', async (req, res) => {
     const cats = revisionArrayToDbJson(r.categories)
     const imagesArr = Array.isArray(r.images) ? (r.images as unknown[]).map(String) : parseBlogImagesJson(r.images)
     const imagesStr = JSON.stringify(imagesArr)
+    const contentToPublish = normalizeBlogPostInlineImages(String(r.content ?? ''), [], imagesArr)
 
     const { rows: updated } = await pool.query(
       `
@@ -2032,7 +2085,7 @@ router.post('/admin/posts/:id/approve-revision', async (req, res) => {
     `,
       [
         String(r.title ?? ''),
-        String(r.content ?? ''),
+        contentToPublish,
         String(r.excerpt ?? ''),
         String(r.author_name ?? row.author_name ?? ''),
         String(r.cover_image ?? row.cover_image ?? ''),
