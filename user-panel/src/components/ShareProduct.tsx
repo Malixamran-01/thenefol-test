@@ -22,7 +22,10 @@ export default function ShareProduct({
   const [showIconOnly, setShowIconOnly] = useState(false)
   const [showInstagramOptions, setShowInstagramOptions] = useState(false)
 
-  const productUrl = `${window.location.origin}/#/user/product/${productSlug}`
+  /** Crawlable URL (backend serves OG HTML at GET /product/:slug); same origin as API in production */
+  const origin = getApiBase().replace(/\/$/, '')
+  const productUrl = `${origin}/product/${encodeURIComponent(productSlug)}`
+  const siteLogoOgUrl = `${origin}/IMAGES/NEFOL%20icon.png`
   const shareText = `Check out ${productTitle} on NEFOL! ${productUrl}`
   
   // Ensure image URL is absolute and accessible
@@ -50,6 +53,7 @@ export default function ShareProduct({
   }
   
   const absoluteImageUrl = getAbsoluteImageUrl(productImage)
+  const ogImageUrl = absoluteImageUrl || siteLogoOgUrl
   
   // Log for debugging
   useEffect(() => {
@@ -82,10 +86,10 @@ export default function ShareProduct({
       ensureMeta('property', 'og:title', productTitle)
       ensureMeta('property', 'og:description', desc)
       ensureMeta('property', 'og:url', productUrl)
+      ensureMeta('property', 'og:image', ogImageUrl)
+      ensureMeta('property', 'og:image:width', '1200')
+      ensureMeta('property', 'og:image:height', '630')
       if (absoluteImageUrl) {
-        ensureMeta('property', 'og:image', absoluteImageUrl)
-        ensureMeta('property', 'og:image:width', '1200')
-        ensureMeta('property', 'og:image:height', '630')
         ensureMeta('property', 'og:image:type', 'image/jpeg')
       }
 
@@ -93,9 +97,7 @@ export default function ShareProduct({
       ensureMeta('name', 'twitter:card', 'summary_large_image')
       ensureMeta('name', 'twitter:title', productTitle)
       ensureMeta('name', 'twitter:description', desc)
-      if (absoluteImageUrl) {
-        ensureMeta('name', 'twitter:image', absoluteImageUrl)
-      }
+      ensureMeta('name', 'twitter:image', ogImageUrl)
       
       // Additional meta tags for better compatibility
       ensureMeta('property', 'og:site_name', 'NEFOL')
@@ -104,7 +106,7 @@ export default function ShareProduct({
       // Fail silently – meta tags are a progressive enhancement
       console.warn('Failed to update social meta tags', err)
     }
-  }, [productSlug, productTitle, productDescription, productUrl, absoluteImageUrl])
+  }, [productSlug, productTitle, productDescription, productUrl, ogImageUrl, absoluteImageUrl])
 
   const handleCopyLink = async () => {
     try {

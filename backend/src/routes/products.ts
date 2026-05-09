@@ -3,6 +3,124 @@ import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { handleGetAll, handleCreate, handleUpdate, sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 
+function escapeHtmlMeta(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * HTML shell with OG/Twitter tags for crawlers (WhatsApp, Facebook, etc.) + redirect to SPA.
+ * GET /product/:slug — share URL must point here (not only hash routes) for preview images.
+ */
+export async function serveProductMetaPage(pool: Pool, req: Request, res: Response): Promise<void> {
+  try {
+    const rawSlug = req.params.slug
+    const slug = rawSlug ? decodeURIComponent(String(rawSlug).trim()) : ''
+    if (!slug) {
+      res.status(400).send('Invalid product')
+      return
+    }
+
+    const { rows } = await pool.query(
+      `
+      SELECT p.title, p.slug, p.details, p.list_image,
+        (
+          SELECT pi.url FROM product_images pi
+          WHERE pi.product_id = p.id AND (pi.type = 'pdp' OR pi.type IS NULL)
+          ORDER BY pi.id ASC
+          LIMIT 1
+        ) AS first_pdp_url
+      FROM products p
+      WHERE p.slug = $1
+      LIMIT 1
+      `,
+      [slug]
+    )
+
+    if (rows.length === 0) {
+      res.status(404).send('Product not found')
+      return
+    }
+
+    const row = rows[0] as {
+      title: string
+      slug: string
+      details: Record<string, unknown> | null
+      list_image: string | null
+      first_pdp_url: string | null
+    }
+
+    const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
+    const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
+    const baseUrl = `${protocol}://${host}`
+
+    const toAbsolute = (url: string | null | undefined) => {
+      if (!url || !String(url).trim()) return ''
+      const u = String(url).trim()
+      if (u.startsWith('http')) return u
+      return `${baseUrl}${u.startsWith('/') ? '' : '/'}${u}`
+    }
+
+    const details = row.details && typeof row.details === 'object' ? row.details : {}
+    const descRaw =
+      (typeof details.description === 'string' && details.description) ||
+      (typeof details.short_description === 'string' && details.short_description) ||
+      ''
+    const description = descRaw.replace(/<[^>]*>/g, '').slice(0, 200) || 'Discover premium skincare from NEFOL.'
+
+    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+    const spaUrl = `${frontendBase}/#/user/product/${encodeURIComponent(row.slug)}`
+    const pageUrl = `${baseUrl}/product/${encodeURIComponent(row.slug)}`
+
+    const envOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
+    const siteLogoPath = '/IMAGES/NEFOL%20icon.png'
+    const defaultSiteOg = envOg || `${frontendBase.replace(/\/$/, '')}${siteLogoPath}`
+
+    const productOg = toAbsolute(row.first_pdp_url) || toAbsolute(row.list_image)
+    const ogImage = productOg || defaultSiteOg
+
+    const title = row.title || 'Product | NEFOL'
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtmlMeta(title)}</title>
+  <meta name="description" content="${escapeHtmlMeta(description)}">
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="${escapeHtmlMeta(title)}">
+  <meta property="og:description" content="${escapeHtmlMeta(description)}">
+  <meta property="og:url" content="${escapeHtmlMeta(pageUrl)}">
+  <meta property="og:site_name" content="NEFOL">
+  ${ogImage ? `<meta property="og:image" content="${escapeHtmlMeta(ogImage)}">` : ''}
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtmlMeta(title)}">
+  <meta name="twitter:description" content="${escapeHtmlMeta(description)}">
+  ${ogImage ? `<meta name="twitter:image" content="${escapeHtmlMeta(ogImage)}">` : ''}
+  <link rel="canonical" href="${escapeHtmlMeta(pageUrl)}">
+  <meta http-equiv="refresh" content="0;url=${escapeHtmlMeta(spaUrl)}">
+  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>
+</head>
+<body>
+  <p>Redirecting to <a href="${escapeHtmlMeta(spaUrl)}">${escapeHtmlMeta(title)}</a>…</p>
+</body>
+</html>`
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.send(html)
+  } catch (err) {
+    console.error('Product meta page error:', err)
+    res.status(500).send('Server error')
+  }
+}
+
 /** Sellable units across all variants (on hand − reserved). Drives storefront availability. */
 const SQL_INVENTORY_AVAILABLE = `
   (SELECT COALESCE(SUM(GREATEST(COALESCE(inv.quantity, 0) - COALESCE(inv.reserved, 0), 0)), 0)::integer

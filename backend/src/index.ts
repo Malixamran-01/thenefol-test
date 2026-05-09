@@ -908,6 +908,7 @@ initBlogRouter(pool)
 // Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.) - path-based URL
 app.get('/blog/:id', serveBlogMetaPage)
 app.get('/author/:id', serveAuthorMetaPage)
+app.get('/product/:slug', (req, res) => productRoutes.serveProductMetaPage(pool, req, res))
 const nefolSocialBan = nefolSocialBanGuard(pool)
 app.use('/api/blog', nefolSocialBan)
 app.use('/api/blog', blogRouter)
