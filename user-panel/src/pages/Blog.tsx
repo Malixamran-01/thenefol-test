@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Plus, Calendar, User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X, Bookmark } from 'lucide-react'
+import { User, Heart, MessageCircle, Tag, FileText, Eye, Pencil, Trash2, X, Bookmark } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { clearLocalDraft, getLocalDraft } from '../utils/blogDraft'
 import { useAuth } from '../contexts/AuthContext'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
-import { authorAPI } from '../services/authorAPI'
-import AuthorPromptModal from '../components/AuthorPromptModal'
 import { BlogCardAuthor } from '../components/BlogCardAuthor'
 import { RepostButton } from '../components/RepostButton'
 import CustomSelect from '../components/CustomSelect'
@@ -291,12 +289,32 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
   )
 }
 
+const BLOG_FEED_PAGE_SIZE = 15
+
 export default function Blog() {
   const { isAuthenticated } = useAuth()
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMoreFeed, setHasMoreFeed] = useState(true)
+  const feedOffsetRef = useRef(0)
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
+  const hasMoreFeedRef = useRef(true)
+  const loadingRef = useRef(false)
+  const loadingMoreRef = useRef(false)
+
+  useEffect(() => {
+    hasMoreFeedRef.current = hasMoreFeed
+  }, [hasMoreFeed])
+  useEffect(() => {
+    loadingRef.current = loading
+  }, [loading])
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore
+  }, [loadingMore])
+
+  const fetchBlogFeedRef = useRef<(reset: boolean) => Promise<void>>(async () => {})
   const [showAuthPrompt, setShowAuthPrompt] = useState(false)
-  const [showAuthorPrompt, setShowAuthorPrompt] = useState(false)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
   const [drafts, setDrafts] = useState<BlogDraft[]>([])
   const [draftsLoading, setDraftsLoading] = useState(false)
@@ -309,43 +327,96 @@ export default function Blog() {
   const [savedLoading, setSavedLoading] = useState(false)
   const [savedError, setSavedError] = useState('')
 
-  // Fetch approved blog posts
-  const fetchBlogPosts = async () => {
+  const mapPostUrls = (post: BlogPost, apiBase: string): BlogPost => ({
+    ...post,
+    cover_image: post.cover_image && post.cover_image.startsWith('/uploads/')
+      ? `${apiBase}${post.cover_image}`
+      : post.cover_image,
+    detail_image: post.detail_image && post.detail_image.startsWith('/uploads/')
+      ? `${apiBase}${post.detail_image}`
+      : post.detail_image,
+    images: (post.images || []).map((imagePath: string) =>
+      imagePath.startsWith('/uploads/') ? `${apiBase}${imagePath}` : imagePath
+    ),
+  })
+
+  /** Paginated approved posts; resets when category changes (see effect) */
+  const fetchBlogFeedPage = async (reset: boolean) => {
+    if (showSaved) return
+    if (reset) {
+      setLoading(true)
+      feedOffsetRef.current = 0
+      setHasMoreFeed(true)
+      hasMoreFeedRef.current = true
+    } else {
+      if (!hasMoreFeedRef.current || loadingRef.current || loadingMoreRef.current) return
+      setLoadingMore(true)
+    }
+    setError('')
     try {
       const apiBase = getApiBase()
-      const response = await fetch(`${apiBase}/api/blog/posts`)
+      const offset = feedOffsetRef.current
+      const params = new URLSearchParams({
+        limit: String(BLOG_FEED_PAGE_SIZE),
+        offset: String(offset),
+      })
+      if (selectedCategory !== 'All') {
+        params.set('category', selectedCategory.toLowerCase())
+      }
+      const response = await fetch(`${apiBase}/api/blog/posts?${params}`)
       if (response.ok) {
-        const data = await response.json()
-        // Convert relative image paths to full URLs
-        const postsWithFullImageUrls = data.filter((post: BlogPost) => post.status === 'approved').map((post: BlogPost) => ({
-          ...post,
-          cover_image: post.cover_image && post.cover_image.startsWith('/uploads/') 
-            ? `${apiBase}${post.cover_image}` 
-            : post.cover_image,
-          detail_image: post.detail_image && post.detail_image.startsWith('/uploads/') 
-            ? `${apiBase}${post.detail_image}` 
-            : post.detail_image,
-          images: post.images.map((imagePath: string) => {
-            if (imagePath.startsWith('/uploads/')) {
-              return `${apiBase}${imagePath}`
-            }
-            return imagePath
-          })
-        }))
-        setPosts(postsWithFullImageUrls)
+        const data: BlogPost[] = await response.json()
+        const postsWithFullImageUrls = data
+          .filter((post) => post.status === 'approved')
+          .map((post) => mapPostUrls(post, apiBase))
+        feedOffsetRef.current = offset + postsWithFullImageUrls.length
+        const more = postsWithFullImageUrls.length === BLOG_FEED_PAGE_SIZE
+        setHasMoreFeed(more)
+        hasMoreFeedRef.current = more
+        setPosts((prev) => (reset ? postsWithFullImageUrls : [...prev, ...postsWithFullImageUrls]))
       } else {
         setError('Failed to load blog posts')
+        if (reset) {
+          setPosts([])
+          setHasMoreFeed(false)
+          hasMoreFeedRef.current = false
+        }
       }
-    } catch (error) {
+    } catch {
       setError('Network error loading blog posts')
+      if (reset) {
+        setPosts([])
+        setHasMoreFeed(false)
+        hasMoreFeedRef.current = false
+      }
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
+  fetchBlogFeedRef.current = fetchBlogFeedPage
+
   useEffect(() => {
-    fetchBlogPosts()
-  }, [])
+    if (showSaved) return
+    fetchBlogFeedPage(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, showSaved])
+
+  useEffect(() => {
+    if (showSaved) return
+    const el = loadMoreSentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return
+        void fetchBlogFeedRef.current(false)
+      },
+      { root: null, rootMargin: '280px', threshold: 0 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [showSaved, selectedCategory, posts.length])
 
   const loadSavedPosts = async () => {
     const token = localStorage.getItem('token')
@@ -556,8 +627,6 @@ export default function Blog() {
     },
   ]
 
-  const displayPosts = posts.length > 0 ? posts : fallbackPosts
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -595,6 +664,13 @@ export default function Blog() {
     return []
   }
 
+  const usingApiFeed = posts.length > 0
+  const displayPosts = usingApiFeed ? posts : !error && !loading ? fallbackPosts : []
+  const filteredPosts =
+    usingApiFeed || selectedCategory === 'All'
+      ? displayPosts
+      : displayPosts.filter((post) => extractCategories(post).includes(selectedCategory))
+
   const getPrimaryCategory = (post: BlogPost) => {
     const categories = extractCategories(post)
     return categories[0] ?? 'general'
@@ -610,9 +686,6 @@ export default function Blog() {
 
   const postCategories = displayPosts.flatMap((post) => extractCategories(post))
   const categories = ['All', ...Array.from(new Set([...BLOG_CATEGORY_OPTIONS, ...postCategories]))]
-  const filteredPosts = selectedCategory === 'All'
-    ? displayPosts
-    : displayPosts.filter((post) => extractCategories(post).includes(selectedCategory))
 
   return (
     <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
@@ -761,111 +834,40 @@ export default function Blog() {
             </div>
           )
         ) : (
-          /* Normal Posts Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredPosts.map((post) => {
-              const { likes, comments } = getPostStats(post)
-              return (
-                <div key={post.id} className="flex flex-col gap-3">
-                  <BlogCardAuthor
-                    authorId={post.author_id}
-                    authorUniqueUserId={post.author_unique_user_id}
-                    authorName={post.author_name}
-                    authorVerified={post.author_is_verified === true}
-                  />
-                  <BlogPostCard post={post} initialLikes={likes} initialComments={comments} />
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Subscription Section */}
-        <div className="mt-16">
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-            <h3 className="text-2xl font-serif mb-4" style={{color: '#1B4965'}}>Stay Updated</h3>
-            <p className="text-lg font-light mb-6" style={{color: '#9DB4C0'}}>
-              Subscribe to our WhatsApp updates for the latest beauty tips, product updates, and exclusive offers.
-            </p>
-            <form onSubmit={(e) => e.preventDefault()} className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <input 
-                type="tel" 
-                placeholder="Enter your WhatsApp number"
-                className="flex-1 h-12 rounded-lg border border-gray-300 px-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                required 
-              />
-              <button 
-                type="submit"
-                className="px-8 py-3 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg"
-                style={{backgroundColor: '#1B4965'}}
-              >
-                SUBSCRIBE
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Submit Blog Request Button */}
-        <div className="mt-16 text-center">
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <h3 className="text-2xl font-serif mb-4" style={{color: '#1B4965'}}>Share Your Story</h3>
-            <p className="text-lg font-light mb-6" style={{color: '#9DB4C0'}}>
-              Have a skincare tip, beauty secret, or personal journey to share? Submit your blog post and inspire our community.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={async () => {
-                  if (!isAuthenticated) {
-                    setShowAuthPrompt(true)
-                    return
-                  }
-
-                  // Check if user has an author profile
-                  try {
-                    const eligibility = await authorAPI.checkEligibility()
-
-                    const canSubmitDirectly =
-                      Boolean(eligibility.hasAuthorRole) &&
-                      Boolean(eligibility.hasAuthorProfile) &&
-                      Boolean(eligibility.onboardingCompleted)
-
-                    if (canSubmitDirectly) {
-                      // User is an author, proceed to blog request form
-                      window.location.hash = '#/user/blog/request?new=1'
-                    } else {
-                      // User needs to create author profile
-                      setShowAuthorPrompt(true)
-                    }
-                  } catch (err) {
-                    // If API fails, show author prompt (safe fallback)
-                    setShowAuthorPrompt(true)
-                  }
-                }}
-                className="inline-flex items-center gap-2 px-8 py-4 text-white font-medium rounded-lg transition-colors text-sm tracking-wide uppercase shadow-lg"
-                style={{ backgroundColor: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
-              >
-                <Plus className="w-5 h-5" />
-                Submit Your Blog Post
-              </button>
-              <button
-                onClick={openDraftsModal}
-                className="inline-flex items-center gap-2 px-6 py-4 font-medium rounded-lg transition-colors text-sm tracking-wide uppercase border-2"
-                style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgb(75,151,201,0.1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                }}
-              >
-                <FileText className="w-5 h-5" />
-                Drafts
-              </button>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredPosts.map((post) => {
+                const { likes, comments } = getPostStats(post)
+                return (
+                  <div key={post.id} className="flex flex-col gap-3">
+                    <BlogCardAuthor
+                      authorId={post.author_id}
+                      authorUniqueUserId={post.author_unique_user_id}
+                      authorName={post.author_name}
+                      authorVerified={post.author_is_verified === true}
+                    />
+                    <BlogPostCard post={post} initialLikes={likes} initialComments={comments} />
+                  </div>
+                )
+              })}
             </div>
-          </div>
-        </div>
+            {usingApiFeed && (
+              <>
+                <div ref={loadMoreSentinelRef} className="h-1 w-full" aria-hidden />
+                {loadingMore && (
+                  <div className="flex justify-center py-8">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1B4965] border-t-transparent" />
+                  </div>
+                )}
+                {!hasMoreFeed && !loading && posts.length > 0 && (
+                  <p className="py-10 text-center text-sm" style={{ color: '#9DB4C0' }}>
+                    You&apos;re all caught up.
+                  </p>
+                )}
+              </>
+            )}
+          </>
+        )}
       </div>
 
       {/* Drafts Modal */}
@@ -1021,11 +1023,6 @@ export default function Blog() {
         </div>
       )}
 
-      {/* Author Profile Prompt Modal */}
-      <AuthorPromptModal 
-        isOpen={showAuthorPrompt} 
-        onClose={() => setShowAuthorPrompt(false)} 
-      />
     </main>
   )
 }

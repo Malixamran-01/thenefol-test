@@ -66,6 +66,33 @@ type SortOption = 'latest' | 'popular' | 'featured'
 
 const PAGE_SIZE = 20
 
+const AUTHOR_SEARCH_HISTORY_KEY = 'blog_explore_author_history_v1'
+const MAX_AUTHOR_HISTORY = 14
+
+function loadAuthorSearchHistory(): Author[] {
+  try {
+    const raw = localStorage.getItem(AUTHOR_SEARCH_HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((x: unknown) => x && typeof (x as Author).author_id === 'number') as Author[]
+  } catch {
+    return []
+  }
+}
+
+function mergeAuthorHistory(prev: Author[], fromResults: Author[]): Author[] {
+  const seen = new Set<number>()
+  const out: Author[] = []
+  for (const a of [...fromResults, ...prev]) {
+    if (!a || seen.has(a.author_id)) continue
+    seen.add(a.author_id)
+    out.push(a)
+    if (out.length >= MAX_AUTHOR_HISTORY) break
+  }
+  return out
+}
+
 const ALL_CATEGORIES = ['All', ...BLOG_CATEGORY_OPTIONS.map((c) => c.charAt(0).toUpperCase() + c.slice(1))]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -329,6 +356,7 @@ export default function BlogExplorePage() {
   const [tags, setTags]               = useState<{ tag: string; count: number }[]>([])
   const [trendingPosts, setTrendingPosts] = useState<Post[]>([])
   const [suggestedAuthors, setSuggestedAuthors] = useState<Author[]>([])
+  const [authorSearchHistory, setAuthorSearchHistory] = useState<Author[]>(() => loadAuthorSearchHistory())
 
   // Pagination
   const [postOffset, setPostOffset]   = useState(0)
@@ -385,18 +413,36 @@ export default function BlogExplorePage() {
   // ── Fetch authors ──────────────────────────────────────────────────────────
 
   const fetchAuthors = useCallback(async (reset = false, overrideOffset?: number) => {
+    const q = debouncedQuery.trim()
+    if (!q) {
+      setLoadingAuthors(false)
+      return
+    }
     setLoadingAuthors(true)
     const offset = reset ? 0 : (overrideOffset ?? authorOffset)
     try {
-      const data: Author[] = await blogActivityAPI.searchAuthors(debouncedQuery || '', PAGE_SIZE, offset)
+      const data: Author[] = await blogActivityAPI.searchAuthors(q, PAGE_SIZE, offset)
       const list = Array.isArray(data) ? data : []
-      setAuthors((prev) => reset ? list : [...prev, ...list])
+      setAuthors((prev) => (reset ? list : [...prev, ...list]))
       setHasMoreAuthors(list.length === PAGE_SIZE)
       setAuthorOffset(offset + list.length)
+      if (list.length > 0) {
+        setAuthorSearchHistory((prev) => {
+          const merged = mergeAuthorHistory(prev, list)
+          try {
+            localStorage.setItem(AUTHOR_SEARCH_HISTORY_KEY, JSON.stringify(merged))
+          } catch {
+            /* ignore quota */
+          }
+          return merged
+        })
+      }
     } catch (err) {
       console.error('[Explore] fetchAuthors error:', err)
     }
-    finally { setLoadingAuthors(false) }
+    finally {
+      setLoadingAuthors(false)
+    }
   }, [debouncedQuery, authorOffset])
 
   // ── Fetch tags ─────────────────────────────────────────────────────────────
@@ -485,7 +531,12 @@ export default function BlogExplorePage() {
       setAuthors([])
       setAuthorOffset(0)
       setHasMoreAuthors(true)
-      fetchAuthors(true, 0)
+      if (debouncedQuery.trim()) {
+        fetchAuthors(true, 0)
+      } else {
+        setHasMoreAuthors(false)
+        setLoadingAuthors(false)
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, category, activeTag, sort, activeTab])
@@ -714,76 +765,120 @@ export default function BlogExplorePage() {
 
       {activeTab === 'authors' && (
         <>
-          {/* Suggested Authors (no search) */}
-          {!debouncedQuery && suggestedAuthors.length > 0 && (
-            <div className="mb-6">
-              <div className="mb-3 flex items-center gap-1.5">
-                <UserPlus className="h-4 w-4 text-[#4B97C9]" />
-                <h2 className="text-sm font-semibold text-gray-700">
-                  {isAuthenticated ? 'Suggested for You' : 'Popular Authors'}
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {suggestedAuthors.map((a) => (
-                  <AuthorCard
-                    key={a.author_id}
-                    author={a}
-                    onFollow={handleFollow}
-                    followingSet={followingSet}
-                    followingInProgress={followingInProgress}
-                  />
-                ))}
-              </div>
-              {authors.length > 0 && <div className="my-5 border-t border-gray-100" />}
-            </div>
-          )}
+          {(() => {
+            const suggestedIds = new Set(suggestedAuthors.map((a) => a.author_id))
+            const historyAuthors = authorSearchHistory.filter((a) => !suggestedIds.has(a.author_id))
+            const hasQuery = Boolean(debouncedQuery.trim())
+            const showEmptyHint =
+              !hasQuery && suggestedAuthors.length === 0 && historyAuthors.length === 0
 
-          {/* Search results */}
-          <div className="mb-3 flex items-center gap-1.5">
-            <Users className="h-4 w-4 text-gray-400" />
-            <h2 className="text-sm font-semibold text-gray-700">
-              {debouncedQuery ? `Results for "${debouncedQuery}"` : 'All Authors'}
-            </h2>
-          </div>
+            return (
+              <>
+                {!hasQuery && suggestedAuthors.length > 0 && (
+                  <div className="mb-6">
+                    <div className="mb-3 flex items-center gap-1.5">
+                      <UserPlus className="h-4 w-4 text-[#4B97C9]" />
+                      <h2 className="text-sm font-semibold text-gray-700">
+                        {isAuthenticated ? 'Suggested for you' : 'Popular authors'}
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {suggestedAuthors.map((a) => (
+                        <AuthorCard
+                          key={a.author_id}
+                          author={a}
+                          onFollow={handleFollow}
+                          followingSet={followingSet}
+                          followingInProgress={followingInProgress}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-          {loadingAuthors && authors.length === 0 ? (
-            <div className="flex justify-center py-12">
-              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
-            </div>
-          ) : authors.length === 0 ? (
-            <div className="flex flex-col items-center py-16 text-center">
-              <Users className="mb-3 h-12 w-12 text-gray-200" />
-              <p className="font-medium text-gray-400">No authors found</p>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {authors.map((a) => (
-                  <AuthorCard
-                    key={a.author_id}
-                    author={a}
-                    onFollow={handleFollow}
-                    followingSet={followingSet}
-                    followingInProgress={followingInProgress}
-                  />
-                ))}
-              </div>
-              {hasMoreAuthors && (
-                <div className="mt-6 flex justify-center">
-                  <button
-                    onClick={() => fetchAuthors(false)}
-                    disabled={loadingAuthors}
-                    className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:border-[#4B97C9] hover:text-[#4B97C9] disabled:opacity-50"
-                  >
-                    {loadingAuthors
-                      ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
-                      : <ChevronRight className="h-4 w-4" />}
-                    Load more
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+                {!hasQuery && historyAuthors.length > 0 && (
+                  <div className="mb-6">
+                    <div className="mb-3 flex items-center gap-1.5">
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <h2 className="text-sm font-semibold text-gray-700">Searched earlier</h2>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {historyAuthors.map((a) => (
+                        <AuthorCard
+                          key={a.author_id}
+                          author={a}
+                          onFollow={handleFollow}
+                          followingSet={followingSet}
+                          followingInProgress={followingInProgress}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {hasQuery && (
+                  <>
+                    <div className="mb-3 flex items-center gap-1.5">
+                      <Users className="h-4 w-4 text-gray-400" />
+                      <h2 className="text-sm font-semibold text-gray-700">
+                        Results for &quot;{debouncedQuery}&quot;
+                      </h2>
+                    </div>
+
+                    {loadingAuthors && authors.length === 0 ? (
+                      <div className="flex justify-center py-12">
+                        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                      </div>
+                    ) : authors.length === 0 ? (
+                      <div className="flex flex-col items-center py-16 text-center">
+                        <Users className="mb-3 h-12 w-12 text-gray-200" />
+                        <p className="font-medium text-gray-400">No authors found</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {authors.map((a) => (
+                            <AuthorCard
+                              key={a.author_id}
+                              author={a}
+                              onFollow={handleFollow}
+                              followingSet={followingSet}
+                              followingInProgress={followingInProgress}
+                            />
+                          ))}
+                        </div>
+                        {hasMoreAuthors && (
+                          <div className="mt-6 flex justify-center">
+                            <button
+                              onClick={() => fetchAuthors(false)}
+                              disabled={loadingAuthors}
+                              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:border-[#4B97C9] hover:text-[#4B97C9] disabled:opacity-50"
+                            >
+                              {loadingAuthors ? (
+                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                              Load more
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+
+                {showEmptyHint && (
+                  <div className="flex flex-col items-center py-14 text-center">
+                    <Search className="mb-3 h-10 w-10 text-gray-200" />
+                    <p className="max-w-sm text-sm text-gray-500">
+                      Search by name or handle to find authors. Authors you open from results appear here for quick access.
+                    </p>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </>
       )}
 

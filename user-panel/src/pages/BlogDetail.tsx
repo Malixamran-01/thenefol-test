@@ -3,7 +3,7 @@ import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHori
 import { RepostButton } from '../components/RepostButton'
 import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import CustomSelect from '../components/CustomSelect'
-import { getApiBase } from '../utils/apiBase'
+import { getApiBase, getSiteUrl } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { useBlogBack } from '../hooks/useBlogBack'
 import { blogActivityAPI } from '../services/api'
@@ -920,11 +920,21 @@ export default function BlogDetail() {
     return []
   }
 
-  // Use path-based URL for sharing - crawlers (WhatsApp, Facebook) fetch this and get OG meta tags
+  /**
+   * Share/copy link must include the hash route the SPA uses (`#/user/blog/:id`), otherwise
+   * opening e.g. `https://thenefol.com/blog/8` loads the crawler meta shell but not the in-app post view.
+   * Format: `https://thenefol.com/blog/8#/user/blog/8` (meta page path + SPA hash).
+   */
   const getShareUrl = () => {
     if (!post) return ''
-    const base = getApiBase()
-    return post.canonical_url && post.canonical_url.startsWith('http') ? post.canonical_url : `${base}/blog/${post.id}`
+    const id = String(post.id)
+    const hash = `#/user/blog/${id}`
+    const cu = post.canonical_url?.trim()
+    if (cu?.startsWith('http') && cu.includes('#/user/blog/')) {
+      return cu
+    }
+    const origin = getSiteUrl().replace(/\/$/, '')
+    return `${origin}/blog/${id}${hash}`
   }
 
   const handleShare = async () => {
