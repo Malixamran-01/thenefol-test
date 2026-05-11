@@ -13,7 +13,6 @@ import { userSocketService } from './services/socket'
 import LiveChatWidget from './components/LiveChatWidget'
 import BlogFAB from './components/BlogFAB'
 import BlogLayout from './components/BlogLayout'
-import SmoothScroll from './components/SmoothScroll'
 import SearchButton from './components/SearchButton'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import BottomNavigation from './components/BottomNavigation'
@@ -733,13 +732,11 @@ function AppContent() {
             </div>
           )}
 
-        <SmoothScroll>
-          <div className="main-content-wrapper">
-            <Suspense fallback={<PageLoader />}>
-              <RouterView affiliateId={affiliateId} currentHash={window.location.hash || '#/user/'} />
-            </Suspense>
-          </div>
-        </SmoothScroll>
+        <div className="main-content-wrapper">
+          <Suspense fallback={<PageLoader />}>
+            <RouterView affiliateId={affiliateId} currentHash={window.location.hash || '#/user/'} />
+          </Suspense>
+        </div>
 
       <footer
         className="py-8 sm:py-12 md:py-16 text-sm w-full overflow-x-hidden"
@@ -983,7 +980,7 @@ function AppContent() {
           })()}
           <SearchButton />
           <PWAInstallPrompt />
-          <BottomNavigation />
+          <BottomNavigation routePath={currentPath} />
           <SwipeNavigation />
         </>
       )}

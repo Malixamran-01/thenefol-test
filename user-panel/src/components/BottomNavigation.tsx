@@ -1,84 +1,74 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { Home, Search, ShoppingCart, Grid3x3, Heart, User } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { useWishlist } from '../contexts/WishlistContext'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function BottomNavigation() {
+/** Same shape as AppContent `currentPath`: no "#", lowercased, query stripped (e.g. `/user/search`). */
+interface BottomNavigationProps {
+  routePath: string
+}
+
+export default function BottomNavigation({ routePath }: BottomNavigationProps) {
   const { items: cartItems } = useCart()
   const { items: wishlistItems } = useWishlist()
   const { isAuthenticated } = useAuth()
-  const [currentPath, setCurrentPath] = useState(window.location.hash || '#/user/')
-
-  useEffect(() => {
-    const handleHashChange = () => {
-      setCurrentPath(window.location.hash || '#/user/')
-    }
-    
-    window.addEventListener('hashchange', handleHashChange)
-    // Set initial value
-    setCurrentPath(window.location.hash || '#/user/')
-    
-    return () => {
-      window.removeEventListener('hashchange', handleHashChange)
-    }
-  }, [])
 
   const navItems = [
     {
       label: 'Home',
       icon: Home,
       href: '#/user/',
-      isActive: currentPath === '#/user/' || currentPath === '#/user'
+      isActive: routePath === '/user/' || routePath === '/user',
     },
     {
       label: 'Search',
       icon: Search,
       href: '#/user/search',
-      isActive: currentPath.startsWith('#/user/search'),
+      isActive: routePath.startsWith('/user/search'),
       onClick: (e: React.MouseEvent) => {
         e.preventDefault()
-        const event = new CustomEvent('open-search')
-        window.dispatchEvent(event)
-      }
+        window.dispatchEvent(new CustomEvent('open-search'))
+      },
     },
     {
       label: 'Cart',
       icon: ShoppingCart,
       href: '#/user/cart',
-      isActive: currentPath.startsWith('#/user/cart'),
-      badge: cartItems.length > 0 ? cartItems.length : undefined
+      isActive: routePath.startsWith('/user/cart'),
+      badge: cartItems.length > 0 ? cartItems.length : undefined,
     },
     {
       label: 'Collection',
       icon: Grid3x3,
       href: '#/user/shop',
-      isActive: currentPath.startsWith('#/user/shop') || 
-                currentPath.startsWith('#/user/face') ||
-                currentPath.startsWith('#/user/body') ||
-                currentPath.startsWith('#/user/hair') ||
-                currentPath.startsWith('#/user/combos')
+      isActive:
+        routePath.startsWith('/user/shop') ||
+        routePath.startsWith('/user/face') ||
+        routePath.startsWith('/user/body') ||
+        routePath.startsWith('/user/hair') ||
+        routePath.startsWith('/user/combos'),
     },
     {
       label: 'Wishlist',
       icon: Heart,
       href: '#/user/wishlist',
-      isActive: currentPath.startsWith('#/user/wishlist'),
-      badge: wishlistItems.length > 0 ? wishlistItems.length : undefined
+      isActive: routePath.startsWith('/user/wishlist'),
+      badge: wishlistItems.length > 0 ? wishlistItems.length : undefined,
     },
     {
       label: 'Account',
       icon: User,
       href: isAuthenticated ? '#/user/profile' : '#/user/login',
-      isActive: currentPath.startsWith('#/user/profile') || 
-                currentPath.startsWith('#/user/account') ||
-                currentPath.startsWith('#/user/login')
-    }
+      isActive:
+        routePath.startsWith('/user/profile') ||
+        routePath.startsWith('/user/account') ||
+        routePath.startsWith('/user/login'),
+    },
   ]
 
-  const isBlogRoute = currentPath.startsWith('#/user/blog') || currentPath.startsWith('#/user/author')
+  const isBlogRoute = routePath.startsWith('/user/blog') || routePath.startsWith('/user/author')
 
-  // Hide entirely on blog layout routes — side panel handles navigation there
   if (isBlogRoute) return null
 
   return (
@@ -166,14 +156,12 @@ export default function BottomNavigation() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
-        /* Hide on desktop */
         @media (min-width: 1025px) {
           .bottom-nav {
             display: none;
           }
         }
         
-        /* Tablet adjustments */
         @media (min-width: 641px) and (max-width: 1024px) {
           .bottom-nav-icon {
             width: 24px;
@@ -202,9 +190,7 @@ export default function BottomNavigation() {
                 aria-label={item.label}
               >
                 <Icon className="bottom-nav-icon" />
-                {item.badge && (
-                  <span className="bottom-nav-badge">{item.badge}</span>
-                )}
+                {item.badge && <span className="bottom-nav-badge">{item.badge}</span>}
                 <span className="bottom-nav-label">{item.label}</span>
               </a>
             )
@@ -214,4 +200,3 @@ export default function BottomNavigation() {
     </>
   )
 }
-
