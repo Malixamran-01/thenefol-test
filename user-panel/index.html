@@ -122,6 +122,7 @@
     </div>
     <script>
       (function(){
+        window.__NEFOL_BOOT__ = window.__NEFOL_BOOT__ || { htmlStartedAt: Date.now() };
         function show(details){
           var box = document.getElementById('boot-watchdog');
           var pre = document.getElementById('boot-watchdog-details');
@@ -132,6 +133,14 @@
         window.addEventListener('error', function(e){
           show('window.error: ' + (e && e.message ? e.message : String(e)) + '\n' + (e && e.filename ? (e.filename + ':' + e.lineno + ':' + e.colno) : '') );
         });
+        // Capture resource/script load failures too (module/chunk load errors can skip normal error flow)
+        window.addEventListener('error', function(e){
+          var t = e && e.target;
+          if (t && t.tagName) {
+            var src = t.src || t.href || '(inline)';
+            show('resource.error: ' + t.tagName + ' -> ' + src);
+          }
+        }, true);
         window.addEventListener('unhandledrejection', function(e){
           show('unhandledrejection: ' + (e && e.reason ? String(e.reason) : 'unknown'));
         });

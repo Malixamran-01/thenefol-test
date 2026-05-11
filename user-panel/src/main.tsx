@@ -55,21 +55,19 @@ try {
   console.warn('MetaPixel init failed:', e)
 }
 
-// Register Service Worker for PWA
+// Service Worker is temporarily disabled due to iOS Safari stale-cache boot loops.
+// We proactively unregister existing workers so fresh deployments load consistently.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('✅ Service Worker registered:', registration.scope)
-        
-        // Check for updates every hour
-        setInterval(() => {
-          registration.update()
-        }, 60 * 60 * 1000)
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((r) => r.unregister())))
+      .then(() => {
+        // eslint-disable-next-line no-console
+        console.log('🧹 Service workers unregistered for stability')
       })
       .catch((error) => {
-        console.log('❌ Service Worker registration failed:', error)
+        // eslint-disable-next-line no-console
+        console.warn('Service worker cleanup failed:', error)
       })
   })
 }
