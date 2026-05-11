@@ -1106,11 +1106,9 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
   if (pathWithoutQuery === '/user/blog/dashboard') {
     return (
       <BlogLayout>
-        <Suspense fallback={<PageLoader />}>
-          <ErrorBoundary name="CreatorDashboard">
-            <CreatorDashboard />
-          </ErrorBoundary>
-        </Suspense>
+        <ErrorBoundary name="CreatorDashboard">
+          <CreatorDashboard />
+        </ErrorBoundary>
       </BlogLayout>
     )
   }
@@ -1128,11 +1126,7 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     case '/user/product':
     case '/user/':
     case '/user':
-      return (
-        <Suspense fallback={<PageLoader />}>
-          <Home />
-        </Suspense>
-      )
+      return <Home />
     case '/user/shop': return <Shop />
     case '/user/skincare': return <Skincare />
     case '/user/ingredients': return <Ingredients />
@@ -1143,9 +1137,7 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     case '/user/collab':
       return (
         <BlogLayout>
-          <Suspense fallback={<PageLoader />}>
-            <Collab />
-          </Suspense>
+          <Collab />
         </BlogLayout>
       )
     case '/user/affiliate':
@@ -1153,21 +1145,13 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     case '/user/affiliate-partner':
       return (
         <BlogLayout>
-          {RequiredAuth(
-            <Suspense fallback={<PageLoader />}>
-              <Collab initialProgramTab="revenue" />
-            </Suspense>
-          )}
+          {RequiredAuth(<Collab initialProgramTab="revenue" />)}
         </BlogLayout>
       )
     case '/user/referral-history':
       return (
         <BlogLayout>
-          {RequiredAuth(
-            <Suspense fallback={<PageLoader />}>
-              <Collab initialProgramTab="revenue" />
-            </Suspense>
-          )}
+          {RequiredAuth(<Collab initialProgramTab="revenue" />)}
         </BlogLayout>
       )
 
@@ -1216,11 +1200,7 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     case '/user/press': return <PressMediaPage />
     case '/user/forms': return <Forms />
     default:
-      return (
-        <Suspense fallback={<PageLoader />}>
-          <Home />
-        </Suspense>
-      )
+      return <Home />
   }
 }
 

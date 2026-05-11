@@ -103,7 +103,10 @@ const NAV_ITEMS: NavItem[] = [
 function useCurrentHash() {
   const [hash, setHash] = useState(window.location.hash || '#/user/')
   useEffect(() => {
-    const handler = () => setHash(window.location.hash || '#/user/')
+    const handler = () => {
+      const next = window.location.hash || '#/user/'
+      setHash((prev) => (prev === next ? prev : next))
+    }
     window.addEventListener('hashchange', handler)
     return () => window.removeEventListener('hashchange', handler)
   }, [])

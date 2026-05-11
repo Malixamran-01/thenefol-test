@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from './AuthContext'
 
@@ -11,25 +11,21 @@ type BanState = {
 
 const NefolSocialBanContext = createContext<BanState | null>(null)
 
+/**
+ * Ban status for NEFOL Social authors. Uses a monotonic request id (not React state) so
+ * hashchange-driven refreshes cannot pile up a `tick` dependency chain that re-triggers
+ * effects in ways Safari's stack handles poorly.
+ */
 export function NefolSocialBanProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
   const [loading, setLoading] = useState(true)
   const [blocked, setBlocked] = useState(false)
   const [banPublicMessage, setBanPublicMessage] = useState<string | null>(null)
-  const [tick, setTick] = useState(0)
+  const requestIdRef = useRef(0)
 
-  const refresh = useCallback(() => setTick((t) => t + 1), [])
-
-  useEffect(() => {
-    const onHash = () => refresh()
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
-  }, [refresh])
-
-  useEffect(() => {
-    let cancelled = false
-
+  const runCheck = useCallback(() => {
     if (!isAuthenticated) {
+      requestIdRef.current += 1
       setLoading(false)
       setBlocked(false)
       setBanPublicMessage(null)
@@ -38,12 +34,14 @@ export function NefolSocialBanProvider({ children }: { children: React.ReactNode
 
     const token = localStorage.getItem('token')
     if (!token) {
+      requestIdRef.current += 1
       setLoading(false)
       setBlocked(false)
       setBanPublicMessage(null)
       return
     }
 
+    const myId = ++requestIdRef.current
     setLoading(true)
 
     void (async () => {
@@ -52,7 +50,7 @@ export function NefolSocialBanProvider({ children }: { children: React.ReactNode
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         })
         const data = await r.json().catch(() => ({}))
-        if (cancelled) return
+        if (myId !== requestIdRef.current) return
 
         if (r.status === 403 && data?.code === 'AUTHOR_BANNED') {
           setBlocked(true)
@@ -62,19 +60,30 @@ export function NefolSocialBanProvider({ children }: { children: React.ReactNode
           setBanPublicMessage(null)
         }
       } catch {
-        if (!cancelled) {
-          setBlocked(false)
-          setBanPublicMessage(null)
-        }
+        if (myId !== requestIdRef.current) return
+        setBlocked(false)
+        setBanPublicMessage(null)
       } finally {
-        if (!cancelled) setLoading(false)
+        if (myId === requestIdRef.current) {
+          setLoading(false)
+        }
       }
     })()
+  }, [isAuthenticated])
 
-    return () => {
-      cancelled = true
-    }
-  }, [isAuthenticated, tick])
+  const refresh = useCallback(() => {
+    runCheck()
+  }, [runCheck])
+
+  useEffect(() => {
+    runCheck()
+  }, [runCheck])
+
+  useEffect(() => {
+    const onHash = () => runCheck()
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [runCheck])
 
   const value = useMemo(
     () => ({ loading, blocked, banPublicMessage, refresh }),
