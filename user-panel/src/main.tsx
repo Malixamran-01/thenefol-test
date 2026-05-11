@@ -35,12 +35,15 @@ if (typeof document !== 'undefined') {
 
 // Initialize AOS
 try {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const isIOSSafari = /iPhone|iPad|iPod/i.test(ua) && /WebKit/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)
   AOS.init({
     duration: 800,
     easing: 'ease-out',
     once: true,
     offset: 100,
-    delay: 0
+    delay: 0,
+    disable: isIOSSafari ? 'mobile' : false,
   })
 } catch (e) {
   // eslint-disable-next-line no-console

@@ -299,12 +299,12 @@ function AppContent() {
         <SplashScreen onComplete={handleSplashComplete} />
       ) : isEditorPage ? (
         <Suspense fallback={<PageLoader />}>
-          <RouterView affiliateId={affiliateId} />
+          <RouterView affiliateId={affiliateId} currentHash={window.location.hash || '#/user/'} />
         </Suspense>
       ) : isBlogLayoutRoute ? (
         /* ── Blog section: side panel layout, no e-commerce chrome ── */
         <Suspense fallback={<PageLoader />}>
-          <RouterView affiliateId={affiliateId} />
+          <RouterView affiliateId={affiliateId} currentHash={window.location.hash || '#/user/'} />
         </Suspense>
       ) : (
         <>
@@ -735,7 +735,7 @@ function AppContent() {
         <SmoothScroll>
           <div className="main-content-wrapper">
             <Suspense fallback={<PageLoader />}>
-              <RouterView affiliateId={affiliateId} />
+              <RouterView affiliateId={affiliateId} currentHash={window.location.hash || '#/user/'} />
             </Suspense>
           </div>
         </SmoothScroll>
@@ -1028,9 +1028,10 @@ const PageLoader = () => null
 
 interface RouterViewProps {
   affiliateId?: string | null
+  currentHash: string
 }
 
-function RouterView({ affiliateId }: RouterViewProps) {
+function RouterView({ affiliateId, currentHash }: RouterViewProps) {
   const { isAuthenticated } = useAuth()
   const { loading: banLoading, blocked: socialBanned } = useNefolSocialBan()
   const RequiredAuth = (component: JSX.Element): JSX.Element | null => {
@@ -1044,15 +1045,6 @@ function RouterView({ affiliateId }: RouterViewProps) {
   return component
 }
 
-  const [hash, setHash] = useState(window.location.hash || '#/user/')
-  
-  
-  React.useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash || '#/user/')
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
-  
   // Scroll to top whenever the route changes
   React.useEffect(() => {
     // Scroll to top immediately when route changes
@@ -1070,16 +1062,16 @@ function RouterView({ affiliateId }: RouterViewProps) {
     if (document.body) {
       document.body.scrollTop = 0
     }
-  }, [hash])
+  }, [currentHash])
   
   // Track page views whenever the route changes
   React.useEffect(() => {
-    const path = hash.replace('#', '') || '/user/'
+    const path = currentHash.replace('#', '') || '/user/'
     console.log('📊 Tracking page view:', path)
     userSocketService.trackPageView(path)
-  }, [hash])
+  }, [currentHash])
   
-  const path = hash.replace('#', '')
+  const path = currentHash.replace('#', '')
   const lower = path.toLowerCase()
   
   // Extract path without query parameters
