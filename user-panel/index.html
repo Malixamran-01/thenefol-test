@@ -133,12 +133,17 @@
         window.addEventListener('error', function(e){
           show('window.error: ' + (e && e.message ? e.message : String(e)) + '\n' + (e && e.filename ? (e.filename + ':' + e.lineno + ':' + e.colno) : '') );
         });
-        // Capture resource/script load failures too (module/chunk load errors can skip normal error flow)
+        // Capture only critical JS/CSS load failures.
+        // Do NOT treat image/icon errors as fatal (they can 404 without breaking app boot).
         window.addEventListener('error', function(e){
           var t = e && e.target;
           if (t && t.tagName) {
+            var tag = String(t.tagName || '').toUpperCase();
+            var isScript = tag === 'SCRIPT';
+            var isStylesheet = tag === 'LINK' && String(t.rel || '').toLowerCase() === 'stylesheet';
+            if (!isScript && !isStylesheet) return;
             var src = t.src || t.href || '(inline)';
-            show('resource.error: ' + t.tagName + ' -> ' + src);
+            show('resource.error: ' + tag + ' -> ' + src);
           }
         }, true);
         window.addEventListener('unhandledrejection', function(e){
