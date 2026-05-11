@@ -19,6 +19,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt'
 import BottomNavigation from './components/BottomNavigation'
 import SwipeNavigation from './components/SwipeNavigation'
 import JoinUsModal from './components/JoinUsModal'
+import ErrorBoundary from './components/ErrorBoundary'
 import { getApiBase } from './utils/apiBase'
 import { CREATOR_PROGRAM_BADGES_REFRESH } from './contexts/CreatorProgramBadgeContext'
 
@@ -1101,7 +1102,15 @@ function RouterView({ affiliateId }: RouterViewProps) {
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
   if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout><BlogActivityPage /></BlogLayout>
   if (pathWithoutQuery === '/user/blog/explore') return <BlogLayout><BlogExplorePage /></BlogLayout>
-  if (pathWithoutQuery === '/user/blog/dashboard') return <BlogLayout><CreatorDashboard /></BlogLayout>
+  if (pathWithoutQuery === '/user/blog/dashboard') {
+    return (
+      <BlogLayout>
+        <ErrorBoundary name="CreatorDashboard">
+          <CreatorDashboard />
+        </ErrorBoundary>
+      </BlogLayout>
+    )
+  }
   if (pathWithoutQuery === '/user/blog/my-blogs') return RequiredAuth(<BlogLayout><MyBlogsPage /></BlogLayout>)
   if (pathWithoutQuery === '/user/blog/settings') return <BlogLayout><NefolSocialSettings /></BlogLayout>
   if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogLayout><BlogDetail /></BlogLayout>

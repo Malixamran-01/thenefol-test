@@ -108,7 +108,16 @@ type TabType = 'activity' | 'posts' | 'about'
 type SortType = 'newest' | 'oldest' | 'popular'
 
 const formatCompactNumber = (value: number) => {
-  return Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+  try {
+    return Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+  } catch {
+    const n = Number(value) || 0
+    const abs = Math.abs(n)
+    if (abs >= 1e9) return `${(n / 1e9).toFixed(1).replace(/\.0$/, '')}B`
+    if (abs >= 1e6) return `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M`
+    if (abs >= 1e3) return `${(n / 1e3).toFixed(1).replace(/\.0$/, '')}K`
+    return String(Math.round(n))
+  }
 }
 
 // Proper loading spinner component

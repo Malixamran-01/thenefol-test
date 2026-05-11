@@ -82,7 +82,20 @@ type DashTab = 'overview' | 'posts' | 'growth'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const fmt = (n: number) => Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+// iOS Safari (older versions) can throw on Intl.NumberFormat({ notation: 'compact' }).
+// Fallback to a simple formatter to avoid blank/blue screens.
+const fmt = (n: number) => {
+  try {
+    return Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+  } catch {
+    if (!Number.isFinite(n)) return '0'
+    const abs = Math.abs(n)
+    if (abs >= 1e9) return `${(n / 1e9).toFixed(1).replace(/\.0$/, '')}B`
+    if (abs >= 1e6) return `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M`
+    if (abs >= 1e3) return `${(n / 1e3).toFixed(1).replace(/\.0$/, '')}K`
+    return String(Math.round(n))
+  }
+}
 
 function timeAgo(d: string) {
   const s = (Date.now() - new Date(d).getTime()) / 1000
