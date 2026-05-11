@@ -57,6 +57,8 @@ async function runMigration() {
         created_at timestamptz default now(),
         updated_at timestamptz default now()
       );
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS unique_user_id text;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_user_id ON users(unique_user_id) WHERE unique_user_id IS NOT NULL;
 
       -- Author Profiles (Creator Identity - separate from users, opt-in)
       CREATE TABLE IF NOT EXISTS author_profiles (
@@ -1215,6 +1217,174 @@ async function runMigration() {
       CREATE TRIGGER trg_blog_posts_stats
         AFTER INSERT OR DELETE ON blog_posts
         FOR EACH ROW EXECUTE PROCEDURE update_author_posts_count();
+    `);
+
+    console.log('📝 Step 7: Blog social (reposts, bookmarks), staff RBAC…');
+    await pool.query(`
+      -- Legacy repost row-per-user counts (post_id stored as text, matches blog_posts.id::text)
+      CREATE TABLE IF NOT EXISTS blog_post_reposts (
+        id SERIAL PRIMARY KEY,
+        post_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (post_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_blog_post_reposts_post_id ON blog_post_reposts(post_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_post_reposts_user_id ON blog_post_reposts(user_id);
+
+      CREATE TABLE IF NOT EXISTS blog_post_bookmarks (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (post_id, user_id)
+      );
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'blog_post_bookmarks'
+            AND column_name = 'post_id' AND data_type IN ('text', 'character varying')
+        ) THEN
+          ALTER TABLE blog_post_bookmarks
+            ALTER COLUMN post_id TYPE INTEGER USING post_id::integer;
+        END IF;
+      END $$;
+      CREATE INDEX IF NOT EXISTS idx_blog_post_bookmarks_user_id ON blog_post_bookmarks(user_id);
+
+      ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_pending JSONB;
+      ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_submitted_at TIMESTAMPTZ;
+      ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS revision_rejection_reason TEXT;
+
+      -- Rich reposts (post and comment reposts, optional note)
+      CREATE TABLE IF NOT EXISTS blog_reposts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        post_id INTEGER NOT NULL,
+        comment_id INTEGER DEFAULT NULL,
+        note TEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS blog_reposts_unique_idx
+        ON blog_reposts (user_id, post_id, COALESCE(comment_id, -1));
+
+      -- Staff RBAC (mirrors backend/src/utils/schema.ts)
+      CREATE TABLE IF NOT EXISTS staff_users (
+        id serial primary key,
+        name text not null,
+        email text unique not null,
+        password text not null,
+        is_active boolean default true,
+        last_login_at timestamptz,
+        last_logout_at timestamptz,
+        password_changed_at timestamptz,
+        failed_login_attempts integer default 0,
+        last_failed_login_at timestamptz,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+      );
+
+      CREATE TABLE IF NOT EXISTS staff_sessions (
+        id serial primary key,
+        staff_id integer not null references staff_users(id) on delete cascade,
+        token text not null unique,
+        user_agent text,
+        ip_address text,
+        metadata jsonb,
+        created_at timestamptz default now(),
+        expires_at timestamptz not null,
+        revoked_at timestamptz
+      );
+      CREATE INDEX IF NOT EXISTS idx_staff_sessions_token ON staff_sessions(token);
+
+      CREATE TABLE IF NOT EXISTS roles (
+        id serial primary key,
+        name text unique not null,
+        description text,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+      );
+
+      CREATE TABLE IF NOT EXISTS permissions (
+        id serial primary key,
+        code text unique not null,
+        description text
+      );
+
+      CREATE TABLE IF NOT EXISTS role_permissions (
+        role_id integer references roles(id) on delete cascade,
+        permission_id integer references permissions(id) on delete cascade,
+        primary key (role_id, permission_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS staff_roles (
+        staff_id integer references staff_users(id) on delete cascade,
+        role_id integer references roles(id) on delete cascade,
+        primary key (staff_id, role_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS staff_activity_logs (
+        id serial primary key,
+        staff_id integer references staff_users(id) on delete set null,
+        action text not null,
+        resource text,
+        metadata jsonb,
+        created_at timestamptz default now()
+      );
+
+      CREATE TABLE IF NOT EXISTS staff_layout_permissions (
+        id serial primary key,
+        staff_id integer not null references staff_users(id) on delete cascade,
+        layout_page_slug text not null,
+        can_edit boolean default true,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now(),
+        unique(staff_id, layout_page_slug)
+      );
+      CREATE INDEX IF NOT EXISTS idx_staff_layout_permissions_staff ON staff_layout_permissions(staff_id);
+      CREATE INDEX IF NOT EXISTS idx_staff_layout_permissions_layout ON staff_layout_permissions(layout_page_slug);
+
+      CREATE TABLE IF NOT EXISTS staff_page_permissions (
+        id serial primary key,
+        staff_id integer not null references staff_users(id) on delete cascade,
+        page_path text not null,
+        can_access boolean default true,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now(),
+        unique(staff_id, page_path)
+      );
+      CREATE INDEX IF NOT EXISTS idx_staff_page_permissions_staff ON staff_page_permissions(staff_id);
+      CREATE INDEX IF NOT EXISTS idx_staff_page_permissions_page ON staff_page_permissions(page_path);
+
+      ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS invited_by INTEGER REFERENCES staff_users(id);
+      ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS invitation_accepted_at TIMESTAMPTZ;
+      DO $$
+      BEGIN
+        ALTER TABLE staff_users ALTER COLUMN password DROP NOT NULL;
+      EXCEPTION
+        WHEN others THEN NULL;
+      END $$;
+
+      CREATE TABLE IF NOT EXISTS staff_invitations (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        invited_by INTEGER NOT NULL REFERENCES staff_users(id) ON DELETE CASCADE,
+        role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        accepted_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(email)
+      );
+      CREATE INDEX IF NOT EXISTS idx_staff_invitations_token ON staff_invitations(token);
+      CREATE INDEX IF NOT EXISTS idx_staff_invitations_email ON staff_invitations(email);
+
+      ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS phone TEXT;
+      ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+      ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS job_title TEXT;
+      ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
+      ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
     `);
     
     console.log('✅ Migration completed successfully!');

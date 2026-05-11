@@ -42,6 +42,23 @@ interface BlogDraft {
   updated_at: string
 }
 
+/** Strip HTML for card previews so titles/excerpts don’t show raw tags and line-clamp works. */
+function plainTextCardPreview(value: string | null | undefined): string {
+  if (value == null || value === '') return ''
+  let s = String(value)
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, '')
+  s = s.replace(/<style[\s\S]*?<\/style>/gi, '')
+  s = s.replace(/<[^>]+>/g, ' ')
+  s = s
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+  return s.replace(/\s+/g, ' ').trim()
+}
+
 // ─── Dominant-colour extraction ─────────────────────────────────────────────
 // Samples the bottom-third of a cover image on a hidden canvas and returns
 // a darkened version of that colour so the title card is always on-theme yet
@@ -108,6 +125,8 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
   const coverImage = post.cover_image || (post.images && post.images[0]) || '/IMAGES/default-blog.jpg'
   const cardBg = useImageThemeColor(coverImage)
   const apiBase = getApiBase()
+  const titlePlain = plainTextCardPreview(post.title)
+  const excerptPlain = plainTextCardPreview(post.excerpt)
 
   // ── Interaction state (optimistic) ──────────────────────────────────────
   const [likes, setLikes] = useState(initialLikes)
@@ -201,40 +220,24 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
 
       {/* Theme-coloured info card at the bottom */}
       <div
-        className="absolute inset-x-0 bottom-0 flex flex-col justify-between overflow-hidden px-5 py-4"
+        className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden px-5 py-4"
         style={{ background: cardBg, backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
       >
-        {/* Title & excerpt */}
-        <div className="flex-1 overflow-hidden">
+        {/* Title & excerpt: fixed vertical space on every card; overflow hidden */}
+        <div className="mb-3 h-[5.75rem] shrink-0 overflow-hidden">
           <h3
-            className="mb-1.5 text-[15px] font-semibold leading-snug text-white"
-            style={{
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: 2,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-            }}
+            className="mb-1.5 line-clamp-2 text-[15px] font-semibold leading-snug text-white"
+            style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}
           >
-            {post.title}
+            {titlePlain || '\u00A0'}
           </h3>
-          <p
-            className="text-[13px] leading-relaxed text-white/70"
-            style={{
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: 2,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {post.excerpt}
+          <p className="line-clamp-2 text-[13px] leading-relaxed text-white/70">
+            {excerptPlain || '\u00A0'}
           </p>
         </div>
 
         {/* Action bar */}
-        <div className="mt-3 flex items-center justify-between border-t border-white/15 pt-3">
+        <div className="mt-auto flex shrink-0 items-center justify-between border-t border-white/15 pt-3">
           <div className="flex items-center gap-1">
             {/* Like */}
             <button
@@ -262,7 +265,7 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
             {/* Repost */}
             <RepostButton
               postId={Number(post.id)}
-              postTitle={post.title}
+              postTitle={titlePlain || post.title}
               postCover={coverImage}
               initialReposted={reposted}
               initialCount={reposts}
