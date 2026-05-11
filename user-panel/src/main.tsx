@@ -9,45 +9,67 @@ import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { initMetaPixel } from './utils/metaPixel'
 
+// Mark boot started as early as possible (helps debug iOS Safari blank screens)
+;(window as any).__NEFOL_BOOT__ = { startedAt: Date.now() }
+
 // Force Light Mode - Prevent Dark Mode on iOS/Android
 // Remove any dark class that might be applied
 if (typeof document !== 'undefined') {
-  document.documentElement.classList.remove('dark')
-  document.documentElement.style.colorScheme = 'light'
-  
-  // Prevent system dark mode from applying
-  const observer = new MutationObserver(() => {
-    if (document.documentElement.classList.contains('dark')) {
-      document.documentElement.classList.remove('dark')
-    }
-    if (document.documentElement.style.colorScheme !== 'light') {
-      document.documentElement.style.colorScheme = 'light'
-    }
-  })
-  
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['class', 'style']
-  })
-  
-  // Also check on load and periodically
-  window.addEventListener('load', () => {
+  try {
     document.documentElement.classList.remove('dark')
     document.documentElement.style.colorScheme = 'light'
-  })
+
+    // Prevent system dark mode from applying
+    const observer = new MutationObserver(() => {
+      try {
+        if (document.documentElement.classList.contains('dark')) {
+          document.documentElement.classList.remove('dark')
+        }
+        if (document.documentElement.style.colorScheme !== 'light') {
+          document.documentElement.style.colorScheme = 'light'
+        }
+      } catch {
+        // ignore
+      }
+    })
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    })
+
+    // Also check on load
+    window.addEventListener('load', () => {
+      document.documentElement.classList.remove('dark')
+      document.documentElement.style.colorScheme = 'light'
+    })
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Light-mode enforcement failed:', e)
+  }
 }
 
 // Initialize AOS
-AOS.init({
-  duration: 800,
-  easing: 'ease-out',
-  once: true,
-  offset: 100,
-  delay: 0
-})
+try {
+  AOS.init({
+    duration: 800,
+    easing: 'ease-out',
+    once: true,
+    offset: 100,
+    delay: 0
+  })
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn('AOS init failed:', e)
+}
 
 // Initialize Meta Pixel
-initMetaPixel()
+try {
+  initMetaPixel()
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn('MetaPixel init failed:', e)
+}
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
@@ -74,6 +96,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BlogNavListener />
   </Provider>
 )
+
+// Mark boot finished (React mounted)
+;(window as any).__NEFOL_BOOT__.mountedAt = Date.now()
 
 
 
