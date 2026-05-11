@@ -31,8 +31,8 @@ export default defineConfig({
     strictPort: false
   },
   build: {
-    // Ensure compatibility with Safari 13+ and iOS 13+
-    target: ['es2019', 'safari13'],
+    // Conservative target: avoids newer syntax that older WebKit builds choke on when minified.
+    target: ['es2015', 'safari13'],
     // Optimize chunk splitting for better caching
     rollupOptions: {
       output: {

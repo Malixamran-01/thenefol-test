@@ -4,6 +4,8 @@ const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || ''
 
 // Initialize Meta Pixel
 export function initMetaPixel() {
+  registerFailedEventRetryOnLoad()
+
   if (!PIXEL_ID) {
     console.warn('Meta Pixel ID not configured')
     return
@@ -32,6 +34,28 @@ export function initMetaPixel() {
     ;(window as any).fbq('init', PIXEL_ID)
     ;(window as any).fbq('track', 'PageView')
   }
+}
+
+function registerFailedEventRetryOnLoad() {
+  if (typeof window === 'undefined') return
+  if ((registerFailedEventRetryOnLoad as unknown as { done?: boolean }).done) return
+  ;(registerFailedEventRetryOnLoad as unknown as { done?: boolean }).done = true
+
+  window.addEventListener('load', () => {
+    void (async () => {
+      try {
+        const failedEvents = JSON.parse(localStorage.getItem('meta_pixel_failed_events') || '[]')
+        if (failedEvents.length > 0) {
+          for (const event of failedEvents) {
+            await sendEventToBackend(event.event_name, event.event_data, 1)
+          }
+          localStorage.removeItem('meta_pixel_failed_events')
+        }
+      } catch {
+        // Ignore errors
+      }
+    })()
+  })
 }
 
 // Track custom events
@@ -99,25 +123,6 @@ async function sendEventToBackend(eventName: string, eventData?: any, retries = 
       }
     }
   }
-}
-
-// Retry failed events on page load
-if (typeof window !== 'undefined') {
-  window.addEventListener('load', async () => {
-    try {
-      const failedEvents = JSON.parse(localStorage.getItem('meta_pixel_failed_events') || '[]')
-      if (failedEvents.length > 0) {
-        // Retry failed events
-        for (const event of failedEvents) {
-          await sendEventToBackend(event.event_name, event.event_data, 1)
-        }
-        // Clear after retry
-        localStorage.removeItem('meta_pixel_failed_events')
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-  })
 }
 
 // Get user data for tracking

@@ -122,7 +122,8 @@
     </div>
     <script>
       (function(){
-        window.__NEFOL_BOOT__ = window.__NEFOL_BOOT__ || { htmlStartedAt: Date.now() };
+        window.__NEFOL_BOOT__ = Object.assign({}, window.__NEFOL_BOOT__ || {}, { htmlInlineAt: Date.now() });
+        window.__SAFARI_DEBUG__ = window.__SAFARI_DEBUG__ || [];
         function show(details){
           var box = document.getElementById('boot-watchdog');
           var pre = document.getElementById('boot-watchdog-details');
@@ -149,19 +150,24 @@
         window.addEventListener('unhandledrejection', function(e){
           show('unhandledrejection: ' + (e && e.reason ? String(e.reason) : 'unknown'));
         });
+        var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+        var waitMs = isIOS ? 8000 : 5000;
         setTimeout(function(){
           var boot = window.__NEFOL_BOOT__;
           var root = document.getElementById('root');
           var mounted = boot && boot.mountedAt;
           var hasDom = root && root.children && root.children.length > 0;
+          var crash = '';
+          try { crash = sessionStorage.getItem('__nefol_crash') || ''; } catch (e) {}
           if (!mounted || !hasDom){
             show(
               'Boot state: ' + JSON.stringify(boot || {}) +
               '\nRoot children: ' + (hasDom ? 'yes' : 'no') +
+              (crash ? ('\n\n__nefol_crash (last captured):\n' + crash) : '') +
               '\nUserAgent: ' + navigator.userAgent
             );
           }
-        }, 4000);
+        }, waitMs);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
