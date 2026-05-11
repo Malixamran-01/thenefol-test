@@ -1047,7 +1047,12 @@ function RouterView({ affiliateId }: RouterViewProps) {
   // Scroll to top whenever the route changes
   React.useEffect(() => {
     // Scroll to top immediately when route changes
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    // Safari only supports behavior: 'auto' | 'smooth'. Using an invalid value can throw and blank the app.
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    } catch {
+      window.scrollTo(0, 0)
+    }
     
     // Also ensure document and body are scrolled to top
     if (document.documentElement) {
