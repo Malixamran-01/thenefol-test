@@ -107,69 +107,6 @@
     src="https://www.facebook.com/tr?id=602234032691847&ev=PageView&noscript=1"
     /></noscript>
     <div id="root"></div>
-    <div id="boot-watchdog" style="display:none; position:fixed; inset:0; z-index:999999; background:#F4F9F9; padding:16px; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
-      <div style="max-width:720px; margin:48px auto; background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px;">
-        <div style="font-size:14px; font-weight:700; color:#0f172a;">NEFOL didn’t finish loading on this browser.</div>
-        <div style="margin-top:6px; font-size:12px; color:#475569;">
-          This usually happens due to a Safari-specific crash or a cached Service Worker build mismatch.
-        </div>
-        <pre id="boot-watchdog-details" style="margin-top:12px; white-space:pre-wrap; word-break:break-word; font-size:11px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; color:#0f172a;"></pre>
-        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-          <button onclick="location.reload()" style="background:#1B4965; color:#fff; border:0; border-radius:12px; padding:10px 14px; font-weight:700;">Reload</button>
-          <button onclick="try{navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).then(()=>location.reload())}catch(e){location.reload()}" style="background:#0f172a; color:#fff; border:0; border-radius:12px; padding:10px 14px; font-weight:700;">Clear SW + Reload</button>
-        </div>
-      </div>
-    </div>
-    <script>
-      (function(){
-        window.__NEFOL_BOOT__ = Object.assign({}, window.__NEFOL_BOOT__ || {}, { htmlInlineAt: Date.now() });
-        window.__SAFARI_DEBUG__ = window.__SAFARI_DEBUG__ || [];
-        function show(details){
-          var box = document.getElementById('boot-watchdog');
-          var pre = document.getElementById('boot-watchdog-details');
-          if (!box || !pre) return;
-          pre.textContent = details;
-          box.style.display = 'block';
-        }
-        window.addEventListener('error', function(e){
-          show('window.error: ' + (e && e.message ? e.message : String(e)) + '\n' + (e && e.filename ? (e.filename + ':' + e.lineno + ':' + e.colno) : '') );
-        });
-        // Capture only critical JS/CSS load failures.
-        // Do NOT treat image/icon errors as fatal (they can 404 without breaking app boot).
-        window.addEventListener('error', function(e){
-          var t = e && e.target;
-          if (t && t.tagName) {
-            var tag = String(t.tagName || '').toUpperCase();
-            var isScript = tag === 'SCRIPT';
-            var isStylesheet = tag === 'LINK' && String(t.rel || '').toLowerCase() === 'stylesheet';
-            if (!isScript && !isStylesheet) return;
-            var src = t.src || t.href || '(inline)';
-            show('resource.error: ' + tag + ' -> ' + src);
-          }
-        }, true);
-        window.addEventListener('unhandledrejection', function(e){
-          show('unhandledrejection: ' + (e && e.reason ? String(e.reason) : 'unknown'));
-        });
-        var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-        var waitMs = isIOS ? 8000 : 5000;
-        setTimeout(function(){
-          var boot = window.__NEFOL_BOOT__;
-          var root = document.getElementById('root');
-          var mounted = boot && boot.mountedAt;
-          var hasDom = root && root.children && root.children.length > 0;
-          var crash = '';
-          try { crash = sessionStorage.getItem('__nefol_crash') || ''; } catch (e) {}
-          if (!mounted || !hasDom){
-            show(
-              'Boot state: ' + JSON.stringify(boot || {}) +
-              '\nRoot children: ' + (hasDom ? 'yes' : 'no') +
-              (crash ? ('\n\n__nefol_crash (last captured):\n' + crash) : '') +
-              '\nUserAgent: ' + navigator.userAgent
-            );
-          }
-        }, waitMs);
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
   </html>
