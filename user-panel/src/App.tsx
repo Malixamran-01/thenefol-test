@@ -22,11 +22,12 @@ import JoinUsModal from './components/JoinUsModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import { getApiBase } from './utils/apiBase'
 import { CREATOR_PROGRAM_BADGES_REFRESH } from './contexts/CreatorProgramBadgeContext'
-import Home from './pages/Home'
-import CreatorDashboard from './pages/CreatorDashboard'
-import Collab from './pages/Collab'
 
-// Lazy load all pages for code splitting
+// Lazy load all pages for code splitting (including Home / CreatorDashboard / Collab so the
+// bootstrapApp chunk stays small — Safari can stack-overflow while evaluating a huge module graph.)
+const Home = lazy(() => import('./pages/Home'))
+const CreatorDashboard = lazy(() => import('./pages/CreatorDashboard'))
+const Collab = lazy(() => import('./pages/Collab'))
 const LoginPage = lazy(() => import('./pages/Login'))
 const SignupPage = lazy(() => import('./pages/Signup'))
 const Profile = lazy(() => import('./pages/Profile'))
@@ -1105,9 +1106,11 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
   if (pathWithoutQuery === '/user/blog/dashboard') {
     return (
       <BlogLayout>
-        <ErrorBoundary name="CreatorDashboard">
-          <CreatorDashboard />
-        </ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <ErrorBoundary name="CreatorDashboard">
+            <CreatorDashboard />
+          </ErrorBoundary>
+        </Suspense>
       </BlogLayout>
     )
   }
@@ -1125,7 +1128,11 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     case '/user/product':
     case '/user/':
     case '/user':
-      return <Home />
+      return (
+        <Suspense fallback={<PageLoader />}>
+          <Home />
+        </Suspense>
+      )
     case '/user/shop': return <Shop />
     case '/user/skincare': return <Skincare />
     case '/user/ingredients': return <Ingredients />
@@ -1134,13 +1141,35 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
     case '/user/collab':
-      return <BlogLayout><Collab /></BlogLayout>
+      return (
+        <BlogLayout>
+          <Suspense fallback={<PageLoader />}>
+            <Collab />
+          </Suspense>
+        </BlogLayout>
+      )
     case '/user/affiliate':
       return <BlogLayout>{RequiredAuth(<Affiliate />)}</BlogLayout>
     case '/user/affiliate-partner':
-      return <BlogLayout>{RequiredAuth(<Collab initialProgramTab="revenue" />)}</BlogLayout>
+      return (
+        <BlogLayout>
+          {RequiredAuth(
+            <Suspense fallback={<PageLoader />}>
+              <Collab initialProgramTab="revenue" />
+            </Suspense>
+          )}
+        </BlogLayout>
+      )
     case '/user/referral-history':
-      return <BlogLayout>{RequiredAuth(<Collab initialProgramTab="revenue" />)}</BlogLayout>
+      return (
+        <BlogLayout>
+          {RequiredAuth(
+            <Suspense fallback={<PageLoader />}>
+              <Collab initialProgramTab="revenue" />
+            </Suspense>
+          )}
+        </BlogLayout>
+      )
 
     case '/user/reports': return <Reports />
     case '/user/profile': return <Profile />
@@ -1187,7 +1216,11 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     case '/user/press': return <PressMediaPage />
     case '/user/forms': return <Forms />
     default:
-      return <Home />
+      return (
+        <Suspense fallback={<PageLoader />}>
+          <Home />
+        </Suspense>
+      )
   }
 }
 
