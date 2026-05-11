@@ -22,6 +22,7 @@ import JoinUsModal from './components/JoinUsModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import { getApiBase } from './utils/apiBase'
 import { CREATOR_PROGRAM_BADGES_REFRESH } from './contexts/CreatorProgramBadgeContext'
+import Home from './pages/Home'
 import CreatorDashboard from './pages/CreatorDashboard'
 import Collab from './pages/Collab'
 
@@ -990,7 +991,6 @@ function AppContent() {
 }
 
 // Lightweight hash-based router to avoid external deps - lazy load all pages
-const Home = lazy(() => import('./pages/Home'))
 const Shop = lazy(() => import('./pages/Shop'))
 const Skincare = lazy(() => import('./pages/Skincare'))
 const Ingredients = lazy(() => import('./pages/Ingredients'))
