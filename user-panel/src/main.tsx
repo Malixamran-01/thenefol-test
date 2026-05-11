@@ -13,40 +13,23 @@ import { initMetaPixel } from './utils/metaPixel'
 ;(window as any).__NEFOL_BOOT__ = { startedAt: Date.now() }
 
 // Force Light Mode - Prevent Dark Mode on iOS/Android
-// Remove any dark class that might be applied
+// NOTE: Do NOT use MutationObserver on <html> while mutating class/style — on Safari that
+// re-enters the observer synchronously and causes "Maximum call stack size exceeded".
 if (typeof document !== 'undefined') {
-  try {
-    document.documentElement.classList.remove('dark')
-    document.documentElement.style.colorScheme = 'light'
-
-    // Prevent system dark mode from applying
-    const observer = new MutationObserver(() => {
-      try {
-        if (document.documentElement.classList.contains('dark')) {
-          document.documentElement.classList.remove('dark')
-        }
-        if (document.documentElement.style.colorScheme !== 'light') {
-          document.documentElement.style.colorScheme = 'light'
-        }
-      } catch {
-        // ignore
-      }
-    })
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'style']
-    })
-
-    // Also check on load
-    window.addEventListener('load', () => {
+  const enforceLightChrome = () => {
+    try {
       document.documentElement.classList.remove('dark')
       document.documentElement.style.colorScheme = 'light'
-    })
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('Light-mode enforcement failed:', e)
+      document.documentElement.setAttribute('data-color-scheme', 'light')
+    } catch {
+      // ignore
+    }
   }
+  enforceLightChrome()
+  window.addEventListener('load', enforceLightChrome)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') enforceLightChrome()
+  })
 }
 
 // Initialize AOS
