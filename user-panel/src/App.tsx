@@ -22,6 +22,8 @@ import JoinUsModal from './components/JoinUsModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import { getApiBase } from './utils/apiBase'
 import { CREATOR_PROGRAM_BADGES_REFRESH } from './contexts/CreatorProgramBadgeContext'
+import CreatorDashboard from './pages/CreatorDashboard'
+import Collab from './pages/Collab'
 
 // Lazy load all pages for code splitting
 const LoginPage = lazy(() => import('./pages/Login'))
@@ -997,7 +999,6 @@ const Blog = lazy(() => import('./pages/Blog'))
 const BlogDetail = lazy(() => import('./pages/BlogDetail'))
 const BlogActivityPage = lazy(() => import('./pages/BlogActivityPage'))
 const BlogExplorePage = lazy(() => import('./pages/BlogExplorePage'))
-const CreatorDashboard = lazy(() => import('./pages/CreatorDashboard'))
 const NefolSocialSettings = lazy(() => import('./pages/NefolSocialSettings'))
 const MyBlogsPage = lazy(() => import('./pages/MyBlogsPage'))
 const BlogRequestForm = lazy(() => import('./pages/BlogRequestForm'))
@@ -1006,7 +1007,6 @@ const Contact = lazy(() => import('./pages/Contact'))
 const ProductPage = lazy(() => import('./pages/Product'))
 const CategoryPage = lazy(() => import('./pages/Category'))
 const Affiliate = lazy(() => import('./pages/Affiliate'))
-const Collab = lazy(() => import('./pages/Collab'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Checkout = lazy(() => import('./pages/Checkout'))
 const Confirmation = lazy(() => import('./pages/Confirmation'))
