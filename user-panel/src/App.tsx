@@ -66,7 +66,15 @@ function AppContent() {
   const { items: wishlistItems } = useWishlist()
   const { user, isAuthenticated, logout } = useAuth()
   const { blocked: nefolSocialBanned } = useNefolSocialBan()
-  const [showSplash, setShowSplash] = useState(true)
+  const isIOSSafari = (() => {
+    if (typeof window === 'undefined') return false
+    const ua = window.navigator.userAgent
+    const iOS = /iPhone|iPad|iPod/i.test(ua)
+    const webkit = /WebKit/i.test(ua)
+    const notChrome = !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)
+    return iOS && webkit && notChrome
+  })()
+  const [showSplash, setShowSplash] = useState(!isIOSSafari)
   const [showSearch, setShowSearch] = useState(false)
   const [showJoinUs, setShowJoinUs] = useState(false)
   const [affiliateUnlocked, setAffiliateUnlocked] = useState(false)

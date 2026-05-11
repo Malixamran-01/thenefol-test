@@ -8,20 +8,26 @@ type Props = {
 type State = {
   hasError: boolean
   message: string
+  stack: string
+  componentStack: string
 }
 
 export default class ErrorBoundary extends React.Component<Props, State> {
-  state: State = { hasError: false, message: '' }
+  state: State = { hasError: false, message: '', stack: '', componentStack: '' }
 
   static getDerivedStateFromError(err: unknown): State {
     const msg = err instanceof Error ? err.message : String(err)
-    return { hasError: true, message: msg }
+    const stack = err instanceof Error ? (err.stack || '') : ''
+    return { hasError: true, message: msg, stack, componentStack: '' }
   }
 
-  componentDidCatch(err: unknown) {
+  componentDidCatch(err: unknown, info: React.ErrorInfo) {
+    const stack = err instanceof Error ? (err.stack || '') : ''
+    const componentStack = info?.componentStack || ''
+    this.setState((prev) => ({ ...prev, stack, componentStack }))
     // Keep console logging for debugging (Safari remote inspector)
     // eslint-disable-next-line no-console
-    console.error(`[ErrorBoundary] ${this.props.name || 'render'} error:`, err)
+    console.error(`[ErrorBoundary] ${this.props.name || 'render'} error:`, err, info)
   }
 
   render() {
@@ -36,6 +42,8 @@ export default class ErrorBoundary extends React.Component<Props, State> {
           </p>
           <pre className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-red-50 p-3 text-[11px] text-red-800">
             {this.props.name ? `${this.props.name}: ` : ''}{this.state.message || 'Unknown error'}
+            {this.state.stack ? `\n\nStack:\n${this.state.stack}` : ''}
+            {this.state.componentStack ? `\n\nComponent stack:\n${this.state.componentStack}` : ''}
           </pre>
           <button
             className="mt-4 w-full rounded-xl bg-[#1B4965] px-4 py-2.5 text-sm font-semibold text-white"
