@@ -4,6 +4,7 @@ import { Provider } from 'react-redux'
 import { store } from './store'
 import App from './App'
 import { BlogNavListener } from './components/BlogNavListener'
+import ErrorBoundary from './components/ErrorBoundary'
 import './styles.css'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
@@ -73,11 +74,26 @@ if ('serviceWorker' in navigator) {
   })
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <Provider store={store}>
-    <App />
-    <BlogNavListener />
-  </Provider>
+const rootEl = document.getElementById('root')
+if (!rootEl) {
+  throw new Error('Root container #root not found')
+}
+
+const root = ReactDOM.createRoot(rootEl, {
+  onRecoverableError(error) {
+    ;(window as any).__NEFOL_BOOT__.recoverableError = String(error)
+    // eslint-disable-next-line no-console
+    console.error('React recoverable error:', error)
+  },
+})
+
+root.render(
+  <ErrorBoundary name="RootApp">
+    <Provider store={store}>
+      <App />
+      <BlogNavListener />
+    </Provider>
+  </ErrorBoundary>
 )
 
 // Mark boot finished (React mounted)
