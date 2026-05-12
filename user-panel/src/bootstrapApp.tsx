@@ -23,6 +23,42 @@ function mergeBoot(patch: Record<string, unknown>) {
 export function mountApp() {
   mergeBoot({ bootstrapStartedAt: Date.now() })
 
+  /** Deepest isolation: no Redux, no ErrorBoundary, no App, no AOS/MetaPixel (set `VITE_BOOT_SAFARI_STUB=1`). */
+  const bootMinimal =
+    typeof import.meta !== 'undefined' && import.meta.env?.VITE_BOOT_SAFARI_STUB === '1'
+  if (bootMinimal) {
+    const rootEl = document.getElementById('root')
+    if (!rootEl) {
+      throw new Error('Root container #root not found')
+    }
+    mergeBoot({ reactCreateRootAt: Date.now(), bootMinimalStub: true })
+    const root = ReactDOM.createRoot(rootEl, {
+      onRecoverableError(error) {
+        mergeBoot({ recoverableError: String(error) })
+        // eslint-disable-next-line no-console
+        console.error('React recoverable error:', error)
+      },
+    })
+    root.render(<div>Hello Safari</div>)
+    mergeBoot({ renderCalledAt: Date.now() })
+    queueMicrotask(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            const el = document.getElementById('root')
+            mergeBoot({
+              mountedAt: Date.now(),
+              rootChildCount: el?.children.length ?? 0,
+            })
+          } catch {
+            /* ignore */
+          }
+        })
+      })
+    })
+    return
+  }
+
   // Force Light Mode - Prevent Dark Mode on iOS/Android
   // NOTE: Do NOT use MutationObserver on <html> while mutating class/style — on Safari that
   // re-enters the observer synchronously and causes "Maximum call stack size exceeded".

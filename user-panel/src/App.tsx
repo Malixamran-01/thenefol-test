@@ -31,6 +31,13 @@ import {
   type NefolHashRouteDetail,
 } from './utils/hashRouteEvents'
 
+/**
+ * Safari **shell** isolation: no providers, no router, no `AppContent`.
+ * Set `true` for one deploy, or set `VITE_APP_SAFARI_STUB=1` on Vercel.
+ * If Safari still crashes → look at `bootstrapApp` / `main` / `bootProbe` / Redux `Provider` in `bootstrapApp`.
+ */
+const FORCE_APP_SAFARI_STUB = false
+
 // Lazy load pages for code splitting (CreatorDashboard is direct-imported — Safari stack issues.)
 const Home = lazy(() => import('./pages/Home'))
 const Collab = lazy(() => import('./pages/Collab'))
@@ -1219,6 +1226,13 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
 }
 
 export default function App() {
+  const shellStub =
+    FORCE_APP_SAFARI_STUB ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_SAFARI_STUB === '1')
+  if (shellStub) {
+    return <div>Hello Safari</div>
+  }
+
   return (
     <AuthProvider>
       <NefolSocialBanProvider>
