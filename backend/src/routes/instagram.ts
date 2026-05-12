@@ -694,8 +694,8 @@ export async function handleCallback(pool: Pool, req: Request, res: Response) {
     // Step 4: Store token
     // We store the IG user token in fb_page_access_token so existing fetchReelData / cron works unchanged
     try {
-      await pool.query(
-        `UPDATE collab_applications
+    await pool.query(
+      `UPDATE collab_applications
          SET instagram_connected  = true,
              fb_user_access_token = $1,
              fb_page_id           = NULL,
