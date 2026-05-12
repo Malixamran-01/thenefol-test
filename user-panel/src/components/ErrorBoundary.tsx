@@ -33,25 +33,19 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (!this.state.hasError) return this.props.children
 
+    // Minimal fallback (no long stack/pre) — avoids any chance of heavy re-render while debugging Safari.
+    const label = this.props.name ? `${this.props.name}: ` : ''
     return (
-      <div className="mx-auto w-full max-w-xl px-4 py-10">
-        <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-red-700">This page failed to load on your browser.</p>
-          <p className="mt-1 text-xs text-gray-600">
-            Please send this error text to support/dev so we can fix Safari compatibility.
-          </p>
-          <pre className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-red-50 p-3 text-[11px] text-red-800">
-            {this.props.name ? `${this.props.name}: ` : ''}{this.state.message || 'Unknown error'}
-            {this.state.stack ? `\n\nStack:\n${this.state.stack}` : ''}
-            {this.state.componentStack ? `\n\nComponent stack:\n${this.state.componentStack}` : ''}
-          </pre>
-          <button
-            className="mt-4 w-full rounded-xl bg-[#1B4965] px-4 py-2.5 text-sm font-semibold text-white"
-            onClick={() => window.location.reload()}
-          >
-            Reload
-          </button>
-        </div>
+      <div className="p-6 text-sm text-red-800" style={{ fontFamily: 'system-ui, sans-serif' }}>
+        <p className="font-semibold">Error</p>
+        <p className="mt-1">{label}{this.state.message || 'Unknown error'}</p>
+        <button
+          type="button"
+          className="mt-3 rounded border border-gray-400 px-3 py-1.5 text-xs"
+          onClick={() => window.location.reload()}
+        >
+          Reload
+        </button>
       </div>
     )
   }

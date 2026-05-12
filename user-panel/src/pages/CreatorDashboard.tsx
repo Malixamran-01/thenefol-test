@@ -40,6 +40,13 @@ import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 
+/**
+ * Safari isolation: `true` = ship only `<div>Creator Dashboard</div>` (no hooks / tree).
+ * Flip to `true` for one deploy to see if Safari still crashes (crash ⇒ problem is above this page).
+ * Or set `VITE_CREATOR_DASHBOARD_STUB=1` on Vercel without editing code.
+ */
+const FORCE_CREATOR_DASHBOARD_STUB = false
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface AuthorProfile {
@@ -449,7 +456,7 @@ function EarningsTab() {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CreatorDashboard() {
+function CreatorDashboardImpl() {
   const { isAuthenticated } = useAuth()
   const [data, setData]             = useState<DashboardData | null>(null)
   const [loading, setLoading]       = useState(true)
@@ -987,4 +994,14 @@ export default function CreatorDashboard() {
       )}
     </div>
   )
+}
+
+export default function CreatorDashboard() {
+  const stub =
+    FORCE_CREATOR_DASHBOARD_STUB ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CREATOR_DASHBOARD_STUB === '1')
+  if (stub) {
+    return <div className="p-8 text-center text-gray-800">Creator Dashboard</div>
+  }
+  return <CreatorDashboardImpl />
 }
