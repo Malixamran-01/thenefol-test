@@ -1,5 +1,3 @@
-import './bootProbe'
-
 function showImportFailure(err: unknown) {
   const rootEl = document.getElementById('root')
   const text =
