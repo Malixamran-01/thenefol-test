@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
+import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import { useAuth } from '../contexts/AuthContext'
 import CustomSelect from '../components/CustomSelect'
 import { useBlogBack } from '../hooks/useBlogBack'
@@ -372,9 +373,12 @@ export default function AuthorProfile() {
   const [currentHash, setCurrentHash] = useState(() => window.location.hash || '')
 
   useEffect(() => {
-    const handler = () => setCurrentHash(window.location.hash || '')
-    window.addEventListener('hashchange', handler)
-    return () => window.removeEventListener('hashchange', handler)
+    const handler = () => {
+      const h = window.location.hash || ''
+      setCurrentHash((prev) => (prev === h ? prev : h))
+    }
+    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, handler)
+    return () => window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, handler)
   }, [])
 
   const routeAuthorId = useMemo(() => {

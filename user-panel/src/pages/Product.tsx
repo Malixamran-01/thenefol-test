@@ -3,6 +3,7 @@ import type { Product } from '../types'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
+import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import { userSocketService } from '../services/socket'
 import { api, productQuestionsAPI } from '../services/api'
 import { getHeaders } from '../utils/session'
@@ -457,8 +458,8 @@ export default function ProductPage() {
   useEffect(() => { parseProductPath() }, [])
 
   useEffect(() => {
-    window.addEventListener('hashchange', parseProductPath)
-    return () => window.removeEventListener('hashchange', parseProductPath)
+    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, parseProductPath)
+    return () => window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, parseProductPath)
   }, [parseProductPath])
 
   // Load product when the identifier (slug or SKU) changes

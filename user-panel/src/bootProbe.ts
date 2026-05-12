@@ -48,4 +48,13 @@ if (typeof window !== 'undefined') {
     log.push({ t: Date.now(), type: 'rejection', reason: String(ev.reason) })
     persist()
   })
+
+  // Drop stale service workers as early as possible (avoids mixed chunk maps on Safari).
+  if ('serviceWorker' in navigator) {
+    void navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((r) => {
+        void r.unregister()
+      })
+    })
+  }
 }

@@ -25,6 +25,7 @@ import {
   getCreatorProgramSidebarEnabled,
   NEFOL_SOCIAL_SETTINGS_CHANGE,
 } from '../utils/nefolSocialSettings'
+import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import { CreatorProgramBadgeProvider, useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
 
 type CreatorBadge = 'locked' | 'progress' | 'unlocked'
@@ -100,19 +101,6 @@ const NAV_ITEMS: NavItem[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function useCurrentHash() {
-  const [hash, setHash] = useState(window.location.hash || '#/user/')
-  useEffect(() => {
-    const handler = () => {
-      const next = window.location.hash || '#/user/'
-      setHash((prev) => (prev === next ? prev : next))
-    }
-    window.addEventListener('hashchange', handler)
-    return () => window.removeEventListener('hashchange', handler)
-  }, [])
-  return hash
-}
-
 function isItemActive(item: NavItem, hash: string, currentUserId?: number): boolean {
   if (item.placeholder) return false
   if (item.id === 'home') return hash === '#/user/blog'
@@ -139,6 +127,7 @@ function isItemActive(item: NavItem, hash: string, currentUserId?: number): bool
 // ─── Nav (used in both desktop sidebar and mobile drawer) ────────────────────
 
 interface SidePanelNavProps {
+  hash: string
   collapsed: boolean
   unreadCount: number
   /** When false (default), Creator Program is hidden from the nav until enabled in Settings. */
@@ -153,6 +142,7 @@ interface SidePanelNavProps {
 }
 
 function SidePanelNav({
+  hash,
   collapsed,
   unreadCount,
   showCreatorProgramInSidebar = false,
@@ -164,7 +154,6 @@ function SidePanelNav({
   showStoreLink = false,
   onWriteClick,
 }: SidePanelNavProps) {
-  const hash = useCurrentHash()
   const { isAuthenticated, user, logout } = useAuth()
   const creatorBadges = useCreatorProgramBadges()
 
@@ -434,12 +423,14 @@ function SidePanelNav({
 
 interface BlogLayoutProps {
   children: React.ReactNode
+  /** Full hash from the single app router (`#/user/...`), kept in sync via `NEFOL_HASH_ROUTE_CHANGE`. */
+  currentHash: string
 }
 
 const SIDEBAR_EXPANDED_W = 220
 const SIDEBAR_COLLAPSED_W = 68
 
-export default function BlogLayout({ children }: BlogLayoutProps) {
+export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
   const { isAuthenticated, user } = useAuth()
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -522,8 +513,8 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
 
   useEffect(() => {
     const handler = () => setMobileMenuOpen(false)
-    window.addEventListener('hashchange', handler)
-    return () => window.removeEventListener('hashchange', handler)
+    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, handler)
+    return () => window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, handler)
   }, [])
 
   useEffect(() => {
@@ -565,6 +556,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
         style={{ width: sidebarW, transition: 'width 200ms ease', backgroundColor: '#F4F9F9' }}
       >
         <SidePanelNav
+          hash={currentHash}
           collapsed={collapsed}
           unreadCount={unreadCount}
           showCreatorProgramInSidebar={showCreatorProgramInSidebar}
@@ -682,6 +674,7 @@ export default function BlogLayout({ children }: BlogLayoutProps) {
             {/* ── Nav items + store link ────────────────────── */}
             <div className="flex-1 overflow-y-auto flex flex-col">
               <SidePanelNav
+                hash={currentHash}
                 collapsed={false}
                 unreadCount={unreadCount}
                 showCreatorProgramInSidebar={showCreatorProgramInSidebar}

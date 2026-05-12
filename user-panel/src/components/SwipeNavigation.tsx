@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 
 interface SwipeNavigationProps {
   enabled?: boolean
@@ -56,8 +57,8 @@ export default function SwipeNavigation({
     navigationHistory.current = [initialHash]
     historyIndex.current = 0
 
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
+    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, handleHashChange)
+    return () => window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, handleHashChange)
   }, [])
 
   useEffect(() => {

@@ -20,12 +20,19 @@ import SwipeNavigation from './components/SwipeNavigation'
 import JoinUsModal from './components/JoinUsModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import { getApiBase } from './utils/apiBase'
-import { CREATOR_PROGRAM_BADGES_REFRESH } from './contexts/CreatorProgramBadgeContext'
+import {
+  CREATOR_PROGRAM_BADGES_REFRESH,
+} from './contexts/CreatorProgramBadgeContext'
+import CreatorDashboard from './pages/CreatorDashboard'
+import {
+  NEFOL_HASH_ROUTE_CHANGE,
+  pathFromLocationHash,
+  parseHashFromFullUrl,
+  type NefolHashRouteDetail,
+} from './utils/hashRouteEvents'
 
-// Lazy load all pages for code splitting (including Home / CreatorDashboard / Collab so the
-// bootstrapApp chunk stays small — Safari can stack-overflow while evaluating a huge module graph.)
+// Lazy load pages for code splitting (CreatorDashboard is direct-imported — Safari stack issues.)
 const Home = lazy(() => import('./pages/Home'))
-const CreatorDashboard = lazy(() => import('./pages/CreatorDashboard'))
 const Collab = lazy(() => import('./pages/Collab'))
 const LoginPage = lazy(() => import('./pages/Login'))
 const SignupPage = lazy(() => import('./pages/Signup'))
@@ -91,14 +98,24 @@ function AppContent() {
   const [showMobileCollections, setShowMobileCollections] = useState(false)
   const [cartToast, setCartToast] = useState<{ message: string; id: number } | null>(null)
   const desktopCollectionsRef = useRef<HTMLDivElement>(null)
-  const [currentPath, setCurrentPath] = useState(() =>
-    (window.location.hash || '#/user/').replace('#', '').toLowerCase().split('?')[0]
-  )
+  const currentPathRef = useRef(pathFromLocationHash())
+  const [currentPath, setCurrentPath] = useState(() => currentPathRef.current)
+  /** Full `#/...` string so blog chrome updates on query-only hash changes (path may stay same). */
+  const [routerHash, setRouterHash] = useState(() => window.location.hash || '#/user/')
 
-
+  // Single global hash listener: guarded state + one synthetic route event for the rest of the app.
   useEffect(() => {
-    const onHashChange = () => {
-      setCurrentPath((window.location.hash || '#/user/').replace('#', '').toLowerCase().split('?')[0])
+    const onHashChange = (e: HashChangeEvent) => {
+      const oldHash = parseHashFromFullUrl(String(e.oldURL ?? ''))
+      const hash = window.location.hash || '#/user/'
+      const next = pathFromLocationHash()
+      if (currentPathRef.current !== next) {
+        currentPathRef.current = next
+        setCurrentPath((prev) => (prev === next ? prev : next))
+      }
+      setRouterHash((prev) => (prev === hash ? prev : hash))
+      const detail: NefolHashRouteDetail = { path: next, hash, oldHash }
+      window.dispatchEvent(new CustomEvent<NefolHashRouteDetail>(NEFOL_HASH_ROUTE_CHANGE, { detail }))
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
@@ -299,12 +316,12 @@ function AppContent() {
         <SplashScreen onComplete={handleSplashComplete} />
       ) : isEditorPage ? (
         <Suspense fallback={<PageLoader />}>
-          <RouterView affiliateId={affiliateId} currentHash={window.location.hash || '#/user/'} />
+          <RouterView affiliateId={affiliateId} currentHash={routerHash} />
         </Suspense>
       ) : isBlogLayoutRoute ? (
         /* ── Blog section: side panel layout, no e-commerce chrome ── */
         <Suspense fallback={<PageLoader />}>
-          <RouterView affiliateId={affiliateId} currentHash={window.location.hash || '#/user/'} />
+          <RouterView affiliateId={affiliateId} currentHash={routerHash} />
         </Suspense>
       ) : (
         <>
@@ -734,7 +751,7 @@ function AppContent() {
 
         <div className="main-content-wrapper">
           <Suspense fallback={<PageLoader />}>
-            <RouterView affiliateId={affiliateId} currentHash={window.location.hash || '#/user/'} />
+            <RouterView affiliateId={affiliateId} currentHash={routerHash} />
           </Suspense>
         </div>
 
@@ -1098,22 +1115,22 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
   if (lower.startsWith('/p/'))            return <ProductPage />
   if (lower.startsWith('/user/category/')) return <CategoryPage />
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
-  if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout><BlogActivityPage /></BlogLayout>
-  if (pathWithoutQuery === '/user/blog/explore') return <BlogLayout><BlogExplorePage /></BlogLayout>
+  if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout currentHash={currentHash}><BlogActivityPage /></BlogLayout>
+  if (pathWithoutQuery === '/user/blog/explore') return <BlogLayout currentHash={currentHash}><BlogExplorePage /></BlogLayout>
   if (pathWithoutQuery === '/user/blog/dashboard') {
     return (
-      <BlogLayout>
+      <BlogLayout currentHash={currentHash}>
         <ErrorBoundary name="CreatorDashboard">
           <CreatorDashboard />
         </ErrorBoundary>
       </BlogLayout>
     )
   }
-  if (pathWithoutQuery === '/user/blog/my-blogs') return RequiredAuth(<BlogLayout><MyBlogsPage /></BlogLayout>)
-  if (pathWithoutQuery === '/user/blog/settings') return <BlogLayout><NefolSocialSettings /></BlogLayout>
-  if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogLayout><BlogDetail /></BlogLayout>
-  if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <BlogLayout><AuthorProfile /></BlogLayout>
-  if (pathWithoutQuery === '/user/author/onboarding') return RequiredAuth(<BlogLayout><AuthorOnboarding /></BlogLayout>)
+  if (pathWithoutQuery === '/user/blog/my-blogs') return RequiredAuth(<BlogLayout currentHash={currentHash}><MyBlogsPage /></BlogLayout>)
+  if (pathWithoutQuery === '/user/blog/settings') return <BlogLayout currentHash={currentHash}><NefolSocialSettings /></BlogLayout>
+  if (lower.startsWith('/user/blog/') && lower !== '/user/blog' && pathWithoutQuery !== '/user/blog/request') return <BlogLayout currentHash={currentHash}><BlogDetail /></BlogLayout>
+  if (lower.startsWith('/user/author/') && lower !== '/user/author/onboarding') return <BlogLayout currentHash={currentHash}><AuthorProfile /></BlogLayout>
+  if (pathWithoutQuery === '/user/author/onboarding') return RequiredAuth(<BlogLayout currentHash={currentHash}><AuthorOnboarding /></BlogLayout>)
   if (lower.startsWith('/user/ingredients/') && lower !== '/user/ingredients') return <IngredientDetail />
   if (lower.startsWith('/user/confirmation')) return <Confirmation />
   if (lower.startsWith('/user/order/')) return <OrderDetails />
@@ -1127,27 +1144,27 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     case '/user/shop': return <Shop />
     case '/user/skincare': return <Skincare />
     case '/user/ingredients': return <Ingredients />
-    case '/user/blog': return <BlogLayout><Blog /></BlogLayout>
+    case '/user/blog': return <BlogLayout currentHash={currentHash}><Blog /></BlogLayout>
     case '/user/blog/request': return RequiredAuth(<BlogRequestForm />)
     case '/user/contact': return <Contact />
     case '/user/checkout': return <Checkout affiliateId={affiliateId} />
     case '/user/collab':
       return (
-        <BlogLayout>
+        <BlogLayout currentHash={currentHash}>
           <Collab />
         </BlogLayout>
       )
     case '/user/affiliate':
-      return <BlogLayout>{RequiredAuth(<Affiliate />)}</BlogLayout>
+      return <BlogLayout currentHash={currentHash}>{RequiredAuth(<Affiliate />)}</BlogLayout>
     case '/user/affiliate-partner':
       return (
-        <BlogLayout>
+        <BlogLayout currentHash={currentHash}>
           {RequiredAuth(<Collab initialProgramTab="revenue" />)}
         </BlogLayout>
       )
     case '/user/referral-history':
       return (
-        <BlogLayout>
+        <BlogLayout currentHash={currentHash}>
           {RequiredAuth(<Collab initialProgramTab="revenue" />)}
         </BlogLayout>
       )

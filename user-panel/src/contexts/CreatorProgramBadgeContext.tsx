@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from './AuthContext'
 import { creatorProgramAPI } from '../services/api'
+import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 
 export const CREATOR_PROGRAM_BADGES_REFRESH = 'creator-program-badges-refresh'
 
@@ -60,13 +61,13 @@ export function CreatorProgramBadgeProvider({ children }: { children: React.Reac
   useEffect(() => {
     const t = window.setInterval(() => void refresh(), 30_000)
     const onRefresh = () => void refresh()
-    const onHash = () => void refresh()
+    const onRoute = () => void refresh()
     window.addEventListener(CREATOR_PROGRAM_BADGES_REFRESH, onRefresh)
-    window.addEventListener('hashchange', onHash)
+    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
     return () => {
       window.clearInterval(t)
       window.removeEventListener(CREATOR_PROGRAM_BADGES_REFRESH, onRefresh)
-      window.removeEventListener('hashchange', onHash)
+      window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
     }
   }, [refresh])
 

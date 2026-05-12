@@ -11,6 +11,7 @@ import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { CREATOR_PROGRAM_BADGES_REFRESH, useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
 import { creatorProgramAPI } from '../services/api'
+import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
 import CollabAssignedTasks from '../components/CollabAssignedTasks'
 import AffiliatePartner from './AffiliatePartner'
@@ -257,8 +258,8 @@ function Collab(props: CollabProps = {}) {
       if (w === 'overview') setCollabWorkView('overview')
     }
     syncTabFromHash()
-    window.addEventListener('hashchange', syncTabFromHash)
-    return () => window.removeEventListener('hashchange', syncTabFromHash)
+    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, syncTabFromHash)
+    return () => window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, syncTabFromHash)
   }, [])
   const updPS = (platform: SupportedPlatform, u: Partial<PlatformSyncState>) =>
     setPlatformStates(prev => ({ ...prev, [platform]: { ...prev[platform], ...u } }))

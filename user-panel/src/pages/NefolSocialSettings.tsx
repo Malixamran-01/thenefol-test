@@ -18,6 +18,7 @@ import {
   setSocialInterests,
   SOCIAL_INTEREST_OPTIONS,
 } from '../utils/nefolSocialSettings'
+import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 
 type SettingsView = 'list' | 'creator-program' | 'interests' | 'payout'
 
@@ -99,9 +100,14 @@ export default function NefolSocialSettings() {
   }, [])
 
   useEffect(() => {
-    const onHash = () => setView(parseViewFromHash())
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+    const onRoute = () => {
+      setView((prev) => {
+        const next = parseViewFromHash()
+        return prev === next ? prev : next
+      })
+    }
+    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
+    return () => window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
   }, [])
 
   const goSettingsHome = () => {

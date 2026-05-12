@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { getApiBase } from '../utils/apiBase'
+import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import { useAuth } from './AuthContext'
 
 type BanState = {
@@ -12,9 +13,8 @@ type BanState = {
 const NefolSocialBanContext = createContext<BanState | null>(null)
 
 /**
- * Ban status for NEFOL Social authors. Uses a monotonic request id (not React state) so
- * hashchange-driven refreshes cannot pile up a `tick` dependency chain that re-triggers
- * effects in ways Safari's stack handles poorly.
+ * Ban status for NEFOL Social authors. Uses a monotonic request id so overlapping fetches
+ * do not apply stale results. Route changes refresh via `NEFOL_HASH_ROUTE_CHANGE` from App.
  */
 export function NefolSocialBanProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -80,9 +80,9 @@ export function NefolSocialBanProvider({ children }: { children: React.ReactNode
   }, [runCheck])
 
   useEffect(() => {
-    const onHash = () => runCheck()
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+    const onRoute = () => runCheck()
+    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
+    return () => window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
   }, [runCheck])
 
   const value = useMemo(
