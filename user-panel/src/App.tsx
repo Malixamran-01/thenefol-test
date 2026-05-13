@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Menu, X, Instagram, Facebook, Youtube, Linkedin } from 'lucide-react'
 import SplashScreen from './components/SplashScreen'
 import CartIcon from './components/CartIcon'
@@ -30,13 +30,6 @@ import {
   parseHashFromFullUrl,
   type NefolHashRouteDetail,
 } from './utils/hashRouteEvents'
-
-/**
- * Safari **shell** isolation: no providers, no router, no `AppContent`.
- * Set `true` for one deploy, or set `VITE_APP_SAFARI_STUB=1` on Vercel.
- * If Safari still crashes → look at `bootstrapApp` / `main` / `bootProbe` / Redux `Provider` in `bootstrapApp`.
- */
-const FORCE_APP_SAFARI_STUB = false
 
 // Lazy load pages for code splitting (CreatorDashboard is direct-imported — Safari stack issues.)
 const Home = lazy(() => import('./pages/Home'))
@@ -1226,13 +1219,6 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
 }
 
 export default function App() {
-  const shellStub =
-    FORCE_APP_SAFARI_STUB ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_SAFARI_STUB === '1')
-  if (shellStub) {
-    return <div>Hello Safari</div>
-  }
-
   return (
     <AuthProvider>
       <NefolSocialBanProvider>
