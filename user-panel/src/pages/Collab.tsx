@@ -373,10 +373,10 @@ function CollabImpl(props: CollabProps = {}) {
 
   useEffect(() => {
     const hash = window.location.hash || ''
-    if (hash.includes('ig_connected=1')) window.location.hash = '/user/collab'
+    if (hash.includes('ig_connected=1')) window.location.hash = '#/user/collab'
     if (hash.includes('ig_error=')) {
       const match = hash.match(/ig_error=([^&]+)/)
-      if (match) { setSyncError(`Instagram connection failed: ${decodeURIComponent(match[1])}`); window.location.hash = '/user/collab' }
+      if (match) { setSyncError(`Instagram connection failed: ${decodeURIComponent(match[1])}`); window.location.hash = '#/user/collab' }
     }
     if (hash.includes('platform_connected=')) {
       const match = hash.match(/platform_connected=([^&]+)/)
@@ -385,7 +385,7 @@ function CollabImpl(props: CollabProps = {}) {
         const label = p.charAt(0).toUpperCase() + p.slice(1)
         setPlatformNotification(`${label} connected successfully!`)
         setTimeout(() => setPlatformNotification(null), 5000)
-        window.location.hash = '/user/collab'
+        window.location.hash = '#/user/collab'
         // fetchStatus will be called in its own effect after hash change triggers re-check
       }
     }
@@ -396,7 +396,7 @@ function CollabImpl(props: CollabProps = {}) {
         const platform = parts[0] as SupportedPlatform
         const msg = parts.slice(1).join(':')
         if (['youtube','reddit','vk'].includes(platform)) updPS(platform, { error: `Connection failed: ${msg}` })
-        window.location.hash = '/user/collab'
+        window.location.hash = '#/user/collab'
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

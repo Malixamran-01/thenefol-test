@@ -5,6 +5,7 @@ class UserSocketService {
   private socket: Socket | null = null
   private listeners: Map<string, Function[]> = new Map()
   private userId: string | null = null
+  private lastPageView: { page: string; at: number } = { page: '', at: 0 }
 
   connect(userId?: string) {
     if (this.socket?.connected) return
@@ -129,6 +130,12 @@ class UserSocketService {
   trackPageView(page: string, additionalData?: any) {
     if (!this.socket?.connected) return
 
+    const now = Date.now()
+    if (page === this.lastPageView.page && now - this.lastPageView.at < 150) {
+      return
+    }
+    this.lastPageView = { page, at: now }
+
     const data = {
       page,
       userId: this.userId,
@@ -139,8 +146,14 @@ class UserSocketService {
       ...additionalData
     }
 
-    console.log('Tracking page view:', data)
-    this.socket.emit('page-view', data)
+    queueMicrotask(() => {
+      if (!this.socket?.connected) return
+      try {
+        this.socket.emit('page-view', data)
+      } catch (e) {
+        console.warn('page-view emit failed:', e)
+      }
+    })
   }
 
   // Track cart updates

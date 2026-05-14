@@ -24,9 +24,9 @@ import {
   CREATOR_PROGRAM_BADGES_REFRESH,
 } from './contexts/CreatorProgramBadgeContext'
 import {
-  NEFOL_HASH_ROUTE_CHANGE,
   pathFromLocationHash,
   parseHashFromFullUrl,
+  scheduleNefolHashRouteChange,
   type NefolHashRouteDetail,
 } from './utils/hashRouteEvents'
 import {
@@ -126,7 +126,7 @@ function AppContent() {
       }
       setRouterHash((prev) => (prev === hash ? prev : hash))
       const detail: NefolHashRouteDetail = { path: next, hash, oldHash }
-      window.dispatchEvent(new CustomEvent<NefolHashRouteDetail>(NEFOL_HASH_ROUTE_CHANGE, { detail }))
+      scheduleNefolHashRouteChange(detail)
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
@@ -1136,21 +1136,21 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     ) {
       return
     }
-    // Scroll to top immediately when route changes
-    // Safari only supports behavior: 'auto' | 'smooth'. Using an invalid value can throw and blank the app.
-    try {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    } catch {
-      window.scrollTo(0, 0)
-    }
-    
-    // Also ensure document and body are scrolled to top
-    if (document.documentElement) {
-      document.documentElement.scrollTop = 0
-    }
-    if (document.body) {
-      document.body.scrollTop = 0
-    }
+    // Defer past layout; synchronous scroll inside hash/route churn has caused Safari stack issues.
+    const id = window.requestAnimationFrame(() => {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      } catch {
+        window.scrollTo(0, 0)
+      }
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0
+      }
+      if (document.body) {
+        document.body.scrollTop = 0
+      }
+    })
+    return () => window.cancelAnimationFrame(id)
   }, [currentHash])
   
   // Track page views whenever the route changes
@@ -1162,8 +1162,14 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
       return
     }
     const path = currentHash.replace('#', '') || '/user/'
-    console.log('📊 Tracking page view:', path)
-    userSocketService.trackPageView(path)
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      userSocketService.trackPageView(path)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [currentHash])
   
   const path = currentHash.replace('#', '')
