@@ -29,7 +29,15 @@ import {
   parseHashFromFullUrl,
   type NefolHashRouteDetail,
 } from './utils/hashRouteEvents'
-import { ROUTE_SHELL_ISOLATION, APPCONTENT_STUB, APPCONTENT_CHROME_ONLY, APPCONTENT_ROUTER_ONLY, CREATOR_PROGRAM_ROUTES_STUB, CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT } from './routeShellIsolation'
+import {
+  ROUTE_SHELL_ISOLATION,
+  APPCONTENT_STUB,
+  APPCONTENT_CHROME_ONLY,
+  APPCONTENT_ROUTER_ONLY,
+  CREATOR_PROGRAM_ROUTES_STUB,
+  CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT,
+  CREATOR_DASHBOARD_ULTRA_MINIMAL,
+} from './routeShellIsolation'
 
 // Lazy load pages for code splitting (CreatorDashboard entry is lazy — heavy graph lives in CreatorDashboardImpl.tsx).
 const CreatorDashboard = lazy(() => import('./pages/CreatorDashboard'))
@@ -1154,6 +1162,17 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
           data-dashboard-no-blog-layout
         >
           <CreatorProgramRouteStub label="blog dashboard (no BlogLayout)" />
+        </div>
+      )
+    }
+    if (CREATOR_DASHBOARD_ULTRA_MINIMAL) {
+      return (
+        <div
+          className="min-h-screen w-full bg-white p-6 text-center text-base text-slate-800"
+          data-dashboard-ultra-minimal
+          style={{ fontFamily: 'system-ui, sans-serif' }}
+        >
+          Ultra minimal dashboard route — no CreatorDashboard, no Suspense, no lazy chunk
         </div>
       )
     }

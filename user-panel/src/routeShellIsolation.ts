@@ -30,18 +30,25 @@ export const APPCONTENT_ROUTER_ONLY = false
 export const CREATOR_PROGRAM_ROUTES_STUB = false
 
 /**
- * **`/user/blog/dashboard` only:** render **no** `BlogLayout`, **no** `ErrorBoundary` — plain `div` +
- * `Suspense` + `CreatorDashboard` (or route stub if `CREATOR_PROGRAM_ROUTES_STUB`). Use to see if Safari
- * recursion lives in `BlogLayout` / blog chrome for this path.
+ * **`/user/blog/dashboard` only:** render **no** `BlogLayout`, **no** `ErrorBoundary` — see also
+ * `CREATOR_DASHBOARD_ULTRA_MINIMAL` (no `CreatorDashboard` / no lazy chunk at all).
  */
 export const CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT = true
+
+/**
+ * With `CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT`: do **not** mount `<CreatorDashboard />` (no lazy chunk, no
+ * `CreatorDashboard.tsx` load). Static div only. If Safari is **stable** here but crashes with lazy off
+ * → problem is in the dashboard **entry** chunk or `Suspense`+lazy; if still crashes → problem is outside
+ * that subtree (RouterView body, hash/socket, etc.).
+ */
+export const CREATOR_DASHBOARD_ULTRA_MINIMAL = true
 
 /**
  * **Inside real routes** (use with `CREATOR_PROGRAM_ROUTES_STUB = false`): skip loading
  * `CreatorDashboardImpl.tsx` entirely — the thin `CreatorDashboard.tsx` entry returns a static div only.
  * (`App.tsx` lazy-loads that entry so the heavy dashboard graph is not parsed on initial bundle load.)
  */
-export const CREATOR_DASHBOARD_IMPL_STUB = true
+export const CREATOR_DASHBOARD_IMPL_STUB = false
 
 /** Same for `Collab.tsx` body (error boundary still wraps the stub). */
 export const COLLAB_PAGE_IMPL_STUB = false
