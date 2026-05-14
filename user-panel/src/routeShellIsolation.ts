@@ -33,7 +33,7 @@ export const CREATOR_PROGRAM_ROUTES_STUB = false
  * **Inside real routes** (use with `CREATOR_PROGRAM_ROUTES_STUB = false`): skip the heavy page implementation
  * — no hooks, no effects — to bisect Safari crashes within `CreatorDashboard.tsx` / `Collab.tsx`.
  */
-export const CREATOR_DASHBOARD_IMPL_STUB = true
+export const CREATOR_DASHBOARD_IMPL_STUB = false
 
 /** Same for `Collab.tsx` body (error boundary still wraps the stub). */
-export const COLLAB_PAGE_IMPL_STUB = false
+export const COLLAB_PAGE_IMPL_STUB = true
