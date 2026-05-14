@@ -30,6 +30,13 @@ export const APPCONTENT_ROUTER_ONLY = false
 export const CREATOR_PROGRAM_ROUTES_STUB = false
 
 /**
+ * **`/user/blog/dashboard` only:** render **no** `BlogLayout`, **no** `ErrorBoundary` — plain `div` +
+ * `Suspense` + `CreatorDashboard` (or route stub if `CREATOR_PROGRAM_ROUTES_STUB`). Use to see if Safari
+ * recursion lives in `BlogLayout` / blog chrome for this path.
+ */
+export const CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT = true
+
+/**
  * **Inside real routes** (use with `CREATOR_PROGRAM_ROUTES_STUB = false`): skip loading
  * `CreatorDashboardImpl.tsx` entirely — the thin `CreatorDashboard.tsx` entry returns a static div only.
  * (`App.tsx` lazy-loads that entry so the heavy dashboard graph is not parsed on initial bundle load.)

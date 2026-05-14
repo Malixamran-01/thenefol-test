@@ -29,7 +29,7 @@ import {
   parseHashFromFullUrl,
   type NefolHashRouteDetail,
 } from './utils/hashRouteEvents'
-import { ROUTE_SHELL_ISOLATION, APPCONTENT_STUB, APPCONTENT_CHROME_ONLY, APPCONTENT_ROUTER_ONLY, CREATOR_PROGRAM_ROUTES_STUB } from './routeShellIsolation'
+import { ROUTE_SHELL_ISOLATION, APPCONTENT_STUB, APPCONTENT_CHROME_ONLY, APPCONTENT_ROUTER_ONLY, CREATOR_PROGRAM_ROUTES_STUB, CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT } from './routeShellIsolation'
 
 // Lazy load pages for code splitting (CreatorDashboard entry is lazy — heavy graph lives in CreatorDashboardImpl.tsx).
 const CreatorDashboard = lazy(() => import('./pages/CreatorDashboard'))
@@ -1142,6 +1142,27 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
       <Suspense fallback={<PageLoader />}>
         <NefolSocialBannedPage />
       </Suspense>
+    )
+  }
+
+  /** Dashboard path only: strip BlogLayout + ErrorBoundary (Safari bisect). */
+  if (CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT && pathWithoutQuery === '/user/blog/dashboard') {
+    if (CREATOR_PROGRAM_ROUTES_STUB) {
+      return (
+        <div
+          className="min-h-screen w-full bg-white p-6 text-slate-800"
+          data-dashboard-no-blog-layout
+        >
+          <CreatorProgramRouteStub label="blog dashboard (no BlogLayout)" />
+        </div>
+      )
+    }
+    return (
+      <div className="min-h-screen w-full bg-white" data-dashboard-no-blog-layout>
+        <Suspense fallback={<PageLoader />}>
+          <CreatorDashboard />
+        </Suspense>
+      </div>
     )
   }
 
