@@ -61,11 +61,16 @@ export function CreatorProgramBadgeProvider({ children }: { children: React.Reac
   useEffect(() => {
     const t = window.setInterval(() => void refresh(), 30_000)
     const onRefresh = () => void refresh()
-    const onRoute = () => void refresh()
+    let routeDebounce: number | undefined
+    const onRoute = () => {
+      if (routeDebounce !== undefined) window.clearTimeout(routeDebounce)
+      routeDebounce = window.setTimeout(() => void refresh(), 200) as unknown as number
+    }
     window.addEventListener(CREATOR_PROGRAM_BADGES_REFRESH, onRefresh)
     window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
     return () => {
       window.clearInterval(t)
+      window.clearTimeout(routeDebounce)
       window.removeEventListener(CREATOR_PROGRAM_BADGES_REFRESH, onRefresh)
       window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
     }

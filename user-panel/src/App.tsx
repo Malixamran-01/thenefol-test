@@ -30,7 +30,7 @@ import {
   parseHashFromFullUrl,
   type NefolHashRouteDetail,
 } from './utils/hashRouteEvents'
-import { ROUTE_SHELL_ISOLATION, APPCONTENT_STUB, APPCONTENT_CHROME_ONLY, APPCONTENT_ROUTER_ONLY } from './routeShellIsolation'
+import { ROUTE_SHELL_ISOLATION, APPCONTENT_STUB, APPCONTENT_CHROME_ONLY, APPCONTENT_ROUTER_ONLY, CREATOR_PROGRAM_ROUTES_STUB } from './routeShellIsolation'
 
 // Lazy load pages for code splitting (CreatorDashboard is direct-imported — Safari stack issues.)
 const Home = lazy(() => import('./pages/Home'))
@@ -1062,6 +1062,19 @@ const NefolSocialBannedPage = lazy(() => import('./pages/NefolSocialBannedPage')
 // Loading fallback component - minimal to avoid showing during page transitions
 const PageLoader = () => null
 
+/** Isolation: visible label when `CREATOR_PROGRAM_ROUTES_STUB` replaces real creator/collab pages. */
+function CreatorProgramRouteStub({ label }: { label: string }) {
+  return (
+    <div
+      className="p-8 text-center text-base text-slate-800"
+      data-creator-program-stub
+      style={{ fontFamily: 'system-ui, sans-serif' }}
+    >
+      Creator Program stub — {label}
+    </div>
+  )
+}
+
 interface RouterViewProps {
   affiliateId?: string | null
   currentHash: string
@@ -1130,6 +1143,37 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
         <NefolSocialBannedPage />
       </Suspense>
     )
+  }
+
+  if (CREATOR_PROGRAM_ROUTES_STUB) {
+    const p = pathWithoutQuery
+    if (p === '/user/blog/dashboard') {
+      return (
+        <BlogLayout currentHash={currentHash}>
+          <ErrorBoundary name="CreatorDashboard">
+            <CreatorProgramRouteStub label="blog dashboard" />
+          </ErrorBoundary>
+        </BlogLayout>
+      )
+    }
+    if (p === '/user/collab') {
+      return (
+        <BlogLayout currentHash={currentHash}>
+          <CreatorProgramRouteStub label="Collab" />
+        </BlogLayout>
+      )
+    }
+    if (p === '/user/affiliate-partner' || p === '/user/referral-history') {
+      return (
+        <BlogLayout currentHash={currentHash}>
+          {RequiredAuth(
+            <CreatorProgramRouteStub
+              label={p === '/user/affiliate-partner' ? 'affiliate-partner' : 'referral-history'}
+            />
+          )}
+        </BlogLayout>
+      )
+    }
   }
 
   if (lower.startsWith('/user/product/')) return <ProductPage />
