@@ -30,6 +30,7 @@ import {
   parseHashFromFullUrl,
   type NefolHashRouteDetail,
 } from './utils/hashRouteEvents'
+import { ROUTE_SHELL_ISOLATION } from './routeShellIsolation'
 
 // Lazy load pages for code splitting (CreatorDashboard is direct-imported — Safari stack issues.)
 const Home = lazy(() => import('./pages/Home'))
@@ -1219,6 +1220,20 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
 }
 
 export default function App() {
+  if (ROUTE_SHELL_ISOLATION) {
+    return (
+      <AuthProvider>
+        <NefolSocialBanProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <div className="p-8 text-center text-lg text-slate-800">Hello</div>
+            </WishlistProvider>
+          </CartProvider>
+        </NefolSocialBanProvider>
+      </AuthProvider>
+    )
+  }
+
   return (
     <AuthProvider>
       <NefolSocialBanProvider>

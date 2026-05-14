@@ -6,6 +6,7 @@ import App from './App'
 import { BlogNavListener } from './components/BlogNavListener'
 import ErrorBoundary from './components/ErrorBoundary'
 import { SAFARI_HUNT_DISABLE_BATCH } from './safariHuntBatches'
+import { ROUTE_SHELL_ISOLATION } from './routeShellIsolation'
 
 function skipBatch(id: 1 | 2 | 3 | 4 | 5 | 6 | 7) {
   return SAFARI_HUNT_DISABLE_BATCH === id
@@ -120,7 +121,7 @@ export function mountApp() {
       <ErrorBoundary name="RootApp">
         <Provider store={store}>
           <App />
-          {!skipBatch(6) ? <BlogNavListener /> : null}
+          {!skipBatch(6) && !ROUTE_SHELL_ISOLATION ? <BlogNavListener /> : null}
         </Provider>
       </ErrorBoundary>
     )
