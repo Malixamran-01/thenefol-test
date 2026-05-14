@@ -27,4 +27,13 @@ export const APPCONTENT_ROUTER_ONLY = false
  * When `true`: `/user/blog/dashboard`, `/user/collab`, `/user/affiliate-partner`, `/user/referral-history`
  * render a stub (still inside `BlogLayout` where applicable). Use to confirm Safari crash is in that subtree.
  */
-export const CREATOR_PROGRAM_ROUTES_STUB = true
+export const CREATOR_PROGRAM_ROUTES_STUB = false
+
+/**
+ * **Inside real routes** (use with `CREATOR_PROGRAM_ROUTES_STUB = false`): skip the heavy page implementation
+ * — no hooks, no effects — to bisect Safari crashes within `CreatorDashboard.tsx` / `Collab.tsx`.
+ */
+export const CREATOR_DASHBOARD_IMPL_STUB = true
+
+/** Same for `Collab.tsx` body (error boundary still wraps the stub). */
+export const COLLAB_PAGE_IMPL_STUB = false

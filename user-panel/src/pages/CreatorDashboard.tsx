@@ -989,6 +989,19 @@ function CreatorDashboardImpl() {
   )
 }
 
+import { CREATOR_DASHBOARD_IMPL_STUB } from '../routeShellIsolation'
+
 export default function CreatorDashboard() {
+  if (CREATOR_DASHBOARD_IMPL_STUB) {
+    return (
+      <div
+        className="p-6 text-center text-base text-slate-800"
+        data-creator-dashboard-impl-stub
+        style={{ fontFamily: 'system-ui, sans-serif' }}
+      >
+        CreatorDashboard impl stub (step 1 — no hooks)
+      </div>
+    )
+  }
   return <CreatorDashboardImpl />
 }

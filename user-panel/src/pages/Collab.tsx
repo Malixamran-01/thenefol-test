@@ -15,6 +15,7 @@ import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
 import CollabAssignedTasks from '../components/CollabAssignedTasks'
 import AffiliatePartner from './AffiliatePartner'
+import { COLLAB_PAGE_IMPL_STUB } from '../routeShellIsolation'
 
 export type CreatorProgramTab = 'collab' | 'affiliate' | 'revenue'
 
@@ -164,7 +165,7 @@ function Ring({ pct, color, size = 80, stroke = 7 }: { pct: number; color: strin
   )
 }
 
-function Collab(props: CollabProps = {}) {
+function CollabImpl(props: CollabProps = {}) {
   const { initialProgramTab } = props
   const { isAuthenticated, user } = useAuth()
   const creatorBadges = useCreatorProgramBadges()
@@ -2197,6 +2198,21 @@ class CollabErrorBoundary extends Component<{ children: React.ReactNode }, { cra
     }
     return this.props.children
   }
+}
+
+function Collab(props: CollabProps = {}) {
+  if (COLLAB_PAGE_IMPL_STUB) {
+    return (
+      <div
+        className="p-6 text-center text-base text-slate-800"
+        data-collab-impl-stub
+        style={{ fontFamily: 'system-ui, sans-serif' }}
+      >
+        Collab page impl stub (step 1 — no hooks)
+      </div>
+    )
+  }
+  return <CollabImpl {...props} />
 }
 
 const CollabWithBoundary = (props: CollabProps) => (
