@@ -10,6 +10,9 @@
  * **Creator / Collab (narrow):** `CREATOR_PROGRAM_ROUTES_STUB` can be `true` **together with normal app**
  * (all flags above `false`). Replaces only creator-program-related routes inside `RouterView` with a
  * placeholder; `BlogLayout` wrapper kept where production uses it.
+ *
+ * **`ROUTER_VIEW_DASHBOARD_HARD_STOP` / `ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL`:** Safari bisect for
+ * `#/user/blog/dashboard` — see `RouterViewEntry` in `App.tsx`.
  */
 
 export const ROUTE_SHELL_ISOLATION = false
@@ -33,7 +36,7 @@ export const CREATOR_PROGRAM_ROUTES_STUB = false
  * **`/user/blog/dashboard` only:** render **no** `BlogLayout`, **no** `ErrorBoundary` — see also
  * `CREATOR_DASHBOARD_ULTRA_MINIMAL` (no `CreatorDashboard` / no lazy chunk at all).
  */
-export const CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT = true
+export const CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT = false
 
 /**
  * With `CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT`: do **not** mount `<CreatorDashboard />` (no lazy chunk, no
@@ -41,7 +44,7 @@ export const CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT = true
  * → problem is in the dashboard **entry** chunk or `Suspense`+lazy; if still crashes → problem is outside
  * that subtree (RouterView body, hash/socket, etc.).
  */
-export const CREATOR_DASHBOARD_ULTRA_MINIMAL = true
+export const CREATOR_DASHBOARD_ULTRA_MINIMAL = false
 
 /**
  * **Inside real routes** (use with `CREATOR_PROGRAM_ROUTES_STUB = false`): skip loading
@@ -49,6 +52,19 @@ export const CREATOR_DASHBOARD_ULTRA_MINIMAL = true
  * (`App.tsx` lazy-loads that entry so the heavy dashboard graph is not parsed on initial bundle load.)
  */
 export const CREATOR_DASHBOARD_IMPL_STUB = false
+
+/**
+ * **Hook-free bypass:** when `true`, `RouterViewEntry` returns a static div for `#/user/blog/dashboard`
+ * and **`RouterView` never mounts** (no ban gate, scroll effect, or `trackPageView` on that URL).
+ */
+export const ROUTER_VIEW_DASHBOARD_HARD_STOP = true
+
+/**
+ * When `true`: `RouterView` skips **scroll-to-top** + **`trackPageView`** effects **only** on
+ * `/user/blog/dashboard` (RouterView still mounts). Use if hard stop proves stable above RouterView
+ * but full RouterView still overflows on that path.
+ */
+export const ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL = false
 
 /** Same for `Collab.tsx` body (error boundary still wraps the stub). */
 export const COLLAB_PAGE_IMPL_STUB = false

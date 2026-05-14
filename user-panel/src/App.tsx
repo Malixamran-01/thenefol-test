@@ -37,6 +37,8 @@ import {
   CREATOR_PROGRAM_ROUTES_STUB,
   CREATOR_DASHBOARD_SKIP_BLOG_LAYOUT,
   CREATOR_DASHBOARD_ULTRA_MINIMAL,
+  ROUTER_VIEW_DASHBOARD_HARD_STOP,
+  ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL,
 } from './routeShellIsolation'
 
 // Lazy load pages for code splitting (CreatorDashboard entry is lazy — heavy graph lives in CreatorDashboardImpl.tsx).
@@ -329,7 +331,7 @@ function AppContent() {
         }}
       >
         <Suspense fallback={<PageLoader />}>
-          <RouterView affiliateId={affiliateId} currentHash={routerHash} />
+          <RouterViewEntry affiliateId={affiliateId} currentHash={routerHash} />
         </Suspense>
       </div>
     )
@@ -341,7 +343,7 @@ function AppContent() {
     </div>
   ) : (
     <Suspense fallback={<PageLoader />}>
-      <RouterView affiliateId={affiliateId} currentHash={routerHash} />
+      <RouterViewEntry affiliateId={affiliateId} currentHash={routerHash} />
     </Suspense>
   )
 
@@ -1088,6 +1090,30 @@ interface RouterViewProps {
   currentHash: string
 }
 
+function pathWithoutQueryFromHash(currentHash: string): string {
+  const raw = (currentHash || '').replace('#', '')
+  return raw.toLowerCase().split('?')[0]
+}
+
+/** No hooks — may bypass entire `RouterView` for dashboard bisect only. */
+function RouterViewEntry({ affiliateId, currentHash }: RouterViewProps) {
+  if (
+    ROUTER_VIEW_DASHBOARD_HARD_STOP &&
+    pathWithoutQueryFromHash(currentHash) === '/user/blog/dashboard'
+  ) {
+    return (
+      <div
+        className="p-6 text-slate-800"
+        data-router-view-dashboard-hard-stop
+        style={{ fontFamily: 'system-ui, sans-serif' }}
+      >
+        RouterView hard stop — /user/blog/dashboard (RouterView never mounted)
+      </div>
+    )
+  }
+  return <RouterView affiliateId={affiliateId} currentHash={currentHash} />
+}
+
 function RouterView({ affiliateId, currentHash }: RouterViewProps) {
   const { isAuthenticated } = useAuth()
   const { loading: banLoading, blocked: socialBanned } = useNefolSocialBan()
@@ -1104,6 +1130,12 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
 
   // Scroll to top whenever the route changes
   React.useEffect(() => {
+    if (
+      ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL &&
+      pathWithoutQueryFromHash(currentHash) === '/user/blog/dashboard'
+    ) {
+      return
+    }
     // Scroll to top immediately when route changes
     // Safari only supports behavior: 'auto' | 'smooth'. Using an invalid value can throw and blank the app.
     try {
@@ -1123,6 +1155,12 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
   
   // Track page views whenever the route changes
   React.useEffect(() => {
+    if (
+      ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL &&
+      pathWithoutQueryFromHash(currentHash) === '/user/blog/dashboard'
+    ) {
+      return
+    }
     const path = currentHash.replace('#', '') || '/user/'
     console.log('📊 Tracking page view:', path)
     userSocketService.trackPageView(path)
