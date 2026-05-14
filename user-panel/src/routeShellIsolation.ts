@@ -64,7 +64,7 @@ export const ROUTER_VIEW_DASHBOARD_HARD_STOP = true
  * `/user/blog/dashboard` (RouterView still mounts). Use if hard stop proves stable above RouterView
  * but full RouterView still overflows on that path.
  */
-export const ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL = false
+export const ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL = true
 
 /** Same for `Collab.tsx` body (error boundary still wraps the stub). */
 export const COLLAB_PAGE_IMPL_STUB = false
