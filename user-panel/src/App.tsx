@@ -30,7 +30,7 @@ import {
   parseHashFromFullUrl,
   type NefolHashRouteDetail,
 } from './utils/hashRouteEvents'
-import { ROUTE_SHELL_ISOLATION } from './routeShellIsolation'
+import { ROUTE_SHELL_ISOLATION, APPCONTENT_STUB, APPCONTENT_CHROME_ONLY, APPCONTENT_ROUTER_ONLY } from './routeShellIsolation'
 
 // Lazy load pages for code splitting (CreatorDashboard is direct-imported — Safari stack issues.)
 const Home = lazy(() => import('./pages/Home'))
@@ -310,20 +310,42 @@ function AppContent() {
     }
   }
 
+  if (APPCONTENT_ROUTER_ONLY) {
+    return (
+      <div
+        className="min-h-screen w-full overflow-x-hidden"
+        style={{
+          backgroundColor: 'var(--color-screen-bg)',
+          color: 'var(--color-text-secondary-on-teal)',
+          fontFamily: 'var(--font-body-family)',
+        }}
+      >
+        <Suspense fallback={<PageLoader />}>
+          <RouterView affiliateId={affiliateId} currentHash={routerHash} />
+        </Suspense>
+      </div>
+    )
+  }
+
+  const routerVNode = APPCONTENT_CHROME_ONLY ? (
+    <div className="m-4 rounded-lg border border-dashed border-slate-400 p-8 text-center text-slate-700">
+      AppContent: chrome only — RouterView omitted
+    </div>
+  ) : (
+    <Suspense fallback={<PageLoader />}>
+      <RouterView affiliateId={affiliateId} currentHash={routerHash} />
+    </Suspense>
+  )
 
   return (
     <div className={`min-h-screen w-full overflow-x-hidden ${showSplash ? 'overflow-hidden h-screen' : ''}`} style={{ backgroundColor: 'var(--color-screen-bg)', color: 'var(--color-text-secondary-on-teal)', fontFamily: 'var(--font-body-family)' }}>
       {showSplash ? (
         <SplashScreen onComplete={handleSplashComplete} />
       ) : isEditorPage ? (
-        <Suspense fallback={<PageLoader />}>
-          <RouterView affiliateId={affiliateId} currentHash={routerHash} />
-        </Suspense>
+        routerVNode
       ) : isBlogLayoutRoute ? (
         /* ── Blog section: side panel layout, no e-commerce chrome ── */
-        <Suspense fallback={<PageLoader />}>
-          <RouterView affiliateId={affiliateId} currentHash={routerHash} />
-        </Suspense>
+        routerVNode
       ) : (
         <>
           <header
@@ -751,9 +773,7 @@ function AppContent() {
           )}
 
         <div className="main-content-wrapper">
-          <Suspense fallback={<PageLoader />}>
-            <RouterView affiliateId={affiliateId} currentHash={routerHash} />
-          </Suspense>
+          {routerVNode}
         </div>
 
       <footer
@@ -1227,6 +1247,20 @@ export default function App() {
           <CartProvider>
             <WishlistProvider>
               <div className="p-8 text-center text-lg text-slate-800">Hello</div>
+            </WishlistProvider>
+          </CartProvider>
+        </NefolSocialBanProvider>
+      </AuthProvider>
+    )
+  }
+
+  if (APPCONTENT_STUB) {
+    return (
+      <AuthProvider>
+        <NefolSocialBanProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <div className="p-8 text-center text-lg text-slate-800">Hello from AppContent</div>
             </WishlistProvider>
           </CartProvider>
         </NefolSocialBanProvider>

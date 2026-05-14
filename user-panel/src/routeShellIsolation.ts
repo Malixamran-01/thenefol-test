@@ -1,8 +1,24 @@
 /**
- * Safari binary: **`true`** = mount real provider tree but **no** `AppContent`, **no** `RouterView`,
- * **no** `BlogNavListener` (hash route bus stays idle).
+ * Safari / hash-router isolation — **only one flag should be `true` per deploy** (first match wins in code).
  *
- * Set to `true` for **one** deploy; if Safari works → isolate inside `AppContent` / `RouterView` /
- * `NEFOL_HASH_ROUTE_CHANGE` listeners next.
+ * 1. `ROUTE_SHELL_ISOLATION` — Providers + `"Hello"`, **no** `AppContent`, **no** `BlogNavListener`.
+ * 2. `APPCONTENT_STUB` — Full providers + placeholder **instead of** `<AppContent />` (no hooks/hash shell).
+ * 3. `APPCONTENT_CHROME_ONLY` — Real `AppContent` (hash listener + chrome) but **all** `<RouterView />` replaced by a stub.
+ * 4. `APPCONTENT_ROUTER_ONLY` — **Only** `<RouterView />` (minimal wrapper); no header/footer/splash chrome.
+ *
+ * Interpretation:
+ * - (1) or (2) works, (3) crashes → problem in **RouterView** or lazy pages.
+ * - (3) works, (4) crashes → problem in **chrome / layout / modals** around the main column.
+ * - (1) works, (2) crashes → problem in **provider stack** or **BlogNavListener** (unlikely if (1) skipped BlogNav).
  */
-export const ROUTE_SHELL_ISOLATION = true
+
+export const ROUTE_SHELL_ISOLATION = false
+
+/** Providers mount; `AppContent` does not (slot = stub). `BlogNavListener` still mounts. */
+export const APPCONTENT_STUB = true
+
+/** Full `AppContent` except every `RouterView` is a stub div. */
+export const APPCONTENT_CHROME_ONLY = false
+
+/** Minimal shell: only `RouterView` (+ Suspense). Checked before chrome-only in `AppContent`. */
+export const APPCONTENT_ROUTER_ONLY = false
