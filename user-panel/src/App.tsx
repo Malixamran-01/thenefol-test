@@ -23,7 +23,6 @@ import { getApiBase } from './utils/apiBase'
 import {
   CREATOR_PROGRAM_BADGES_REFRESH,
 } from './contexts/CreatorProgramBadgeContext'
-import CreatorDashboard from './pages/CreatorDashboard'
 import {
   NEFOL_HASH_ROUTE_CHANGE,
   pathFromLocationHash,
@@ -32,7 +31,8 @@ import {
 } from './utils/hashRouteEvents'
 import { ROUTE_SHELL_ISOLATION, APPCONTENT_STUB, APPCONTENT_CHROME_ONLY, APPCONTENT_ROUTER_ONLY, CREATOR_PROGRAM_ROUTES_STUB } from './routeShellIsolation'
 
-// Lazy load pages for code splitting (CreatorDashboard is direct-imported — Safari stack issues.)
+// Lazy load pages for code splitting (CreatorDashboard entry is lazy — heavy graph lives in CreatorDashboardImpl.tsx).
+const CreatorDashboard = lazy(() => import('./pages/CreatorDashboard'))
 const Home = lazy(() => import('./pages/Home'))
 const Collab = lazy(() => import('./pages/Collab'))
 const LoginPage = lazy(() => import('./pages/Login'))
@@ -1186,7 +1186,9 @@ function RouterView({ affiliateId, currentHash }: RouterViewProps) {
     return (
       <BlogLayout currentHash={currentHash}>
         <ErrorBoundary name="CreatorDashboard">
-          <CreatorDashboard />
+          <Suspense fallback={<PageLoader />}>
+            <CreatorDashboard />
+          </Suspense>
         </ErrorBoundary>
       </BlogLayout>
     )
