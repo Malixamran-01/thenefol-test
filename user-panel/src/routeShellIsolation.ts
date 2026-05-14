@@ -15,10 +15,10 @@
 export const ROUTE_SHELL_ISOLATION = false
 
 /** Providers mount; `AppContent` does not (slot = stub). `BlogNavListener` still mounts. */
-export const APPCONTENT_STUB = true
+export const APPCONTENT_STUB = false
 
 /** Full `AppContent` except every `RouterView` is a stub div. */
-export const APPCONTENT_CHROME_ONLY = false
+export const APPCONTENT_CHROME_ONLY = true
 
 /** Minimal shell: only `RouterView` (+ Suspense). Checked before chrome-only in `AppContent`. */
 export const APPCONTENT_ROUTER_ONLY = false
