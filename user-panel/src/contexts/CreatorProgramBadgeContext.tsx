@@ -1,7 +1,14 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useAuth } from './AuthContext'
 import { creatorProgramAPI } from '../services/api'
-import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 
 export const CREATOR_PROGRAM_BADGES_REFRESH = 'creator-program-badges-refresh'
 
@@ -15,78 +22,117 @@ export type CreatorProgramBadgeState = {
   refresh: () => void
 }
 
-const CreatorProgramBadgeContext = createContext<CreatorProgramBadgeState | null>(null)
+type BadgeCounts = {
+  total: number
+  collab: number
+  tasks: number
+  affiliate: number
+  revenue: number
+}
+
+const EMPTY_BADGES: BadgeCounts = {
+  total: 0,
+  collab: 0,
+  tasks: 0,
+  affiliate: 0,
+  revenue: 0,
+}
+
+const BADGE_CONTEXT_DEFAULT: CreatorProgramBadgeState = {
+  total: 0,
+  collab: 0,
+  tasks: 0,
+  affiliate: 0,
+  revenue: 0,
+  loading: false,
+  refresh: () => {},
+}
+
+const CreatorProgramBadgeContext = createContext(BADGE_CONTEXT_DEFAULT)
+
+const POLL_INTERVAL_MS = 30_000
+
+async function fetchBadges(): Promise<BadgeCounts> {
+  const d = await creatorProgramAPI.getBadgeSummary()
+  return {
+    total: d.total,
+    collab: d.collab,
+    tasks: d.tasks,
+    affiliate: d.affiliate,
+    revenue: d.revenue,
+  }
+}
 
 export function CreatorProgramBadgeProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
-  const [total, setTotal] = useState(0)
-  const [collab, setCollab] = useState(0)
-  const [tasks, setTasks] = useState(0)
-  const [affiliate, setAffiliate] = useState(0)
-  const [revenue, setRevenue] = useState(0)
+  const requestIdRef = useRef(0)
+  const [badges, setBadges] = useState<BadgeCounts>(EMPTY_BADGES)
   const [loading, setLoading] = useState(false)
 
-  const refresh = useCallback(async () => {
+  const runCheck = useCallback(async () => {
     if (!isAuthenticated) {
-      setTotal(0)
-      setCollab(0)
-      setTasks(0)
-      setAffiliate(0)
-      setRevenue(0)
+      requestIdRef.current += 1
+      setBadges(EMPTY_BADGES)
+      setLoading(false)
       return
     }
+
+    const id = ++requestIdRef.current
     setLoading(true)
+
     try {
-      const d = await creatorProgramAPI.getBadgeSummary()
-      setTotal(d.total)
-      setCollab(d.collab)
-      setTasks(d.tasks)
-      setAffiliate(d.affiliate)
-      setRevenue(d.revenue)
+      const data = await fetchBadges()
+      if (id !== requestIdRef.current) return
+      setBadges(data)
     } catch {
-      setTotal(0)
-      setCollab(0)
-      setTasks(0)
-      setAffiliate(0)
-      setRevenue(0)
+      if (id !== requestIdRef.current) return
+      setBadges(EMPTY_BADGES)
     } finally {
-      setLoading(false)
+      if (id === requestIdRef.current) {
+        setLoading(false)
+      }
     }
   }, [isAuthenticated])
 
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
+  const runCheckRef = useRef(runCheck)
+  runCheckRef.current = runCheck
+
+  const refresh = useCallback(() => {
+    void runCheckRef.current()
+  }, [])
 
   useEffect(() => {
-    const t = window.setInterval(() => void refresh(), 30_000)
-    const onRefresh = () => void refresh()
-    let routeDebounce: number | undefined
-    const onRoute = () => {
-      if (routeDebounce !== undefined) window.clearTimeout(routeDebounce)
-      routeDebounce = window.setTimeout(() => void refresh(), 200) as unknown as number
+    void runCheck()
+  }, [runCheck])
+
+  useEffect(() => {
+    const onRefreshEvent = () => {
+      void runCheckRef.current()
     }
-    window.addEventListener(CREATOR_PROGRAM_BADGES_REFRESH, onRefresh)
-    window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
+
+    const intervalId = window.setInterval(() => {
+      void runCheckRef.current()
+    }, POLL_INTERVAL_MS)
+
+    window.addEventListener(CREATOR_PROGRAM_BADGES_REFRESH, onRefreshEvent)
+
     return () => {
-      window.clearInterval(t)
-      window.clearTimeout(routeDebounce)
-      window.removeEventListener(CREATOR_PROGRAM_BADGES_REFRESH, onRefresh)
-      window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, onRoute)
+      window.clearInterval(intervalId)
+      window.removeEventListener(CREATOR_PROGRAM_BADGES_REFRESH, onRefreshEvent)
     }
-  }, [refresh])
+  }, [])
 
   const value = useMemo(
     () => ({
-      total,
-      collab,
-      tasks,
-      affiliate,
-      revenue,
+      total: badges.total,
+      collab: badges.collab,
+      tasks: badges.tasks,
+      affiliate: badges.affiliate,
+      revenue: badges.revenue,
       loading,
       refresh,
     }),
-    [total, collab, tasks, affiliate, revenue, loading, refresh]
+    [badges, loading, refresh]
   )
 
   return (
@@ -95,15 +141,5 @@ export function CreatorProgramBadgeProvider({ children }: { children: React.Reac
 }
 
 export function useCreatorProgramBadges(): CreatorProgramBadgeState {
-  const ctx = useContext(CreatorProgramBadgeContext)
-  if (ctx) return ctx
-  return {
-    total: 0,
-    collab: 0,
-    tasks: 0,
-    affiliate: 0,
-    revenue: 0,
-    loading: false,
-    refresh: () => {},
-  }
+  return useContext(CreatorProgramBadgeContext)
 }

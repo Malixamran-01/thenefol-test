@@ -1,4 +1,5 @@
 // Animation utilities for Natura Bissé style animations
+import { safeWindowScrollTo } from './safeScroll'
 
 export const scrollToSection = (sectionId: string, offset: number = 80) => {
   const element = document.getElementById(sectionId)
@@ -6,9 +7,9 @@ export const scrollToSection = (sectionId: string, offset: number = 80) => {
     const elementPosition = element.getBoundingClientRect().top
     const offsetPosition = elementPosition + window.pageYOffset - offset
 
-    window.scrollTo({
+    safeWindowScrollTo({
       top: offsetPosition,
-      behavior: 'smooth'
+      behavior: 'smooth',
     })
   }
 }

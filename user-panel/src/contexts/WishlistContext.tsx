@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { Product } from '../types'
 import { wishlistAPI } from '../services/api'
 import { useAuth } from './AuthContext'
@@ -24,125 +32,145 @@ type WishlistContextValue = {
   refreshWishlist: () => Promise<void>
 }
 
-const WishlistContext = createContext<WishlistContextValue | undefined>(undefined)
+const WISHLIST_CONTEXT_DEFAULT: WishlistContextValue = {
+  items: [],
+  loading: false,
+  error: null,
+  addToWishlist: async () => {},
+  removeFromWishlist: async () => {},
+  isInWishlist: () => false,
+  refreshWishlist: async () => {},
+}
 
-// Wishlist storage key for offline fallback
+const WishlistContext = createContext(WISHLIST_CONTEXT_DEFAULT)
+
 const WISHLIST_STORAGE_KEY = 'nefol_wishlist_items'
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth()
+  const isAuthenticatedRef = useRef(isAuthenticated)
+  isAuthenticatedRef.current = isAuthenticated
+
   const [items, setItems] = useState<WishlistItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { isAuthenticated } = useAuth()
+  const requestIdRef = useRef(0)
 
-  // Load wishlist from backend or localStorage
-  const loadWishlist = async () => {
-    if (isAuthenticated) {
-      try {
-        setLoading(true)
-        setError(null)
-        const wishlistItems = await wishlistAPI.getWishlist()
-        setItems(wishlistItems)
-      } catch (err: any) {
-        console.error('Failed to load wishlist from backend:', err)
-        setError(err.message)
-        // Fallback to localStorage
-        loadFromLocalStorage()
-      } finally {
-        setLoading(false)
-      }
-    } else {
-      loadFromLocalStorage()
-    }
-  }
-
-  const loadFromLocalStorage = () => {
+  const loadFromLocalStorage = useCallback(() => {
     try {
       const savedWishlist = localStorage.getItem(WISHLIST_STORAGE_KEY)
-      if (savedWishlist) {
-        const parsedWishlist = JSON.parse(savedWishlist)
-        if (Array.isArray(parsedWishlist)) {
-          setItems(parsedWishlist)
-        }
+      if (!savedWishlist) return
+      const parsedWishlist = JSON.parse(savedWishlist)
+      if (Array.isArray(parsedWishlist)) {
+        setItems(parsedWishlist)
       }
-    } catch (error) {
-      console.error('Failed to load wishlist from localStorage:', error)
+    } catch (err) {
+      console.error('Failed to load wishlist from localStorage:', err)
     }
-  }
+  }, [])
 
-  // Load wishlist on mount and when authentication changes
+  const loadWishlist = useCallback(async () => {
+    if (!isAuthenticatedRef.current) {
+      requestIdRef.current += 1
+      loadFromLocalStorage()
+      return
+    }
+
+    const myId = ++requestIdRef.current
+    setLoading(true)
+    setError(null)
+
+    try {
+      const wishlistItems = await wishlistAPI.getWishlist()
+      if (myId !== requestIdRef.current) return
+      setItems(wishlistItems)
+    } catch (err: unknown) {
+      if (myId !== requestIdRef.current) return
+      const message = err instanceof Error ? err.message : 'Failed to load wishlist'
+      console.error('Failed to load wishlist from backend:', err)
+      setError(message)
+      loadFromLocalStorage()
+    } finally {
+      if (myId === requestIdRef.current) {
+        setLoading(false)
+      }
+    }
+  }, [loadFromLocalStorage])
+
+  const loadWishlistRef = useRef(loadWishlist)
+  loadWishlistRef.current = loadWishlist
+
   useEffect(() => {
-    loadWishlist()
+    void loadWishlistRef.current()
   }, [isAuthenticated])
 
-  const addToWishlist = async (productId: number) => {
-    if (isAuthenticated) {
-      try {
-        setError(null)
-        await wishlistAPI.addToWishlist(productId)
-        await loadWishlist() // Refresh wishlist from backend
-      } catch (err: any) {
-        console.error('Failed to add to wishlist:', err)
-        setError(err.message)
-        throw err
-      }
-    } else {
-      // For offline mode, we can't add to wishlist without authentication
+  const addToWishlist = useCallback(async (productId: number) => {
+    if (!isAuthenticatedRef.current) {
       throw new Error('Please login to add items to wishlist')
     }
-  }
-
-  const removeFromWishlist = async (productId: number) => {
-    if (isAuthenticated) {
-      try {
-        setError(null)
-        await wishlistAPI.removeFromWishlist(productId)
-        await loadWishlist() // Refresh wishlist from backend
-      } catch (err: any) {
-        console.error('Failed to remove from wishlist:', err)
-        setError(err.message)
-        throw err
-      }
-    } else {
-      // For offline mode, remove from local storage
-      setItems(prev => prev.filter(item => item.product_id !== productId))
+    setError(null)
+    try {
+      await wishlistAPI.addToWishlist(productId)
+      await loadWishlistRef.current()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to add to wishlist'
+      console.error('Failed to add to wishlist:', err)
+      setError(message)
+      throw err
     }
-  }
+  }, [])
 
-  const isInWishlist = (productId: number): boolean => {
-    return items.some(item => item.product_id === productId)
-  }
+  const removeFromWishlist = useCallback(async (productId: number) => {
+    if (!isAuthenticatedRef.current) {
+      setItems((prev) => prev.filter((item) => item.product_id !== productId))
+      return
+    }
+    setError(null)
+    try {
+      await wishlistAPI.removeFromWishlist(productId)
+      await loadWishlistRef.current()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to remove from wishlist'
+      console.error('Failed to remove from wishlist:', err)
+      setError(message)
+      throw err
+    }
+  }, [])
 
-  const refreshWishlist = async () => {
-    await loadWishlist()
-  }
+  const isInWishlist = useCallback(
+    (productId: number): boolean => items.some((item) => item.product_id === productId),
+    [items]
+  )
 
-  // Save to localStorage for offline support
+  const refreshWishlist = useCallback(async () => {
+    await loadWishlistRef.current()
+  }, [])
+
   useEffect(() => {
-    if (!isAuthenticated) {
-      try {
-        localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(items))
-      } catch (error) {
-        console.error('Failed to save wishlist to localStorage:', error)
-      }
+    if (isAuthenticated) return
+    try {
+      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(items))
+    } catch (err) {
+      console.error('Failed to save wishlist to localStorage:', err)
     }
   }, [items, isAuthenticated])
 
-  const value: WishlistContextValue = {
-    items,
-    loading,
-    error,
-    addToWishlist,
-    removeFromWishlist,
-    isInWishlist,
-    refreshWishlist
-  }
+  const value = useMemo(
+    () => ({
+      items,
+      loading,
+      error,
+      addToWishlist,
+      removeFromWishlist,
+      isInWishlist,
+      refreshWishlist,
+    }),
+    [items, loading, error, addToWishlist, removeFromWishlist, isInWishlist, refreshWishlist]
+  )
 
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>
 }
 
 export function useWishlist(): WishlistContextValue {
-  const ctx = useContext(WishlistContext)
-  if (!ctx) throw new Error('useWishlist must be used within WishlistProvider')
-  return ctx
+  return useContext(WishlistContext)
 }

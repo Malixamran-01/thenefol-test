@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Home, Search, ShoppingCart, Grid3x3, Heart, User } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { useWishlist } from '../contexts/WishlistContext'
@@ -14,7 +14,7 @@ export default function BottomNavigation({ routePath }: BottomNavigationProps) {
   const { items: wishlistItems } = useWishlist()
   const { isAuthenticated } = useAuth()
 
-  const navItems = [
+  const navItems = useMemo(() => [
     {
       label: 'Home',
       icon: Home,
@@ -65,7 +65,7 @@ export default function BottomNavigation({ routePath }: BottomNavigationProps) {
         routePath.startsWith('/user/account') ||
         routePath.startsWith('/user/login'),
     },
-  ]
+  ], [routePath, isAuthenticated, cartItems.length, wishlistItems.length])
 
   const isBlogRoute = routePath.startsWith('/user/blog') || routePath.startsWith('/user/author')
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { safeElementScrollTo } from '../utils/safeScroll'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface ImageZoomProps {
@@ -223,9 +224,9 @@ export default function ImageZoom({
               if (thumbnailContainerRef.current) {
                 const container = thumbnailContainerRef.current
                 const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
-                container.scrollTo({
+                safeElementScrollTo(container, {
                   left: scrollPosition,
-                  behavior: 'smooth'
+                  behavior: 'smooth',
                 })
               }
             } else if (direction === 'right' && canScrollRight) {
@@ -234,9 +235,9 @@ export default function ImageZoom({
               if (thumbnailContainerRef.current) {
                 const container = thumbnailContainerRef.current
                 const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
-                container.scrollTo({
+                safeElementScrollTo(container, {
                   left: scrollPosition,
-                  behavior: 'smooth'
+                  behavior: 'smooth',
                 })
               }
             }

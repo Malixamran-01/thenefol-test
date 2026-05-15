@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Download, X } from 'lucide-react'
+import { deferStateWork } from '../utils/deferStateWork'
 
 const PROMPT_STORAGE_KEY = 'pwa-install-prompt-last-seen'
 const PROMPT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -10,38 +11,46 @@ export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
 
   useEffect(() => {
-    // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       return
     }
 
-    // Listen for beforeinstallprompt event
+    let promptDelayId: number | undefined
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
-      setDeferredPrompt(e)
-      setShowInstallButton(true)
-      
-      // Show prompt after a delay (don't be too aggressive)
-      const lastSeen = parseInt(localStorage.getItem(PROMPT_STORAGE_KEY) || '0', 10) || 0
-      if (!lastSeen || Date.now() - lastSeen > PROMPT_COOLDOWN_MS) {
-        setTimeout(() => {
-          setShowPrompt(true)
-        }, 3000) // Show after 3 seconds
-      }
+      deferStateWork(() => {
+        setDeferredPrompt(e)
+        setShowInstallButton(true)
+
+        const lastSeen = parseInt(localStorage.getItem(PROMPT_STORAGE_KEY) || '0', 10) || 0
+        if (!lastSeen || Date.now() - lastSeen > PROMPT_COOLDOWN_MS) {
+          promptDelayId = window.setTimeout(() => {
+            promptDelayId = undefined
+            deferStateWork(() => setShowPrompt(true))
+          }, 3000) as unknown as number
+        }
+      })
+    }
+
+    const handleAppInstalled = () => {
+      deferStateWork(() => {
+        setShowPrompt(false)
+        setDeferredPrompt(null)
+        setShowInstallButton(false)
+        localStorage.setItem(PROMPT_STORAGE_KEY, Date.now().toString())
+      })
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-
-    // Check if app was installed
-    window.addEventListener('appinstalled', () => {
-      setShowPrompt(false)
-      setDeferredPrompt(null)
-      setShowInstallButton(false)
-      localStorage.setItem(PROMPT_STORAGE_KEY, Date.now().toString())
-    })
+    window.addEventListener('appinstalled', handleAppInstalled)
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
+      if (promptDelayId !== undefined) {
+        window.clearTimeout(promptDelayId)
+      }
     }
   }, [])
 
@@ -50,15 +59,15 @@ export default function PWAInstallPrompt() {
       return
     }
 
-    deferredPrompt.prompt()
+    await deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
-    
+
     if (outcome === 'accepted') {
       console.log('User accepted the install prompt')
     } else {
       console.log('User dismissed the install prompt')
     }
-    
+
     setDeferredPrompt(null)
     setShowPrompt(false)
     setShowInstallButton(false)
@@ -128,4 +137,3 @@ export default function PWAInstallPrompt() {
     </>
   )
 }
-

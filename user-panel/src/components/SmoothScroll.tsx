@@ -1,4 +1,8 @@
 import React, { useEffect } from 'react'
+import {
+  safeElementScrollIntoView,
+  safeWindowScrollTo,
+} from '../utils/safeScroll'
 
 interface SmoothScrollProps {
   children: React.ReactNode
@@ -6,27 +10,24 @@ interface SmoothScrollProps {
 
 export default function SmoothScroll({ children }: SmoothScrollProps) {
   useEffect(() => {
-    // Initialize smooth scroll for anchor links (only for page anchors, not routing)
     const handleAnchorClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement
       const anchor = target.closest('a[href^="#"]') as HTMLAnchorElement
-      
+
       if (anchor) {
         const href = anchor.getAttribute('href')
         if (href && href.startsWith('#') && !href.startsWith('#/')) {
-          // Only handle page anchors (e.g., #section-id), not routing links (e.g., #/user/home)
           e.preventDefault()
           const targetId = href.substring(1)
           const targetElement = document.getElementById(targetId)
-          
+
           if (targetElement) {
-            targetElement.scrollIntoView({
+            safeElementScrollIntoView(targetElement, {
               behavior: 'smooth',
-              block: 'start'
+              block: 'start',
             })
           }
         }
-        // If it's a routing link (#/user/...), let it work normally
       }
     }
 
@@ -37,7 +38,7 @@ export default function SmoothScroll({ children }: SmoothScrollProps) {
     }
   }, [])
 
-  return <>{children}</>
+  return <div className="contents">{children}</div>
 }
 
 export function smoothScrollTo(elementId: string, offset: number = 0) {
@@ -46,10 +47,9 @@ export function smoothScrollTo(elementId: string, offset: number = 0) {
     const elementPosition = element.getBoundingClientRect().top
     const offsetPosition = elementPosition + window.pageYOffset - offset
 
-    window.scrollTo({
+    safeWindowScrollTo({
       top: offsetPosition,
-      behavior: 'smooth'
+      behavior: 'smooth',
     })
   }
 }
-

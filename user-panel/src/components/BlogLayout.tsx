@@ -26,6 +26,7 @@ import {
   NEFOL_SOCIAL_SETTINGS_CHANGE,
 } from '../utils/nefolSocialSettings'
 import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
+import { deferStateWork } from '../utils/deferStateWork'
 import { CreatorProgramBadgeProvider, useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
 
 type CreatorBadge = 'locked' | 'progress' | 'unlocked'
@@ -443,7 +444,12 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
   )
 
   useEffect(() => {
-    const sync = () => setShowCreatorProgramInSidebar(getCreatorProgramSidebarEnabled())
+    const sync = () => {
+      const next = getCreatorProgramSidebarEnabled()
+      deferStateWork(() => {
+        setShowCreatorProgramInSidebar((prev) => (prev === next ? prev : next))
+      })
+    }
     window.addEventListener('storage', sync)
     window.addEventListener(NEFOL_SOCIAL_SETTINGS_CHANGE, sync as EventListener)
     return () => {
@@ -469,17 +475,28 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
     })
   }
 
+  const creatorBadgeRequestIdRef = useRef(0)
+
   // ── Creator badge fetch ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isAuthenticated || !user?.email) { setCreatorBadge('locked'); return }
-    fetch(`${getApiBase()}/api/collab/status?email=${encodeURIComponent(user.email)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
+    if (!isAuthenticated || !user?.email) {
+      creatorBadgeRequestIdRef.current += 1
+      setCreatorBadge('locked')
+      return
+    }
+    const myId = ++creatorBadgeRequestIdRef.current
+    const email = user.email
+    fetch(`${getApiBase()}/api/collab/status?email=${encodeURIComponent(email)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (myId !== creatorBadgeRequestIdRef.current) return
         if (!d || !d.status) setCreatorBadge('locked')
         else if (d.affiliate_unlocked || d.affiliateUnlocked) setCreatorBadge('unlocked')
         else setCreatorBadge('progress')
       })
-      .catch(() => setCreatorBadge('locked'))
+      .catch(() => {
+        if (myId === creatorBadgeRequestIdRef.current) setCreatorBadge('locked')
+      })
   }, [isAuthenticated, user?.email])
 
   const fetchUnread = useCallback(async () => {
@@ -491,16 +508,25 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
   }, [isAuthenticated])
 
   useEffect(() => {
-    const handler = () => setUnreadCount(0)
+    const handler = () => {
+      deferStateWork(() => setUnreadCount(0))
+    }
     window.addEventListener('blog-notifications-read-all', handler)
     return () => window.removeEventListener('blog-notifications-read-all', handler)
   }, [])
 
+  const fetchUnreadRef = useRef(fetchUnread)
+  fetchUnreadRef.current = fetchUnread
+
   useEffect(() => {
-    const onRefresh = () => void fetchUnread()
+    const onRefresh = () => {
+      deferStateWork(() => {
+        void fetchUnreadRef.current()
+      })
+    }
     window.addEventListener('blog-notifications-refresh', onRefresh)
     return () => window.removeEventListener('blog-notifications-refresh', onRefresh)
-  }, [fetchUnread])
+  }, [])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -512,7 +538,9 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
   // ── Mobile menu ────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const handler = () => setMobileMenuOpen(false)
+    const handler = () => {
+      deferStateWork(() => setMobileMenuOpen((open) => (open ? false : open)))
+    }
     window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, handler)
     return () => window.removeEventListener(NEFOL_HASH_ROUTE_CHANGE, handler)
   }, [])

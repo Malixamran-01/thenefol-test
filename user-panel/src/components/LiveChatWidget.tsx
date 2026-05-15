@@ -3,6 +3,8 @@ import { Send, X, HelpCircle, AlertCircle, MessageCircle } from 'lucide-react'
 import { api } from '../services/api'
 import { userSocketService } from '../services/socket'
 import { useAuth } from '../contexts/AuthContext'
+import { deferStateWork } from '../utils/deferStateWork'
+import { safeElementScrollIntoView } from '../utils/safeScroll'
 
 interface LiveChatMessage {
   id: string
@@ -28,11 +30,13 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
   const [lastCustomerMessageTime, setLastCustomerMessageTime] = useState<number | null>(null)
   const [showRaiseRequestButton, setShowRaiseRequestButton] = useState(false)
   const lastCustomerMessageTimeRef = useRef<number | null>(null)
-  const raiseRequestTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const raiseRequestTimeoutRef = useRef<number | undefined>(undefined)
+  const initRequestIdRef = useRef(0)
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
-  // Initialize or restore session once (even if widget is closed)
+  // Initialize or restore session when user id is known (not when widget opens/closes).
   useEffect(() => {
+    const myId = ++initRequestIdRef.current
     let cancelled = false
     const initSession = async () => {
       try {
@@ -71,41 +75,50 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
           s = await api.liveChat.createSession(sessionData)
           localStorage.setItem('live_chat_session_id', String(s.id))
         }
-        if (cancelled) return
+        if (cancelled || myId !== initRequestIdRef.current) return
         setSession(s)
-        // Join session room
         userSocketService.emit('live-chat:join-session', { sessionId: s.id })
-        // Load existing messages
         const msgs = await api.liveChat.getMessages(s.id)
-        if (cancelled) return
-        const mapped = Array.isArray(msgs) ? msgs.map((m: any) => ({
-          id: String(m.id),
-          sender: m.sender,
-          senderName: m.sender_name,
-          message: m.message,
-          timestamp: m.created_at
-        })) : []
+        if (cancelled || myId !== initRequestIdRef.current) return
+        const mapped = Array.isArray(msgs)
+          ? msgs.map((m: any) => ({
+              id: String(m.id),
+              sender: m.sender,
+              senderName: m.sender_name,
+              message: m.message,
+              timestamp: m.created_at,
+            }))
+          : []
         const uniqueById = Array.from(new Map(mapped.map((m: any) => [m.id, m])).values())
         setMessages(uniqueById)
-        
-        // Show welcome message if no messages (only on first open)
-        if (uniqueById.length === 0 && open && messages.length === 0) {
-          const welcomeMsg = {
-            id: 'welcome',
-            sender: 'agent' as const,
-            senderName: 'NEFOL bot',
-            message: 'Hello! I\'m NEFOL bot, here to help you with product information and general questions. How can I assist you today?',
-            timestamp: new Date().toISOString()
-          }
-          setMessages([welcomeMsg])
-        }
       } catch (e) {
-        console.error('Live chat init failed', e)
+        if (myId === initRequestIdRef.current) {
+          console.error('Live chat init failed', e)
+        }
       }
     }
-    initSession()
-    return () => { cancelled = true }
-  }, [user?.id, open])
+    void initSession()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!open) return
+    setMessages((prev) => {
+      if (prev.length > 0) return prev
+      return [
+        {
+          id: 'welcome',
+          sender: 'agent' as const,
+          senderName: 'NEFOL bot',
+          message:
+            "Hello! I'm NEFOL bot, here to help you with product information and general questions. How can I assist you today?",
+          timestamp: new Date().toISOString(),
+        },
+      ]
+    })
+  }, [open])
 
   // Subscribe to socket events when session is ready (even if widget is closed)
   useEffect(() => {
@@ -126,9 +139,9 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
         
         // If it's an automated response, clear the raise request timeout
         if (data.sender === 'agent') {
-          if (raiseRequestTimeoutRef.current) {
-            clearTimeout(raiseRequestTimeoutRef.current)
-            raiseRequestTimeoutRef.current = null
+          if (raiseRequestTimeoutRef.current !== undefined) {
+            window.clearTimeout(raiseRequestTimeoutRef.current)
+            raiseRequestTimeoutRef.current = undefined
           }
           // Reset the customer message time to indicate we got a response
           lastCustomerMessageTimeRef.current = null
@@ -140,14 +153,22 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
       unsubMsg()
       unsubTyping()
     }
-  }, [session?.id, lastCustomerMessageTime])
+  }, [session?.id])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, open])
+    if (!open) return
+    const frameId = window.requestAnimationFrame(() => {
+      if (bottomRef.current) {
+        safeElementScrollIntoView(bottomRef.current, { behavior: 'smooth' })
+      }
+    })
+    return () => window.cancelAnimationFrame(frameId)
+  }, [messages.length, open])
 
   useEffect(() => {
-    const handler = () => setOpen(true)
+    const handler = () => {
+      deferStateWork(() => setOpen((prev) => (prev ? prev : true)))
+    }
     window.addEventListener('open-live-chat', handler)
     return () => window.removeEventListener('open-live-chat', handler)
   }, [])
@@ -181,12 +202,11 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
       lastCustomerMessageTimeRef.current = customerMsgTime
       
       // Clear any existing timeout
-      if (raiseRequestTimeoutRef.current) {
-        clearTimeout(raiseRequestTimeoutRef.current)
+      if (raiseRequestTimeoutRef.current !== undefined) {
+        window.clearTimeout(raiseRequestTimeoutRef.current)
       }
-      
-      // Show raise request button after 15 seconds if no automated response
-      raiseRequestTimeoutRef.current = setTimeout(() => {
+
+      raiseRequestTimeoutRef.current = window.setTimeout(() => {
         // Check if we still have the same last customer message (no automated response came)
         if (lastCustomerMessageTimeRef.current === customerMsgTime) {
           setShowRaiseRequestButton(true)

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import EnhancedSearch from './EnhancedSearch'
+import { deferStateWork } from '../utils/deferStateWork'
 
 export default function SearchButton() {
   const [showSearch, setShowSearch] = useState(false)
 
   useEffect(() => {
     const handleOpenSearch = () => {
-      setShowSearch(true)
+      deferStateWork(() => setShowSearch((prev) => (prev ? prev : true)))
     }
 
     window.addEventListener('open-search', handleOpenSearch)

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { safeWindowScrollToTop } from '../utils/safeScroll'
 import { useProducts } from '../hooks/useProducts'
 import { useCart } from '../contexts/CartContext'
 import type { Product } from '../types'
@@ -682,7 +683,7 @@ export default function Search({ addToWishlist }: SearchProps) {
         {/* Back to Top */}
         <div className="mt-12 text-center">
           <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={() => safeWindowScrollToTop(true)}
             className="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
           >
             Back to Top

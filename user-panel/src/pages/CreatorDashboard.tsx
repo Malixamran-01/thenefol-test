@@ -1,9 +1,10 @@
-import React, { lazy, Suspense } from 'react'
+import React, { lazy } from 'react'
 import { CREATOR_DASHBOARD_IMPL_STUB } from '../routeShellIsolation'
 
 /**
  * Thin entry: keeps `CREATOR_DASHBOARD_IMPL_STUB` from loading `CreatorDashboardImpl` chunk at all.
  * `App.tsx` must lazy-import this file so the dashboard graph is not evaluated on initial app load.
+ * Suspense lives once in App.tsx around RouterView — no nested boundaries here.
  */
 const CreatorDashboardImpl = lazy(() => import('./CreatorDashboardImpl'))
 
@@ -19,9 +20,5 @@ export default function CreatorDashboard() {
       </div>
     )
   }
-  return (
-    <Suspense fallback={<div className="p-4 text-sm text-slate-500">Loading…</div>}>
-      <CreatorDashboardImpl />
-    </Suspense>
-  )
+  return <CreatorDashboardImpl />
 }

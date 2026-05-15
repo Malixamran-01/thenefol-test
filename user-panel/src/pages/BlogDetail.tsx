@@ -7,6 +7,7 @@ import { getApiBase, getSiteUrl } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { useBlogBack } from '../hooks/useBlogBack'
 import { blogActivityAPI } from '../services/api'
+import { safeElementScrollIntoView } from '../utils/safeScroll'
 
 interface BlogPost {
   id: string
@@ -154,7 +155,7 @@ export default function BlogDetail() {
     const el = document.getElementById(`comment-${commentId}`)
     if (el) {
       requestAnimationFrame(() => {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        safeElementScrollIntoView(el, { behavior: 'smooth', block: 'center' })
       })
     }
   }, [post, comments])

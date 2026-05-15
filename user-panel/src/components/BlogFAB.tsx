@@ -24,9 +24,8 @@ export default function BlogFAB() {
         setOpen(false)
       }
     }
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+    if (!open) return
+    document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 

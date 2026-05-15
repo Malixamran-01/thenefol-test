@@ -169,6 +169,8 @@ function CollabImpl(props: CollabProps = {}) {
   const { initialProgramTab } = props
   const { isAuthenticated, user } = useAuth()
   const creatorBadges = useCreatorProgramBadges()
+  const statusRequestIdRef = useRef(0)
+  const affiliateRequestIdRef = useRef(0)
   const [showForm, setShowForm] = useState(true)
   const [submitted, setSubmitted] = useState(false)
   const [status, setStatus] = useState<CollabStatus | null>(null)
@@ -184,17 +186,18 @@ function CollabImpl(props: CollabProps = {}) {
   const [submitResult, setSubmitResult] = useState<{ success?: string; error?: string } | null>(null)
 
   /** Platform keys from collab application (instagram, youtube, …) — drives which connect UIs appear */
-  const [applicationPlatformKeys, setApplicationPlatformKeys] = useState<Set<string>>(new Set())
+  const [applicationPlatformKeyList, setApplicationPlatformKeyList] = useState<string[]>([])
+  const applicationPlatformKeysSig = applicationPlatformKeyList.join('|')
 
   const showInstagramSection = useMemo(() => {
-    if (applicationPlatformKeys.size === 0) return true
-    return applicationPlatformKeys.has('instagram')
-  }, [applicationPlatformKeys])
+    if (applicationPlatformKeyList.length === 0) return true
+    return applicationPlatformKeyList.includes('instagram')
+  }, [applicationPlatformKeysSig])
 
   const visibleOauthPlatforms = useMemo((): SupportedPlatform[] => {
-    if (applicationPlatformKeys.size === 0) return []
-    return OAUTH_PLATFORM_KEYS.filter((k) => applicationPlatformKeys.has(k))
-  }, [applicationPlatformKeys])
+    if (applicationPlatformKeyList.length === 0) return []
+    return OAUTH_PLATFORM_KEYS.filter((k) => applicationPlatformKeyList.includes(k))
+  }, [applicationPlatformKeysSig])
 
   type PlatformSyncState = { content: any[]; syncing: boolean; selected: Set<string>; submitting: boolean; result: { success?: string; error?: string } | null; error: string }
   const initPS = (): PlatformSyncState => ({ content: [], syncing: false, selected: new Set(), submitting: false, result: null, error: '' })
@@ -218,7 +221,8 @@ function CollabImpl(props: CollabProps = {}) {
   const [blockAppealMsg, setBlockAppealMsg] = useState('')
 
   useEffect(() => {
-    if (initialProgramTab) setCollabTab(initialProgramTab)
+    if (!initialProgramTab) return
+    setCollabTab((prev) => (prev === initialProgramTab ? prev : initialProgramTab))
   }, [initialProgramTab])
 
   /**
@@ -253,10 +257,12 @@ function CollabImpl(props: CollabProps = {}) {
       if (idx === -1) return
       const q = new URLSearchParams(hash.slice(idx + 1))
       const t = q.get('tab')
-      if (t === 'collab' || t === 'affiliate' || t === 'revenue') setCollabTab(t)
+      if (t === 'collab' || t === 'affiliate' || t === 'revenue') {
+        setCollabTab((prev) => (prev === t ? prev : t))
+      }
       const w = q.get('work')
-      if (w === 'tasks') setCollabWorkView('tasks')
-      if (w === 'overview') setCollabWorkView('overview')
+      if (w === 'tasks') setCollabWorkView((prev) => (prev === 'tasks' ? prev : 'tasks'))
+      if (w === 'overview') setCollabWorkView((prev) => (prev === 'overview' ? prev : 'overview'))
     }
     syncTabFromHash()
     window.addEventListener(NEFOL_HASH_ROUTE_CHANGE, syncTabFromHash)
@@ -319,7 +325,7 @@ function CollabImpl(props: CollabProps = {}) {
     other:     { label: 'Other',      icon: <Globe     className="h-4 w-4" />, placeholder: 'Your profile link',              color: '#6b7280' },
   }
   type FormPlatformState = { checked: boolean; links: string[] }
-  const [platforms, setPlatforms] = useState<Record<PlatformKey, FormPlatformState>>(
+  const [platforms, setPlatforms] = useState<Record<PlatformKey, FormPlatformState>>(() =>
     Object.fromEntries(
       Object.keys(PLATFORM_CONFIG).map((k) => [k, { checked: k === 'instagram', links: [''] }])
     ) as Record<PlatformKey, FormPlatformState>
@@ -376,17 +382,21 @@ function CollabImpl(props: CollabProps = {}) {
     if (hash.includes('ig_connected=1')) window.location.hash = '#/user/collab'
     if (hash.includes('ig_error=')) {
       const match = hash.match(/ig_error=([^&]+)/)
-      if (match) { setSyncError(`Instagram connection failed: ${decodeURIComponent(match[1])}`); window.location.hash = '#/user/collab' }
+      if (match) {
+        const msg = `Instagram connection failed: ${decodeURIComponent(match[1])}`
+        setSyncError((prev) => (prev === msg ? prev : msg))
+        window.location.hash = '#/user/collab'
+      }
     }
     if (hash.includes('platform_connected=')) {
       const match = hash.match(/platform_connected=([^&]+)/)
       if (match) {
         const p = decodeURIComponent(match[1])
         const label = p.charAt(0).toUpperCase() + p.slice(1)
-        setPlatformNotification(`${label} connected successfully!`)
+        const note = `${label} connected successfully!`
+        setPlatformNotification((prev) => (prev === note ? prev : note))
         setTimeout(() => setPlatformNotification(null), 5000)
         window.location.hash = '#/user/collab'
-        // fetchStatus will be called in its own effect after hash change triggers re-check
       }
     }
     if (hash.includes('platform_error=')) {
@@ -395,7 +405,9 @@ function CollabImpl(props: CollabProps = {}) {
         const parts = decodeURIComponent(match[1]).split(':')
         const platform = parts[0] as SupportedPlatform
         const msg = parts.slice(1).join(':')
-        if (['youtube','reddit','vk'].includes(platform)) updPS(platform, { error: `Connection failed: ${msg}` })
+        if (['youtube', 'reddit', 'vk'].includes(platform)) {
+          updPS(platform, { error: `Connection failed: ${msg}` })
+        }
         window.location.hash = '#/user/collab'
       }
     }
@@ -405,13 +417,18 @@ function CollabImpl(props: CollabProps = {}) {
   const token = () => localStorage.getItem('token') || ''
   const authHeaders = () => ({ 'Content-Type': 'application/json', ...(token() ? { Authorization: `Bearer ${token()}` } : {}) })
 
-  const fetchStatus = async () => {
-    if (!isAuthenticated) { setLoading(false); return }
+  const fetchStatus = useCallback(async () => {
+    const myId = ++statusRequestIdRef.current
+    if (!isAuthenticated) {
+      if (myId === statusRequestIdRef.current) setLoading(false)
+      return
+    }
     try {
-        const queryEmail = user?.email ? `?email=${encodeURIComponent(user.email)}` : ''
+      const queryEmail = user?.email ? `?email=${encodeURIComponent(user.email)}` : ''
       const res = await fetch(`${getApiBase()}/api/collab/status${queryEmail}`, { headers: authHeaders() })
-        if (res.ok) {
-          const data = await res.json()
+      if (myId !== statusRequestIdRef.current) return
+      if (res.ok) {
+        const data = await res.json()
           const handles = Array.isArray(data.instagram_handles)
             ? data.instagram_handles
             : (data.instagram || '').split(',').map((h: string) => h.trim()).filter(Boolean)
@@ -447,9 +464,17 @@ function CollabImpl(props: CollabProps = {}) {
         })
         setSubmittedReels(Array.isArray(data.reels) ? data.reels : [])
         const plat = Array.isArray(data.platforms) ? data.platforms : []
-        setApplicationPlatformKeys(
-          new Set(plat.map((p: { name?: string }) => String(p.name || '').toLowerCase()).filter(Boolean))
-        )
+        const keys = plat
+          .map((p: { name?: string }) => String(p.name || '').toLowerCase())
+          .filter(Boolean)
+        setApplicationPlatformKeyList((prev) => {
+          const sorted = [...keys].sort()
+          const prevSorted = [...prev].sort()
+          if (sorted.length === prevSorted.length && sorted.every((k, i) => k === prevSorted[i])) {
+            return prev
+          }
+          return keys
+        })
         if (Array.isArray(data.platform_connections)) {
           const conns: Record<string, any> = {}
           data.platform_connections.forEach((c: any) => { conns[c.platform] = c })
@@ -462,27 +487,48 @@ function CollabImpl(props: CollabProps = {}) {
           }
         }
     } catch (e) { console.error('Collab status fetch failed:', e) }
-    finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchStatus() }, [isAuthenticated, user?.email])
+    finally {
+      if (myId === statusRequestIdRef.current) setLoading(false)
+    }
+  }, [isAuthenticated, user?.email])
 
   useEffect(() => {
-    if (user?.email) setFormData((p) => ({ ...p, email: user.email }))
+    void fetchStatus()
+    return () => {
+      statusRequestIdRef.current += 1
+    }
+  }, [fetchStatus])
+
+  useEffect(() => {
+    if (!user?.email) return
+    setFormData((p) => (p.email === user.email ? p : { ...p, email: user.email }))
   }, [user?.email])
 
   useEffect(() => {
     if (!status?.affiliateUnlocked || !isAuthenticated) return
     const t = localStorage.getItem('token')
     if (!t) return
+    const myId = ++affiliateRequestIdRef.current
     setAffiliateAppLoading(true)
     fetch(`${getApiBase()}/api/affiliate/application-status`, {
-      headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }
+      headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
     })
       .then((r) => r.json())
-      .then((d) => setAffiliateAppStatus((d.status as any) || 'not_submitted'))
-      .catch(() => setAffiliateAppStatus('not_submitted'))
-      .finally(() => setAffiliateAppLoading(false))
+      .then((d) => {
+        if (myId !== affiliateRequestIdRef.current) return
+        const next = (d.status as typeof affiliateAppStatus) || 'not_submitted'
+        setAffiliateAppStatus((prev) => (prev === next ? prev : next))
+      })
+      .catch(() => {
+        if (myId !== affiliateRequestIdRef.current) return
+        setAffiliateAppStatus((prev) => (prev === 'not_submitted' ? prev : 'not_submitted'))
+      })
+      .finally(() => {
+        if (myId === affiliateRequestIdRef.current) setAffiliateAppLoading(false)
+      })
+    return () => {
+      affiliateRequestIdRef.current += 1
+    }
   }, [status?.affiliateUnlocked, isAuthenticated])
 
   const applyForAffiliate = async () => {
@@ -586,7 +632,9 @@ function CollabImpl(props: CollabProps = {}) {
       setTurnstileMountKey((k) => k + 1)
       const ap = data?.application?.platforms
       if (Array.isArray(ap)) {
-        setApplicationPlatformKeys(new Set(ap.map((p: { name?: string }) => String(p.name || '').toLowerCase()).filter(Boolean)))
+        setApplicationPlatformKeyList(
+          ap.map((p: { name?: string }) => String(p.name || '').toLowerCase()).filter(Boolean)
+        )
       }
       setStatus((s) => s
         ? { ...s, id: data?.application?.id || s.id, hasApplication: true, status: 'pending', instagramHandles: handles }

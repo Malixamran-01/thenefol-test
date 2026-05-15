@@ -6,6 +6,7 @@ import PhoneInput from '../components/PhoneInput'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
+import { safeElementScrollIntoView } from '../utils/safeScroll'
 
 interface UserProfile {
   name: string
@@ -587,9 +588,9 @@ export default function Profile() {
                           setTimeout(() => {
                             const contentElement = document.getElementById('profile-content')
                             if (contentElement) {
-                              contentElement.scrollIntoView({
+                              safeElementScrollIntoView(contentElement, {
                                 behavior: 'smooth',
-                                block: 'start'
+                                block: 'start',
                               })
                             }
                           }, 100)

@@ -18,6 +18,7 @@ import { productReviews, getProductReviews, getProductRating, getProductReviewCo
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import { pixelEvents, formatProductData } from '../utils/metaPixel'
 import { calculatePurchaseCoins } from '../utils/points'
+import { safeElementScrollTo } from '../utils/safeScroll'
 
 // CSV data cache - shared across all product page instances
 let csvDataCache: any[] | null = null
@@ -911,9 +912,9 @@ export default function ProductPage() {
                     if (thumbnailContainerRef.current) {
                       const container = thumbnailContainerRef.current
                       const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
-                      container.scrollTo({
+                      safeElementScrollTo(container, {
                         left: scrollPosition,
-                        behavior: 'smooth'
+                        behavior: 'smooth',
                       })
                     }
                   } else if (direction === 'right' && canScrollRight) {
@@ -923,9 +924,9 @@ export default function ProductPage() {
                     if (thumbnailContainerRef.current) {
                       const container = thumbnailContainerRef.current
                       const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
-                      container.scrollTo({
+                      safeElementScrollTo(container, {
                         left: scrollPosition,
-                        behavior: 'smooth'
+                        behavior: 'smooth',
                       })
                     }
                   }

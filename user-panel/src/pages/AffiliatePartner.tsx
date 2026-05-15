@@ -3,6 +3,7 @@ import { ArrowLeft, BarChart3, Copy, CheckCircle, Clock, AlertCircle, UserPlus, 
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import WithdrawalPanel from '../components/WithdrawalPanel'
+import { safeElementScrollIntoView } from '../utils/safeScroll'
 interface AffiliateData {
   id: string
   user_id: string
@@ -1092,7 +1093,10 @@ useEffect(() => {
                   onClick={() => {
                     const dashboardContent = document.getElementById('dashboard-content')
                     if (dashboardContent) {
-                      dashboardContent.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      safeElementScrollIntoView(dashboardContent, {
+                        behavior: 'smooth',
+                        block: 'start',
+                      })
                     }
                   }}
                   className="px-4 sm:px-6 py-2 sm:py-3 text-white rounded-xl transition-all duration-300 font-light tracking-wide uppercase flex items-center gap-2 text-xs sm:text-sm"

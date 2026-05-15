@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from 'react'
 import { getOptimizedImage } from '../utils/imageOptimizer'
+import { safeElementScrollIntoView } from '../utils/safeScroll'
 
 export const ingredients = [
   {
@@ -5030,7 +5031,7 @@ export default function Ingredients() {
     if (next) {
       setTimeout(() => {
         const el = document.getElementById(`ing-card-${id}`)
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        if (el) safeElementScrollIntoView(el, { behavior: 'smooth', block: 'start' })
       }, 60)
     }
   }

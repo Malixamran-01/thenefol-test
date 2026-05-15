@@ -80,21 +80,25 @@ function registerFailedEventRetryOnLoad() {
   if ((registerFailedEventRetryOnLoad as unknown as { done?: boolean }).done) return
   ;(registerFailedEventRetryOnLoad as unknown as { done?: boolean }).done = true
 
-  window.addEventListener('load', () => {
-    void (async () => {
-      try {
-        const failedEvents = JSON.parse(localStorage.getItem('meta_pixel_failed_events') || '[]')
-        if (failedEvents.length > 0) {
-          for (const event of failedEvents) {
-            await sendEventToBackend(event.event_name, event.event_data, 1)
+  window.addEventListener(
+    'load',
+    () => {
+      void (async () => {
+        try {
+          const failedEvents = JSON.parse(localStorage.getItem('meta_pixel_failed_events') || '[]')
+          if (failedEvents.length > 0) {
+            for (const event of failedEvents) {
+              await sendEventToBackend(event.event_name, event.event_data, 1)
+            }
+            localStorage.removeItem('meta_pixel_failed_events')
           }
-          localStorage.removeItem('meta_pixel_failed_events')
+        } catch {
+          // Ignore errors
         }
-      } catch {
-        // Ignore errors
-      }
-    })()
-  })
+      })()
+    },
+    { once: true }
+  )
 }
 
 // Track custom events

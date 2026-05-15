@@ -1,12 +1,11 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react'
+﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Star, ShoppingCart, ChevronLeft, ChevronRight, Eye, Heart } from 'lucide-react'
-import { api, reviewsAPI } from '../services/api'
+import { api } from '../services/api'
 import SubscriptionModal from '../components/SubscriptionModal'
 import { useCart } from '../contexts/CartContext'
 import { useProducts } from '../hooks/useProducts'
 import PricingDisplay from '../components/PricingDisplay'
-import { getProductRating, getProductReviewCount, hasVerifiedReviews } from '../utils/product_reviews'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import VerifiedBadge from '../components/VerifiedBadge'
 import { getSessionId } from '../utils/session'
@@ -16,18 +15,26 @@ import WishlistButton from '../components/WishlistButton'
 // Social Media Videos Component with auto-slide in horizontal line
 const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<HTMLDivElement> }> = ({ videos, scrollerRef }) => {
   const { user } = useAuth()
-  const localVideos: string[] = []
-  
-  // Map videos with their data and URLs
-  const apiVideos = (videos || []).map((v: any) => ({
-    ...v,
-    videoUrl: v.video_type === 'local' ? (() => {
-      const apiBase = getApiBase()
-      return `${apiBase.replace('/api', '')}/uploads/${v.video_url}`
-    })() : v.video_url
-  }))
-  
-  const allVideos = [...apiVideos]
+  const requestIdRef = useRef(0)
+  const lastTrackedVideoIdRef = useRef<number | null>(null)
+
+  const allVideos = useMemo(() => {
+    const apiBase = getApiBase()
+    const uploadsBase = apiBase.replace('/api', '')
+    return (videos || []).map((v: any) => ({
+      ...v,
+      videoUrl:
+        v.video_type === 'local'
+          ? `${uploadsBase}/uploads/${v.video_url}`
+          : v.video_url,
+    }))
+  }, [videos])
+
+  const allVideosLength = allVideos.length
+  const allVideosIdsSig = useMemo(
+    () => allVideos.map((v: any) => v.id ?? '').join(','),
+    [allVideos]
+  )
   const [videoStats, setVideoStats] = useState<Record<number, { views: number, likes: number, liked: boolean }>>({})
   
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -47,159 +54,171 @@ const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<
 
   // Load carousel settings
   useEffect(() => {
+    const myId = ++requestIdRef.current
     const loadSettings = async () => {
       try {
         const apiBase = getApiBase()
-        
         const response = await fetch(`${apiBase}/api/carousel-settings`)
+        if (myId !== requestIdRef.current) return
         if (response.ok) {
           const data = await response.json()
           if (data && data.length > 0 && data[0].settings) {
-            setCarouselSettings(data[0].settings)
+            setCarouselSettings((prev) => {
+              const next = data[0].settings
+              if (JSON.stringify(prev) === JSON.stringify(next)) return prev
+              return next
+            })
+            return
           }
         }
       } catch (error) {
         console.error('Failed to load carousel settings:', error)
-        // Fallback to localStorage
+        if (myId !== requestIdRef.current) return
         const saved = localStorage.getItem('carousel-settings')
         if (saved) {
           try {
-            setCarouselSettings(JSON.parse(saved))
+            const parsed = JSON.parse(saved)
+            setCarouselSettings((prev) => {
+              if (JSON.stringify(prev) === JSON.stringify(parsed)) return prev
+              return parsed
+            })
           } catch (e) {
             console.error('Failed to parse saved settings:', e)
           }
         }
       }
     }
-    loadSettings()
+    void loadSettings()
+    return () => {
+      requestIdRef.current += 1
+    }
   }, [])
+
+  const carouselAutoPlay = carouselSettings.autoPlay
+  const carouselVideoPlayDuration = carouselSettings.videoPlayDuration
+  const carouselAutoAdvanceInterval = carouselSettings.autoAdvanceInterval
 
   // Calculate video width on mount and resize
   useEffect(() => {
-    if (allVideos.length === 0) return
-    
+    if (allVideosLength === 0) return
+
     const updateDimensions = () => {
       if (videoContainerRef.current) {
         const container = videoContainerRef.current
         const firstVideo = container.querySelector('.video-item') as HTMLElement
         if (firstVideo) {
           const width = firstVideo.offsetWidth
-          setVideoWidth(width)
+          setVideoWidth((prev) => (prev === width ? prev : width))
         }
       }
     }
-    
-    // Wait for videos to render
+
     const timeoutId = setTimeout(updateDimensions, 100)
     window.addEventListener('resize', updateDimensions)
     return () => {
       clearTimeout(timeoutId)
       window.removeEventListener('resize', updateDimensions)
     }
-  }, [allVideos.length])
+  }, [allVideosLength, allVideosIdsSig])
 
   // Auto-advance based on settings - use videoPlayDuration for timing
   useEffect(() => {
-    if (allVideos.length === 0) return
-    if (!carouselSettings.autoPlay) return
-    
-    const playDuration = carouselSettings.videoPlayDuration || carouselSettings.autoAdvanceInterval || 3000
-    
+    if (allVideosLength === 0) return
+    if (!carouselAutoPlay) return
+
+    const playDuration = carouselVideoPlayDuration || carouselAutoAdvanceInterval || 3000
+
     const intervalId = setInterval(() => {
       setCurrentIndex((prevIndex) => {
         const nextIndex = prevIndex + 1
-        // Loop back to start when reaching the end
-        return nextIndex >= allVideos.length ? 0 : nextIndex
+        return nextIndex >= allVideosLength ? 0 : nextIndex
       })
     }, playDuration)
 
     return () => {
       clearInterval(intervalId)
     }
-  }, [allVideos.length, carouselSettings.autoPlay, carouselSettings.videoPlayDuration, carouselSettings.autoAdvanceInterval])
+  }, [allVideosLength, carouselAutoPlay, carouselVideoPlayDuration, carouselAutoAdvanceInterval])
 
-  // Load video stats
+  // Load video stats from props / localStorage
   useEffect(() => {
-    if (allVideos.length === 0) return
-    
+    if (allVideosLength === 0) return
+
     const likedVideos = JSON.parse(localStorage.getItem('liked-videos') || '[]')
-    const stats: Record<number, { views: number, likes: number, liked: boolean }> = {}
+    const stats: Record<number, { views: number; likes: number; liked: boolean }> = {}
     allVideos.forEach((video: any) => {
       if (video.id) {
         stats[video.id] = {
           views: video.views || 0,
           likes: video.likes || 0,
-          liked: likedVideos.includes(video.id)
+          liked: likedVideos.includes(video.id),
         }
       }
     })
-    setVideoStats(stats)
-  }, [allVideos.length])
-
-  // Track video view when it becomes center - one view per user
-  useEffect(() => {
-    if (allVideos.length === 0) return
-    
-    const currentVideo = allVideos[currentIndex]
-    if (!currentVideo || !currentVideo.id) return
-    
-    // Track view only once when video becomes center
-    trackVideoView(currentVideo.id)
-  }, [currentIndex, allVideos.length])
-
-  const trackVideoView = async (videoId: number) => {
-    try {
-      const apiBase = getApiBase()
-      
-      const sessionId = getSessionId()
-      const userId = user?.id || null
-      
-      const response = await fetch(`${apiBase}/api/videos/${videoId}/view`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          user_id: userId
+    setVideoStats((prev) => {
+      const prevKeys = Object.keys(prev)
+      const nextKeys = Object.keys(stats)
+      if (
+        prevKeys.length === nextKeys.length &&
+        nextKeys.every((k) => {
+          const id = Number(k)
+          const p = prev[id]
+          const n = stats[id]
+          return p && n && p.views === n.views && p.likes === n.likes && p.liked === n.liked
         })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        // Update stats with the actual view count from server
-        // Only update if this was a new view (not already_viewed)
-        if (!data.already_viewed) {
-          setVideoStats(prev => ({
-            ...prev,
-            [videoId]: {
-              ...prev[videoId] || { views: 0, likes: 0, liked: false },
-              views: data.views || (prev[videoId]?.views || 0)
-            }
-          }))
-        } else {
-          // View was already recorded, just update with current count
-          setVideoStats(prev => ({
-            ...prev,
-            [videoId]: {
-              ...prev[videoId] || { views: 0, likes: 0, liked: false },
-              views: data.views || (prev[videoId]?.views || 0)
-            }
-          }))
-        }
+      ) {
+        return prev
       }
-    } catch (error) {
-      console.error('Failed to track video view:', error)
-      // Don't increment locally on error - let backend handle tracking
-      // Just ensure stats object exists for this video
-      setVideoStats(prev => ({
-        ...prev,
-        [videoId]: {
-          ...prev[videoId] || { views: 0, likes: 0, liked: false }
-        }
-      }))
-    }
-  }
+      return stats
+    })
+  }, [allVideosIdsSig, allVideosLength])
+
+  const trackVideoView = useCallback(
+    async (videoId: number, fetchId: number) => {
+      try {
+        const apiBase = getApiBase()
+        const sessionId = getSessionId()
+        const userId = user?.id || null
+
+        const response = await fetch(`${apiBase}/api/videos/${videoId}/view`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, user_id: userId }),
+        })
+
+        if (fetchId !== requestIdRef.current) return
+        if (!response.ok) return
+
+        const data = await response.json()
+        const views = data.views ?? 0
+        setVideoStats((prev) => {
+          const existing = prev[videoId] || { views: 0, likes: 0, liked: false }
+          if (existing.views === views) return prev
+          return {
+            ...prev,
+            [videoId]: { ...existing, views },
+          }
+        })
+      } catch (error) {
+        console.error('Failed to track video view:', error)
+      }
+    },
+    [user?.id]
+  )
+
+  const centerVideoId = useMemo(() => {
+    const ids = allVideosIdsSig ? allVideosIdsSig.split(',').map((s) => Number(s)) : []
+    return ids[currentIndex] ?? null
+  }, [allVideosIdsSig, currentIndex])
+
+  useEffect(() => {
+    if (!centerVideoId) return
+    if (lastTrackedVideoIdRef.current === centerVideoId) return
+
+    lastTrackedVideoIdRef.current = centerVideoId
+    const fetchId = ++requestIdRef.current
+    void trackVideoView(centerVideoId, fetchId)
+  }, [centerVideoId, trackVideoView])
 
   const handleLike = async (videoId: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -232,26 +251,21 @@ const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<
 
   // Play/pause videos based on center position
   useEffect(() => {
-    if (allVideos.length === 0) return
-    
+    if (allVideosLength === 0) return
+
     const videoElements = document.querySelectorAll('.video-item video') as NodeListOf<HTMLVideoElement>
-    
+
     videoElements.forEach((video, idx) => {
       if (idx === currentIndex) {
-        // Play center video
-        video.play().catch((err) => {
-          console.log('Video play error:', err)
-        })
+        video.play().catch(() => {})
       } else {
-        // Pause and reset other videos
         video.pause()
         video.currentTime = 0
       }
     })
-  }, [currentIndex, allVideos.length])
+  }, [currentIndex, allVideosLength, allVideosIdsSig])
 
-  // Don't render if no videos
-  if (allVideos.length === 0) {
+  if (allVideosLength === 0) {
     return null
   }
 
@@ -408,23 +422,29 @@ const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<
 export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
   const { addItem } = useCart()
+  const homeFetchIdRef = useRef(0)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [csvProducts, setCsvProducts] = useState<any[]>([])
 
   useEffect(() => {
+    const myId = ++homeFetchIdRef.current
     const fetchCsvProducts = async () => {
       try {
         const apiBase = getApiBase()
         const response = await fetch(`${apiBase}/api/products-csv`)
+        if (myId !== homeFetchIdRef.current) return
         if (response.ok) {
           const data = await response.json()
-          setCsvProducts(data)
+          setCsvProducts((prev) => (prev === data ? prev : data))
         }
       } catch (error) {
         console.error('Failed to fetch CSV products:', error)
       }
     }
-    fetchCsvProducts()
+    void fetchCsvProducts()
+    return () => {
+      homeFetchIdRef.current += 1
+    }
   }, [])
   const [videos, setVideos] = useState<any[]>([])
   const videoScrollerRef = useRef<HTMLDivElement>(null)
@@ -546,247 +566,278 @@ export default function Home() {
     return `${normalized}/cms`
   }
 
-  // Fetch Top Media Carousel from CMS
-  const fetchTopMediaCarousel = async () => {
-    try {
-      const cmsBase = getCmsApiBase()
-      const response = await fetch(`${cmsBase}/sections/home`)
-      if (response.ok) {
+  const topMediaAutoPlay = topMediaSettings.autoPlay
+  const topMediaAutoPlayDelay = topMediaSettings.autoPlayDelay
+  const topMediaLoop = topMediaSettings.loop
+  const heroAutoPlay = heroSettings.autoPlay
+  const heroAutoPlayDelay = heroSettings.autoPlayDelay
+  const heroLoop = heroSettings.loop
+
+  // Fetch all data on mount
+  useEffect(() => {
+    const myId = ++homeFetchIdRef.current
+
+    const guard = () => myId === homeFetchIdRef.current
+
+    const runTopMedia = async () => {
+      try {
+        const cmsBase = getCmsApiBase()
+        const response = await fetch(`${cmsBase}/sections/home`)
+        if (!guard() || !response.ok) return
         const sections = await response.json()
         const topMediaSection = sections.find((s: any) => s.section_type === 'top_media_carousel')
-        
-        if (topMediaSection && topMediaSection.content) {
-          const content = topMediaSection.content
-          let mediaArray: string[] = []
-          
-          if (content.media && Array.isArray(content.media)) {
-            mediaArray = content.media.map((item: any) => normalizeUrl(typeof item === 'string' ? item : item.url))
-          } else if (content.images && Array.isArray(content.images) && content.images.length > 0) {
-            mediaArray = content.images.map(normalizeUrl)
-          }
-          
-          if (mediaArray.length > 0) {
-            setTopMediaImages(mediaArray)
-          }
-          
-          if (content.settings) {
-            setTopMediaSettings(content.settings)
-          }
+        if (!topMediaSection?.content) return
+        const content = topMediaSection.content
+        let mediaArray: string[] = []
+        if (content.media && Array.isArray(content.media)) {
+          mediaArray = content.media.map((item: any) =>
+            normalizeUrl(typeof item === 'string' ? item : item.url)
+          )
+        } else if (content.images?.length) {
+          mediaArray = content.images.map(normalizeUrl)
         }
+        if (mediaArray.length > 0) {
+          setTopMediaImages((prev) =>
+            prev.length === mediaArray.length && prev.every((u, i) => u === mediaArray[i]) ? prev : mediaArray
+          )
+        }
+        if (content.settings) {
+          setTopMediaSettings((prev: typeof topMediaSettings) => {
+            if (JSON.stringify(prev) === JSON.stringify(content.settings)) return prev
+            return content.settings
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch top media carousel from CMS:', error)
       }
-    } catch (error) {
-      console.error('Failed to fetch top media carousel from CMS:', error)
     }
-  }
 
-  // Fetch Hero Banner from CMS
-  const fetchHeroBanner = async () => {
-    try {
-      const cmsBase = getCmsApiBase()
-      const response = await fetch(`${cmsBase}/sections/home`)
-      if (response.ok) {
+    const runHero = async () => {
+      try {
+        const cmsBase = getCmsApiBase()
+        const response = await fetch(`${cmsBase}/sections/home`)
+        if (!guard() || !response.ok) return
         const sections = await response.json()
         const heroSection = sections.find((s: any) => s.section_type === 'hero_banner')
-        
-        if (heroSection && heroSection.content) {
-          const content = heroSection.content
-          
-          if (content.images && Array.isArray(content.images) && content.images.length > 0) {
-            const normalizedImages = content.images.map(normalizeUrl)
-            setHeroImages(normalizedImages)
-          }
-          
-          if (content.settings) {
-            setHeroSettings(content.settings)
-          }
+        if (!heroSection?.content) return
+        const content = heroSection.content
+        if (content.images?.length) {
+          const normalizedImages = content.images.map(normalizeUrl)
+          setHeroImages((prev) =>
+            prev.length === normalizedImages.length && prev.every((u, i) => u === normalizedImages[i])
+              ? prev
+              : normalizedImages
+          )
         }
+        if (content.settings) {
+          setHeroSettings((prev: typeof heroSettings) => {
+            if (JSON.stringify(prev) === JSON.stringify(content.settings)) return prev
+            return content.settings
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch hero banner from CMS:', error)
       }
-    } catch (error) {
-      console.error('Failed to fetch hero banner from CMS:', error)
     }
-  }
 
-  // Fetch all CMS sections
-  const fetchCMSSections = async () => {
-    try {
-      const cmsBase = getCmsApiBase()
-      const response = await fetch(`${cmsBase}/sections/home`)
-      if (response.ok) {
+    const runCms = async () => {
+      try {
+        const cmsBase = getCmsApiBase()
+        const response = await fetch(`${cmsBase}/sections/home`)
+        if (!guard() || !response.ok) return
         const sections = await response.json()
-        
-        // Extract category images from shop_categories section
+
         const categorySection = sections.find((s: any) => s.section_type === 'shop_categories')
-        if (categorySection && categorySection.content && categorySection.content.categories) {
+        if (categorySection?.content?.categories) {
           const newCategoryImages: Record<string, string> = {}
           categorySection.content.categories.forEach((cat: any) => {
-            if (cat.image) {
-              newCategoryImages[cat.name] = normalizeUrl(cat.image)
-            }
+            if (cat.image) newCategoryImages[cat.name] = normalizeUrl(cat.image)
           })
           if (Object.keys(newCategoryImages).length > 0) {
-            setCategoryImages(prev => ({ ...prev, ...newCategoryImages }))
+            setCategoryImages((prev) => {
+              const merged = { ...prev, ...newCategoryImages }
+              if (JSON.stringify(prev) === JSON.stringify(merged)) return prev
+              return merged
+            })
           }
         }
-        
-        // Extract commitment images from commitments section
+
         const commitmentSection = sections.find((s: any) => s.section_type === 'commitments')
-        if (commitmentSection && commitmentSection.content && commitmentSection.content.images) {
-          const images = Array.isArray(commitmentSection.content.images) 
+        if (commitmentSection?.content?.images) {
+          const images = Array.isArray(commitmentSection.content.images)
             ? commitmentSection.content.images.map(normalizeUrl)
             : []
           if (images.length > 0) {
-            setCommitmentImages(images)
+            setCommitmentImages((prev) =>
+              prev.length === images.length && prev.every((u, i) => u === images[i]) ? prev : images
+            )
           }
         }
-        
-        // Extract complete kit image from complete_kit section
+
         const completeKitSection = sections.find((s: any) => s.section_type === 'complete_kit')
-        if (completeKitSection && completeKitSection.content && completeKitSection.content.image) {
-          setCompleteKitImage(normalizeUrl(completeKitSection.content.image))
+        if (completeKitSection?.content?.image) {
+          const img = normalizeUrl(completeKitSection.content.image)
+          setCompleteKitImage((prev) => (prev === img ? prev : img))
         }
-        
-        // Extract marketplace logos from marketplace_logos section
+
         const marketplaceSection = sections.find((s: any) => s.section_type === 'marketplace_logos')
-        if (marketplaceSection && marketplaceSection.content && marketplaceSection.content.logos) {
+        if (marketplaceSection?.content?.logos) {
           const logos = Array.isArray(marketplaceSection.content.logos)
             ? marketplaceSection.content.logos.map(normalizeUrl)
             : []
           if (logos.length > 0) {
-            setMarketplaceLogos(logos)
+            setMarketplaceLogos((prev) =>
+              prev.length === logos.length && prev.every((u, i) => u === logos[i]) ? prev : logos
+            )
           }
         }
-        
-        // Extract Nefol Collection from nefol_collection section
+
         const nefolCollectionSection = sections.find((s: any) => s.section_type === 'nefol_collection')
-        if (nefolCollectionSection && nefolCollectionSection.content) {
-          setNefolCollection({
-            image: nefolCollectionSection.content.image ? normalizeUrl(nefolCollectionSection.content.image) : '',
-            title: nefolCollectionSection.content.title || 'NEFOL COLLECTION',
-            subtitle: nefolCollectionSection.content.subtitle || 'ELEVATE YOUR SKINCARE WITH',
-            description: nefolCollectionSection.content.description || 'Our premium collection combines the best of nature and science to deliver exceptional results for your skin.',
-            buttonText: nefolCollectionSection.content.buttonText || 'SHOP NOW',
-            buttonLink: nefolCollectionSection.content.buttonLink || '/shop'
+        if (nefolCollectionSection?.content) {
+          const c = nefolCollectionSection.content
+          setNefolCollection((prev: typeof nefolCollection) => {
+            const next = {
+              image: c.image ? normalizeUrl(c.image) : '',
+              title: c.title || 'NEFOL COLLECTION',
+              subtitle: c.subtitle || 'ELEVATE YOUR SKINCARE WITH',
+              description:
+                c.description ||
+                'Our premium collection combines the best of nature and science to deliver exceptional results for your skin.',
+              buttonText: c.buttonText || 'SHOP NOW',
+              buttonLink: c.buttonLink || '/shop',
+            }
+            if (JSON.stringify(prev) === JSON.stringify(next)) return prev
+            return next
           })
         }
-        
-        // Extract Forever Favorites from forever_favorites section
+
         const foreverFavoritesSection = sections.find((s: any) => s.section_type === 'forever_favorites')
-        if (foreverFavoritesSection && foreverFavoritesSection.content) {
+        if (foreverFavoritesSection?.content) {
           const imagesArray = foreverFavoritesSection.content.images || []
           const luxuryImg = foreverFavoritesSection.content.luxurySkincare?.image
           const naturalImg = foreverFavoritesSection.content.naturalBeauty?.image
-          
-          const luxuryImage = luxuryImg ? normalizeUrl(luxuryImg) : (imagesArray[0] ? normalizeUrl(imagesArray[0]) : '')
-          const naturalImage = naturalImg ? normalizeUrl(naturalImg) : (imagesArray[1] ? normalizeUrl(imagesArray[1]) : '')
-          
-          setForeverFavorites({
-            title: foreverFavoritesSection.content.title || 'FOREVER FAVORITES',
-            description: foreverFavoritesSection.content.description || 'Discover our most loved products that have become staples in skincare routines worldwide.',
-            luxurySkincare: {
-              image: luxuryImage,
-              title: foreverFavoritesSection.content.luxurySkincare?.title || 'LUXURY SKINCARE',
-              buttonText: foreverFavoritesSection.content.luxurySkincare?.buttonText || 'SHOP NOW'
-            },
-            naturalBeauty: {
-              image: naturalImage,
-              title: foreverFavoritesSection.content.naturalBeauty?.title || 'NATURAL BEAUTY',
-              buttonText: foreverFavoritesSection.content.naturalBeauty?.buttonText || 'SHOP NOW'
+          const luxuryImage = luxuryImg ? normalizeUrl(luxuryImg) : imagesArray[0] ? normalizeUrl(imagesArray[0]) : ''
+          const naturalImage = naturalImg ? normalizeUrl(naturalImg) : imagesArray[1] ? normalizeUrl(imagesArray[1]) : ''
+          setForeverFavorites((prev: typeof foreverFavorites) => {
+            const next = {
+              title: foreverFavoritesSection.content.title || 'FOREVER FAVORITES',
+              description:
+                foreverFavoritesSection.content.description ||
+                'Discover our most loved products that have become staples in skincare routines worldwide.',
+              luxurySkincare: {
+                image: luxuryImage,
+                title: foreverFavoritesSection.content.luxurySkincare?.title || 'LUXURY SKINCARE',
+                buttonText: foreverFavoritesSection.content.luxurySkincare?.buttonText || 'SHOP NOW',
+              },
+              naturalBeauty: {
+                image: naturalImage,
+                title: foreverFavoritesSection.content.naturalBeauty?.title || 'NATURAL BEAUTY',
+                buttonText: foreverFavoritesSection.content.naturalBeauty?.buttonText || 'SHOP NOW',
+              },
             }
+            if (JSON.stringify(prev) === JSON.stringify(next)) return prev
+            return next
           })
         }
-        
-        // Extract Natural Beauty from natural_beauty section
+
         const naturalBeautySection = sections.find((s: any) => s.section_type === 'natural_beauty')
-        if (naturalBeautySection && naturalBeautySection.content) {
-          setNaturalBeauty({
-            image: naturalBeautySection.content.image ? normalizeUrl(naturalBeautySection.content.image) : '',
-            title: naturalBeautySection.content.title || 'NATURAL BEAUTY',
-            subtitle: naturalBeautySection.content.subtitle || 'ELEVATE YOUR SKIN WITH',
-            description: naturalBeautySection.content.description || 'infused with premium natural ingredients',
-            buttonText: naturalBeautySection.content.buttonText || 'SHOP NOW',
-            buttonLink: naturalBeautySection.content.buttonLink || '/shop'
+        if (naturalBeautySection?.content) {
+          const c = naturalBeautySection.content
+          setNaturalBeauty((prev: typeof naturalBeauty) => {
+            const next = {
+              image: c.image ? normalizeUrl(c.image) : '',
+              title: c.title || 'NATURAL BEAUTY',
+              subtitle: c.subtitle || 'ELEVATE YOUR SKIN WITH',
+              description: c.description || 'infused with premium natural ingredients',
+              buttonText: c.buttonText || 'SHOP NOW',
+              buttonLink: c.buttonLink || '/shop',
+            }
+            if (JSON.stringify(prev) === JSON.stringify(next)) return prev
+            return next
           })
         }
-        
-        // Extract Scrolling Text Banner from scrolling_text_banner section
+
         const scrollingTextSection = sections.find((s: any) => s.section_type === 'scrolling_text_banner')
-        if (scrollingTextSection && scrollingTextSection.content && scrollingTextSection.content.text) {
-          setScrollingText(scrollingTextSection.content.text)
+        if (scrollingTextSection?.content?.text) {
+          setScrollingText((prev) =>
+            prev === scrollingTextSection.content.text ? prev : scrollingTextSection.content.text
+          )
         }
-        
-        // Extract WhatsApp Subscription from whatsappsubscription section
+
         const whatsappSection = sections.find((s: any) => s.section_type === 'whatsappsubscription')
-        if (whatsappSection && whatsappSection.content) {
-          setWhatsappSubscription({
-            image: whatsappSection.content.image ? normalizeUrl(whatsappSection.content.image) : '/IMAGES/BANNER (1).webp',
-            logo: whatsappSection.content.logo ? normalizeUrl(whatsappSection.content.logo) : '',
-            heading: whatsappSection.content.heading || 'Join The NEFOL Circle',
-            description: whatsappSection.content.description || 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-            footer: whatsappSection.content.footer || 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
-            logoName: whatsappSection.content.logoName || 'NEFOL'
+        if (whatsappSection?.content) {
+          const c = whatsappSection.content
+          setWhatsappSubscription((prev) => {
+            const next = {
+              image: c.image ? normalizeUrl(c.image) : '/IMAGES/BANNER (1).webp',
+              logo: c.logo ? normalizeUrl(c.logo) : '',
+              heading: c.heading || 'Join The NEFOL Circle',
+              description:
+                c.description ||
+                'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
+              footer:
+                c.footer || 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
+              logoName: c.logoName || 'NEFOL',
+            }
+            if (JSON.stringify(prev) === JSON.stringify(next)) return prev
+            return next
           })
         }
+      } catch (error) {
+        console.error('Failed to fetch CMS sections:', error)
       }
-    } catch (error) {
-      console.error('Failed to fetch CMS sections:', error)
     }
-  }
 
-  // Fetch videos
-  const fetchVideos = async () => {
-    try {
-      const data = await api.videos.getAll()
-      setVideos(data)
-    } catch (error) {
-      console.error('Failed to fetch videos:', error)
+    const runVideos = async () => {
+      try {
+        const data = await api.videos.getAll()
+        if (!guard()) return
+        setVideos((prev) => (prev === data ? prev : data))
+      } catch (error) {
+        console.error('Failed to fetch videos:', error)
+      }
     }
-  }
 
-  // Fetch all data on mount
-  useEffect(() => {
-    Promise.allSettled([
-      fetchTopMediaCarousel(),
-      fetchHeroBanner(),
-      fetchCMSSections(),
-      fetchVideos()
-    ])
+    void Promise.allSettled([runTopMedia(), runHero(), runCms(), runVideos()])
+    return () => {
+      homeFetchIdRef.current += 1
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only CMS bootstrap
   }, [])
 
   // Auto-rotate top media carousel
   useEffect(() => {
     if (topMediaImages.length === 0) return
-    if (!topMediaSettings.autoPlay) return
-    
+    if (!topMediaAutoPlay) return
+
     const id = window.setInterval(() => {
       setTopMediaIndex((prev) => {
-        if (topMediaSettings.loop) {
+        if (topMediaLoop) {
           return (prev + 1) % topMediaImages.length
-        } else {
-          return prev < topMediaImages.length - 1 ? prev + 1 : prev
         }
+        return prev < topMediaImages.length - 1 ? prev + 1 : prev
       })
-    }, topMediaSettings.autoPlayDelay || 7000)
-    
+    }, topMediaAutoPlayDelay || 7000)
+
     return () => window.clearInterval(id)
-  }, [topMediaImages.length, topMediaSettings.autoPlay, topMediaSettings.autoPlayDelay, topMediaSettings.loop])
+  }, [topMediaImages.length, topMediaAutoPlay, topMediaAutoPlayDelay, topMediaLoop])
 
   // Auto-rotate hero images
   useEffect(() => {
     if (heroImages.length === 0) return
-    if (!heroSettings.autoPlay) return
-    
+    if (!heroAutoPlay) return
+
     const id = window.setInterval(() => {
       setHeroIndex((prev) => {
-        if (heroSettings.loop) {
+        if (heroLoop) {
           return (prev + 1) % heroImages.length
-        } else {
-          return prev < heroImages.length - 1 ? prev + 1 : prev
         }
+        return prev < heroImages.length - 1 ? prev + 1 : prev
       })
-    }, heroSettings.autoPlayDelay || 7000)
-    
+    }, heroAutoPlayDelay || 7000)
+
     return () => window.clearInterval(id)
-  }, [heroImages.length, heroSettings.autoPlay, heroSettings.autoPlayDelay, heroSettings.loop])
+  }, [heroImages.length, heroAutoPlay, heroAutoPlayDelay, heroLoop])
 
   // Subscription modal (appears 5s after landing, only if not dismissed before)
   useEffect(() => {
@@ -1083,9 +1134,9 @@ export default function Home() {
                 const slug = product.slug || ''
                 // Use database stats if available, otherwise fallback to static
                 const dbStats = reviewStats[slug]
-                const rating = dbStats?.average_rating > 0 ? dbStats.average_rating : getProductRating(slug)
-                const reviewCount = dbStats?.review_count > 0 ? dbStats.review_count : getProductReviewCount(slug)
-                const hasVerified = dbStats?.verified_count > 0 || hasVerifiedReviews(slug)
+                const rating = dbStats?.average_rating ?? 0
+                const reviewCount = dbStats?.review_count ?? 0
+                const hasVerified = (dbStats?.verified_count ?? 0) > 0
                 // Calculate global index in the full product list
                 const globalIndex = currentIndex * productsPerPage + index
                 const isBestSeller = globalIndex < 4 // Only first 4 products overall are best sellers
@@ -1185,7 +1236,7 @@ export default function Home() {
                           <span className="text-sm text-gray-600 ml-1">
                             {rating.toFixed(2)} ({reviewCount})
                           </span>
-                          {hasVerifiedReviews(product.slug || '') && (
+                          {hasVerified && (
                             <VerifiedBadge size="sm" className="ml-1.5" />
                           )}
                         </div>

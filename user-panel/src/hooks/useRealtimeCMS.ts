@@ -44,19 +44,23 @@ export function useRealtimeCMS(pageName: string) {
   const refreshSection = useCallback(async (sectionKey: string) => {
     try {
       const section = await cmsService.getSection(pageName, sectionKey)
-      if (section && content) {
-        setContent({
-          ...content,
-          sections: content.sections.map(s => 
-            s.section_key === sectionKey ? section : s
-          )
-        })
-        setLastUpdate(new Date())
-      }
+      if (!section) return
+      setContent((prev) => {
+        if (!prev) return prev
+        const nextSections = prev.sections.map((s) =>
+          s.section_key === sectionKey ? section : s
+        )
+        const unchanged = prev.sections.every(
+          (s, i) => s.section_key === nextSections[i]?.section_key && s === nextSections[i]
+        )
+        if (unchanged) return prev
+        return { ...prev, sections: nextSections }
+      })
+      setLastUpdate(new Date())
     } catch (err) {
       console.error('Failed to refresh section:', err)
     }
-  }, [pageName, content])
+  }, [pageName])
 
   // Initial load
   useEffect(() => {

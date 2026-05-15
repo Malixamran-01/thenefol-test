@@ -49,10 +49,11 @@ export function mountApp() {
         }
       }
       enforceLightChrome()
-      window.addEventListener('load', enforceLightChrome)
-      document.addEventListener('visibilitychange', () => {
+      window.addEventListener('load', enforceLightChrome, { once: true })
+      const onVisibility = () => {
         if (document.visibilityState === 'visible') enforceLightChrome()
-      })
+      }
+      document.addEventListener('visibilitychange', onVisibility)
     }
 
     if (!skipBatch(2)) {
@@ -87,19 +88,23 @@ export function mountApp() {
     }
 
     if (!skipBatch(4) && 'serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .getRegistrations()
-          .then((registrations) => Promise.all(registrations.map((r) => r.unregister())))
-          .then(() => {
-            // eslint-disable-next-line no-console
-            console.log('🧹 Service workers unregistered for stability')
-          })
-          .catch((error) => {
-            // eslint-disable-next-line no-console
-            console.warn('Service worker cleanup failed:', error)
-          })
-      })
+      window.addEventListener(
+        'load',
+        () => {
+          navigator.serviceWorker
+            .getRegistrations()
+            .then((registrations) => Promise.all(registrations.map((r) => r.unregister())))
+            .then(() => {
+              // eslint-disable-next-line no-console
+              console.log('🧹 Service workers unregistered for stability')
+            })
+            .catch((error) => {
+              // eslint-disable-next-line no-console
+              console.warn('Service worker cleanup failed:', error)
+            })
+        },
+        { once: true }
+      )
     }
 
     const rootEl = document.getElementById('root')
@@ -127,6 +132,12 @@ export function mountApp() {
     )
 
     mergeBoot({ renderCalledAt: Date.now() })
+
+    if (import.meta.env.DEV) {
+      void import('./utils/safariDiagnostics').then(({ runSafariChecks }) => {
+        runSafariChecks()
+      })
+    }
 
     if (!skipBatch(5)) {
       const markMounted = () => {
