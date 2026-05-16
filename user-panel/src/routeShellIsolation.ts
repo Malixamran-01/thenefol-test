@@ -57,14 +57,14 @@ export const CREATOR_DASHBOARD_IMPL_STUB = false
  * **Hook-free bypass:** when `true`, `RouterViewEntry` returns a static div for `#/user/blog/dashboard`
  * and **`RouterView` never mounts** (no ban gate, scroll effect, or `trackPageView` on that URL).
  */
-export const ROUTER_VIEW_DASHBOARD_HARD_STOP = true
+export const ROUTER_VIEW_DASHBOARD_HARD_STOP = false
 
 /**
  * When `true`: `RouterView` skips **scroll-to-top** + **`trackPageView`** effects **only** on
  * `/user/blog/dashboard` (RouterView still mounts). Use if hard stop proves stable above RouterView
  * but full RouterView still overflows on that path.
  */
-export const ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL = true
+export const ROUTER_VIEW_SKIP_DASHBOARD_TRACK_SCROLL = false
 
 /** Same for `Collab.tsx` body (error boundary still wraps the stub). */
 export const COLLAB_PAGE_IMPL_STUB = false

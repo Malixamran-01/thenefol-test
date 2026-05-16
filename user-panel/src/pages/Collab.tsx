@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, Component } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback, Component, lazy, Suspense } from 'react'
 import type { ICity, ICountry, IState } from 'country-state-city'
 import {
   Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
@@ -13,8 +13,28 @@ import { creatorProgramAPI } from '../services/api'
 import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
 import CollabAssignedTasks from '../components/CollabAssignedTasks'
-import AffiliatePartner from './AffiliatePartner'
 import { COLLAB_PAGE_IMPL_STUB } from '../routeShellIsolation'
+
+const AffiliatePartner = lazy(() => import('./AffiliatePartner'))
+
+type AffiliatePartnerLazyProps = {
+  embedInCreatorProgram?: boolean
+  embeddedSegment?: 'affiliate' | 'revenue'
+}
+
+function AffiliatePartnerSuspended(props: AffiliatePartnerLazyProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
+        </div>
+      }
+    >
+      <AffiliatePartner {...props} />
+    </Suspense>
+  )
+}
 
 export type CreatorProgramTab = 'collab' | 'affiliate' | 'revenue'
 
@@ -363,7 +383,10 @@ function CollabImpl(props: CollabProps = {}) {
     let cancelled = false
     void import('country-state-city').then(({ Country }) => {
       if (cancelled) return
-      setAllCountries(Country.getAllCountries())
+      const countries = Country.getAllCountries()
+      queueMicrotask(() => {
+        if (!cancelled) setAllCountries(countries)
+      })
     })
     return () => {
       cancelled = true
@@ -378,7 +401,10 @@ function CollabImpl(props: CollabProps = {}) {
     let cancelled = false
     void import('country-state-city').then(({ State }) => {
       if (cancelled) return
-      setCountryStates(State.getStatesOfCountry(selectedCountryCode))
+      const states = State.getStatesOfCountry(selectedCountryCode)
+      queueMicrotask(() => {
+        if (!cancelled) setCountryStates(states)
+      })
     })
     return () => {
       cancelled = true
@@ -393,7 +419,10 @@ function CollabImpl(props: CollabProps = {}) {
     let cancelled = false
     void import('country-state-city').then(({ City }) => {
       if (cancelled) return
-      setStateCities(City.getCitiesOfState(selectedCountryCode, selectedStateCode))
+      const cities = City.getCitiesOfState(selectedCountryCode, selectedStateCode)
+      queueMicrotask(() => {
+        if (!cancelled) setStateCities(cities)
+      })
     })
     return () => {
       cancelled = true
@@ -2103,14 +2132,14 @@ function CollabImpl(props: CollabProps = {}) {
         {collabTab === 'affiliate' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 w-full">
             <div className="rounded-2xl border border-[#e8eef4] bg-white shadow-sm overflow-hidden">
-              <AffiliatePartner embedInCreatorProgram embeddedSegment="affiliate" />
+              <AffiliatePartnerSuspended embedInCreatorProgram embeddedSegment="affiliate" />
             </div>
           </div>
         )}
         {collabTab === 'revenue' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 w-full">
             <div className="rounded-2xl border border-[#e8eef4] bg-white shadow-sm overflow-hidden">
-              <AffiliatePartner embedInCreatorProgram embeddedSegment="revenue" />
+              <AffiliatePartnerSuspended embedInCreatorProgram embeddedSegment="revenue" />
             </div>
           </div>
         )}

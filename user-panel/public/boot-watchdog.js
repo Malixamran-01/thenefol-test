@@ -46,8 +46,24 @@
     true
   )
 
+  function captureRejection(reason) {
+    var msg = reason && reason.message ? String(reason.message) : String(reason)
+    var stack = reason && reason.stack ? String(reason.stack) : ''
+    try {
+      sessionStorage.setItem(
+        '__tdzError',
+        JSON.stringify({ message: msg, stack: stack, time: Date.now() })
+      )
+      sessionStorage.setItem('__nefol_crash', (msg + '\n' + stack).trim())
+    } catch (err) {
+      /* ignore */
+    }
+    return msg
+  }
+
   window.addEventListener('unhandledrejection', function (e) {
-    show('unhandledrejection: ' + (e && e.reason ? String(e.reason) : 'unknown'))
+    var msg = captureRejection(e && e.reason)
+    show('unhandledrejection: ' + msg)
   })
 
   var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '')
@@ -58,8 +74,10 @@
     var mounted = boot && boot.mountedAt
     var hasDom = root && root.children && root.children.length > 0
     var crash = ''
+    var tdz = ''
     try {
       crash = sessionStorage.getItem('__nefol_crash') || ''
+      tdz = sessionStorage.getItem('__tdzError') || ''
     } catch (err) {
       /* ignore */
     }
@@ -70,6 +88,7 @@
           '\nRoot children: ' +
           (hasDom ? 'yes' : 'no') +
           (crash ? '\n\n__nefol_crash (last captured):\n' + crash : '') +
+          (tdz ? '\n\n__tdzError:\n' + tdz : '') +
           '\nUserAgent: ' +
           navigator.userAgent
       )

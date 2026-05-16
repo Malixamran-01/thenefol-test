@@ -41,4 +41,12 @@ export function attachReduxDispatchLoopGuard(target: typeof store): void {
   }) as typeof target.dispatch
 }
 
-attachReduxDispatchLoopGuard(store)
+if (typeof window !== 'undefined') {
+  const run =
+    typeof queueMicrotask === 'function'
+      ? queueMicrotask
+      : (fn: () => void) => {
+          void Promise.resolve().then(fn)
+        }
+  run(() => attachReduxDispatchLoopGuard(store))
+}
