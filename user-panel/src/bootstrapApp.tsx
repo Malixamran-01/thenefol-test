@@ -2,11 +2,15 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Provider } from 'react-redux'
 import { store } from './store'
-import App from './App'
-import { BlogNavListener } from './components/BlogNavListener'
 import ErrorBoundary from './components/ErrorBoundary'
 import { SAFARI_HUNT_DISABLE_BATCH } from './safariHuntBatches'
 import { ROUTE_SHELL_ISOLATION, APPCONTENT_STUB } from './routeShellIsolation'
+
+function isIOSSafariUA(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  return /iPhone|iPad|iPod/i.test(ua) && /WebKit/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)
+}
 
 function skipBatch(id: 1 | 2 | 3 | 4 | 5 | 6 | 7) {
   return SAFARI_HUNT_DISABLE_BATCH === id
@@ -60,30 +64,17 @@ export function mountApp() {
       try {
         await import('aos/dist/aos.css')
         const { default: AOS } = await import('aos')
-        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-        const isIOSSafari =
-          /iPhone|iPad|iPod/i.test(ua) && /WebKit/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)
         AOS.init({
           duration: 800,
           easing: 'ease-out',
           once: true,
           offset: 100,
           delay: 0,
-          disable: isIOSSafari ? 'mobile' : false,
+          disable: isIOSSafariUA() ? 'mobile' : false,
         })
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('AOS init failed:', e)
-      }
-    }
-
-    if (!skipBatch(3)) {
-      try {
-        const { initMetaPixel } = await import('./utils/metaPixel')
-        initMetaPixel()
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('MetaPixel init failed:', e)
       }
     }
 
@@ -114,6 +105,12 @@ export function mountApp() {
 
     mergeBoot({ reactCreateRootAt: Date.now() })
 
+    const { default: App } = await import('./App')
+    const blogNavListenerModule = !skipBatch(6) && !ROUTE_SHELL_ISOLATION && !APPCONTENT_STUB
+      ? await import('./components/BlogNavListener')
+      : null
+    const BlogNavListener = blogNavListenerModule?.BlogNavListener ?? null
+
     const root = ReactDOM.createRoot(rootEl, {
       onRecoverableError(error) {
         mergeBoot({ recoverableError: String(error) })
@@ -126,12 +123,31 @@ export function mountApp() {
       <ErrorBoundary name="RootApp">
         <Provider store={store}>
           <App />
-          {!skipBatch(6) && !ROUTE_SHELL_ISOLATION && !APPCONTENT_STUB ? <BlogNavListener /> : null}
+          {BlogNavListener ? <BlogNavListener /> : null}
         </Provider>
       </ErrorBoundary>
     )
 
     mergeBoot({ renderCalledAt: Date.now() })
+
+    if (!skipBatch(3)) {
+      const runMetaPixel = () => {
+        void import('./utils/metaPixel')
+          .then(({ initMetaPixel }) => {
+            initMetaPixel()
+          })
+          .catch((e: unknown) => {
+            mergeBoot({ metaPixelInitFailed: String(e) })
+            // eslint-disable-next-line no-console
+            console.warn('MetaPixel init failed:', e)
+          })
+      }
+      if (isIOSSafariUA()) {
+        queueMicrotask(runMetaPixel)
+      } else {
+        runMetaPixel()
+      }
+    }
 
     if (import.meta.env.DEV) {
       void import('./utils/safariDiagnostics').then(({ runSafariChecks }) => {
