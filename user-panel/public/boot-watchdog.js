@@ -3,11 +3,24 @@
   window.__NEFOL_BOOT__ = Object.assign({}, window.__NEFOL_BOOT__ || {}, { htmlInlineAt: Date.now() })
   window.__SAFARI_DEBUG__ = window.__SAFARI_DEBUG__ || []
 
+  function tdzJsAppendix() {
+    var tdzErr = ''
+    var jsErr = ''
+    try {
+      tdzErr = sessionStorage.getItem('__tdzError') || ''
+      jsErr = sessionStorage.getItem('__jsError') || ''
+    } catch (err) {
+      /* ignore */
+    }
+    if (!tdzErr && !jsErr) return ''
+    return '\n\n--- TDZ (__tdzError) ---\n' + (tdzErr || 'none') + '\n\n--- JS (__jsError) ---\n' + (jsErr || 'none')
+  }
+
   function show(details) {
     var box = document.getElementById('boot-watchdog')
     var pre = document.getElementById('boot-watchdog-details')
     if (!box || !pre) return
-    pre.textContent = details
+    pre.textContent = details + tdzJsAppendix()
     box.style.display = 'block'
   }
 
@@ -48,12 +61,9 @@
 
   function captureRejection(reason) {
     var msg = reason && reason.message ? String(reason.message) : String(reason)
-    var stack = reason && reason.stack ? String(reason.stack) : ''
+    var stack = reason && reason.stack ? String(reason.stack).slice(0, 2000) : 'no stack'
     try {
-      sessionStorage.setItem(
-        '__tdzError',
-        JSON.stringify({ message: msg, stack: stack, time: Date.now() })
-      )
+      sessionStorage.setItem('__tdzError', JSON.stringify({ message: msg, stack: stack, time: Date.now() }))
       sessionStorage.setItem('__nefol_crash', (msg + '\n' + stack).trim())
     } catch (err) {
       /* ignore */

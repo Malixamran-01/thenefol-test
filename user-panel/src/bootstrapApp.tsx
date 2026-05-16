@@ -60,7 +60,8 @@ export function mountApp() {
       document.addEventListener('visibilitychange', onVisibility)
     }
 
-    if (!skipBatch(2)) {
+    // AOS uses MutationObserver — skip entire chunk on iOS Safari (TDZ / stack issues in some builds).
+    if (!skipBatch(2) && !isIOSSafariUA()) {
       try {
         await import('aos/dist/aos.css')
         const { default: AOS } = await import('aos')
@@ -70,7 +71,6 @@ export function mountApp() {
           once: true,
           offset: 100,
           delay: 0,
-          disable: isIOSSafariUA() ? 'mobile' : false,
         })
       } catch (e) {
         // eslint-disable-next-line no-console
