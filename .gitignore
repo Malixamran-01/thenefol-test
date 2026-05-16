@@ -45,12 +45,9 @@ backend/uploads/
 # Default persistent uploads live beside backend/ (see backend/src/config/uploadsRoot.ts)
 uploads-data/
 
-# Exclude large IMAGES trees (videos, product photos). Essential brand assets are tracked.
+# Exclude large IMAGES trees (videos, product photos)
 /IMAGES
-user-panel/public/IMAGES/*
-!user-panel/public/IMAGES/README.md
-!user-panel/public/IMAGES/essential/
-!user-panel/public/IMAGES/essential/**
+user-panel/public/IMAGES
 admin-panel/public/IMAGES
 
 # Exclude dist folders (build outputs)

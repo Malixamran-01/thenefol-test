@@ -591,10 +591,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* Community - featured blog posts */}
-      <SocialSneakPeek />
-
-
       {/* Hero Banner Section */}
       {heroImages.length > 0 && (
         <section className="relative w-full bg-white">
@@ -638,6 +634,9 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* Community - featured blog posts */}
+      <SocialSneakPeek />
 
       {/* What's Just Landed Section - neudeskin.com style */}
       <section className="py-8 sm:py-12 md:py-16">
