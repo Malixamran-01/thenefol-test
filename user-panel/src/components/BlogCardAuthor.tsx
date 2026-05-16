@@ -39,9 +39,9 @@ export function BlogCardAuthor({
     (String(user.id) === String(authorId) || String(user.unique_user_id) === String(authorUniqueUserId))
   )
 
-  const isFollowingFromRedux = reduxFollowKey
-    ? useSelector((s: RootState) => s.follow.byAuthorId[reduxFollowKey])
-    : null
+  const isFollowingFromRedux = useSelector((s: RootState) =>
+    reduxFollowKey ? s.follow.byAuthorId[reduxFollowKey] ?? null : null
+  )
   const [isFollowingLocal, setIsFollowingLocal] = useState<boolean | null>(isFollowingFromRedux)
   const isFollowing = isFollowingFromRedux ?? isFollowingLocal ?? false
 

@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Component } from 'react'
-import { Country, State, City } from 'country-state-city'
+import type { ICity, ICountry, IState } from 'country-state-city'
 import {
   Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, TrendingUp,
   Clapperboard, Zap, ChevronRight, Star, Award, Youtube, Twitter, Facebook,
   Globe, MapPin, Plus, Linkedin, Send, Ghost, ScrollText, Trophy, Percent
 } from 'lucide-react'
-import { YoutubeLogo, RedditLogo } from '@phosphor-icons/react'
 import { getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { CREATOR_PROGRAM_BADGES_REFRESH, useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
@@ -35,6 +34,21 @@ export interface CollabProps {
 }
 
 export type SupportedPlatform = 'youtube' | 'reddit' | 'vk'
+
+/** Reddit wordmark — avoids @phosphor-icons/react pulling the full icon pack on Safari */
+function RedditBrandIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      style={{ color: '#FF4500' }}
+      aria-hidden
+    >
+      <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.14 4.87-7.004 4.87-3.864 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
+    </svg>
+  )
+}
 
 /** VK wordmark badge (no generic globe) */
 function VkBrandIcon({ className }: { className?: string }) {
@@ -65,7 +79,7 @@ const PLATFORM_SYNC_META: Record<SupportedPlatform, {
     contentLabel: 'Videos',
     subline: 'Your channel uploads',
     connectHelp: 'Connect the Google account that owns your YouTube channel. We only read your video list and stats.',
-    icon: <YoutubeLogo className="h-8 w-8" weight="duotone" style={{ color: '#FF0000' }} aria-hidden />,
+    icon: <Youtube className="h-8 w-8" style={{ color: '#FF0000' }} aria-hidden />,
     brandTint: 'rgba(255,0,0,0.09)',
   },
   reddit: {
@@ -73,7 +87,7 @@ const PLATFORM_SYNC_META: Record<SupportedPlatform, {
     contentLabel: 'Posts',
     subline: 'Submissions on your profile',
     connectHelp: 'Upvotes count toward your likes milestone. View counts are not available from Reddit’s API.',
-    icon: <RedditLogo className="h-8 w-8" weight="duotone" style={{ color: '#FF4500' }} aria-hidden />,
+    icon: <RedditBrandIcon className="h-8 w-8" />,
     brandTint: 'rgba(255,69,0,0.09)',
   },
   vk: {
@@ -334,12 +348,57 @@ function CollabImpl(props: CollabProps = {}) {
   const [selectedStateCode, setSelectedStateCode] = useState('')
   const [address, setAddress] = useState({ country: 'India', state: '', city: '', postal_address: '', pincode: '' })
 
-  const allCountries = useMemo(() => Country.getAllCountries(), [])
-  const countryStates = useMemo(() => State.getStatesOfCountry(selectedCountryCode), [selectedCountryCode])
-  const stateCities = useMemo(
-    () => selectedStateCode ? City.getCitiesOfState(selectedCountryCode, selectedStateCode) : [],
-    [selectedCountryCode, selectedStateCode]
-  )
+  const [allCountries, setAllCountries] = useState<ICountry[]>([])
+  const [countryStates, setCountryStates] = useState<IState[]>([])
+  const [stateCities, setStateCities] = useState<ICity[]>([])
+  const needsGeoData = collabTab === 'collab' && showForm
+
+  useEffect(() => {
+    if (!needsGeoData) {
+      setAllCountries([])
+      setCountryStates([])
+      setStateCities([])
+      return
+    }
+    let cancelled = false
+    void import('country-state-city').then(({ Country }) => {
+      if (cancelled) return
+      setAllCountries(Country.getAllCountries())
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [needsGeoData])
+
+  useEffect(() => {
+    if (!needsGeoData || !selectedCountryCode) {
+      setCountryStates([])
+      return
+    }
+    let cancelled = false
+    void import('country-state-city').then(({ State }) => {
+      if (cancelled) return
+      setCountryStates(State.getStatesOfCountry(selectedCountryCode))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedCountryCode, needsGeoData])
+
+  useEffect(() => {
+    if (!needsGeoData || !selectedStateCode || !selectedCountryCode) {
+      setStateCities([])
+      return
+    }
+    let cancelled = false
+    void import('country-state-city').then(({ City }) => {
+      if (cancelled) return
+      setStateCities(City.getCitiesOfState(selectedCountryCode, selectedStateCode))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedCountryCode, selectedStateCode, needsGeoData])
 
   const [phonePickerOpen, setPhonePickerOpen] = useState(false)
   const phonePickerRef = useRef<HTMLDivElement>(null)
@@ -360,12 +419,22 @@ function CollabImpl(props: CollabProps = {}) {
     [allCountries]
   )
 
-  const selectedPhoneCountry = useMemo(() => {
+  const selectedPhoneCountry = useMemo((): ICountry => {
+    const fallback: ICountry = {
+      isoCode: 'IN',
+      name: 'India',
+      phonecode: '91',
+      flag: '🇮🇳',
+      currency: 'INR',
+      latitude: '20.5937',
+      longitude: '78.9629',
+    }
+    if (allCountries.length === 0) return fallback
     const iso = profile.phone_country_iso
     const byIso = iso ? allCountries.find((c) => c.isoCode === iso) : undefined
     if (byIso && `+${byIso.phonecode}` === profile.phone_code) return byIso
     const byCode = allCountries.find((c) => `+${c.phonecode}` === profile.phone_code)
-    return byIso || byCode || allCountries.find((c) => c.isoCode === 'IN')!
+    return byIso || byCode || allCountries.find((c) => c.isoCode === 'IN') || fallback
   }, [allCountries, profile.phone_country_iso, profile.phone_code])
 
   const addPlatformLink = (key: PlatformKey) =>

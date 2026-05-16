@@ -414,9 +414,9 @@ export default function AuthorProfile() {
   const hasAuthorProfile = authorProfile != null
   const effectiveAuthorId = hasAuthorProfile ? String(authorProfile!.id) : routeAuthorId
   const reduxFollowKey = hasAuthorProfile ? String(authorProfile!.user_id) : routeAuthorId
-  const isFollowingFromRedux = reduxFollowKey
-    ? useSelector((s: RootState) => s.follow.byAuthorId[reduxFollowKey])
-    : null
+  const isFollowingFromRedux = useSelector((s: RootState) =>
+    reduxFollowKey ? s.follow.byAuthorId[reduxFollowKey] ?? null : null
+  )
   const isFollowing = isFollowingFromRedux ?? false
   const unfollowMenuRef = useRef<HTMLDivElement>(null)
   const dotsMenuRef = useRef<HTMLDivElement>(null)
