@@ -1,5 +1,6 @@
 // Socket.IO client service for real-time updates in user panel
 import { io, Socket } from 'socket.io-client'
+import { getApiBase } from '../utils/apiBase'
 
 class UserSocketService {
   private socket: Socket | null = null
@@ -12,38 +13,11 @@ class UserSocketService {
 
     this.userId = userId || this.getUserIdFromStorage()
 
-    // Determine socket URL based on runtime environment
-    let socketUrl: string
-    
-    // Priority 1: Use VITE_API_URL if set (for deployment flexibility)
-    if (import.meta.env.VITE_API_URL) {
-      const apiUrl = import.meta.env.VITE_API_URL
-      // Convert HTTP/HTTPS to WS/WSS for Socket.IO
-      socketUrl = apiUrl.replace(/^https?:\/\//, 'wss://').replace(/\/api$/, '')
-      console.log('🔌 [Socket] Using VITE_API_URL for socket:', socketUrl)
-    } else if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname
-      const protocol = window.location.protocol
-      
-      // If on production domain, use current domain
-      if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
-        // Production domain - always use WSS
-        socketUrl = `wss://${hostname}/socket.io`
-        console.log('🔌 [Socket] Production detected, using:', socketUrl)
-      } else if (protocol === 'https:') {
-        // If on HTTPS (any domain), use WSS with current hostname
-        socketUrl = `wss://${hostname}/socket.io`
-        console.log('🔌 [Socket] HTTPS detected, using WSS:', socketUrl)
-      } else {
-        // For HTTP (development only), fall back to production WSS
-        socketUrl = 'wss://thenefol.com/socket.io'
-        console.log('🔌 [Socket] Non-production HTTP detected, using production WSS:', socketUrl)
-      }
-    } else {
-      // Server-side fallback
-      socketUrl = 'wss://thenefol.com/socket.io'
-    }
-    
+    const apiBase = getApiBase()
+    const socketUrl =
+      apiBase.replace(/^http:\/\//i, 'ws://').replace(/^https:\/\//i, 'wss://').replace(/\/$/, '') +
+      '/socket.io'
+
     this.socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       timeout: 20000,

@@ -25,7 +25,7 @@ export default function ShareProduct({
   /** Crawlable URL (backend serves OG HTML at GET /product/:slug); same origin as API in production */
   const origin = getApiBase().replace(/\/$/, '')
   const productUrl = `${origin}/product/${encodeURIComponent(productSlug)}`
-  const siteLogoOgUrl = `${origin}/IMAGES/NEFOL%20icon.png`
+  const siteLogoOgUrl = `${origin}/IMAGES/essential/nefol-icon.svg`
   const shareText = `Check out ${productTitle} on NEFOL! ${productUrl}`
   
   // Ensure image URL is absolute and accessible

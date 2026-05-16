@@ -9,55 +9,42 @@
     <meta name="keywords" content="skincare, haircare, natural beauty, nefol, beauty products" />
     <meta name="author" content="Nefol" />
 
-    <!-- Open Graph / Twitter defaults (hash-only SPA URLs strip the # for crawlers — they hit this document) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="NEFOL" />
     <meta property="og:title" content="NEFOL — Natural skincare & beauty" />
     <meta property="og:description" content="Natural and safe skincare for every skin type. Made with love and care." />
     <meta property="og:url" content="https://thenefol.com/" />
-    <meta property="og:image" content="https://thenefol.com/IMAGES/NEFOL%20icon.png" />
+    <meta property="og:image" content="https://thenefol.com/IMAGES/essential/nefol-icon.svg" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="NEFOL — Natural skincare & beauty" />
     <meta name="twitter:description" content="Natural and safe skincare for every skin type." />
-    <meta name="twitter:image" content="https://thenefol.com/IMAGES/NEFOL%20icon.png" />
-    
-    <!-- PWA Meta Tags -->
+    <meta name="twitter:image" content="https://thenefol.com/IMAGES/essential/nefol-icon.svg" />
+
     <meta name="theme-color" content="#7DD3D3" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Nefol" />
     <meta name="msapplication-TileColor" content="#7DD3D3" />
-    
-    <!-- Force Light Mode - Prevent Dark Mode on iOS/Android -->
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
-    
-    <!-- iOS Specific Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Nefol" />
-    <link rel="apple-touch-icon" href="/IMAGES/NEFOL icon.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/IMAGES/NEFOL icon.png" />
-    <link rel="apple-touch-startup-image" href="/IMAGES/NEFOL icon.png" />
-    
-    <!-- Manifest -->
+    <link rel="apple-touch-icon" href="/IMAGES/essential/nefol-icon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/IMAGES/essential/nefol-icon.svg" />
+    <link rel="apple-touch-startup-image" href="/IMAGES/essential/nefol-icon.svg" />
+
     <link rel="manifest" href="/manifest.json" />
-    
+
     <title>NEFOL</title>
-    <link rel="icon" type="image/png" href="/IMAGES/NEFOL icon.png" />
-    <link rel="shortcut icon" type="image/png" href="/IMAGES/NEFOL icon.png" />
-    <!-- Fonts: Montserrat & Cormorant Garamond with Constantia fallback -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-    <!-- Razorpay Script -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    
-    <!-- Meta Pixel: loaded only from `src/utils/metaPixel.ts` after first paint (avoids duplicate
-         inject vs bootstrap + Safari / ITP / blocker false “fatal” script errors on fbevents.js). -->
-    
-    <!-- Facebook SDK for Login -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+
     <script>
       window.fbAsyncInit = function() {
         FB.init({
@@ -77,19 +64,8 @@
          fjs.parentNode.insertBefore(js, fjs);
        }(document, 'script', 'facebook-jssdk'));
     </script>
-    <!-- End Facebook SDK -->
-    
-    <!-- Force Light Mode Script - Prevents Dark Mode on iOS/Android -->
-    <script>
-      // Prevent dark mode before React loads
-      (function() {
-        if (typeof document !== 'undefined') {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.style.colorScheme = 'light';
-          document.documentElement.setAttribute('data-color-scheme', 'light');
-        }
-      })();
-    </script>
+
+    <script src="/light-mode-boot.js"></script>
   </head>
   <body>
     <div id="root"></div>
@@ -102,64 +78,12 @@
         <pre id="boot-watchdog-details" style="margin-top:12px; white-space:pre-wrap; word-break:break-word; font-size:11px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; color:#0f172a;"></pre>
         <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
           <button onclick="location.reload()" style="background:#1B4965; color:#fff; border:0; border-radius:12px; padding:10px 14px; font-weight:700;">Reload</button>
-          <button onclick="try{navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).then(()=>location.reload())}catch(e){location.reload()}" style="background:#0f172a; color:#fff; border:0; border-radius:12px; padding:10px 14px; font-weight:700;">Clear SW + Reload</button>
+          <button onclick="try{navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister()}))}).then(function(){location.reload()})}catch(e){location.reload()}" style="background:#0f172a; color:#fff; border:0; border-radius:12px; padding:10px 14px; font-weight:700;">Clear SW + Reload</button>
         </div>
       </div>
     </div>
-    <script>
-      (function(){
-        window.__NEFOL_BOOT__ = Object.assign({}, window.__NEFOL_BOOT__ || {}, { htmlInlineAt: Date.now() });
-        window.__SAFARI_DEBUG__ = window.__SAFARI_DEBUG__ || [];
-        function show(details){
-          var box = document.getElementById('boot-watchdog');
-          var pre = document.getElementById('boot-watchdog-details');
-          if (!box || !pre) return;
-          pre.textContent = details;
-          box.style.display = 'block';
-        }
-        window.addEventListener('error', function(e){
-          show('window.error: ' + (e && e.message ? e.message : String(e)) + '\n' + (e && e.filename ? (e.filename + ':' + e.lineno + ':' + e.colno) : '') );
-        });
-        // Capture only critical JS/CSS load failures.
-        // Do NOT treat image/icon errors as fatal (they can 404 without breaking app boot).
-        window.addEventListener('error', function(e){
-          var t = e && e.target;
-          if (t && t.tagName) {
-            var tag = String(t.tagName || '').toUpperCase();
-            var isScript = tag === 'SCRIPT';
-            var isStylesheet = tag === 'LINK' && String(t.rel || '').toLowerCase() === 'stylesheet';
-            if (!isScript && !isStylesheet) return;
-            var src = t.src || t.href || '(inline)';
-            // Third-party analytics / login often blocked on Safari; must not look like a broken app boot.
-            if (/connect\.facebook\.net|facebook\.com\/tr\?|googletagmanager\.com|google-analytics\.com|doubleclick\.net/i.test(src)) return;
-            show('resource.error: ' + tag + ' -> ' + src);
-          }
-        }, true);
-        window.addEventListener('unhandledrejection', function(e){
-          show('unhandledrejection: ' + (e && e.reason ? String(e.reason) : 'unknown'));
-        });
-        var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-        var waitMs = isIOS ? 10000 : 5000;
-        setTimeout(function(){
-          var boot = window.__NEFOL_BOOT__;
-          var root = document.getElementById('root');
-          var mounted = boot && boot.mountedAt;
-          var hasDom = root && root.children && root.children.length > 0;
-          var crash = '';
-          try { crash = sessionStorage.getItem('__nefol_crash') || ''; } catch (e) {}
-          if (!mounted || !hasDom){
-            show(
-              'Boot state: ' + JSON.stringify(boot || {}) +
-              '\nRoot children: ' + (hasDom ? 'yes' : 'no') +
-              (crash ? ('\n\n__nefol_crash (last captured):\n' + crash) : '') +
-              '\nUserAgent: ' + navigator.userAgent
-            );
-          }
-        }, waitMs);
-      })();
-    </script>
+
+    <script src="/boot-watchdog.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
-  </html>
-
-
+</html>

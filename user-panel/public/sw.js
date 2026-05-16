@@ -7,8 +7,9 @@ const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/favicon.svg',
-  '/IMAGES/light theme logo.webp',
-  '/IMAGES/dark theme logo.webp'
+  '/IMAGES/essential/nefol-icon.svg',
+  '/light-mode-boot.js',
+  '/boot-watchdog.js',
 ]
 
 async function precacheAppShell() {

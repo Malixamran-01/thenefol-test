@@ -7,6 +7,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import { ensureUploadsTree, getUploadsRoot } from './config/uploadsRoot'
+import { buildPgPoolConfig, logPgPoolStartup } from './config/pgPool'
 import { convertToWebp, convertFilesToWebp } from './utils/toWebp'
 import { createServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
@@ -413,48 +414,13 @@ const io = new SocketIOServer(server, {
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/nefol'
 
-/**
- * Supabase-only pool options (TLS). Production / self-hosted Postgres: omit `ssl` and use URL as-is.
- *
- * - Default: detect Supabase from `DATABASE_URL` host (*.supabase.com / supabase.co).
- * - `USE_SUPABASE_DB=1` — force Supabase SSL (e.g. nonstandard proxy host).
- * - `USE_SUPABASE_DB=0` — force normal Postgres (no app-level SSL); use for local or RDS when URL accidentally matches.
- */
-const supabaseFlag = process.env.USE_SUPABASE_DB?.trim().toLowerCase()
-const looksLikeSupabaseHost =
-  /\bsupabase\.com\b/i.test(connectionString) || connectionString.includes('supabase.co')
-const useSupabaseSsl =
-  supabaseFlag === '1' || supabaseFlag === 'true'
-    ? true
-    : supabaseFlag === '0' || supabaseFlag === 'false'
-      ? false
-      : looksLikeSupabaseHost
-
-const pgPoolMax = Math.min(100, Math.max(1, parseInt(process.env.PGPOOL_MAX || '20', 10) || 20))
-const pgConnTimeoutRaw = Math.min(120_000, Math.max(2_000, parseInt(process.env.PG_CONNECTION_TIMEOUT_MS || '15000', 10) || 15_000))
-/** Supabase over the public internet (e.g. Render → ap-south-1) often needs a higher connect budget. */
-const pgConnTimeoutMs = useSupabaseSsl ? Math.max(pgConnTimeoutRaw, 45_000) : pgConnTimeoutRaw
-
-const poolConfig = {
-  connectionString,
-  max: pgPoolMax,
-  connectionTimeoutMillis: pgConnTimeoutMs,
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 10_000,
-  ...(useSupabaseSsl ? { ssl: { rejectUnauthorized: false } } : {}),
-}
-
+const { config: poolConfig, meta: pgPoolMeta } = buildPgPoolConfig(connectionString)
 const pool = new Pool(poolConfig)
+logPgPoolStartup(pgPoolMeta)
 
-try {
-  const hostMatch = connectionString.match(/@([^/?]+)/)
-  const hostPart = hostMatch ? hostMatch[1].split(':')[0] : '?'
-  console.log(
-    `[DB] ${useSupabaseSsl ? 'TLS (Supabase-style)' : 'URL-only SSL'} → ${hostPart} · pool max=${pgPoolMax} connectTimeoutMs=${pgConnTimeoutMs}`
-  )
-} catch {
-  console.log('[DB] pool configured')
-}
+pool.on('error', (err) => {
+  console.error('[DB] idle pool client error:', err.message)
+})
 const staffAuthMiddleware = staffRoutes.createStaffAuthMiddleware(pool)
 const staffAuth = staffAuthMiddleware as any
 const staffPermLocal = (code: string) => staffRoutes.requireStaffPermission(code) as any
