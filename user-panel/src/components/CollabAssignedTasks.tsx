@@ -525,8 +525,8 @@ export default function CollabAssignedTasks({
             <ClipboardList className="h-5 w-5 text-[#1B4965]" />
           </div>
           <div>
-            <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">Work system</p>
-            <h2 className="text-xl font-light tracking-[0.06em] text-[#1B4965]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
+            <p className="text-[10px] tracking-[0.2em] uppercase font-bold text-gray-500 mb-1">Work system</p>
+            <h2 className="text-xl font-bold tracking-[0.04em] text-[#1B4965]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
               Brand tasks
             </h2>
             <p className="text-xs text-gray-500 font-light mt-1 max-w-xl">

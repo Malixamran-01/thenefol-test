@@ -715,24 +715,25 @@ export default function Blog() {
           <button
             type="button"
             onClick={() => setShowSaved(false)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
               !showSaved ? 'text-white shadow-sm' : 'text-[#1B4965] hover:bg-[#F4F9F9]'
             }`}
             style={{ backgroundColor: !showSaved ? '#1B4965' : 'transparent' }}
           >
-            <FileText className="h-3.5 w-3.5" />
+            <FileText strokeWidth={2.75} className="h-5 w-5" />
             All Posts
           </button>
           <button
             type="button"
             onClick={handleToggleSaved}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
               showSaved ? 'text-white shadow-sm' : 'text-[#1B4965] hover:bg-[#F4F9F9]'
             }`}
             style={{ backgroundColor: showSaved ? '#1B4965' : 'transparent' }}
           >
             <Bookmark
-              className="h-3.5 w-3.5"
+              strokeWidth={2.75}
+              className="h-5 w-5"
               style={{ fill: showSaved ? 'white' : 'none' }}
             />
             Saved
@@ -743,8 +744,8 @@ export default function Blog() {
         {!showSaved && (
           <div className="mb-10">
             <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-2 text-sm uppercase tracking-widest" style={{ color: '#9DB4C0' }}>
-                <Tag className="h-4 w-4" />
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-[#1B4965]">
+                <Tag strokeWidth={2.75} className="h-5 w-5" />
                 Browse by category
               </div>
               <div className="hidden sm:flex flex-wrap justify-center gap-3">

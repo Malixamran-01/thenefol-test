@@ -175,7 +175,7 @@ export default function MyBlogsPage() {
         <section className="mb-12">
           <div className="flex items-center gap-2 mb-4">
             <BookOpen className="h-5 w-5" style={{ color: '#1B4965' }} />
-            <h2 className="text-lg font-semibold" style={{ color: '#1B4965' }}>
+            <h2 className="text-lg font-bold" style={{ color: '#1B4965' }}>
               Published ({posts.length})
             </h2>
           </div>
@@ -223,7 +223,7 @@ export default function MyBlogsPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate pr-2">
+                        <h3 className="font-bold text-gray-900 truncate pr-2">
                           {post.title || 'Untitled'}
                         </h3>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-xs text-gray-500">
@@ -290,7 +290,7 @@ export default function MyBlogsPage() {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Clock className="h-5 w-5" style={{ color: '#1B4965' }} />
-            <h2 className="text-lg font-semibold" style={{ color: '#1B4965' }}>
+            <h2 className="text-lg font-bold" style={{ color: '#1B4965' }}>
               Drafts ({drafts.length})
             </h2>
           </div>
@@ -324,7 +324,7 @@ export default function MyBlogsPage() {
                       <FileText className="h-6 w-6 text-gray-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate">
+                      <h3 className="font-bold text-gray-900 truncate">
                         {draft.title || draft.name || 'Untitled'}
                       </h3>
                       <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">

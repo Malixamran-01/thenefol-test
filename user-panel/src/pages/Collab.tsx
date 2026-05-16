@@ -931,8 +931,8 @@ function CollabImpl(props: CollabProps = {}) {
                     Nefol Social
                   </p>
                   <h1
-                    className="text-2xl sm:text-3xl font-light tracking-[0.08em]"
-                    style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965', letterSpacing: '0.08em' }}
+                    className="text-2xl sm:text-3xl font-bold tracking-[0.04em] text-[#1B4965]"
+                    style={{ fontFamily: 'var(--font-heading-family)' }}
                   >
                     Creator Program
         </h1>
@@ -1044,7 +1044,7 @@ function CollabImpl(props: CollabProps = {}) {
                   <Lock className="h-6 w-6" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-lg font-semibold tracking-wide text-[#1B4965]">
+                  <h2 className="text-xl font-bold tracking-wide text-[#1B4965]">
                     {status.hasApplication ? 'Creator Program suspended' : 'Creator Program access restricted'}
                   </h2>
                   <p className={`mt-2 text-sm leading-relaxed ${status.hasApplication ? 'text-amber-900/90' : 'text-gray-600'}`}>
@@ -1115,7 +1115,7 @@ function CollabImpl(props: CollabProps = {}) {
                   {/* ── Section helper ──────────────────────────────────── */}
                   {/* SECTION: Basic Info */}
                   <div className="space-y-4">
-                    <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400">Basic Info <span className="text-red-400 ml-1">required</span></p>
+                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965]">Basic Info <span className="text-red-400 ml-1">required</span></p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Full Name</label>
@@ -1243,7 +1243,7 @@ function CollabImpl(props: CollabProps = {}) {
 
                   {/* ── SECTION: Personal Details ────────────────────── */}
                   <div className="space-y-4">
-                    <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400">Personal Details <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
+                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965]">Personal Details <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Date of birth <span className="font-normal text-gray-400">(year optional)</span></label>
@@ -1361,7 +1361,7 @@ function CollabImpl(props: CollabProps = {}) {
 
                   {/* ── SECTION: Creator Profile ─────────────────────── */}
                   <div className="space-y-4">
-                    <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400">Creator Profile <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
+                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965]">Creator Profile <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
                     {/* Niche */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Content Niche</label>
@@ -1399,7 +1399,7 @@ function CollabImpl(props: CollabProps = {}) {
 
                   {/* ── SECTION: Location ───────────────────────────── */}
                   <div className="space-y-4">
-                    <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400 flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Location</p>
+                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965] flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Location</p>
                     <div className="grid grid-cols-2 gap-3">
                       {/* Country */}
                       <div className="col-span-2">
@@ -1540,7 +1540,7 @@ function CollabImpl(props: CollabProps = {}) {
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Views</p>
+                    <p className="text-sm font-bold uppercase tracking-wide text-[#1B4965] mb-0.5">Views</p>
                     <p className="text-2xl font-bold text-gray-900">{totalViews.toLocaleString()}</p>
                     <p className="text-xs text-gray-400">of {AFFILIATE_VIEWS_THRESHOLD.toLocaleString()}</p>
                   </div>
@@ -1553,7 +1553,7 @@ function CollabImpl(props: CollabProps = {}) {
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Likes</p>
+                    <p className="text-sm font-bold uppercase tracking-wide text-[#1B4965] mb-0.5">Likes</p>
                     <p className="text-2xl font-bold text-gray-900">{totalLikes.toLocaleString()}</p>
                     <p className="text-xs text-gray-400">of {AFFILIATE_LIKES_THRESHOLD.toLocaleString()}</p>
                   </div>
@@ -1563,7 +1563,7 @@ function CollabImpl(props: CollabProps = {}) {
               {/* Unified platform connection strip — same pattern for Instagram + OAuth platforms */}
               {(showInstagramSection || visibleOauthPlatforms.length > 0) && (
                 <div className="bg-white rounded-3xl border border-[#e8f4fb] p-5 sm:p-6 shadow-sm">
-                  <p className="text-[10px] tracking-[0.25em] uppercase font-medium text-gray-400">Platform connections</p>
+                  <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965]">Platform connections</p>
                   <p className="text-xs text-gray-500 font-light mt-1 mb-4 tracking-wide max-w-2xl">
                     Connect each channel here first. Scroll down to load posts or reels and submit them toward your milestone.
                   </p>
@@ -1672,9 +1672,9 @@ function CollabImpl(props: CollabProps = {}) {
                       <Instagram className="h-5 w-5 text-white" strokeWidth={2} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">Instagram</p>
+                      <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965] mb-1">Instagram</p>
                       <h2
-                        className="text-xl font-light tracking-[0.06em] text-[#1B4965]"
+                        className="text-xl font-bold tracking-[0.04em] text-[#1B4965]"
                         style={{ fontFamily: 'var(--font-heading-family, inherit)' }}
                       >
                         Sync reels
@@ -1832,8 +1832,8 @@ function CollabImpl(props: CollabProps = {}) {
                             {meta.icon}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-gray-400 mb-1">{meta.label}</p>
-                            <h3 className="text-xl font-light tracking-[0.06em] text-[#1B4965]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
+                            <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965] mb-1">{meta.label}</p>
+                            <h3 className="text-xl font-bold tracking-[0.04em] text-[#1B4965]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
                               Sync {meta.contentLabel.toLowerCase()}
                             </h3>
                             <p className="text-xs text-gray-500 font-light mt-1">{meta.subline}</p>

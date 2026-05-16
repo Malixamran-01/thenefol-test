@@ -46,55 +46,55 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'home',
     label: 'Home',
-    icon: <Home strokeWidth={2.2} className="h-5 w-5" />,
+    icon: <Home strokeWidth={2.75} className="h-6 w-6" />,
     href: '#/user/blog',
   },
   {
     id: 'content',
     label: 'My Content',
-    icon: <FileText strokeWidth={2.2} className="h-5 w-5" />,
+    icon: <FileText strokeWidth={2.75} className="h-6 w-6" />,
     href: '#/user/blog/my-blogs',
     matchPrefix: '#/user/blog/my-blogs',
   },
   {
     id: 'notifications',
     label: 'Activity',
-    icon: <Bell strokeWidth={2.2} className="h-5 w-5" />,
+    icon: <Bell strokeWidth={2.75} className="h-6 w-6" />,
     href: '#/user/blog/activity',
     matchPrefix: '#/user/blog/activity',
   },
   {
     id: 'profile',
     label: 'My Profile',
-    icon: <User strokeWidth={2.2} className="h-5 w-5" />,
+    icon: <User strokeWidth={2.75} className="h-6 w-6" />,
     href: '#/user/login',
     matchPrefix: '#/user/author',
   },
   {
     id: 'explore',
     label: 'Explore',
-    icon: <Compass strokeWidth={2.2} className="h-5 w-5" />,
+    icon: <Compass strokeWidth={2.75} className="h-6 w-6" />,
     href: '#/user/blog/explore',
     matchPrefix: '#/user/blog/explore',
   },
   {
     id: 'analytics',
     label: 'Analytics',
-    icon: <BarChart3 strokeWidth={2.2} className="h-5 w-5" />,
+    icon: <BarChart3 strokeWidth={2.75} className="h-6 w-6" />,
     href: '#/user/blog/dashboard',
     matchPrefix: '#/user/blog/dashboard',
   },
   {
     id: 'settings',
     label: 'Settings',
-    icon: <Settings strokeWidth={2.2} className="h-5 w-5" />,
+    icon: <Settings strokeWidth={2.75} className="h-6 w-6" />,
     href: '#/user/blog/settings',
     matchPrefix: '#/user/blog/settings',
   },
   {
     id: 'creator-program',
     label: 'Creator Program',
-    icon: <Clapperboard strokeWidth={2.2} className="h-5 w-5" />,
+    icon: <Clapperboard strokeWidth={2.75} className="h-6 w-6" />,
     href: '#/user/collab',
     matchPrefix: '#/user/collab',
   },
@@ -320,7 +320,7 @@ function SidePanelNav({
               {/* Label + badge (expanded only) */}
               {!collapsed && (
                 <>
-                  <span className={`flex-1 text-[14.5px] font-semibold transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                  <span className={`flex-1 text-[15px] font-bold transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-700 group-hover:text-gray-900'}`}>
                     {item.label}
                   </span>
                   {item.id === 'creator-program' && badgeDot(creatorBadge)}
@@ -376,7 +376,7 @@ function SidePanelNav({
             title="Write"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B4965] text-white transition-colors hover:bg-[#163d54]"
           >
-            <PenLine className="h-4 w-4" />
+            <PenLine strokeWidth={2.75} className="h-5 w-5" />
           </a>
         ) : (
           <a
@@ -613,7 +613,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
           className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50"
           aria-label="Open menu"
         >
-          <Menu className="h-5 w-5" />
+          <Menu strokeWidth={2.75} className="h-6 w-6" />
         </button>
 
         <a href="#/user/blog" className="flex items-center gap-2">
@@ -634,7 +634,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
           className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50"
           title="Activity"
         >
-          <Bell strokeWidth={2.2} className="h-5 w-5" />
+          <Bell strokeWidth={2.75} className="h-6 w-6" />
           {unreadCount > 0 && (
             <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
               {unreadCount > 99 ? '99+' : unreadCount}

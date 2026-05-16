@@ -1411,9 +1411,10 @@ export default function BlogRequestForm() {
 
   const keepFocus = (e: React.MouseEvent) => e.preventDefault()
   const isEditorOnly = activeEditableType === 'editor'
-  const btnActive = `p-2 rounded bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]`
-  const btnInactive = `p-2 rounded text-gray-600 hover:bg-gray-200`
-  const btnDisabled = `p-2 rounded text-gray-300 cursor-not-allowed`
+  const btnActive = `p-2.5 rounded-lg bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]`
+  const btnInactive = `p-2.5 rounded-lg text-gray-800 hover:bg-gray-200`
+  const btnDisabled = `p-2.5 rounded-lg text-gray-300 cursor-not-allowed`
+  const toolbarIconSize = 22
 
   return (
     <>
@@ -1525,15 +1526,15 @@ export default function BlogRequestForm() {
   {/* Toggle row — always visible */}
   <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 border-b border-gray-100">
     {/* Primary always-visible buttons */}
-    <button type="button" onMouseDown={keepFocus} onClick={handleUndo} className={btnInactive} title="Undo"><ArrowUUpLeft size={17} weight="bold" /></button>
-    <button type="button" onMouseDown={keepFocus} onClick={handleRedo} className={btnInactive} title="Redo"><ArrowUUpRight size={17} weight="bold" /></button>
+    <button type="button" onMouseDown={keepFocus} onClick={handleUndo} className={btnInactive} title="Undo"><ArrowUUpLeft size={toolbarIconSize} weight="bold" /></button>
+    <button type="button" onMouseDown={keepFocus} onClick={handleRedo} className={btnInactive} title="Redo"><ArrowUUpRight size={toolbarIconSize} weight="bold" /></button>
     <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0" />
-    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('bold')} className={`flex-shrink-0 ${toolbarState.bold ? btnActive : btnInactive}`} title="Bold"><TextB size={17} weight="bold" /></button>
-    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('italic')} className={`flex-shrink-0 ${toolbarState.italic ? btnActive : btnInactive}`} title="Italic"><TextItalic size={17} weight="bold" /></button>
-    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('underline')} className={`flex-shrink-0 ${toolbarState.underline ? btnActive : btnInactive}`} title="Underline"><TextUnderline size={17} weight="bold" /></button>
+    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('bold')} className={`flex-shrink-0 ${toolbarState.bold ? btnActive : btnInactive}`} title="Bold"><TextB size={toolbarIconSize} weight="bold" /></button>
+    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('italic')} className={`flex-shrink-0 ${toolbarState.italic ? btnActive : btnInactive}`} title="Italic"><TextItalic size={toolbarIconSize} weight="bold" /></button>
+    <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('underline')} className={`flex-shrink-0 ${toolbarState.underline ? btnActive : btnInactive}`} title="Underline"><TextUnderline size={toolbarIconSize} weight="bold" /></button>
     <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0" />
-    <button type="button" onClick={insertLink} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Link"><Link size={17} weight="bold" /></button>
-    <button type="button" onClick={insertImageIntoEditor} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Image"><Image size={17} weight="bold" /></button>
+    <button type="button" onClick={insertLink} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Link"><Link size={toolbarIconSize} weight="bold" /></button>
+    <button type="button" onClick={insertImageIntoEditor} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Image"><Image size={toolbarIconSize} weight="bold" /></button>
     {/* Expand/collapse toggle — pushed to right */}
     <button
       type="button"
@@ -1553,23 +1554,23 @@ export default function BlogRequestForm() {
   <div className={`toolbar-transition ${toolbarExpanded ? 'toolbar-expanded' : 'toolbar-collapsed'}`}>
     <div className="px-2 sm:px-3 py-1.5 flex flex-wrap gap-0.5 sm:gap-1">
       {/* Block format */}
-      <button type="button" onMouseDown={keepFocus} onClick={setParagraph} className={`px-1.5 sm:px-2 py-1.5 rounded text-xs font-medium flex-shrink-0 ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title="Paragraph">P</button>
+      <button type="button" onMouseDown={keepFocus} onClick={setParagraph} className={`px-2 sm:px-2.5 py-2 rounded-lg text-sm font-bold flex-shrink-0 ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'}`} title="Paragraph">P</button>
       {[1, 2, 3, 4].map(h => (
-        <button key={h} type="button" onMouseDown={keepFocus} onClick={() => setHeading(h)} className={`px-1.5 sm:px-2 py-1.5 rounded text-xs font-semibold flex-shrink-0 ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-600 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
+        <button key={h} type="button" onMouseDown={keepFocus} onClick={() => setHeading(h)} className={`px-2 sm:px-2.5 py-2 rounded-lg text-sm font-bold flex-shrink-0 ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
       ))}
       <span className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0 self-center" />
       {/* Extra format */}
-      <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('strikeThrough')} className={`flex-shrink-0 ${toolbarState.strikethrough ? btnActive : btnInactive}`} title="Strikethrough"><TextStrikethrough size={17} weight="bold" /></button>
-      <button type="button" onMouseDown={keepFocus} onClick={setBlockquote} className={`flex-shrink-0 ${toolbarState.block === 'blockquote' ? btnActive : btnInactive}`} title="Quote"><Quotes size={17} weight="bold" /></button>
+      <button type="button" onMouseDown={keepFocus} onClick={() => toggleFormat('strikeThrough')} className={`flex-shrink-0 ${toolbarState.strikethrough ? btnActive : btnInactive}`} title="Strikethrough"><TextStrikethrough size={toolbarIconSize} weight="bold" /></button>
+      <button type="button" onMouseDown={keepFocus} onClick={setBlockquote} className={`flex-shrink-0 ${toolbarState.block === 'blockquote' ? btnActive : btnInactive}`} title="Quote"><Quotes size={toolbarIconSize} weight="bold" /></button>
       <span className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0 self-center" />
       {/* Insert */}
-      <button type="button" onClick={insertYouTube} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="YouTube"><YoutubeLogo size={17} weight="bold" /></button>
-      <button type="button" onClick={() => insertList(false)} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Bullet List"><ListBullets size={17} weight="bold" /></button>
-      <button type="button" onClick={() => insertList(true)} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Numbered List"><ListNumbers size={17} weight="bold" /></button>
+      <button type="button" onClick={insertYouTube} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="YouTube"><YoutubeLogo size={toolbarIconSize} weight="bold" /></button>
+      <button type="button" onClick={() => insertList(false)} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Bullet List"><ListBullets size={toolbarIconSize} weight="bold" /></button>
+      <button type="button" onClick={() => insertList(true)} disabled={!isEditorOnly} className={`flex-shrink-0 ${isEditorOnly ? btnInactive : btnDisabled}`} title="Numbered List"><ListNumbers size={toolbarIconSize} weight="bold" /></button>
       <span className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0 self-center" />
       {/* Color picker */}
       <button type="button" onMouseDown={keepFocus} onClick={toggleColorPicker} className="flex flex-shrink-0 p-2 rounded hover:bg-gray-200 items-center gap-1 text-gray-600" ref={colorButtonRef} title="Text Color">
-        <Palette size={17} weight="bold" />
+        <Palette size={toolbarIconSize} weight="bold" />
         <div className="w-3 h-3 rounded border border-gray-400" style={{ backgroundColor: currentColor }} />
       </button>
     </div>

@@ -187,7 +187,7 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
             ))}
           </div>
         )}
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-gray-800 group-hover:text-[#1B4965]">
+        <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 group-hover:text-[#1B4965]">
           {post.title}
         </h3>
         {post.excerpt && (
@@ -586,8 +586,8 @@ export default function BlogExplorePage() {
 
       {/* ── Header ── */}
       <div className="mb-6 flex items-center gap-2">
-        <Compass className="h-6 w-6 text-[#1B4965]" />
-        <h1 className="text-xl font-bold text-gray-800">Explore</h1>
+        <Compass strokeWidth={2.75} className="h-7 w-7 text-[#1B4965]" />
+        <h1 className="text-2xl font-bold text-[#1B4965]">Explore</h1>
       </div>
 
       {/* ── Search bar ── */}
@@ -654,15 +654,15 @@ export default function BlogExplorePage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 rounded-xl py-2 text-[12px] font-semibold capitalize transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold capitalize transition-colors ${
               activeTab === tab
                 ? 'bg-white shadow-sm text-[#1B4965]'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-600 hover:text-gray-800'
             }`}
           >
-            {tab === 'posts' && <BookOpen className="mr-1 inline h-3.5 w-3.5" />}
-            {tab === 'authors' && <Users className="mr-1 inline h-3.5 w-3.5" />}
-            {tab === 'tags' && <Tag className="mr-1 inline h-3.5 w-3.5" />}
+            {tab === 'posts' && <BookOpen strokeWidth={2.75} className="h-5 w-5" />}
+            {tab === 'authors' && <Users strokeWidth={2.75} className="h-5 w-5" />}
+            {tab === 'tags' && <Tag strokeWidth={2.75} className="h-5 w-5" />}
             {tab}
           </button>
         ))}
@@ -697,7 +697,7 @@ export default function BlogExplorePage() {
             <div className="mb-6">
               <div className="mb-3 flex items-center gap-1.5">
                 <TrendingUp className="h-4 w-4 text-amber-500" />
-                <h2 className="text-sm font-semibold text-gray-700">Trending Now</h2>
+                <h2 className="text-base font-bold text-[#1B4965]">Trending Now</h2>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {trendingPosts.slice(0, 4).map((post) => (
@@ -733,7 +733,7 @@ export default function BlogExplorePage() {
                 <>
                   <div className="mb-3 flex items-center gap-1.5">
                     <Clock className="h-4 w-4 text-[#4B97C9]" />
-                    <h2 className="text-sm font-semibold text-gray-700">Latest Posts</h2>
+                    <h2 className="text-base font-bold text-[#1B4965]">Latest Posts</h2>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {posts.map((post) => (
@@ -778,7 +778,7 @@ export default function BlogExplorePage() {
                   <div className="mb-6">
                     <div className="mb-3 flex items-center gap-1.5">
                       <UserPlus className="h-4 w-4 text-[#4B97C9]" />
-                      <h2 className="text-sm font-semibold text-gray-700">
+                      <h2 className="text-base font-bold text-[#1B4965]">
                         {isAuthenticated ? 'Suggested for you' : 'Popular authors'}
                       </h2>
                     </div>
@@ -800,7 +800,7 @@ export default function BlogExplorePage() {
                   <div className="mb-6">
                     <div className="mb-3 flex items-center gap-1.5">
                       <Clock className="h-4 w-4 text-gray-400" />
-                      <h2 className="text-sm font-semibold text-gray-700">Searched earlier</h2>
+                      <h2 className="text-base font-bold text-[#1B4965]">Searched earlier</h2>
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {historyAuthors.map((a) => (
@@ -820,7 +820,7 @@ export default function BlogExplorePage() {
                   <>
                     <div className="mb-3 flex items-center gap-1.5">
                       <Users className="h-4 w-4 text-gray-400" />
-                      <h2 className="text-sm font-semibold text-gray-700">
+                      <h2 className="text-base font-bold text-[#1B4965]">
                         Results for &quot;{debouncedQuery}&quot;
                       </h2>
                     </div>
@@ -888,7 +888,7 @@ export default function BlogExplorePage() {
         <>
           <div className="mb-3 flex items-center gap-1.5">
             <Tag className="h-4 w-4 text-[#4B97C9]" />
-            <h2 className="text-sm font-semibold text-gray-700">Browse by Tag</h2>
+            <h2 className="text-base font-bold text-[#1B4965]">Browse by Tag</h2>
           </div>
           {loadingTags ? (
             <div className="flex justify-center py-12">

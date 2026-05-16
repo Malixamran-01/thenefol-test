@@ -325,7 +325,7 @@ export default function BlogActivityPage() {
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Activity</h1>
+          <h1 className="text-2xl font-bold text-[#1B4965]">Activity</h1>
           {isMuted && mutedUntil && (
             <p className="mt-0.5 text-[12px] text-amber-600">{muteLabel(mutedUntil)}</p>
           )}

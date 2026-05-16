@@ -58,7 +58,7 @@ function SettingsListRow({
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-base font-semibold text-[#1B4965]">{title}</p>
+        <p className="text-base font-bold text-[#1B4965]">{title}</p>
         <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>
       </div>
       <ChevronRight className="h-5 w-5 text-gray-300 flex-shrink-0" />
@@ -140,7 +140,7 @@ export default function NefolSocialSettings() {
 
         <header className="mb-8">
           <h1
-            className="text-2xl sm:text-3xl font-light tracking-[0.06em]"
+            className="text-2xl sm:text-3xl font-bold tracking-[0.04em]"
             style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
           >
             Creator Program
@@ -163,7 +163,7 @@ export default function NefolSocialSettings() {
                 <Clapperboard className="h-5 w-5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
               </div>
               <div className="min-w-0">
-                <h2 id="creator-program-sidebar-heading" className="text-base font-semibold text-[#1B4965]">
+                <h2 id="creator-program-sidebar-heading" className="text-base font-bold text-[#1B4965]">
                   Show in side panel
                 </h2>
                 <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
@@ -209,7 +209,7 @@ export default function NefolSocialSettings() {
 
         <header className="mb-6">
           <h1
-            className="text-2xl sm:text-3xl font-light tracking-[0.06em]"
+            className="text-2xl sm:text-3xl font-bold tracking-[0.04em]"
             style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
           >
             Payout method
@@ -241,7 +241,7 @@ export default function NefolSocialSettings() {
 
         <header className="mb-6">
           <h1
-            className="text-2xl sm:text-3xl font-light tracking-[0.06em]"
+            className="text-2xl sm:text-3xl font-bold tracking-[0.04em]"
             style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
           >
             Manage interests
@@ -286,7 +286,7 @@ export default function NefolSocialSettings() {
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10 pb-16">
       <header className="mb-8">
         <h1
-          className="text-2xl sm:text-3xl font-light tracking-[0.06em]"
+          className="text-2xl sm:text-3xl font-bold tracking-[0.04em]"
           style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
         >
           Settings
