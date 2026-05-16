@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { Star, ShoppingCart, ChevronLeft, ChevronRight, Eye, Heart } from 'lucide-react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { Star, ShoppingCart, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import SocialSneakPeek from '../components/SocialSneakPeek'
 import { api } from '../services/api'
 import SubscriptionModal from '../components/SubscriptionModal'
 import { useCart } from '../contexts/CartContext'
@@ -11,413 +11,6 @@ import VerifiedBadge from '../components/VerifiedBadge'
 import { getSessionId } from '../utils/session'
 import { getApiBase } from '../utils/apiBase'
 import WishlistButton from '../components/WishlistButton'
-
-// Social Media Videos Component with auto-slide in horizontal line
-const SocialMediaVideos: React.FC<{ videos: any[], scrollerRef: React.RefObject<HTMLDivElement> }> = ({ videos, scrollerRef }) => {
-  const { user } = useAuth()
-  const requestIdRef = useRef(0)
-  const lastTrackedVideoIdRef = useRef<number | null>(null)
-
-  const allVideos = useMemo(() => {
-    const apiBase = getApiBase()
-    const uploadsBase = apiBase.replace('/api', '')
-    return (videos || []).map((v: any) => ({
-      ...v,
-      videoUrl:
-        v.video_type === 'local'
-          ? `${uploadsBase}/uploads/${v.video_url}`
-          : v.video_url,
-    }))
-  }, [videos])
-
-  const allVideosLength = allVideos.length
-  const allVideosIdsSig = useMemo(
-    () => allVideos.map((v: any) => v.id ?? '').join(','),
-    [allVideos]
-  )
-  const [videoStats, setVideoStats] = useState<Record<number, { views: number, likes: number, liked: boolean }>>({})
-  
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const videoContainerRef = useRef<HTMLDivElement>(null)
-  const [videoWidth, setVideoWidth] = useState(0)
-  const [carouselSettings, setCarouselSettings] = useState({
-    autoAdvanceInterval: 3000,
-    videoPlayDuration: 3000,
-    animationDuration: 700,
-    animationEasing: 'ease-in-out',
-    autoPlay: true,
-    radius: 500,
-    blurAmount: 12,
-    minOpacity: 0.6,
-    minScale: 0.85
-  })
-
-  // Load carousel settings
-  useEffect(() => {
-    const myId = ++requestIdRef.current
-    const loadSettings = async () => {
-      try {
-        const apiBase = getApiBase()
-        const response = await fetch(`${apiBase}/api/carousel-settings`)
-        if (myId !== requestIdRef.current) return
-        if (response.ok) {
-          const data = await response.json()
-          if (data && data.length > 0 && data[0].settings) {
-            setCarouselSettings((prev) => {
-              const next = data[0].settings
-              if (JSON.stringify(prev) === JSON.stringify(next)) return prev
-              return next
-            })
-            return
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load carousel settings:', error)
-        if (myId !== requestIdRef.current) return
-        const saved = localStorage.getItem('carousel-settings')
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved)
-            setCarouselSettings((prev) => {
-              if (JSON.stringify(prev) === JSON.stringify(parsed)) return prev
-              return parsed
-            })
-          } catch (e) {
-            console.error('Failed to parse saved settings:', e)
-          }
-        }
-      }
-    }
-    void loadSettings()
-    return () => {
-      requestIdRef.current += 1
-    }
-  }, [])
-
-  const carouselAutoPlay = carouselSettings.autoPlay
-  const carouselVideoPlayDuration = carouselSettings.videoPlayDuration
-  const carouselAutoAdvanceInterval = carouselSettings.autoAdvanceInterval
-
-  // Calculate video width on mount and resize
-  useEffect(() => {
-    if (allVideosLength === 0) return
-
-    const updateDimensions = () => {
-      if (videoContainerRef.current) {
-        const container = videoContainerRef.current
-        const firstVideo = container.querySelector('.video-item') as HTMLElement
-        if (firstVideo) {
-          const width = firstVideo.offsetWidth
-          setVideoWidth((prev) => (prev === width ? prev : width))
-        }
-      }
-    }
-
-    const timeoutId = setTimeout(updateDimensions, 100)
-    window.addEventListener('resize', updateDimensions)
-    return () => {
-      clearTimeout(timeoutId)
-      window.removeEventListener('resize', updateDimensions)
-    }
-  }, [allVideosLength, allVideosIdsSig])
-
-  // Auto-advance based on settings - use videoPlayDuration for timing
-  useEffect(() => {
-    if (allVideosLength === 0) return
-    if (!carouselAutoPlay) return
-
-    const playDuration = carouselVideoPlayDuration || carouselAutoAdvanceInterval || 3000
-
-    const intervalId = setInterval(() => {
-      setCurrentIndex((prevIndex) => {
-        const nextIndex = prevIndex + 1
-        return nextIndex >= allVideosLength ? 0 : nextIndex
-      })
-    }, playDuration)
-
-    return () => {
-      clearInterval(intervalId)
-    }
-  }, [allVideosLength, carouselAutoPlay, carouselVideoPlayDuration, carouselAutoAdvanceInterval])
-
-  // Load video stats from props / localStorage
-  useEffect(() => {
-    if (allVideosLength === 0) return
-
-    const likedVideos = JSON.parse(localStorage.getItem('liked-videos') || '[]')
-    const stats: Record<number, { views: number; likes: number; liked: boolean }> = {}
-    allVideos.forEach((video: any) => {
-      if (video.id) {
-        stats[video.id] = {
-          views: video.views || 0,
-          likes: video.likes || 0,
-          liked: likedVideos.includes(video.id),
-        }
-      }
-    })
-    setVideoStats((prev) => {
-      const prevKeys = Object.keys(prev)
-      const nextKeys = Object.keys(stats)
-      if (
-        prevKeys.length === nextKeys.length &&
-        nextKeys.every((k) => {
-          const id = Number(k)
-          const p = prev[id]
-          const n = stats[id]
-          return p && n && p.views === n.views && p.likes === n.likes && p.liked === n.liked
-        })
-      ) {
-        return prev
-      }
-      return stats
-    })
-  }, [allVideosIdsSig, allVideosLength])
-
-  const trackVideoView = useCallback(
-    async (videoId: number, fetchId: number) => {
-      try {
-        const apiBase = getApiBase()
-        const sessionId = getSessionId()
-        const userId = user?.id || null
-
-        const response = await fetch(`${apiBase}/api/videos/${videoId}/view`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId, user_id: userId }),
-        })
-
-        if (fetchId !== requestIdRef.current) return
-        if (!response.ok) return
-
-        const data = await response.json()
-        const views = data.views ?? 0
-        setVideoStats((prev) => {
-          const existing = prev[videoId] || { views: 0, likes: 0, liked: false }
-          if (existing.views === views) return prev
-          return {
-            ...prev,
-            [videoId]: { ...existing, views },
-          }
-        })
-      } catch (error) {
-        console.error('Failed to track video view:', error)
-      }
-    },
-    [user?.id]
-  )
-
-  const centerVideoId = useMemo(() => {
-    const ids = allVideosIdsSig ? allVideosIdsSig.split(',').map((s) => Number(s)) : []
-    return ids[currentIndex] ?? null
-  }, [allVideosIdsSig, currentIndex])
-
-  useEffect(() => {
-    if (!centerVideoId) return
-    if (lastTrackedVideoIdRef.current === centerVideoId) return
-
-    lastTrackedVideoIdRef.current = centerVideoId
-    const fetchId = ++requestIdRef.current
-    void trackVideoView(centerVideoId, fetchId)
-  }, [centerVideoId, trackVideoView])
-
-  const handleLike = async (videoId: number, e: React.MouseEvent) => {
-    e.stopPropagation()
-    
-    // Just toggle liked status - likes are always 30% of views, so no need to update like count
-    const isLiked = videoStats[videoId]?.liked || false
-    
-    setVideoStats(prev => ({
-      ...prev,
-      [videoId]: {
-        ...prev[videoId] || { views: 0, likes: 0, liked: false },
-        liked: !isLiked
-      }
-    }))
-    
-    // Save liked status to localStorage per video
-    const likedVideos = JSON.parse(localStorage.getItem('liked-videos') || '[]')
-    if (!isLiked) {
-      localStorage.setItem('liked-videos', JSON.stringify([...likedVideos, videoId]))
-    } else {
-      localStorage.setItem('liked-videos', JSON.stringify(likedVideos.filter((id: number) => id !== videoId)))
-    }
-  }
-
-  const handleVideoClick = (video: any) => {
-    if (video.redirect_url) {
-      window.open(video.redirect_url, '_blank')
-    }
-  }
-
-  // Play/pause videos based on center position
-  useEffect(() => {
-    if (allVideosLength === 0) return
-
-    const videoElements = document.querySelectorAll('.video-item video') as NodeListOf<HTMLVideoElement>
-
-    videoElements.forEach((video, idx) => {
-      if (idx === currentIndex) {
-        video.play().catch(() => {})
-      } else {
-        video.pause()
-        video.currentTime = 0
-      }
-    })
-  }, [currentIndex, allVideosLength, allVideosIdsSig])
-
-  if (allVideosLength === 0) {
-    return null
-  }
-
-  return (
-    <>
-      <style>{`
-        .video-carousel-container {
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-        }
-        .video-carousel-container::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-      <div className="relative w-full overflow-visible py-8 flex items-center justify-center" style={{ perspective: '1500px', perspectiveOrigin: 'center center' }}>
-        <div 
-          className="relative overflow-visible"
-          style={{
-            width: '100%',
-            maxWidth: '100vw',
-            height: '600px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'visible'
-          }}
-        >
-          <div
-            ref={videoContainerRef}
-            className="relative"
-            style={{
-              transformStyle: 'preserve-3d',
-              transform: `rotateY(${-currentIndex * (360 / allVideos.length)}deg)`,
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: `transform ${carouselSettings.animationDuration || 700}ms ${carouselSettings.animationEasing || 'ease-in-out'}`
-            }}
-          >
-            {allVideos.map((video: any, idx) => {
-              const src = video.videoUrl || video
-              const videoId = video.id
-              const stats = videoId ? videoStats[videoId] : null
-              const angle = (360 / allVideos.length) * idx
-              const isCenter = idx === currentIndex
-              const distanceFromCenter = Math.abs(idx - currentIndex)
-              const minDistance = Math.min(distanceFromCenter, allVideos.length - distanceFromCenter)
-              const blurAmount = isCenter ? 0 : Math.min(minDistance * ((carouselSettings.blurAmount || 12) / 2), carouselSettings.blurAmount || 12)
-              const opacity = isCenter ? 1 : Math.max(1 - minDistance * 0.15, carouselSettings.minOpacity || 0.6)
-              const scale = isCenter ? 1 : Math.max(1 - minDistance * 0.05, carouselSettings.minScale || 0.85)
-              
-              const videoWidthValue = videoWidth > 0 ? videoWidth : 350
-              
-              return (
-                <div
-                  key={idx}
-                  className="video-item absolute bg-white overflow-hidden rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
-                  style={{ 
-                    width: `${videoWidthValue}px`,
-                    aspectRatio: '9/16',
-                    left: '50%',
-                    top: '50%',
-                    marginLeft: `-${videoWidthValue / 2}px`,
-                    marginTop: `-${(videoWidthValue * (16 / 9)) / 2}px`,
-                    transform: `
-                      rotateY(${angle}deg) 
-                      translateZ(${carouselSettings.radius || 500}px)
-                      scale(${scale})
-                    `,
-                    filter: `blur(${blurAmount}px)`,
-                    opacity: opacity,
-                    zIndex: isCenter ? 10 : 5 - minDistance,
-                    backfaceVisibility: 'visible',
-                    transformStyle: 'preserve-3d',
-                    pointerEvents: 'auto'
-                  }}
-                  onClick={() => handleVideoClick(video)}
-                >
-                  <video
-                    src={src}
-                    className="block w-full h-full rounded-xl"
-                    autoPlay={isCenter}
-                    loop
-                    muted
-                    playsInline
-                    controls={false}
-                    onPlay={(e) => {
-                      // Ensure video plays when it becomes center
-                      const video = e.target as HTMLVideoElement
-                      if (isCenter) {
-                        video.play().catch(() => {})
-                      }
-                    }}
-                    onPause={(e) => {
-                      // Resume if it's the center video
-                      const video = e.target as HTMLVideoElement
-                      if (isCenter && carouselSettings.autoPlay) {
-                        video.play().catch(() => {})
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                  
-                  {/* Video Stats Overlay */}
-                  {isCenter && videoId && (
-                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white z-20 pointer-events-none">
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (video.redirect_url) {
-                              window.open(video.redirect_url, '_blank')
-                            }
-                          }}
-                          className="flex items-center gap-1 bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm transition-all pointer-events-auto hover:bg-black/70 cursor-pointer"
-                        >
-                          <Eye className="h-4 w-4 text-white" />
-                          <span className="text-sm font-semibold text-white">{stats?.views || video.views || 0}</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleLike(videoId, e)
-                          }}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full backdrop-blur-sm transition-all pointer-events-auto ${
-                            stats?.liked ? 'bg-red-500/80' : 'bg-black/50'
-                          } hover:bg-red-500/80`}
-                        >
-                          <Heart className={`h-4 w-4 ${stats?.liked ? 'fill-white text-white' : 'text-white'}`} />
-                          <span className="text-sm font-semibold text-white">
-                            {Math.round((stats?.views || video.views || 0) * 0.3)}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
 
 export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
@@ -446,8 +39,6 @@ export default function Home() {
       homeFetchIdRef.current += 1
     }
   }, [])
-  const [videos, setVideos] = useState<any[]>([])
-  const videoScrollerRef = useRef<HTMLDivElement>(null)
   const [justLandedIndex, setJustLandedIndex] = useState(0)
   
   // Get all product slugs for batch fetching review stats
@@ -513,7 +104,7 @@ export default function Home() {
     heading: 'Join The NEFOL Circle',
     description: 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
     footer: 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
-    logoName: 'NEFÖL'
+    logoName: 'NEF?L'
   })
   const [foreverFavorites, setForeverFavorites] = useState<any>({
     title: 'FOREVER FAVORITES',
@@ -788,17 +379,7 @@ export default function Home() {
       }
     }
 
-    const runVideos = async () => {
-      try {
-        const data = await api.videos.getAll()
-        if (!guard()) return
-        setVideos((prev) => (prev === data ? prev : data))
-      } catch (error) {
-        console.error('Failed to fetch videos:', error)
-      }
-    }
-
-    void Promise.allSettled([runTopMedia(), runHero(), runCms(), runVideos()])
+    void Promise.allSettled([runTopMedia(), runHero(), runCms()])
     return () => {
       homeFetchIdRef.current += 1
     }
@@ -897,15 +478,15 @@ export default function Home() {
           <div className="scrolling-text-wrapper">
             <div className="scrolling-text-content">
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> • </span>
+              <span className="scrolling-text-separator"> ? </span>
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> • </span>
+              <span className="scrolling-text-separator"> ? </span>
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> • </span>
+              <span className="scrolling-text-separator"> ? </span>
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> • </span>
+              <span className="scrolling-text-separator"> ? </span>
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> • </span>
+              <span className="scrolling-text-separator"> ? </span>
               <span className="scrolling-text-item">{scrollingText}</span>
             </div>
           </div>
@@ -1010,19 +591,9 @@ export default function Home() {
         </section>
       )}
 
-      {/* Social Media Videos Section - Between Top Media and Hero */}
-      {videos.length > 0 && (
-        <section className="py-8 sm:py-12 md:py-16 bg-white">
-          <div className="w-full max-w-full">
-            <div className="text-center mb-8 sm:mb-12 px-4">
-              <h1 className="script-text" style={{ visibility: 'visible', opacity: 1 }}>Aesthetics Lover's Choice!</h1>
-            </div>
-            <div className="w-full">
-              <SocialMediaVideos videos={videos} scrollerRef={videoScrollerRef} />
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Community - featured blog posts */}
+      <SocialSneakPeek />
+
 
       {/* Hero Banner Section */}
       {heroImages.length > 0 && (
@@ -1876,7 +1447,7 @@ export default function Home() {
                       Blue Pea (Tag as Aprajita, Butterfly Pea Flower, Blue Pea Flower)
                     </h3>
                     <p className="text-xs sm:text-sm italic mb-6 font-light tracking-wide" style={{color: '#999', letterSpacing: '0.05em'}}>
-                      Aprajita • Shankhpushpi
+                      Aprajita ? Shankhpushpi
                     </p>
                   </div>
                   

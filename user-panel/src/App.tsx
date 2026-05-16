@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
+﻿import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Menu, X, Instagram, Facebook, Youtube, Linkedin } from 'lucide-react'
 import SplashScreen from './components/SplashScreen'
 import CartIcon from './components/CartIcon'
@@ -755,7 +755,7 @@ function AppContent() {
                     style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    Blogs
+                    NEFOL Social
                   </a>
                   <a 
                     href="#/user/contact"
@@ -807,14 +807,13 @@ function AppContent() {
               <ul className="space-y-2">
                 <li><a href="#/user/about" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>About us</a></li>
                 <li><a href="#/user/faq" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>FAQ</a></li>
-                <li><a href="#/user/blog" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Blogs</a></li>
                 <li>
                   <a
                     href="#/user/blog"
                     className="text-xs sm:text-sm font-light transition-colors hover:opacity-80"
                     style={{ color: 'var(--color-text-secondary-on-teal)' }}
                   >
-                    Nefol Social
+                    NEFOL Social
                   </a>
                 </li>
 
