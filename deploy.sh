@@ -102,21 +102,29 @@ echo -e "${YELLOW}🔧 Step 10: Setting up SSL (Let's Encrypt)...${NC}"
 run_remote "apt-get install -y certbot python3-certbot-nginx || true"
 run_remote "certbot --nginx -d $DOMAIN -d www.$DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN --redirect || echo 'SSL certificate setup skipped (may already exist)'"
 
-echo -e "${YELLOW}🔧 Step 11: Setting permissions...${NC}"
+echo -e "${YELLOW}🔧 Step 11: Persistent uploads (survives redeploy / reboot)...${NC}"
+PERSISTENT_UPLOADS="/var/lib/nefol/uploads"
+run_remote "mkdir -p $PERSISTENT_UPLOADS/blog && chmod -R 755 /var/lib/nefol"
+# One-time migration from legacy in-repo folder (do not delete source until verified)
+run_remote "if [ -d $DEPLOY_PATH/uploads-data ] && [ \"\$(ls -A $DEPLOY_PATH/uploads-data 2>/dev/null)\" ]; then rsync -a $DEPLOY_PATH/uploads-data/ $PERSISTENT_UPLOADS/ || true; fi"
+run_remote "grep -q '^UPLOADS_DIR=' $DEPLOY_PATH/backend/.env 2>/dev/null || echo 'UPLOADS_DIR=$PERSISTENT_UPLOADS' >> $DEPLOY_PATH/backend/.env"
+
+echo -e "${YELLOW}🔧 Step 12: Setting permissions...${NC}"
 run_remote "chown -R www-data:www-data $DEPLOY_PATH"
 run_remote "chmod -R 755 $DEPLOY_PATH"
+run_remote "chown -R root:root $PERSISTENT_UPLOADS && chmod -R 755 $PERSISTENT_UPLOADS"
 
-echo -e "${YELLOW}🔧 Step 12: Creating log directories...${NC}"
+echo -e "${YELLOW}🔧 Step 13: Creating log directories...${NC}"
 run_remote "mkdir -p /var/log/pm2 /var/log/nginx"
 run_remote "chmod -R 755 /var/log/pm2"
 
-echo -e "${YELLOW}🔧 Step 13: Setting up environment file...${NC}"
+echo -e "${YELLOW}🔧 Step 14: Setting up environment file...${NC}"
 echo -e "${YELLOW}   Creating .env file from env.example...${NC}"
 run_remote "cd $DEPLOY_PATH/backend && if [ ! -f .env ]; then cp env.example .env; fi"
 echo -e "${YELLOW}   ⚠️  IMPORTANT: Please update $DEPLOY_PATH/backend/.env with production values!${NC}"
 echo -e "${YELLOW}   ⚠️  Especially: JWT_SECRET, ENCRYPTION_KEY, and all API keys!${NC}"
 
-echo -e "${YELLOW}🔧 Step 14: Database migrations note...${NC}"
+echo -e "${YELLOW}🔧 Step 15: Database migrations note...${NC}"
 echo -e "${YELLOW}   Note: Database migrations will run automatically when the backend starts for the first time.${NC}"
 echo -e "${YELLOW}   To run migrations manually: cd $DEPLOY_PATH/backend && npm run migrate${NC}"
 

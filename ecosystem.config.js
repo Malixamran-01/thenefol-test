@@ -9,7 +9,9 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 2000,
-        HOST: '0.0.0.0'
+        HOST: '0.0.0.0',
+        // Outside /var/www/nefol so Hostinger redeploys / VPS app resets do not wipe uploads
+        UPLOADS_DIR: '/var/lib/nefol/uploads'
       },
       error_file: '/var/log/pm2/nefol-backend-error.log',
       out_file: '/var/log/pm2/nefol-backend-out.log',

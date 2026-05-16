@@ -6,7 +6,7 @@ import { Pool } from 'pg'
 import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
-import { ensureUploadsTree, getUploadsRoot } from './config/uploadsRoot'
+import { ensureUploadsTree, getUploadsRoot, warnIfEphemeralUploadsPath } from './config/uploadsRoot'
 import { buildPgPoolConfig, logPgPoolStartup } from './config/pgPool'
 import { convertToWebp, convertFilesToWebp } from './utils/toWebp'
 import { createServer } from 'http'
@@ -104,6 +104,7 @@ declare global {
 const app = express()
 
 ensureUploadsTree()
+warnIfEphemeralUploadsPath()
 console.log('[uploads] Persistent storage root:', getUploadsRoot(), '(set UPLOADS_DIR to override)')
 
 // Trust proxy for accurate IP detection behind reverse proxy (Nginx)
