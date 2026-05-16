@@ -9,7 +9,6 @@ const PRECACHE_ASSETS = [
   '/favicon.svg',
   '/IMAGES/essential/nefol-icon.svg',
   '/light-mode-boot.js',
-  '/boot-watchdog.js',
 ]
 
 async function precacheAppShell() {

@@ -60,7 +60,6 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['lucide-react'],
           'socket-vendor': ['socket.io-client'],
-          'geo-vendor': ['country-state-city'],
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',

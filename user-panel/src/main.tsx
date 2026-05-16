@@ -2,13 +2,6 @@ function showImportFailure(err: unknown) {
   const rootEl = document.getElementById('root')
   const text =
     err instanceof Error ? `${err.message}\n\n${err.stack || ''}`.trim() : String(err)
-  let crashLog = ''
-  try {
-    crashLog = sessionStorage.getItem('__nefol_crash') || ''
-  } catch {
-    /* ignore */
-  }
-  const full = crashLog ? `${text}\n\nsessionStorage __nefol_crash:\n${crashLog}` : text
 
   try {
     const prev =
@@ -34,7 +27,7 @@ function showImportFailure(err: unknown) {
     const pre = document.createElement('pre')
     pre.style.cssText =
       'white-space:pre-wrap;word-break:break-word;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:11px'
-    pre.textContent = full || 'Unknown import error'
+    pre.textContent = text || 'Unknown import error'
     wrap.appendChild(pre)
     const btn = document.createElement('button')
     btn.textContent = 'Reload'

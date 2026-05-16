@@ -11,9 +11,15 @@ import { useAuth } from '../contexts/AuthContext'
 import { CREATOR_PROGRAM_BADGES_REFRESH, useCreatorProgramBadges } from '../contexts/CreatorProgramBadgeContext'
 import { creatorProgramAPI } from '../services/api'
 import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
-import CollabTurnstile, { isTurnstileConfigured } from '../components/CollabTurnstile'
 import CollabAssignedTasks from '../components/CollabAssignedTasks'
 import { COLLAB_PAGE_IMPL_STUB } from '../routeShellIsolation'
+import { loadAllCountries, loadCitiesForState, loadStatesForCountry } from '../utils/collabGeoLoader'
+
+const CollabTurnstile = lazy(() => import('../components/CollabTurnstile'))
+
+function isTurnstileConfigured(): boolean {
+  return Boolean(String(import.meta.env.VITE_TURNSTILE_SITE_KEY ?? '').trim())
+}
 
 const AffiliatePartner = lazy(() => import('./AffiliatePartner'))
 
@@ -381,12 +387,8 @@ function CollabImpl(props: CollabProps = {}) {
       return
     }
     let cancelled = false
-    void import('country-state-city').then(({ Country }) => {
-      if (cancelled) return
-      const countries = Country.getAllCountries()
-      queueMicrotask(() => {
-        if (!cancelled) setAllCountries(countries)
-      })
+    void loadAllCountries().then((countries) => {
+      if (!cancelled) setAllCountries(countries)
     })
     return () => {
       cancelled = true
@@ -399,12 +401,8 @@ function CollabImpl(props: CollabProps = {}) {
       return
     }
     let cancelled = false
-    void import('country-state-city').then(({ State }) => {
-      if (cancelled) return
-      const states = State.getStatesOfCountry(selectedCountryCode)
-      queueMicrotask(() => {
-        if (!cancelled) setCountryStates(states)
-      })
+    void loadStatesForCountry(selectedCountryCode).then((states) => {
+      if (!cancelled) setCountryStates(states)
     })
     return () => {
       cancelled = true
@@ -417,12 +415,8 @@ function CollabImpl(props: CollabProps = {}) {
       return
     }
     let cancelled = false
-    void import('country-state-city').then(({ City }) => {
-      if (cancelled) return
-      const cities = City.getCitiesOfState(selectedCountryCode, selectedStateCode)
-      queueMicrotask(() => {
-        if (!cancelled) setStateCities(cities)
-      })
+    void loadCitiesForState(selectedCountryCode, selectedStateCode).then((cities) => {
+      if (!cancelled) setStateCities(cities)
     })
     return () => {
       cancelled = true
@@ -1465,7 +1459,15 @@ function CollabImpl(props: CollabProps = {}) {
 
                   <div className="border-t border-gray-100" />
 
-                  <CollabTurnstile key={turnstileMountKey} onToken={onTurnstileToken} />
+                  <Suspense
+                    fallback={
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
+                      </div>
+                    }
+                  >
+                    <CollabTurnstile key={turnstileMountKey} onToken={onTurnstileToken} />
+                  </Suspense>
 
                   <button type="submit"
                     className="w-full rounded-xl py-3.5 font-semibold text-sm text-white transition-all hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
