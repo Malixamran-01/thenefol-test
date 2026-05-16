@@ -17,4 +17,4 @@
  * If disabling batch **N** fixes Safari, the bug is in that batch; then split that batch in code
  * or binary-search inside it on follow-up deploys.
  */
-export const SAFARI_HUNT_DISABLE_BATCH: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 = 0
+export const SAFARI_HUNT_DISABLE_BATCH: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 = 3
