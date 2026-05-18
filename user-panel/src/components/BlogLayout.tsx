@@ -100,6 +100,9 @@ const NAV_ITEMS: NavItem[] = [
   },
 ]
 
+/** Signed-out users only see Home in the side panel (plus store link + sign in). */
+const GUEST_VISIBLE_NAV_IDS = new Set(['home'])
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isItemActive(item: NavItem, hash: string, currentUserId?: number): boolean {
@@ -278,9 +281,11 @@ function SidePanelNav({
 
       {/* ── Nav items ────────────────────────────────────────── */}
       <nav className="flex-1 py-3">
-        {NAV_ITEMS.filter(
-          (item) => item.id !== 'creator-program' || showCreatorProgramInSidebar
-        ).map((item) => {
+        {NAV_ITEMS.filter((item) => {
+          if (!isAuthenticated && !GUEST_VISIBLE_NAV_IDS.has(item.id)) return false
+          if (item.id === 'creator-program' && !showCreatorProgramInSidebar) return false
+          return true
+        }).map((item) => {
           const active = isItemActive(item, hash, user?.id)
           const effectiveHref = getItemHref(item)
           const showUnreadBadge = item.id === 'notifications' && unreadCount > 0
@@ -367,28 +372,30 @@ function SidePanelNav({
         </div>
       )}
 
-      {/* ── Write button ─────────────────────────────────────── */}
-      <div className={`flex-shrink-0 border-t border-gray-200/70 p-3 ${collapsed ? 'flex justify-center' : ''}`}>
-        {collapsed ? (
-          <a
-            href={isAuthenticated ? '#/user/blog/request?new=1' : '#/user/login'}
-            onClick={handleWriteClick}
-            title="Write"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B4965] text-white transition-colors hover:bg-[#163d54]"
-          >
-            <PenLine strokeWidth={2.75} className="h-5 w-5" />
-          </a>
-        ) : (
-          <a
-            href={isAuthenticated ? '#/user/blog/request?new=1' : '#/user/login'}
-            onClick={handleWriteClick}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1B4965] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#163d54]"
-          >
-            <PenLine className="h-3.5 w-3.5" />
-            Write
-          </a>
-        )}
-      </div>
+      {/* ── Write button (signed-in only) ──────────────────────── */}
+      {isAuthenticated && (
+        <div className={`flex-shrink-0 border-t border-gray-200/70 p-3 ${collapsed ? 'flex justify-center' : ''}`}>
+          {collapsed ? (
+            <a
+              href="#/user/blog/request?new=1"
+              onClick={handleWriteClick}
+              title="Write"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B4965] text-white transition-colors hover:bg-[#163d54]"
+            >
+              <PenLine strokeWidth={2.75} className="h-5 w-5" />
+            </a>
+          ) : (
+            <a
+              href="#/user/blog/request?new=1"
+              onClick={handleWriteClick}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1B4965] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#163d54]"
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              Write
+            </a>
+          )}
+        </div>
+      )}
 
       {/* ── Sign In / Sign Out (bottom) ──────────────────────── */}
       <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center py-2' : 'px-5 py-2'}`}>
@@ -629,18 +636,22 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
           </span>
         </a>
 
-        <a
-          href="#/user/blog/activity"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50"
-          title="Activity"
-        >
-          <Bell strokeWidth={2.75} className="h-6 w-6" />
-          {unreadCount > 0 && (
-            <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </a>
+        {isAuthenticated ? (
+          <a
+            href="#/user/blog/activity"
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50"
+            title="Activity"
+          >
+            <Bell strokeWidth={2.75} className="h-6 w-6" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </a>
+        ) : (
+          <span className="h-9 w-9" aria-hidden />
+        )}
       </div>
 
       {/* ── Mobile drawer ───────────────────────────────────── */}
