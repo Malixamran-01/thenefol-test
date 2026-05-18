@@ -63,3 +63,31 @@ export const getSiteUrl = (): string => {
   }
   return 'https://thenefol.com'
 }
+
+/**
+ * Resolve CMS/product image paths to a fetchable URL on the current site.
+ * - Absolute http(s) URLs unchanged
+ * - /IMAGES/ and /uploads/ stay same-origin (nginx → backend)
+ * - Other relative paths prefixed with API base
+ */
+export function resolveMediaUrl(url?: string | null): string {
+  if (!url || typeof url !== 'string') return ''
+  const trimmed = url.trim()
+  if (!trimmed) return ''
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed
+  }
+
+  if (
+    trimmed.startsWith('/IMAGES/') ||
+    trimmed.startsWith('/uploads/') ||
+    trimmed.startsWith('/favicon') ||
+    trimmed.startsWith('/sw.js')
+  ) {
+    return trimmed
+  }
+
+  const apiBase = getApiBase().replace(/\/$/, '')
+  return trimmed.startsWith('/') ? `${apiBase}${trimmed}` : `${apiBase}/${trimmed}`
+}

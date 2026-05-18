@@ -52,6 +52,19 @@ ls -la /var/lib/nefol/uploads | head
 curl -I https://thenefol.com/uploads/<some-known-filename>
 ```
 
+## Desktop missing images but mobile OK
+
+Often **not** lost uploads: nginx was serving `/IMAGES/` from `user-panel/IMAGES/` (empty) while product files live under `user-panel/dist/IMAGES/` (served by Node). Mobile may still show old **cached** images; desktop fetches fresh and gets 404.
+
+**Fix:** use the updated `nginx.conf` that proxies `/IMAGES/` to the backend (same as `/uploads/`), then:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+curl -I https://thenefol.com/IMAGES/essential/nefol-icon.svg
+```
+
+On desktop: hard refresh (Ctrl+Shift+R) or clear site data for thenefol.com.
+
 ## If the VPS was fully rebuilt
 
 `/var/lib` may also be empty. Restore from:

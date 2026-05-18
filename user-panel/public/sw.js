@@ -1,6 +1,6 @@
 // Service Worker for Nefol PWA
-const CACHE_NAME = 'nefol-pwa-v2'
-const RUNTIME_CACHE = 'nefol-runtime-v2'
+const CACHE_NAME = 'nefol-pwa-v3'
+const RUNTIME_CACHE = 'nefol-runtime-v3'
 
 // Assets to cache immediately on install
 const PRECACHE_ASSETS = [
@@ -139,12 +139,29 @@ self.addEventListener('fetch', (event) => {
             })
         }
 
-        // For other static assets (images, fonts, etc.), use cache first
+        // Product/CMS images: network first (avoid stale 404s after deploy)
+        const isMediaPath =
+          url.pathname.startsWith('/IMAGES/') || url.pathname.startsWith('/uploads/')
+
+        if (isMediaPath) {
+          return fetch(request)
+            .then((networkResponse) => {
+              if (networkResponse.ok && networkResponse.status !== 206) {
+                const responseClone = networkResponse.clone()
+                caches.open(RUNTIME_CACHE).then((cache) => {
+                  cache.put(request, responseClone).catch(() => {})
+                })
+              }
+              return networkResponse
+            })
+            .catch(() => cachedResponse || fetch(request))
+        }
+
+        // For other static assets (fonts, etc.), use cache first
         if (cachedResponse) {
           return cachedResponse
         }
 
-        // If not in cache, fetch from network
         return fetch(request)
           .then((networkResponse) => {
             // Don't cache non-successful responses or partial responses (206)

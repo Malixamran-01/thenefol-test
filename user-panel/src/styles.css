@@ -999,10 +999,19 @@ html, body {
   max-width: 100vw;
 }
 
-/* Image and media responsive fixes */
-img, video, iframe {
+/* Image and media responsive fixes — do not force height:auto on fill/cover images */
+img:not(.img-fill):not([class*="object-cover"]):not([class*="h-full"]),
+video:not(.img-fill),
+iframe {
   max-width: 100%;
   height: auto;
+  display: block;
+}
+
+img.img-fill,
+img[class*="object-cover"],
+img[class*="h-full"] {
+  max-width: 100%;
   display: block;
 }
 
@@ -1029,7 +1038,7 @@ img, video, iframe {
   }
 }
 
-img {
+img:not(.img-fill):not([class*="object-cover"]) {
   object-fit: contain;
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { Product } from '../types'
-import { getApiBase } from '../utils/apiBase'
+import { getApiBase, resolveMediaUrl } from '../utils/apiBase'
+import { convertToWebp } from '../utils/imageUtils'
 
 export function useProducts() {
   const [items, setItems] = useState<Product[]>([])
@@ -18,15 +19,11 @@ export function useProducts() {
       })
       if (!res.ok) throw new Error('Failed to load products')
       const rows = await res.json()
-      const toAbs = (u?: string) => {
-        if (!u || typeof u !== 'string') return ''
-        if (/^https?:\/\//i.test(u)) return u
-        const base = apiBase.replace(/\/$/, '')
-        const path = u.startsWith('/') ? u : `/${u}`
-        return `${base}${path}`
-      }
+      const toAbs = (u?: string) => resolveMediaUrl(u)
       const mapped: Product[] = (rows || []).map((r: any) => {
-        const listImage = toAbs(r.list_image || '')
+        const rawList = toAbs(r.list_image || '')
+        const listImage =
+          rawList && /\.(jpg|jpeg|png|svg)$/i.test(rawList) ? convertToWebp(rawList) : rawList
         const pdpImages = derivePdpImages(r, toAbs)
         const bannerImages = deriveBannerImages(r, toAbs)
         const inv = Number(r.inventory_available ?? 0)

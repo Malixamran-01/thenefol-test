@@ -9,7 +9,8 @@ import PricingDisplay from '../components/PricingDisplay'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import VerifiedBadge from '../components/VerifiedBadge'
 import { getSessionId } from '../utils/session'
-import { getApiBase } from '../utils/apiBase'
+import { getApiBase, resolveMediaUrl } from '../utils/apiBase'
+import { createImageErrorHandler } from '../utils/imageUtils'
 import WishlistButton from '../components/WishlistButton'
 
 export default function Home() {
@@ -130,26 +131,7 @@ export default function Home() {
   })
 
 
-  // Helper function to normalize URLs
-  const normalizeUrl = (url: string) => {
-    if (!url) return ''
-    const normalizedInput = url.trim()
-
-    if (/^https?:\/\//i.test(normalizedInput)) {
-      return normalizedInput
-    }
-
-    // Serve local static assets (like /IMAGES) directly without rewriting extensions
-    if (normalizedInput.startsWith('/IMAGES/') || normalizedInput.startsWith('/favicon') || normalizedInput.startsWith('/sw.js')) {
-      return normalizedInput
-    }
-    
-    const apiBase = getApiBase()
-    if (normalizedInput.startsWith('/')) {
-      return `${apiBase}${normalizedInput}`
-    }
-    return `${apiBase}/${normalizedInput}`
-  }
+  const normalizeUrl = (url: string) => resolveMediaUrl(url)
 
   const getCmsApiBase = () => {
     const apiBase = getApiBase().replace(/\/$/, '')
@@ -569,10 +551,12 @@ export default function Home() {
                     <img 
                       src={topMediaImages[topMediaIndex]} 
                       alt="Top Media Carousel"
-                      className="absolute inset-0 w-full h-full object-cover rounded-xl"
+                      className="img-fill absolute inset-0 w-full h-full object-cover rounded-xl"
                       style={{ objectFit: 'cover', width: '100%', height: '100%', minWidth: '100%', minHeight: '100%' }}
                       key={topMediaIndex}
-                      loading="lazy"
+                      loading="eager"
+                      fetchPriority="high"
+                      onError={createImageErrorHandler(topMediaImages[topMediaIndex])}
                     />
                   )}
                 </>
@@ -618,14 +602,16 @@ export default function Home() {
                     <img 
                       src={heroImages[heroIndex]} 
                       alt="Hero Banner"
-                      className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out rounded-xl"
+                      className="img-fill absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out rounded-xl"
                       style={{ 
                         objectFit: 'cover',
                         opacity: 1,
                         transition: `opacity ${heroSettings.transitionDuration || 1000}ms ease-in-out`,
                       }}
                       key={heroIndex}
-                      loading="lazy"
+                      loading="eager"
+                      fetchPriority="high"
+                      onError={createImageErrorHandler(heroImages[heroIndex])}
                     />
                   )}
                 </>
@@ -724,11 +710,9 @@ export default function Home() {
                           <img
                             src={product.listImage}
                             alt={product.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 rounded-xl"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                            }}
+                            className="img-fill w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 rounded-xl"
+                            loading={index < 4 ? 'eager' : 'lazy'}
+                            onError={createImageErrorHandler(product.listImage)}
                           />
                         ) : (
                           <div className="w-full h-full bg-gray-100 flex items-center justify-center">

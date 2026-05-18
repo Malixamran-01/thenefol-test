@@ -202,42 +202,41 @@ function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUns
   return (
     <a
       href={`#/user/blog/${post.id}`}
-      className="group relative block h-[420px] overflow-hidden rounded-2xl bg-gray-900 shadow-sm transition-all duration-300 hover:shadow-lg cursor-pointer"
+      className="group flex h-[360px] flex-col overflow-hidden rounded-2xl bg-gray-900 shadow-sm transition-all duration-300 hover:shadow-lg cursor-pointer"
       style={{ textDecoration: 'none' }}
     >
-      {/* Cover image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.03]"
-        style={{ backgroundImage: `url(${coverImage})` }}
-      />
+      {/* Cover image — ~70% of card height */}
+      <div className="relative min-h-0 flex-[7] overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.03]"
+          style={{ backgroundImage: `url(${coverImage})` }}
+        />
+        {post.featured && (
+          <span className="absolute left-3 top-3 z-10 rounded-full bg-[#4B97C9] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
+            Featured
+          </span>
+        )}
+      </div>
 
-      {/* Featured badge */}
-      {post.featured && (
-        <span className="absolute left-4 top-4 z-10 rounded-full bg-[#4B97C9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white shadow">
-          Featured
-        </span>
-      )}
-
-      {/* Theme-coloured info card at the bottom */}
+      {/* Title overlay — ~30% of card height */}
       <div
-        className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden px-5 py-4"
+        className="flex min-h-0 flex-[3] flex-col overflow-hidden px-4 py-2.5"
         style={{ background: cardBg, backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
       >
-        {/* Title & excerpt: fixed vertical space on every card; overflow hidden */}
-        <div className="mb-3 h-[5.75rem] shrink-0 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden">
           <h3
-            className="mb-1.5 line-clamp-2 text-[15px] font-semibold leading-snug text-white"
+            className="mb-0.5 line-clamp-2 text-[14px] font-semibold leading-snug text-white"
             style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}
           >
             {titlePlain || '\u00A0'}
           </h3>
-          <p className="line-clamp-2 text-[13px] leading-relaxed text-white/70">
+          <p className="line-clamp-1 text-[12px] leading-snug text-white/70">
             {excerptPlain || '\u00A0'}
           </p>
         </div>
 
         {/* Action bar */}
-        <div className="mt-auto flex shrink-0 items-center justify-between border-t border-white/15 pt-3">
+        <div className="mt-1 flex shrink-0 items-center justify-between border-t border-white/15 pt-2">
           <div className="flex items-center gap-1">
             {/* Like */}
             <button
