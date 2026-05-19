@@ -60,18 +60,17 @@ Often **not** lost uploads: nginx was serving `/IMAGES/` from `user-panel/IMAGES
 
 ```bash
 sudo nginx -t && sudo systemctl reload nginx
-curl -I https://thenefol.com/IMAGES/essential/nefol-icon.svg
+curl -I "https://thenefol.com/IMAGES/NEFOL%20icon.png"
 ```
 
-**If you still get `HTTP/2 404` but the response includes `Access-Control-Allow-Origin: *`:** nginx is already proxying to Node; the file is missing on disk. On the VPS:
+**If you still get `HTTP/2 404` but the response includes `Access-Control-Allow-Origin: *`:** nginx is proxying to Node, but the production `IMAGES/` tree is missing or incomplete on disk. Verify:
 
 ```bash
-ls -la /var/www/nefol/user-panel/dist/IMAGES/essential/nefol-icon.svg
-ls -la /var/www/nefol/user-panel/public/IMAGES/essential/nefol-icon.svg
-curl -I http://127.0.0.1:2000/IMAGES/essential/nefol-icon.svg
+ls -la "/var/www/nefol/user-panel/dist/IMAGES/NEFOL icon.png"
+curl -I "http://127.0.0.1:2000/IMAGES/NEFOL%20icon.png"
 ```
 
-Rebuild and redeploy `user-panel` (the icon is committed under `user-panel/public/IMAGES/essential/`), or copy that file into `dist/IMAGES/essential/` on the server until the next deploy.
+Restore your full `IMAGES/` folder on the VPS (it is not in git).
 
 On desktop: hard refresh (Ctrl+Shift+R) or clear site data for thenefol.com.
 

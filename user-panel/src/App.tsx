@@ -382,7 +382,7 @@ function AppContent() {
                       const img = e.currentTarget
                       if (img.dataset.fallbackApplied) return
                       img.dataset.fallbackApplied = '1'
-                      img.src = '/IMAGES/essential/nefol-icon.svg'
+                      img.src = '/IMAGES/NEFOL icon.png'
                     }}
                     alt="Nefol logo"
                     className="h-16 sm:h-20 w-auto object-contain md:hidden"
@@ -391,7 +391,7 @@ function AppContent() {
                   />
                   {/* Desktop Logo - NEFOL icon.png */}
                   <img
-                    src="/IMAGES/essential/nefol-icon.svg"
+                    src="/IMAGES/NEFOL icon.png"
                     alt="Nefol logo"
                     className="h-10 sm:h-12 w-auto object-contain hidden md:block"
                     loading="eager"

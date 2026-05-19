@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
 import { authorAPI } from '../services/authorAPI'
 import { getApiBase } from '../utils/apiBase'
+import { BRAND_ICON_SRC } from '../constants/brandAssets'
 import AuthorPromptModal from './AuthorPromptModal'
 import {
   getCreatorProgramSidebarEnabled,
@@ -239,7 +240,7 @@ function SidePanelNav({
               title="NEFOL Social"
             >
               <img
-                src="/IMAGES/essential/nefol-icon.svg"
+                src={BRAND_ICON_SRC}
                 alt="NEFOL"
                 className="h-7 w-auto flex-shrink-0 object-contain"
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
@@ -254,7 +255,7 @@ function SidePanelNav({
           {collapsed && (
             <a href="#/user/blog" onClick={onClose} title="NEFOL Social">
               <img
-                src="/IMAGES/essential/nefol-icon.svg"
+                src={BRAND_ICON_SRC}
                 alt="NEFOL"
                 className="h-7 w-auto object-contain"
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
@@ -357,7 +358,7 @@ function SidePanelNav({
               title="Back to NEFOL Store"
               className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1B4965] text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg"
             >
-              <img src="/IMAGES/essential/nefol-icon.svg" alt="" className="h-5 w-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              <img src={BRAND_ICON_SRC} alt="" className="h-5 w-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             </a>
           ) : (
             <a
@@ -365,7 +366,7 @@ function SidePanelNav({
               onClick={onClose}
               className="flex items-center gap-2.5 rounded-lg bg-[#1B4965] px-4 py-3 text-[15px] font-bold text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg -mx-1"
             >
-              <img src="/IMAGES/essential/nefol-icon.svg" alt="" className="h-5 w-5 flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              <img src={BRAND_ICON_SRC} alt="" className="h-5 w-5 flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
               Back to NEFOL Store
             </a>
           )}
@@ -625,7 +626,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
 
         <a href="#/user/blog" className="flex items-center gap-2">
           <img
-            src="/IMAGES/essential/nefol-icon.svg"
+            src={BRAND_ICON_SRC}
             alt="NEFOL"
             className="h-7 w-auto object-contain"
             onError={(e) => { e.currentTarget.style.display = 'none' }}

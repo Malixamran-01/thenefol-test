@@ -6,8 +6,7 @@ const RUNTIME_CACHE = 'nefol-runtime-v3'
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/favicon.svg',
-  '/IMAGES/essential/nefol-icon.svg',
+  '/IMAGES/NEFOL icon.png',
   '/light-mode-boot.js',
 ]
 

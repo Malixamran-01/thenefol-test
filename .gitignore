@@ -45,11 +45,9 @@ backend/uploads/
 # Default persistent uploads live beside backend/ (see backend/src/config/uploadsRoot.ts)
 uploads-data/
 
-# Exclude large IMAGES trees (videos, product photos)
+# Exclude large IMAGES trees (videos, product photos) — deployed on server, not in git
 /IMAGES
-user-panel/public/IMAGES/*
-!user-panel/public/IMAGES/essential/
-!user-panel/public/IMAGES/essential/**
+user-panel/public/IMAGES
 admin-panel/public/IMAGES
 
 # Exclude dist folders (build outputs)
