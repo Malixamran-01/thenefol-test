@@ -11,12 +11,11 @@ export async function seedSuperAdmin(pool: Pool): Promise<void> {
   const hashed = hashPassword(password)
 
   await pool.query(
-    `INSERT INTO staff_users (email, name, password, is_active, is_super_admin, created_at, updated_at)
-     VALUES (lower($1), $2, $3, TRUE, TRUE, NOW(), NOW())
+    `INSERT INTO staff_users (email, name, password, is_active, created_at, updated_at)
+     VALUES (lower($1), $2, $3, TRUE, NOW(), NOW())
      ON CONFLICT (email) DO UPDATE SET
        name = EXCLUDED.name,
        password = EXCLUDED.password,
-       is_super_admin = TRUE,
        is_active = TRUE,
        updated_at = NOW()`,
     [email, name, hashed]

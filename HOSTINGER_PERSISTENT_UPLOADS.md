@@ -63,6 +63,16 @@ sudo nginx -t && sudo systemctl reload nginx
 curl -I https://thenefol.com/IMAGES/essential/nefol-icon.svg
 ```
 
+**If you still get `HTTP/2 404` but the response includes `Access-Control-Allow-Origin: *`:** nginx is already proxying to Node; the file is missing on disk. On the VPS:
+
+```bash
+ls -la /var/www/nefol/user-panel/dist/IMAGES/essential/nefol-icon.svg
+ls -la /var/www/nefol/user-panel/public/IMAGES/essential/nefol-icon.svg
+curl -I http://127.0.0.1:2000/IMAGES/essential/nefol-icon.svg
+```
+
+Rebuild and redeploy `user-panel` (the icon is committed under `user-panel/public/IMAGES/essential/`), or copy that file into `dist/IMAGES/essential/` on the server until the next deploy.
+
 On desktop: hard refresh (Ctrl+Shift+R) or clear site data for thenefol.com.
 
 ## If the VPS was fully rebuilt

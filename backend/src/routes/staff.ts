@@ -4,6 +4,10 @@ import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import crypto from 'crypto'
 import { hashPassword, verifyPassword } from '../utils/staffPassword'
 import {
+  isEnvSuperAdminEmail,
+  verifyEnvSuperAdminPassword,
+} from '../config/superAdmin'
+import {
   ALL_RBAC_SEED_CODES,
   BUSINESS_PERMISSION_CODES,
   DIVISION_BUNDLES,
@@ -129,7 +133,7 @@ function toStaffResponse(
 ) {
   const roles = toStringArray(row.roles) || []
   const permissions = toStringArray(row.permissions) || []
-  const sa = isSuperAdmin ?? !!(row as { is_super_admin?: boolean }).is_super_admin
+  const sa = isSuperAdmin ?? isEnvSuperAdminEmail(row.email)
   return {
     id: row.id,
     name: row.name,
@@ -154,7 +158,6 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
         su.name,
         su.email,
         su.is_active,
-        coalesce(su.is_super_admin, false) as is_super_admin,
         coalesce(json_agg(distinct r.name) filter (where r.id is not null), '[]'::json) as roles,
         coalesce(json_agg(distinct p.code) filter (where p.id is not null), '[]'::json) as permissions,
         coalesce(json_agg(distinct slp.layout_page_slug) filter (where slp.id is not null), '[]'::json) as layout_permissions
@@ -181,7 +184,7 @@ export async function getStaffContextByToken(pool: Pool, token: string): Promise
   const permissions = toStringArray(row.permissions)
   const layoutPermissions = toStringArray(row.layout_permissions)
   const pagePermissions = await resolveStaffPagePermissions(pool, row.staff_id)
-  const isSuperAdmin = !!row.is_super_admin
+  const isSuperAdmin = isEnvSuperAdminEmail(row.email)
 
   if (!isSuperAdmin && roles.length === 0) {
     return null
@@ -273,7 +276,11 @@ export async function staffLogin(pool: Pool, req: Request, res: Response) {
       return sendError(res, 401, 'Complete your account setup using the invitation link emailed to you')
     }
 
-    const passwordOk = verifyPassword(staff.password, String(password))
+    const isSuperAdmin = isEnvSuperAdminEmail(staff.email)
+    const passwordOk = isSuperAdmin
+      ? verifyEnvSuperAdminPassword(String(password)) ||
+        verifyPassword(staff.password, String(password))
+      : verifyPassword(staff.password, String(password))
     if (!passwordOk) {
       await pool.query(
         `update staff_users set failed_login_attempts = failed_login_attempts + 1, last_failed_login_at = now(), updated_at = now() where id = $1`,
@@ -284,7 +291,6 @@ export async function staffLogin(pool: Pool, req: Request, res: Response) {
     }
 
     const rolesArr = toStringArray(staff.roles)
-    const isSuperAdmin = !!(staff as { is_super_admin?: boolean }).is_super_admin
     if (!isSuperAdmin && rolesArr.length === 0) {
       return sendError(
         res,
@@ -406,11 +412,9 @@ export async function createStaff(pool: Pool, req: Request, res: Response) {
   }
 }
 
-async function loadStaffFlags(pool: Pool, staffId: number): Promise<{ is_super_admin: boolean } | null> {
-  const { rows } = await pool.query(`SELECT coalesce(is_super_admin, false) AS is_super_admin FROM staff_users WHERE id = $1`, [
-    staffId,
-  ])
-  return rows[0] || null
+async function isStaffEnvSuperAdmin(pool: Pool, staffId: number): Promise<boolean> {
+  const { rows } = await pool.query(`SELECT email FROM staff_users WHERE id = $1`, [staffId])
+  return rows[0] ? isEnvSuperAdminEmail(rows[0].email) : false
 }
 
 export async function assignRoleToStaff(pool: Pool, req: Request, res: Response) {
@@ -418,8 +422,7 @@ export async function assignRoleToStaff(pool: Pool, req: Request, res: Response)
     const { staffId, roleId } = req.body || {}
     const validationError = validateRequired({ staffId, roleId }, ['staffId', 'roleId'])
     if (validationError) return sendError(res, 400, validationError)
-    const flags = await loadStaffFlags(pool, Number(staffId))
-    if (flags?.is_super_admin) {
+    if (await isStaffEnvSuperAdmin(pool, Number(staffId))) {
       return sendError(res, 403, 'Super admin roles cannot be changed')
     }
     await pool.query(
@@ -443,7 +446,11 @@ export async function listStaff(pool: Pool, req: Request, res: Response) {
        group by su.id
        order by su.created_at desc`
     )
-    sendSuccess(res, rows)
+    const withSuperAdminFlag = rows.map((row: { email: string }) => ({
+      ...row,
+      is_super_admin: isEnvSuperAdminEmail(row.email),
+    }))
+    sendSuccess(res, withSuperAdminFlag)
   } catch (err) {
     sendError(res, 500, 'Failed to list staff users', err)
   }
@@ -537,8 +544,9 @@ export async function staffMe(pool: Pool, req: Request, res: Response) {
       return sendError(res, 404, 'Staff account not found')
     }
     const pagePermissions = await resolveStaffPagePermissions(pool, staffId)
-    const isSuperAdmin = !!(staff as { is_super_admin?: boolean }).is_super_admin
-    sendSuccess(res, { user: toStaffResponse(staff, pagePermissions, isSuperAdmin) })
+    sendSuccess(res, {
+      user: toStaffResponse(staff, pagePermissions, isEnvSuperAdminEmail(staff.email)),
+    })
   } catch (err) {
     sendError(res, 500, 'Failed to fetch admin profile', err)
   }
@@ -568,6 +576,14 @@ export async function staffChangePassword(pool: Pool, req: Request, res: Respons
     const staff = await fetchStaffWithAccess(pool, 'id', Number(staffId))
     if (!staff) {
       return sendError(res, 404, 'Staff account not found')
+    }
+
+    if (isEnvSuperAdminEmail(staff.email)) {
+      return sendError(
+        res,
+        403,
+        'Super admin password is managed via SUPER_ADMIN_PASSWORD in server .env'
+      )
     }
 
     const validOldPassword = verifyPassword(staff.password, String(currentPassword))
@@ -603,8 +619,7 @@ export async function resetPassword(pool: Pool, req: Request, res: Response) {
     const { staffId, newPassword } = req.body || {}
     const validationError = validateRequired({ staffId, newPassword }, ['staffId', 'newPassword'])
     if (validationError) return sendError(res, 400, validationError)
-    const flags = await loadStaffFlags(pool, Number(staffId))
-    if (flags?.is_super_admin) {
+    if (await isStaffEnvSuperAdmin(pool, Number(staffId))) {
       return sendError(res, 403, 'Super admin password cannot be reset via this endpoint')
     }
     const hashed = hashPassword(newPassword)
@@ -622,8 +637,7 @@ export async function disableStaff(pool: Pool, req: Request, res: Response) {
     const { staffId } = req.body || {}
     const validationError = validateRequired({ staffId }, ['staffId'])
     if (validationError) return sendError(res, 400, validationError)
-    const flags = await loadStaffFlags(pool, Number(staffId))
-    if (flags?.is_super_admin) {
+    if (await isStaffEnvSuperAdmin(pool, Number(staffId))) {
       return sendError(res, 403, 'Super admin account cannot be disabled')
     }
     const { rows } = await pool.query(`update staff_users set is_active = false, updated_at = now() where id = $1 returning id`, [staffId])
@@ -783,8 +797,7 @@ export async function assignLayoutPermissions(pool: Pool, req: Request, res: Res
     const validationError = validateRequired({ staffId }, ['staffId'])
     if (validationError) return sendError(res, 400, validationError)
 
-    const flags = await loadStaffFlags(pool, Number(staffId))
-    if (flags?.is_super_admin) {
+    if (await isStaffEnvSuperAdmin(pool, Number(staffId))) {
       return sendError(res, 403, 'Super admin layout permissions cannot be changed')
     }
 
@@ -954,8 +967,7 @@ export async function assignPagePermissions(pool: Pool, req: Request, res: Respo
     const validationError = validateRequired({ staffId }, ['staffId'])
     if (validationError) return sendError(res, 400, validationError)
 
-    const flags = await loadStaffFlags(pool, Number(staffId))
-    if (flags?.is_super_admin) {
+    if (await isStaffEnvSuperAdmin(pool, Number(staffId))) {
       return sendError(res, 403, 'Super admin page permissions cannot be changed')
     }
 

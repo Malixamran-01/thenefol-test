@@ -47,7 +47,9 @@ uploads-data/
 
 # Exclude large IMAGES trees (videos, product photos)
 /IMAGES
-user-panel/public/IMAGES
+user-panel/public/IMAGES/*
+!user-panel/public/IMAGES/essential/
+!user-panel/public/IMAGES/essential/**
 admin-panel/public/IMAGES
 
 # Exclude dist folders (build outputs)

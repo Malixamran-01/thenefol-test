@@ -6,6 +6,36 @@ export const SUPER_ADMIN_CONFIG = {
   name: process.env.SUPER_ADMIN_NAME ?? 'Super Admin',
 }
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
+/** Super admin is defined only by .env — not staff_users.is_super_admin */
+export function isEnvSuperAdminConfigured(): boolean {
+  return !!(SUPER_ADMIN_CONFIG.email && SUPER_ADMIN_CONFIG.password)
+}
+
+export function isEnvSuperAdminEmail(email: string): boolean {
+  if (!isEnvSuperAdminConfigured()) return false
+  return normalizeEmail(email) === normalizeEmail(SUPER_ADMIN_CONFIG.email)
+}
+
+export function verifyEnvSuperAdminPassword(plain: string): boolean {
+  const expected = SUPER_ADMIN_CONFIG.password
+  if (!expected) return false
+  try {
+    const a = Buffer.from(plain, 'utf8')
+    const b = Buffer.from(expected, 'utf8')
+    if (a.length !== b.length) {
+      crypto.timingSafeEqual(a, a)
+      return false
+    }
+    return crypto.timingSafeEqual(a, b)
+  } catch {
+    return false
+  }
+}
+
 export const INVITATION_EXPIRY_HOURS = Number(process.env.INVITATION_EXPIRY_HOURS ?? 48)
 
 /** Public origin of the admin SPA (no trailing slash), e.g. https://thenefol.com */
