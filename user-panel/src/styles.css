@@ -1014,6 +1014,23 @@ picture.hidden {
   display: none !important;
 }
 
+/* Navbar logo — always NEFOL wide.png; cap size so icon fallback cannot blow up layout */
+img.brand-nav-logo {
+  display: block;
+  width: auto;
+  max-width: min(200px, 55vw);
+  max-height: 5rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  img.brand-nav-logo {
+    max-width: 220px;
+    max-height: 3rem;
+  }
+}
+
 img.img-fill,
 img[class*="object-cover"],
 img[class*="h-full"] {

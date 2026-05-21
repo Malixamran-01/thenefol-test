@@ -376,22 +376,18 @@ function AppContent() {
                   className="flex items-center justify-center md:justify-start"
                   aria-label="Go to homepage"
                 >
-                  {/* Single logo — two <img> tags broke: global CSS forces img{display:block} over Tailwind hidden */}
-                  <picture>
-                    <source media="(min-width: 768px)" srcSet={BRAND_ICON_SRC} />
-                    <img
-                      src={BRAND_LOGO_WIDE_SRC}
-                      onError={(e) => {
-                        const img = e.currentTarget
-                        if (img.dataset.fallbackApplied) return
-                        img.dataset.fallbackApplied = '1'
-                        img.src = BRAND_ICON_SRC
-                      }}
-                      alt="Nefol logo"
-                      className="h-16 w-auto max-w-[200px] object-contain sm:h-20 md:h-10 md:max-w-none lg:h-12"
-                      loading="eager"
-                    />
-                  </picture>
+                  <img
+                    src={BRAND_LOGO_WIDE_SRC}
+                    onError={(e) => {
+                      const img = e.currentTarget
+                      if (img.dataset.fallbackApplied) return
+                      img.dataset.fallbackApplied = '1'
+                      img.src = BRAND_ICON_SRC
+                    }}
+                    alt="Nefol logo"
+                    className="brand-nav-logo h-16 w-auto object-contain sm:h-20 md:h-10 lg:h-12"
+                    loading="eager"
+                  />
                 </a>
               </div>
               
