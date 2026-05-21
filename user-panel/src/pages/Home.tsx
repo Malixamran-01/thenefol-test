@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { Star, ShoppingCart, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import SocialSneakPeek from '../components/SocialSneakPeek'
+import JustLandedProductCard from '../components/JustLandedProductCard'
 import { api } from '../services/api'
 import SubscriptionModal from '../components/SubscriptionModal'
 import { useCart } from '../contexts/CartContext'
 import { useProducts } from '../hooks/useProducts'
-import PricingDisplay from '../components/PricingDisplay'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
-import VerifiedBadge from '../components/VerifiedBadge'
 import { getSessionId } from '../utils/session'
 import { getApiBase, resolveMediaUrl } from '../utils/apiBase'
 import { createImageErrorHandler } from '../utils/imageUtils'
-import WishlistButton from '../components/WishlistButton'
-
 export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
   const { addItem } = useCart()
@@ -41,6 +38,8 @@ export default function Home() {
     }
   }, [])
   const [justLandedIndex, setJustLandedIndex] = useState(0)
+  const [justLandedSlide, setJustLandedSlide] = useState(0)
+  const justLandedCarouselRef = useRef<HTMLDivElement>(null)
   
   // Get all product slugs for batch fetching review stats
   const productSlugs = useMemo(() => {
@@ -442,6 +441,28 @@ export default function Home() {
     setJustLandedIndex(prev => Math.min(maxIndex, prev + 1))
   }
 
+  const mobileJustLandedProducts = allFeaturedProducts
+
+  const updateJustLandedSlide = useCallback(() => {
+    const el = justLandedCarouselRef.current
+    if (!el || el.children.length === 0) return
+    const slide = el.children[0] as HTMLElement
+    const gap = 16
+    const step = slide.offsetWidth + gap
+    if (step <= 0) return
+    const index = Math.round(el.scrollLeft / step)
+    setJustLandedSlide(Math.min(Math.max(0, index), el.children.length - 1))
+  }, [])
+
+  const scrollJustLandedTo = (index: number) => {
+    const el = justLandedCarouselRef.current
+    if (!el || el.children.length === 0) return
+    const slide = el.children[0] as HTMLElement
+    const gap = 16
+    el.scrollTo({ left: index * (slide.offsetWidth + gap), behavior: 'smooth' })
+    setJustLandedSlide(index)
+  }
+
   return (
     <main className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
@@ -642,197 +663,102 @@ export default function Home() {
             <div className="text-center py-12">
               <p className="text-gray-500">Loading products...</p>
             </div>
-          ) : featuredProducts.length > 0 ? (
-            <div className="relative">
-              {/* Navigation Buttons */}
-              {allFeaturedProducts.length > productsPerPage && (
-                <>
-                  {/* Previous Button */}
-                  <button
-                    onClick={handlePrevious}
-                    disabled={!canGoPrevious}
-                    className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 sm:-translate-x-8 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      canGoPrevious 
-                        ? 'bg-white shadow-lg hover:shadow-xl hover:scale-110 cursor-pointer' 
-                        : 'bg-gray-200 cursor-not-allowed opacity-50'
-                    }`}
-                    style={{
-                      backgroundColor: canGoPrevious ? '#fff' : '#e5e7eb',
-                      color: canGoPrevious ? '#1a1a1a' : '#9ca3af'
-                    }}
-                    aria-label="Previous products"
-                  >
-                    <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
-                  
-                  {/* Next Button */}
-                  <button
-                    onClick={handleNext}
-                    disabled={!canGoNext}
-                    className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 sm:translate-x-8 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      canGoNext 
-                        ? 'bg-white shadow-lg hover:shadow-xl hover:scale-110 cursor-pointer' 
-                        : 'bg-gray-200 cursor-not-allowed opacity-50'
-                    }`}
-                    style={{
-                      backgroundColor: canGoNext ? '#fff' : '#e5e7eb',
-                      color: canGoNext ? '#1a1a1a' : '#9ca3af'
-                    }}
-                    aria-label="Next products"
-                  >
-                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
-                </>
-              )}
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-                {featuredProducts.map((product, index) => {
-                const slug = product.slug || ''
-                // Use database stats if available, otherwise fallback to static
-                const dbStats = reviewStats[slug]
-                const rating = dbStats?.average_rating ?? 0
-                const reviewCount = dbStats?.review_count ?? 0
-                const hasVerified = (dbStats?.verified_count ?? 0) > 0
-                // Calculate global index in the full product list
-                const globalIndex = currentIndex * productsPerPage + index
-                const isBestSeller = globalIndex < 4 // Only first 4 products overall are best sellers
-                const isSoldOut = false // You can add logic to check stock
-                
-                return (
-                  <div
-                    key={product.slug || index}
-                    className="group relative bg-white"
-                  >
-                    {/* Product Image - Clickable Link */}
-                    <a href={`#/user/product/${product.slug}`} className="block">
-                      <div className="relative overflow-hidden mb-4 rounded-xl" style={{ aspectRatio: '1 / 1' }}>
-                        {product.listImage ? (
-                          <img
-                            src={product.listImage}
-                            alt={product.title}
-                            className="img-fill w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 rounded-xl"
-                            loading={index < 4 ? 'eager' : 'lazy'}
-                            onError={createImageErrorHandler(product.listImage)}
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                            <span className="text-gray-400">No Image</span>
-                          </div>
-                        )}
-                        
-                        {/* Best Seller Badge */}
-                        {isBestSeller && (
-                          <div 
-                            className="absolute top-2 left-2 text-white text-xs font-medium px-2 py-1"
-                            style={{ backgroundColor: 'var(--arctic-blue-primary-dark)' }}
-                          >
-                            Best Seller
-                          </div>
-                        )}
-                        
-                        {/* Sold Out Badge */}
-                        {isSoldOut && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <span className="bg-white text-black px-4 py-2 text-sm font-medium">
-                              Sold out
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </a>
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                                         <WishlistButton
-                      productId={product.id!}
-                      className="absolute top-4 right-4 z-50 opacity-0 group-hover:opacity-100"
-                    />
-                    
-                                        </div>
-                    
-                    {/* Product Info */}
-                    <div className="space-y-2">
-                      {/* Product Title - Clickable Link */}
-                      <a href={`#/user/product/${product.slug}`}>
-                        <h3 className="text-lg sm:text-xl font-semibold line-clamp-2 overflow-hidden tracking-wide hover:opacity-70 transition-opacity mb-1" style={{color: '#1a1a1a', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
-                          {product.title}
-                        </h3>
-                      </a>
-                      
-                      {/* Subtitle */}
-                      {(() => {
-                        const csvMatch = csvProducts.find((csv: any) => {
-                          const csvSlug = csv['Slug'] || csv['Product Name']?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
-                          return csvSlug === product.slug
-                        })
-                        const subtitle = csvMatch?.['Subtitle / Tagline'] || 
-                                         (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
-                                         (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
-                        return subtitle ? (
-                          <p className="text-sm text-gray-600 mb-1 line-clamp-2" style={{color: '#666', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
-                            {subtitle}
-                          </p>
-                        ) : null
-                      })()}
-                      
-                      {/* Rating */}
-                      {rating > 0 && (
-                        <div className="flex items-center gap-1 mb-2">
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => {
-                              const filled = i < Math.round(rating)
-                              return (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                                />
-                              )
-                            })}
-                          </div>
-                          <span className="text-sm text-gray-600 ml-1">
-                            {rating.toFixed(2)} ({reviewCount})
-                          </span>
-                          {hasVerified && (
-                            <VerifiedBadge size="sm" className="ml-1.5" />
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Price */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <PricingDisplay product={product} />
-                      </div>
-                      
-                      {/* View Button */}
-                      {!isSoldOut && (
-                        <a
-                          href={`#/user/product/${product.slug}`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                          }}
-                          className="w-full mt-4 py-3 px-4 text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase flex items-center justify-center gap-2 rounded-xl whitespace-nowrap"
-                          style={{ 
-                            backgroundColor: 'rgb(75,151,201)',
-                            color: '#FFFFFF',
-                            letterSpacing: '0.15em',
-                            minHeight: '44px',
-                            textDecoration: 'none'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
-                          }}
-                        >
-                          <Eye className="w-4 h-4 flex-shrink-0" />
-                          <span>View</span>
-                        </a>
-                      )}
+          ) : allFeaturedProducts.length > 0 ? (
+            <>
+              {/* Mobile: one product per swipe (no side arrows) */}
+              <div className="md:hidden">
+                <div
+                  ref={justLandedCarouselRef}
+                  className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  aria-label="What's Just Landed products"
+                  onScroll={updateJustLandedSlide}
+                >
+                  {mobileJustLandedProducts.map((product, index) => (
+                    <div
+                      key={product.slug || index}
+                      className="w-[min(88vw,360px)] flex-shrink-0 snap-center snap-always"
+                    >
+                      <JustLandedProductCard
+                        product={product}
+                        globalIndex={index}
+                        csvProducts={csvProducts}
+                        reviewStats={reviewStats}
+                        eagerImage={index === 0}
+                      />
                     </div>
+                  ))}
+                </div>
+                {mobileJustLandedProducts.length > 1 && (
+                  <div className="mt-3 flex justify-center gap-1.5" role="tablist" aria-label="Product slides">
+                    {mobileJustLandedProducts.map((product, i) => (
+                      <button
+                        key={product.slug || i}
+                        type="button"
+                        role="tab"
+                        aria-selected={i === justLandedSlide}
+                        aria-label={`Show product ${i + 1} of ${mobileJustLandedProducts.length}`}
+                        onClick={() => scrollJustLandedTo(i)}
+                        className={`h-1.5 rounded-full transition-all duration-200 ${
+                          i === justLandedSlide ? 'w-6 bg-[#1B4965]' : 'w-1.5 bg-[#DCE6EE]'
+                        }`}
+                      />
+                    ))}
                   </div>
-                )
-              })}
+                )}
               </div>
-            </div>
+
+              {/* Tablet/desktop: 4-column pages with side arrows */}
+              <div className="relative hidden md:block">
+                {allFeaturedProducts.length > productsPerPage && (
+                  <>
+                    <button
+                      onClick={handlePrevious}
+                      disabled={!canGoPrevious}
+                      className={`absolute left-0 top-1/2 z-10 flex h-12 w-12 -translate-x-8 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-300 ${
+                        canGoPrevious
+                          ? 'cursor-pointer bg-white shadow-lg hover:scale-110 hover:shadow-xl'
+                          : 'cursor-not-allowed bg-gray-200 opacity-50'
+                      }`}
+                      style={{
+                        backgroundColor: canGoPrevious ? '#fff' : '#e5e7eb',
+                        color: canGoPrevious ? '#1a1a1a' : '#9ca3af',
+                      }}
+                      aria-label="Previous products"
+                    >
+                      <ChevronLeft className="h-6 w-6" />
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      disabled={!canGoNext}
+                      className={`absolute right-0 top-1/2 z-10 flex h-12 w-12 translate-x-8 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-300 ${
+                        canGoNext
+                          ? 'cursor-pointer bg-white shadow-lg hover:scale-110 hover:shadow-xl'
+                          : 'cursor-not-allowed bg-gray-200 opacity-50'
+                      }`}
+                      style={{
+                        backgroundColor: canGoNext ? '#fff' : '#e5e7eb',
+                        color: canGoNext ? '#1a1a1a' : '#9ca3af',
+                      }}
+                      aria-label="Next products"
+                    >
+                      <ChevronRight className="h-6 w-6" />
+                    </button>
+                  </>
+                )}
+                <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
+                  {featuredProducts.map((product, index) => (
+                    <JustLandedProductCard
+                      key={product.slug || index}
+                      product={product}
+                      globalIndex={currentIndex * productsPerPage + index}
+                      csvProducts={csvProducts}
+                      reviewStats={reviewStats}
+                      eagerImage={index < 4}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
           ) : (
             <div className="text-center py-12">
               <p className="text-gray-500">No products available</p>
