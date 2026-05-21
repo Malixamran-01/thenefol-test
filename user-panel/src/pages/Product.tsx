@@ -19,6 +19,7 @@ import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import { pixelEvents, formatProductData } from '../utils/metaPixel'
 import { calculatePurchaseCoins } from '../utils/points'
 import { safeElementScrollTo } from '../utils/safeScroll'
+import { INGREDIENT_IMAGE_MAP } from '../constants/ingredientImageMap'
 
 // CSV data cache - shared across all product page instances
 let csvDataCache: any[] | null = null
@@ -1915,75 +1916,17 @@ export default function ProductPage() {
             const getIngredientImage = (ingredientName: string): string | null => {
               let normalized = ingredientName.trim().toLowerCase()
               normalized = normalized.replace(/\([^)]*\)/g, '').trim()
-              
-              const ingredientMap: { [key: string]: string } = {
-                'blue tea': '/IMAGES/blue pea.webp',
-                'aprajita': '/IMAGES/blue pea.webp',
-                'blue pea': '/IMAGES/blue pea.webp',
-                'charcoal': '/IMAGES/charcoal.webp',
-                'activated charcoal': '/IMAGES/charcoal.webp',
-                'yuja': '/IMAGES/yuja.webp',
-                'citron': '/IMAGES/yuja.webp',
-                'papaya': '/IMAGES/papaya.webp',
-                'shea butter': '/IMAGES/shea butter.webp',
-                'coconut oil': '/IMAGES/coconut-oil.webp',
-                'coconut': '/IMAGES/coconut-oil.webp',
-                'mulberry': '/IMAGES/mulberry.webp',
-                'grapeseed': '/IMAGES/grapseed.webp',
-                'grape seed': '/IMAGES/grapseed.webp',
-                'aha & bha': '/IMAGES/AHA & BHA.webp',
-                'aha': '/IMAGES/AHA & BHA.webp',
-                'bha': '/IMAGES/AHA & BHA.webp',
-                'alpha hydroxy acid': '/IMAGES/AHA & BHA.webp',
-                'beta hydroxy acid': '/IMAGES/AHA & BHA.webp',
-                'amla': '/IMAGES/Amla.webp',
-                'indian gooseberry': '/IMAGES/Amla.webp',
-                'argan oil': '/IMAGES/Argan Oils.webp',
-                'argan oils': '/IMAGES/Argan Oils.webp',
-                'biotin': '/IMAGES/Biotin.webp',
-                'blueberry': '/IMAGES/Blueberry.webp',
-                'brahmi': '/IMAGES/Brahmi.webp',
-                'flaxseed': '/IMAGES/Flaxseed.webp',
-                'flax seed': '/IMAGES/Flaxseed.webp',
-                'green tea': '/IMAGES/Green Tea.webp',
-                'juniper berry': '/IMAGES/Juniper Berry.webp',
-                'kakadu plum': '/IMAGES/Kakadu Plum.webp',
-                'kale leaf': '/IMAGES/Kale Leaf.webp',
-                'kale': '/IMAGES/Kale Leaf.webp',
-                'kaolin clay': '/IMAGES/Kaolin Clay.webp',
-                'kaolin': '/IMAGES/Kaolin Clay.webp',
-                'mustard': '/IMAGES/Mustard.webp',
-                'olive squalane': '/IMAGES/Olive Squalane.webp',
-                'squalane': '/IMAGES/Olive Squalane.webp',
-                'palmetto': '/IMAGES/Palmetto.webp',
-                'saw palmetto': '/IMAGES/Palmetto.webp',
-                'quinoa': '/IMAGES/Quinoa.webp',
-                'rice powder': '/IMAGES/Rice Powder.webp',
-                'saffron': '/IMAGES/Saffron.webp',
-                'sesame': '/IMAGES/Sesame.webp',
-                'sesame seed': '/IMAGES/Sesame.webp',
-                'tapioca starch': '/IMAGES/Tapioca Starch.webp',
-                'tapioca': '/IMAGES/Tapioca Starch.webp',
-                'tea tree': '/IMAGES/Tea Tree.webp',
-                'tea tree oil': '/IMAGES/Tea Tree.webp',
-                'vitamin c & b5': '/IMAGES/Vitamin C & B5.webp',
-                'vitamin c': '/IMAGES/Vitamin C & B5.webp',
-                'vitamin b5': '/IMAGES/Vitamin C & B5.webp',
-                'pantothenic acid': '/IMAGES/Vitamin C & B5.webp',
-                'white tea': '/IMAGES/white tea.webp',
-                'yellow dragon': '/IMAGES/Yellow Dragon.webp'
+
+              if (INGREDIENT_IMAGE_MAP[normalized]) {
+                return toAbs(INGREDIENT_IMAGE_MAP[normalized])
               }
-              
-              if (ingredientMap[normalized]) {
-                return toAbs(ingredientMap[normalized])
-              }
-              
-              for (const [key, image] of Object.entries(ingredientMap)) {
+
+              for (const [key, image] of Object.entries(INGREDIENT_IMAGE_MAP)) {
                 if (normalized.includes(key) || key.includes(normalized)) {
                   return toAbs(image)
                 }
               }
-              
+
               return null
             }
             
@@ -2133,89 +2076,26 @@ export default function ProductPage() {
             
             // Map ingredient names to their images
             const getIngredientImage = (ingredientName: string): string | null => {
-              // Remove parentheses and their content, normalize
               let normalized = ingredientName.trim().toLowerCase()
-              // Remove parentheses content like "(Blue Tea)" but keep the words
               normalized = normalized.replace(/\([^)]*\)/g, '').trim()
-              
-              const ingredientMap: { [key: string]: string } = {
-                'blue tea': '/IMAGES/blue pea.webp',
-                'aprajita': '/IMAGES/blue pea.webp',
-                'blue pea': '/IMAGES/blue pea.webp',
-                'charcoal': '/IMAGES/charcoal.webp',
-                'activated charcoal': '/IMAGES/charcoal.webp',
-                'yuja': '/IMAGES/yuja.webp',
-                'citron': '/IMAGES/yuja.webp',
-                'papaya': '/IMAGES/papaya.webp',
-                'shea butter': '/IMAGES/shea butter.webp',
-                'coconut oil': '/IMAGES/coconut-oil.webp',
-                'coconut': '/IMAGES/coconut-oil.webp',
-                'mulberry': '/IMAGES/mulberry.webp',
-                'grapeseed': '/IMAGES/grapseed.webp',
-                'grape seed': '/IMAGES/grapseed.webp',
-                'aha & bha': '/IMAGES/AHA & BHA.webp',
-                'aha': '/IMAGES/AHA & BHA.webp',
-                'bha': '/IMAGES/AHA & BHA.webp',
-                'alpha hydroxy acid': '/IMAGES/AHA & BHA.webp',
-                'beta hydroxy acid': '/IMAGES/AHA & BHA.webp',
-                'amla': '/IMAGES/Amla.webp',
-                'indian gooseberry': '/IMAGES/Amla.webp',
-                'argan oil': '/IMAGES/Argan Oils.webp',
-                'argan oils': '/IMAGES/Argan Oils.webp',
-                'biotin': '/IMAGES/Biotin.webp',
-                'blueberry': '/IMAGES/Blueberry.webp',
-                'brahmi': '/IMAGES/Brahmi.webp',
-                'flaxseed': '/IMAGES/Flaxseed.webp',
-                'flax seed': '/IMAGES/Flaxseed.webp',
-                'green tea': '/IMAGES/Green Tea.webp',
-                'juniper berry': '/IMAGES/Juniper Berry.webp',
-                'kakadu plum': '/IMAGES/Kakadu Plum.webp',
-                'kale leaf': '/IMAGES/Kale Leaf.webp',
-                'kale': '/IMAGES/Kale Leaf.webp',
-                'kaolin clay': '/IMAGES/Kaolin Clay.webp',
-                'kaolin': '/IMAGES/Kaolin Clay.webp',
-                'mustard': '/IMAGES/Mustard.webp',
-                'olive squalane': '/IMAGES/Olive Squalane.webp',
-                'squalane': '/IMAGES/Olive Squalane.webp',
-                'palmetto': '/IMAGES/Palmetto.webp',
-                'saw palmetto': '/IMAGES/Palmetto.webp',
-                'quinoa': '/IMAGES/Quinoa.webp',
-                'rice powder': '/IMAGES/Rice Powder.webp',
-                'saffron': '/IMAGES/Saffron.webp',
-                'sesame': '/IMAGES/Sesame.webp',
-                'sesame seed': '/IMAGES/Sesame.webp',
-                'tapioca starch': '/IMAGES/Tapioca Starch.webp',
-                'tapioca': '/IMAGES/Tapioca Starch.webp',
-                'tea tree': '/IMAGES/Tea Tree.webp',
-                'tea tree oil': '/IMAGES/Tea Tree.webp',
-                'vitamin c & b5': '/IMAGES/Vitamin C & B5.webp',
-                'vitamin c': '/IMAGES/Vitamin C & B5.webp',
-                'vitamin b5': '/IMAGES/Vitamin C & B5.webp',
-                'pantothenic acid': '/IMAGES/Vitamin C & B5.webp',
-                'white tea': '/IMAGES/white tea.webp',
-                'yellow dragon': '/IMAGES/Yellow Dragon.webp'
+
+              if (INGREDIENT_IMAGE_MAP[normalized]) {
+                return toAbs(INGREDIENT_IMAGE_MAP[normalized])
               }
-              
-              // Try exact match first
-              if (ingredientMap[normalized]) {
-                return toAbs(ingredientMap[normalized])
-              }
-              
-              // Try partial match - check if any key is contained in normalized name
-              for (const [key, image] of Object.entries(ingredientMap)) {
+
+              for (const [key, image] of Object.entries(INGREDIENT_IMAGE_MAP)) {
                 if (normalized.includes(key) || key.includes(normalized)) {
                   return toAbs(image)
                 }
               }
-              
-              // Also check the original name with parentheses for "Aprajita (Blue Tea)" type entries
+
               const originalNormalized = ingredientName.trim().toLowerCase()
-              for (const [key, image] of Object.entries(ingredientMap)) {
+              for (const [key, image] of Object.entries(INGREDIENT_IMAGE_MAP)) {
                 if (originalNormalized.includes(key)) {
                   return toAbs(image)
                 }
               }
-              
+
               return null
             }
             

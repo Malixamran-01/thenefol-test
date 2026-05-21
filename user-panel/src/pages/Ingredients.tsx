@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react'
+import { additionalIngredients, additionalIngredientMeta } from '../data/additionalIngredients'
 import { getOptimizedImage } from '../utils/imageOptimizer'
 import { safeElementScrollIntoView } from '../utils/safeScroll'
 
@@ -3092,8 +3093,8 @@ Olive squalane stands as one of the most versatile and skin-compatible moisturiz
   },
   {
     id: 'palmetto',
-    name: 'Palmetto',
-    image: '/IMAGES/Palmetto.webp',
+    name: 'Saw Palmetto',
+    image: '/IMAGES/saw palmetto.webp',
     description: `Saw palmetto (Serenoa repens) is a small palm tree native to the southeastern United States. While primarily known for its benefits in supporting prostate health and hair growth, saw palmetto also offers valuable properties for skincare, particularly for acne-prone and oily skin.
 
 **Hormonal Balance**
@@ -4570,7 +4571,8 @@ Yellow Dragon cultivation has various considerations:
 
 **CONCLUSION**
 Yellow Dragon stands as a vibrant, nutrient-rich ingredient for skincare, offering exceptional antioxidant protection and hydration benefits. Its unique combination of betalains, vitamin C, and other antioxidants makes it valuable for brightening skin, protecting against oxidative stress, and maintaining healthy, hydrated skin. From its traditional use in tropical regions to modern applications in skincare, yellow dragon fruit represents a natural, effective ingredient for comprehensive skin health. Its ability to provide antioxidant protection, support hydration, and soothe skin makes it particularly valuable for maintaining healthy, radiant skin. When used in properly formulated products, yellow dragon fruit offers natural, effective solutions for brightening skin, protecting against environmental damage, and maintaining optimal skin hydration. Its excellent safety profile, gentle nature, and proven benefits make it a valuable addition to any skincare routine focused on hydration, brightening, and protection.`
-  }
+  },
+  ...additionalIngredients,
 ]
 
 
@@ -4792,6 +4794,7 @@ const INGREDIENT_META: Record<string, IngredientMeta> = {
     bars: [['Antioxidant', 88], ['Brightening', 82], ['Hydration', 90], ['Anti-inflammatory', 78]],
     stats: [['Betalains', 'Unique pigments'], ['Vit C', 'High content'], ['Tropical', 'Superfruit']],
   },
+  ...additionalIngredientMeta,
 }
 
 const FILTERS = ['all', 'antioxidant', 'brightening', 'hydrating', 'cleansing', 'soothing', 'exfoliating', 'strengthening', 'moisturizing']
