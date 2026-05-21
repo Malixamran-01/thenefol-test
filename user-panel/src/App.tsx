@@ -20,6 +20,7 @@ import SwipeNavigation from './components/SwipeNavigation'
 import JoinUsModal from './components/JoinUsModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import { getApiBase } from './utils/apiBase'
+import { BRAND_ICON_SRC, BRAND_LOGO_WIDE_SRC } from './constants/brandAssets'
 import {
   CREATOR_PROGRAM_BADGES_REFRESH,
 } from './contexts/CreatorProgramBadgeContext'
@@ -375,27 +376,22 @@ function AppContent() {
                   className="flex items-center justify-center md:justify-start"
                   aria-label="Go to homepage"
                 >
-                  {/* Mobile Logo - NEFOL wide.png */}
-                  <img
-                    src="/IMAGES/NEFOL wide.png"
-                    onError={(e) => {
-                      const img = e.currentTarget
-                      if (img.dataset.fallbackApplied) return
-                      img.dataset.fallbackApplied = '1'
-                      img.src = '/IMAGES/NEFOL icon.png'
-                    }}
-                    alt="Nefol logo"
-                    className="h-16 sm:h-20 w-auto object-contain md:hidden"
-                    loading="eager"
-                    style={{ maxWidth: '200px' }}
-                  />
-                  {/* Desktop Logo - NEFOL icon.png */}
-                  <img
-                    src="/IMAGES/NEFOL icon.png"
-                    alt="Nefol logo"
-                    className="h-10 sm:h-12 w-auto object-contain hidden md:block"
-                    loading="eager"
-                  />
+                  {/* Single logo — two <img> tags broke: global CSS forces img{display:block} over Tailwind hidden */}
+                  <picture>
+                    <source media="(min-width: 768px)" srcSet={BRAND_ICON_SRC} />
+                    <img
+                      src={BRAND_LOGO_WIDE_SRC}
+                      onError={(e) => {
+                        const img = e.currentTarget
+                        if (img.dataset.fallbackApplied) return
+                        img.dataset.fallbackApplied = '1'
+                        img.src = BRAND_ICON_SRC
+                      }}
+                      alt="Nefol logo"
+                      className="h-16 w-auto max-w-[200px] object-contain sm:h-20 md:h-10 md:max-w-none lg:h-12"
+                      loading="eager"
+                    />
+                  </picture>
                 </a>
               </div>
               

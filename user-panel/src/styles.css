@@ -1000,12 +1000,18 @@ html, body {
 }
 
 /* Image and media responsive fixes — do not force height:auto on fill/cover images */
-img:not(.img-fill):not([class*="object-cover"]):not([class*="h-full"]),
+img:not(.img-fill):not([class*="object-cover"]):not([class*="h-full"]):not(.hidden),
 video:not(.img-fill),
 iframe {
   max-width: 100%;
   height: auto;
   display: block;
+}
+
+/* Tailwind responsive visibility (hidden / md:hidden) must win over img { display: block } */
+img.hidden,
+picture.hidden {
+  display: none !important;
 }
 
 img.img-fill,
@@ -1079,6 +1085,35 @@ video {
 .flex {
   display: flex;
   flex-wrap: wrap;
+}
+
+/* Horizontal swipe tracks — bare Tailwind `flex` picks up flex-wrap: wrap from .flex above */
+.nefol-horizontal-carousel {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 1rem;
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.75rem;
+}
+
+.nefol-horizontal-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.nefol-horizontal-carousel__slide {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  box-sizing: border-box;
 }
 
 /* Text overflow prevention */

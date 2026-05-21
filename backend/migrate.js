@@ -1,5 +1,16 @@
-// Database Migration Script
+/**
+ * Partial / incremental DB migration (blog, collab, CMS basics, staff RBAC).
+ *
+ * Full app schema is applied on backend startup via ensureSchema() in src/utils/schema.ts.
+ * This script is safe to re-run (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
+ *
+ * Super admin:
+ *   - Privileges: SUPER_ADMIN_EMAIL + SUPER_ADMIN_PASSWORD in .env (not is_super_admin in DB).
+ *   - Step 8 syncs a staff_users row for login (same as ensure-super-admin.js / seedSuperAdmin).
+ *   - Or run: npm run ensure-super-admin
+ */
 require('dotenv/config');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/nefol';
@@ -14,6 +25,38 @@ const poolConfig = isSupabase
   : { connectionString };
 
 const pool = new Pool(poolConfig);
+
+function hashStaffPassword(plain) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(plain, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+/** Ensures staff_users row for .env super admin (privileges still come from .env at login). */
+async function syncEnvSuperAdmin() {
+  const email = process.env.SUPER_ADMIN_EMAIL;
+  const password = process.env.SUPER_ADMIN_PASSWORD;
+  const name = process.env.SUPER_ADMIN_NAME || 'Super Admin';
+  if (!email || !password) {
+    console.log('ℹ️  Step 8: Skipped super admin sync — set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD in .env');
+    console.log('   (Or run: npm run ensure-super-admin)');
+    return;
+  }
+  const hashed = hashStaffPassword(password);
+  const { rows } = await pool.query(
+    `INSERT INTO staff_users (email, name, password, is_active, created_at, updated_at)
+     VALUES (lower($1), $2, $3, TRUE, NOW(), NOW())
+     ON CONFLICT (email) DO UPDATE SET
+       name = EXCLUDED.name,
+       password = EXCLUDED.password,
+       is_active = TRUE,
+       updated_at = NOW()
+     RETURNING id, email`,
+    [email, name, hashed]
+  );
+  console.log(`✅ Step 8: Super admin staff row synced (${rows[0].email}, id=${rows[0].id})`);
+  console.log('   Privileges apply when this email matches SUPER_ADMIN_EMAIL on login.');
+}
 
 async function runMigration() {
   console.log('🔄 Running database migration...');
@@ -1356,6 +1399,7 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_staff_page_permissions_staff ON staff_page_permissions(staff_id);
       CREATE INDEX IF NOT EXISTS idx_staff_page_permissions_page ON staff_page_permissions(page_path);
 
+      -- Legacy column; super admin access is determined by SUPER_ADMIN_EMAIL in .env at runtime
       ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN NOT NULL DEFAULT FALSE;
       ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS invited_by INTEGER REFERENCES staff_users(id);
       ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS invitation_accepted_at TIMESTAMPTZ;
@@ -1386,6 +1430,9 @@ async function runMigration() {
       ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
       ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
     `);
+
+    console.log('📝 Step 8: Super admin staff account (from .env)…');
+    await syncEnvSuperAdmin();
     
     console.log('✅ Migration completed successfully!');
     process.exit(0);

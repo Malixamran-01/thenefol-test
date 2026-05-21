@@ -4,6 +4,10 @@ import { blogActivityAPI } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
 import { BlogCardAuthor } from './BlogCardAuthor'
 import { BlogPostCard, type BlogPostCardPost } from './BlogPostCard'
+import {
+  getCarouselActiveIndex,
+  scrollCarouselToIndex,
+} from '../utils/carouselScroll'
 
 interface SneakPost extends BlogPostCardPost {
   author_name?: string | null
@@ -97,20 +101,13 @@ export default function SocialSneakPeek() {
   const updateActiveSlide = useCallback(() => {
     const el = carouselRef.current
     if (!el || el.children.length === 0) return
-    const slide = el.children[0] as HTMLElement
-    const gap = 16
-    const step = slide.offsetWidth + gap
-    if (step <= 0) return
-    const index = Math.round(el.scrollLeft / step)
-    setActiveSlide(Math.min(Math.max(0, index), el.children.length - 1))
+    setActiveSlide(getCarouselActiveIndex(el))
   }, [])
 
   const scrollToSlide = (index: number) => {
     const el = carouselRef.current
     if (!el || el.children.length === 0) return
-    const slide = el.children[0] as HTMLElement
-    const gap = 16
-    el.scrollTo({ left: index * (slide.offsetWidth + gap), behavior: 'smooth' })
+    scrollCarouselToIndex(el, index)
     setActiveSlide(index)
   }
 
@@ -132,9 +129,9 @@ export default function SocialSneakPeek() {
 
         {loading ? (
           <>
-            <div className="md:hidden -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+            <div className="nefol-horizontal-carousel md:hidden">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="w-[min(88vw,340px)] flex-shrink-0 snap-center animate-pulse">
+                <div key={i} className="nefol-horizontal-carousel__slide animate-pulse">
                   <div className="mb-3 h-5 w-32 rounded bg-[#edf4f9]" />
                   <div className="h-[360px] rounded-2xl bg-[#edf4f9]" />
                 </div>
@@ -149,16 +146,12 @@ export default function SocialSneakPeek() {
             {/* Mobile: horizontal swipe carousel */}
             <div
               ref={carouselRef}
-              className="community-sneak-carousel md:hidden -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-3 [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
-              style={{ scrollbarWidth: 'none' }}
+              className="nefol-horizontal-carousel md:hidden"
               aria-label="Featured community posts"
               onScroll={updateActiveSlide}
             >
               {posts.map((post) => (
-                <div
-                  key={String(post.id)}
-                  className="w-[min(88vw,340px)] flex-shrink-0 snap-center snap-always"
-                >
+                <div key={String(post.id)} className="nefol-horizontal-carousel__slide">
                   <CommunityPostColumn post={post} />
                 </div>
               ))}

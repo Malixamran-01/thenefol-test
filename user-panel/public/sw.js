@@ -6,7 +6,7 @@ const RUNTIME_CACHE = 'nefol-runtime-v3'
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/IMAGES/NEFOL icon.png',
+  '/IMAGES/NEFOL%20icon.png',
   '/light-mode-boot.js',
 ]
 
@@ -224,7 +224,7 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: data.body || 'You have a new notification',
-    icon: '/IMAGES/light theme logo.webp',
+    icon: '/IMAGES/light%20theme%20logo.webp',
     badge: '/favicon.svg',
     vibrate: [200, 100, 200],
     data: data

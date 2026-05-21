@@ -10,6 +10,10 @@ import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import { getSessionId } from '../utils/session'
 import { getApiBase, resolveMediaUrl } from '../utils/apiBase'
 import { createImageErrorHandler } from '../utils/imageUtils'
+import {
+  getCarouselActiveIndex,
+  scrollCarouselToIndex,
+} from '../utils/carouselScroll'
 export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
   const { addItem } = useCart()
@@ -446,20 +450,13 @@ export default function Home() {
   const updateJustLandedSlide = useCallback(() => {
     const el = justLandedCarouselRef.current
     if (!el || el.children.length === 0) return
-    const slide = el.children[0] as HTMLElement
-    const gap = 16
-    const step = slide.offsetWidth + gap
-    if (step <= 0) return
-    const index = Math.round(el.scrollLeft / step)
-    setJustLandedSlide(Math.min(Math.max(0, index), el.children.length - 1))
+    setJustLandedSlide(getCarouselActiveIndex(el))
   }, [])
 
   const scrollJustLandedTo = (index: number) => {
     const el = justLandedCarouselRef.current
     if (!el || el.children.length === 0) return
-    const slide = el.children[0] as HTMLElement
-    const gap = 16
-    el.scrollTo({ left: index * (slide.offsetWidth + gap), behavior: 'smooth' })
+    scrollCarouselToIndex(el, index)
     setJustLandedSlide(index)
   }
 
@@ -663,52 +660,52 @@ export default function Home() {
             <div className="text-center py-12">
               <p className="text-gray-500">Loading products...</p>
             </div>
-          ) : allFeaturedProducts.length > 0 ? (
-            <>
-              {/* Mobile: one product per swipe (no side arrows) */}
-              <div className="md:hidden">
-                <div
-                  ref={justLandedCarouselRef}
-                  className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                  aria-label="What's Just Landed products"
-                  onScroll={updateJustLandedSlide}
-                >
-                  {mobileJustLandedProducts.map((product, index) => (
-                    <div
-                      key={product.slug || index}
-                      className="w-[min(88vw,360px)] flex-shrink-0 snap-center snap-always"
-                    >
-                      <JustLandedProductCard
-                        product={product}
-                        globalIndex={index}
-                        csvProducts={csvProducts}
-                        reviewStats={reviewStats}
-                        eagerImage={index === 0}
-                      />
-                    </div>
+          ) : null}
+        </div>
+
+        {!productsLoading && allFeaturedProducts.length > 0 ? (
+          <>
+            {/* Mobile: horizontal swipe — use .nefol-horizontal-carousel (global .flex wraps items) */}
+            <div className="md:hidden mx-auto w-full max-w-7xl px-4 sm:px-6">
+              <div
+                ref={justLandedCarouselRef}
+                className="nefol-horizontal-carousel"
+                aria-label="What's Just Landed products"
+                onScroll={updateJustLandedSlide}
+              >
+                {mobileJustLandedProducts.map((product, index) => (
+                  <div key={product.slug || index} className="nefol-horizontal-carousel__slide">
+                    <JustLandedProductCard
+                      product={product}
+                      globalIndex={index}
+                      csvProducts={csvProducts}
+                      reviewStats={reviewStats}
+                      eagerImage={index === 0}
+                    />
+                  </div>
+                ))}
+              </div>
+              {mobileJustLandedProducts.length > 1 && (
+                <div className="mt-3 flex justify-center gap-1.5" role="tablist" aria-label="Product slides">
+                  {mobileJustLandedProducts.map((product, i) => (
+                    <button
+                      key={product.slug || i}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === justLandedSlide}
+                      aria-label={`Show product ${i + 1} of ${mobileJustLandedProducts.length}`}
+                      onClick={() => scrollJustLandedTo(i)}
+                      className={`h-1.5 rounded-full transition-all duration-200 ${
+                        i === justLandedSlide ? 'w-6 bg-[#1B4965]' : 'w-1.5 bg-[#DCE6EE]'
+                      }`}
+                    />
                   ))}
                 </div>
-                {mobileJustLandedProducts.length > 1 && (
-                  <div className="mt-3 flex justify-center gap-1.5" role="tablist" aria-label="Product slides">
-                    {mobileJustLandedProducts.map((product, i) => (
-                      <button
-                        key={product.slug || i}
-                        type="button"
-                        role="tab"
-                        aria-selected={i === justLandedSlide}
-                        aria-label={`Show product ${i + 1} of ${mobileJustLandedProducts.length}`}
-                        onClick={() => scrollJustLandedTo(i)}
-                        className={`h-1.5 rounded-full transition-all duration-200 ${
-                          i === justLandedSlide ? 'w-6 bg-[#1B4965]' : 'w-1.5 bg-[#DCE6EE]'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
+            </div>
 
-              {/* Tablet/desktop: 4-column pages with side arrows */}
-              <div className="relative hidden md:block">
+            {/* Tablet/desktop: 4-column pages with side arrows */}
+            <div className="relative mx-auto hidden max-w-7xl px-4 sm:px-6 lg:px-8 md:block">
                 {allFeaturedProducts.length > productsPerPage && (
                   <>
                     <button
@@ -758,13 +755,12 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No products available</p>
-            </div>
-          )}
-        </div>
+          </>
+        ) : !productsLoading ? (
+          <div className="mx-auto max-w-7xl px-4 text-center py-12 sm:px-6 lg:px-8">
+            <p className="text-gray-500">No products available</p>
+          </div>
+        ) : null}
       </section>
 
       {/* Shop by Category Section */}
