@@ -4974,7 +4974,17 @@ function IngredientCard({ ing, meta, isExpanded, onToggle }: { ing: typeof ingre
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.18em', color: isExpanded ? 'rgba(75,151,201,0.7)' : 'rgba(75,151,201,0.6)', textTransform: 'uppercase', marginBottom: 3, fontFamily: 'var(--font-body-family)' }}>
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                color: isExpanded ? 'rgba(160, 215, 240, 0.95)' : '#2a5f7a',
+                textTransform: 'uppercase',
+                marginBottom: 4,
+                fontFamily: 'var(--font-body-family)',
+              }}
+            >
               {meta.sci}
             </div>
             <div style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 500, fontSize: '1rem', color: isExpanded ? '#e0f5f5' : '#1a1a1a', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.25s' }}>
