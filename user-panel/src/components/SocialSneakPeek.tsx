@@ -42,11 +42,13 @@ function CommunityPostColumn({ post }: { post: SneakPost }) {
         authorUniqueUserId={post.author_unique_user_id}
         authorName={post.author_name ?? 'NEFOL Community'}
         authorVerified={post.author_is_verified === true}
+        showFollowButton={false}
       />
       <BlogPostCard
         post={post}
         initialLikes={post.likes_count ?? 0}
         initialComments={post.comments_count ?? 0}
+        showActions={false}
       />
     </div>
   )

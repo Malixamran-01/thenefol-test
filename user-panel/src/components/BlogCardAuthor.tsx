@@ -14,6 +14,8 @@ interface BlogCardAuthorProps {
   authorProfileImage?: string | null
   /** From API when author has active profile + admin verified flag */
   authorVerified?: boolean
+  /** Homepage preview: hide follow (requires signed-in user) */
+  showFollowButton?: boolean
 }
 
 export function BlogCardAuthor({
@@ -22,6 +24,7 @@ export function BlogCardAuthor({
   authorName,
   authorProfileImage,
   authorVerified,
+  showFollowButton = true,
 }: BlogCardAuthorProps) {
   const { user, isAuthenticated } = useAuth()
   const dispatch = useDispatch()
@@ -58,7 +61,7 @@ export function BlogCardAuthor({
   }
 
   useEffect(() => {
-    if (!effectiveAuthorId || !isAuthenticated || isOwnProfile) {
+    if (!showFollowButton || !effectiveAuthorId || !isAuthenticated || isOwnProfile) {
       setHasProfile(null)
       return
     }
@@ -74,7 +77,7 @@ export function BlogCardAuthor({
         if (!cancelled) setHasProfile(false)
       })
     return () => { cancelled = true }
-  }, [effectiveAuthorId, isAuthenticated, isOwnProfile, reduxFollowKey, dispatch])
+  }, [effectiveAuthorId, isAuthenticated, isOwnProfile, reduxFollowKey, dispatch, showFollowButton])
 
   useEffect(() => {
     setIsFollowingLocal(isFollowingFromRedux)
@@ -123,7 +126,8 @@ export function BlogCardAuthor({
     }
   }
 
-  const canShowFollow = !isOwnProfile && (hasProfile === true || hasProfile === null)
+  const canShowFollow =
+    showFollowButton && !isOwnProfile && (hasProfile === true || hasProfile === null)
 
   return (
     <div className="flex items-center justify-between">

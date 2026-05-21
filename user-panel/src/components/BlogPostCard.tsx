@@ -77,12 +77,21 @@ function useImageThemeColor(src: string | undefined): string {
   return bg
 }
 
-export function BlogPostCard({ post, initialLikes, initialComments, initialSaved, onUnsave }: {
+export function BlogPostCard({
+  post,
+  initialLikes,
+  initialComments,
+  initialSaved,
+  onUnsave,
+  showActions = true,
+}: {
   post: BlogPostCardPost
   initialLikes: number
   initialComments: number
   initialSaved?: boolean
   onUnsave?: () => void
+  /** Homepage preview: no like / comment / repost / save (read-only teaser) */
+  showActions?: boolean
 }) {
   const coverImage = post.cover_image || (post.images && post.images[0]) || '/IMAGES/default-blog.jpg'
   const cardBg = useImageThemeColor(coverImage)
@@ -101,6 +110,7 @@ export function BlogPostCard({ post, initialLikes, initialComments, initialSaved
   const isLoggedIn = !!token
 
   useEffect(() => {
+    if (!showActions) return
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
     Promise.all([
       fetch(`${apiBase}/api/blog/posts/${post.id}/likes`, { headers }).then(r => r.ok ? r.json() : null),
@@ -111,7 +121,7 @@ export function BlogPostCard({ post, initialLikes, initialComments, initialSaved
       if (repostData) { setReposts(repostData.count); setReposted(!!repostData.reposted) }
       if (bookmarkData) { setSaved(!!bookmarkData.saved) }
     }).catch(() => {/* silently ignore */})
-  }, [post.id, apiBase, token])
+  }, [post.id, apiBase, token, showActions])
 
   const handleLike = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
@@ -186,57 +196,59 @@ export function BlogPostCard({ post, initialLikes, initialComments, initialSaved
           >
             {titlePlain || '\u00A0'}
           </h3>
-          <p className="line-clamp-1 text-[12px] leading-snug text-white/70">
+          <p className={`leading-snug text-white/70 ${showActions ? 'line-clamp-1 text-[12px]' : 'line-clamp-2 text-[12px]'}`}>
             {excerptPlain || '\u00A0'}
           </p>
         </div>
 
-        <div className="mt-1 flex shrink-0 items-center justify-between border-t border-white/15 pt-2">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleLike}
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/10 active:scale-95"
-              title={liked ? 'Unlike' : 'Like'}
-            >
-              <Heart
-                className="h-4 w-4 transition-colors"
-                style={{ color: liked ? '#ff5e7e' : 'rgba(255,255,255,0.85)', fill: liked ? '#ff5e7e' : 'none' }}
+        {showActions && (
+          <div className="mt-1 flex shrink-0 items-center justify-between border-t border-white/15 pt-2">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleLike}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/10 active:scale-95"
+                title={liked ? 'Unlike' : 'Like'}
+              >
+                <Heart
+                  className="h-4 w-4 transition-colors"
+                  style={{ color: liked ? '#ff5e7e' : 'rgba(255,255,255,0.85)', fill: liked ? '#ff5e7e' : 'none' }}
+                />
+                <span className="text-[12px] font-medium text-white/85 min-w-[14px] text-center">{likes}</span>
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation() }}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/10"
+                title="Comments"
+              >
+                <MessageCircle className="h-4 w-4 text-white/85" />
+                <span className="text-[12px] font-medium text-white/85 min-w-[14px] text-center">{initialComments}</span>
+              </button>
+
+              <RepostButton
+                postId={Number(post.id)}
+                postTitle={titlePlain || post.title}
+                postCover={coverImage}
+                initialReposted={reposted}
+                initialCount={reposts}
+                onCountChange={(count, isReposted) => { setReposts(count); setReposted(isReposted) }}
+                variant="card"
+                showCount
               />
-              <span className="text-[12px] font-medium text-white/85 min-w-[14px] text-center">{likes}</span>
-            </button>
+            </div>
 
             <button
-              onClick={(e) => { e.stopPropagation() }}
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-white/10"
-              title="Comments"
+              onClick={handleBookmark}
+              className="rounded-lg p-2 transition-colors hover:bg-white/10 active:scale-95"
+              title={saved ? 'Remove from saved' : 'Save for later'}
             >
-              <MessageCircle className="h-4 w-4 text-white/85" />
-              <span className="text-[12px] font-medium text-white/85 min-w-[14px] text-center">{initialComments}</span>
+              <Bookmark
+                className="h-4 w-4 transition-colors"
+                style={{ color: saved ? '#fbbf24' : 'rgba(255,255,255,0.85)', fill: saved ? '#fbbf24' : 'none' }}
+              />
             </button>
-
-            <RepostButton
-              postId={Number(post.id)}
-              postTitle={titlePlain || post.title}
-              postCover={coverImage}
-              initialReposted={reposted}
-              initialCount={reposts}
-              onCountChange={(count, isReposted) => { setReposts(count); setReposted(isReposted) }}
-              variant="card"
-              showCount
-            />
           </div>
-
-          <button
-            onClick={handleBookmark}
-            className="rounded-lg p-2 transition-colors hover:bg-white/10 active:scale-95"
-            title={saved ? 'Remove from saved' : 'Save for later'}
-          >
-            <Bookmark
-              className="h-4 w-4 transition-colors"
-              style={{ color: saved ? '#fbbf24' : 'rgba(255,255,255,0.85)', fill: saved ? '#fbbf24' : 'none' }}
-            />
-          </button>
-        </div>
+        )}
       </div>
     </a>
   )

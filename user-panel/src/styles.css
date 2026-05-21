@@ -1000,7 +1000,7 @@ html, body {
 }
 
 /* Image and media responsive fixes — do not force height:auto on fill/cover images */
-img:not(.img-fill):not([class*="object-cover"]):not([class*="h-full"]):not(.hidden),
+img:not(.img-fill):not([class*="object-cover"]):not([class*="h-full"]):not(.hidden):not(.brand-nav-logo):not(.brand-social-logo):not(.brand-social-logo--sm),
 video:not(.img-fill),
 iframe {
   max-width: 100%;
@@ -1014,12 +1014,13 @@ picture.hidden {
   display: none !important;
 }
 
-/* Navbar logo — always NEFOL wide.png; cap size so icon fallback cannot blow up layout */
+/* Navbar logo — always NEFOL wide.png; !important beats global img { height:auto } */
 img.brand-nav-logo {
   display: block;
-  width: auto;
+  width: auto !important;
   max-width: min(200px, 55vw);
-  max-height: 5rem;
+  height: auto !important;
+  max-height: 5rem !important;
   object-fit: contain;
   flex-shrink: 0;
 }
@@ -1027,8 +1028,26 @@ img.brand-nav-logo {
 @media (min-width: 768px) {
   img.brand-nav-logo {
     max-width: 220px;
-    max-height: 3rem;
+    max-height: 3rem !important;
   }
+}
+
+/* NEFOL Social sidebar / mobile bar — global img { height:auto } overrides Tailwind h-7 */
+img.brand-social-logo {
+  display: block;
+  width: auto !important;
+  max-width: 120px;
+  height: 1.75rem !important;
+  max-height: 1.75rem !important;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+img.brand-social-logo--sm {
+  width: 1.25rem !important;
+  max-width: 1.25rem;
+  height: 1.25rem !important;
+  max-height: 1.25rem !important;
 }
 
 img.img-fill,
