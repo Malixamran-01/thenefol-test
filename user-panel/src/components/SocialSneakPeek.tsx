@@ -1,92 +1,71 @@
-import React, { useEffect, useState } from 'react'
-import { ArrowRight, Heart, MessageCircle, Star, Users } from 'lucide-react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { blogActivityAPI } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
-import { AuthorVerifiedBadge } from './AuthorVerifiedBadge'
+import { BlogCardAuthor } from './BlogCardAuthor'
+import { BlogPostCard, type BlogPostCardPost } from './BlogPostCard'
 
-interface SneakPost {
-  id: string | number
-  title: string
-  excerpt?: string | null
-  cover_image?: string | null
+interface SneakPost extends BlogPostCardPost {
   author_name?: string | null
   author_is_verified?: boolean
-  featured?: boolean
+  author_id?: number | string | null
+  author_unique_user_id?: string | null
   likes_count?: number | null
   comments_count?: number | null
-  created_at?: string
 }
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
-  return String(n)
-}
-
-function coverUrl(cover: string | null | undefined): string | null {
-  if (!cover) return null
+function mapPostUrls(post: SneakPost): SneakPost {
   const apiBase = getApiBase()
-  return cover.startsWith('/uploads/') ? `${apiBase}${cover}` : cover
+  return {
+    ...post,
+    id: String(post.id),
+    excerpt: post.excerpt ?? '',
+    cover_image:
+      post.cover_image && post.cover_image.startsWith('/uploads/')
+        ? `${apiBase}${post.cover_image}`
+        : post.cover_image,
+    images: (post.images || []).map((imagePath: string) =>
+      imagePath.startsWith('/uploads/') ? `${apiBase}${imagePath}` : imagePath
+    ),
+  }
 }
 
-function SneakPostCard({ post }: { post: SneakPost }) {
-  const imgSrc = coverUrl(post.cover_image ?? null)
-
+function CommunityPostColumn({ post }: { post: SneakPost }) {
   return (
-    <a
-      href={`#/user/blog/${post.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-[#DCE6EE] bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-    >
-      <div className="relative aspect-[16/10] overflow-hidden bg-[#edf4f9]">
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt={post.title}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-[#9DB4C0]">
-            <Users className="h-10 w-10 opacity-40" strokeWidth={1.5} />
-          </div>
-        )}
-        {post.featured && (
-          <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-bold text-white shadow">
-            <Star className="h-3 w-3 fill-white" /> Featured
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-2 p-4 sm:p-5">
-        <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 group-hover:text-[#1B4965] sm:text-lg">
-          {post.title}
-        </h3>
-        {post.excerpt && (
-          <p className="line-clamp-2 text-sm leading-relaxed text-gray-500">{post.excerpt}</p>
-        )}
-        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-          <span className="inline-flex min-w-0 items-center gap-1 truncate text-xs font-medium text-gray-600">
-            {post.author_name || 'NEFOL Community'}
-            {post.author_is_verified ? <AuthorVerifiedBadge size="sm" /> : null}
-          </span>
-          <div className="flex flex-shrink-0 items-center gap-2.5 text-gray-400">
-            <span className="flex items-center gap-0.5 text-[11px]">
-              <Heart className="h-3.5 w-3.5" strokeWidth={2.5} />
-              {formatCount(post.likes_count ?? 0)}
-            </span>
-            <span className="flex items-center gap-0.5 text-[11px]">
-              <MessageCircle className="h-3.5 w-3.5" strokeWidth={2.5} />
-              {formatCount(post.comments_count ?? 0)}
-            </span>
-          </div>
+    <div className="flex h-full flex-col gap-3">
+      <BlogCardAuthor
+        authorId={post.author_id}
+        authorUniqueUserId={post.author_unique_user_id}
+        authorName={post.author_name ?? 'NEFOL Community'}
+        authorVerified={post.author_is_verified === true}
+      />
+      <BlogPostCard
+        post={post}
+        initialLikes={post.likes_count ?? 0}
+        initialComments={post.comments_count ?? 0}
+      />
+    </div>
+  )
+}
+
+function CommunityCardsSkeleton({ count }: { count: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="flex flex-col gap-3 animate-pulse">
+          <div className="h-5 w-32 rounded bg-[#edf4f9]" />
+          <div className="h-[360px] rounded-2xl bg-[#edf4f9]" />
         </div>
-      </div>
-    </a>
+      ))}
+    </>
   )
 }
 
 export default function SocialSneakPeek() {
   const [posts, setPosts] = useState<SneakPost[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeSlide, setActiveSlide] = useState(0)
+  const carouselRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -95,11 +74,12 @@ export default function SocialSneakPeek() {
         const data = await blogActivityAPI.searchPosts({
           featured: true,
           sort: 'featured',
-          limit: 2,
+          limit: 3,
           offset: 0,
         })
         if (!cancelled) {
-          setPosts(Array.isArray(data) ? data.slice(0, 2) : [])
+          const rows = Array.isArray(data) ? data.slice(0, 3) : []
+          setPosts(rows.map((p) => mapPostUrls(p as SneakPost)))
         }
       } catch (e) {
         console.error('[SocialSneakPeek] failed to load featured posts', e)
@@ -113,6 +93,26 @@ export default function SocialSneakPeek() {
       cancelled = true
     }
   }, [])
+
+  const updateActiveSlide = useCallback(() => {
+    const el = carouselRef.current
+    if (!el || el.children.length === 0) return
+    const slide = el.children[0] as HTMLElement
+    const gap = 16
+    const step = slide.offsetWidth + gap
+    if (step <= 0) return
+    const index = Math.round(el.scrollLeft / step)
+    setActiveSlide(Math.min(Math.max(0, index), el.children.length - 1))
+  }, [])
+
+  const scrollToSlide = (index: number) => {
+    const el = carouselRef.current
+    if (!el || el.children.length === 0) return
+    const slide = el.children[0] as HTMLElement
+    const gap = 16
+    el.scrollTo({ left: index * (slide.offsetWidth + gap), behavior: 'smooth' })
+    setActiveSlide(index)
+  }
 
   return (
     <section className="py-8 sm:py-12 md:py-16 bg-white" aria-labelledby="community-section-heading">
@@ -131,24 +131,64 @@ export default function SocialSneakPeek() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-2 max-w-4xl mx-auto">
-            {[0, 1].map((i) => (
-              <div key={i} className="animate-pulse rounded-2xl border border-[#DCE6EE] bg-white overflow-hidden">
-                <div className="aspect-[16/10] bg-[#edf4f9]" />
-                <div className="space-y-3 p-5">
-                  <div className="h-5 w-3/4 rounded bg-[#edf4f9]" />
-                  <div className="h-4 w-full rounded bg-[#f4f9f9]" />
-                  <div className="h-4 w-2/3 rounded bg-[#f4f9f9]" />
+          <>
+            <div className="md:hidden -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="w-[min(88vw,340px)] flex-shrink-0 snap-center animate-pulse">
+                  <div className="mb-3 h-5 w-32 rounded bg-[#edf4f9]" />
+                  <div className="h-[360px] rounded-2xl bg-[#edf4f9]" />
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <CommunityCardsSkeleton count={3} />
+            </div>
+          </>
         ) : posts.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-2 max-w-4xl mx-auto">
-            {posts.map((post) => (
-              <SneakPostCard key={String(post.id)} post={post} />
-            ))}
-          </div>
+          <>
+            {/* Mobile: horizontal swipe carousel */}
+            <div
+              ref={carouselRef}
+              className="community-sneak-carousel md:hidden -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-3 [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: 'none' }}
+              aria-label="Featured community posts"
+              onScroll={updateActiveSlide}
+            >
+              {posts.map((post) => (
+                <div
+                  key={String(post.id)}
+                  className="w-[min(88vw,340px)] flex-shrink-0 snap-center snap-always"
+                >
+                  <CommunityPostColumn post={post} />
+                </div>
+              ))}
+            </div>
+
+            {posts.length > 1 && (
+              <div className="mt-3 flex justify-center gap-1.5 md:hidden" role="tablist" aria-label="Carousel slides">
+                {posts.map((post, i) => (
+                  <button
+                    key={String(post.id)}
+                    type="button"
+                    role="tab"
+                    aria-selected={i === activeSlide}
+                    aria-label={`Show post ${i + 1} of ${posts.length}`}
+                    onClick={() => scrollToSlide(i)}
+                    className={`h-1.5 rounded-full transition-all duration-200 ${
+                      i === activeSlide ? 'w-6 bg-[#1B4965]' : 'w-1.5 bg-[#DCE6EE]'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Tablet/desktop: same grid as NEFOL Social home */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {posts.map((post) => (
+                <CommunityPostColumn key={String(post.id)} post={post} />
+              ))}
+            </div>
+          </>
         ) : (
           <p className="text-center text-sm text-gray-500 max-w-md mx-auto mb-6">
             New stories coming soon.
