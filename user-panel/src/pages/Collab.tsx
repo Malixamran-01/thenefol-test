@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Component, lazy, Suspense } from 'react'
-import type { ICity, ICountry, IState } from 'country-state-city'
 import {
   Video, Lock, CheckCircle, X, Instagram, ExternalLink, ChevronDown,
   RefreshCw, Play, Heart, AlertCircle, Loader2, Eye, TrendingUp,
@@ -13,7 +12,7 @@ import { creatorProgramAPI } from '../services/api'
 import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import CollabAssignedTasks from '../components/CollabAssignedTasks'
 import { COLLAB_PAGE_IMPL_STUB } from '../routeShellIsolation'
-import { loadAllCountries, loadCitiesForState, loadStatesForCountry } from '../utils/collabGeoLoader'
+import { getCollabCountries, getCollabStates, type CollabCountry } from '../utils/collabGeo'
 
 const CollabTurnstile = lazy(() => import('../components/CollabTurnstile'))
 
@@ -374,54 +373,17 @@ function CollabImpl(props: CollabProps = {}) {
   const [selectedStateCode, setSelectedStateCode] = useState('')
   const [address, setAddress] = useState({ country: 'India', state: '', city: '', postal_address: '', pincode: '' })
 
-  const [allCountries, setAllCountries] = useState<ICountry[]>([])
-  const [countryStates, setCountryStates] = useState<IState[]>([])
-  const [stateCities, setStateCities] = useState<ICity[]>([])
   const needsGeoData = collabTab === 'collab' && showForm
 
-  useEffect(() => {
-    if (!needsGeoData) {
-      setAllCountries([])
-      setCountryStates([])
-      setStateCities([])
-      return
-    }
-    let cancelled = false
-    void loadAllCountries().then((countries) => {
-      if (!cancelled) setAllCountries(countries)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [needsGeoData])
+  const allCountries = useMemo(
+    () => (needsGeoData ? getCollabCountries() : []),
+    [needsGeoData]
+  )
 
-  useEffect(() => {
-    if (!needsGeoData || !selectedCountryCode) {
-      setCountryStates([])
-      return
-    }
-    let cancelled = false
-    void loadStatesForCountry(selectedCountryCode).then((states) => {
-      if (!cancelled) setCountryStates(states)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [selectedCountryCode, needsGeoData])
-
-  useEffect(() => {
-    if (!needsGeoData || !selectedStateCode || !selectedCountryCode) {
-      setStateCities([])
-      return
-    }
-    let cancelled = false
-    void loadCitiesForState(selectedCountryCode, selectedStateCode).then((cities) => {
-      if (!cancelled) setStateCities(cities)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [selectedCountryCode, selectedStateCode, needsGeoData])
+  const countryStates = useMemo(() => {
+    if (!needsGeoData || !selectedCountryCode) return []
+    return getCollabStates(selectedCountryCode)
+  }, [needsGeoData, selectedCountryCode])
 
   const [phonePickerOpen, setPhonePickerOpen] = useState(false)
   const phonePickerRef = useRef<HTMLDivElement>(null)
@@ -442,15 +404,11 @@ function CollabImpl(props: CollabProps = {}) {
     [allCountries]
   )
 
-  const selectedPhoneCountry = useMemo((): ICountry => {
-    const fallback: ICountry = {
+  const selectedPhoneCountry = useMemo((): CollabCountry => {
+    const fallback: CollabCountry = {
       isoCode: 'IN',
       name: 'India',
       phonecode: '91',
-      flag: '🇮🇳',
-      currency: 'INR',
-      latitude: '20.5937',
-      longitude: '78.9629',
     }
     if (allCountries.length === 0) return fallback
     const iso = profile.phone_country_iso
@@ -1412,7 +1370,11 @@ function CollabImpl(props: CollabProps = {}) {
                         }} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
                           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}>
                           <option value="">Select Country</option>
-                          {allCountries.map((c) => <option key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</option>)}
+                          {allCountries.map((c) => (
+                            <option key={c.isoCode} value={c.isoCode}>
+                              {isoToFlagEmoji(c.isoCode)} {c.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       {/* State */}
@@ -1427,20 +1389,14 @@ function CollabImpl(props: CollabProps = {}) {
                         <option value="">{countryStates.length ? 'State / Province' : 'No states available'}</option>
                         {countryStates.map((s) => <option key={s.isoCode} value={s.isoCode}>{s.name}</option>)}
                       </select>
-                      {/* City */}
-                      <select value={address.city} disabled={!selectedStateCode || stateCities.length === 0}
+                      <input
+                        type="text"
+                        placeholder={selectedStateCode ? 'City / District' : 'Select state first'}
+                        value={address.city}
+                        disabled={!selectedStateCode}
                         onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-                        className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none disabled:text-gray-400 disabled:bg-gray-50"
-                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
-                        <option value="">{selectedStateCode ? (stateCities.length ? 'City / District' : 'Enter city below') : 'Select state first'}</option>
-                        {stateCities.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                      </select>
-                      {/* City text fallback if no cities listed */}
-                      {selectedStateCode && stateCities.length === 0 && (
-                        <input type="text" placeholder="Enter your city" value={address.city}
-                          onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-                          className="col-span-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] transition-all" />
-                      )}
+                        className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:border-[#4B97C9] transition-all disabled:text-gray-400 disabled:bg-gray-50"
+                      />
                       {/* Street / house mailing lines (distinct from PIN) */}
                       <div className="col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Postal address</label>
