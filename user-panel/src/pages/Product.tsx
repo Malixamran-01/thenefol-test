@@ -38,6 +38,13 @@ function captureCollabPurchaseTokenFromHash() {
   }
 }
 
+function buildProductGalleryImages(product: Product): string[] {
+  const all = product.listImage
+    ? [product.listImage, ...(product.pdpImages || [])]
+    : [...(product.pdpImages || [])]
+  return [...new Map(all.filter(Boolean).map((img, idx) => [img, idx])).keys()]
+}
+
 export default function ProductPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [csvProduct, setCsvProduct] = useState<any>(null)
@@ -66,7 +73,29 @@ export default function ProductPage() {
   const thumbnailContainerRef = useRef<HTMLDivElement>(null)
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
-  
+  const [galleryImages, setGalleryImages] = useState<string[]>([])
+
+  const handleGalleryImageError = useCallback((src: string) => {
+    setGalleryImages((prev) => {
+      if (!prev.includes(src)) return prev
+      const next = prev.filter((u) => u !== src)
+      setCurrentImageIndex((i) => (next.length === 0 ? 0 : Math.min(i, next.length - 1)))
+      setZoomImageIndex((zi) => (next.length === 0 ? 0 : Math.min(zi, next.length - 1)))
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!product) {
+      setGalleryImages([])
+      return
+    }
+    setGalleryImages(buildProductGalleryImages(product))
+    setCurrentImageIndex(0)
+    setZoomImageIndex(0)
+    setThumbnailScrollIndex(0)
+  }, [product?.id, product?.listImage, product?.pdpImages])
+
   // Delivery availability state
   const [deliveryPincode, setDeliveryPincode] = useState('')
   const [checkingDelivery, setCheckingDelivery] = useState(false)
@@ -145,13 +174,8 @@ export default function ProductPage() {
 
   // Keyboard navigation for image carousel (Mamaearth style)
   useEffect(() => {
-    if (!product) return
-    
-    const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
-    const uniqueImages = [...new Map(allImages.map((img, idx) => [img, idx])).keys()]
-    
-    if (uniqueImages.length <= 1) return
-    
+    if (!product || galleryImages.length <= 1) return
+
     const handleKeyPress = (e: KeyboardEvent) => {
       // Only handle arrow keys when not typing in an input/textarea
       const target = e.target as HTMLElement
@@ -169,7 +193,7 @@ export default function ProductPage() {
       } else if (e.key === 'ArrowRight') {
         e.preventDefault()
         setCurrentImageIndex(prev => {
-          const newIndex = Math.min(uniqueImages.length - 1, prev + 1)
+          const newIndex = Math.min(galleryImages.length - 1, prev + 1)
           setZoomImageIndex(newIndex)
           return newIndex
         })
@@ -178,7 +202,7 @@ export default function ProductPage() {
     
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [product])
+  }, [product, galleryImages.length])
 
   // Helper function to get or fetch CSV data (with caching)
   const getCsvData = useCallback(async (apiBase: string): Promise<any[]> => {
@@ -771,8 +795,7 @@ export default function ProductPage() {
             <div className="space-y-2 sm:space-y-4 relative">
               {/* Main Product Image - Carousel style with click to zoom - Mamaearth style */}
               {(() => {
-                const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
-                const uniqueImages = [...new Map(allImages.map((img, idx) => [img, idx])).keys()]
+                const uniqueImages = galleryImages
                 const currentImage = uniqueImages[currentImageIndex] || ''
                 
                 const handlePreviousImage = () => {
@@ -847,9 +870,8 @@ export default function ProductPage() {
                         setZoomImageIndex(currentImageIndex)
                         setShowImageZoom(true)
                       }}
-                      onError={(e) => {
-                        console.log('❌ Image failed to load:', currentImage)
-                        e.currentTarget.style.display = 'none'
+                      onError={() => {
+                        if (currentImage) handleGalleryImageError(currentImage)
                       }}
                       draggable={false}
                     />
@@ -893,8 +915,7 @@ export default function ProductPage() {
 
               {/* Thumbnail Gallery - Carousel style 1x3 (3 images per row) */}
               {(() => {
-                const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
-                const uniqueImages = [...new Map(allImages.map((img, idx) => [img, idx])).keys()]
+                const uniqueImages = galleryImages
                 
                 const imagesToShow = 3 // Show exactly 3 images at a time
                 const thumbnailSize = 130 // Increased size: 130px × 130px
@@ -1026,9 +1047,7 @@ export default function ProductPage() {
                                 src={src} 
                                 className="h-full w-full object-cover"
                                 muted
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none'
-                                }}
+                                onError={() => handleGalleryImageError(src)}
                               />
                             ) : (
                               <img 
@@ -1037,10 +1056,7 @@ export default function ProductPage() {
                                 className="h-full w-full object-cover image-slider"
                                 loading="lazy"
                                 decoding="async"
-                                onError={(e) => {
-                                  console.log('❌ Thumbnail image failed to load:', src)
-                                  e.currentTarget.style.display = 'none'
-                                }}
+                                onError={() => handleGalleryImageError(src)}
                               />
                             )}
                           </button>
@@ -2423,11 +2439,7 @@ export default function ProductPage() {
       {/* Image Zoom Lightbox */}
       {showImageZoom && product && (
         <ImageZoom
-          images={(() => {
-            const allImages = product.listImage ? [product.listImage, ...(product.pdpImages || [])] : (product.pdpImages || [])
-            // Deduplicate images by URL to avoid showing duplicates
-            return [...new Map(allImages.filter(Boolean).map((img, idx) => [img, idx])).keys()]
-          })()}
+          images={galleryImages}
           currentIndex={zoomImageIndex}
           onClose={() => setShowImageZoom(false)}
           onIndexChange={(index) => {

@@ -543,9 +543,47 @@ export async function deleteProductImage(pool: Pool, req: Request, res: Response
       return sendError(res, 404, 'Product image not found')
     }
     
-    sendSuccess(res, { message: 'Product image deleted successfully' })
+    sendSuccess(res, { message: 'Product image deleted successfully', deleted: rows })
   } catch (err) {
     sendError(res, 500, 'Failed to delete product image', err)
+  }
+}
+
+/** DELETE /api/products/:id/images?type=pdp|banner — remove all images of a type for one product */
+export async function deleteAllProductImages(pool: Pool, req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    const type = String(req.query.type || 'pdp').toLowerCase()
+
+    const productCheck = await pool.query('SELECT id FROM products WHERE id = $1', [id])
+    if (productCheck.rows.length === 0) {
+      return sendError(res, 404, 'Product not found')
+    }
+
+    let rows: { id: number; url: string }[]
+    if (type === 'banner') {
+      const result = await pool.query(
+        `DELETE FROM product_images WHERE product_id = $1 AND type = 'banner' RETURNING id, url`,
+        [id]
+      )
+      rows = result.rows
+    } else if (type === 'pdp') {
+      const result = await pool.query(
+        `DELETE FROM product_images WHERE product_id = $1 AND (type = 'pdp' OR type IS NULL) RETURNING id, url`,
+        [id]
+      )
+      rows = result.rows
+    } else {
+      return sendError(res, 400, 'Invalid type. Use pdp or banner.')
+    }
+
+    sendSuccess(res, {
+      message: `Deleted ${rows.length} ${type} image(s)`,
+      deletedCount: rows.length,
+      deleted: rows,
+    })
+  } catch (err) {
+    sendError(res, 500, 'Failed to delete product images', err)
   }
 }
 

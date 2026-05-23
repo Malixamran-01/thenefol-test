@@ -126,3 +126,23 @@ Common causes:
 ```
 
 Keep at least a few days of backups off-server (S3, Google Drive, etc.).
+
+## PDP image placeholders after VPS reset
+
+If product pages show many **empty image frames**, the database still has `product_images` rows but files under `/uploads/` are gone.
+
+**Admin (per product):** Catalog → Products → **Images** on a row → each PDP thumb has **Remove**, or **Remove all PDP (N)**.
+
+**Bulk on VPS (from `backend/`):**
+
+```bash
+cd /var/www/nefol/backend
+# Preview
+node scripts/clear-pdp-images.js --dry-run --all-pdp
+# Delete every PDP row (clears all placeholder frames site-wide)
+node scripts/clear-pdp-images.js --all-pdp
+# Or only rows whose file is missing on disk
+node scripts/clear-pdp-images.js --missing-only --all-pdp
+```
+
+Set `DATABASE_URL` and `UPLOADS_DIR=/var/lib/nefol/uploads` in `backend/.env` before running.

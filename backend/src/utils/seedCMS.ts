@@ -275,6 +275,18 @@ export async function seedCMSContent(pool: Pool) {
     // Seed global settings
     const settings = [
       { setting_key: 'site_name', setting_value: 'Nefol', setting_type: 'text' },
+      { setting_key: 'site_brand_name', setting_value: 'NEFOL', setting_type: 'text' },
+      {
+        setting_key: 'site_browser_title',
+        setting_value: 'Best skincare and haircare products | NEFOL',
+        setting_type: 'text',
+      },
+      {
+        setting_key: 'site_meta_description',
+        setting_value:
+          'Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.',
+        setting_type: 'text',
+      },
       { setting_key: 'site_tagline', setting_value: 'Natural Beauty for Everyone', setting_type: 'text' },
       { setting_key: 'contact_email', setting_value: 'support@thenefol.com', setting_type: 'text' },
       { setting_key: 'contact_phone', setting_value: '+91-8887847213', setting_type: 'text' },

@@ -20,6 +20,8 @@ import SwipeNavigation from './components/SwipeNavigation'
 import JoinUsModal from './components/JoinUsModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import { getApiBase } from './utils/apiBase'
+import cmsService from './services/cms'
+import { applySiteBranding } from './utils/siteBranding'
 import { BRAND_ICON_SRC, BRAND_LOGO_WIDE_SRC } from './constants/brandAssets'
 import {
   CREATOR_PROGRAM_BADGES_REFRESH,
@@ -107,6 +109,17 @@ function AppContent() {
   const [cartToast, setCartToast] = useState<{ message: string; id: number } | null>(null)
   const desktopCollectionsRef = useRef<HTMLDivElement>(null)
   const { currentPath, currentHash, navigate } = useHashRouter()
+
+  // Browser tab / Safari URL suggestion title & meta (from CMS → Homepage Layout Manager)
+  useEffect(() => {
+    let cancelled = false
+    cmsService.getSettings().then((settings) => {
+      if (!cancelled) applySiteBranding(settings)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Fetch affiliate unlocked status when Join Us modal opens (if user logged in)
   useEffect(() => {

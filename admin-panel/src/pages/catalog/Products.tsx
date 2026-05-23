@@ -91,6 +91,39 @@ function ProductsManager() {
 
   // Use centralized API URL utility that respects VITE_API_URL
   const apiBase = getApiBaseUrl()
+
+  const authHeaders = useMemo((): HeadersInit => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const token = localStorage.getItem('auth_token')
+    if (token) headers.Authorization = `Bearer ${token}`
+    const role = localStorage.getItem('role')
+    if (role) headers['x-user-role'] = role
+    const permissions = localStorage.getItem('permissions')
+    if (permissions) headers['x-user-permissions'] = permissions
+    return headers
+  }, [])
+
+  const deleteOneProductImage = async (imageId: number) => {
+    if (!selected) return false
+    const res = await fetch(`${apiBase}/products/${selected.id}/images/${imageId}`, {
+      method: 'DELETE',
+      headers: authHeaders,
+    })
+    return res.ok
+  }
+
+  const deleteAllProductImagesOfType = async (type: 'pdp' | 'banner') => {
+    if (!selected) return false
+    const res = await fetch(`${apiBase}/products/${selected.id}/images?type=${type}`, {
+      method: 'DELETE',
+      headers: authHeaders,
+    })
+    if (!res.ok) return false
+    if (type === 'pdp') setPdpImages([])
+    else setBannerImages([])
+    await load()
+    return true
+  }
   
   // Function to save image order to backend
   const saveImageOrder = async (images: Array<{ id: number; url: string; type?: string; display_order?: number }>, type: 'pdp' | 'banner') => {
@@ -102,7 +135,7 @@ function ProductsManager() {
       }))
       const res = await fetch(`${apiBase}/products/${selected.id}/images/reorder`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ images: orderUpdates, type })
       })
       if (res.ok) {
@@ -940,7 +973,24 @@ function ProductsManager() {
                   </div>
                 </div>
                 <div>
-                  <div className="mb-2 text-sm text-gray-700">PDP images <span className="text-xs text-gray-500">(Drag to reorder)</span></div>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm text-gray-700">
+                      PDP images <span className="text-xs text-gray-500">(drag to reorder · click Remove on each)</span>
+                    </span>
+                    {pdpImages.length > 0 && (
+                      <button
+                        type="button"
+                        className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                        onClick={async () => {
+                          if (!confirm(`Remove all ${pdpImages.length} PDP image(s) for this product? This clears empty frames on the storefront.`)) return
+                          const ok = await deleteAllProductImagesOfType('pdp')
+                          notify(ok ? 'success' : 'error', ok ? 'All PDP images removed' : 'Failed to remove PDP images')
+                        }}
+                      >
+                        Remove all PDP ({pdpImages.length})
+                      </button>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {pdpImages.map((img, idx) => {
                       const abs = toAbs(img.url)
@@ -986,37 +1036,35 @@ function ProductsManager() {
                           <div className="absolute top-1 left-1 bg-blue-500 text-white rounded-full p-1 text-xs z-10">
                             {idx + 1}
                           </div>
-                          {isVid ? (
-                            <video src={abs} className="h-16 w-16 rounded object-cover" />
-                          ) : (
-                            <img src={abs} className="h-16 w-16 rounded object-cover" />
-                          )}
+                          <div className="h-16 w-16 rounded border border-gray-200 bg-gray-50 overflow-hidden">
+                            {isVid ? (
+                              <video src={abs} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                            ) : (
+                              <img src={abs} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                            )}
+                          </div>
                           <button
+                            type="button"
                             onClick={async (e) => {
                               e.stopPropagation()
-                              if (!confirm('Are you sure you want to delete this image?')) return
+                              if (!confirm('Remove this PDP image from the product?')) return
                               try {
-                                const res = await fetch(`${apiBase}/products/${selected.id}/images/${img.id}`, {
-                                  method: 'DELETE'
-                                })
-                                if (res.ok) {
-                                  // Remove from local state
+                                const ok = await deleteOneProductImage(img.id)
+                                if (ok) {
                                   setPdpImages(prev => prev.filter(i => i.id !== img.id))
                                   await load()
-                                  notify('success', 'Image deleted successfully')
+                                  notify('success', 'PDP image removed')
                                 } else {
-                                  notify('error', 'Failed to delete image')
+                                  notify('error', 'Failed to remove image (check you are logged in as admin)')
                                 }
-                              } catch (err) {
-                                notify('error', 'Failed to delete image')
+                              } catch {
+                                notify('error', 'Failed to remove image')
                               }
                             }}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 z-10"
-                            title="Delete image"
+                            className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-medium text-white shadow hover:bg-red-700"
+                            title="Remove PDP image"
                           >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            Remove
                           </button>
                         </div>
                       )
@@ -1034,7 +1082,7 @@ function ProductsManager() {
                         }
                         await fetch(`${apiBase}/products/${selected.id}/images`, {
                           method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
+                          headers: authHeaders,
                           body: JSON.stringify({ images: uploaded, type: 'pdp' })
                         })
                         // Reload images from database to get full objects with IDs
@@ -1059,7 +1107,24 @@ function ProductsManager() {
                   </div>
                 </div>
                 <div>
-                  <div className="mb-2 text-sm text-gray-700">Banner images <span className="text-xs text-gray-500">(Drag to reorder)</span></div>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm text-gray-700">
+                      Banner images <span className="text-xs text-gray-500">(drag to reorder)</span>
+                    </span>
+                    {bannerImages.length > 0 && (
+                      <button
+                        type="button"
+                        className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                        onClick={async () => {
+                          if (!confirm(`Remove all ${bannerImages.length} banner image(s) for this product?`)) return
+                          const ok = await deleteAllProductImagesOfType('banner')
+                          notify(ok ? 'success' : 'error', ok ? 'All banner images removed' : 'Failed to remove banner images')
+                        }}
+                      >
+                        Remove all banners ({bannerImages.length})
+                      </button>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {bannerImages.map((img, idx) => {
                       const abs = toAbs(img.url)
@@ -1105,37 +1170,35 @@ function ProductsManager() {
                           <div className="absolute top-1 left-1 bg-blue-500 text-white rounded-full p-1 text-xs z-10">
                             {idx + 1}
                           </div>
-                          {isVid ? (
-                            <video src={abs} className="h-16 w-16 rounded object-cover" />
-                          ) : (
-                            <img src={abs} className="h-16 w-16 rounded object-cover" />
-                          )}
+                          <div className="h-16 w-16 rounded border border-gray-200 bg-gray-50 overflow-hidden">
+                            {isVid ? (
+                              <video src={abs} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                            ) : (
+                              <img src={abs} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                            )}
+                          </div>
                           <button
+                            type="button"
                             onClick={async (e) => {
                               e.stopPropagation()
-                              if (!confirm('Are you sure you want to delete this image?')) return
+                              if (!confirm('Remove this banner image?')) return
                               try {
-                                const res = await fetch(`${apiBase}/products/${selected.id}/images/${img.id}`, {
-                                  method: 'DELETE'
-                                })
-                                if (res.ok) {
-                                  // Remove from local state
+                                const ok = await deleteOneProductImage(img.id)
+                                if (ok) {
                                   setBannerImages(prev => prev.filter(i => i.id !== img.id))
                                   await load()
-                                  notify('success', 'Image deleted successfully')
+                                  notify('success', 'Banner image removed')
                                 } else {
-                                  notify('error', 'Failed to delete image')
+                                  notify('error', 'Failed to remove image')
                                 }
-                              } catch (err) {
-                                notify('error', 'Failed to delete image')
+                              } catch {
+                                notify('error', 'Failed to remove image')
                               }
                             }}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 z-10"
-                            title="Delete image"
+                            className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-medium text-white shadow hover:bg-red-700"
+                            title="Remove banner"
                           >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            Remove
                           </button>
                         </div>
                       )
@@ -1153,7 +1216,7 @@ function ProductsManager() {
                         }
                         await fetch(`${apiBase}/products/${selected.id}/images`, {
                           method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
+                          headers: authHeaders,
                           body: JSON.stringify({ images: uploaded, type: 'banner' })
                         })
                         // Reload images from database to get full objects with IDs

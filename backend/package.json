@@ -13,6 +13,7 @@
     "reset-db": "node reset-database.js",
     "reset-admin": "node reset-admin-credentials.js",
     "ensure-super-admin": "node ensure-super-admin.js",
+    "clear-pdp-images": "node scripts/clear-pdp-images.js",
     "setup-db": "node setup-supabase-db.js",
     "create-db": "node create-nefol-database.js",
     "test-login": "node test-login.js",

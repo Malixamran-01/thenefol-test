@@ -1137,7 +1137,18 @@ app.post('/api/products/:id/images', (req, res) => {
 })
 app.get('/api/products/:id/images', (req, res) => productRoutes.getProductImages(pool, req, res))
 app.put('/api/products/:id/images/reorder', authenticateAndAttach as any, requirePermission(['products:update']), (req, res) => productRoutes.reorderProductImages(pool, req, res))
-app.delete('/api/products/:id/images/:imageId', (req, res) => productRoutes.deleteProductImage(pool, req, res))
+app.delete(
+  '/api/products/:id/images/:imageId',
+  authenticateAndAttach as any,
+  requirePermission(['products:update']),
+  (req, res) => productRoutes.deleteProductImage(pool, req, res)
+)
+app.delete(
+  '/api/products/:id/images',
+  authenticateAndAttach as any,
+  requirePermission(['products:update']),
+  (req, res) => productRoutes.deleteAllProductImages(pool, req, res)
+)
 
 // ==================== VARIANTS & INVENTORY ====================
 app.post('/api/products/:id/variant-options', (req, res) => variantRoutes.setVariantOptions(pool, req, res))

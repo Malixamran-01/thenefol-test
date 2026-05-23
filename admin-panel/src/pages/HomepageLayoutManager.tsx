@@ -139,6 +139,12 @@ export default function HomepageLayoutManager() {
     footer: 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
     logoName: 'NEFÖL'
   })
+  const [siteBrandName, setSiteBrandName] = useState('NEFOL')
+  const [siteBrowserTitle, setSiteBrowserTitle] = useState('Best skincare and haircare products | NEFOL')
+  const [siteMetaDescription, setSiteMetaDescription] = useState(
+    'Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.'
+  )
+  const [siteBrandingSaving, setSiteBrandingSaving] = useState(false)
 
   // Initialize homepage sections based on actual Home.tsx structure
   const initializeSections = useCallback(async () => {
@@ -541,6 +547,18 @@ export default function HomepageLayoutManager() {
       )
 
       setSections(allSections)
+
+      try {
+        const settingsRes = await fetch(`${API_BASE}/cms/settings`)
+        if (settingsRes.ok) {
+          const s = await settingsRes.json()
+          if (s.site_brand_name) setSiteBrandName(String(s.site_brand_name))
+          if (s.site_browser_title) setSiteBrowserTitle(String(s.site_browser_title))
+          if (s.site_meta_description) setSiteMetaDescription(String(s.site_meta_description))
+        }
+      } catch {
+        /* optional CMS settings */
+      }
     } catch (error) {
       console.error('Failed to load sections:', error)
       setSections(defaultSections)
@@ -548,6 +566,31 @@ export default function HomepageLayoutManager() {
       setLoading(false)
     }
   }, [])
+
+  const saveSiteBranding = async () => {
+    setSiteBrandingSaving(true)
+    try {
+      const payload = [
+        { setting_key: 'site_brand_name', setting_value: siteBrandName.trim(), setting_type: 'text' },
+        { setting_key: 'site_browser_title', setting_value: siteBrowserTitle.trim(), setting_type: 'text' },
+        { setting_key: 'site_meta_description', setting_value: siteMetaDescription.trim(), setting_type: 'text' },
+      ]
+      for (const entry of payload) {
+        const res = await fetch(`${API_BASE}/cms/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(entry),
+        })
+        if (!res.ok) throw new Error('Failed to save setting')
+      }
+      notify('success', 'Browser & search appearance saved')
+    } catch (e) {
+      console.error(e)
+      notify('error', 'Failed to save browser appearance')
+    } finally {
+      setSiteBrandingSaving(false)
+    }
+  }
 
   useEffect(() => {
     initializeSections()
@@ -1600,6 +1643,66 @@ export default function HomepageLayoutManager() {
             <RefreshCw className="h-5 w-5 shrink-0" />
             Refresh
           </button>
+        </div>
+      </div>
+
+      {/* Browser tab / Safari URL suggestion (CMS settings) */}
+      <div className="rounded-lg border border-indigo-200 bg-gradient-to-br from-indigo-50 to-slate-50 p-4 sm:p-5">
+        <h2 className="text-base font-semibold text-indigo-950">Browser &amp; search appearance</h2>
+        <p className="mt-1 text-sm text-indigo-900/80">
+          Controls the text Safari and Chrome show next to your URL (e.g.{' '}
+          <span className="font-mono text-xs">thenefol.com — Best skincare…</span>). Visitors see this after
+          the site loads; clear cache or open a private tab to preview changes.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className="text-sm font-medium text-gray-700">Browser title</span>
+            <input
+              type="text"
+              value={siteBrowserTitle}
+              onChange={(e) => setSiteBrowserTitle(e.target.value)}
+              maxLength={120}
+              placeholder="Best skincare and haircare products | NEFOL"
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            />
+            <span className="mt-1 block text-xs text-gray-500">Recommended: short tagline + brand, under ~70 characters.</span>
+          </label>
+          <label className="block sm:col-span-2">
+            <span className="text-sm font-medium text-gray-700">Meta description</span>
+            <textarea
+              value={siteMetaDescription}
+              onChange={(e) => setSiteMetaDescription(e.target.value)}
+              maxLength={320}
+              rows={3}
+              className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Brand name (short)</span>
+            <input
+              type="text"
+              value={siteBrandName}
+              onChange={(e) => setSiteBrandName(e.target.value)}
+              maxLength={40}
+              placeholder="NEFOL"
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            />
+            <span className="mt-1 block text-xs text-gray-500">Used for site name in social previews.</span>
+          </label>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={siteBrandingSaving}
+            onClick={saveSiteBranding}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            <Save className="h-4 w-4 shrink-0" />
+            {siteBrandingSaving ? 'Saving…' : 'Save browser appearance'}
+          </button>
+          <span className="text-xs text-gray-500">
+            Preview: <strong className="text-gray-700">{siteBrowserTitle || '—'}</strong>
+          </span>
         </div>
       </div>
 
