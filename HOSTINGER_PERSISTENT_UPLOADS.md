@@ -17,6 +17,31 @@ The database (Supabase) still has URLs like `/uploads/foo.webp`, but the **files
 
 ## Fix (one-time on the server)
 
+**Path note:** use **`/var/lib/nefol/uploads`** (Linux “variable state” under `/var/lib`).  
+Do **not** use `/var/www/lib` — that is not part of this app’s layout.
+
+### Automated script (recommended)
+
+From the repo on the VPS:
+
+```bash
+cd /var/www/nefol
+chmod +x scripts/migrate-persistent-uploads.sh
+
+# Preview only
+sudo ./scripts/migrate-persistent-uploads.sh --dry-run
+
+# Migrate, set UPLOADS_DIR in backend/.env, restart PM2
+sudo ./scripts/migrate-persistent-uploads.sh
+
+# After verifying images on the site, archive & remove old deploy-tree copies
+sudo ./scripts/migrate-persistent-uploads.sh --clean
+```
+
+The script merges files from `uploads-data`, `backend/uploads`, etc., sets `UPLOADS_DIR`, fixes ownership for the PM2 user, and optionally tarballs legacy folders before removal.
+
+### Manual steps
+
 SSH into the VPS and run:
 
 ```bash

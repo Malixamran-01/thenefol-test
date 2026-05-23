@@ -522,6 +522,7 @@ async function runMigration() {
         posts_count integer default 0,
         total_views integer default 0,
         total_likes integer default 0,
+        profile_views integer not null default 0,
         updated_at timestamptz default now()
       );
 
@@ -1431,7 +1432,13 @@ async function runMigration() {
       ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
     `);
 
-    console.log('📝 Step 8: Super admin staff account (from .env)…');
+    console.log('📝 Step 8: Author stats & blog reads columns…');
+    await pool.query(`
+      ALTER TABLE author_stats ADD COLUMN IF NOT EXISTS profile_views INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS reads_count INTEGER NOT NULL DEFAULT 0;
+    `);
+
+    console.log('📝 Step 9: Super admin staff account (from .env)…');
     await syncEnvSuperAdmin();
     
     console.log('✅ Migration completed successfully!');

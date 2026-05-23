@@ -2935,6 +2935,9 @@ export async function ensureSchema(pool: Pool) {
     ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS job_title TEXT;
     ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
     ALTER TABLE staff_users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
+
+    ALTER TABLE author_stats ADD COLUMN IF NOT EXISTS profile_views INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS reads_count INTEGER NOT NULL DEFAULT 0;
   `)
 
   console.log('✅ Phase 3 & 4 tables created successfully')
