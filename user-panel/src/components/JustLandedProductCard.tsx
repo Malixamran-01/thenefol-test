@@ -16,6 +16,16 @@ type JustLandedProduct = {
 
 type ReviewStatsMap = Record<string, { average_rating?: number; review_count?: number; verified_count?: number }>
 
+const TITLE_MAX_CHARS = 52
+const DESC_MAX_CHARS = 68
+
+function truncateWithEllipsis(text: string, max: number): string {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (!normalized) return ''
+  if (normalized.length <= max) return normalized
+  return `${normalized.slice(0, max).trimEnd()}…`
+}
+
 function getSubtitle(product: JustLandedProduct, csvProducts: any[]): string | null {
   const csvMatch = csvProducts.find((csv: any) => {
     const csvSlug = csv['Slug'] || csv['Product Name']?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
@@ -54,28 +64,27 @@ export default function JustLandedProductCard({
   const reviewCount = dbStats?.review_count ?? 0
   const hasVerified = (dbStats?.verified_count ?? 0) > 0
   const isBestSeller = globalIndex < 4
-  const subtitle = getSubtitle(product, csvProducts)
+  const subtitleRaw = getSubtitle(product, csvProducts)
+  const title = truncateWithEllipsis(product.title || '', TITLE_MAX_CHARS)
+  const subtitle = subtitleRaw ? truncateWithEllipsis(subtitleRaw, DESC_MAX_CHARS) : null
 
   return (
-    <div className="group relative flex h-full flex-col bg-white">
+    <article className="nefol-product-card group">
       <a href={`#/user/product/${product.slug}`} className="block shrink-0">
-        <div className="relative mb-4 overflow-hidden rounded-xl" style={{ aspectRatio: '1 / 1' }}>
+        <div className="nefol-product-card__media">
           {product.listImage ? (
             <img
               src={product.listImage}
-              alt={product.title}
-              className="img-fill h-full w-full rounded-xl object-cover transition-transform duration-500 group-hover:scale-105"
+              alt={product.title || 'Product'}
               loading={eagerImage ? 'eager' : 'lazy'}
               onError={createImageErrorHandler(product.listImage)}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gray-100">
-              <span className="text-gray-400">No Image</span>
-            </div>
+            <span className="nefol-product-card__media-placeholder">No Image</span>
           )}
           {isBestSeller && (
             <div
-              className="absolute left-2 top-2 px-2 py-1 text-xs font-medium text-white"
+              className="absolute left-2 top-2 z-10 px-2 py-1 text-xs font-medium text-white"
               style={{ backgroundColor: 'var(--arctic-blue-primary-dark)' }}
             >
               Best Seller
@@ -83,76 +92,59 @@ export default function JustLandedProductCard({
           )}
         </div>
       </a>
+
       {product.id != null && (
         <WishlistButton
           productId={product.id}
           className="absolute right-4 top-4 z-50 opacity-100 md:opacity-0 md:group-hover:opacity-100"
         />
       )}
-      <div className="flex min-h-0 flex-1 flex-col">
-        <a href={`#/user/product/${product.slug}`} className="block shrink-0">
-          <h3
-            className="line-clamp-2 min-h-[3.25rem] text-lg font-semibold leading-snug tracking-wide sm:min-h-[3.5rem] sm:text-xl"
-            style={{
-              color: '#1a1a1a',
-              letterSpacing: '0.05em',
-            }}
-          >
-            {product.title}
+
+      <div className="nefol-product-card__body">
+        <a href={`#/user/product/${product.slug}`}>
+          <h3 className="nefol-product-card__title" title={product.title}>
+            {title}
           </h3>
         </a>
 
-        <p
-          className="mt-1 line-clamp-2 min-h-[2.5rem] shrink-0 text-sm leading-snug text-gray-600"
-          style={{ color: '#666' }}
-          aria-hidden={!subtitle}
-        >
-          {subtitle || '\u00A0'}
-        </p>
+        {subtitle ? (
+          <p className="nefol-product-card__desc" title={subtitleRaw || undefined}>
+            {subtitle}
+          </p>
+        ) : null}
 
-        <div className="mt-2 flex min-h-[1.75rem] shrink-0 items-center gap-1">
-          {rating > 0 ? (
-            <>
-              <div className="flex items-center">
-                {[...Array(5)].map((_, i) => {
-                  const filled = i < Math.round(rating)
-                  return (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                    />
-                  )
-                })}
-              </div>
-              <span className="ml-1 text-sm text-gray-600">
-                {rating.toFixed(2)} ({reviewCount})
-              </span>
-              {hasVerified && <VerifiedBadge size="sm" className="ml-1.5" />}
-            </>
-          ) : null}
-        </div>
+        {rating > 0 ? (
+          <div className="nefol-product-card__rating">
+            <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center' }}>
+              {[...Array(5)].map((_, i) => {
+                const filled = i < Math.round(rating)
+                return (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                  />
+                )
+              })}
+            </div>
+            <span className="ml-1 shrink-0 text-sm text-gray-600">
+              {rating.toFixed(2)} ({reviewCount})
+            </span>
+            {hasVerified && <VerifiedBadge size="sm" className="ml-1.5 shrink-0" />}
+          </div>
+        ) : null}
 
-        <div className="mt-2 flex min-h-[3rem] shrink-0 items-start">
+        <div className="nefol-product-card__price">
           <PricingDisplay
+            className="!flex-nowrap text-sm sm:text-base"
             product={product as { price?: string; details?: { mrp?: string; websitePrice?: string } }}
           />
         </div>
 
-        <a
-          href={`#/user/product/${product.slug}`}
-          className="mt-auto flex w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-3 text-xs font-light uppercase tracking-[0.15em] transition-all duration-300"
-          style={{
-            backgroundColor: 'rgb(75,151,201)',
-            color: '#FFFFFF',
-            letterSpacing: '0.15em',
-            minHeight: '44px',
-            textDecoration: 'none',
-          }}
-        >
-          <Eye className="h-4 w-4 flex-shrink-0" />
+        <a href={`#/user/product/${product.slug}`} className="nefol-product-card__cta">
+          <Eye className="h-4 w-4 shrink-0" />
           <span>View</span>
         </a>
       </div>
-    </div>
+    </article>
   )
 }
