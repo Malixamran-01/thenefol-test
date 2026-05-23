@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { getApiBase } from '../utils/apiBase'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { encodeMediaUrl } from '../utils/apiBase'
 
 interface SplashScreenProps {
   onComplete: () => void
@@ -10,7 +10,17 @@ type VideoType = 'portrait' | 'tablet' | 'desktop'
 const DEFAULT_SPLASH_VIDEOS = {
   desktop: '/IMAGES/SS LOGO.mp4',
   tablet: '/IMAGES/SS LOGO TAB.mp4',
-  mobile: '/IMAGES/SS LOGO PORTRAIT.mp4'
+  mobile: '/IMAGES/SS LOGO PORTRAIT.mp4',
+}
+
+const CMS_SECTIONS_URL = '/api/cms/sections/home'
+
+function encodeSplashVideos(videos: typeof DEFAULT_SPLASH_VIDEOS) {
+  return {
+    desktop: encodeMediaUrl(videos.desktop) || encodeMediaUrl(DEFAULT_SPLASH_VIDEOS.desktop),
+    tablet: encodeMediaUrl(videos.tablet) || encodeMediaUrl(DEFAULT_SPLASH_VIDEOS.tablet),
+    mobile: encodeMediaUrl(videos.mobile) || encodeMediaUrl(DEFAULT_SPLASH_VIDEOS.mobile),
+  }
 }
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
@@ -19,61 +29,47 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [videoError, setVideoError] = useState(false)
   const [videoType, setVideoType] = useState<VideoType>('desktop')
   const [isPlaying, setIsPlaying] = useState(false)
-  const [splashVideos, setSplashVideos] = useState(DEFAULT_SPLASH_VIDEOS)
+  const [splashVideos, setSplashVideos] = useState(() => encodeSplashVideos(DEFAULT_SPLASH_VIDEOS))
+  const [sourcesReady, setSourcesReady] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const hasStartedPlayingRef = useRef(false)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const splashTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const getCmsApiBase = () => {
-    const apiBase = getApiBase().replace(/\/$/, '')
-    const normalized = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`
-    return `${normalized}/cms`
-  }
-
-  const normalizeVideoUrl = (url?: string) => {
-    if (!url) return ''
-    if (/^https?:\/\//i.test(url)) return url
-    if (url.startsWith('/')) {
-      return `${getApiBase().replace(/\/$/, '')}${url}`
+  const videoSrc = useMemo(() => {
+    if (videoType === 'portrait') {
+      return splashVideos.mobile
     }
-    return `${getApiBase().replace(/\/$/, '')}/${url.replace(/^\/+/, '')}`
-  }
+    if (videoType === 'tablet') {
+      return splashVideos.tablet
+    }
+    return splashVideos.desktop
+  }, [videoType, splashVideos])
 
   // Detect device type and aspect ratio
   useEffect(() => {
     const detectVideoType = () => {
       const width = window.innerWidth
       const height = window.innerHeight
-      
-      // Portrait mode (9:16 ratio) - height > width
+
       if (height > width) {
         const portraitRatio = height / width
-        // 9:16 in portrait = 16/9 = 1.778, allow some tolerance (1.5 to 2.5)
         if (portraitRatio >= 1.5) {
           setVideoType('portrait')
           return
         }
       }
 
-      // Calculate landscape aspect ratio
       const aspectRatio = width / height
-
-      // Tablet mode (4:3 = 1.333) - allow tolerance between 1.1 and 1.6
       if (aspectRatio >= 1.1 && aspectRatio <= 1.6) {
         setVideoType('tablet')
         return
       }
 
-      // Desktop/Landscape mode (16:9 = 1.778) - wider screens
-      // Default to desktop for aspect ratio > 1.6
       setVideoType('desktop')
     }
 
-    // Check initial orientation
     detectVideoType()
-
-    // Listen for orientation changes
     window.addEventListener('resize', detectVideoType)
     window.addEventListener('orientationchange', detectVideoType)
 
@@ -83,49 +79,66 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     }
   }, [])
 
+  // Load CMS splash URLs before mounting <video> (avoids failing on defaults then ignoring CMS)
   useEffect(() => {
+    let cancelled = false
+
     const fetchSplashContent = async () => {
+      let videos = { ...DEFAULT_SPLASH_VIDEOS }
       try {
-        const cmsBase = getCmsApiBase()
-        const response = await fetch(`${cmsBase}/sections/home`)
+        const response = await fetch(CMS_SECTIONS_URL)
         if (response.ok) {
           const sections = await response.json()
-          const splashSection = sections.find((s: any) => s.section_type === 'splash_screen')
-          if (splashSection?.content) {
-            const desktopVideo = normalizeVideoUrl(splashSection.content.desktop?.video)
-            const tabletVideo = normalizeVideoUrl(splashSection.content.tablet?.video)
-            const mobileVideo = normalizeVideoUrl(splashSection.content.mobile?.video)
-            setSplashVideos({
-              desktop: desktopVideo || DEFAULT_SPLASH_VIDEOS.desktop,
-              tablet: tabletVideo || DEFAULT_SPLASH_VIDEOS.tablet,
-              mobile: mobileVideo || DEFAULT_SPLASH_VIDEOS.mobile
-            })
+          const splashSection = sections.find((s: { section_type?: string }) => s.section_type === 'splash_screen')
+          const content = splashSection?.content
+          if (content) {
+            videos = {
+              desktop: content.desktop?.video || DEFAULT_SPLASH_VIDEOS.desktop,
+              tablet: content.tablet?.video || DEFAULT_SPLASH_VIDEOS.tablet,
+              mobile: content.mobile?.video || DEFAULT_SPLASH_VIDEOS.mobile,
+            }
           }
         }
       } catch (error) {
         console.error('Failed to load splash screen videos:', error)
       }
+
+      if (!cancelled) {
+        setSplashVideos(encodeSplashVideos(videos))
+        setSourcesReady(true)
+      }
     }
 
     fetchSplashContent()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
+  // Reset playback state when the resolved URL changes (CMS load or orientation)
   useEffect(() => {
-    // Auto-complete splash screen after 1.8 seconds
+    if (!sourcesReady) return
+    setVideoError(false)
+    setIsVideoLoaded(false)
+    setIsPlaying(false)
+    hasStartedPlayingRef.current = false
+    if (videoRef.current) {
+      videoRef.current.load()
+    }
+  }, [videoSrc, sourcesReady])
+
+  useEffect(() => {
     splashTimeoutRef.current = setTimeout(() => {
       onComplete()
     }, 1800)
 
-    // Show skip button after 3 seconds
     const skipTimer = setTimeout(() => {
       setShowSkipButton(true)
     }, 3000)
 
-    // Fallback: If video doesn't start playing within 10 seconds, allow skip
     loadingTimeoutRef.current = setTimeout(() => {
       if (!isPlaying && !videoError) {
-        console.log('Video loading timeout - allowing skip')
-        setIsVideoLoaded(true) // Hide loading indicator
+        setIsVideoLoaded(true)
       }
     }, 10000)
 
@@ -141,7 +154,6 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   }, [isPlaying, videoError, onComplete])
 
   const handleVideoEnded = () => {
-    // Video finished, navigate to page
     if (splashTimeoutRef.current) {
       clearTimeout(splashTimeoutRef.current)
     }
@@ -151,13 +163,11 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const handleVideoLoaded = () => {
     setIsVideoLoaded(true)
     setVideoError(false)
-    // Try to play video when loaded
     if (videoRef.current && !hasStartedPlayingRef.current) {
       hasStartedPlayingRef.current = true
       videoRef.current.play().catch((err) => {
         console.error('Error playing video on load:', err)
-        // If autoplay fails, show instructions to user
-        setIsVideoLoaded(true) // Hide loading so user can interact
+        setIsVideoLoaded(true)
       })
     }
   }
@@ -174,9 +184,9 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   }
 
   const handleVideoError = () => {
+    console.error('[splash] Video failed to load:', videoSrc)
     setVideoError(true)
     setIsVideoLoaded(false)
-    // Auto-complete after error
     if (splashTimeoutRef.current) {
       clearTimeout(splashTimeoutRef.current)
     }
@@ -204,32 +214,14 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     }
   }
 
-  const handleLoadingClick = () => {
-    // Allow user to click during loading to start playback
-    if (videoRef.current && !isPlaying) {
-      videoRef.current.play().catch((err) => {
-        console.error('Error playing video on loading click:', err)
-      })
-    }
-  }
-
-  // Get the appropriate video source based on device type
-  const getVideoSource = () => {
-    if (videoType === 'portrait') {
-      return splashVideos.mobile || DEFAULT_SPLASH_VIDEOS.mobile
-    }
-    if (videoType === 'tablet') {
-      return splashVideos.tablet || DEFAULT_SPLASH_VIDEOS.tablet
-    }
-    return splashVideos.desktop || DEFAULT_SPLASH_VIDEOS.desktop
-  }
-
   return (
     <div className="fixed inset-0 z-50 bg-black">
-      {/* Full-screen video container */}
       <div className="absolute inset-0 w-full h-full flex items-center justify-center">
-        {!videoError ? (
+        {!sourcesReady ? (
+          <div className="text-white text-sm opacity-70">Loading…</div>
+        ) : !videoError ? (
           <video
+            key={videoSrc}
             ref={videoRef}
             className="w-full h-full object-contain cursor-pointer"
             autoPlay
@@ -239,13 +231,11 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
             onEnded={handleVideoEnded}
             onLoadedData={handleVideoLoaded}
             onCanPlay={() => {
-              // Ensure video plays only once when ready
               if (videoRef.current && !hasStartedPlayingRef.current && videoRef.current.paused) {
                 hasStartedPlayingRef.current = true
                 videoRef.current.play().catch((err) => {
                   console.error('Error playing video:', err)
-                  // Autoplay blocked - user will need to click
-                  setIsVideoLoaded(true) // Hide loading so user can interact
+                  setIsVideoLoaded(true)
                 })
               }
             }}
@@ -260,20 +250,24 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
               objectFit: 'contain',
             }}
           >
-            <source src={getVideoSource()} type="video/mp4" />
+            <source src={videoSrc} type="video/mp4" />
           </video>
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-white text-center">
+          <div className="w-full h-full flex items-center justify-center text-white text-center px-6">
             <div>
               <div className="text-6xl mb-4">🎬</div>
               <h2 className="text-2xl font-bold mb-2">Video Loading Error</h2>
-              <p className="text-lg opacity-80">Proceeding to website...</p>
+              <p className="text-lg opacity-80 mb-2">Proceeding to website…</p>
+              <p className="text-xs opacity-60 break-all max-w-md mx-auto">
+                Check file exists at this URL (admin uploads → /uploads/, defaults → /IMAGES/):
+                <br />
+                {videoSrc}
+              </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Skip Button */}
       {showSkipButton && (
         <button
           onClick={handleSkip}

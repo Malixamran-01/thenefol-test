@@ -478,15 +478,15 @@ export default function Home() {
           <div className="scrolling-text-wrapper">
             <div className="scrolling-text-content">
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ? </span>
+              <span className="scrolling-text-separator"> ✦ </span>
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ? </span>
+              <span className="scrolling-text-separator"> ✦ </span>
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ? </span>
+              <span className="scrolling-text-separator"> ✦ </span>
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ? </span>
+              <span className="scrolling-text-separator"> ✦ </span>
               <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ? </span>
+              <span className="scrolling-text-separator"> ✦ </span>
               <span className="scrolling-text-item">{scrollingText}</span>
             </div>
           </div>

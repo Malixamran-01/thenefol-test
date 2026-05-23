@@ -91,3 +91,45 @@ export function resolveMediaUrl(url?: string | null): string {
   const apiBase = getApiBase().replace(/\/$/, '')
   return trimmed.startsWith('/') ? `${apiBase}${trimmed}` : `${apiBase}/${trimmed}`
 }
+
+/** Encode path segments so filenames with spaces (e.g. SS LOGO.mp4) load in <video src>. */
+function encodePathSegment(segment: string): string {
+  try {
+    return encodeURIComponent(decodeURIComponent(segment))
+  } catch {
+    return encodeURIComponent(segment)
+  }
+}
+
+function encodePathname(pathname: string): string {
+  return pathname
+    .split('/')
+    .map((seg) => (seg === '' ? seg : encodePathSegment(seg)))
+    .join('/')
+}
+
+/**
+ * Resolve CMS/media paths and percent-encode spaces and special chars in filenames.
+ */
+export function encodeMediaUrl(url?: string | null): string {
+  const resolved = resolveMediaUrl(url)
+  if (!resolved) return ''
+
+  if (/^https?:\/\//i.test(resolved)) {
+    try {
+      const u = new URL(resolved)
+      u.pathname = encodePathname(u.pathname)
+      return u.toString()
+    } catch {
+      return resolved
+    }
+  }
+
+  const hashIdx = resolved.indexOf('#')
+  const withoutHash = hashIdx >= 0 ? resolved.slice(0, hashIdx) : resolved
+  const hash = hashIdx >= 0 ? resolved.slice(hashIdx) : ''
+  const queryIdx = withoutHash.indexOf('?')
+  const pathname = queryIdx >= 0 ? withoutHash.slice(0, queryIdx) : withoutHash
+  const query = queryIdx >= 0 ? withoutHash.slice(queryIdx) : ''
+  return `${encodePathname(pathname)}${query}${hash}`
+}
