@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { encodeMediaUrl } from '../utils/apiBase'
+import { toAbsoluteMediaUrl, pickFirstReachableMediaUrl } from '../utils/apiBase'
 
 interface SplashScreenProps {
   onComplete: () => void
@@ -15,13 +15,19 @@ const DEFAULT_SPLASH_VIDEOS = {
 
 const CMS_SECTIONS_URL = '/api/cms/sections/home'
 
-function encodeSplashVideos(videos: typeof DEFAULT_SPLASH_VIDEOS) {
+function cmsSplashUrls(videos: typeof DEFAULT_SPLASH_VIDEOS) {
   return {
-    desktop: encodeMediaUrl(videos.desktop) || encodeMediaUrl(DEFAULT_SPLASH_VIDEOS.desktop),
-    tablet: encodeMediaUrl(videos.tablet) || encodeMediaUrl(DEFAULT_SPLASH_VIDEOS.tablet),
-    mobile: encodeMediaUrl(videos.mobile) || encodeMediaUrl(DEFAULT_SPLASH_VIDEOS.mobile),
+    desktop: toAbsoluteMediaUrl(videos.desktop || DEFAULT_SPLASH_VIDEOS.desktop),
+    tablet: toAbsoluteMediaUrl(videos.tablet || DEFAULT_SPLASH_VIDEOS.tablet),
+    mobile: toAbsoluteMediaUrl(videos.mobile || DEFAULT_SPLASH_VIDEOS.mobile),
   }
 }
+
+const IMAGE_DEFAULTS = [
+  toAbsoluteMediaUrl(DEFAULT_SPLASH_VIDEOS.desktop),
+  toAbsoluteMediaUrl(DEFAULT_SPLASH_VIDEOS.tablet),
+  toAbsoluteMediaUrl(DEFAULT_SPLASH_VIDEOS.mobile),
+]
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false)
@@ -29,7 +35,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [videoError, setVideoError] = useState(false)
   const [videoType, setVideoType] = useState<VideoType>('desktop')
   const [isPlaying, setIsPlaying] = useState(false)
-  const [splashVideos, setSplashVideos] = useState(() => encodeSplashVideos(DEFAULT_SPLASH_VIDEOS))
+  const [splashVideos, setSplashVideos] = useState(() => cmsSplashUrls(DEFAULT_SPLASH_VIDEOS))
   const [sourcesReady, setSourcesReady] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const hasStartedPlayingRef = useRef(false)
@@ -104,7 +110,17 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       }
 
       if (!cancelled) {
-        setSplashVideos(encodeSplashVideos(videos))
+        const cms = cmsSplashUrls(videos)
+        const [desktop, tablet, mobile] = await Promise.all([
+          pickFirstReachableMediaUrl([cms.desktop, cms.tablet, cms.mobile, ...IMAGE_DEFAULTS]),
+          pickFirstReachableMediaUrl([cms.tablet, cms.desktop, cms.mobile, ...IMAGE_DEFAULTS]),
+          pickFirstReachableMediaUrl([cms.mobile, cms.tablet, cms.desktop, ...IMAGE_DEFAULTS]),
+        ])
+        setSplashVideos({
+          desktop: desktop || cms.desktop,
+          tablet: tablet || cms.tablet,
+          mobile: mobile || cms.mobile,
+        })
         setSourcesReady(true)
       }
     }
@@ -130,7 +146,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   useEffect(() => {
     splashTimeoutRef.current = setTimeout(() => {
       onComplete()
-    }, 1800)
+    }, isPlaying ? 4500 : 2800)
 
     const skipTimer = setTimeout(() => {
       setShowSkipButton(true)

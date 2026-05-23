@@ -674,7 +674,7 @@ export default function Home() {
                 onScroll={updateJustLandedSlide}
               >
                 {mobileJustLandedProducts.map((product, index) => (
-                  <div key={product.slug || index} className="nefol-horizontal-carousel__slide">
+                  <div key={product.slug || index} className="nefol-horizontal-carousel__slide flex h-full min-h-0">
                     <JustLandedProductCard
                       product={product}
                       globalIndex={index}
@@ -742,7 +742,7 @@ export default function Home() {
                     </button>
                   </>
                 )}
-                <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
+                <div className="grid grid-cols-2 items-stretch gap-8 lg:grid-cols-4">
                   {featuredProducts.map((product, index) => (
                     <JustLandedProductCard
                       key={product.slug || index}

@@ -57,8 +57,8 @@ export default function JustLandedProductCard({
   const subtitle = getSubtitle(product, csvProducts)
 
   return (
-    <div className="group relative bg-white">
-      <a href={`#/user/product/${product.slug}`} className="block">
+    <div className="group relative flex h-full flex-col bg-white">
+      <a href={`#/user/product/${product.slug}`} className="block shrink-0">
         <div className="relative mb-4 overflow-hidden rounded-xl" style={{ aspectRatio: '1 / 1' }}>
           {product.listImage ? (
             <img
@@ -89,57 +89,58 @@ export default function JustLandedProductCard({
           className="absolute right-4 top-4 z-50 opacity-100 md:opacity-0 md:group-hover:opacity-100"
         />
       )}
-      <div className="space-y-2">
-        <a href={`#/user/product/${product.slug}`}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <a href={`#/user/product/${product.slug}`} className="block shrink-0">
           <h3
-            className="mb-1 line-clamp-2 overflow-hidden text-lg font-semibold tracking-wide hover:opacity-70 sm:text-xl"
+            className="line-clamp-2 min-h-[3.25rem] text-lg font-semibold leading-snug tracking-wide sm:min-h-[3.5rem] sm:text-xl"
             style={{
               color: '#1a1a1a',
               letterSpacing: '0.05em',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              maxHeight: '3.5rem',
             }}
           >
             {product.title}
           </h3>
         </a>
-        {subtitle && (
-          <p
-            className="mb-1 line-clamp-2 text-sm text-gray-600"
-            style={{ color: '#666', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-          >
-            {subtitle}
-          </p>
-        )}
-        {rating > 0 && (
-          <div className="mb-2 flex items-center gap-1">
-            <div className="flex items-center">
-              {[...Array(5)].map((_, i) => {
-                const filled = i < Math.round(rating)
-                return (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                  />
-                )
-              })}
-            </div>
-            <span className="ml-1 text-sm text-gray-600">
-              {rating.toFixed(2)} ({reviewCount})
-            </span>
-            {hasVerified && <VerifiedBadge size="sm" className="ml-1.5" />}
-          </div>
-        )}
-        <div className="mb-2 flex items-center gap-2">
+
+        <p
+          className="mt-1 line-clamp-2 min-h-[2.5rem] shrink-0 text-sm leading-snug text-gray-600"
+          style={{ color: '#666' }}
+          aria-hidden={!subtitle}
+        >
+          {subtitle || '\u00A0'}
+        </p>
+
+        <div className="mt-2 flex min-h-[1.75rem] shrink-0 items-center gap-1">
+          {rating > 0 ? (
+            <>
+              <div className="flex items-center">
+                {[...Array(5)].map((_, i) => {
+                  const filled = i < Math.round(rating)
+                  return (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                    />
+                  )
+                })}
+              </div>
+              <span className="ml-1 text-sm text-gray-600">
+                {rating.toFixed(2)} ({reviewCount})
+              </span>
+              {hasVerified && <VerifiedBadge size="sm" className="ml-1.5" />}
+            </>
+          ) : null}
+        </div>
+
+        <div className="mt-2 flex min-h-[3rem] shrink-0 items-start">
           <PricingDisplay
             product={product as { price?: string; details?: { mrp?: string; websitePrice?: string } }}
           />
         </div>
+
         <a
           href={`#/user/product/${product.slug}`}
-          className="mt-4 flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-3 text-xs font-light uppercase tracking-[0.15em] transition-all duration-300"
+          className="mt-auto flex w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-3 text-xs font-light uppercase tracking-[0.15em] transition-all duration-300"
           style={{
             backgroundColor: 'rgb(75,151,201)',
             color: '#FFFFFF',

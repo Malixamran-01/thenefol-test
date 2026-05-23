@@ -133,3 +133,42 @@ export function encodeMediaUrl(url?: string | null): string {
   const query = queryIdx >= 0 ? withoutHash.slice(queryIdx) : ''
   return `${encodePathname(pathname)}${query}${hash}`
 }
+
+/** Same as encodeMediaUrl but always https://current-host/... — required for reliable <video src>. */
+export function toAbsoluteMediaUrl(url?: string | null): string {
+  const encoded = encodeMediaUrl(url)
+  if (!encoded) return ''
+  if (/^https?:\/\//i.test(encoded)) return encoded
+  const site = getSiteUrl().replace(/\/$/, '')
+  return encoded.startsWith('/') ? `${site}${encoded}` : `${site}/${encoded}`
+}
+
+/** HEAD (or tiny GET) check — returns first URL that exists on the server. */
+export async function pickFirstReachableMediaUrl(
+  candidates: Array<string | undefined | null>
+): Promise<string> {
+  const seen = new Set<string>()
+  for (const raw of candidates) {
+    const absolute = toAbsoluteMediaUrl(raw)
+    if (!absolute || seen.has(absolute)) continue
+    seen.add(absolute)
+    try {
+      const head = await fetch(absolute, { method: 'HEAD', cache: 'no-store' })
+      if (head.ok) return absolute
+    } catch {
+      /* try GET below */
+    }
+    try {
+      const probe = await fetch(absolute, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { Range: 'bytes=0-0' },
+      })
+      if (probe.ok || probe.status === 206) return absolute
+    } catch {
+      /* next candidate */
+    }
+  }
+  const first = candidates.find((c) => c && String(c).trim())
+  return first ? toAbsoluteMediaUrl(first) : ''
+}

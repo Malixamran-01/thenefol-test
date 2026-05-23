@@ -1,6 +1,6 @@
 // Service Worker for Nefol PWA
-const CACHE_NAME = 'nefol-pwa-v3'
-const RUNTIME_CACHE = 'nefol-runtime-v3'
+const CACHE_NAME = 'nefol-pwa-v4'
+const RUNTIME_CACHE = 'nefol-runtime-v4'
 
 // Assets to cache immediately on install
 const PRECACHE_ASSETS = [
@@ -76,6 +76,11 @@ self.addEventListener('fetch', (event) => {
 
   // Skip range requests to avoid partial response caching
   if (request.headers.has('range')) {
+    return
+  }
+
+  // Video must hit the network/nginx directly (Range + large files break in SW cache)
+  if (/\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url.pathname)) {
     return
   }
 

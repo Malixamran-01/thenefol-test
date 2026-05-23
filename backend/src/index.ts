@@ -203,7 +203,17 @@ app.use('/uploads', (req, res, next) => {
     return res.sendStatus(200)
   }
   next()
-}, express.static(getUploadsRoot()))
+}, express.static(getUploadsRoot(), {
+  setHeaders(res, filePath) {
+    if (/\.mp4$/i.test(filePath)) {
+      res.setHeader('Content-Type', 'video/mp4')
+      res.setHeader('Accept-Ranges', 'bytes')
+    } else if (/\.webm$/i.test(filePath)) {
+      res.setHeader('Content-Type', 'video/webm')
+      res.setHeader('Accept-Ranges', 'bytes')
+    }
+  },
+}))
 
 // Serve panel images with CORS headers from multiple possible locations
 // Priority: explicit env override -> built dist assets -> public fallbacks
