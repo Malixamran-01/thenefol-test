@@ -13,11 +13,22 @@ export type ProductShareUrls = {
   crawlUrl: string
 }
 
+/** Path-safe slug for share URLs (avoid double-encoding). */
+export function slugForSharePath(slug: string): string {
+  const raw = String(slug || '').trim()
+  if (!raw) return ''
+  try {
+    return encodeURIComponent(decodeURIComponent(raw))
+  } catch {
+    return encodeURIComponent(raw)
+  }
+}
+
 export function getProductShareUrls(slug: string): ProductShareUrls {
   const origin = getShareSiteOrigin()
-  const encoded = encodeURIComponent(String(slug || '').trim())
+  const pathSlug = slugForSharePath(slug)
   return {
-    appUrl: `${origin}/#/user/product/${encoded}`,
-    crawlUrl: `${origin}/product/${encoded}`,
+    appUrl: `${origin}/#/user/product/${pathSlug}`,
+    crawlUrl: `${origin}/product/${pathSlug}`,
   }
 }

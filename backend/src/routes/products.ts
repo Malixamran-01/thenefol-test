@@ -2,6 +2,7 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { handleGetAll, handleCreate, handleUpdate, sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { isSocialCrawler } from '../utils/socialCrawler'
 
 function escapeHtmlMeta(s: string): string {
   return String(s)
@@ -27,11 +28,11 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
 
     const { rows } = await pool.query(
       `
-      SELECT p.title, p.slug, p.details, p.list_image,
+      SELECT p.title, p.slug, p.description, p.details, p.list_image,
         (
           SELECT pi.url FROM product_images pi
           WHERE pi.product_id = p.id AND (pi.type = 'pdp' OR pi.type IS NULL)
-          ORDER BY pi.id ASC
+          ORDER BY COALESCE(pi.display_order, pi.id) ASC, pi.id ASC
           LIMIT 1
         ) AS first_pdp_url
       FROM products p
@@ -49,6 +50,7 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
     const row = rows[0] as {
       title: string
       slug: string
+      description: string | null
       details: Record<string, unknown> | null
       list_image: string | null
       first_pdp_url: string | null
@@ -67,23 +69,34 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
 
     const details = row.details && typeof row.details === 'object' ? row.details : {}
     const descRaw =
+      (typeof row.description === 'string' && row.description) ||
       (typeof details.description === 'string' && details.description) ||
       (typeof details.short_description === 'string' && details.short_description) ||
+      (typeof details.subtitle === 'string' && details.subtitle) ||
       ''
-    const description = descRaw.replace(/<[^>]*>/g, '').slice(0, 200) || 'Discover premium skincare from NEFOL.'
+    const description =
+      descRaw.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200) ||
+      'Discover premium skincare from NEFOL.'
 
     const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
-    const spaUrl = `${frontendBase}/#/user/product/${encodeURIComponent(row.slug)}`
-    const pageUrl = `${baseUrl}/product/${encodeURIComponent(row.slug)}`
+    const slugPath = encodeURIComponent(row.slug)
+    const spaUrl = `${frontendBase}/#/user/product/${slugPath}`
+    const pageUrl = `${baseUrl}/product/${slugPath}`
 
     const envOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
     const siteLogoPath = '/IMAGES/NEFOL%20icon.png'
     const defaultSiteOg = envOg || `${frontendBase.replace(/\/$/, '')}${siteLogoPath}`
 
-    const productOg = toAbsolute(row.first_pdp_url) || toAbsolute(row.list_image)
+    const productOg = toAbsolute(row.list_image) || toAbsolute(row.first_pdp_url)
     const ogImage = productOg || defaultSiteOg
+    const ogImageSecure = ogImage.startsWith('https://') ? ogImage : ogImage.replace(/^http:\/\//i, 'https://')
 
-    const title = row.title || 'Product | NEFOL'
+    const title = `${row.title || 'Product'} | NEFOL`
+    const isCrawler = isSocialCrawler(req.headers['user-agent'] as string | undefined)
+    const redirectBlock = isCrawler
+      ? ''
+      : `<meta http-equiv="refresh" content="0;url=${escapeHtmlMeta(spaUrl)}">
+  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>`
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -93,27 +106,28 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
   <title>${escapeHtmlMeta(title)}</title>
   <meta name="description" content="${escapeHtmlMeta(description)}">
   <meta property="og:type" content="product">
-  <meta property="og:title" content="${escapeHtmlMeta(title)}">
+  <meta property="og:title" content="${escapeHtmlMeta(row.title || 'Product')}">
   <meta property="og:description" content="${escapeHtmlMeta(description)}">
   <meta property="og:url" content="${escapeHtmlMeta(pageUrl)}">
   <meta property="og:site_name" content="NEFOL">
-  ${ogImage ? `<meta property="og:image" content="${escapeHtmlMeta(ogImage)}">` : ''}
+  ${ogImage ? `<meta property="og:image" content="${escapeHtmlMeta(ogImageSecure)}">
+  <meta property="og:image:secure_url" content="${escapeHtmlMeta(ogImageSecure)}">` : ''}
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${escapeHtmlMeta(title)}">
+  <meta name="twitter:title" content="${escapeHtmlMeta(row.title || 'Product')}">
   <meta name="twitter:description" content="${escapeHtmlMeta(description)}">
-  ${ogImage ? `<meta name="twitter:image" content="${escapeHtmlMeta(ogImage)}">` : ''}
+  ${ogImage ? `<meta name="twitter:image" content="${escapeHtmlMeta(ogImageSecure)}">` : ''}
   <link rel="canonical" href="${escapeHtmlMeta(pageUrl)}">
-  <meta http-equiv="refresh" content="0;url=${escapeHtmlMeta(spaUrl)}">
-  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>
+  ${redirectBlock}
 </head>
 <body>
-  <p>Redirecting to <a href="${escapeHtmlMeta(spaUrl)}">${escapeHtmlMeta(title)}</a>…</p>
+  <p><a href="${escapeHtmlMeta(spaUrl)}">${escapeHtmlMeta(row.title || 'View product')}</a> on NEFOL</p>
 </body>
 </html>`
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.setHeader('Cache-Control', 'public, max-age=300')
     res.send(html)
   } catch (err) {
     console.error('Product meta page error:', err)

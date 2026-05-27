@@ -26,8 +26,12 @@ export default function ShareProduct({
   const { appUrl, crawlUrl } = getProductShareUrls(productSlug)
   const siteOrigin = getShareSiteOrigin()
   const siteLogoOgUrl = `${siteOrigin}/IMAGES/NEFOL%20icon.png`
-  /** Social crawlers use crawlUrl; message text uses the same so previews match the link */
+  /**
+   * WhatsApp/Facebook must use crawlUrl (no hash) so the server returns product OG tags.
+   * Copy Link uses appUrl (#/user/...) so the SPA opens directly.
+   */
   const shareText = `Check out ${productTitle} on NEFOL! ${crawlUrl}`
+  const copyLinkLabel = copied ? 'App link copied!' : 'Copy app link (#/user)'
 
   const getAbsoluteImageUrl = (img?: string): string | undefined => {
     if (!img || !img.trim()) return undefined
@@ -323,7 +327,7 @@ export default function ShareProduct({
                   <Copy className="h-6 w-6 text-gray-700" />
                 </span>
               )}
-              <span className="font-medium">{copied ? 'Link Copied!' : 'Copy Link'}</span>
+              <span className="font-medium">{copyLinkLabel}</span>
             </button>
           </div>
         </>
