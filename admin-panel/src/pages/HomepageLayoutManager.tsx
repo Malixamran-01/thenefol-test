@@ -5,6 +5,11 @@ import { uploadFile } from '../utils/upload'
 import { configService } from '../services/config'
 import ImageCropper from '../components/ImageCropper'
 import VideoCropper from '../components/VideoCropper'
+import JustLandedOrderEditor from '../components/JustLandedOrderEditor'
+import {
+  buildDefaultSlugOrder,
+  type CatalogProductRow,
+} from '../utils/justLandedProducts'
 
 interface HeroBannerSettings {
   animationType: 'fade' | 'slide' | 'zoom' | 'cube' | 'flip' | 'coverflow' | 'cards'
@@ -145,6 +150,9 @@ export default function HomepageLayoutManager() {
     'Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.'
   )
   const [siteBrandingSaving, setSiteBrandingSaving] = useState(false)
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProductRow[]>([])
+  const [justLandedProductSlugs, setJustLandedProductSlugs] = useState<string[]>([])
+  const [justLandedSaving, setJustLandedSaving] = useState(false)
 
   // Initialize homepage sections based on actual Home.tsx structure
   const initializeSections = useCallback(async () => {
@@ -559,6 +567,38 @@ export default function HomepageLayoutManager() {
       } catch {
         /* optional CMS settings */
       }
+
+      try {
+        const productsRes = await fetch(`${API_BASE}/products`)
+        if (productsRes.ok) {
+          const rows = await productsRes.json()
+          const toAbs = (u?: string) => {
+            if (!u) return ''
+            if (/^https?:\/\//i.test(u)) return u
+            if (u.startsWith('/')) {
+              return `${window.location.protocol}//${window.location.host}${u}`
+            }
+            return u
+          }
+          const catalog: CatalogProductRow[] = (rows || []).map((r: any) => ({
+            id: r.id,
+            slug: r.slug,
+            title: r.title,
+            category: r.category,
+            list_image: toAbs(r.list_image),
+          }))
+          setCatalogProducts(catalog)
+          const jlSection = cmsSections.find((s: any) => s.section_type === 'just_landed_products')
+          const saved = jlSection?.content?.productSlugs
+          if (Array.isArray(saved) && saved.length > 0) {
+            setJustLandedProductSlugs(saved.filter((x: unknown) => typeof x === 'string'))
+          } else {
+            setJustLandedProductSlugs(buildDefaultSlugOrder(catalog))
+          }
+        }
+      } catch {
+        /* catalog optional */
+      }
     } catch (error) {
       console.error('Failed to load sections:', error)
       setSections(defaultSections)
@@ -589,6 +629,32 @@ export default function HomepageLayoutManager() {
       notify('error', 'Failed to save browser appearance')
     } finally {
       setSiteBrandingSaving(false)
+    }
+  }
+
+  const saveJustLandedOrder = async () => {
+    setJustLandedSaving(true)
+    try {
+      const content = { productSlugs: justLandedProductSlugs }
+      const response = await fetch(`${API_BASE}/cms/sections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page_slug: 'home',
+          section_type: 'just_landed_products',
+          title: "What's Just Landed — Product order",
+          content,
+          order_index: 2,
+          is_active: true,
+        }),
+      })
+      if (!response.ok) throw new Error('Failed to save product order')
+      notify('success', "What's Just Landed order saved")
+    } catch (e) {
+      console.error(e)
+      notify('error', 'Failed to save product order')
+    } finally {
+      setJustLandedSaving(false)
     }
   }
 
@@ -1704,6 +1770,18 @@ export default function HomepageLayoutManager() {
             Preview: <strong className="text-gray-700">{siteBrowserTitle || '—'}</strong>
           </span>
         </div>
+      </div>
+
+      {/* What's Just Landed — product carousel order */}
+      <div className="rounded-lg border border-teal-200 bg-gradient-to-br from-teal-50 to-slate-50 p-4 sm:p-5">
+        <h2 className="text-base font-semibold text-teal-950">What&apos;s Just Landed — product order</h2>
+        <JustLandedOrderEditor
+          catalog={catalogProducts}
+          orderedSlugs={justLandedProductSlugs}
+          onChange={setJustLandedProductSlugs}
+          onSave={saveJustLandedOrder}
+          saving={justLandedSaving}
+        />
       </div>
 
       {/* Blueprint View */}

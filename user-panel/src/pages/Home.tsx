@@ -14,6 +14,7 @@ import {
   getCarouselActiveIndex,
   scrollCarouselToIndex,
 } from '../utils/carouselScroll'
+import { sortProductList } from '../utils/justLandedProducts'
 export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
   const { addItem } = useCart()
@@ -55,6 +56,7 @@ export default function Home() {
 
   // CMS Sections State
   const [scrollingText, setScrollingText] = useState<string>('')
+  const [justLandedOrderSlugs, setJustLandedOrderSlugs] = useState<string[] | null>(null)
   const [topMediaImages, setTopMediaImages] = useState<string[]>([])
   const [topMediaSettings, setTopMediaSettings] = useState<any>({
     animationType: 'fade',
@@ -340,6 +342,12 @@ export default function Home() {
           )
         }
 
+        const justLandedSection = sections.find((s: any) => s.section_type === 'just_landed_products')
+        const slugs = justLandedSection?.content?.productSlugs
+        if (Array.isArray(slugs) && slugs.length > 0) {
+          setJustLandedOrderSlugs(slugs.filter((s: unknown) => typeof s === 'string' && s.trim()))
+        }
+
         const whatsappSection = sections.find((s: any) => s.section_type === 'whatsappsubscription')
         if (whatsappSection?.content) {
           const c = whatsappSection.content
@@ -419,11 +427,10 @@ export default function Home() {
     localStorage.setItem('nefol-subscription-dismissed', 'true')
   }
 
-  // Get featured products (all products excluding COMBO category)
-  const allFeaturedProducts = products.filter(product => {
-    const category = (product.category || '').toLowerCase()
-    return category !== 'combo' && category !== 'combo pack' && !category.includes('combo')
-  })
+  const allFeaturedProducts = useMemo(
+    () => sortProductList(products, justLandedOrderSlugs),
+    [products, justLandedOrderSlugs]
+  )
   
   // Get 4 products to display based on current index
   const productsPerPage = 4

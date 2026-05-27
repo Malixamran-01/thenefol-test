@@ -75,6 +75,13 @@ export async function seedCMSContent(pool: Pool) {
       },
       {
         page_slug: 'home',
+        section_type: 'just_landed_products',
+        title: "What's Just Landed — Product order",
+        content: { productSlugs: [] },
+        order_index: 2
+      },
+      {
+        page_slug: 'home',
         section_type: 'commitments',
         title: 'Thoughtful Commitments',
         content: {
