@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
 import { createNotification, resolveActor } from './blogNotifications'
+import communityQuestionsRouter, { initCommunityQuestionsRouter } from './communityQuestions'
 
 const DRAFT_SAVE_RATE_LIMIT_MS = 30_000
 const VERSION_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes - create version snapshot
@@ -51,6 +52,7 @@ let pool: Pool
 // Initialize database connection (assign pool only — DDL runs after ensureSchema via ensureBlogAuxTables)
 export function initBlogRouter(databasePool: Pool) {
   pool = databasePool
+  initCommunityQuestionsRouter(databasePool)
 }
 
 /** Blog helper tables / columns — run after `ensureSchema` to avoid startup pool contention (e.g. Render + Supabase). */
@@ -3097,5 +3099,8 @@ router.get('/bookmarks', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch saved posts' })
   }
 })
+
+// Ask Community Q&A (also mounted at /api/community on the app)
+router.use('/community', communityQuestionsRouter)
 
 export default router

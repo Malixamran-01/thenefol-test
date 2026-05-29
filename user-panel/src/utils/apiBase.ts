@@ -9,6 +9,18 @@ function resolveApiBase(): string {
     if (hostname === 'thenefol.com' || hostname === 'www.thenefol.com') {
       return `${protocol}//${hostname}`
     }
+
+    // Local dev: same-origin so Vite proxies /api → backend
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]' ||
+      hostname.endsWith('.local')
+    ) {
+      const port = window.location.port
+      const portSuffix = port ? `:${port}` : ''
+      return `${protocol}//${hostname}${portSuffix}`
+    }
   }
 
   if (import.meta.env.VITE_API_URL) {

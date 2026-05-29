@@ -48,7 +48,7 @@ export default function AskCommunityAdmin() {
     setLoadingList(true)
     setError(null)
     try {
-      const res = await fetch(`${base}/api/community/questions?limit=100&sort=active`, {
+      const res = await fetch(`${base}/api/blog/community/questions?limit=100&sort=active`, {
         headers: authHeaders(),
       })
       const data = await res.json()
@@ -66,7 +66,7 @@ export default function AskCommunityAdmin() {
       setLoadingThread(true)
       setError(null)
       try {
-        const res = await fetch(`${base}/api/community/questions/${id}`, { headers: authHeaders() })
+        const res = await fetch(`${base}/api/blog/community/questions/${id}`, { headers: authHeaders() })
         const data = await res.json()
         if (!res.ok) throw new Error(data?.error || 'Failed to load thread')
         setAnswers(data.answers || [])
@@ -90,7 +90,7 @@ export default function AskCommunityAdmin() {
   const toggleVerify = async (answerId: number, currentlyVerified: boolean) => {
     setTogglingId(answerId)
     try {
-      const res = await fetch(`${base}/api/community/answers/${answerId}/verify`, {
+      const res = await fetch(`${base}/api/blog/community/answers/${answerId}/verify`, {
         method: 'PATCH',
         headers: authHeaders(),
         body: JSON.stringify({ verified: !currentlyVerified }),

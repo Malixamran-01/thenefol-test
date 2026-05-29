@@ -184,10 +184,11 @@ router.get('/questions/:id', async (req: Request, res: Response) => {
     const topLevel = answers.filter((a) => !a.parent_answer_id)
     const repliesByParent = new Map<number, typeof answers>()
     for (const a of answers) {
-      if (a.parent_answer_id) {
-        const list = repliesByParent.get(a.parent_answer_id) || []
+      const parentId = a.parent_answer_id != null ? Number(a.parent_answer_id) : null
+      if (parentId != null && Number.isFinite(parentId)) {
+        const list = repliesByParent.get(parentId) || []
         list.push(a)
-        repliesByParent.set(a.parent_answer_id, list)
+        repliesByParent.set(parentId, list)
       }
     }
     const threaded = topLevel.map((a) => ({

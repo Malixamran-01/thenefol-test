@@ -1,5 +1,8 @@
 import { getApiBaseUrl } from '../utils/apiBase'
 
+/** Mounted on blog router so it works wherever /api/blog is deployed */
+const COMMUNITY_PREFIX = '/api/blog/community'
+
 function getAuthHeaders(): HeadersInit {
   const token = localStorage.getItem('token')
   return {
@@ -46,12 +49,33 @@ export interface CommunityAnswer {
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
-  const data = await response.json()
+  const text = await response.text()
+  const contentType = response.headers.get('content-type') || ''
+  if (
+    text.trimStart().startsWith('<') ||
+    (!contentType.includes('json') && text.trimStart().startsWith('<!'))
+  ) {
+    throw new Error(
+      response.status === 404
+        ? 'Ask Community API is not available yet. Redeploy the backend (npm run build, then restart the server) and try again.'
+        : 'Server returned an unexpected page instead of JSON. Redeploy the backend if this continues.'
+    )
+  }
+  let data: unknown = {}
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error('Invalid response from server. Redeploy the backend if this continues.')
+  }
+  const obj = data as Record<string, unknown>
   if (!response.ok) {
-    const msg = data?.error || data?.message || `Request failed (${response.status})`
+    const msg =
+      (typeof obj.error === 'string' && obj.error) ||
+      (typeof obj.message === 'string' && obj.message) ||
+      `Request failed (${response.status})`
     throw new Error(msg)
   }
-  return (data?.data ?? data) as T
+  return (obj.data ?? data) as T
 }
 
 export const communityAPI = {
@@ -70,13 +94,13 @@ export const communityAPI = {
     if (params?.q) qs.set('q', params.q)
     if (params?.limit != null) qs.set('limit', String(params.limit))
     if (params?.offset != null) qs.set('offset', String(params.offset))
-    const url = `${getApiBaseUrl()}/api/community/questions${qs.toString() ? `?${qs}` : ''}`
+    const url = `${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions${qs.toString() ? `?${qs}` : ''}`
     const response = await fetch(url)
     return parseJson(response)
   },
 
   async getQuestion(id: number): Promise<{ question: CommunityQuestion; answers: CommunityAnswer[] }> {
-    const response = await fetch(`${getApiBaseUrl()}/api/community/questions/${id}`)
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${id}`)
     return parseJson(response)
   },
 
@@ -86,7 +110,7 @@ export const communityAPI = {
     title: string
     body: string
   }): Promise<CommunityQuestion> {
-    const response = await fetch(`${getApiBaseUrl()}/api/community/questions`, {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -99,7 +123,7 @@ export const communityAPI = {
     body: string,
     parentAnswerId?: number
   ): Promise<CommunityAnswer> {
-    const response = await fetch(`${getApiBaseUrl()}/api/community/questions/${questionId}/answers`, {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${questionId}/answers`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({
