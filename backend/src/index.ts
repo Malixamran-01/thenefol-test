@@ -40,6 +40,7 @@ import createCMSRouter, { initCMSTables } from './routes/cms'
 import blogRouter, { initBlogRouter, ensureBlogAuxTables, serveBlogMetaPage, cleanupOldDrafts } from './routes/blog'
 import blogActivityRouter, { initBlogActivityRouter, serveAuthorMetaPage } from './routes/blogActivity'
 import blogNotificationsRouter, { initBlogNotificationsRouter } from './routes/blogNotifications'
+import communityQuestionsRouter, { initCommunityQuestionsRouter } from './routes/communityQuestions'
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
 import { nefolSocialBanGuard } from './middleware/nefolSocialBanGuard'
@@ -896,6 +897,10 @@ app.use('/api/blog', blogActivityRouter)
 
 // Initialize blog notifications router (tables created in ensureSchema before server starts)
 app.use('/api/blog', blogNotificationsRouter)
+
+initCommunityQuestionsRouter(pool)
+app.use('/api/community', nefolSocialBan)
+app.use('/api/community', communityQuestionsRouter)
 
 // Initialize role-based access control
 initRoleCheck(pool)

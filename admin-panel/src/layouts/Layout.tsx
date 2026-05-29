@@ -244,6 +244,7 @@ const Layout = () => {
       items: [
         { name: 'CMS', href: '/admin/cms', current: location.pathname === '/admin/cms' },
         { name: 'Blog', href: '/admin/blog-requests', current: location.pathname === '/admin/blog-requests' },
+        { name: 'Ask Community', href: '/admin/ask-community', current: location.pathname === '/admin/ask-community' },
         { name: 'Authors', href: '/admin/author-management', current: location.pathname === '/admin/author-management' },
         { name: 'Video manager', href: '/admin/video-manager', current: location.pathname === '/admin/video-manager' },
         { name: 'Static pages', href: '/admin/static-pages', current: location.pathname === '/admin/static-pages' },

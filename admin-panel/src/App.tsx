@@ -24,6 +24,7 @@ import LoginPage from './pages/Login'
 import StaffOnboarding from './pages/StaffOnboarding'
 import CMSManagement from './pages/cms/CMSManagement'
 import BlogRequestManagement from './pages/blog/BlogRequestManagement'
+import AskCommunityAdmin from './pages/blog/AskCommunityAdmin'
 import AuthorManagement from './pages/authors/AuthorManagement'
 
 // Import all the new components
@@ -259,6 +260,7 @@ export default function App() {
             <Route path="community-management" element={<CommunityManagement />} />
             <Route path="homepage-layout" element={<HomepageLayoutManager />} />
             <Route path="blog-requests" element={<BlogRequestManagement />} />
+            <Route path="ask-community" element={<AskCommunityAdmin />} />
             <Route path="author-management" element={<AuthorManagement />} />
             <Route path="video-manager" element={<VideoManager />} />
             

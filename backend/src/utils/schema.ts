@@ -1880,6 +1880,33 @@ export async function ensureSchema(pool: Pool) {
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
+
+    -- Nefol Social: Ask Community (open Q&A threads, no moderation queue)
+    create table if not exists community_questions (
+      id serial primary key,
+      user_id integer not null references users(id) on delete cascade,
+      topic_type text not null check (topic_type in ('product', 'brand')),
+      product_id integer references products(id) on delete set null,
+      title text not null,
+      body text not null,
+      answer_count integer not null default 0,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now(),
+      last_activity_at timestamptz default now()
+    );
+
+    create table if not exists community_answers (
+      id serial primary key,
+      question_id integer not null references community_questions(id) on delete cascade,
+      user_id integer not null references users(id) on delete cascade,
+      parent_answer_id integer references community_answers(id) on delete cascade,
+      body text not null,
+      is_verified boolean not null default false,
+      verified_by integer references users(id) on delete set null,
+      verified_at timestamptz,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now()
+    );
     
     create table if not exists delivery_notifications (
       id serial primary key,
@@ -1972,6 +1999,11 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_product_reviews_approved on product_reviews(is_approved) where is_approved = true;
     create index if not exists idx_product_questions_product on product_questions(product_id);
     create index if not exists idx_product_questions_status on product_questions(status);
+    create index if not exists idx_community_questions_product on community_questions(product_id);
+    create index if not exists idx_community_questions_topic on community_questions(topic_type);
+    create index if not exists idx_community_questions_activity on community_questions(last_activity_at desc);
+    create index if not exists idx_community_answers_question on community_answers(question_id);
+    create index if not exists idx_community_answers_parent on community_answers(parent_answer_id);
     create index if not exists idx_delivery_notifications_order on delivery_notifications(order_id);
     create index if not exists idx_shiprocket_shipments_order on shiprocket_shipments(order_id);
     create index if not exists idx_discount_usage_discount on discount_usage(discount_id);

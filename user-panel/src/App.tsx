@@ -1041,6 +1041,9 @@ const Blog = lazy(() => import('./pages/Blog'))
 const BlogDetail = lazy(() => import('./pages/BlogDetail'))
 const BlogActivityPage = lazy(() => import('./pages/BlogActivityPage'))
 const BlogExplorePage = lazy(() => import('./pages/BlogExplorePage'))
+const AskCommunityPage = lazy(() => import('./pages/AskCommunityPage'))
+const AskCommunityNewPage = lazy(() => import('./pages/AskCommunityNewPage'))
+const AskCommunityThreadPage = lazy(() => import('./pages/AskCommunityThreadPage'))
 const NefolSocialSettings = lazy(() => import('./pages/NefolSocialSettings'))
 const MyBlogsPage = lazy(() => import('./pages/MyBlogsPage'))
 const BlogRequestForm = lazy(() => import('./pages/BlogRequestForm'))
@@ -1244,6 +1247,20 @@ function RouterView({ affiliateId, currentPath, currentHash, navigate }: RouterV
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
   if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout currentHash={currentHash}><BlogActivityPage /></BlogLayout>
   if (pathWithoutQuery === '/user/blog/explore') return <BlogLayout currentHash={currentHash}><BlogExplorePage /></BlogLayout>
+  if (pathWithoutQuery === '/user/blog/ask-community') {
+    return <BlogLayout currentHash={currentHash}><AskCommunityPage /></BlogLayout>
+  }
+  if (pathWithoutQuery === '/user/blog/ask-community/new') {
+    return RequiredAuth(<BlogLayout currentHash={currentHash}><AskCommunityNewPage /></BlogLayout>)
+  }
+  const askCommunityThreadMatch = pathWithoutQuery.match(/^\/user\/blog\/ask-community\/(\d+)$/)
+  if (askCommunityThreadMatch) {
+    return (
+      <BlogLayout currentHash={currentHash}>
+        <AskCommunityThreadPage questionId={Number(askCommunityThreadMatch[1])} />
+      </BlogLayout>
+    )
+  }
   if (pathWithoutQuery === '/user/blog/dashboard') {
     return (
       <BlogLayout currentHash={currentHash}>
@@ -1258,7 +1275,8 @@ function RouterView({ affiliateId, currentPath, currentHash, navigate }: RouterV
   if (
     currentPath.startsWith('/user/blog/') &&
     currentPath !== '/user/blog' &&
-    pathWithoutQuery !== '/user/blog/request'
+    pathWithoutQuery !== '/user/blog/request' &&
+    !pathWithoutQuery.startsWith('/user/blog/ask-community')
   ) {
     return (
       <BlogLayout currentHash={currentHash}>

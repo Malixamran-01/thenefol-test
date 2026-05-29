@@ -15,6 +15,7 @@ import {
   LogOut,
   Clapperboard,
   Settings,
+  HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
@@ -79,6 +80,13 @@ const NAV_ITEMS: NavItem[] = [
     matchPrefix: '#/user/blog/explore',
   },
   {
+    id: 'ask-community',
+    label: 'Ask Community',
+    icon: <HelpCircle strokeWidth={2.75} className="h-6 w-6" />,
+    href: '#/user/blog/ask-community',
+    matchPrefix: '#/user/blog/ask-community',
+  },
+  {
     id: 'analytics',
     label: 'Analytics',
     icon: <BarChart3 strokeWidth={2.75} className="h-6 w-6" />,
@@ -102,7 +110,7 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 /** Signed-out users only see Home in the side panel (plus store link + sign in). */
-const GUEST_VISIBLE_NAV_IDS = new Set(['home'])
+const GUEST_VISIBLE_NAV_IDS = new Set(['home', 'ask-community'])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -118,6 +126,7 @@ function isItemActive(item: NavItem, hash: string, currentUserId?: number): bool
     return idFromHash === String(currentUserId)
   }
   if (item.id === 'explore') return hash.startsWith('#/user/blog/explore')
+  if (item.id === 'ask-community') return hash.startsWith('#/user/blog/ask-community')
   if (item.id === 'analytics') return hash.startsWith('#/user/blog/dashboard')
   if (item.id === 'settings') return hash.startsWith('#/user/blog/settings')
   if (item.id === 'creator-program') {
