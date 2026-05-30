@@ -138,15 +138,14 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
           <div className="h-[3px] bg-gradient-to-r from-[#4B97C9] via-[#1B4965] to-[#4B97C9]" />
 
           <div className="p-5">
-            {/* Product chip */}
-            {isProduct && (
-              <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-800 border border-amber-100">
+            {/* Topic chip */}
+            {isProduct ? (
+              <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-800">
                 <Package className="h-3 w-3" />
                 Product
               </span>
-            )}
-            {!isProduct && (
-              <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-800 border border-violet-100">
+            ) : (
+              <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-800">
                 <Sparkles className="h-3 w-3" />
                 Brand
               </span>
@@ -162,16 +161,16 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                     className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-[#e8eef4]"
                   />
                 )}
-                <div className="min-w-0 flex-1 flex items-center">
+                <div className="flex min-w-0 flex-1 items-center">
                   {question.product_slug ? (
                     <a
                       href={`#/user/product/${question.product_slug}`}
-                      className="text-[13px] font-medium leading-snug text-[#4B97C9] hover:underline line-clamp-2"
+                      className="line-clamp-2 text-[13px] font-medium leading-snug text-[#4B97C9] hover:underline"
                     >
                       {question.product_title || question.product_name}
                     </a>
                   ) : (
-                    <p className="text-[13px] font-medium text-[#64748b] line-clamp-2">
+                    <p className="line-clamp-2 text-[13px] font-medium text-[#64748b]">
                       {question.product_title || question.product_name}
                     </p>
                   )}
@@ -204,7 +203,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
 
             {/* Post actions */}
             <div className="mt-2 flex items-center gap-1">
-              {['Share', 'Save'].map((label) => (
+              {(['Share', 'Save'] as const).map((label) => (
                 <button
                   key={label}
                   type="button"

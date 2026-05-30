@@ -23,7 +23,7 @@ interface CommentTreeProps {
 
 const PAGE_SIZE = 10
 
-function patchCommentTree(
+export function patchCommentTree(
   nodes: Comment[],
   targetId: number,
   patch: Partial<Comment> | ((c: Comment) => Comment)
@@ -39,7 +39,7 @@ function patchCommentTree(
   })
 }
 
-function insertReply(nodes: Comment[], parentId: number | null, reply: Comment): Comment[] {
+export function insertReply(nodes: Comment[], parentId: number | null, reply: Comment): Comment[] {
   if (parentId == null) return [...nodes, reply]
   return nodes.map((n) => {
     if (n.id === parentId) {
@@ -52,57 +52,28 @@ function insertReply(nodes: Comment[], parentId: number | null, reply: Comment):
   })
 }
 
-function applyOptimisticVote(comment: Comment, direction: 'up' | 'down'): Comment {
-  const voteDir = direction === 'up' ? 1 : -1
-  const prev = comment.my_vote
-
-  if (prev === voteDir) {
-    return {
-      ...comment,
-      my_vote: 0,
-      score: comment.score - voteDir,
-      likes_count: direction === 'up' ? Math.max(0, comment.likes_count - 1) : comment.likes_count,
-      is_liked_by_me: false,
-    }
-  }
-
-  if (prev === -voteDir) {
-    return {
-      ...comment,
-      my_vote: voteDir,
-      score: comment.score + voteDir * 2,
-      likes_count:
-        direction === 'up'
-          ? comment.likes_count + 1
-          : Math.max(0, comment.likes_count - 1),
-      is_liked_by_me: direction === 'up',
-    }
-  }
-
-  return {
-    ...comment,
-    my_vote: voteDir,
-    score: comment.score + voteDir,
-    likes_count: direction === 'up' ? comment.likes_count + 1 : comment.likes_count,
-    is_liked_by_me: direction === 'up',
-  }
-}
-
 function SkeletonRow() {
   return (
-    <div className="flex gap-2 border-b border-[#f0f4f8] px-4 py-3 sm:px-5">
-      <div className="flex w-10 flex-shrink-0 flex-col items-center gap-1 rounded-full border border-[#e8eef4] bg-[#fafcfd] py-2">
-        <div className="h-4 w-4 animate-pulse rounded bg-[#e8eef4]" />
+    <div className="flex gap-0 border-b border-[#f0f4f8]">
+      {/* Vote column skeleton */}
+      <div className="flex w-10 flex-shrink-0 flex-col items-center gap-1.5 px-0 py-4">
+        <div className="h-5 w-5 animate-pulse rounded bg-[#e8eef4]" />
         <div className="h-3 w-4 animate-pulse rounded bg-[#e8eef4]" />
-        <div className="h-4 w-4 animate-pulse rounded bg-[#e8eef4]" />
+        <div className="h-5 w-5 animate-pulse rounded bg-[#e8eef4]" />
       </div>
-      <div className="flex-1 space-y-2 pt-1">
+      {/* Content skeleton */}
+      <div className="flex-1 space-y-2 py-4 pr-4">
         <div className="flex items-center gap-2">
           <div className="h-7 w-7 animate-pulse rounded-full bg-[#e8eef4]" />
-          <div className="h-3 w-24 animate-pulse rounded bg-[#e8eef4]" />
+          <div className="h-3 w-20 animate-pulse rounded bg-[#e8eef4]" />
+          <div className="h-3 w-10 animate-pulse rounded bg-[#e8eef4]" />
         </div>
         <div className="h-3 w-full animate-pulse rounded bg-[#e8eef4]" />
         <div className="h-3 w-4/5 animate-pulse rounded bg-[#e8eef4]" />
+        <div className="flex gap-2">
+          <div className="h-7 w-14 animate-pulse rounded-full bg-[#e8eef4]" />
+          <div className="h-7 w-14 animate-pulse rounded-full bg-[#e8eef4]" />
+        </div>
       </div>
     </div>
   )
@@ -111,7 +82,7 @@ function SkeletonRow() {
 export default function CommentTree({
   questionId,
   answerCount,
-  questionAuthorId = 0,
+  questionAuthorId,
   currentUser,
   onRequireAuth,
   onError,
@@ -172,12 +143,13 @@ export default function CommentTree({
       author_name: currentUser?.name || 'You',
       author_avatar: null,
       author_verified: false,
+      is_verified: false,
       content: text,
       is_deleted: false,
       depth: 0,
       score: 0,
-      likes_count: 0,
       my_vote: 0,
+      likes_count: 0,
       is_liked_by_me: false,
       created_at: new Date().toISOString(),
       children: [],
@@ -203,29 +175,37 @@ export default function CommentTree({
   const handleVote = async (commentId: number, direction: 'up' | 'down') => {
     if (!onRequireAuth()) return
 
-    let snapshot: Comment | null = null
+    // Optimistic update
     setComments((prev) =>
       patchCommentTree(prev, commentId, (c) => {
-        snapshot = { ...c }
-        return applyOptimisticVote(c, direction)
+        const alreadyVoted = direction === 'up' ? c.my_vote === 1 : c.my_vote === -1
+        const delta = alreadyVoted ? -(direction === 'up' ? 1 : -1) : (direction === 'up' ? 1 : -1)
+        const prevDelta = c.my_vote !== 0 && !alreadyVoted ? -(c.my_vote) : 0
+        return {
+          ...c,
+          score: c.score + delta + prevDelta,
+          my_vote: alreadyVoted ? 0 : (direction === 'up' ? 1 : -1),
+          // keep likes_count in sync for ActionPill display
+          likes_count: Math.max(0, c.likes_count + (direction === 'up' ? (alreadyVoted ? -1 : 1) : 0)),
+          is_liked_by_me: direction === 'up' ? !alreadyVoted : c.is_liked_by_me,
+        }
       })
     )
 
     try {
-      const result = await communityAPI.voteAnswer(commentId, direction)
+      const result = await communityAPI.toggleLike(commentId)
       setComments((prev) =>
         patchCommentTree(prev, commentId, (c) => ({
           ...c,
-          score: result.score,
           likes_count: result.likes_count,
-          my_vote: result.my_vote,
-          is_liked_by_me: result.my_vote === 1,
+          is_liked_by_me: result.is_liked_by_me,
+          score: result.likes_count,
+          my_vote: result.is_liked_by_me ? 1 : 0,
         }))
       )
     } catch {
-      if (snapshot) {
-        setComments((prev) => patchCommentTree(prev, commentId, () => snapshot!))
-      }
+      // Revert by reloading
+      load()
     }
   }
 
@@ -255,6 +235,8 @@ export default function CommentTree({
 
   return (
     <section className="overflow-hidden rounded-xl border border-[#e8eef4] bg-white shadow-[0_1px_4px_rgba(27,73,101,0.06)]">
+
+      {/* Header */}
       <div className="flex flex-col gap-2 border-b border-[#f0f4f8] bg-[#fafcfd] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
           <MessageSquare className="h-3.5 w-3.5 text-[#4B97C9]" aria-hidden />
@@ -263,6 +245,7 @@ export default function CommentTree({
         <SortControls value={sort} onChange={setSort} />
       </div>
 
+      {/* Body */}
       {loading ? (
         <div>
           <SkeletonRow />
@@ -324,5 +307,3 @@ export default function CommentTree({
     </section>
   )
 }
-
-export { insertReply, patchCommentTree }

@@ -119,7 +119,7 @@ export default function ThreadedComment({
   const indentPx = isMobile ? Math.round(visualDepth * 14) : Math.round(visualDepth * 20)
 
   return (
-    <div className={isTopLevel ? '' : ''}>
+    <div>
       <div className={`flex gap-2 ${isTopLevel ? 'px-4 py-3 sm:px-5' : 'py-1'}`}>
         {!comment.is_deleted && (
           <VoteColumn
@@ -131,8 +131,13 @@ export default function ThreadedComment({
           />
         )}
 
-        <div className={`min-w-0 flex-1 ${!isTopLevel ? 'rounded-lg border border-[#f0f4f8] bg-[#fafcfd] px-3 py-2.5' : ''}`}>
+        <div
+          className={`min-w-0 flex-1 ${
+            !isTopLevel ? 'rounded-lg border border-[#f0f4f8] bg-[#fafcfd] px-3 py-2.5' : ''
+          }`}
+        >
           <div className="flex items-start gap-2">
+            {/* Avatar */}
             {comment.author_avatar ? (
               <img
                 src={avatarUrl(comment.author_avatar)}
@@ -150,6 +155,7 @@ export default function ThreadedComment({
             )}
 
             <div className="min-w-0 flex-1">
+              {/* Author row */}
               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                 <span className="text-[13px] font-semibold text-[#1B4965]">
                   {comment.author_name}
@@ -171,6 +177,7 @@ export default function ThreadedComment({
                 <span className="text-[11px] text-[#94a3b8]">{timeAgo(comment.created_at)}</span>
               </div>
 
+              {/* Content */}
               <p
                 className={`mt-1 whitespace-pre-wrap leading-relaxed ${
                   comment.is_deleted ? 'italic text-[#94a3b8]' : 'text-[#374151]'
@@ -179,6 +186,7 @@ export default function ThreadedComment({
                 {comment.content}
               </p>
 
+              {/* Action pills */}
               {!comment.is_deleted && (
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   {currentUser && (
@@ -187,7 +195,10 @@ export default function ThreadedComment({
                       Reply
                     </ActionPill>
                   )}
-                  <ActionPill onClick={() => onVote(comment.id, 'up')} active={comment.my_vote === 1}>
+                  <ActionPill
+                    onClick={() => onVote(comment.id, 'up')}
+                    active={comment.my_vote === 1}
+                  >
                     <Heart
                       className="h-3 w-3"
                       fill={comment.my_vote === 1 ? 'currentColor' : 'none'}
@@ -208,6 +219,7 @@ export default function ThreadedComment({
                 </div>
               )}
 
+              {/* Hide/show replies toggle */}
               {hasReplies && (
                 <button
                   type="button"
@@ -228,6 +240,7 @@ export default function ThreadedComment({
                 </button>
               )}
 
+              {/* Inline reply composer */}
               {openReplyId === comment.id && (
                 <InlineReplyBox
                   replyingToName={comment.author_name}
@@ -243,18 +256,22 @@ export default function ThreadedComment({
         </div>
       </div>
 
+      {/* Max depth: show "continue thread" link instead of rendering more */}
       {stopIndent && hasReplies && repliesExpanded && (
         <button
           type="button"
           className="ml-14 mt-1 text-[12px] font-semibold text-[#4B97C9] hover:underline"
           onClick={() => {
-            document.getElementById(`comment-${comment.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            document
+              .getElementById(`comment-${comment.id}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }}
         >
           Continue thread →
         </button>
       )}
 
+      {/* Recursive children */}
       {!stopIndent &&
         repliesExpanded &&
         comment.children.map((child) => (
