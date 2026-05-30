@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { MessageSquare } from 'lucide-react'
 import type { AnswerSort, Comment } from '../../types/community'
 import { communityAPI } from '../../services/communityAPI'
 import { normalizeComment } from '../../types/community'
@@ -12,6 +13,7 @@ interface CurrentUser {
 
 interface CommentTreeProps {
   questionId: number
+  answerCount: number
   currentUser: CurrentUser | null
   onRequireAuth: () => boolean
   onError?: (msg: string) => void
@@ -49,8 +51,22 @@ function insertReply(nodes: Comment[], parentId: number | null, reply: Comment):
   })
 }
 
+function SkeletonRow() {
+  return (
+    <div className="flex gap-3 border-b border-[#e8eef4] px-4 py-4 sm:px-5 sm:py-5">
+      <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-[#e8eef4]" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-28 animate-pulse rounded bg-[#e8eef4]" />
+        <div className="h-3 w-full animate-pulse rounded bg-[#e8eef4]" />
+        <div className="h-3 w-3/4 animate-pulse rounded bg-[#e8eef4]" />
+      </div>
+    </div>
+  )
+}
+
 export default function CommentTree({
   questionId,
+  answerCount,
   currentUser,
   onRequireAuth,
   onError,
@@ -128,9 +144,7 @@ export default function CommentTree({
     try {
       const created = await communityAPI.createAnswer({ question_id: questionId, content: text, parent_id: parentId })
       const normalized = normalizeComment(created as unknown as Record<string, unknown>)
-      setComments((prev) =>
-        patchCommentTree(prev, tempId, () => normalized)
-      )
+      setComments((prev) => patchCommentTree(prev, tempId, () => normalized))
     } catch (e) {
       setComments((prev) => patchCommentTree(prev, tempId, () => ({ ...optimistic, content: '[failed to post]' })))
       onError?.(e instanceof Error ? e.message : 'Failed to post reply')
@@ -198,22 +212,34 @@ export default function CommentTree({
 
   const visible = comments.slice(0, visibleCount)
   const hasMore = visibleCount < comments.length
-
-  if (loading) {
-    return <p className="py-8 text-center text-sm" style={{ color: '#94a3b8' }}>Loading answers…</p>
-  }
+  const displayCount = answerCount || comments.length
 
   return (
-    <div>
-      <SortControls value={sort} onChange={setSort} />
+    <section className="overflow-hidden rounded-2xl border border-[#e8eef4] bg-white shadow-[0_1px_3px_rgba(27,73,101,0.06),0_4px_16px_rgba(27,73,101,0.04)]">
+      <div className="flex flex-col gap-3 border-b border-[#e8eef4] bg-[#fafcfd] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <h2 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-[#1B4965]">
+          <MessageSquare className="h-4 w-4 text-[#4B97C9]" aria-hidden />
+          {displayCount} {displayCount === 1 ? 'Answer' : 'Answers'}
+        </h2>
+        <SortControls value={sort} onChange={setSort} />
+      </div>
 
-      {comments.length === 0 ? (
-        <p className="py-10 text-center text-sm" style={{ color: '#94a3b8' }}>
-          No answers yet. Be the first to answer!
-        </p>
+      {loading ? (
+        <div>
+          <SkeletonRow />
+          <SkeletonRow />
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="px-4 py-12 text-center sm:px-5">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#edf4f9]">
+            <MessageSquare className="h-5 w-5 text-[#4B97C9]" />
+          </div>
+          <p className="text-[15px] font-semibold text-[#1B4965]">No answers yet</p>
+          <p className="mt-1 text-[14px] text-[#64748b]">Be the first to share what you know.</p>
+        </div>
       ) : (
-        <>
-          {visible.map((c) => (
+        <div>
+          {visible.map((c, i) => (
             <div key={c.id} id={`comment-${c.id}`}>
               <ThreadedComment
                 comment={c}
@@ -232,22 +258,24 @@ export default function CommentTree({
                 onDelete={handleDelete}
                 submitting={submitting}
                 isMobile={isMobile}
+                isLast={i === visible.length - 1 && !hasMore}
               />
             </div>
           ))}
           {hasMore && (
-            <button
-              type="button"
-              onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-              className="mt-2 w-full rounded-full py-2 text-sm font-semibold"
-              style={{ border: '1px solid #e8eef4', color: '#4B97C9', background: '#fff' }}
-            >
-              Load more ({comments.length - visibleCount} remaining)
-            </button>
+            <div className="border-t border-[#e8eef4] px-4 py-3 sm:px-5">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                className="w-full min-h-[44px] rounded-xl border border-[#d0e8f5] bg-[#f8fbfd] py-2.5 text-[14px] font-semibold text-[#1B4965] transition-all duration-150 hover:border-[#4B97C9] hover:bg-white active:scale-[0.99]"
+              >
+                Load more ({comments.length - visibleCount} remaining)
+              </button>
+            </div>
           )}
-        </>
+        </div>
       )}
-    </div>
+    </section>
   )
 }
 
