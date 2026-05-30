@@ -5,6 +5,7 @@ import { encodeMediaUrl, getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
 import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import CommentTree from '../components/community/CommentTree'
+import AnswerPillComposer from '../components/community/AnswerPillComposer'
 import { formatCommunityTime } from '../utils/communityTime'
 
 function productThumb(url?: string | null): string {
@@ -120,7 +121,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
   const isProduct = question.topic_type === 'product'
 
   return (
-    <div className="min-h-full bg-[#F4F9F9] pb-36 pt-4 sm:pb-20 sm:pt-6">
+    <div className="min-h-full bg-[#F4F9F9] pb-10 pt-4 sm:pt-6">
       <div className="mx-auto max-w-2xl px-4">
         <button
           type="button"
@@ -198,71 +199,25 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
           </div>
         </article>
 
-        <div className="mb-6">
-          <CommentTree
-            questionId={questionId}
-            answerCount={question.answer_count}
-            currentUser={currentUser}
-            onRequireAuth={requireAuth}
-            onError={setError}
-            refreshKey={treeRefresh}
-          />
-        </div>
-
-        {/* Desktop inline composer */}
-        <form
+        <AnswerPillComposer
+          id="thread-answer"
+          value={answerText}
+          onChange={setAnswerText}
           onSubmit={postTopLevelAnswer}
-          className="hidden rounded-2xl border border-[#e8eef4] bg-white p-5 shadow-[0_1px_3px_rgba(27,73,101,0.06)] sm:block"
-        >
-          <label htmlFor="thread-answer" className="mb-3 block text-[15px] font-semibold text-[#1B4965]">
-            Your answer
-          </label>
-          <textarea
-            id="thread-answer"
-            value={answerText}
-            onChange={(e) => setAnswerText(e.target.value.slice(0, 2000))}
-            rows={4}
-            maxLength={2000}
-            placeholder={isAuthenticated ? 'Share what you know…' : 'Sign in to answer'}
-            disabled={!isAuthenticated}
-            className="mb-3 w-full resize-none rounded-xl border border-[#e8eef4] bg-white px-4 py-3 text-[16px] leading-relaxed text-[#374151] outline-none transition-shadow duration-150 placeholder:text-[#94a3b8] focus:border-[#4B97C9] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] sm:text-[15px]"
-          />
-          {error && <p className="mb-3 text-[14px] text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={submitting || !isAuthenticated || answerText.trim().length < 2}
-            className="min-h-[44px] rounded-full bg-[#1B4965] px-6 text-[14px] font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-[#163d52] hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
-          >
-            {submitting ? 'Posting…' : 'Post answer'}
-          </button>
-        </form>
-      </div>
+          submitting={submitting}
+          disabled={!isAuthenticated}
+          placeholder={isAuthenticated ? 'Share what you know…' : 'Sign in to answer'}
+          error={error}
+        />
 
-      {/* Mobile sticky composer */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e8eef4] bg-white/95 px-4 py-3 shadow-[0_-4px_24px_rgba(27,73,101,0.08)] backdrop-blur-md sm:hidden">
-        <form onSubmit={postTopLevelAnswer}>
-          <label htmlFor="thread-answer-mobile" className="sr-only">
-            Your answer
-          </label>
-          <textarea
-            id="thread-answer-mobile"
-            value={answerText}
-            onChange={(e) => setAnswerText(e.target.value.slice(0, 2000))}
-            rows={2}
-            maxLength={2000}
-            placeholder={isAuthenticated ? 'Share what you know…' : 'Sign in to answer'}
-            disabled={!isAuthenticated}
-            className="mb-2 w-full resize-none rounded-xl border border-[#e8eef4] bg-[#fafcfd] px-3 py-2.5 text-[16px] leading-relaxed outline-none focus:border-[#4B97C9] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)] disabled:bg-[#f1f5f9]"
-          />
-          {error && <p className="mb-2 text-[12px] text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={submitting || !isAuthenticated || answerText.trim().length < 2}
-            className="w-full min-h-[44px] rounded-xl bg-[#1B4965] text-[14px] font-semibold text-white shadow-sm transition-all active:scale-[0.98] disabled:opacity-50"
-          >
-            {submitting ? 'Posting…' : 'Post answer'}
-          </button>
-        </form>
+        <CommentTree
+          questionId={questionId}
+          answerCount={question.answer_count}
+          currentUser={currentUser}
+          onRequireAuth={requireAuth}
+          onError={setError}
+          refreshKey={treeRefresh}
+        />
       </div>
     </div>
   )

@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react'
-import { BadgeCheck, Heart, Reply, Trash2 } from 'lucide-react'
+import { BadgeCheck, ChevronDown, ChevronUp, Heart, Reply, Trash2 } from 'lucide-react'
 import type { Comment } from '../../types/community'
 import { AuthorVerifiedBadge } from '../AuthorVerifiedBadge'
 import { formatCommunityTime, depthStyles } from '../../utils/communityTime'
 import { encodeMediaUrl, getApiBase } from '../../utils/apiBase'
 import InlineReplyBox from './InlineReplyBox'
 
-const COLLAPSE_THRESHOLD = 3
 const MAX_VISUAL_DEPTH = 5
+
+function countReplies(comment: Comment): number {
+  return comment.children.reduce((n, c) => n + 1 + countReplies(c), 0)
+}
 
 interface CurrentUser {
   id: number
@@ -88,20 +91,12 @@ export default function ThreadedComment({
   isMobile = false,
   isLast = false,
 }: ThreadedCommentProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [repliesExpanded, setRepliesExpanded] = useState(true)
   const visualDepth = Math.min(depth, MAX_VISUAL_DEPTH)
   const stopIndent = depth > MAX_VISUAL_DEPTH
   const isTopLevel = depth === 0
-
-  const hiddenCount = useMemo(() => {
-    if (expanded || comment.children.length <= COLLAPSE_THRESHOLD) return 0
-    return comment.children.length - COLLAPSE_THRESHOLD
-  }, [comment.children.length, expanded])
-
-  const visibleChildren = useMemo(() => {
-    if (expanded || comment.children.length <= COLLAPSE_THRESHOLD) return comment.children
-    return comment.children.slice(0, COLLAPSE_THRESHOLD)
-  }, [comment.children, expanded])
+  const replyCount = useMemo(() => countReplies(comment), [comment])
+  const hasReplies = comment.children.length > 0
 
   const isOwn = currentUser?.id === comment.user_id
   const avatarSize = isTopLevel ? 36 : 28
@@ -181,6 +176,25 @@ export default function ThreadedComment({
                     <span className="hidden sm:inline">Delete</span>
                   </ActionBtn>
                 )}
+                {hasReplies && (
+                  <button
+                    type="button"
+                    onClick={() => setRepliesExpanded((v) => !v)}
+                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-3 text-[13px] font-semibold text-[#4B97C9] transition-colors hover:bg-[#edf4f9]"
+                  >
+                    {repliesExpanded ? (
+                      <>
+                        <ChevronUp className="h-4 w-4" strokeWidth={2.5} />
+                        Hide {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4" strokeWidth={2.5} />
+                        Show {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
 
@@ -198,7 +212,7 @@ export default function ThreadedComment({
         </div>
       </article>
 
-      {stopIndent && comment.children.length > 0 && (
+      {stopIndent && hasReplies && repliesExpanded && (
         <button
           type="button"
           className="ml-4 mt-2 text-[13px] font-semibold text-[#4B97C9] hover:underline"
@@ -210,18 +224,8 @@ export default function ThreadedComment({
         </button>
       )}
 
-      {!stopIndent && hiddenCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="ml-4 mt-2 text-[13px] font-semibold text-[#4B97C9] hover:underline"
-        >
-          ▶ {hiddenCount} more {hiddenCount === 1 ? 'reply' : 'replies'}
-        </button>
-      )}
-
-      {!stopIndent &&
-        visibleChildren.map((child) => (
+      {!stopIndent && repliesExpanded &&
+        comment.children.map((child) => (
           <div key={child.id} id={`comment-${child.id}`}>
             <ThreadedComment
               comment={child}
