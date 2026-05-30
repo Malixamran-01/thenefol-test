@@ -1899,13 +1899,27 @@ export async function ensureSchema(pool: Pool) {
       id serial primary key,
       question_id integer not null references community_questions(id) on delete cascade,
       user_id integer not null references users(id) on delete cascade,
+      parent_id integer references community_answers(id) on delete cascade,
       parent_answer_id integer references community_answers(id) on delete cascade,
+      root_answer_id integer references community_answers(id) on delete set null,
+      depth integer not null default 0,
+      path text,
       body text not null,
       is_verified boolean not null default false,
       verified_by integer references users(id) on delete set null,
       verified_at timestamptz,
+      likes_count integer not null default 0,
+      is_deleted boolean not null default false,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
+    );
+
+    create table if not exists community_answer_likes (
+      id serial primary key,
+      answer_id integer not null references community_answers(id) on delete cascade,
+      user_id integer not null references users(id) on delete cascade,
+      created_at timestamptz default now(),
+      unique (answer_id, user_id)
     );
     
     create table if not exists delivery_notifications (
@@ -2003,7 +2017,10 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_community_questions_topic on community_questions(topic_type);
     create index if not exists idx_community_questions_activity on community_questions(last_activity_at desc);
     create index if not exists idx_community_answers_question on community_answers(question_id);
-    create index if not exists idx_community_answers_parent on community_answers(parent_answer_id);
+    create index if not exists idx_community_answers_parent on community_answers(parent_id);
+    create index if not exists idx_community_answers_root on community_answers(root_answer_id);
+    create index if not exists idx_community_answers_path on community_answers(path);
+    create index if not exists idx_community_answer_likes_answer on community_answer_likes(answer_id);
     create index if not exists idx_delivery_notifications_order on delivery_notifications(order_id);
     create index if not exists idx_shiprocket_shipments_order on shiprocket_shipments(order_id);
     create index if not exists idx_discount_usage_discount on discount_usage(discount_id);
@@ -2036,6 +2053,51 @@ export async function ensureSchema(pool: Pool) {
       -- Migrate existing comment to review_text if review_text is empty
       UPDATE product_reviews SET review_text = comment WHERE (review_text IS NULL OR review_text = '') AND comment IS NOT NULL AND comment != '';
     END $$;
+
+    -- Community answers: infinite nesting columns + likes
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'parent_id') THEN
+        ALTER TABLE community_answers ADD COLUMN parent_id integer references community_answers(id) on delete cascade;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'root_answer_id') THEN
+        ALTER TABLE community_answers ADD COLUMN root_answer_id integer references community_answers(id) on delete set null;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'depth') THEN
+        ALTER TABLE community_answers ADD COLUMN depth integer not null default 0;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'path') THEN
+        ALTER TABLE community_answers ADD COLUMN path text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'likes_count') THEN
+        ALTER TABLE community_answers ADD COLUMN likes_count integer not null default 0;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'is_deleted') THEN
+        ALTER TABLE community_answers ADD COLUMN is_deleted boolean not null default false;
+      END IF;
+      UPDATE community_answers
+      SET parent_id = parent_answer_id
+      WHERE parent_id IS NULL AND parent_answer_id IS NOT NULL;
+    END $$;
+
+    WITH RECURSIVE community_answer_tree AS (
+      SELECT id, parent_id, id::text AS path, 0 AS depth, id AS root_id
+      FROM community_answers
+      WHERE parent_id IS NULL
+      UNION ALL
+      SELECT c.id, c.parent_id,
+        t.path || '.' || c.id::text,
+        t.depth + 1,
+        t.root_id
+      FROM community_answers c
+      INNER JOIN community_answer_tree t ON c.parent_id = t.id
+    )
+    UPDATE community_answers c
+    SET path = t.path,
+        depth = t.depth,
+        root_answer_id = t.root_id
+    FROM community_answer_tree t
+    WHERE c.id = t.id AND (c.path IS NULL OR c.path = '' OR c.depth IS NULL);
     
     -- Ensure shiprocket_shipments columns exist (migration for existing tables)
     DO $$

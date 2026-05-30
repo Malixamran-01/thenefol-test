@@ -15,10 +15,12 @@ interface CommunityQuestion {
 
 interface CommunityAnswer {
   id: number
-  body: string
+  content?: string
+  body?: string
   is_verified: boolean
   author_name: string
   created_at: string
+  children?: CommunityAnswer[]
   replies?: CommunityAnswer[]
 }
 
@@ -128,10 +130,10 @@ export default function AskCommunityAdmin() {
             {a.is_verified ? 'Remove verified' : 'Mark verified'}
           </button>
         </div>
-        <p className="text-sm text-gray-700 whitespace-pre-wrap">{a.body}</p>
+        <p className="text-sm text-gray-700 whitespace-pre-wrap">{a.content ?? a.body}</p>
         <p className="mt-1 text-xs text-gray-400">{new Date(a.created_at).toLocaleString()}</p>
       </div>
-      {(a.replies || []).map((r) => renderAnswer(r, depth + 1))}
+      {(a.children ?? a.replies ?? []).map((r) => renderAnswer(r, depth + 1))}
     </div>
   )
 

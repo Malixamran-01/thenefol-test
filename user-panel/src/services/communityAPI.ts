@@ -1,4 +1,6 @@
 import { getApiBaseUrl } from '../utils/apiBase'
+import type { AnswerSort, Comment, CommunityQuestion } from '../types/community'
+import { normalizeComment } from '../types/community'
 
 /** Mounted on blog router so it works wherever /api/blog is deployed */
 const COMMUNITY_PREFIX = '/api/blog/community'
@@ -13,40 +15,7 @@ function getAuthHeaders(): HeadersInit {
 
 export type CommunityTopicType = 'product' | 'brand'
 
-export interface CommunityQuestion {
-  id: number
-  user_id: number
-  topic_type: CommunityTopicType
-  product_id: number | null
-  title: string
-  body: string
-  answer_count: number
-  created_at: string
-  updated_at: string
-  last_activity_at: string
-  author_name: string
-  author_avatar?: string | null
-  author_is_verified?: boolean
-  product_title?: string | null
-  product_slug?: string | null
-  product_list_image?: string | null
-}
-
-export interface CommunityAnswer {
-  id: number
-  question_id: number
-  user_id: number
-  parent_answer_id: number | null
-  body: string
-  is_verified: boolean
-  verified_at?: string | null
-  created_at: string
-  updated_at: string
-  author_name: string
-  author_avatar?: string | null
-  author_is_verified?: boolean
-  replies?: CommunityAnswer[]
-}
+export type { Comment, CommunityQuestion, AnswerSort }
 
 async function parseJson<T>(response: Response): Promise<T> {
   const text = await response.text()
@@ -95,13 +64,46 @@ export const communityAPI = {
     if (params?.limit != null) qs.set('limit', String(params.limit))
     if (params?.offset != null) qs.set('offset', String(params.offset))
     const url = `${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions${qs.toString() ? `?${qs}` : ''}`
-    const response = await fetch(url)
+    const response = await fetch(url, { headers: getAuthHeaders() })
     return parseJson(response)
   },
 
-  async getQuestion(id: number): Promise<{ question: CommunityQuestion; answers: CommunityAnswer[] }> {
-    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${id}`)
-    return parseJson(response)
+  async getQuestion(id: number): Promise<{ question: CommunityQuestion; answers: Comment[] }> {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${id}`, {
+      headers: getAuthHeaders(),
+    })
+    const data = await parseJson<{ question: CommunityQuestion; answers: Record<string, unknown>[] }>(response)
+    return {
+      question: data.question,
+      answers: (data.answers || []).map((a) => normalizeComment(a)),
+    }
+  },
+
+  async getAnswers(
+    questionId: number,
+    sort: AnswerSort = 'top',
+    limit = 50,
+    offset = 0
+  ): Promise<{ answers: Comment[]; total_top_level: number; has_more: boolean }> {
+    const qs = new URLSearchParams({
+      sort,
+      limit: String(limit),
+      offset: String(offset),
+    })
+    const response = await fetch(
+      `${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${questionId}/answers?${qs}`,
+      { headers: getAuthHeaders() }
+    )
+    const data = await parseJson<{
+      answers: Record<string, unknown>[]
+      total_top_level: number
+      has_more: boolean
+    }>(response)
+    return {
+      answers: (data.answers || []).map((a) => normalizeComment(a)),
+      total_top_level: data.total_top_level ?? data.answers?.length ?? 0,
+      has_more: Boolean(data.has_more),
+    }
   },
 
   async createQuestion(payload: {
@@ -118,18 +120,33 @@ export const communityAPI = {
     return parseJson(response)
   },
 
-  async createAnswer(
-    questionId: number,
-    body: string,
-    parentAnswerId?: number
-  ): Promise<CommunityAnswer> {
-    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${questionId}/answers`, {
+  async createAnswer(payload: {
+    question_id: number
+    content: string
+    parent_id?: number | null
+  }): Promise<Comment> {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/answers`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({
-        body,
-        ...(parentAnswerId != null ? { parent_answer_id: parentAnswerId } : {}),
-      }),
+      body: JSON.stringify(payload),
+    })
+    const raw = await parseJson<Record<string, unknown>>(response)
+    return normalizeComment(raw)
+  },
+
+  async deleteAnswer(answerId: number): Promise<Comment> {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/answers/${answerId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    })
+    const raw = await parseJson<Record<string, unknown>>(response)
+    return normalizeComment(raw)
+  },
+
+  async toggleLike(answerId: number): Promise<{ likes_count: number; is_liked_by_me: boolean }> {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/answers/${answerId}/like`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
     })
     return parseJson(response)
   },
