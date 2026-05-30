@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BadgeCheck, ChevronDown, ChevronUp, Heart, Reply, Trash2 } from 'lucide-react'
+import { BadgeCheck, ChevronDown, ChevronUp, Reply, Trash2 } from 'lucide-react'
 import type { Comment } from '../../types/community'
 import { AuthorVerifiedBadge } from '../AuthorVerifiedBadge'
 import { formatCommunityTime, depthStyles } from '../../utils/communityTime'
@@ -20,6 +20,8 @@ interface CurrentUser {
 interface ThreadedCommentProps {
   comment: Comment
   depth: number
+  questionAuthorId?: number
+  hideVoteRail?: boolean
   currentUser: CurrentUser | null
   openReplyId: number | null
   replyText: string
@@ -47,27 +49,23 @@ function initials(name: string): string {
     .join('')
 }
 
-function ActionBtn({
+function PillBtn({
   onClick,
   children,
   active,
-  danger,
 }: {
   onClick: () => void
   children: React.ReactNode
   active?: boolean
-  danger?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-150 active:scale-[0.97] ${
+      className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-all duration-150 active:scale-[0.97] ${
         active
-          ? 'bg-rose-50 text-[#E1306C]'
-          : danger
-            ? 'text-[#64748b] hover:bg-red-50 hover:text-red-600'
-            : 'text-[#64748b] hover:bg-[#edf4f9] hover:text-[#1B4965]'
+          ? 'border-[#E1306C]/30 bg-rose-50 text-[#E1306C]'
+          : 'border-[#e8eef4] text-[#64748b] hover:border-[#d0e8f5] hover:bg-[#f8fbfd] hover:text-[#1B4965]'
       }`}
     >
       {children}
@@ -78,6 +76,8 @@ function ActionBtn({
 export default function ThreadedComment({
   comment,
   depth,
+  questionAuthorId = 0,
+  hideVoteRail = false,
   currentUser,
   openReplyId,
   replyText,
@@ -97,9 +97,9 @@ export default function ThreadedComment({
   const isTopLevel = depth === 0
   const replyCount = useMemo(() => countReplies(comment), [comment])
   const hasReplies = comment.children.length > 0
-
+  const isOp = comment.user_id === questionAuthorId
   const isOwn = currentUser?.id === comment.user_id
-  const avatarSize = isTopLevel ? 36 : 28
+  const avatarSize = isTopLevel ? 32 : 26
 
   return (
     <div
@@ -107,107 +107,142 @@ export default function ThreadedComment({
       className={isTopLevel ? '' : 'mt-2'}
     >
       <article
-        className={`group transition-colors duration-150 ${
+        className={`transition-colors duration-150 ${
           isTopLevel
-            ? `px-4 py-4 sm:px-5 sm:py-5 ${!isLast ? 'border-b border-[#e8eef4]' : ''}`
-            : 'rounded-xl bg-[rgba(75,151,201,0.04)] px-3 py-3'
+            ? `py-3 pr-4 ${hideVoteRail ? 'pl-0' : 'px-4 sm:px-5'} ${!isLast && !hideVoteRail ? 'border-b border-[#f0f4f8]' : ''}`
+            : 'rounded-lg bg-[#fafcfd] px-3 py-3'
         }`}
       >
-        <div className="flex gap-3">
-          {comment.author_avatar ? (
-            <img
-              src={avatarUrl(comment.author_avatar)}
-              alt=""
-              className="shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
-              style={{ width: avatarSize, height: avatarSize }}
-            />
-          ) : (
-            <div
-              className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] font-semibold text-white shadow-sm ring-2 ring-white"
-              style={{ width: avatarSize, height: avatarSize, fontSize: isTopLevel ? 13 : 11 }}
-            >
-              {initials(comment.author_name)}
+        <div className="flex gap-2 sm:gap-3">
+          {!hideVoteRail && !comment.is_deleted && (
+            <div className="flex shrink-0 flex-col items-center gap-0.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => onLike(comment.id)}
+                aria-label={comment.is_liked_by_me ? 'Unlike' : 'Like'}
+                className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+                  comment.is_liked_by_me
+                    ? 'text-orange-500'
+                    : 'text-[#94a3b8] hover:bg-[#f0f4f8] hover:text-orange-400'
+                }`}
+              >
+                <ChevronUp className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+              <span
+                className={`text-[11px] font-bold tabular-nums ${
+                  comment.is_liked_by_me ? 'text-orange-500' : 'text-[#64748b]'
+                }`}
+              >
+                {comment.likes_count}
+              </span>
             </div>
           )}
-          <div className="min-w-0 flex-1">
-            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-[14px] font-semibold text-[#1B4965]">
-                {comment.author_name}
-                {comment.author_verified && (
-                  <AuthorVerifiedBadge className="ml-1 inline h-3.5 w-3.5 align-text-bottom" />
-                )}
-              </span>
-              {comment.is_verified && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                  <BadgeCheck className="h-3 w-3" />
-                  Verified
-                </span>
-              )}
-              <span className="text-[12px] text-[#94a3b8]">{formatCommunityTime(comment.created_at)}</span>
-            </div>
 
-            <p
-              className={`whitespace-pre-wrap leading-relaxed ${
-                comment.is_deleted ? 'italic text-[#94a3b8]' : 'text-[#374151]'
-              } ${isTopLevel ? 'text-[15px]' : 'text-[14px]'}`}
-            >
-              {comment.content}
-            </p>
-
-            {!comment.is_deleted && (
-              <div className="mt-3 flex flex-wrap items-center gap-1">
-                <ActionBtn onClick={() => onLike(comment.id)} active={comment.is_liked_by_me}>
-                  <Heart
-                    className="h-4 w-4"
-                    fill={comment.is_liked_by_me ? 'currentColor' : 'none'}
-                    strokeWidth={2}
-                  />
-                  <span>{comment.likes_count}</span>
-                </ActionBtn>
-                {currentUser && (
-                  <ActionBtn onClick={() => onOpenReply(comment)}>
-                    <Reply className="h-4 w-4" strokeWidth={2} />
-                    <span>Reply</span>
-                  </ActionBtn>
-                )}
-                {isOwn && (
-                  <ActionBtn onClick={() => onDelete(comment.id)} danger>
-                    <Trash2 className="h-4 w-4" strokeWidth={2} />
-                    <span className="hidden sm:inline">Delete</span>
-                  </ActionBtn>
-                )}
-                {hasReplies && (
-                  <button
-                    type="button"
-                    onClick={() => setRepliesExpanded((v) => !v)}
-                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-3 text-[13px] font-semibold text-[#4B97C9] transition-colors hover:bg-[#edf4f9]"
-                  >
-                    {repliesExpanded ? (
-                      <>
-                        <ChevronUp className="h-4 w-4" strokeWidth={2.5} />
-                        Hide {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4" strokeWidth={2.5} />
-                        Show {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
-                      </>
-                    )}
-                  </button>
-                )}
+          <div className="flex min-w-0 flex-1 gap-2.5">
+            {comment.author_avatar ? (
+              <img
+                src={avatarUrl(comment.author_avatar)}
+                alt=""
+                className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-[#e8eef4]"
+                style={{ width: avatarSize, height: avatarSize }}
+              />
+            ) : (
+              <div
+                className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] font-semibold text-white ring-1 ring-[#e8eef4]"
+                style={{ width: avatarSize, height: avatarSize, fontSize: isTopLevel ? 12 : 10 }}
+              >
+                {initials(comment.author_name)}
               </div>
             )}
 
-            {openReplyId === comment.id && (
-              <InlineReplyBox
-                replyingToName={comment.author_name}
-                value={replyText}
-                onChange={onReplyTextChange}
-                onCancel={onCloseReply}
-                onSubmit={() => onSubmitReply(comment.id)}
-                submitting={submitting}
-              />
-            )}
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-[13px] font-semibold text-[#1B4965]">
+                  {comment.author_name}
+                  {comment.author_verified && (
+                    <AuthorVerifiedBadge className="ml-0.5 inline h-3 w-3 align-text-bottom" />
+                  )}
+                </span>
+                {isOp && (
+                  <span className="rounded-full bg-[#1B4965]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#1B4965]">
+                    OP
+                  </span>
+                )}
+                {comment.is_verified && (
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
+                    <BadgeCheck className="h-2.5 w-2.5" />
+                    Verified
+                  </span>
+                )}
+                <span className="text-[11px] text-[#94a3b8]">
+                  {(() => {
+                    const t = formatCommunityTime(comment.created_at)
+                    return t === 'just now' ? t : `${t} ago`
+                  })()}
+                </span>
+              </div>
+
+              <p
+                className={`whitespace-pre-wrap leading-relaxed ${
+                  comment.is_deleted ? 'italic text-[#94a3b8]' : 'text-[#374151]'
+                } ${isTopLevel ? 'text-[14px]' : 'text-[13px]'}`}
+              >
+                {comment.content}
+              </p>
+
+              {!comment.is_deleted && (
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  {currentUser && (
+                    <PillBtn onClick={() => onOpenReply(comment)}>
+                      <Reply className="h-3 w-3" strokeWidth={2.5} />
+                      Reply
+                    </PillBtn>
+                  )}
+                  <PillBtn onClick={() => onLike(comment.id)} active={comment.is_liked_by_me}>
+                    ♥ {comment.likes_count}
+                  </PillBtn>
+                  {isOwn && (
+                    <button
+                      type="button"
+                      onClick={() => onDelete(comment.id)}
+                      className="inline-flex min-h-[32px] items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium text-[#94a3b8] transition-colors hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                  {hasReplies && (
+                    <button
+                      type="button"
+                      onClick={() => setRepliesExpanded((v) => !v)}
+                      className="inline-flex min-h-[32px] items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-[#4B97C9] transition-colors hover:bg-[#edf4f9]"
+                    >
+                      {repliesExpanded ? (
+                        <>
+                          <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          Hide {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          Show {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {openReplyId === comment.id && (
+                <InlineReplyBox
+                  replyingToName={comment.author_name}
+                  value={replyText}
+                  onChange={onReplyTextChange}
+                  onCancel={onCloseReply}
+                  onSubmit={() => onSubmitReply(comment.id)}
+                  submitting={submitting}
+                />
+              )}
+            </div>
           </div>
         </div>
       </article>
@@ -215,7 +250,7 @@ export default function ThreadedComment({
       {stopIndent && hasReplies && repliesExpanded && (
         <button
           type="button"
-          className="ml-4 mt-2 text-[13px] font-semibold text-[#4B97C9] hover:underline"
+          className="ml-10 mt-1 text-[12px] font-semibold text-[#4B97C9] hover:underline"
           onClick={() => {
             document.getElementById(`comment-${comment.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }}
@@ -230,6 +265,7 @@ export default function ThreadedComment({
             <ThreadedComment
               comment={child}
               depth={depth + 1}
+              questionAuthorId={questionAuthorId}
               currentUser={currentUser}
               openReplyId={openReplyId}
               replyText={replyText}

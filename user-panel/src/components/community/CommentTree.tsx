@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, ChevronDown, ArrowUp } from 'lucide-react'
 import type { AnswerSort, Comment } from '../../types/community'
 import { communityAPI } from '../../services/communityAPI'
 import { normalizeComment } from '../../types/community'
@@ -14,6 +14,7 @@ interface CurrentUser {
 interface CommentTreeProps {
   questionId: number
   answerCount: number
+  questionAuthorId?: number
   currentUser: CurrentUser | null
   onRequireAuth: () => boolean
   onError?: (msg: string) => void
@@ -53,13 +54,62 @@ function insertReply(nodes: Comment[], parentId: number | null, reply: Comment):
 
 function SkeletonRow() {
   return (
-    <div className="flex gap-3 border-b border-[#e8eef4] px-4 py-4 sm:px-5 sm:py-5">
-      <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-[#e8eef4]" />
-      <div className="flex-1 space-y-2">
-        <div className="h-3 w-28 animate-pulse rounded bg-[#e8eef4]" />
-        <div className="h-3 w-full animate-pulse rounded bg-[#e8eef4]" />
-        <div className="h-3 w-3/4 animate-pulse rounded bg-[#e8eef4]" />
+    <div className="flex gap-0 border-b border-[#f0f4f8]">
+      <div className="flex w-10 flex-shrink-0 flex-col items-center gap-1.5 px-0 py-4">
+        <div className="h-5 w-5 animate-pulse rounded bg-[#e8eef4]" />
+        <div className="h-3 w-4 animate-pulse rounded bg-[#e8eef4]" />
+        <div className="h-5 w-5 animate-pulse rounded bg-[#e8eef4]" />
       </div>
+      <div className="flex-1 space-y-2 py-4 pr-4">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 animate-pulse rounded-full bg-[#e8eef4]" />
+          <div className="h-3 w-20 animate-pulse rounded bg-[#e8eef4]" />
+          <div className="h-3 w-10 animate-pulse rounded bg-[#e8eef4]" />
+        </div>
+        <div className="h-3 w-full animate-pulse rounded bg-[#e8eef4]" />
+        <div className="h-3 w-4/5 animate-pulse rounded bg-[#e8eef4]" />
+      </div>
+    </div>
+  )
+}
+
+function VoteColumn({
+  count,
+  isLiked,
+  onUpvote,
+}: {
+  count: number
+  isLiked: boolean
+  onUpvote: () => void
+}) {
+  return (
+    <div className="flex w-10 flex-shrink-0 flex-col items-center gap-0.5 pb-2 pt-3">
+      <button
+        type="button"
+        onClick={onUpvote}
+        aria-label="Upvote"
+        className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+          isLiked
+            ? 'text-orange-500'
+            : 'text-[#94a3b8] hover:bg-[#f0f4f8] hover:text-orange-400'
+        }`}
+      >
+        <ArrowUp className="h-4 w-4" strokeWidth={isLiked ? 2.5 : 2} />
+      </button>
+      <span
+        className={`text-[11px] font-semibold leading-none ${
+          isLiked ? 'text-orange-500' : 'text-[#64748b]'
+        }`}
+      >
+        {count}
+      </span>
+      <button
+        type="button"
+        aria-label="Downvote"
+        className="flex h-6 w-6 items-center justify-center rounded text-[#94a3b8] transition-colors hover:bg-[#f0f4f8] hover:text-[#4B97C9]"
+      >
+        <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
+      </button>
     </div>
   )
 }
@@ -67,6 +117,7 @@ function SkeletonRow() {
 export default function CommentTree({
   questionId,
   answerCount,
+  questionAuthorId = 0,
   currentUser,
   onRequireAuth,
   onError,
@@ -215,10 +266,10 @@ export default function CommentTree({
   const displayCount = answerCount || comments.length
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#e8eef4] bg-white shadow-[0_1px_3px_rgba(27,73,101,0.06),0_4px_16px_rgba(27,73,101,0.04)]">
-      <div className="flex flex-col gap-3 border-b border-[#e8eef4] bg-[#fafcfd] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-        <h2 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-[#1B4965]">
-          <MessageSquare className="h-4 w-4 text-[#4B97C9]" aria-hidden />
+    <section className="overflow-hidden rounded-xl border border-[#e8eef4] bg-white shadow-[0_1px_4px_rgba(27,73,101,0.06)]">
+      <div className="flex flex-col gap-2 border-b border-[#f0f4f8] bg-[#fafcfd] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
+          <MessageSquare className="h-3.5 w-3.5 text-[#4B97C9]" aria-hidden />
           {displayCount} {displayCount === 1 ? 'Answer' : 'Answers'}
         </h2>
         <SortControls value={sort} onChange={setSort} />
@@ -228,46 +279,66 @@ export default function CommentTree({
         <div>
           <SkeletonRow />
           <SkeletonRow />
+          <SkeletonRow />
         </div>
       ) : comments.length === 0 ? (
-        <div className="px-4 py-12 text-center sm:px-5">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#edf4f9]">
-            <MessageSquare className="h-5 w-5 text-[#4B97C9]" />
+        <div className="px-4 py-14 text-center">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#f0f4f8]">
+            <MessageSquare className="h-4 w-4 text-[#4B97C9]" />
           </div>
-          <p className="text-[15px] font-semibold text-[#1B4965]">No answers yet</p>
-          <p className="mt-1 text-[14px] text-[#64748b]">Be the first to share what you know.</p>
+          <p className="text-[14px] font-semibold text-[#1B4965]">No answers yet</p>
+          <p className="mt-1 text-[13px] text-[#94a3b8]">Be the first to share what you know.</p>
         </div>
       ) : (
         <div>
           {visible.map((c, i) => (
-            <div key={c.id} id={`comment-${c.id}`}>
-              <ThreadedComment
-                comment={c}
-                depth={0}
-                currentUser={currentUser}
-                openReplyId={openReplyId}
-                replyText={replyText}
-                onOpenReply={handleOpenReply}
-                onCloseReply={() => {
-                  setOpenReplyId(null)
-                  setReplyText('')
-                }}
-                onReplyTextChange={setReplyText}
-                onSubmitReply={handleSubmitReply}
-                onLike={handleLike}
-                onDelete={handleDelete}
-                submitting={submitting}
-                isMobile={isMobile}
-                isLast={i === visible.length - 1 && !hasMore}
-              />
+            <div
+              key={c.id}
+              id={`comment-${c.id}`}
+              className={`flex gap-0 ${i < visible.length - 1 || hasMore ? 'border-b border-[#f0f4f8]' : ''}`}
+            >
+              {!c.is_deleted ? (
+                <VoteColumn
+                  count={c.likes_count}
+                  isLiked={c.is_liked_by_me}
+                  onUpvote={() => handleLike(c.id)}
+                />
+              ) : (
+                <div className="w-10 flex-shrink-0" />
+              )}
+
+              <div className="min-w-0 flex-1 py-0 pr-0">
+                <ThreadedComment
+                  comment={c}
+                  depth={0}
+                  questionAuthorId={questionAuthorId}
+                  hideVoteRail
+                  currentUser={currentUser}
+                  openReplyId={openReplyId}
+                  replyText={replyText}
+                  onOpenReply={handleOpenReply}
+                  onCloseReply={() => {
+                    setOpenReplyId(null)
+                    setReplyText('')
+                  }}
+                  onReplyTextChange={setReplyText}
+                  onSubmitReply={handleSubmitReply}
+                  onLike={handleLike}
+                  onDelete={handleDelete}
+                  submitting={submitting}
+                  isMobile={isMobile}
+                  isLast={i === visible.length - 1 && !hasMore}
+                />
+              </div>
             </div>
           ))}
+
           {hasMore && (
-            <div className="border-t border-[#e8eef4] px-4 py-3 sm:px-5">
+            <div className="border-t border-[#f0f4f8]">
               <button
                 type="button"
                 onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                className="w-full min-h-[44px] rounded-xl border border-[#d0e8f5] bg-[#f8fbfd] py-2.5 text-[14px] font-semibold text-[#1B4965] transition-all duration-150 hover:border-[#4B97C9] hover:bg-white active:scale-[0.99]"
+                className="w-full min-h-[44px] py-3 text-[13px] font-semibold text-[#1B4965] transition-colors hover:bg-[#f8fbfd]"
               >
                 Load more ({comments.length - visibleCount} remaining)
               </button>

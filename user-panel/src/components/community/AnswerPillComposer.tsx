@@ -1,5 +1,4 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { Send } from 'lucide-react'
 
 interface AnswerPillComposerProps {
   id: string
@@ -38,17 +37,17 @@ export default function AnswerPillComposer({
   const canSubmit = !disabled && !submitting && value.trim().length >= 2
 
   return (
-    <div className="mb-6">
-      <label htmlFor={id} className="mb-2.5 block text-[13px] font-bold uppercase tracking-wider text-[#1B4965]">
+    <div className="mb-4">
+      <label htmlFor={id} className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
         {label}
       </label>
       <form
         onSubmit={onSubmit}
-        className={`group/composer flex items-end gap-2 border-2 bg-white px-2 py-2 shadow-[0_1px_3px_rgba(27,73,101,0.06)] transition-all duration-200 ${
-          expanded ? 'rounded-[28px]' : 'rounded-full'
+        className={`group/composer flex items-end gap-2 border bg-[#fafcfd] px-2 py-1.5 transition-all duration-200 ${
+          expanded ? 'rounded-2xl' : 'rounded-full'
         } ${
           focused
-            ? 'border-[#4B97C9] ring-[3px] ring-[rgba(75,151,201,0.12)]'
+            ? 'border-[#4B97C9] bg-white ring-[3px] ring-[rgba(75,151,201,0.1)]'
             : 'border-[#e8eef4] hover:border-[#d0e8f5]'
         }`}
       >
@@ -74,18 +73,16 @@ export default function AnswerPillComposer({
               }
             }
           }}
-          className="min-h-[44px] max-h-[160px] flex-1 resize-none bg-transparent py-2.5 pl-3 pr-1 text-[16px] leading-relaxed text-[#374151] outline-none placeholder:text-[#94a3b8] disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]"
-          style={{ height: expanded ? undefined : '44px' }}
+          className="min-h-[40px] max-h-[160px] flex-1 resize-none bg-transparent py-2 pl-3 pr-1 text-[15px] leading-relaxed text-[#374151] outline-none placeholder:text-[#94a3b8] disabled:cursor-not-allowed disabled:opacity-60 sm:text-[14px]"
+          style={{ height: expanded ? undefined : '40px' }}
         />
         <button
           type="submit"
           disabled={!canSubmit}
           aria-label="Post answer"
-          className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[#1B4965] px-4 text-[14px] font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[#163d52] hover:shadow-md active:scale-[0.97] disabled:opacity-40 disabled:hover:shadow-sm sm:px-5"
+          className="flex h-9 shrink-0 items-center rounded-full bg-[#1B4965] px-4 text-[13px] font-semibold text-white transition-all duration-150 hover:bg-[#163d52] active:scale-[0.97] disabled:opacity-40 sm:px-5"
         >
-          <Send className="h-4 w-4 sm:hidden" strokeWidth={2.5} />
-          <span className="hidden sm:inline">{submitting ? 'Posting…' : 'Post'}</span>
-          <span className="sm:hidden">{submitting ? '…' : 'Post'}</span>
+          {submitting ? '…' : 'Post'}
         </button>
       </form>
       {error && <p className="mt-2 px-1 text-[13px] text-red-600">{error}</p>}
