@@ -1,12 +1,12 @@
 /**
- * Partial / incremental DB migration (blog, collab, CMS basics, staff RBAC).
+ * Partial / incremental DB migration (blog, collab, CMS basics, staff RBAC, Ask Community).
  *
  * Full app schema is applied on backend startup via ensureSchema() in src/utils/schema.ts.
  * This script is safe to re-run (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
  *
  * Super admin:
  *   - Privileges: SUPER_ADMIN_EMAIL + SUPER_ADMIN_PASSWORD in .env (not is_super_admin in DB).
- *   - Step 8 syncs a staff_users row for login (same as ensure-super-admin.js / seedSuperAdmin).
+ *   - Step 10 syncs a staff_users row for login (same as ensure-super-admin.js / seedSuperAdmin).
  *   - Or run: npm run ensure-super-admin
  */
 require('dotenv/config');
@@ -38,7 +38,7 @@ async function syncEnvSuperAdmin() {
   const password = process.env.SUPER_ADMIN_PASSWORD;
   const name = process.env.SUPER_ADMIN_NAME || 'Super Admin';
   if (!email || !password) {
-    console.log('ℹ️  Step 8: Skipped super admin sync — set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD in .env');
+    console.log('ℹ️  Step 10: Skipped super admin sync — set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD in .env');
     console.log('   (Or run: npm run ensure-super-admin)');
     return;
   }
@@ -54,7 +54,7 @@ async function syncEnvSuperAdmin() {
      RETURNING id, email`,
     [email, name, hashed]
   );
-  console.log(`✅ Step 8: Super admin staff row synced (${rows[0].email}, id=${rows[0].id})`);
+  console.log(`✅ Step 10: Super admin staff row synced (${rows[0].email}, id=${rows[0].id})`);
   console.log('   Privileges apply when this email matches SUPER_ADMIN_EMAIL on login.');
 }
 
@@ -1438,7 +1438,117 @@ async function runMigration() {
       ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS reads_count INTEGER NOT NULL DEFAULT 0;
     `);
 
-    console.log('📝 Step 9: Super admin staff account (from .env)…');
+    console.log('📝 Step 9: Ask Community Q&A (Reddit-style threads)…');
+    await pool.query(`
+      -- Nefol Social: Ask Community (open Q&A, no moderation queue)
+      CREATE TABLE IF NOT EXISTS community_questions (
+        id serial primary key,
+        user_id integer not null references users(id) on delete cascade,
+        topic_type text not null check (topic_type in ('product', 'brand')),
+        product_id integer references products(id) on delete set null,
+        title text not null,
+        body text not null,
+        answer_count integer not null default 0,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now(),
+        last_activity_at timestamptz default now()
+      );
+
+      CREATE TABLE IF NOT EXISTS community_answers (
+        id serial primary key,
+        question_id integer not null references community_questions(id) on delete cascade,
+        user_id integer not null references users(id) on delete cascade,
+        parent_id integer references community_answers(id) on delete cascade,
+        parent_answer_id integer references community_answers(id) on delete cascade,
+        root_answer_id integer references community_answers(id) on delete set null,
+        depth integer not null default 0,
+        path text,
+        body text not null,
+        is_verified boolean not null default false,
+        verified_by integer references users(id) on delete set null,
+        verified_at timestamptz,
+        likes_count integer not null default 0,
+        is_deleted boolean not null default false,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+      );
+
+      CREATE TABLE IF NOT EXISTS community_answer_likes (
+        id serial primary key,
+        answer_id integer not null references community_answers(id) on delete cascade,
+        user_id integer not null references users(id) on delete cascade,
+        created_at timestamptz default now(),
+        unique (answer_id, user_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_community_questions_product ON community_questions(product_id);
+      CREATE INDEX IF NOT EXISTS idx_community_questions_topic ON community_questions(topic_type);
+      CREATE INDEX IF NOT EXISTS idx_community_questions_activity ON community_questions(last_activity_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_community_answers_question ON community_answers(question_id);
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'parent_id') THEN
+          ALTER TABLE community_answers ADD COLUMN parent_id integer references community_answers(id) on delete cascade;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'parent_answer_id') THEN
+          ALTER TABLE community_answers ADD COLUMN parent_answer_id integer references community_answers(id) on delete cascade;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'root_answer_id') THEN
+          ALTER TABLE community_answers ADD COLUMN root_answer_id integer references community_answers(id) on delete set null;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'depth') THEN
+          ALTER TABLE community_answers ADD COLUMN depth integer not null default 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'path') THEN
+          ALTER TABLE community_answers ADD COLUMN path text;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'likes_count') THEN
+          ALTER TABLE community_answers ADD COLUMN likes_count integer not null default 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'is_deleted') THEN
+          ALTER TABLE community_answers ADD COLUMN is_deleted boolean not null default false;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'is_verified') THEN
+          ALTER TABLE community_answers ADD COLUMN is_verified boolean not null default false;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'verified_by') THEN
+          ALTER TABLE community_answers ADD COLUMN verified_by integer references users(id) on delete set null;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'verified_at') THEN
+          ALTER TABLE community_answers ADD COLUMN verified_at timestamptz;
+        END IF;
+        UPDATE community_answers
+        SET parent_id = parent_answer_id
+        WHERE parent_id IS NULL AND parent_answer_id IS NOT NULL;
+      END $$;
+
+      WITH RECURSIVE community_answer_tree AS (
+        SELECT id, parent_id, id::text AS path, 0 AS depth, id AS root_id
+        FROM community_answers
+        WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, c.parent_id,
+          t.path || '.' || c.id::text,
+          t.depth + 1,
+          t.root_id
+        FROM community_answers c
+        INNER JOIN community_answer_tree t ON c.parent_id = t.id
+      )
+      UPDATE community_answers c
+      SET path = t.path,
+          depth = t.depth,
+          root_answer_id = t.root_id
+      FROM community_answer_tree t
+      WHERE c.id = t.id AND (c.path IS NULL OR c.path = '' OR c.depth IS NULL OR c.root_answer_id IS NULL);
+
+      CREATE INDEX IF NOT EXISTS idx_community_answers_parent ON community_answers(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_community_answers_root ON community_answers(root_answer_id);
+      CREATE INDEX IF NOT EXISTS idx_community_answers_path ON community_answers(path);
+      CREATE INDEX IF NOT EXISTS idx_community_answer_likes_answer ON community_answer_likes(answer_id);
+    `);
+
+    console.log('📝 Step 10: Super admin staff account (from .env)…');
     await syncEnvSuperAdmin();
     
     console.log('✅ Migration completed successfully!');

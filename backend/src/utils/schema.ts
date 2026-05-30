@@ -2017,10 +2017,6 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_community_questions_topic on community_questions(topic_type);
     create index if not exists idx_community_questions_activity on community_questions(last_activity_at desc);
     create index if not exists idx_community_answers_question on community_answers(question_id);
-    create index if not exists idx_community_answers_parent on community_answers(parent_id);
-    create index if not exists idx_community_answers_root on community_answers(root_answer_id);
-    create index if not exists idx_community_answers_path on community_answers(path);
-    create index if not exists idx_community_answer_likes_answer on community_answer_likes(answer_id);
     create index if not exists idx_delivery_notifications_order on delivery_notifications(order_id);
     create index if not exists idx_shiprocket_shipments_order on shiprocket_shipments(order_id);
     create index if not exists idx_discount_usage_discount on discount_usage(discount_id);
@@ -2060,6 +2056,9 @@ export async function ensureSchema(pool: Pool) {
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'parent_id') THEN
         ALTER TABLE community_answers ADD COLUMN parent_id integer references community_answers(id) on delete cascade;
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'parent_answer_id') THEN
+        ALTER TABLE community_answers ADD COLUMN parent_answer_id integer references community_answers(id) on delete cascade;
+      END IF;
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'root_answer_id') THEN
         ALTER TABLE community_answers ADD COLUMN root_answer_id integer references community_answers(id) on delete set null;
       END IF;
@@ -2097,7 +2096,12 @@ export async function ensureSchema(pool: Pool) {
         depth = t.depth,
         root_answer_id = t.root_id
     FROM community_answer_tree t
-    WHERE c.id = t.id AND (c.path IS NULL OR c.path = '' OR c.depth IS NULL);
+    WHERE c.id = t.id AND (c.path IS NULL OR c.path = '' OR c.depth IS NULL OR c.root_answer_id IS NULL);
+
+    create index if not exists idx_community_answers_parent on community_answers(parent_id);
+    create index if not exists idx_community_answers_root on community_answers(root_answer_id);
+    create index if not exists idx_community_answers_path on community_answers(path);
+    create index if not exists idx_community_answer_likes_answer on community_answer_likes(answer_id);
     
     -- Ensure shiprocket_shipments columns exist (migration for existing tables)
     DO $$
