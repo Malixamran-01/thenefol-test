@@ -144,9 +144,18 @@ export const communityAPI = {
   },
 
   async toggleLike(answerId: number): Promise<{ likes_count: number; is_liked_by_me: boolean }> {
-    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/answers/${answerId}/like`, {
+    const result = await this.voteAnswer(answerId, 'up')
+    return { likes_count: result.likes_count, is_liked_by_me: result.my_vote === 1 }
+  },
+
+  async voteAnswer(
+    answerId: number,
+    direction: 'up' | 'down'
+  ): Promise<{ score: number; likes_count: number; my_vote: 1 | -1 | 0 }> {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/answers/${answerId}/vote`, {
       method: 'POST',
       headers: getAuthHeaders(),
+      body: JSON.stringify({ direction }),
     })
     return parseJson(response)
   },

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { BadgeCheck, ChevronDown, ChevronUp, Reply, Trash2 } from 'lucide-react'
+import { BadgeCheck, ChevronDown, ChevronUp, Heart, MessageSquare, Trash2 } from 'lucide-react'
 import type { Comment } from '../../types/community'
 import { AuthorVerifiedBadge } from '../AuthorVerifiedBadge'
-import { formatCommunityTime, depthStyles } from '../../utils/communityTime'
+import { formatCommunityTime } from '../../utils/communityTime'
 import { encodeMediaUrl, getApiBase } from '../../utils/apiBase'
 import InlineReplyBox from './InlineReplyBox'
+import VoteColumn from './VoteColumn'
 
 const MAX_VISUAL_DEPTH = 5
 
@@ -21,7 +22,6 @@ interface ThreadedCommentProps {
   comment: Comment
   depth: number
   questionAuthorId?: number
-  hideVoteRail?: boolean
   currentUser: CurrentUser | null
   openReplyId: number | null
   replyText: string
@@ -29,7 +29,7 @@ interface ThreadedCommentProps {
   onCloseReply: () => void
   onReplyTextChange: (v: string) => void
   onSubmitReply: (parentId: number) => void
-  onLike: (commentId: number) => void
+  onVote: (commentId: number, direction: 'up' | 'down') => void
   onDelete: (commentId: number) => void
   submitting?: boolean
   isMobile?: boolean
@@ -49,7 +49,25 @@ function initials(name: string): string {
     .join('')
 }
 
-function PillBtn({
+function timeAgo(iso: string): string {
+  const t = formatCommunityTime(iso)
+  return t === 'just now' ? t : `${t} ago`
+}
+
+const AVATAR_COLORS = [
+  'from-[#4B97C9] to-[#1B4965]',
+  'from-[#d97706] to-[#b45309]',
+  'from-[#7c3aed] to-[#5b21b6]',
+  'from-[#059669] to-[#047857]',
+]
+
+function avatarGradient(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h + name.charCodeAt(i)) % AVATAR_COLORS.length
+  return AVATAR_COLORS[h]
+}
+
+function ActionPill({
   onClick,
   children,
   active,
@@ -62,10 +80,10 @@ function PillBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-all duration-150 active:scale-[0.97] ${
+      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-all duration-150 active:scale-[0.97] ${
         active
           ? 'border-[#E1306C]/30 bg-rose-50 text-[#E1306C]'
-          : 'border-[#e8eef4] text-[#64748b] hover:border-[#d0e8f5] hover:bg-[#f8fbfd] hover:text-[#1B4965]'
+          : 'border-[#e8eef4] bg-white text-[#64748b] hover:border-[#d0e8f5] hover:text-[#1B4965]'
       }`}
     >
       {children}
@@ -77,7 +95,6 @@ export default function ThreadedComment({
   comment,
   depth,
   questionAuthorId = 0,
-  hideVoteRail = false,
   currentUser,
   openReplyId,
   replyText,
@@ -85,105 +102,77 @@ export default function ThreadedComment({
   onCloseReply,
   onReplyTextChange,
   onSubmitReply,
-  onLike,
+  onVote,
   onDelete,
   submitting,
   isMobile = false,
-  isLast = false,
 }: ThreadedCommentProps) {
   const [repliesExpanded, setRepliesExpanded] = useState(true)
+  const isTopLevel = depth === 0
   const visualDepth = Math.min(depth, MAX_VISUAL_DEPTH)
   const stopIndent = depth > MAX_VISUAL_DEPTH
-  const isTopLevel = depth === 0
   const replyCount = useMemo(() => countReplies(comment), [comment])
   const hasReplies = comment.children.length > 0
   const isOp = comment.user_id === questionAuthorId
   const isOwn = currentUser?.id === comment.user_id
-  const avatarSize = isTopLevel ? 32 : 26
+  const avatarSize = isTopLevel ? 28 : 24
+  const indentPx = isMobile ? Math.round(visualDepth * 14) : Math.round(visualDepth * 20)
 
   return (
-    <div
-      style={stopIndent ? undefined : depthStyles(visualDepth, isMobile)}
-      className={isTopLevel ? '' : 'mt-2'}
-    >
-      <article
-        className={`transition-colors duration-150 ${
-          isTopLevel
-            ? `py-3 pr-4 ${hideVoteRail ? 'pl-0' : 'px-4 sm:px-5'} ${!isLast && !hideVoteRail ? 'border-b border-[#f0f4f8]' : ''}`
-            : 'rounded-lg bg-[#fafcfd] px-3 py-3'
-        }`}
-      >
-        <div className="flex gap-2 sm:gap-3">
-          {!hideVoteRail && !comment.is_deleted && (
-            <div className="flex shrink-0 flex-col items-center gap-0.5 pt-0.5">
-              <button
-                type="button"
-                onClick={() => onLike(comment.id)}
-                aria-label={comment.is_liked_by_me ? 'Unlike' : 'Like'}
-                className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
-                  comment.is_liked_by_me
-                    ? 'text-orange-500'
-                    : 'text-[#94a3b8] hover:bg-[#f0f4f8] hover:text-orange-400'
-                }`}
-              >
-                <ChevronUp className="h-4 w-4" strokeWidth={2.5} />
-              </button>
-              <span
-                className={`text-[11px] font-bold tabular-nums ${
-                  comment.is_liked_by_me ? 'text-orange-500' : 'text-[#64748b]'
-                }`}
-              >
-                {comment.likes_count}
-              </span>
-            </div>
-          )}
+    <div className={isTopLevel ? '' : ''}>
+      <div className={`flex gap-2 ${isTopLevel ? 'px-4 py-3 sm:px-5' : 'py-1'}`}>
+        {!comment.is_deleted && (
+          <VoteColumn
+            score={comment.score}
+            myVote={comment.my_vote}
+            onUpvote={() => onVote(comment.id, 'up')}
+            onDownvote={() => onVote(comment.id, 'down')}
+            compact={!isTopLevel}
+          />
+        )}
 
-          <div className="flex min-w-0 flex-1 gap-2.5">
+        <div className={`min-w-0 flex-1 ${!isTopLevel ? 'rounded-lg border border-[#f0f4f8] bg-[#fafcfd] px-3 py-2.5' : ''}`}>
+          <div className="flex items-start gap-2">
             {comment.author_avatar ? (
               <img
                 src={avatarUrl(comment.author_avatar)}
                 alt=""
-                className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-[#e8eef4]"
+                className="shrink-0 rounded-full object-cover ring-1 ring-[#e8eef4]"
                 style={{ width: avatarSize, height: avatarSize }}
               />
             ) : (
               <div
-                className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] font-semibold text-white ring-1 ring-[#e8eef4]"
-                style={{ width: avatarSize, height: avatarSize, fontSize: isTopLevel ? 12 : 10 }}
+                className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br font-semibold text-white ring-1 ring-[#e8eef4] ${avatarGradient(comment.author_name)}`}
+                style={{ width: avatarSize, height: avatarSize, fontSize: isTopLevel ? 11 : 10 }}
               >
                 {initials(comment.author_name)}
               </div>
             )}
 
             <div className="min-w-0 flex-1">
-              <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                 <span className="text-[13px] font-semibold text-[#1B4965]">
                   {comment.author_name}
-                  {comment.author_verified && (
-                    <AuthorVerifiedBadge className="ml-0.5 inline h-3 w-3 align-text-bottom" />
-                  )}
                 </span>
+                {comment.author_verified && (
+                  <AuthorVerifiedBadge className="inline h-3 w-3 align-text-bottom" />
+                )}
                 {isOp && (
-                  <span className="rounded-full bg-[#1B4965]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#1B4965]">
+                  <span className="rounded bg-[#1B4965]/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#1B4965]">
                     OP
                   </span>
                 )}
                 {comment.is_verified && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-px text-[9px] font-bold uppercase text-emerald-700">
                     <BadgeCheck className="h-2.5 w-2.5" />
                     Verified
                   </span>
                 )}
-                <span className="text-[11px] text-[#94a3b8]">
-                  {(() => {
-                    const t = formatCommunityTime(comment.created_at)
-                    return t === 'just now' ? t : `${t} ago`
-                  })()}
-                </span>
+                <span className="text-[11px] text-[#94a3b8]">{timeAgo(comment.created_at)}</span>
               </div>
 
               <p
-                className={`whitespace-pre-wrap leading-relaxed ${
+                className={`mt-1 whitespace-pre-wrap leading-relaxed ${
                   comment.is_deleted ? 'italic text-[#94a3b8]' : 'text-[#374151]'
                 } ${isTopLevel ? 'text-[14px]' : 'text-[13px]'}`}
               >
@@ -193,43 +182,50 @@ export default function ThreadedComment({
               {!comment.is_deleted && (
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   {currentUser && (
-                    <PillBtn onClick={() => onOpenReply(comment)}>
-                      <Reply className="h-3 w-3" strokeWidth={2.5} />
+                    <ActionPill onClick={() => onOpenReply(comment)}>
+                      <MessageSquare className="h-3 w-3" strokeWidth={2} />
                       Reply
-                    </PillBtn>
+                    </ActionPill>
                   )}
-                  <PillBtn onClick={() => onLike(comment.id)} active={comment.is_liked_by_me}>
-                    ♥ {comment.likes_count}
-                  </PillBtn>
+                  <ActionPill onClick={() => onVote(comment.id, 'up')} active={comment.my_vote === 1}>
+                    <Heart
+                      className="h-3 w-3"
+                      fill={comment.my_vote === 1 ? 'currentColor' : 'none'}
+                      strokeWidth={2}
+                    />
+                    {comment.likes_count}
+                  </ActionPill>
                   {isOwn && (
                     <button
                       type="button"
                       onClick={() => onDelete(comment.id)}
-                      className="inline-flex min-h-[32px] items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium text-[#94a3b8] transition-colors hover:bg-red-50 hover:text-red-600"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#94a3b8] transition-colors hover:bg-red-50 hover:text-red-600"
+                      aria-label="Delete"
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  )}
-                  {hasReplies && (
-                    <button
-                      type="button"
-                      onClick={() => setRepliesExpanded((v) => !v)}
-                      className="inline-flex min-h-[32px] items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-[#4B97C9] transition-colors hover:bg-[#edf4f9]"
-                    >
-                      {repliesExpanded ? (
-                        <>
-                          <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} />
-                          Hide {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.5} />
-                          Show {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
-                        </>
-                      )}
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
+              )}
+
+              {hasReplies && (
+                <button
+                  type="button"
+                  onClick={() => setRepliesExpanded((v) => !v)}
+                  className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-[#4B97C9] transition-colors hover:underline"
+                >
+                  {repliesExpanded ? (
+                    <>
+                      <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      Hide {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      Show {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                    </>
+                  )}
+                </button>
               )}
 
               {openReplyId === comment.id && (
@@ -245,12 +241,12 @@ export default function ThreadedComment({
             </div>
           </div>
         </div>
-      </article>
+      </div>
 
       {stopIndent && hasReplies && repliesExpanded && (
         <button
           type="button"
-          className="ml-10 mt-1 text-[12px] font-semibold text-[#4B97C9] hover:underline"
+          className="ml-14 mt-1 text-[12px] font-semibold text-[#4B97C9] hover:underline"
           onClick={() => {
             document.getElementById(`comment-${comment.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }}
@@ -259,9 +255,15 @@ export default function ThreadedComment({
         </button>
       )}
 
-      {!stopIndent && repliesExpanded &&
+      {!stopIndent &&
+        repliesExpanded &&
         comment.children.map((child) => (
-          <div key={child.id} id={`comment-${child.id}`}>
+          <div
+            key={child.id}
+            id={`comment-${child.id}`}
+            className="ml-3 border-l-2 border-[#4B97C9]/35 pl-1"
+            style={visualDepth > 0 ? { marginLeft: indentPx } : undefined}
+          >
             <ThreadedComment
               comment={child}
               depth={depth + 1}
@@ -273,7 +275,7 @@ export default function ThreadedComment({
               onCloseReply={onCloseReply}
               onReplyTextChange={onReplyTextChange}
               onSubmitReply={onSubmitReply}
-              onLike={onLike}
+              onVote={onVote}
               onDelete={onDelete}
               submitting={submitting}
               isMobile={isMobile}

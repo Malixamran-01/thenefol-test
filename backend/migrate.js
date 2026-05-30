@@ -1546,6 +1546,18 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_community_answers_root ON community_answers(root_answer_id);
       CREATE INDEX IF NOT EXISTS idx_community_answers_path ON community_answers(path);
       CREATE INDEX IF NOT EXISTS idx_community_answer_likes_answer ON community_answer_likes(answer_id);
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'score') THEN
+          ALTER TABLE community_answers ADD COLUMN score integer NOT NULL DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answer_likes' AND column_name = 'vote') THEN
+          ALTER TABLE community_answer_likes ADD COLUMN vote smallint NOT NULL DEFAULT 1;
+        END IF;
+        UPDATE community_answers SET score = COALESCE(likes_count, 0) WHERE score = 0 AND likes_count > 0;
+        UPDATE community_answer_likes SET vote = 1 WHERE vote IS NULL OR vote = 0;
+      END $$;
     `);
 
     console.log('📝 Step 10: Super admin staff account (from .env)…');

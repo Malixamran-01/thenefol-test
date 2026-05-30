@@ -58,6 +58,8 @@ export interface CommentRow {
   depth: number
   path: string | null
   likes_count: number
+  score: number
+  my_vote: number
   is_liked_by_me: boolean
   created_at: string
   updated_at: string
@@ -106,7 +108,9 @@ function mapAnswerToComment(row: Record<string, unknown>): CommentRow {
     depth: Number(row.depth) || 0,
     path: row.path != null ? String(row.path) : null,
     likes_count: Number(row.likes_count) || 0,
-    is_liked_by_me: Boolean(row.is_liked_by_me),
+    score: Number(row.score ?? row.likes_count) || 0,
+    my_vote: Number(row.my_vote) || 0,
+    is_liked_by_me: Number(row.my_vote) === 1 || Boolean(row.is_liked_by_me),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   }
@@ -120,7 +124,7 @@ function sortRootComments(roots: CommentNode[], sort: string): CommentNode[] {
     copy.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
   } else {
     copy.sort((a, b) => {
-      if (b.likes_count !== a.likes_count) return b.likes_count - a.likes_count
+      if (b.score !== a.score) return b.score - a.score
       if (a.is_verified !== b.is_verified) return a.is_verified ? -1 : 1
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
@@ -160,7 +164,8 @@ async function fetchAnswerRows(questionId: number, viewerUserId: number | null):
       COALESCE(ap.display_name, u.name, 'Member') AS author_name,
       COALESCE(ap.profile_image, u.profile_photo) AS author_avatar,
       COALESCE(ap.is_verified, false) AS author_is_verified,
-      CASE WHEN $2::integer IS NOT NULL AND cal.user_id IS NOT NULL THEN true ELSE false END AS is_liked_by_me
+      COALESCE(cal.vote, 0)::integer AS my_vote,
+      CASE WHEN cal.vote = 1 THEN true ELSE false END AS is_liked_by_me
     FROM community_answers ca
     ${ANSWER_USER_JOIN}
     LEFT JOIN community_answer_likes cal
@@ -181,7 +186,8 @@ async function enrichComment(answerId: number, viewerUserId: number | null): Pro
       COALESCE(ap.display_name, u.name, 'Member') AS author_name,
       COALESCE(ap.profile_image, u.profile_photo) AS author_avatar,
       COALESCE(ap.is_verified, false) AS author_is_verified,
-      CASE WHEN $2::integer IS NOT NULL AND cal.user_id IS NOT NULL THEN true ELSE false END AS is_liked_by_me
+      COALESCE(cal.vote, 0)::integer AS my_vote,
+      CASE WHEN cal.vote = 1 THEN true ELSE false END AS is_liked_by_me
     FROM community_answers ca
     ${ANSWER_USER_JOIN}
     LEFT JOIN community_answer_likes cal
@@ -512,7 +518,7 @@ router.delete('/answers/:id', authenticateToken, async (req: Request, res: Respo
   }
 })
 
-router.post('/answers/:id/like', authenticateToken, async (req: Request, res: Response) => {
+async function voteHandler(req: Request, res: Response) {
   try {
     const userId = parseUserId(req)
     if (userId == null) return sendError(res, 401, 'Unauthorized')
@@ -520,49 +526,92 @@ router.post('/answers/:id/like', authenticateToken, async (req: Request, res: Re
     const answerId = Number(req.params.id)
     if (!Number.isFinite(answerId)) return sendError(res, 400, 'Invalid answer id')
 
+    const rawDir = String(req.body?.direction || 'up').toLowerCase()
+    const voteDir = rawDir === 'down' ? -1 : 1
+
     const { rows: aRows } = await pool.query(`SELECT id FROM community_answers WHERE id = $1`, [answerId])
     if (!aRows.length) return sendError(res, 404, 'Answer not found')
 
     const { rows: existing } = await pool.query(
-      `SELECT id FROM community_answer_likes WHERE answer_id = $1 AND user_id = $2`,
+      `SELECT id, vote FROM community_answer_likes WHERE answer_id = $1 AND user_id = $2`,
       [answerId, userId]
     )
 
-    let isLiked: boolean
+    let myVote = 0
+
     if (existing.length) {
-      await pool.query(`DELETE FROM community_answer_likes WHERE answer_id = $1 AND user_id = $2`, [
-        answerId,
-        userId,
-      ])
-      await pool.query(
-        `UPDATE community_answers SET likes_count = GREATEST(likes_count - 1, 0), updated_at = now() WHERE id = $1`,
-        [answerId]
-      )
-      isLiked = false
+      const prevVote = Number(existing[0].vote) || 1
+      if (prevVote === voteDir) {
+        await pool.query(`DELETE FROM community_answer_likes WHERE answer_id = $1 AND user_id = $2`, [
+          answerId,
+          userId,
+        ])
+        await pool.query(
+          `UPDATE community_answers
+           SET score = score - $2,
+               likes_count = CASE WHEN $3 = 1 THEN GREATEST(likes_count - 1, 0) ELSE likes_count END,
+               updated_at = now()
+           WHERE id = $1`,
+          [answerId, voteDir, voteDir]
+        )
+        myVote = 0
+      } else {
+        await pool.query(
+          `UPDATE community_answer_likes SET vote = $3 WHERE answer_id = $1 AND user_id = $2`,
+          [answerId, userId, voteDir]
+        )
+        await pool.query(
+          `UPDATE community_answers
+           SET score = score + $2,
+               likes_count = CASE
+                 WHEN $3 = 1 THEN likes_count + 1
+                 WHEN $4 = 1 THEN GREATEST(likes_count - 1, 0)
+                 ELSE likes_count
+               END,
+               updated_at = now()
+           WHERE id = $1`,
+          [answerId, voteDir * 2, voteDir, prevVote]
+        )
+        myVote = voteDir
+      }
     } else {
       await pool.query(
-        `INSERT INTO community_answer_likes (answer_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [answerId, userId]
+        `INSERT INTO community_answer_likes (answer_id, user_id, vote) VALUES ($1, $2, $3)
+         ON CONFLICT (answer_id, user_id) DO UPDATE SET vote = EXCLUDED.vote`,
+        [answerId, userId, voteDir]
       )
       await pool.query(
-        `UPDATE community_answers SET likes_count = likes_count + 1, updated_at = now() WHERE id = $1`,
-        [answerId]
+        `UPDATE community_answers
+         SET score = score + $2,
+             likes_count = CASE WHEN $3 = 1 THEN likes_count + 1 ELSE likes_count END,
+             updated_at = now()
+         WHERE id = $1`,
+        [answerId, voteDir, voteDir]
       )
-      isLiked = true
+      myVote = voteDir
     }
 
     const { rows: countRows } = await pool.query(
-      `SELECT likes_count FROM community_answers WHERE id = $1`,
+      `SELECT score, likes_count FROM community_answers WHERE id = $1`,
       [answerId]
     )
 
     sendSuccess(res, {
+      score: Number(countRows[0]?.score) || 0,
       likes_count: Number(countRows[0]?.likes_count) || 0,
-      is_liked_by_me: isLiked,
+      my_vote: myVote,
+      is_liked_by_me: myVote === 1,
     })
   } catch (err) {
-    sendError(res, 500, 'Failed to toggle like', err)
+    sendError(res, 500, 'Failed to vote', err)
   }
+}
+
+router.post('/answers/:id/vote', authenticateToken, voteHandler)
+
+router.post('/answers/:id/like', authenticateToken, async (req: Request, res: Response) => {
+  req.body = { ...(req.body || {}), direction: 'up' }
+  return voteHandler(req, res)
 })
 
 router.patch('/answers/:id/verify', authenticateToken, async (req: Request, res: Response) => {

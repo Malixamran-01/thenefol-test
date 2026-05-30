@@ -2102,6 +2102,18 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_community_answers_root on community_answers(root_answer_id);
     create index if not exists idx_community_answers_path on community_answers(path);
     create index if not exists idx_community_answer_likes_answer on community_answer_likes(answer_id);
+
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'score') THEN
+        ALTER TABLE community_answers ADD COLUMN score integer not null default 0;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answer_likes' AND column_name = 'vote') THEN
+        ALTER TABLE community_answer_likes ADD COLUMN vote smallint not null default 1;
+      END IF;
+      UPDATE community_answers SET score = COALESCE(likes_count, 0) WHERE score = 0 AND likes_count > 0;
+      UPDATE community_answer_likes SET vote = 1 WHERE vote IS NULL OR vote = 0;
+    END $$;
     
     -- Ensure shiprocket_shipments columns exist (migration for existing tables)
     DO $$

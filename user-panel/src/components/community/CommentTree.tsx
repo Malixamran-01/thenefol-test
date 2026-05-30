@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { MessageSquare, ChevronDown, ArrowUp } from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import type { AnswerSort, Comment } from '../../types/community'
 import { communityAPI } from '../../services/communityAPI'
 import { normalizeComment } from '../../types/community'
@@ -52,64 +52,58 @@ function insertReply(nodes: Comment[], parentId: number | null, reply: Comment):
   })
 }
 
+function applyOptimisticVote(comment: Comment, direction: 'up' | 'down'): Comment {
+  const voteDir = direction === 'up' ? 1 : -1
+  const prev = comment.my_vote
+
+  if (prev === voteDir) {
+    return {
+      ...comment,
+      my_vote: 0,
+      score: comment.score - voteDir,
+      likes_count: direction === 'up' ? Math.max(0, comment.likes_count - 1) : comment.likes_count,
+      is_liked_by_me: false,
+    }
+  }
+
+  if (prev === -voteDir) {
+    return {
+      ...comment,
+      my_vote: voteDir,
+      score: comment.score + voteDir * 2,
+      likes_count:
+        direction === 'up'
+          ? comment.likes_count + 1
+          : Math.max(0, comment.likes_count - 1),
+      is_liked_by_me: direction === 'up',
+    }
+  }
+
+  return {
+    ...comment,
+    my_vote: voteDir,
+    score: comment.score + voteDir,
+    likes_count: direction === 'up' ? comment.likes_count + 1 : comment.likes_count,
+    is_liked_by_me: direction === 'up',
+  }
+}
+
 function SkeletonRow() {
   return (
-    <div className="flex gap-0 border-b border-[#f0f4f8]">
-      <div className="flex w-10 flex-shrink-0 flex-col items-center gap-1.5 px-0 py-4">
-        <div className="h-5 w-5 animate-pulse rounded bg-[#e8eef4]" />
+    <div className="flex gap-2 border-b border-[#f0f4f8] px-4 py-3 sm:px-5">
+      <div className="flex w-10 flex-shrink-0 flex-col items-center gap-1 rounded-full border border-[#e8eef4] bg-[#fafcfd] py-2">
+        <div className="h-4 w-4 animate-pulse rounded bg-[#e8eef4]" />
         <div className="h-3 w-4 animate-pulse rounded bg-[#e8eef4]" />
-        <div className="h-5 w-5 animate-pulse rounded bg-[#e8eef4]" />
+        <div className="h-4 w-4 animate-pulse rounded bg-[#e8eef4]" />
       </div>
-      <div className="flex-1 space-y-2 py-4 pr-4">
+      <div className="flex-1 space-y-2 pt-1">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 animate-pulse rounded-full bg-[#e8eef4]" />
-          <div className="h-3 w-20 animate-pulse rounded bg-[#e8eef4]" />
-          <div className="h-3 w-10 animate-pulse rounded bg-[#e8eef4]" />
+          <div className="h-7 w-7 animate-pulse rounded-full bg-[#e8eef4]" />
+          <div className="h-3 w-24 animate-pulse rounded bg-[#e8eef4]" />
         </div>
         <div className="h-3 w-full animate-pulse rounded bg-[#e8eef4]" />
         <div className="h-3 w-4/5 animate-pulse rounded bg-[#e8eef4]" />
       </div>
-    </div>
-  )
-}
-
-function VoteColumn({
-  count,
-  isLiked,
-  onUpvote,
-}: {
-  count: number
-  isLiked: boolean
-  onUpvote: () => void
-}) {
-  return (
-    <div className="flex w-10 flex-shrink-0 flex-col items-center gap-0.5 pb-2 pt-3">
-      <button
-        type="button"
-        onClick={onUpvote}
-        aria-label="Upvote"
-        className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
-          isLiked
-            ? 'text-orange-500'
-            : 'text-[#94a3b8] hover:bg-[#f0f4f8] hover:text-orange-400'
-        }`}
-      >
-        <ArrowUp className="h-4 w-4" strokeWidth={isLiked ? 2.5 : 2} />
-      </button>
-      <span
-        className={`text-[11px] font-semibold leading-none ${
-          isLiked ? 'text-orange-500' : 'text-[#64748b]'
-        }`}
-      >
-        {count}
-      </span>
-      <button
-        type="button"
-        aria-label="Downvote"
-        className="flex h-6 w-6 items-center justify-center rounded text-[#94a3b8] transition-colors hover:bg-[#f0f4f8] hover:text-[#4B97C9]"
-      >
-        <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
-      </button>
     </div>
   )
 }
@@ -181,7 +175,9 @@ export default function CommentTree({
       content: text,
       is_deleted: false,
       depth: 0,
+      score: 0,
       likes_count: 0,
+      my_vote: 0,
       is_liked_by_me: false,
       created_at: new Date().toISOString(),
       children: [],
@@ -204,40 +200,32 @@ export default function CommentTree({
     }
   }
 
-  const handleLike = async (commentId: number) => {
+  const handleVote = async (commentId: number, direction: 'up' | 'down') => {
     if (!onRequireAuth()) return
 
-    let prevLiked = false
-    let prevCount = 0
+    let snapshot: Comment | null = null
     setComments((prev) =>
       patchCommentTree(prev, commentId, (c) => {
-        prevLiked = c.is_liked_by_me
-        prevCount = c.likes_count
-        return {
-          ...c,
-          is_liked_by_me: !c.is_liked_by_me,
-          likes_count: c.is_liked_by_me ? Math.max(0, c.likes_count - 1) : c.likes_count + 1,
-        }
+        snapshot = { ...c }
+        return applyOptimisticVote(c, direction)
       })
     )
 
     try {
-      const result = await communityAPI.toggleLike(commentId)
+      const result = await communityAPI.voteAnswer(commentId, direction)
       setComments((prev) =>
         patchCommentTree(prev, commentId, (c) => ({
           ...c,
+          score: result.score,
           likes_count: result.likes_count,
-          is_liked_by_me: result.is_liked_by_me,
+          my_vote: result.my_vote,
+          is_liked_by_me: result.my_vote === 1,
         }))
       )
     } catch {
-      setComments((prev) =>
-        patchCommentTree(prev, commentId, (c) => ({
-          ...c,
-          likes_count: prevCount,
-          is_liked_by_me: prevLiked,
-        }))
-      )
+      if (snapshot) {
+        setComments((prev) => patchCommentTree(prev, commentId, () => snapshot!))
+      }
     }
   }
 
@@ -295,41 +283,28 @@ export default function CommentTree({
             <div
               key={c.id}
               id={`comment-${c.id}`}
-              className={`flex gap-0 ${i < visible.length - 1 || hasMore ? 'border-b border-[#f0f4f8]' : ''}`}
+              className={i < visible.length - 1 || hasMore ? 'border-b border-[#f0f4f8]' : ''}
             >
-              {!c.is_deleted ? (
-                <VoteColumn
-                  count={c.likes_count}
-                  isLiked={c.is_liked_by_me}
-                  onUpvote={() => handleLike(c.id)}
-                />
-              ) : (
-                <div className="w-10 flex-shrink-0" />
-              )}
-
-              <div className="min-w-0 flex-1 py-0 pr-0">
-                <ThreadedComment
-                  comment={c}
-                  depth={0}
-                  questionAuthorId={questionAuthorId}
-                  hideVoteRail
-                  currentUser={currentUser}
-                  openReplyId={openReplyId}
-                  replyText={replyText}
-                  onOpenReply={handleOpenReply}
-                  onCloseReply={() => {
-                    setOpenReplyId(null)
-                    setReplyText('')
-                  }}
-                  onReplyTextChange={setReplyText}
-                  onSubmitReply={handleSubmitReply}
-                  onLike={handleLike}
-                  onDelete={handleDelete}
-                  submitting={submitting}
-                  isMobile={isMobile}
-                  isLast={i === visible.length - 1 && !hasMore}
-                />
-              </div>
+              <ThreadedComment
+                comment={c}
+                depth={0}
+                questionAuthorId={questionAuthorId}
+                currentUser={currentUser}
+                openReplyId={openReplyId}
+                replyText={replyText}
+                onOpenReply={handleOpenReply}
+                onCloseReply={() => {
+                  setOpenReplyId(null)
+                  setReplyText('')
+                }}
+                onReplyTextChange={setReplyText}
+                onSubmitReply={handleSubmitReply}
+                onVote={handleVote}
+                onDelete={handleDelete}
+                submitting={submitting}
+                isMobile={isMobile}
+                isLast={i === visible.length - 1 && !hasMore}
+              />
             </div>
           ))}
 
