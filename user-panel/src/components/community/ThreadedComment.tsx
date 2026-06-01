@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BadgeCheck, Heart, MessageSquare, Trash2 } from 'lucide-react'
+import { BadgeCheck, MessageSquare, Trash2 } from 'lucide-react'
 import type { Comment } from '../../types/community'
 import { AuthorVerifiedBadge } from '../AuthorVerifiedBadge'
 import { formatCommunityTime, DEPTH_BORDER_COLORS, DEPTH_MARGIN } from '../../utils/communityTime'
@@ -69,7 +69,7 @@ function countAllReplies(comment: Comment): number {
   return comment.children.reduce((n, c) => n + 1 + countAllReplies(c), 0)
 }
 
-/** Pill button shared by Reply, Like count, and Hide/Show toggle */
+/** Pill button shared by Reply and Hide/Show toggle */
 function Pill({
   onClick,
   active,
@@ -220,19 +220,6 @@ export default function ThreadedComment({
                   Reply
                 </Pill>
               )}
-
-              {/* Like / heart count */}
-              <Pill
-                onClick={() => onVote(comment.id, 'up')}
-                active={comment.my_vote === 1}
-              >
-                <Heart
-                  className="h-3.5 w-3.5"
-                  fill={comment.my_vote === 1 ? 'currentColor' : 'none'}
-                  strokeWidth={2}
-                />
-                {comment.likes_count}
-              </Pill>
 
               {/* Hide / show replies pill (inline with other actions) */}
               {hasChildren && (

@@ -52,6 +52,36 @@ export function insertReply(nodes: Comment[], parentId: number | null, reply: Co
   })
 }
 
+function applyOptimisticVote(comment: Comment, direction: 'up' | 'down'): Comment {
+  const voteDir = direction === 'up' ? 1 : -1
+  const prev = comment.my_vote
+
+  if (prev === voteDir) {
+    return {
+      ...comment,
+      my_vote: 0,
+      score: comment.score - voteDir,
+      is_liked_by_me: false,
+    }
+  }
+
+  if (prev === -voteDir) {
+    return {
+      ...comment,
+      my_vote: voteDir,
+      score: comment.score + voteDir * 2,
+      is_liked_by_me: voteDir === 1,
+    }
+  }
+
+  return {
+    ...comment,
+    my_vote: voteDir,
+    score: comment.score + voteDir,
+    is_liked_by_me: voteDir === 1,
+  }
+}
+
 function SkeletonRow() {
   return (
     <div className="flex gap-0 border-b border-[#f0f4f8]">
@@ -70,10 +100,7 @@ function SkeletonRow() {
         </div>
         <div className="h-3 w-full animate-pulse rounded bg-[#e8eef4]" />
         <div className="h-3 w-4/5 animate-pulse rounded bg-[#e8eef4]" />
-        <div className="flex gap-2">
-          <div className="h-7 w-14 animate-pulse rounded-full bg-[#e8eef4]" />
-          <div className="h-7 w-14 animate-pulse rounded-full bg-[#e8eef4]" />
-        </div>
+        <div className="h-7 w-14 animate-pulse rounded-full bg-[#e8eef4]" />
       </div>
     </div>
   )
@@ -175,37 +202,28 @@ export default function CommentTree({
   const handleVote = async (commentId: number, direction: 'up' | 'down') => {
     if (!onRequireAuth()) return
 
-    // Optimistic update
+    let snapshot: Comment | null = null
     setComments((prev) =>
       patchCommentTree(prev, commentId, (c) => {
-        const alreadyVoted = direction === 'up' ? c.my_vote === 1 : c.my_vote === -1
-        const delta = alreadyVoted ? -(direction === 'up' ? 1 : -1) : (direction === 'up' ? 1 : -1)
-        const prevDelta = c.my_vote !== 0 && !alreadyVoted ? -(c.my_vote) : 0
-        return {
-          ...c,
-          score: c.score + delta + prevDelta,
-          my_vote: alreadyVoted ? 0 : (direction === 'up' ? 1 : -1),
-          // keep likes_count in sync for ActionPill display
-          likes_count: Math.max(0, c.likes_count + (direction === 'up' ? (alreadyVoted ? -1 : 1) : 0)),
-          is_liked_by_me: direction === 'up' ? !alreadyVoted : c.is_liked_by_me,
-        }
+        snapshot = { ...c }
+        return applyOptimisticVote(c, direction)
       })
     )
 
     try {
-      const result = await communityAPI.toggleLike(commentId)
+      const result = await communityAPI.voteAnswer(commentId, direction)
       setComments((prev) =>
         patchCommentTree(prev, commentId, (c) => ({
           ...c,
-          likes_count: result.likes_count,
-          is_liked_by_me: result.is_liked_by_me,
-          score: result.likes_count,
-          my_vote: result.is_liked_by_me ? 1 : 0,
+          score: result.score,
+          my_vote: result.my_vote,
+          is_liked_by_me: result.my_vote === 1,
         }))
       )
     } catch {
-      // Revert by reloading
-      load()
+      if (snapshot) {
+        setComments((prev) => patchCommentTree(prev, commentId, () => snapshot!))
+      }
     }
   }
 
