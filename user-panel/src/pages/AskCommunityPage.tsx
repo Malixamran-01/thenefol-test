@@ -93,7 +93,7 @@ function QuestionCard({ q, onClick }: CardProps) {
     <button
       type="button"
       onClick={onClick}
-      className="group w-full rounded-2xl border border-[#e8eef4] bg-white p-0 text-left shadow-[0_1px_4px_rgba(27,73,101,0.06)] transition-all duration-200 hover:border-[#4B97C9]/50 hover:shadow-[0_4px_16px_rgba(27,73,101,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
+      className="group w-full max-w-full rounded-2xl border border-[#e8eef4] bg-white p-0 text-left shadow-[0_1px_4px_rgba(27,73,101,0.06)] transition-all duration-200 hover:border-[#4B97C9]/50 hover:shadow-[0_4px_16px_rgba(27,73,101,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
     >
       {/* Top accent line on hover */}
       <div className="h-[3px] w-0 rounded-t-2xl bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all duration-300 group-hover:w-full" />
@@ -239,7 +239,7 @@ function Sidebar({ questions, products, selectedProduct, onSelectProduct, onAsk 
   }, [questions, products])
 
   return (
-    <aside className="flex flex-col gap-4">
+    <aside className="flex w-full min-w-0 flex-col gap-4">
       {/* Ask CTA */}
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#274F73] p-5 shadow-[0_4px_16px_rgba(27,73,101,0.2)]">
         <h3 className="mb-1 text-[15px] font-bold text-white">Got a question?</h3>
@@ -454,21 +454,21 @@ export default function AskCommunityPage() {
   }, [allQuestions, products])
 
   return (
-    <div className="min-h-full bg-[#F4F9F9]">
+    <div className="min-h-full w-full max-w-full overflow-x-hidden bg-[#F4F9F9]">
       {/* ── Hero header ─────────────────────────────────── */}
       <div className="border-b border-[#e8eef4] bg-white shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
-        <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="mx-auto w-full max-w-6xl px-4 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1B4965]">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1B4965]">
                   <HelpCircle className="h-5 w-5 text-white" strokeWidth={2.25} />
                 </div>
-                <h1 className="text-[24px] font-bold tracking-tight text-[#1a1a1a]">
+                <h1 className="text-[22px] font-bold tracking-tight text-[#1a1a1a] sm:text-[24px]">
                   Ask Community
                 </h1>
               </div>
-              <p className="ml-11 text-[13px] text-[#64748b]">
+              <p className="mt-1 text-[13px] text-[#64748b] sm:pl-11">
                 Ask about our products or brand. Threads are open — anyone signed in can reply. No approval queue.
               </p>
             </div>
@@ -484,15 +484,15 @@ export default function AskCommunityPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <div className="flex flex-col gap-6 lg:flex-row">
+      <div className="mx-auto w-full max-w-6xl px-4 py-6">
+        <div className="flex w-full max-w-full flex-col gap-6 lg:flex-row lg:items-start">
 
           {/* ── Main feed ──────────────────────────────────── */}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
 
             {/* Search */}
-            <form onSubmit={onSearchSubmit} className="mb-4 flex gap-2">
-              <div className="relative flex-1">
+            <form onSubmit={onSearchSubmit} className="mb-4 flex min-w-0 gap-2">
+              <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
                 <input
                   value={searchInput}
@@ -557,8 +557,8 @@ export default function AskCommunityPage() {
 
             {/* Product filter chips (only when filter=product and there are products) */}
             {filter === 'product' && productChips.length > 0 && (
-              <div className="mb-4 overflow-x-auto pb-1">
-                <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
+              <div className="mb-4 max-w-full overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+                <div className="flex w-max max-w-none gap-2 pr-1">
                   <button
                     type="button"
                     onClick={() => setSelectedProduct(null)}
@@ -698,7 +698,7 @@ export default function AskCommunityPage() {
           </div>
 
           {/* ── Sidebar ─────────────────────────────────────── */}
-          <div className="w-full shrink-0 lg:w-72">
+          <div className="w-full min-w-0 shrink-0 lg:w-72 lg:max-w-[18rem]">
             <div className="lg:sticky lg:top-4">
               <Sidebar
                 questions={allQuestions}

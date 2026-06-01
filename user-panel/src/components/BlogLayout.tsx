@@ -739,7 +739,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
       )}
 
       {/* ── Main content ────────────────────────────────────── */}
-      <main className="flex-1 min-w-0 pt-14 lg:pt-0">
+      <main className="flex-1 min-w-0 overflow-x-hidden pt-14 lg:pt-0">
         {children}
       </main>
 
