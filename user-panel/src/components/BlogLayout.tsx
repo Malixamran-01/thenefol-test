@@ -593,7 +593,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
 
   return (
     <CreatorProgramBadgeProvider>
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F4F9F9' }}>
+    <div className="flex min-h-screen overflow-x-hidden" style={{ backgroundColor: '#F4F9F9' }}>
 
       {/* ── Desktop fixed sidebar ────────────────────────────── */}
       <aside

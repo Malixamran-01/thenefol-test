@@ -93,12 +93,12 @@ function QuestionCard({ q, onClick }: CardProps) {
     <button
       type="button"
       onClick={onClick}
-      className="group w-full max-w-full rounded-2xl border border-[#e8eef4] bg-white p-0 text-left shadow-[0_1px_4px_rgba(27,73,101,0.06)] transition-all duration-200 hover:border-[#4B97C9]/50 hover:shadow-[0_4px_16px_rgba(27,73,101,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
+      className="group box-border w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#e8eef4] bg-white p-0 text-left shadow-[0_1px_4px_rgba(27,73,101,0.06)] transition-all duration-200 hover:border-[#4B97C9]/50 hover:shadow-[0_4px_16px_rgba(27,73,101,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
     >
       {/* Top accent line on hover */}
-      <div className="h-[3px] w-0 rounded-t-2xl bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all duration-300 group-hover:w-full" />
+      <div className="h-[3px] w-0 max-w-full rounded-t-2xl bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all duration-300 group-hover:w-full" />
 
-      <div className="flex gap-4 p-5">
+      <div className="flex min-w-0 gap-4 p-5">
         {/* Left: answer-count column */}
         <div className="flex w-12 shrink-0 flex-col items-center gap-1 pt-0.5">
           <div
@@ -121,26 +121,26 @@ function QuestionCard({ q, onClick }: CardProps) {
         {/* Right: content */}
         <div className="min-w-0 flex-1">
           {/* Badges row */}
-          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <div className="mb-2 flex min-w-0 flex-wrap items-center gap-1.5 overflow-hidden">
             {q.topic_type === 'product' ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 ring-1 ring-amber-100">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 ring-1 ring-amber-100">
                 <Package className="h-2.5 w-2.5" />
                 Product
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 ring-1 ring-violet-100">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 ring-1 ring-violet-100">
                 <Sparkles className="h-2.5 w-2.5" />
                 Brand
               </span>
             )}
             {isHot && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600 ring-1 ring-rose-100">
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600 ring-1 ring-rose-100">
                 <Flame className="h-2.5 w-2.5" />
                 Hot
               </span>
             )}
             {q.product_title && (
-              <span className="truncate text-[11px] font-medium text-[#4B97C9]">
+              <span className="block min-w-0 max-w-full truncate text-[11px] font-medium text-[#4B97C9]">
                 {q.product_title}
               </span>
             )}
@@ -149,10 +149,10 @@ function QuestionCard({ q, onClick }: CardProps) {
           {/* Title + thumbnail row */}
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <h2 className="line-clamp-2 text-[15px] font-semibold leading-snug text-[#1a1a1a] transition-colors group-hover:text-[#1B4965]">
+              <h2 className="line-clamp-2 break-words text-[15px] font-semibold leading-snug text-[#1a1a1a] transition-colors group-hover:text-[#1B4965]">
                 {q.title}
               </h2>
-              <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-[#64748b]">
+              <p className="mt-1 line-clamp-2 break-words text-[13px] leading-relaxed text-[#64748b]">
                 {q.body}
               </p>
             </div>
@@ -239,7 +239,7 @@ function Sidebar({ questions, products, selectedProduct, onSelectProduct, onAsk 
   }, [questions, products])
 
   return (
-    <aside className="flex w-full min-w-0 flex-col gap-4">
+    <aside className="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-hidden">
       {/* Ask CTA */}
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#274F73] p-5 shadow-[0_4px_16px_rgba(27,73,101,0.2)]">
         <h3 className="mb-1 text-[15px] font-bold text-white">Got a question?</h3>
@@ -257,7 +257,7 @@ function Sidebar({ questions, products, selectedProduct, onSelectProduct, onAsk 
       </div>
 
       {/* Stats */}
-      <div className="rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.06)]">
+      <div className="min-w-0 overflow-hidden rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.06)]">
         <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
           <TrendingUp className="h-3.5 w-3.5 text-[#4B97C9]" />
           Community Stats
@@ -293,7 +293,7 @@ function Sidebar({ questions, products, selectedProduct, onSelectProduct, onAsk 
 
       {/* Top products */}
       {topProducts.length > 0 && (
-        <div className="rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.06)]">
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.06)]">
           <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
             <Package className="h-3.5 w-3.5 text-[#4B97C9]" />
             Popular Products
@@ -457,7 +457,7 @@ export default function AskCommunityPage() {
     <div className="min-h-full w-full max-w-full overflow-x-hidden bg-[#F4F9F9]">
       {/* ── Hero header ─────────────────────────────────── */}
       <div className="border-b border-[#e8eef4] bg-white shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
-        <div className="mx-auto w-full max-w-6xl px-4 py-6">
+        <div className="w-full min-w-0 max-w-full px-4 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2.5">
@@ -484,11 +484,11 @@ export default function AskCommunityPage() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-6xl px-4 py-6">
-        <div className="flex w-full max-w-full flex-col gap-6 lg:flex-row lg:items-start">
+      <div className="w-full min-w-0 max-w-full px-4 py-6">
+        <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
 
           {/* ── Main feed ──────────────────────────────────── */}
-          <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="min-w-0 overflow-hidden">
 
             {/* Search */}
             <form onSubmit={onSearchSubmit} className="mb-4 flex min-w-0 gap-2">
@@ -675,7 +675,7 @@ export default function AskCommunityPage() {
 
             {/* Question list */}
             {!loading && !error && visible.length > 0 && (
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-3">
                 {visible.map((q) => (
                   <QuestionCard
                     key={q.id}
@@ -698,7 +698,7 @@ export default function AskCommunityPage() {
           </div>
 
           {/* ── Sidebar ─────────────────────────────────────── */}
-          <div className="w-full min-w-0 shrink-0 lg:w-72 lg:max-w-[18rem]">
+          <div className="min-w-0 max-w-full overflow-hidden">
             <div className="lg:sticky lg:top-4">
               <Sidebar
                 questions={allQuestions}
