@@ -219,7 +219,8 @@ interface SidebarProps {
 function Sidebar({ questions, products, selectedProduct, onSelectProduct, onAsk }: SidebarProps) {
   const totalQ = questions.length
   const answeredQ = questions.filter(q => q.answer_count > 0).length
-  const pct = totalQ > 0 ? Math.round((answeredQ / totalQ) * 100) : 0
+  const pctRaw = totalQ > 0 ? Math.round((answeredQ / totalQ) * 100) : 0
+  const pct = Number.isFinite(pctRaw) ? Math.min(100, Math.max(0, pctRaw)) : 0
 
   // Top products by question count
   const topProducts = useMemo(() => {
@@ -277,10 +278,10 @@ function Sidebar({ questions, products, selectedProduct, onSelectProduct, onAsk 
               <span>Answer rate</span>
               <span className="font-semibold text-[#1B4965]">{pct}%</span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e8eef4]">
+            <div className="h-1.5 w-full max-w-full overflow-hidden rounded-full bg-[#e8eef4]">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all duration-700"
-                style={{ width: `${pct}%` }}
+                style={{ width: `${pct}%`, maxWidth: '100%' }}
               />
             </div>
           </div>
@@ -485,7 +486,7 @@ export default function AskCommunityPage() {
       </div>
 
       <div className="w-full min-w-0 max-w-full px-4 py-6">
-        <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,calc(100%-18rem-1.5rem))_18rem] lg:items-start">
 
           {/* ── Main feed ──────────────────────────────────── */}
           <div className="min-w-0 overflow-hidden">
