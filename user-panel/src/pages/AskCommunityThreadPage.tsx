@@ -119,8 +119,8 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
   const isProduct = question.topic_type === 'product'
 
   return (
-    <div className="min-h-full bg-[#F4F9F9] pb-10 pt-4 sm:pt-6">
-      <div className="mx-auto max-w-2xl px-4">
+    <div className="min-h-full overflow-x-hidden bg-[#F4F9F9] pb-10 pt-4 sm:pt-6">
+      <div className="mx-auto max-w-2xl px-3 sm:px-4">
 
         {/* Back nav */}
         <button

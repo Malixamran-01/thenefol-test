@@ -15,11 +15,11 @@ export default function VoteColumn({
   onDownvote,
   compact = false,
 }: VoteColumnProps) {
-  const w = compact ? 'w-8' : 'w-10'
+  const w = compact ? 'w-7 sm:w-8' : 'w-9 sm:w-10'
 
   return (
     <div
-      className={`flex ${w} flex-shrink-0 flex-col items-center self-start rounded-full border border-[#e8eef4] bg-[#fafcfd] py-1.5`}
+      className={`flex ${w} flex-shrink-0 flex-col items-center self-start rounded-full border border-[#e8eef4] bg-[#fafcfd] py-1`}
     >
       <button
         type="button"

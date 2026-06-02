@@ -85,7 +85,7 @@ function Pill({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-all duration-150 active:scale-[0.97] ${
+      className={`inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-all duration-150 active:scale-[0.97] sm:h-8 sm:gap-1.5 sm:px-3 sm:text-[12px] ${
         danger
           ? 'border-red-100 bg-white text-[#94a3b8] hover:border-red-200 hover:bg-red-50 hover:text-red-500'
           : active
@@ -135,9 +135,9 @@ export default function ThreadedComment({
   const childBorderColor = DEPTH_BORDER_COLORS[childDepth]
 
   return (
-    <div>
+    <div className="min-w-0">
       {/* Comment row */}
-      <div className={`flex gap-2 ${isTopLevel ? 'px-4 py-3 sm:px-5' : 'py-2 pr-2'}`}>
+      <div className={`flex gap-1.5 sm:gap-2 ${isTopLevel ? 'px-3 py-3 sm:px-4 sm:py-3' : 'py-2 pr-2'}`}>
         {/* Vote column — always visible (even on replies, compact mode) */}
         {!comment.is_deleted && (
           <VoteColumn
@@ -273,10 +273,11 @@ export default function ThreadedComment({
       {/* Recursive children with depth-specific indent + border */}
       {!stopIndent && expanded && hasChildren && (
         <div
+          className="min-w-0 overflow-hidden"
           style={{
             marginLeft: `${childMarginLeft}px`,
-            borderLeft: `3px solid ${childBorderColor}`,
-            paddingLeft: '12px',
+            borderLeft: `2px solid ${childBorderColor}`,
+            paddingLeft: '8px',
           }}
         >
           {comment.children.map((child) => (
