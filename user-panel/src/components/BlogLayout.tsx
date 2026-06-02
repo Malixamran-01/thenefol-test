@@ -357,32 +357,7 @@ function SidePanelNav({
         })}
       </nav>
 
-      {/* ── Back to NEFOL Store (below nav) ───────────────────── */}
-      {showStoreLink && (
-        <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center p-3' : 'px-5 py-3'}`}>
-          {collapsed ? (
-            <a
-              href="#/user/"
-              onClick={onClose}
-              title="Back to NEFOL Store"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1B4965] text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg"
-            >
-              <img src={BRAND_ICON_SRC} alt="" className="brand-social-logo--sm object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-            </a>
-          ) : (
-            <a
-              href="#/user/"
-              onClick={onClose}
-              className="flex items-center gap-2.5 rounded-lg bg-[#1B4965] px-4 py-3 text-[15px] font-bold text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg -mx-1"
-            >
-              <img src={BRAND_ICON_SRC} alt="" className="brand-social-logo--sm flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-              Back to NEFOL Store
-            </a>
-          )}
-        </div>
-      )}
-
-      {/* ── Write button (signed-in only) ──────────────────────── */}
+      {/* ── Write button (signed-in only; right below nav content) ───────── */}
       {isAuthenticated && (
         <div className={`flex-shrink-0 border-t border-gray-200/70 p-3 ${collapsed ? 'flex justify-center' : ''}`}>
           {collapsed ? (
@@ -407,8 +382,36 @@ function SidePanelNav({
         </div>
       )}
 
+      {/* ── Back to NEFOL Store (below write) ───────────────────── */}
+      {showStoreLink && (
+        <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center p-3' : 'px-5 py-3'}`}>
+          {collapsed ? (
+            <a
+              href="#/user/"
+              onClick={onClose}
+              title="Back to NEFOL Store"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1B4965] text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg"
+            >
+              <img src={BRAND_ICON_SRC} alt="" className="brand-social-logo--sm object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+            </a>
+          ) : (
+            <a
+              href="#/user/"
+              onClick={onClose}
+              className="flex items-center gap-2.5 rounded-lg bg-[#1B4965] px-4 py-3 text-[15px] font-bold text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg -mx-1"
+            >
+              <img src={BRAND_ICON_SRC} alt="" className="brand-social-logo--sm flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              Back to NEFOL Store
+            </a>
+          )}
+        </div>
+      )}
+
       {/* ── Sign In / Sign Out (bottom) ──────────────────────── */}
-      <div className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center py-2' : 'px-5 py-2'}`}>
+      <div
+        className={`flex-shrink-0 border-t border-gray-200/70 ${collapsed ? 'flex justify-center py-2' : 'px-5 py-2'}`}
+        style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+      >
         {isAuthenticated ? (
           <button
             onClick={handleSignOut}

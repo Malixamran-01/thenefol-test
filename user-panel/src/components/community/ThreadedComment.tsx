@@ -275,8 +275,8 @@ export default function ThreadedComment({
         <div
           style={{
             marginLeft: `${childMarginLeft}px`,
-            borderLeft: `2px solid ${childBorderColor}`,
-            paddingLeft: '10px',
+            borderLeft: `3px solid ${childBorderColor}`,
+            paddingLeft: '12px',
           }}
         >
           {comment.children.map((child) => (

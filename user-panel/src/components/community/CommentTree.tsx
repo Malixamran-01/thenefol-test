@@ -284,7 +284,11 @@ export default function CommentTree({
             <div
               key={c.id}
               id={`comment-${c.id}`}
-              className={i < visible.length - 1 || hasMore ? 'border-b border-[#f0f4f8]' : ''}
+              className={
+                i < visible.length - 1 || hasMore
+                  ? 'border-b-2 border-[#d6e3ee] bg-white'
+                  : 'bg-white'
+              }
             >
               <ThreadedComment
                 comment={c}
