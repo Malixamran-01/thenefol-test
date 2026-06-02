@@ -140,7 +140,7 @@ function QuestionCard({ q, onClick }: CardProps) {
               </span>
             )}
             {q.product_title && (
-              <span className="block min-w-0 max-w-full truncate text-[11px] font-medium text-[#4B97C9]">
+              <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-[#4B97C9]">
                 {q.product_title}
               </span>
             )}
@@ -239,7 +239,7 @@ function Sidebar({ questions, products, selectedProduct, onSelectProduct, onAsk 
   }, [questions, products])
 
   return (
-    <aside className="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-hidden">
+    <aside className="flex w-full min-w-0 max-w-full flex-col gap-4">
       {/* Ask CTA */}
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#274F73] p-5 shadow-[0_4px_16px_rgba(27,73,101,0.2)]">
         <h3 className="mb-1 text-[15px] font-bold text-white">Got a question?</h3>
@@ -485,7 +485,7 @@ export default function AskCommunityPage() {
       </div>
 
       <div className="w-full min-w-0 max-w-full px-4 py-6">
-        <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
+        <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
 
           {/* ── Main feed ──────────────────────────────────── */}
           <div className="min-w-0 overflow-hidden">
@@ -698,7 +698,7 @@ export default function AskCommunityPage() {
           </div>
 
           {/* ── Sidebar ─────────────────────────────────────── */}
-          <div className="min-w-0 max-w-full overflow-hidden">
+          <div className="min-w-0 max-w-full">
             <div className="lg:sticky lg:top-4">
               <Sidebar
                 questions={allQuestions}
