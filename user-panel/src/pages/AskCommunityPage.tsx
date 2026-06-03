@@ -230,7 +230,7 @@ function Sidebar({
   }, [questions, products])
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       {/* Ask CTA */}
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#274F73] p-5 shadow-[0_4px_16px_rgba(27,73,101,0.18)]">
         <h3 className="mb-1 text-[15px] font-bold text-white">Got a question?</h3>
@@ -685,7 +685,7 @@ export default function AskCommunityPage() {
           </div>
 
           {/* ── Sidebar — desktop only ──────────────────────── */}
-          <div className="hidden w-60 shrink-0 xl:w-64 lg:block">
+          <div className="hidden w-60 shrink-0 overflow-hidden xl:w-64 lg:block">
             <div className="sticky top-4">
               <Sidebar
                 questions={allQuestions}
