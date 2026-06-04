@@ -351,7 +351,7 @@ function MobileStats({ questions }: { questions: CommunityQuestion[] }) {
   const answered = questions.filter((q) => q.answer_count > 0).length
   const hot = questions.filter((q) => q.answer_count >= 5).length
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:hidden">
+    <div className="flex w-full max-w-full min-w-0 items-center gap-2 overflow-x-auto pb-1 lg:hidden">
       {[
         { icon: <MessageCircle className="h-3.5 w-3.5" />, label: `${total} threads` },
         { icon: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />, label: `${answered} answered` },
@@ -528,7 +528,7 @@ export default function AskCommunityPage() {
             </form>
 
             {/* Filter + sort — horizontal scroll on mobile */}
-            <div className="mb-3 flex items-center gap-1.5 overflow-x-auto pb-1 sm:gap-2 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            <div className="mb-3 flex w-full max-w-full min-w-0 items-center gap-1.5 overflow-x-auto pb-1 sm:gap-2 sm:flex-wrap sm:overflow-visible sm:pb-0">
               {(['all', 'product', 'brand'] as const).map((f) => (
                 <button
                   key={f}
@@ -562,8 +562,8 @@ export default function AskCommunityPage() {
 
             {/* Product chips — only when filter=product */}
             {filter === 'product' && productChips.length > 0 && (
-              <div className="mb-3 overflow-x-auto pb-1">
-                <div className="flex gap-1.5" style={{ minWidth: 'max-content' }}>
+              <div className="mb-3 w-full max-w-full min-w-0 overflow-x-auto pb-1">
+                <div className="flex w-max gap-1.5">
                   <button
                     type="button"
                     onClick={() => setSelectedProduct(null)}

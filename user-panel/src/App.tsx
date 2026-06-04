@@ -328,15 +328,20 @@ function AppContent() {
     <Suspense fallback={<PageLoader />}>{routerInner}</Suspense>
   )
 
+  /** Nefol Social shell — match BlogLayout so teal store bg never shows in side gaps */
+  const socialShellBg = '#F4F9F9'
+  const useSocialShellBg = !showSplash && isBlogLayoutRoute
+  const appShellStyle = {
+    backgroundColor: useSocialShellBg ? socialShellBg : 'var(--color-screen-bg)',
+    color: useSocialShellBg ? 'var(--color-text-body)' : 'var(--color-text-secondary-on-teal)',
+    fontFamily: 'var(--font-body-family)',
+  } as const
+
   if (APPCONTENT_ROUTER_ONLY) {
     return (
       <div
         className="min-h-screen w-full overflow-x-hidden"
-        style={{
-          backgroundColor: 'var(--color-screen-bg)',
-          color: 'var(--color-text-secondary-on-teal)',
-          fontFamily: 'var(--font-body-family)',
-        }}
+        style={appShellStyle}
       >
         {routerWithSuspense}
       </div>
@@ -344,7 +349,7 @@ function AppContent() {
   }
 
   return (
-    <div className={`min-h-screen w-full overflow-x-hidden ${showSplash ? 'overflow-hidden h-screen' : ''}`} style={{ backgroundColor: 'var(--color-screen-bg)', color: 'var(--color-text-secondary-on-teal)', fontFamily: 'var(--font-body-family)' }}>
+    <div className={`min-h-screen w-full overflow-x-hidden ${showSplash ? 'overflow-hidden h-screen' : ''}`} style={appShellStyle}>
       {showSplash ? (
         <SplashScreen onComplete={handleSplashComplete} />
       ) : isEditorPage ? (

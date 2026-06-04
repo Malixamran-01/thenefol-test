@@ -596,7 +596,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
 
   return (
     <CreatorProgramBadgeProvider>
-    <div className="flex min-h-screen overflow-x-hidden" style={{ backgroundColor: '#F4F9F9' }}>
+    <div className="flex min-h-screen w-full min-w-0 overflow-x-hidden" style={{ backgroundColor: '#F4F9F9' }}>
 
       {/* ── Desktop fixed sidebar ────────────────────────────── */}
       <aside
@@ -742,7 +742,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
       )}
 
       {/* ── Main content ────────────────────────────────────── */}
-      <main className="flex-1 min-w-0 pt-14 lg:pt-0">
+      <main className="flex-1 min-w-0 w-full bg-[#F4F9F9] pt-14 lg:pt-0">
         {children}
       </main>
 

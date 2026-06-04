@@ -154,13 +154,14 @@
     scroll-behavior: smooth;
     color-scheme: light !important;
     overflow-x: hidden;
-    max-width: 100vw;
+    max-width: 100%;
   }
 
   #root {
     overflow-x: hidden;
-    max-width: 100vw;
+    max-width: 100%;
     width: 100%;
+    min-width: 0;
   }
   
   /* Force light mode - prevent dark mode on iOS/Android */
@@ -179,7 +180,7 @@
     min-height: 100vh;
     overflow-x: hidden;
     width: 100%;
-    max-width: 100vw;
+    max-width: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -1004,7 +1005,8 @@
 html, body {
   overflow-x: hidden;
   width: 100%;
-  max-width: 100vw;
+  /* Use % not vw — 100vw can exceed the visible viewport and expose body bg in a side gap */
+  max-width: 100%;
 }
 
 /* Image and media responsive fixes — do not force height:auto on fill/cover images */
