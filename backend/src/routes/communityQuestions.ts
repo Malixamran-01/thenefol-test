@@ -728,4 +728,153 @@ router.patch('/answers/:id/verify', authenticateToken, async (req: Request, res:
   }
 })
 
+// Admin: stats summary
+router.get('/admin/stats', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!isStaffOrAdmin(req)) return sendError(res, 403, 'Admin or staff access required')
+    const { rows } = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM community_questions)::int AS total_questions,
+        (SELECT COUNT(*) FROM community_answers WHERE is_deleted = false)::int AS total_answers,
+        (SELECT COUNT(*) FROM community_answers WHERE is_verified = true AND is_deleted = false)::int AS verified_answers,
+        (SELECT COUNT(*) FROM community_questions WHERE created_at > now() - interval '7 days')::int AS questions_this_week,
+        (SELECT COUNT(*) FROM community_answers WHERE is_deleted = false AND created_at > now() - interval '7 days')::int AS answers_this_week
+    `)
+    sendSuccess(res, rows[0])
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch stats', err)
+  }
+})
+
+// Admin: edit any question
+router.patch('/questions/:id/admin', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!isStaffOrAdmin(req)) return sendError(res, 403, 'Admin or staff access required')
+    const questionId = Number(req.params.id)
+    if (!Number.isFinite(questionId)) return sendError(res, 400, 'Invalid question id')
+
+    const titleStr = String(req.body?.title ?? '').trim()
+    const bodyStr = String(req.body?.body ?? '').trim()
+    if (titleStr.length < 3) return sendError(res, 400, 'title must be at least 3 characters')
+    if (bodyStr.length < 5) return sendError(res, 400, 'body must be at least 5 characters')
+
+    const { rows } = await pool.query(
+      `UPDATE community_questions SET title = $2, body = $3, updated_at = now() WHERE id = $1 RETURNING id`,
+      [questionId, titleStr, bodyStr]
+    )
+    if (!rows.length) return sendError(res, 404, 'Question not found')
+
+    const { rows: qRows } = await pool.query(
+      `SELECT cq.*, COALESCE(ap.display_name, u.name, 'Member') AS author_name,
+        COALESCE(ap.profile_image, u.profile_photo) AS author_avatar,
+        COALESCE(ap.is_verified, false) AS author_is_verified,
+        p.title AS product_title, p.slug AS product_slug, p.list_image AS product_list_image
+       FROM community_questions cq ${USER_JOIN}
+       LEFT JOIN products p ON p.id = cq.product_id WHERE cq.id = $1`,
+      [questionId]
+    )
+    sendSuccess(res, mapQuestionRow(qRows[0] as Record<string, unknown>))
+  } catch (err) {
+    sendError(res, 500, 'Failed to update question', err)
+  }
+})
+
+// Admin: delete any question (and its answers)
+router.delete('/questions/:id/admin', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!isStaffOrAdmin(req)) return sendError(res, 403, 'Admin or staff access required')
+    const questionId = Number(req.params.id)
+    if (!Number.isFinite(questionId)) return sendError(res, 400, 'Invalid question id')
+
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(
+        `UPDATE community_answers SET is_deleted = true, body = '[removed by admin]', updated_at = now() WHERE question_id = $1`,
+        [questionId]
+      )
+      const { rows } = await client.query(`DELETE FROM community_questions WHERE id = $1 RETURNING id`, [questionId])
+      if (!rows.length) { await client.query('ROLLBACK'); return sendError(res, 404, 'Question not found') }
+      await client.query('COMMIT')
+      sendSuccess(res, { deleted: true, id: questionId })
+    } catch (err) {
+      await client.query('ROLLBACK')
+      throw err
+    } finally {
+      client.release()
+    }
+  } catch (err) {
+    sendError(res, 500, 'Failed to delete question', err)
+  }
+})
+
+// Admin: edit any answer
+router.patch('/answers/:id/admin', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!isStaffOrAdmin(req)) return sendError(res, 403, 'Admin or staff access required')
+    const answerId = Number(req.params.id)
+    if (!Number.isFinite(answerId)) return sendError(res, 400, 'Invalid answer id')
+
+    const content = String(req.body?.content || req.body?.body || '').trim()
+    if (content.length < 2) return sendError(res, 400, 'content is required')
+
+    const { rows } = await pool.query(
+      `UPDATE community_answers SET body = $2, updated_at = now() WHERE id = $1 AND is_deleted = false RETURNING id`,
+      [answerId, content]
+    )
+    if (!rows.length) return sendError(res, 404, 'Answer not found or already deleted')
+
+    const comment = await enrichComment(answerId, null)
+    sendSuccess(res, comment)
+  } catch (err) {
+    sendError(res, 500, 'Failed to edit answer', err)
+  }
+})
+
+// Admin: delete any answer
+router.delete('/answers/:id/admin', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!isStaffOrAdmin(req)) return sendError(res, 403, 'Admin or staff access required')
+    const answerId = Number(req.params.id)
+    if (!Number.isFinite(answerId)) return sendError(res, 400, 'Invalid answer id')
+
+    const { rows } = await pool.query(
+      `UPDATE community_answers SET is_deleted = true, body = '[removed by admin]', updated_at = now()
+       WHERE id = $1 AND is_deleted = false RETURNING id, question_id`,
+      [answerId]
+    )
+    if (!rows.length) return sendError(res, 404, 'Answer not found or already deleted')
+
+    // Decrement answer_count on the question
+    await pool.query(
+      `UPDATE community_questions SET answer_count = GREATEST(answer_count - 1, 0), updated_at = now() WHERE id = $1`,
+      [rows[0].question_id]
+    )
+
+    sendSuccess(res, { deleted: true, id: answerId })
+  } catch (err) {
+    sendError(res, 500, 'Failed to delete answer', err)
+  }
+})
+
+// Admin: bulk delete questions
+router.post('/questions/bulk-delete', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!isStaffOrAdmin(req)) return sendError(res, 403, 'Admin or staff access required')
+    const ids = (req.body?.ids || []) as unknown[]
+    const numIds = ids.map(Number).filter((n) => Number.isFinite(n))
+    if (!numIds.length) return sendError(res, 400, 'ids array is required')
+
+    const placeholders = numIds.map((_, i) => `$${i + 1}`).join(',')
+    await pool.query(
+      `UPDATE community_answers SET is_deleted = true, body = '[removed by admin]', updated_at = now() WHERE question_id IN (${placeholders})`,
+      numIds
+    )
+    await pool.query(`DELETE FROM community_questions WHERE id IN (${placeholders})`, numIds)
+    sendSuccess(res, { deleted: numIds.length, ids: numIds })
+  } catch (err) {
+    sendError(res, 500, 'Failed to bulk delete questions', err)
+  }
+})
+
 export default router
