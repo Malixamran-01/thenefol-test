@@ -200,6 +200,11 @@ export default function Blog() {
   }
 
   const handleToggleSaved = () => {
+    if (!isAuthenticated) {
+      sessionStorage.setItem('post_login_redirect', window.location.hash || '#/user/blog')
+      window.location.hash = '#/user/login'
+      return
+    }
     if (!showSaved) {
       setShowSaved(true)
       loadSavedPosts()
@@ -207,6 +212,10 @@ export default function Blog() {
       setShowSaved(false)
     }
   }
+
+  useEffect(() => {
+    if (!isAuthenticated) setShowSaved(false)
+  }, [isAuthenticated])
 
   useEffect(() => {
     const hash = window.location.hash || ''
@@ -473,21 +482,23 @@ export default function Blog() {
             <FileText strokeWidth={2.75} className="h-5 w-5" />
             All Posts
           </button>
-          <button
-            type="button"
-            onClick={handleToggleSaved}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
-              showSaved ? 'text-white shadow-sm' : 'text-[#1B4965] hover:bg-[#F4F9F9]'
-            }`}
-            style={{ backgroundColor: showSaved ? '#1B4965' : 'transparent' }}
-          >
-            <Bookmark
-              strokeWidth={2.75}
-              className="h-5 w-5"
-              style={{ fill: showSaved ? 'white' : 'none' }}
-            />
-            Saved
-          </button>
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={handleToggleSaved}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
+                showSaved ? 'text-white shadow-sm' : 'text-[#1B4965] hover:bg-[#F4F9F9]'
+              }`}
+              style={{ backgroundColor: showSaved ? '#1B4965' : 'transparent' }}
+            >
+              <Bookmark
+                strokeWidth={2.75}
+                className="h-5 w-5"
+                style={{ fill: showSaved ? 'white' : 'none' }}
+              />
+              Saved
+            </button>
+          )}
         </div>
 
         {/* Category Filters (only in All Posts view) */}
