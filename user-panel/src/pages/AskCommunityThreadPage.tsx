@@ -117,6 +117,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
   if (!question) return null
 
   const isProduct = question.topic_type === 'product'
+  const productLabel = question.product_title ?? question.product_name ?? undefined
 
   return (
     <div className="min-h-full overflow-x-hidden bg-[#F4F9F9] pb-10 pt-4 sm:pt-6">
@@ -166,16 +167,16 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                     <a
                       href={`#/user/product/${question.product_slug}`}
                       className="block truncate text-[13px] font-medium leading-snug text-[#4B97C9] hover:underline"
-                      title={question.product_title || question.product_name}
+                      title={productLabel}
                     >
-                      {question.product_title || question.product_name}
+                      {productLabel}
                     </a>
                   ) : (
                     <p
                       className="truncate text-[13px] font-medium text-[#64748b]"
-                      title={question.product_title || question.product_name}
+                      title={productLabel}
                     >
-                      {question.product_title || question.product_name}
+                      {productLabel}
                     </p>
                   )}
                 </div>
