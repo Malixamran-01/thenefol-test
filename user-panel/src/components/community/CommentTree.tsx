@@ -121,6 +121,8 @@ export default function CommentTree({
   const [submitting, setSubmitting] = useState(false)
   const [openReplyId, setOpenReplyId] = useState<number | null>(null)
   const [replyText, setReplyText] = useState('')
+  const [openEditId, setOpenEditId] = useState<number | null>(null)
+  const [editText, setEditText] = useState('')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -151,8 +153,18 @@ export default function CommentTree({
 
   const handleOpenReply = (comment: Comment) => {
     if (!onRequireAuth()) return
+    setOpenEditId(null)
+    setEditText('')
     setOpenReplyId(comment.id)
     setReplyText('')
+  }
+
+  const handleOpenEdit = (comment: Comment) => {
+    if (!onRequireAuth()) return
+    setOpenReplyId(null)
+    setReplyText('')
+    setOpenEditId(comment.id)
+    setEditText(comment.content)
   }
 
   const handleSubmitReply = async (parentId: number) => {
@@ -227,6 +239,25 @@ export default function CommentTree({
     }
   }
 
+  const handleSubmitEdit = async (commentId: number) => {
+    if (!onRequireAuth()) return
+    const text = editText.trim()
+    if (text.length < 2) return
+
+    setSubmitting(true)
+    try {
+      const updated = await communityAPI.updateAnswer(commentId, text)
+      const normalized = normalizeComment(updated as unknown as Record<string, unknown>)
+      setComments((prev) => patchCommentTree(prev, commentId, () => normalized))
+      setOpenEditId(null)
+      setEditText('')
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : 'Failed to update answer')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleDelete = async (commentId: number) => {
     if (!onRequireAuth()) return
     if (!window.confirm('Delete this comment? Replies will stay visible.')) return
@@ -297,6 +328,8 @@ export default function CommentTree({
                 currentUser={currentUser}
                 openReplyId={openReplyId}
                 replyText={replyText}
+                openEditId={openEditId}
+                editText={editText}
                 onOpenReply={handleOpenReply}
                 onCloseReply={() => {
                   setOpenReplyId(null)
@@ -304,6 +337,13 @@ export default function CommentTree({
                 }}
                 onReplyTextChange={setReplyText}
                 onSubmitReply={handleSubmitReply}
+                onOpenEdit={handleOpenEdit}
+                onCloseEdit={() => {
+                  setOpenEditId(null)
+                  setEditText('')
+                }}
+                onEditTextChange={setEditText}
+                onSubmitEdit={handleSubmitEdit}
                 onVote={handleVote}
                 onDelete={handleDelete}
                 submitting={submitting}

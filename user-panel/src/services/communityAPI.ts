@@ -120,6 +120,18 @@ export const communityAPI = {
     return parseJson(response)
   },
 
+  async updateQuestion(
+    id: number,
+    payload: { title: string; body: string }
+  ): Promise<CommunityQuestion> {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${id}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    })
+    return parseJson(response)
+  },
+
   async createAnswer(payload: {
     question_id: number
     content: string
@@ -129,6 +141,16 @@ export const communityAPI = {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
+    })
+    const raw = await parseJson<Record<string, unknown>>(response)
+    return normalizeComment(raw)
+  },
+
+  async updateAnswer(answerId: number, content: string): Promise<Comment> {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/answers/${answerId}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ content }),
     })
     const raw = await parseJson<Record<string, unknown>>(response)
     return normalizeComment(raw)

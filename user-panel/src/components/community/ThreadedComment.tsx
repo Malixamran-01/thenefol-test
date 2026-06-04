@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BadgeCheck, MessageSquare, Trash2 } from 'lucide-react'
+import { BadgeCheck, MessageSquare, Pencil, Trash2 } from 'lucide-react'
 import type { Comment } from '../../types/community'
 import { AuthorVerifiedBadge } from '../AuthorVerifiedBadge'
 import { formatCommunityTime, DEPTH_BORDER_COLORS, DEPTH_MARGIN } from '../../utils/communityTime'
@@ -23,10 +23,16 @@ interface ThreadedCommentProps {
   currentUser: CurrentUser | null
   openReplyId: number | null
   replyText: string
+  openEditId: number | null
+  editText: string
   onOpenReply: (comment: Comment) => void
   onCloseReply: () => void
   onReplyTextChange: (v: string) => void
   onSubmitReply: (parentId: number) => void
+  onOpenEdit: (comment: Comment) => void
+  onCloseEdit: () => void
+  onEditTextChange: (v: string) => void
+  onSubmitEdit: (commentId: number) => void
   onVote: (commentId: number, direction: 'up' | 'down') => void
   onDelete: (commentId: number) => void
   submitting?: boolean
@@ -105,10 +111,16 @@ export default function ThreadedComment({
   currentUser,
   openReplyId,
   replyText,
+  openEditId,
+  editText,
   onOpenReply,
   onCloseReply,
   onReplyTextChange,
   onSubmitReply,
+  onOpenEdit,
+  onCloseEdit,
+  onEditTextChange,
+  onSubmitEdit,
   onVote,
   onDelete,
   submitting,
@@ -201,23 +213,44 @@ export default function ThreadedComment({
             </time>
           </div>
 
-          {/* Content */}
-          <p
-            className={`mt-1.5 whitespace-pre-wrap leading-relaxed ${
-              comment.is_deleted ? 'italic text-[#94a3b8]' : 'text-[#374151]'
-            } ${isTopLevel ? 'text-[14px]' : 'text-[13px]'}`}
-          >
-            {comment.content}
-          </p>
+          {/* Content or edit composer */}
+          {openEditId === comment.id ? (
+            <InlineReplyBox
+              headerText="Edit your answer"
+              value={editText}
+              onChange={onEditTextChange}
+              onCancel={onCloseEdit}
+              onSubmit={() => onSubmitEdit(comment.id)}
+              submitting={submitting}
+              placeholder="Update your answer…"
+              submitLabel="Save"
+            />
+          ) : (
+            <p
+              className={`mt-1.5 whitespace-pre-wrap leading-relaxed ${
+                comment.is_deleted ? 'italic text-[#94a3b8]' : 'text-[#374151]'
+              } ${isTopLevel ? 'text-[14px]' : 'text-[13px]'}`}
+            >
+              {comment.content}
+            </p>
+          )}
 
           {/* Action pills row */}
-          {!comment.is_deleted && (
+          {!comment.is_deleted && openEditId !== comment.id && (
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               {/* Reply */}
               {currentUser && (
                 <Pill onClick={() => onOpenReply(comment)}>
                   <MessageSquare className="h-3.5 w-3.5" strokeWidth={2} />
                   Reply
+                </Pill>
+              )}
+
+              {/* Edit (own answers only) */}
+              {isOwn && (
+                <Pill onClick={() => onOpenEdit(comment)}>
+                  <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
+                  Edit
                 </Pill>
               )}
 
@@ -242,7 +275,7 @@ export default function ThreadedComment({
           )}
 
           {/* Inline reply composer */}
-          {openReplyId === comment.id && (
+          {openReplyId === comment.id && openEditId !== comment.id && (
             <InlineReplyBox
               replyingToName={comment.author_name}
               value={replyText}
@@ -250,6 +283,7 @@ export default function ThreadedComment({
               onCancel={onCloseReply}
               onSubmit={() => onSubmitReply(comment.id)}
               submitting={submitting}
+              submitLabel="Post"
             />
           )}
         </div>
@@ -289,10 +323,16 @@ export default function ThreadedComment({
                 currentUser={currentUser}
                 openReplyId={openReplyId}
                 replyText={replyText}
+                openEditId={openEditId}
+                editText={editText}
                 onOpenReply={onOpenReply}
                 onCloseReply={onCloseReply}
                 onReplyTextChange={onReplyTextChange}
                 onSubmitReply={onSubmitReply}
+                onOpenEdit={onOpenEdit}
+                onCloseEdit={onCloseEdit}
+                onEditTextChange={onEditTextChange}
+                onSubmitEdit={onSubmitEdit}
                 onVote={onVote}
                 onDelete={onDelete}
                 submitting={submitting}

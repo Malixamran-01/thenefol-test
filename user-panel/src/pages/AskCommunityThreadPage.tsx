@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Package, Sparkles } from 'lucide-react'
+import { ArrowLeft, Package, Pencil, Sparkles } from 'lucide-react'
 import { communityAPI, type CommunityQuestion } from '../services/communityAPI'
 import { encodeMediaUrl, getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
@@ -45,6 +45,10 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
   const [answerText, setAnswerText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [treeRefresh, setTreeRefresh] = useState(0)
+  const [editingQuestion, setEditingQuestion] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editBody, setEditBody] = useState('')
+  const [savingQuestion, setSavingQuestion] = useState(false)
 
   const loadQuestion = useCallback(async () => {
     setLoading(true)
@@ -71,6 +75,47 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
   }
 
   const currentUser = user ? { id: user.id, name: user.name } : null
+  const isQuestionAuthor = Boolean(user && question?.user_id === user.id)
+
+  const startEditQuestion = () => {
+    if (!requireAuth() || !question) return
+    setEditingQuestion(true)
+    setEditTitle(question.title)
+    setEditBody(question.body)
+    setError(null)
+  }
+
+  const cancelEditQuestion = () => {
+    setEditingQuestion(false)
+    setEditTitle('')
+    setEditBody('')
+  }
+
+  const saveQuestion = async () => {
+    if (!requireAuth() || !question) return
+    const title = editTitle.trim()
+    const body = editBody.trim()
+    if (title.length < 3) {
+      setError('Title must be at least 3 characters.')
+      return
+    }
+    if (body.length < 5) {
+      setError('Question details must be at least 5 characters.')
+      return
+    }
+
+    setSavingQuestion(true)
+    setError(null)
+    try {
+      const updated = await communityAPI.updateQuestion(question.id, { title, body })
+      setQuestion(updated)
+      setEditingQuestion(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update question')
+    } finally {
+      setSavingQuestion(false)
+    }
+  }
 
   const postTopLevelAnswer = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -183,13 +228,64 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
               </div>
             )}
 
-            <h1 className="text-[20px] font-semibold leading-snug tracking-tight text-[#1a1a1a] sm:text-[22px]">
-              {question.title}
-            </h1>
+            {editingQuestion ? (
+              <div className="space-y-3 rounded-lg border border-[#d0e8f5] bg-[#f8fbfd] p-3">
+                <p className="text-[11px] font-semibold tracking-wide text-[#4B97C9]">Edit your question</p>
+                <div>
+                  <label htmlFor="edit-question-title" className="mb-1 block text-[11px] font-semibold text-[#64748b]">
+                    Title
+                  </label>
+                  <input
+                    id="edit-question-title"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value.slice(0, 200))}
+                    maxLength={200}
+                    className="w-full rounded-lg border border-[#d0e8f5] bg-white px-3 py-2.5 text-[16px] font-semibold text-[#1a1a1a] outline-none focus:border-[#4B97C9] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)] sm:text-[18px]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-question-body" className="mb-1 block text-[11px] font-semibold text-[#64748b]">
+                    Details
+                  </label>
+                  <textarea
+                    id="edit-question-body"
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value.slice(0, 5000))}
+                    rows={5}
+                    maxLength={5000}
+                    className="w-full resize-y rounded-lg border border-[#d0e8f5] bg-white px-3 py-2.5 text-[14px] leading-relaxed text-[#374151] outline-none focus:border-[#4B97C9] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)]"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={cancelEditQuestion}
+                    disabled={savingQuestion}
+                    className="min-h-[40px] rounded-lg px-4 text-[13px] font-semibold text-[#64748b] hover:text-[#1B4965]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveQuestion}
+                    disabled={savingQuestion}
+                    className="min-h-[40px] rounded-lg bg-[#1B4965] px-5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#163d52] disabled:opacity-50"
+                  >
+                    {savingQuestion ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-[20px] font-semibold leading-snug tracking-tight text-[#1a1a1a] sm:text-[22px]">
+                  {question.title}
+                </h1>
 
-            <p className="mt-2.5 whitespace-pre-wrap text-[14px] leading-relaxed text-[#374151]">
-              {question.body}
-            </p>
+                <p className="mt-2.5 whitespace-pre-wrap text-[14px] leading-relaxed text-[#374151]">
+                  {question.body}
+                </p>
+              </>
+            )}
 
             {/* Meta row */}
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#f0f4f8] pt-3 text-[12px] text-[#94a3b8]">
@@ -207,16 +303,27 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
             </div>
 
             {/* Post actions */}
-            <div className="mt-2 flex items-center gap-1">
-              {(['Share', 'Save'] as const).map((label) => (
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {isQuestionAuthor && !editingQuestion && (
                 <button
-                  key={label}
                   type="button"
-                  className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-[#94a3b8] transition-colors hover:bg-[#f0f4f8] hover:text-[#64748b]"
+                  onClick={startEditQuestion}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#e8eef4] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#64748b] transition-colors hover:border-[#d0e8f5] hover:text-[#1B4965]"
                 >
-                  {label}
+                  <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
+                  Edit
                 </button>
-              ))}
+              )}
+              {!editingQuestion &&
+                (['Share', 'Save'] as const).map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-[#94a3b8] transition-colors hover:bg-[#f0f4f8] hover:text-[#64748b]"
+                  >
+                    {label}
+                  </button>
+                ))}
             </div>
           </div>
         </article>
