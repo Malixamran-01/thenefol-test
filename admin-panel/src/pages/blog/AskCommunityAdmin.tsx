@@ -188,7 +188,7 @@ function EditQuestionModal({
     if (body.trim().length < 5) { setErr('Body must be at least 5 characters.'); return }
     setSaving(true); setErr('')
     try {
-      const res = await fetch(`${base}/api/blog/community/questions/${state.id}/admin`, {
+      const res = await fetch(`${base}/community/questions/${state.id}/admin`, {
         method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ title: title.trim(), body: body.trim() }),
       })
       const data = await res.json()
@@ -251,7 +251,7 @@ function EditAnswerModal({
     if (content.trim().length < 2) { setErr('Content is required.'); return }
     setSaving(true); setErr('')
     try {
-      const res = await fetch(`${base}/api/blog/community/answers/${state.id}/admin`, {
+      const res = await fetch(`${base}/community/answers/${state.id}/admin`, {
         method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ content: content.trim() }),
       })
       const data = await res.json()
@@ -322,7 +322,7 @@ export default function AskCommunityAdmin() {
   // ── Load stats ──────────────────────────────────────────────────────────────
   const loadStats = useCallback(async () => {
     try {
-      const res = await fetch(`${base}/api/blog/community/admin/stats`, { headers: authHeaders() })
+      const res = await fetch(`${base}/community/admin/stats`, { headers: authHeaders() })
       if (!res.ok) return
       const data = await res.json()
       setStats(data.data ?? data)
@@ -336,7 +336,7 @@ export default function AskCommunityAdmin() {
       const params = new URLSearchParams({ limit: '200', sort: sortQ })
       if (topicFilter) params.set('topic_type', topicFilter)
       if (search.trim()) params.set('q', search.trim())
-      const res = await fetch(`${base}/api/blog/community/questions?${params}`, { headers: authHeaders() })
+      const res = await fetch(`${base}/community/questions?${params}`, { headers: authHeaders() })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to load')
       setQuestions(Array.isArray(data) ? data : (data.data ?? []))
@@ -348,7 +348,7 @@ export default function AskCommunityAdmin() {
   const loadThread = useCallback(async (id: number) => {
     setLoadingThread(true); setThreadError(null)
     try {
-      const res = await fetch(`${base}/api/blog/community/questions/${id}`, { headers: authHeaders() })
+      const res = await fetch(`${base}/community/questions/${id}`, { headers: authHeaders() })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to load thread')
       setAnswers(data.answers ?? data.data?.answers ?? [])
@@ -376,7 +376,7 @@ export default function AskCommunityAdmin() {
   const toggleVerify = async (answerId: number, currentlyVerified: boolean) => {
     setTogglingId(answerId)
     try {
-      const res = await fetch(`${base}/api/blog/community/answers/${answerId}/verify`, {
+      const res = await fetch(`${base}/community/answers/${answerId}/verify`, {
         method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ verified: !currentlyVerified }),
       })
       const data = await res.json()
@@ -395,7 +395,7 @@ export default function AskCommunityAdmin() {
       message: `Delete "${q.title}" and all its answers? This cannot be undone.`,
       onConfirm: async () => {
         try {
-          const res = await fetch(`${base}/api/blog/community/questions/${q.id}/admin`, { method: 'DELETE', headers: authHeaders() })
+          const res = await fetch(`${base}/community/questions/${q.id}/admin`, { method: 'DELETE', headers: authHeaders() })
           if (!res.ok) { const d = await res.json(); throw new Error(d?.error || 'Delete failed') }
           setQuestions((prev) => prev.filter((x) => x.id !== q.id))
           setSelected((prev) => { const next = new Set(prev); next.delete(q.id); return next })
@@ -416,7 +416,7 @@ export default function AskCommunityAdmin() {
       onConfirm: async () => {
         setBulkDeleting(true)
         try {
-          const res = await fetch(`${base}/api/blog/community/questions/bulk-delete`, {
+          const res = await fetch(`${base}/community/questions/bulk-delete`, {
             method: 'POST', headers: authHeaders(), body: JSON.stringify({ ids: [...selected] }),
           })
           if (!res.ok) { const d = await res.json(); throw new Error(d?.error || 'Bulk delete failed') }
@@ -439,7 +439,7 @@ export default function AskCommunityAdmin() {
       message: `Remove this answer by ${a.author_name}? This cannot be undone.`,
       onConfirm: async () => {
         try {
-          const res = await fetch(`${base}/api/blog/community/answers/${a.id}/admin`, { method: 'DELETE', headers: authHeaders() })
+          const res = await fetch(`${base}/community/answers/${a.id}/admin`, { method: 'DELETE', headers: authHeaders() })
           if (!res.ok) { const d = await res.json(); throw new Error(d?.error || 'Delete failed') }
           if (selectedId != null) await loadThread(selectedId)
           setQuestions((prev) => prev.map((q) => q.id === selectedId ? { ...q, answer_count: Math.max(0, q.answer_count - 1) } : q))
