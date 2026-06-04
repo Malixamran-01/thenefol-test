@@ -103,7 +103,7 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
       {/* Animated top accent */}
       <div className="h-[3px] w-0 rounded-t-2xl bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all duration-300 group-hover:w-full" />
 
-      <div className="flex gap-3 p-4 sm:gap-4 sm:p-5">
+      <div className="flex min-w-0 gap-3 p-4 sm:gap-4 sm:p-5">
         {/* Answer count box */}
         <div className="flex w-11 shrink-0 flex-col items-center gap-1 pt-0.5 sm:w-12">
           <div
@@ -136,7 +136,10 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
               </span>
             )}
             {q.product_title && (
-              <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-[#4B97C9]">
+              <span
+                className="max-w-[180px] truncate text-[11px] font-medium text-[#4B97C9] sm:max-w-[260px]"
+                title={q.product_title}
+              >
                 {q.product_title}
               </span>
             )}
@@ -230,7 +233,7 @@ function Sidebar({
   }, [questions, products])
 
   return (
-    <div className="flex min-w-0 flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {/* Ask CTA */}
       <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#274F73] p-5 shadow-[0_4px_16px_rgba(27,73,101,0.18)]">
         <h3 className="mb-1 text-[15px] font-bold text-white">Got a question?</h3>
@@ -489,8 +492,8 @@ export default function AskCommunityPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6">
-        <div className="flex items-start gap-5 xl:gap-6">
+      <div className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6 overflow-x-hidden">
+        <div className="flex items-start gap-5 xl:gap-6 min-w-0 w-full">
 
           {/* ── Main feed ──────────────────────────────────────── */}
           <div className="min-w-0 flex-1">
@@ -664,7 +667,7 @@ export default function AskCommunityPage() {
 
             {/* Question list */}
             {!loading && !error && visible.length > 0 && (
-              <div className="mt-3 space-y-2.5 sm:space-y-3">
+              <div className="mt-3 min-w-0 space-y-2.5 sm:space-y-3">
                 {visible.map((q) => (
                   <QuestionCard key={q.id} q={q} onClick={() => openThread(q.id)} />
                 ))}
@@ -685,7 +688,7 @@ export default function AskCommunityPage() {
           </div>
 
           {/* ── Sidebar — desktop only ──────────────────────── */}
-          <div className="hidden w-60 shrink-0 overflow-hidden xl:w-64 lg:block">
+          <div className="hidden w-60 shrink-0 xl:w-64 lg:block">
             <div className="sticky top-4">
               <Sidebar
                 questions={allQuestions}

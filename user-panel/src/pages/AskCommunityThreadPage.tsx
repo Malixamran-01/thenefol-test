@@ -120,7 +120,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
 
   return (
     <div className="min-h-full overflow-x-hidden bg-[#F4F9F9] pb-10 pt-4 sm:pt-6">
-      <div className="mx-auto max-w-2xl px-3 sm:px-4">
+      <div className="mx-auto max-w-2xl w-full min-w-0 px-3 sm:px-4">
 
         {/* Back nav */}
         <button
@@ -161,16 +161,20 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                     className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-[#e8eef4]"
                   />
                 )}
-                <div className="flex min-w-0 flex-1 items-center">
+                <div className="min-w-0 flex-1">
                   {question.product_slug ? (
                     <a
                       href={`#/user/product/${question.product_slug}`}
-                      className="line-clamp-2 text-[13px] font-medium leading-snug text-[#4B97C9] hover:underline"
+                      className="block truncate text-[13px] font-medium leading-snug text-[#4B97C9] hover:underline"
+                      title={question.product_title || question.product_name}
                     >
                       {question.product_title || question.product_name}
                     </a>
                   ) : (
-                    <p className="line-clamp-2 text-[13px] font-medium text-[#64748b]">
+                    <p
+                      className="truncate text-[13px] font-medium text-[#64748b]"
+                      title={question.product_title || question.product_name}
+                    >
                       {question.product_title || question.product_name}
                     </p>
                   )}
