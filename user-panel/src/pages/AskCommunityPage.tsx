@@ -93,6 +93,7 @@ function CardSkeleton() {
 function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => void }) {
   const isHot = q.answer_count >= 5
   const isAnswered = q.answer_count > 0
+  const productLabel = q.product_title ?? q.product_name ?? null
 
   return (
     <button
@@ -135,12 +136,12 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
                 <Flame className="h-2.5 w-2.5" /> Hot
               </span>
             )}
-            {q.product_title && (
+            {productLabel && (
               <span
-                className="max-w-[180px] truncate text-[11px] font-medium text-[#4B97C9] sm:max-w-[260px]"
-                title={q.product_title}
+                className="block min-w-0 w-full basis-full truncate text-[11px] font-medium text-[#4B97C9] sm:inline-block sm:w-auto sm:max-w-[280px] sm:basis-auto sm:align-bottom"
+                title={productLabel}
               >
-                {q.product_title}
+                {productLabel}
               </span>
             )}
           </div>
@@ -461,7 +462,7 @@ export default function AskCommunityPage() {
 
   return (
     /* ── Outermost: overflow-x-hidden prevents sidebar bleed ── */
-    <div className="min-h-full overflow-x-hidden bg-[#F4F9F9]">
+    <div className="min-h-full w-full overflow-x-hidden bg-[#F4F9F9]">
 
       {/* ── Page header ──────────────────────────────────────── */}
       <div className="border-b border-[#e8eef4] bg-white shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
@@ -492,8 +493,8 @@ export default function AskCommunityPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6 overflow-x-hidden">
-        <div className="flex items-start gap-5 xl:gap-6 min-w-0 w-full">
+      <div className="mx-auto w-full min-w-0 max-w-5xl overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6">
+        <div className="flex w-full min-w-0 items-start gap-5 xl:gap-6">
 
           {/* ── Main feed ──────────────────────────────────────── */}
           <div className="min-w-0 flex-1">
@@ -608,9 +609,11 @@ export default function AskCommunityPage() {
                   </span>
                 )}
                 {selectedProduct && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-800">
-                    {products.find((p) => p.id === selectedProduct)?.title || 'Product'}
-                    <button type="button" onClick={() => setSelectedProduct(null)}><X className="h-3 w-3" /></button>
+                  <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-800">
+                    <span className="min-w-0 truncate" title={products.find((p) => p.id === selectedProduct)?.title || 'Product'}>
+                      {products.find((p) => p.id === selectedProduct)?.title || 'Product'}
+                    </span>
+                    <button type="button" onClick={() => setSelectedProduct(null)}><X className="h-3 w-3 shrink-0" /></button>
                   </span>
                 )}
                 <span className="text-[#94a3b8]">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>

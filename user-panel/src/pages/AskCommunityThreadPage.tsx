@@ -15,8 +15,8 @@ function productThumb(url?: string | null): string {
 
 function ThreadSkeleton() {
   return (
-    <div className="min-h-full bg-[#F4F9F9] px-4 pb-32 pt-6">
-      <div className="mx-auto max-w-2xl space-y-4">
+    <div className="min-h-full w-full overflow-x-hidden bg-[#F4F9F9] px-4 pb-32 pt-6">
+      <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4">
         <div className="h-4 w-28 animate-pulse rounded-full bg-[#d0e8f5]" />
         <div className="animate-pulse rounded-xl border border-[#e8eef4] bg-white p-5 shadow-sm">
           <div className="mb-3 h-3 w-20 rounded-full bg-[#e8eef4]" />
@@ -120,7 +120,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
   const productLabel = question.product_title ?? question.product_name ?? undefined
 
   return (
-    <div className="min-h-full overflow-x-hidden bg-[#F4F9F9] pb-10 pt-4 sm:pt-6">
+    <div className="min-h-full w-full overflow-x-hidden bg-[#F4F9F9] pb-10 pt-4 sm:pt-6">
       <div className="mx-auto max-w-2xl w-full min-w-0 px-3 sm:px-4">
 
         {/* Back nav */}
