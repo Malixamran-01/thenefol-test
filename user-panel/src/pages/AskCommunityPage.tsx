@@ -281,7 +281,7 @@ function Sidebar({
         </div>
       </div>
 
-      {/* Popular Products */}
+      {/* Popular Products
       {topProducts.length > 0 && (
         <div className="rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
           <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
@@ -324,7 +324,7 @@ function Sidebar({
             ))}
           </ul>
         </div>
-      )}
+      )} */}
 
       {/* Guidelines */}
       <div className="rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
