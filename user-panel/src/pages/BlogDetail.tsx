@@ -59,7 +59,6 @@ export default function BlogDetail() {
   const { isAuthenticated, user } = useAuth()
   const { goBack, backLabel } = useBlogBack()
   const handleBack = goBack
-  const handleClose = goBack
   const [post, setPost] = useState<BlogPost | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -1363,17 +1362,9 @@ export default function BlogDetail() {
         </div>
 
         {/* Footer Actions */}
-        <div className="mt-12 flex items-center justify-center gap-4">
+        <div className="mt-12 flex items-center justify-center">
           <button
-            onClick={handleBack}
-            className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90"
-            style={{backgroundColor: '#1B4965'}}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-          <button
-            onClick={handleClose}
+            onClick={goBack}
             className="inline-flex items-center gap-2 px-6 py-3 text-gray-700 font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90 border-2"
             style={{borderColor: '#1B4965', backgroundColor: 'transparent', color: '#1B4965'}}
           >

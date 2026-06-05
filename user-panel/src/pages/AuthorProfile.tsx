@@ -596,7 +596,11 @@ export default function AuthorProfile() {
       setLoadingActivities(true)
       try {
         const data = await blogActivityAPI.getAuthorActivity(effectiveAuthorId, 20, 0)
-        setActivities(data)
+        const ownOnly = (Array.isArray(data) ? data : []).filter(
+          (item: { activity_type?: string }) =>
+            !['received_like', 'received_comment', 'received_repost'].includes(item.activity_type || '')
+        )
+        setActivities(ownOnly)
       } catch (err) {
         console.error('Error fetching activities:', err)
         setActivities([])
@@ -1277,7 +1281,7 @@ export default function AuthorProfile() {
                 <div className="rounded-xl bg-gray-50 p-8 text-center">
                   <Activity className="mx-auto mb-3 h-10 w-10 text-gray-300" />
                   <p className="text-sm font-medium text-gray-500">No activity yet</p>
-                  <p className="mt-1 text-xs text-gray-400">Notifications on your posts, reposts, and your own activity appear here.</p>
+                  <p className="mt-1 text-xs text-gray-400">Posts you published, liked, commented on, or reposted appear here. Likes and comments on your posts are in Nefol Social → Activity.</p>
                 </div>
               ) : (
                 activities.map((item: any, idx: number) => {
