@@ -1437,12 +1437,134 @@ function ProductsManager() {
                   </div>
                 </div>
 
+                {/* Key Ingredients */}
+                <div className="border-b border-gray-200 pb-4 mb-4">
+                  <h4 className="text-base font-semibold text-gray-800 mb-1">Key Ingredients</h4>
+                  <p className="text-xs text-gray-500 mb-4">These ingredients are displayed on the product page with images and benefits. Each ingredient maps to an ingredient image automatically.</p>
+                  {/* Chip-based ingredient adder */}
+                  {(() => {
+                    const ingRaw = editing.details?.keyIngredients || ''
+                    const benRaw = editing.details?.ingredientBenefits || ''
+                    const chips: string[] = ingRaw ? ingRaw.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+                    const benefits: string[] = benRaw ? benRaw.split(',').map((s: string) => s.trim()) : []
+
+                    const removeIngredient = (idx: number) => {
+                      const newChips = chips.filter((_: string, i: number) => i !== idx)
+                      const newBenefits = benefits.filter((_: string, i: number) => i !== idx)
+                      setEditing(prev => ({
+                        ...(prev as any),
+                        details: {
+                          ...(prev?.details || {}),
+                          keyIngredients: newChips.join(', '),
+                          ingredientBenefits: newBenefits.join(', ')
+                        }
+                      }))
+                    }
+
+                    const updateBenefit = (idx: number, val: string) => {
+                      const newBenefits = [...benefits]
+                      while (newBenefits.length <= idx) newBenefits.push('')
+                      newBenefits[idx] = val
+                      setEditing(prev => ({
+                        ...(prev as any),
+                        details: { ...(prev?.details || {}), ingredientBenefits: newBenefits.join(', ') }
+                      }))
+                    }
+
+                    return (
+                      <div className="space-y-4">
+                        {/* Add ingredient input */}
+                        <div className="flex gap-2">
+                          <input
+                            id="ing-add-input"
+                            className="flex-1 rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
+                            placeholder="Type an ingredient name and press Enter or Add…"
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                const val = (e.currentTarget.value || '').trim()
+                                if (!val) return
+                                const newChips = [...chips, val]
+                                setEditing(prev => ({
+                                  ...(prev as any),
+                                  details: { ...(prev?.details || {}), keyIngredients: newChips.join(', ') }
+                                }))
+                                e.currentTarget.value = ''
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shrink-0"
+                            onClick={() => {
+                              const input = document.getElementById('ing-add-input') as HTMLInputElement
+                              const val = (input?.value || '').trim()
+                              if (!val) return
+                              const newChips = [...chips, val]
+                              setEditing(prev => ({
+                                ...(prev as any),
+                                details: { ...(prev?.details || {}), keyIngredients: newChips.join(', ') }
+                              }))
+                              if (input) input.value = ''
+                            }}
+                          >
+                            + Add
+                          </button>
+                        </div>
+
+                        {/* Ingredient chips with benefit inputs */}
+                        {chips.length > 0 ? (
+                          <div className="space-y-2">
+                            {chips.map((chip: string, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">{idx + 1}</span>
+                                <span className="min-w-[120px] text-sm font-medium text-gray-800">{chip}</span>
+                                <input
+                                  className="flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300"
+                                  placeholder={`Benefit for "${chip}" (optional)`}
+                                  value={benefits[idx] || ''}
+                                  onChange={e => updateBenefit(idx, e.target.value)}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeIngredient(idx)}
+                                  className="shrink-0 rounded-full p-1 text-gray-400 hover:bg-red-100 hover:text-red-600 transition-colors"
+                                  title="Remove ingredient"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 py-6 text-center text-sm text-gray-400">
+                            No ingredients added yet. Type an ingredient above and press Enter or click Add.
+                          </div>
+                        )}
+
+                        {/* Raw fallback textareas for power users */}
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-600 select-none">Advanced: edit raw comma-separated values</summary>
+                          <div className="mt-2 space-y-2">
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">Key Ingredients (comma-separated)</label>
+                              <textarea className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs" rows={2} value={ingRaw} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), keyIngredients:e.target.value}}))} />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">Ingredient Benefits (comma-separated, same order)</label>
+                              <textarea className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs" rows={2} value={benRaw} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), ingredientBenefits:e.target.value}}))} />
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+                    )
+                  })()}
+                </div>
+
                 {/* Product Details */}
                 <div className="border-b border-gray-200 pb-4 mb-4">
                   <h4 className="text-base font-semibold text-gray-800 mb-4">Product Details</h4>
                   <div className="space-y-4">
-                    <textarea className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Key Ingredients" rows={2} value={editing.details?.keyIngredients||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), keyIngredients:e.target.value}}))} />
-                    <textarea className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Ingredient Benefits" rows={2} value={editing.details?.ingredientBenefits||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), ingredientBenefits:e.target.value}}))} />
                     <textarea className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="How to Use" rows={2} value={editing.details?.howToUse||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), howToUse:e.target.value}}))} />
                     <textarea className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Product Description (Long)" rows={4} value={editing.details?.longDescription||editing.description||''} onChange={e=>{
                       setEditing(prev=>({...(prev as any), description:e.target.value, details: { ...(prev?.details||{}), longDescription:e.target.value}}))

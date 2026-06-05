@@ -772,16 +772,7 @@ export default function Home() {
       </section>
 
       {/* Shop by Category Section */}
-      <section className="py-12 sm:py-16 md:py-20 bg-white relative overflow-hidden">
-        {/* Curve Effect at top */}
-        <div 
-          className="absolute top-0 left-0 w-full h-12 sm:h-16 md:h-20"
-          style={{
-            background: 'linear-gradient(to bottom, var(--arctic-blue-background) 0%, var(--arctic-blue-background) 50%, white 100%)',
-            clipPath: 'ellipse(100% 100% at 50% 0%)',
-            transform: 'scaleY(-1)'
-          }}
-        />
+      <section className="py-12 sm:py-16 md:py-20 relative overflow-hidden" style={{ background: 'var(--arctic-blue-background)' }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-12 sm:mb-16 text-center tracking-[0.15em]" 
@@ -802,11 +793,10 @@ export default function Home() {
               <div
                 className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
                 style={{
-                  background: 'linear-gradient(145deg, #f0f7ff 0%, #e6f0fb 100%)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
+                  background: 'transparent',
+                  boxShadow: 'none',
                 }}
               >
-                <div className="absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.14)' }} />
                 <img
                   src={categoryImages['Body'] || '/IMAGES/body.webp'}
                   alt="Body"
@@ -825,11 +815,10 @@ export default function Home() {
               <div
                 className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
                 style={{
-                  background: 'linear-gradient(145deg, #f0f7ff 0%, #e6f0fb 100%)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
+                  background: 'transparent',
+                  boxShadow: 'none',
                 }}
               >
-                <div className="absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.14)' }} />
                 <img
                   src={categoryImages['Face'] || '/IMAGES/face.webp'}
                   alt="Face"
@@ -848,11 +837,10 @@ export default function Home() {
               <div
                 className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
                 style={{
-                  background: 'linear-gradient(145deg, #f0f7ff 0%, #e6f0fb 100%)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
+                  background: 'transparent',
+                  boxShadow: 'none',
                 }}
               >
-                <div className="absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.14)' }} />
                 <img
                   src={categoryImages['Hair'] || '/IMAGES/hair.webp'}
                   alt="Hair"
@@ -871,11 +859,10 @@ export default function Home() {
               <div
                 className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
                 style={{
-                  background: 'linear-gradient(145deg, #f0f7ff 0%, #e6f0fb 100%)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
+                  background: 'transparent',
+                  boxShadow: 'none',
                 }}
               >
-                <div className="absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.14)' }} />
                 <img
                   src={categoryImages['Combos'] || '/IMAGES/combo.webp'}
                   alt="Combos"
@@ -888,14 +875,6 @@ export default function Home() {
           </div>
         </div>
         
-        {/* Curve Effect at bottom */}
-        <div 
-          className="absolute bottom-0 left-0 w-full h-12 sm:h-16 md:h-20"
-          style={{
-            background: 'linear-gradient(to top, white 0%, white 50%, var(--arctic-blue-background) 100%)',
-            clipPath: 'ellipse(100% 100% at 50% 100%)'
-          }}
-        />
       </section>
 
       {/* Complete Kit Banner Section */}
