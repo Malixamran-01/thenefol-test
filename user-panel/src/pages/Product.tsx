@@ -20,6 +20,7 @@ import { pixelEvents, formatProductData } from '../utils/metaPixel'
 import { calculatePurchaseCoins } from '../utils/points'
 import { safeElementScrollTo } from '../utils/safeScroll'
 import { INGREDIENT_IMAGE_MAP } from '../constants/ingredientImageMap'
+import PopularQuestions from '../components/PopularQuestions'
 
 // CSV data cache - shared across all product page instances
 let csvDataCache: any[] | null = null
@@ -2004,6 +2005,9 @@ export default function ProductPage() {
             )
           })()}
 
+
+          {/* Popular Questions from Ask Community */}
+          {product?.id && <PopularQuestions productId={product.id} />}
 
           {/* Key Ingredients Text List (Keep existing for reference) */}
           {csvProduct?.['Key Ingredients'] && (() => {

@@ -392,6 +392,18 @@ export default function AskCommunityPage() {
 
   const [products, setProducts] = useState<Product[]>([])
 
+  // Pre-select product if navigated from PDP with ?product_id=X
+  useEffect(() => {
+    const match = window.location.hash.match(/[?&]product_id=(\d+)/)
+    if (match) {
+      const pid = Number(match[1])
+      if (Number.isFinite(pid)) {
+        setFilter('product')
+        setSelectedProduct(pid)
+      }
+    }
+  }, [])
+
   useEffect(() => {
     productsAPI
       .getAll()

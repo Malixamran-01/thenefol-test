@@ -21,14 +21,35 @@ export default function AskCommunityNewPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Auto-select product if navigated from PDP with ?product_id=X
+  useEffect(() => {
+    const match = window.location.hash.match(/[?&]product_id=(\d+)/)
+    if (match) {
+      const pid = Number(match[1])
+      if (Number.isFinite(pid)) {
+        setTopicType('product')
+        setStep('form')
+      }
+    }
+  }, [])
+
   useEffect(() => {
     if (topicType !== 'product' || step !== 'form') return
     let cancelled = false
     setProductsLoading(true)
+    const pidMatch = window.location.hash.match(/[?&]product_id=(\d+)/)
+    const preselectedId = pidMatch ? Number(pidMatch[1]) : null
     productsAPI
       .getAll()
       .then((list) => {
-        if (!cancelled) setProducts(Array.isArray(list) ? list : [])
+        if (!cancelled) {
+          const arr = Array.isArray(list) ? list : []
+          setProducts(arr)
+          if (preselectedId) {
+            const found = arr.find((p: { id: number }) => p.id === preselectedId)
+            if (found) setSelectedProduct(found)
+          }
+        }
       })
       .catch(() => {
         if (!cancelled) setError('Could not load products')
