@@ -125,7 +125,7 @@ export default function SocialSneakPeek() {
             Community
           </h2>
           <p className="mt-2 max-w-lg mx-auto text-sm sm:text-base text-gray-500">
-            Featured stories from our creators.
+            Featured stories from our users.
           </p>
         </div>
 

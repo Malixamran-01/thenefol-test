@@ -793,105 +793,97 @@ export default function Home() {
           >
             Shop by Category
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-5 sm:gap-6 md:gap-8">
             {/* Body */}
-            <div 
-              className="text-center group cursor-pointer transform transition-all duration-300 hover:scale-105" 
+            <div
+              className="group cursor-pointer flex flex-col items-center"
               onClick={() => window.location.hash = '#/user/body'}
             >
               <div
-                className="mx-auto mb-3 sm:mb-4 flex items-center justify-center w-full max-w-[180px] sm:max-w-[220px] md:max-w-[280px] aspect-square overflow-hidden rounded-2xl"
+                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
                 style={{
-                  WebkitMaskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)',
-                  maskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)'
+                  background: 'linear-gradient(145deg, #f0f7ff 0%, #e6f0fb 100%)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
                 }}
               >
+                <div className="absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.14)' }} />
                 <img
                   src={categoryImages['Body'] || '/IMAGES/body.webp'}
                   alt="Body"
-                  className="block w-full h-full object-contain"
-                  style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
-              <h3 className="text-sm sm:text-base font-light tracking-wide" style={{color: '#1a1a1a', letterSpacing: '0.05em'}}>Body</h3>
+              <h3 className="mt-4 text-sm sm:text-base font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Body</h3>
             </div>
 
             {/* Face */}
-            <div 
-              className="text-center group cursor-pointer transform transition-all duration-300 hover:scale-105" 
+            <div
+              className="group cursor-pointer flex flex-col items-center"
               onClick={() => window.location.hash = '#/user/face'}
             >
               <div
-                className="mx-auto mb-3 sm:mb-4 flex items-center justify-center w-full max-w-[180px] sm:max-w-[220px] md:max-w-[280px] aspect-square overflow-hidden rounded-2xl"
+                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
                 style={{
-                  WebkitMaskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)',
-                  maskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)'
+                  background: 'linear-gradient(145deg, #f0f7ff 0%, #e6f0fb 100%)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
                 }}
               >
+                <div className="absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.14)' }} />
                 <img
                   src={categoryImages['Face'] || '/IMAGES/face.webp'}
                   alt="Face"
-                  className="block w-full h-full object-contain"
-                  style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
-              <h3 className="text-sm sm:text-base font-light tracking-wide" style={{color: '#1a1a1a', letterSpacing: '0.05em'}}>Face</h3>
+              <h3 className="mt-4 text-sm sm:text-base font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Face</h3>
             </div>
 
             {/* Hair */}
-            <div 
-              className="text-center group cursor-pointer transform transition-all duration-300 hover:scale-105" 
+            <div
+              className="group cursor-pointer flex flex-col items-center"
               onClick={() => window.location.hash = '#/user/hair'}
             >
               <div
-                className="mx-auto mb-3 sm:mb-4 flex items-center justify-center w-full max-w-[180px] sm:max-w-[220px] md:max-w-[280px] aspect-square overflow-hidden rounded-2xl"
+                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
                 style={{
-                  WebkitMaskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)',
-                  maskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)'
+                  background: 'linear-gradient(145deg, #f0f7ff 0%, #e6f0fb 100%)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
                 }}
               >
+                <div className="absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.14)' }} />
                 <img
                   src={categoryImages['Hair'] || '/IMAGES/hair.webp'}
                   alt="Hair"
-                  className="block w-full h-full object-contain"
-                  style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
-              <h3 className="text-sm sm:text-base font-light tracking-wide" style={{color: '#1a1a1a', letterSpacing: '0.05em'}}>Hair</h3>
+              <h3 className="mt-4 text-sm sm:text-base font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Hair</h3>
             </div>
 
             {/* Combos */}
-            <div 
-              className="text-center group cursor-pointer transform transition-all duration-300 hover:scale-105" 
+            <div
+              className="group cursor-pointer flex flex-col items-center"
               onClick={() => window.location.hash = '#/user/combos'}
             >
               <div
-                className="mx-auto mb-3 sm:mb-4 flex items-center justify-center w-full max-w-[180px] sm:max-w-[220px] md:max-w-[280px] aspect-square overflow-hidden rounded-2xl"
+                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
                 style={{
-                  WebkitMaskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)',
-                  maskImage: 'radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)'
+                  background: 'linear-gradient(145deg, #f0f7ff 0%, #e6f0fb 100%)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
                 }}
               >
+                <div className="absolute inset-0 rounded-3xl transition-opacity duration-500 opacity-0 group-hover:opacity-100" style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.14)' }} />
                 <img
                   src={categoryImages['Combos'] || '/IMAGES/combo.webp'}
                   alt="Combos"
-                  className="block w-full h-full object-contain"
-                  style={{ filter: 'drop-shadow(0 24px 30px rgba(0,0,0,0.28))' }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
-              <h3 className="text-sm sm:text-base font-light tracking-wide" style={{color: '#1a1a1a', letterSpacing: '0.05em'}}>Combos</h3>
+              <h3 className="mt-4 text-sm sm:text-base font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Combos</h3>
             </div>
           </div>
         </div>
