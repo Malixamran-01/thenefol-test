@@ -1,7 +1,6 @@
 /**
- * Runs before the Vite bundle. Hash routes (#/user/...) are invisible to WhatsApp/Facebook
- * crawlers — they only fetch the path before '#'. Ensures /blog/:id loads the SPA hash route
- * when nginx accidentally serves index.html instead of the backend meta page.
+ * Runs before the Vite bundle. When nginx serves index.html for /blog/:id (browser reload),
+ * ensure the SPA hash route is set so BlogDetail loads.
  */
 (function () {
   if (typeof window === 'undefined' || typeof location === 'undefined') return

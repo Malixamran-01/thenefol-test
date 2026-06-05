@@ -26,6 +26,15 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       return
     }
 
+    if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
+      const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
+      const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
+      const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
+      const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+      const slugPath = encodeURIComponent(slug)
+      return res.redirect(302, `${frontendBase}/#/user/product/${slugPath}`)
+    }
+
     const { rows } = await pool.query(
       `
       SELECT p.title, p.slug, p.description, p.details, p.list_image,
@@ -92,11 +101,7 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
     const ogImageSecure = ogImage.startsWith('https://') ? ogImage : ogImage.replace(/^http:\/\//i, 'https://')
 
     const title = `${row.title || 'Product'} | NEFOL`
-    const isCrawler = isSocialCrawler(req.headers['user-agent'] as string | undefined)
-    const redirectBlock = isCrawler
-      ? ''
-      : `<meta http-equiv="refresh" content="0;url=${escapeHtmlMeta(spaUrl)}">
-  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>`
+    const redirectBlock = ''
 
     const html = `<!DOCTYPE html>
 <html lang="en">

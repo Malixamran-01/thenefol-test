@@ -1,12 +1,26 @@
 /**
- * Partial / incremental DB migration (blog, collab, CMS basics, staff RBAC, Ask Community).
+ * Partial / incremental DB migration (blog, collab, CMS basics, staff RBAC, Ask Community, Creator Program).
+ *
+ * Steps:
+ *   1  Base tables (products, users, blog, collab applications, …)
+ *   2  Column patches & foreign keys
+ *   3  Indexes
+ *   4  Indexes for new columns
+ *   5  Trigger functions
+ *   6  Triggers
+ *   7  Blog social (reposts, bookmarks), staff RBAC
+ *   8  Author stats & blog reads
+ *   9  Ask Community Q&A (threaded answers, upvotes/downvotes)
+ *  10  Creator Program (assigned tasks, badge ack, blocks, user_notifications, weekly blog reward)
+ *  11  Blog comment ancestors backfill
+ *  12  Super admin staff account (from .env)
  *
  * Full app schema is applied on backend startup via ensureSchema() in src/utils/schema.ts.
  * This script is safe to re-run (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
  *
  * Super admin:
  *   - Privileges: SUPER_ADMIN_EMAIL + SUPER_ADMIN_PASSWORD in .env (not is_super_admin in DB).
- *   - Step 10 syncs a staff_users row for login (same as ensure-super-admin.js / seedSuperAdmin).
+ *   - Step 12 syncs a staff_users row for login (same as ensure-super-admin.js / seedSuperAdmin).
  *   - Or run: npm run ensure-super-admin
  */
 require('dotenv/config');
@@ -38,7 +52,7 @@ async function syncEnvSuperAdmin() {
   const password = process.env.SUPER_ADMIN_PASSWORD;
   const name = process.env.SUPER_ADMIN_NAME || 'Super Admin';
   if (!email || !password) {
-    console.log('ℹ️  Step 10: Skipped super admin sync — set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD in .env');
+    console.log('ℹ️  Step 12: Skipped super admin sync — set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD in .env');
     console.log('   (Or run: npm run ensure-super-admin)');
     return;
   }
@@ -54,7 +68,7 @@ async function syncEnvSuperAdmin() {
      RETURNING id, email`,
     [email, name, hashed]
   );
-  console.log(`✅ Step 10: Super admin staff row synced (${rows[0].email}, id=${rows[0].id})`);
+  console.log(`✅ Step 12: Super admin staff row synced (${rows[0].email}, id=${rows[0].id})`);
   console.log('   Privileges apply when this email matches SUPER_ADMIN_EMAIL on login.');
 }
 
@@ -1468,6 +1482,7 @@ async function runMigration() {
         verified_by integer references users(id) on delete set null,
         verified_at timestamptz,
         likes_count integer not null default 0,
+        score integer not null default 0,
         is_deleted boolean not null default false,
         created_at timestamptz default now(),
         updated_at timestamptz default now()
@@ -1477,6 +1492,7 @@ async function runMigration() {
         id serial primary key,
         answer_id integer not null references community_answers(id) on delete cascade,
         user_id integer not null references users(id) on delete cascade,
+        vote smallint not null default 1,
         created_at timestamptz default now(),
         unique (answer_id, user_id)
       );
@@ -1518,6 +1534,9 @@ async function runMigration() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'verified_at') THEN
           ALTER TABLE community_answers ADD COLUMN verified_at timestamptz;
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'community_answers' AND column_name = 'updated_at') THEN
+          ALTER TABLE community_answers ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now();
+        END IF;
         UPDATE community_answers
         SET parent_id = parent_answer_id
         WHERE parent_id IS NULL AND parent_answer_id IS NOT NULL;
@@ -1545,7 +1564,9 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_community_answers_parent ON community_answers(parent_id);
       CREATE INDEX IF NOT EXISTS idx_community_answers_root ON community_answers(root_answer_id);
       CREATE INDEX IF NOT EXISTS idx_community_answers_path ON community_answers(path);
+      CREATE INDEX IF NOT EXISTS idx_community_answers_path_pattern ON community_answers(path text_pattern_ops);
       CREATE INDEX IF NOT EXISTS idx_community_answer_likes_answer ON community_answer_likes(answer_id);
+      CREATE INDEX IF NOT EXISTS idx_community_answer_likes_user ON community_answer_likes(user_id);
 
       DO $$
       BEGIN
@@ -1560,7 +1581,189 @@ async function runMigration() {
       END $$;
     `);
 
-    console.log('📝 Step 10: Super admin staff account (from .env)…');
+    console.log('📝 Step 9b: Backfill nested community answer paths…');
+    await pool.query(`
+      UPDATE community_answers
+      SET path = id::text, root_answer_id = id, depth = 0
+      WHERE parent_id IS NULL AND (path IS NULL OR path = '')
+    `);
+    let caIterations = 0;
+    let caUpdated = true;
+    while (caUpdated && caIterations < 20) {
+      const caResult = await pool.query(`
+        UPDATE community_answers child
+        SET path = parent.path || '.' || child.id::text,
+            root_answer_id = parent.root_answer_id,
+            depth = parent.depth + 1
+        FROM community_answers parent
+        WHERE child.parent_id = parent.id
+          AND parent.path IS NOT NULL AND parent.path <> ''
+          AND (child.path IS NULL OR child.path = '')
+        RETURNING child.id
+      `);
+      caUpdated = (caResult.rowCount ?? 0) > 0;
+      caIterations++;
+      if (caUpdated) {
+        console.log(`  Backfilled ${caResult.rowCount} nested community answers (pass ${caIterations})`);
+      }
+    }
+
+    console.log('📝 Step 10: Creator Program (tasks, blocks, notifications, blog rewards)…');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS collab_assigned_tasks (
+        id SERIAL PRIMARY KEY,
+        collab_application_id INTEGER NOT NULL REFERENCES collab_applications(id) ON DELETE CASCADE,
+        assignee_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        instructions TEXT,
+        platforms JSONB NOT NULL DEFAULT '[]'::jsonb,
+        task_template_key TEXT NOT NULL DEFAULT 'other',
+        task_options JSONB NOT NULL DEFAULT '{}'::jsonb,
+        product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+        product_snapshot JSONB,
+        reimbursement_budget NUMERIC(14,2),
+        creator_fee_amount NUMERIC(14,2),
+        currency VARCHAR(8) NOT NULL DEFAULT 'INR',
+        due_at TIMESTAMPTZ,
+        status VARCHAR(32) NOT NULL DEFAULT 'assigned'
+          CHECK (status IN (
+            'assigned', 'in_progress', 'submitted', 'needs_revision',
+            'verified_ready', 'paid', 'cancelled', 'rejected'
+          )),
+        assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        assigned_by_label TEXT,
+        submitted_at TIMESTAMPTZ,
+        completion_order_id TEXT,
+        completion_post_url TEXT,
+        completion_platform_handle TEXT,
+        completion_notes TEXT,
+        completion_extra JSONB NOT NULL DEFAULT '{}'::jsonb,
+        admin_verified_order BOOLEAN,
+        admin_verified_post BOOLEAN,
+        admin_internal_notes TEXT,
+        revision_requested_at TIMESTAMPTZ,
+        revision_message TEXT,
+        paid_at TIMESTAMPTZ,
+        paid_amount NUMERIC(14,2),
+        paid_currency VARCHAR(8),
+        paid_method VARCHAR(32),
+        paid_notes TEXT,
+        coins_credited INTEGER,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_collab_tasks_app ON collab_assigned_tasks(collab_application_id);
+      CREATE INDEX IF NOT EXISTS idx_collab_tasks_assignee ON collab_assigned_tasks(assignee_user_id);
+      CREATE INDEX IF NOT EXISTS idx_collab_tasks_status ON collab_assigned_tasks(status);
+
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS purchase_token TEXT;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS linked_order_id INTEGER;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS collab_order_returned_at TIMESTAMPTZ;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS external_retailer TEXT;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS external_order_ref TEXT;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_received_at TIMESTAMPTZ;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_not_received_at TIMESTAMPTZ;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS product_not_received_note TEXT;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS completion_post_urls JSONB NOT NULL DEFAULT '{}'::jsonb;
+      ALTER TABLE collab_assigned_tasks ADD COLUMN IF NOT EXISTS assignee_notification_seen_at TIMESTAMPTZ;
+      CREATE UNIQUE INDEX IF NOT EXISTS collab_assigned_tasks_purchase_token_uidx
+        ON collab_assigned_tasks(purchase_token) WHERE purchase_token IS NOT NULL;
+
+      CREATE TABLE IF NOT EXISTS creator_program_badge_ack (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        collab_approval_seen_at TIMESTAMPTZ,
+        affiliate_approval_seen_at TIMESTAMPTZ
+      );
+
+      CREATE TABLE IF NOT EXISTS collab_program_blocks (
+        id SERIAL PRIMARY KEY,
+        unique_user_id TEXT NOT NULL UNIQUE,
+        user_email TEXT,
+        internal_reason TEXT,
+        public_message TEXT NOT NULL DEFAULT 'Your access to the Creator Program has been restricted. If you believe this is a mistake, you can submit an appeal below.',
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        blocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        appeal_status VARCHAR(32) NOT NULL DEFAULT 'none',
+        appeal_text TEXT,
+        appeal_submitted_at TIMESTAMPTZ,
+        appeal_resolved_at TIMESTAMPTZ,
+        appeal_resolution_note TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_collab_program_blocks_active ON collab_program_blocks (is_active) WHERE is_active = TRUE;
+      CREATE INDEX IF NOT EXISTS idx_collab_program_blocks_email ON collab_program_blocks (LOWER(TRIM(user_email)));
+
+      CREATE TABLE IF NOT EXISTS user_notifications (
+        id serial primary key,
+        user_id integer references users(id) on delete cascade,
+        notification_type text not null,
+        title text not null,
+        message text not null,
+        link text,
+        icon text,
+        priority text default 'medium' check (priority in ('low', 'medium', 'high', 'urgent')),
+        status text default 'unread' check (status in ('unread', 'read', 'archived')),
+        metadata jsonb default '{}'::jsonb,
+        read_at timestamptz,
+        created_at timestamptz default now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id ON user_notifications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_notifications_status ON user_notifications(status);
+      CREATE INDEX IF NOT EXISTS idx_user_notifications_type ON user_notifications(notification_type);
+      CREATE INDEX IF NOT EXISTS idx_user_notifications_created_at ON user_notifications(created_at);
+
+      CREATE TABLE IF NOT EXISTS blog_weekly_creator_reward (
+        id serial primary key,
+        user_id integer not null references users(id) on delete cascade,
+        week_start date not null,
+        blog_post_id integer references blog_posts(id) on delete set null,
+        coins_awarded integer not null default 100,
+        created_at timestamptz default now(),
+        unique (user_id, week_start)
+      );
+      CREATE INDEX IF NOT EXISTS idx_blog_weekly_creator_user ON blog_weekly_creator_reward(user_id);
+      CREATE INDEX IF NOT EXISTS idx_blog_weekly_creator_week ON blog_weekly_creator_reward(week_start DESC);
+    `);
+
+    console.log('📝 Step 11: Blog comment ancestors backfill…');
+    await pool.query(`
+      ALTER TABLE blog_comments ADD COLUMN IF NOT EXISTS ancestors integer[];
+      CREATE INDEX IF NOT EXISTS idx_blog_comments_ancestors ON blog_comments USING gin(ancestors);
+    `);
+    await pool.query(`
+      UPDATE blog_comments SET ancestors = NULL WHERE parent_id IS NULL AND ancestors IS NULL
+    `);
+    let bcIterations = 0;
+    let bcUpdated = true;
+    while (bcUpdated && bcIterations < 100) {
+      const bcResult = await pool.query(`
+        WITH RECURSIVE comment_tree AS (
+          SELECT id, parent_id, ARRAY[]::integer[] AS ancestors
+          FROM blog_comments
+          WHERE parent_id IS NULL
+          UNION ALL
+          SELECT c.id, c.parent_id,
+            CASE
+              WHEN c.parent_id IS NULL THEN ARRAY[]::integer[]
+              ELSE array_append(ct.ancestors, c.parent_id)
+            END AS ancestors
+          FROM blog_comments c
+          INNER JOIN comment_tree ct ON c.parent_id = ct.id
+          WHERE c.ancestors IS NULL
+        )
+        UPDATE blog_comments bc
+        SET ancestors = ct.ancestors
+        FROM comment_tree ct
+        WHERE bc.id = ct.id AND bc.ancestors IS NULL
+        RETURNING bc.id
+      `);
+      bcUpdated = (bcResult.rowCount ?? 0) > 0;
+      bcIterations++;
+      if (bcUpdated) {
+        console.log(`  Backfilled ${bcResult.rowCount} blog comments (pass ${bcIterations})`);
+      }
+    }
+
+    console.log('📝 Step 12: Super admin staff account (from .env)…');
     await syncEnvSuperAdmin();
     
     console.log('✅ Migration completed successfully!');

@@ -1680,6 +1680,16 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
       return res.status(500).send('Server error')
     }
     const id = req.params.id
+
+    // Humans reloading /blog/:id must get the SPA, not this meta stub (nginx serves index.html; fallback redirect)
+    if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
+      const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
+      const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
+      const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
+      const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+      return res.redirect(302, `${frontendBase}/#/user/blog/${id}`)
+    }
+
     const { rows } = await pool.query(
       `
       SELECT p.id, p.title, p.excerpt, p.meta_title, p.meta_description, p.og_title, p.og_description, p.og_image,
@@ -1732,12 +1742,8 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
       .trim()
       .slice(0, 200)
     const pageUrl = `${frontendBase}/blog/${id}`
-    const spaUrl = `${frontendBase}/blog/${id}#/user/blog/${id}`
-    const isCrawler = isSocialCrawler(req.headers['user-agent'] as string | undefined)
-    const redirectBlock = isCrawler
-      ? ''
-      : `<meta http-equiv="refresh" content="0;url=${escapeHtml(spaUrl)}">
-  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>`
+    const spaUrl = `${frontendBase}/#/user/blog/${id}`
+    const redirectBlock = ''
 
     const html = `<!DOCTYPE html>
 <html lang="en">
