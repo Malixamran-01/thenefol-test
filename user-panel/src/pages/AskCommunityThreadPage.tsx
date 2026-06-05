@@ -3,7 +3,6 @@ import { ArrowLeft, Package, Pencil, Sparkles } from 'lucide-react'
 import { communityAPI, type CommunityQuestion } from '../services/communityAPI'
 import { encodeMediaUrl, getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import CommentTree from '../components/community/CommentTree'
 import AnswerPillComposer from '../components/community/AnswerPillComposer'
 import { formatCommunityTime } from '../utils/communityTime'
@@ -292,9 +291,6 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
               <span>
                 Asked by{' '}
                 <span className="font-semibold text-[#1B4965]">{question.author_name}</span>
-                {question.author_is_verified && (
-                  <AuthorVerifiedBadge className="ml-0.5 inline h-3 w-3 align-text-bottom" />
-                )}
               </span>
               <span className="text-[#e2e8f0]" aria-hidden>·</span>
               <time dateTime={question.created_at}>{formatCommunityTime(question.created_at)}</time>

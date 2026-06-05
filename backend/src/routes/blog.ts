@@ -10,6 +10,7 @@ import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
 import { createNotification, resolveActor } from './blogNotifications'
 import communityQuestionsRouter, { initCommunityQuestionsRouter } from './communityQuestions'
+import { isSocialCrawler } from '../utils/socialCrawler'
 
 const DRAFT_SAVE_RATE_LIMIT_MS = 30_000
 const VERSION_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes - create version snapshot
@@ -1695,23 +1696,49 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
     }
     const post = rows[0] as any
     const authorDisplayName = resolvePublicAuthorName(post)
-    const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http')
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'thenefol.com'
-    const baseUrl = `${protocol}://${host}`
-    const toAbsolute = (url: string | null | undefined) => {
-      if (!url) return ''
-      if (url.startsWith('http')) return url
-      return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
-    }
-    // OG image fallback: og_image → cover_image → detail_image → site default (DEFAULT_OG_IMAGE env)
-    const siteDefaultOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
-    const ogImage = toAbsolute(post.og_image || post.cover_image || post.detail_image || (siteDefaultOg ? siteDefaultOg : null))
-    const title = post.og_title || post.meta_title || post.title
-    const description = (post.og_description || post.meta_description || post.excerpt || '').replace(/<[^>]*>/g, '').slice(0, 200)
-    const pageUrl = post.canonical_url || `${baseUrl}/blog/${id}`
-    // Use FRONTEND_URL when frontend is on a different host (e.g. Vercel) - avoids "Cannot GET /" when backend-only serves /blog/:id
+    const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
+    const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
+    const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
     const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
-    const spaUrl = `${frontendBase}/#/user/blog/${id}`
+    const mediaBase = (process.env.PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || frontendBase
+
+    const toAbsolute = (url: string | null | undefined) => {
+      if (!url || !String(url).trim()) return ''
+      const u = String(url).trim()
+      if (u.startsWith('http')) return u
+      return `${mediaBase}${u.startsWith('/') ? '' : '/'}${u}`
+    }
+
+    const pickImage = (...candidates: Array<string | null | undefined>) => {
+      for (const c of candidates) {
+        const abs = toAbsolute(c)
+        if (abs) return abs
+      }
+      return ''
+    }
+
+    const envOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
+    const siteLogo = `${frontendBase}/IMAGES/NEFOL%20icon.png`
+    const postOg = pickImage(post.og_image, post.cover_image, post.detail_image)
+    const ogImage = postOg || (envOg ? toAbsolute(envOg) || envOg : siteLogo)
+    const ogImageSecure = ogImage.startsWith('https://')
+      ? ogImage
+      : ogImage.replace(/^http:\/\//i, 'https://')
+
+    const title = post.og_title || post.meta_title || post.title
+    const description = (post.og_description || post.meta_description || post.excerpt || '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 200)
+    const pageUrl = `${frontendBase}/blog/${id}`
+    const spaUrl = `${frontendBase}/blog/${id}#/user/blog/${id}`
+    const isCrawler = isSocialCrawler(req.headers['user-agent'] as string | undefined)
+    const redirectBlock = isCrawler
+      ? ''
+      : `<meta http-equiv="refresh" content="0;url=${escapeHtml(spaUrl)}">
+  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>`
+
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1723,37 +1750,38 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:url" content="${escapeHtml(pageUrl)}">
-  <meta property="og:site_name" content="The Nefol">
-  ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}
+  <meta property="og:site_name" content="NEFOL">
+  <meta property="og:image" content="${escapeHtml(ogImageSecure)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(ogImageSecure)}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="article:published_time" content="${post.created_at}">
   <meta property="article:modified_time" content="${post.updated_at || post.created_at}">
   <meta property="article:author" content="${escapeHtml(authorDisplayName)}">
-  <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
-  ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}">` : ''}
+  <meta name="twitter:image" content="${escapeHtml(ogImageSecure)}">
   <link rel="canonical" href="${escapeHtml(pageUrl)}">
   <script type="application/ld+json">${JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: title,
     description: description,
-    image: ogImage || undefined,
+    image: ogImageSecure,
     author: { '@type': 'Person', name: authorDisplayName || 'Unknown' },
     datePublished: post.created_at,
     dateModified: post.updated_at || post.created_at,
     mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl }
   })}</script>
-  <meta http-equiv="refresh" content="0;url=${escapeHtml(spaUrl)}">
-  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>
+  ${redirectBlock}
 </head>
 <body>
-  <p>Redirecting to <a href="${escapeHtml(spaUrl)}">${escapeHtml(title)}</a>...</p>
+  <p><a href="${escapeHtml(spaUrl)}">${escapeHtml(title)}</a> on NEFOL</p>
 </body>
 </html>`
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.setHeader('Cache-Control', 'public, max-age=300')
     res.send(html)
   } catch (err) {
     console.error('Blog meta page error:', err)

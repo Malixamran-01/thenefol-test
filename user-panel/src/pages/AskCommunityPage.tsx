@@ -17,7 +17,6 @@ import { communityAPI, type CommunityQuestion, type CommunityTopicType } from '.
 import { productsAPI, type Product } from '../services/api'
 import { encodeMediaUrl, getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
-import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 
 /* ─── helpers ─────────────────────────────────────────────── */
 
@@ -174,7 +173,6 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
                 {initials(q.author_name)}
               </span>
               <span className="font-medium text-[#1B4965]">{q.author_name}</span>
-              {q.author_is_verified && <AuthorVerifiedBadge className="h-3 w-3" />}
             </span>
             <span aria-hidden className="text-[#e2e8f0]">·</span>
             <time dateTime={q.last_activity_at || q.created_at}>

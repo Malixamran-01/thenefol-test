@@ -3,7 +3,8 @@ import { Calendar, ArrowLeft, X, MessageCircle, Heart, Share2, Repeat2, MoreHori
 import { RepostButton } from '../components/RepostButton'
 import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import CustomSelect from '../components/CustomSelect'
-import { getApiBase, getSiteUrl } from '../utils/apiBase'
+import { getApiBase } from '../utils/apiBase'
+import { absoluteBlogMediaUrl, getBlogShareLink, getBlogShareUrls } from '../utils/blogShareUrls'
 import { useAuth } from '../contexts/AuthContext'
 import { useBlogBack } from '../hooks/useBlogBack'
 import { blogActivityAPI } from '../services/api'
@@ -111,9 +112,8 @@ export default function BlogDetail() {
             images = data.images
           }
           
-          // Convert relative image paths to full URLs (required for og:image, etc.)
           const toFullUrl = (url: string | undefined) =>
-            url && url.startsWith('/uploads/') ? `${apiBase}${url}` : url
+            absoluteBlogMediaUrl(url) || url
           const postWithFullImageUrls = {
             ...data,
             cover_image: toFullUrl(data.cover_image) || data.cover_image,
@@ -229,9 +229,13 @@ export default function BlogDetail() {
     const description = post.meta_description || post.excerpt || ''
     const ogTitle = post.og_title || title
     const ogDescription = post.og_description || description
-    const base = getApiBase().replace(/\/$/, '')
-    const canonicalUrl = post.canonical_url?.startsWith('http') ? post.canonical_url : `${base}/blog/${post.id}`
-    const ogImage = post.og_image || post.cover_image || post.detail_image || ''
+    const { crawlUrl } = getBlogShareUrls(post.id)
+    const canonicalUrl = crawlUrl
+    const ogImage =
+      absoluteBlogMediaUrl(post.og_image) ||
+      absoluteBlogMediaUrl(post.cover_image) ||
+      absoluteBlogMediaUrl(post.detail_image) ||
+      ''
 
     document.title = title
     setMeta('description', description)
@@ -243,7 +247,9 @@ export default function BlogDetail() {
     setMeta('og:type', 'article', 'property')
     setMeta('og:site_name', 'The Nefol', 'property')
     if (ogImage) {
-      setMeta('og:image', ogImage, 'property')
+      const ogSecure = ogImage.startsWith('https://') ? ogImage : ogImage.replace(/^http:\/\//i, 'https://')
+      setMeta('og:image', ogSecure, 'property')
+      setMeta('og:image:secure_url', ogSecure, 'property')
       setMeta('og:image:width', '1200', 'property')
       setMeta('og:image:height', '630', 'property')
     }
@@ -283,6 +289,17 @@ export default function BlogDetail() {
       script?.remove()
     }
   }, [post])
+
+  // Show /blog/:id in the address bar (plus hash) so copy/paste shares a crawler-friendly URL on VPS hash routing
+  useEffect(() => {
+    if (!post?.id) return
+    const { universalUrl } = getBlogShareUrls(post.id)
+    try {
+      window.history.replaceState(window.history.state, '', universalUrl)
+    } catch {
+      /* ignore */
+    }
+  }, [post?.id])
 
   const processContentImages = (content: string, apiBase: string, postImages: string[] = []): string => {
     if (!content) return content
@@ -921,27 +938,13 @@ export default function BlogDetail() {
     return []
   }
 
-  /**
-   * Share/copy link must include the hash route the SPA uses (`#/user/blog/:id`), otherwise
-   * opening e.g. `https://thenefol.com/blog/8` loads the crawler meta shell but not the in-app post view.
-   * Format: `https://thenefol.com/blog/8#/user/blog/8` (meta page path + SPA hash).
-   */
-  const getShareUrl = () => {
-    if (!post) return ''
-    const id = String(post.id)
-    const hash = `#/user/blog/${id}`
-    const cu = post.canonical_url?.trim()
-    if (cu?.startsWith('http') && cu.includes('#/user/blog/')) {
-      return cu
-    }
-    const origin = getSiteUrl().replace(/\/$/, '')
-    return `${origin}/blog/${id}${hash}`
-  }
+  /** Hybrid /blog/:id#/user/blog/:id — crawlers use path; SPA keeps hash (VPS production). */
+  const getShareLink = () => (post ? getBlogShareLink(post.id) : '')
 
   const handleShare = async () => {
     if (!post) return
 
-    const shareUrl = getShareUrl()
+    const shareLink = getShareLink()
     const shareTitle = post.og_title || post.meta_title || post.title
     const shareText = post.og_description || post.meta_description || post.excerpt || ''
     
@@ -951,7 +954,7 @@ export default function BlogDetail() {
         await navigator.share({
           title: shareTitle,
           text: shareText,
-          url: shareUrl
+          url: shareLink
         })
         setShowShareMenu(false)
       } catch (err) {
@@ -969,7 +972,7 @@ export default function BlogDetail() {
 
   const copyToClipboard = async () => {
     if (!post) return
-    const shareUrl = getShareUrl()
+    const shareUrl = getShareLink()
     try {
       await navigator.clipboard.writeText(shareUrl)
       alert('Link copied to clipboard!')
@@ -981,7 +984,7 @@ export default function BlogDetail() {
 
   const shareToSocial = (platform: string) => {
     if (!post) return
-    const shareUrl = encodeURIComponent(getShareUrl())
+    const shareUrl = encodeURIComponent(getShareLink())
     const shareTitle = encodeURIComponent(post.og_title || post.meta_title || post.title)
     const shareText = encodeURIComponent(post.og_description || post.meta_description || post.excerpt || '')
     

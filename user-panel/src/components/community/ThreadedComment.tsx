@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { BadgeCheck, MessageSquare, Pencil, Trash2 } from 'lucide-react'
 import type { Comment } from '../../types/community'
-import { AuthorVerifiedBadge } from '../AuthorVerifiedBadge'
 import { formatCommunityTime, DEPTH_BORDER_COLORS, DEPTH_MARGIN } from '../../utils/communityTime'
 import { encodeMediaUrl, getApiBase } from '../../utils/apiBase'
 import InlineReplyBox from './InlineReplyBox'
@@ -190,10 +189,6 @@ export default function ThreadedComment({
             <span className="text-[13px] font-semibold text-[#1B4965]">
               {comment.author_name}
             </span>
-
-            {comment.author_verified && (
-              <AuthorVerifiedBadge className="inline h-3 w-3 align-text-bottom" />
-            )}
 
             {isOp && (
               <span className="rounded bg-[#1B4965]/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#1B4965]">
