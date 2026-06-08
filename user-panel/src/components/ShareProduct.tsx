@@ -23,7 +23,7 @@ export default function ShareProduct({
   const [showIconOnly, setShowIconOnly] = useState(false)
   const [showInstagramOptions, setShowInstagramOptions] = useState(false)
 
-  const { appUrl, crawlUrl } = getProductShareUrls(productSlug)
+  const { appUrl, crawlUrl, universalUrl } = getProductShareUrls(productSlug)
   const siteOrigin = getShareSiteOrigin()
   const siteLogoOgUrl = `${siteOrigin}/IMAGES/NEFOL%20icon.png`
   /**
@@ -31,7 +31,7 @@ export default function ShareProduct({
    * Copy Link uses appUrl (#/user/...) so the SPA opens directly.
    */
   const shareText = `Check out ${productTitle} on NEFOL! ${crawlUrl}`
-  const copyLinkLabel = copied ? 'App link copied!' : 'Copy app link (#/user)'
+  const copyLinkLabel = copied ? 'Link copied!' : 'Copy share link'
 
   const getAbsoluteImageUrl = (img?: string): string | undefined => {
     if (!img || !img.trim()) return undefined
@@ -86,13 +86,13 @@ export default function ShareProduct({
   const handleCopyLink = async () => {
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(appUrl)
+        await navigator.clipboard.writeText(universalUrl)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
         return
       }
       const textArea = document.createElement('textarea')
-      textArea.value = appUrl
+      textArea.value = universalUrl
       textArea.style.position = 'fixed'
       textArea.style.left = '-999999px'
       document.body.appendChild(textArea)
@@ -103,7 +103,7 @@ export default function ShareProduct({
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
-      alert(`Unable to copy link. Please copy manually: ${appUrl}`)
+      alert(`Unable to copy link. Please copy manually: ${universalUrl}`)
     }
   }
 
@@ -154,7 +154,7 @@ export default function ShareProduct({
 
   const handleEmailShare = () => {
     const subject = encodeURIComponent(`Check out ${productTitle} on NEFOL!`)
-    const bodyParts = [`Check out ${productTitle} on NEFOL!`, '', appUrl]
+    const bodyParts = [`Check out ${productTitle} on NEFOL!`, '', universalUrl]
     if (productDescription) bodyParts.push('', productDescription)
     const mailtoUrl = `mailto:?subject=${subject}&body=${encodeURIComponent(bodyParts.join('\n'))}`
     window.location.href = mailtoUrl
@@ -162,7 +162,7 @@ export default function ShareProduct({
   }
 
   const copyShareContent = async () => {
-    const shareContent = `Check out ${productTitle} on NEFOL!\n\n${appUrl}`
+    const shareContent = `Check out ${productTitle} on NEFOL!\n\n${universalUrl}`
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(shareContent)
     } else {

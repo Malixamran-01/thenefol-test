@@ -43,7 +43,13 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
           WHERE pi.product_id = p.id AND (pi.type = 'pdp' OR pi.type IS NULL)
           ORDER BY COALESCE(pi.display_order, pi.id) ASC, pi.id ASC
           LIMIT 1
-        ) AS first_pdp_url
+        ) AS first_pdp_url,
+        (
+          SELECT pi.url FROM product_images pi
+          WHERE pi.product_id = p.id AND pi.type = 'banner'
+          ORDER BY COALESCE(pi.display_order, pi.id) ASC, pi.id ASC
+          LIMIT 1
+        ) AS first_banner_url
       FROM products p
       WHERE p.slug = $1
       LIMIT 1
@@ -63,17 +69,28 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       details: Record<string, unknown> | null
       list_image: string | null
       first_pdp_url: string | null
+      first_banner_url: string | null
     }
 
     const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
     const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
-    const baseUrl = `${protocol}://${host}`
+    const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
+    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+    const mediaBase = (process.env.PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || frontendBase
 
     const toAbsolute = (url: string | null | undefined) => {
       if (!url || !String(url).trim()) return ''
       const u = String(url).trim()
-      if (u.startsWith('http')) return u
-      return `${baseUrl}${u.startsWith('/') ? '' : '/'}${u}`
+      if (/^https?:\/\//i.test(u)) return u
+      return `${mediaBase}${u.startsWith('/') ? '' : '/'}${u}`
+    }
+
+    const pickImage = (...candidates: Array<string | null | undefined>) => {
+      for (const c of candidates) {
+        const abs = toAbsolute(c)
+        if (abs) return abs
+      }
+      return ''
     }
 
     const details = row.details && typeof row.details === 'object' ? row.details : {}
@@ -87,17 +104,22 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       descRaw.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200) ||
       'Discover premium skincare from NEFOL.'
 
-    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
     const slugPath = encodeURIComponent(row.slug)
     const spaUrl = `${frontendBase}/#/user/product/${slugPath}`
-    const pageUrl = `${baseUrl}/product/${slugPath}`
+    const pageUrl = `${frontendBase}/product/${slugPath}`
 
     const envOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
-    const siteLogoPath = '/IMAGES/NEFOL%20icon.png'
-    const defaultSiteOg = envOg || `${frontendBase.replace(/\/$/, '')}${siteLogoPath}`
+    const siteLogo = `${frontendBase}/IMAGES/NEFOL%20icon.png`
+    const detailsListImage =
+      details && typeof details.list_image === 'string' ? details.list_image : null
 
-    const productOg = toAbsolute(row.list_image) || toAbsolute(row.first_pdp_url)
-    const ogImage = productOg || defaultSiteOg
+    const productOg = pickImage(
+      row.first_pdp_url,
+      row.list_image,
+      row.first_banner_url,
+      detailsListImage
+    )
+    const ogImage = productOg || (envOg ? toAbsolute(envOg) || envOg : siteLogo)
     const ogImageSecure = ogImage.startsWith('https://') ? ogImage : ogImage.replace(/^http:\/\//i, 'https://')
 
     const title = `${row.title || 'Product'} | NEFOL`

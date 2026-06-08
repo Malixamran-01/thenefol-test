@@ -1,6 +1,7 @@
 import express from 'express'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
+import { isSocialCrawler } from '../utils/socialCrawler'
 import { createNotification, resolveActor } from './blogNotifications'
 
 const router = express.Router()
@@ -1577,10 +1578,17 @@ export async function serveAuthorMetaPage(req: express.Request, res: express.Res
     const isNumeric = /^\d+$/.test(identifier)
     const usernameClean = identifier.startsWith('@') ? identifier.slice(1) : identifier
 
+    const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
+    const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
+    const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
+    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+
     const { rows } = await pool.query(
       `SELECT 
-        ap.id, ap.username, ap.display_name, ap.bio, ap.profile_image, ap.cover_image, ap.unique_user_id
+        ap.id, ap.username, ap.display_name, ap.bio, ap.profile_image, ap.cover_image, ap.unique_user_id,
+        u.profile_photo AS user_profile_photo
        FROM author_profiles ap
+       LEFT JOIN users u ON u.id = ap.user_id
        WHERE ap.status != 'deleted'
          AND (
            ${isNumeric ? 'ap.id = $1::integer OR ap.user_id = $1::integer' : '(ap.username = $1 OR ap.username = $2 OR ap.unique_user_id = $1)'}
@@ -1593,23 +1601,33 @@ export async function serveAuthorMetaPage(req: express.Request, res: express.Res
     }
 
     const author = rows[0]
-    const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http')
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'thenefol.com'
-    const baseUrl = `${protocol}://${host}`
+    const authorId = author.unique_user_id || String(author.id)
+    const authorPath = encodeURIComponent(authorId)
+
+    if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
+      return res.redirect(302, `${frontendBase}/#/user/author/${authorPath}`)
+    }
+
+    const mediaBase = (process.env.PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || frontendBase
     const toAbsolute = (url: string | null | undefined) => {
-      if (!url) return ''
-      if (url.startsWith('http')) return url
-      return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+      if (!url || !String(url).trim()) return ''
+      const u = String(url).trim()
+      if (/^https?:\/\//i.test(u)) return u
+      return `${mediaBase}${u.startsWith('/') ? '' : '/'}${u}`
     }
 
     const displayName = author.display_name || author.username || 'Author'
     const username = author.username?.startsWith('@') ? author.username : `@${author.username || ''}`
     const bio = (author.bio || '').replace(/<[^>]*>/g, '').trim().slice(0, 200)
-    const ogImage = toAbsolute(author.profile_image || author.cover_image || null)
-    const authorId = author.unique_user_id || String(author.id)
-    const pageUrl = `${baseUrl}/author/${encodeURIComponent(authorId)}`
-    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
-    const spaUrl = `${frontendBase}/#/user/author/${encodeURIComponent(authorId)}`
+    const envOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
+    const siteLogo = `${frontendBase}/IMAGES/NEFOL%20icon.png`
+    const profileOg = toAbsolute(author.profile_image || author.cover_image || author.user_profile_photo)
+    const ogImageRaw = profileOg || (envOg ? toAbsolute(envOg) || envOg : siteLogo)
+    const ogImageSecure = ogImageRaw.startsWith('https://')
+      ? ogImageRaw
+      : ogImageRaw.replace(/^http:\/\//i, 'https://')
+    const pageUrl = `${frontendBase}/author/${authorPath}`
+    const spaUrl = `${frontendBase}/#/user/author/${authorPath}`
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1622,25 +1640,25 @@ export async function serveAuthorMetaPage(req: express.Request, res: express.Res
   <meta property="og:title" content="${escapeHtml(displayName)}">
   <meta property="og:description" content="${escapeHtml(bio || `${displayName}'s profile on NEFOL`)}">
   <meta property="og:url" content="${escapeHtml(pageUrl)}">
-  <meta property="og:site_name" content="The Nefol">
-  ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}
-  <meta property="og:image:width" content="400">
-  <meta property="og:image:height" content="400">
+  <meta property="og:site_name" content="NEFOL">
+  <meta property="og:image" content="${escapeHtml(ogImageSecure)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(ogImageSecure)}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="profile:username" content="${escapeHtml(username)}">
-  <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(displayName)}">
   <meta name="twitter:description" content="${escapeHtml(bio || `${displayName}'s profile on NEFOL`)}">
-  ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}">` : ''}
+  <meta name="twitter:image" content="${escapeHtml(ogImageSecure)}">
   <link rel="canonical" href="${escapeHtml(pageUrl)}">
-  <meta http-equiv="refresh" content="0;url=${escapeHtml(spaUrl)}">
-  <script>window.location.replace(${JSON.stringify(spaUrl)})</script>
 </head>
 <body>
-  <p>Redirecting to <a href="${escapeHtml(spaUrl)}">${escapeHtml(displayName)}</a>...</p>
+  <p><a href="${escapeHtml(spaUrl)}">${escapeHtml(displayName)}</a> on NEFOL</p>
 </body>
 </html>`
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.setHeader('Cache-Control', 'public, max-age=300')
     res.send(html)
   } catch (err) {
     console.error('Author meta page error:', err)

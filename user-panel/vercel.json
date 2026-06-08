@@ -14,6 +14,10 @@
       "destination": "https://nefolbackend-production.up.railway.app/product/:slug"
     },
     {
+      "source": "/author/:id",
+      "destination": "https://nefolbackend-production.up.railway.app/author/:id"
+    },
+    {
       "source": "/uploads/:path*",
       "destination": "https://nefolbackend-production.up.railway.app/uploads/:path*"
     },

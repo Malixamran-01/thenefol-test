@@ -11,6 +11,8 @@ export type ProductShareUrls = {
   appUrl: string
   /** Crawlable URL — backend serves OG tags + redirects to appUrl (WhatsApp, Facebook). */
   crawlUrl: string
+  /** Path + hash — copy/share on VPS hash routing. */
+  universalUrl: string
 }
 
 /** Path-safe slug for share URLs (avoid double-encoding). */
@@ -27,8 +29,15 @@ export function slugForSharePath(slug: string): string {
 export function getProductShareUrls(slug: string): ProductShareUrls {
   const origin = getShareSiteOrigin()
   const pathSlug = slugForSharePath(slug)
+  const crawlUrl = `${origin}/product/${pathSlug}`
+  const appUrl = `${origin}/#/user/product/${pathSlug}`
   return {
-    appUrl: `${origin}/#/user/product/${pathSlug}`,
-    crawlUrl: `${origin}/product/${pathSlug}`,
+    appUrl,
+    crawlUrl,
+    universalUrl: `${crawlUrl}#/user/product/${pathSlug}`,
   }
+}
+
+export function getProductShareLink(slug: string): string {
+  return getProductShareUrls(slug).universalUrl
 }

@@ -21,7 +21,8 @@ import {
   UserPlus,
   X
 } from 'lucide-react'
-import { getApiBase } from '../utils/apiBase'
+import { getApiBase, toAbsoluteMediaUrl } from '../utils/apiBase'
+import { getAuthorShareUrls } from '../utils/authorShareUrls'
 import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import { useAuth } from '../contexts/AuthContext'
 import CustomSelect from '../components/CustomSelect'
@@ -727,13 +728,23 @@ export default function AuthorProfile() {
     return `${resolvedAuthor.name} writes on NEFOL covering ${topics}. With ${authorStats.posts} published ${authorStats.posts === 1 ? 'post' : 'posts'}, this profile highlights their writing and reader engagement.`
   }, [authorProfile?.bio, authorStats.posts, featuredCategories, hasAuthorProfile, posts.length, resolvedAuthor.name, userSummary?.bio])
 
+  const shareAuthorId = useMemo(() => {
+    if (!effectiveAuthorId || effectiveAuthorId === 'guest') return ''
+    return (hasAuthorProfile && authorProfile?.unique_user_id)
+      ? String(authorProfile.unique_user_id)
+      : String(effectiveAuthorId)
+  }, [effectiveAuthorId, hasAuthorProfile, authorProfile?.unique_user_id])
+
+  const authorShareUrls = useMemo(
+    () => (shareAuthorId ? getAuthorShareUrls(shareAuthorId) : null),
+    [shareAuthorId]
+  )
+
   // Open Graph meta tags for when profile is shared (client-side fallback for JS crawlers)
   useEffect(() => {
-    if (!resolvedAuthor?.name || !effectiveAuthorId || effectiveAuthorId === 'guest') return
-    const shareAuthorId = (hasAuthorProfile && authorProfile?.unique_user_id) ? authorProfile.unique_user_id : effectiveAuthorId
-    const base = getApiBase().replace(/\/$/, '')
-    const canonicalUrl = `${base}/author/${encodeURIComponent(String(shareAuthorId))}`
-    const ogImage = profileImage || coverImage || ''
+    if (!resolvedAuthor?.name || !shareAuthorId || !authorShareUrls) return
+    const canonicalUrl = authorShareUrls.crawlUrl
+    const ogImage = toAbsoluteMediaUrl(profileImage || coverImage || '')
     const description = (aboutText || '').replace(/<[^>]*>/g, '').slice(0, 200)
 
     const setMeta = (key: string, value: string, attr: 'name' | 'property' = 'name') => {
@@ -771,7 +782,7 @@ export default function AuthorProfile() {
       document.head.appendChild(canonical)
     }
     canonical.setAttribute('href', canonicalUrl)
-  }, [resolvedAuthor?.name, effectiveAuthorId, hasAuthorProfile, authorProfile?.unique_user_id, aboutText, profileImage, coverImage, handle])
+  }, [resolvedAuthor?.name, shareAuthorId, authorShareUrls, aboutText, profileImage, coverImage, handle])
 
   const ensureAuthForAction = () => {
     if (isAuthenticated) return true
@@ -848,19 +859,17 @@ export default function AuthorProfile() {
   }
 
   const handleShareProfile = async () => {
-    const shareAuthorId = (hasAuthorProfile && authorProfile?.unique_user_id)
-      ? authorProfile.unique_user_id
-      : effectiveAuthorId
-    const shareUrl = `${getApiBase()}/author/${encodeURIComponent(String(shareAuthorId))}`
+    if (!authorShareUrls) return
+    const { crawlUrl, universalUrl } = authorShareUrls
     try {
       if (navigator.share) {
         await navigator.share({
           title: `${resolvedAuthor.name} on NEFOL`,
           text: `${resolvedAuthor.name}'s profile on NEFOL. ${aboutText ? aboutText.slice(0, 100) + '...' : ''}`,
-          url: shareUrl
+          url: crawlUrl,
         })
       } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(shareUrl)
+        await navigator.clipboard.writeText(universalUrl)
         setShowCopied(true)
         window.setTimeout(() => setShowCopied(false), 1800)
       }
