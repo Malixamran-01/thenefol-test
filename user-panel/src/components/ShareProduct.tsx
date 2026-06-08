@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react'
 import { Share2, Copy, Check, Facebook, Mail, Instagram } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
-import { getProductShareUrls, getShareSiteOrigin } from '../utils/productShareUrls'
+import { getProductShareLink, getShareSiteOrigin } from '../utils/productShareUrls'
 
 interface ShareProductProps {
   productSlug: string
@@ -23,14 +23,11 @@ export default function ShareProduct({
   const [showIconOnly, setShowIconOnly] = useState(false)
   const [showInstagramOptions, setShowInstagramOptions] = useState(false)
 
-  const { appUrl, crawlUrl, universalUrl } = getProductShareUrls(productSlug)
+  const shareLink = getProductShareLink(productSlug)
   const siteOrigin = getShareSiteOrigin()
   const siteLogoOgUrl = `${siteOrigin}/IMAGES/NEFOL%20icon.png`
-  /**
-   * WhatsApp/Facebook must use crawlUrl (no hash) so the server returns product OG tags.
-   * Copy Link uses appUrl (#/user/...) so the SPA opens directly.
-   */
-  const shareText = `Check out ${productTitle} on NEFOL! ${crawlUrl}`
+  /** Hybrid URL: /product/:slug#/user/product/:slug — includes #/user; crawlers read path before # for OG. */
+  const shareText = `Check out ${productTitle} on NEFOL! ${shareLink}`
   const copyLinkLabel = copied ? 'Link copied!' : 'Copy share link'
 
   const getAbsoluteImageUrl = (img?: string): string | undefined => {
@@ -64,7 +61,7 @@ export default function ShareProduct({
       ensureMeta('property', 'og:type', 'product')
       ensureMeta('property', 'og:title', productTitle)
       ensureMeta('property', 'og:description', desc)
-      ensureMeta('property', 'og:url', crawlUrl)
+      ensureMeta('property', 'og:url', shareLink)
       ensureMeta('property', 'og:image', ogImageUrl)
       ensureMeta('property', 'og:image:width', '1200')
       ensureMeta('property', 'og:image:height', '630')
@@ -81,18 +78,18 @@ export default function ShareProduct({
     } catch (err) {
       console.warn('Failed to update social meta tags', err)
     }
-  }, [productSlug, productTitle, productDescription, crawlUrl, ogImageUrl, absoluteImageUrl])
+  }, [productSlug, productTitle, productDescription, shareLink, ogImageUrl, absoluteImageUrl])
 
   const handleCopyLink = async () => {
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(universalUrl)
+        await navigator.clipboard.writeText(shareLink)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
         return
       }
       const textArea = document.createElement('textarea')
-      textArea.value = universalUrl
+      textArea.value = shareLink
       textArea.style.position = 'fixed'
       textArea.style.left = '-999999px'
       document.body.appendChild(textArea)
@@ -103,7 +100,7 @@ export default function ShareProduct({
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
-      alert(`Unable to copy link. Please copy manually: ${universalUrl}`)
+      alert(`Unable to copy link. Please copy manually: ${shareLink}`)
     }
   }
 
@@ -119,7 +116,7 @@ export default function ShareProduct({
             await navigator.share({
               title: productTitle,
               text: shareText,
-              url: crawlUrl,
+              url: shareLink,
               files: [file],
             })
             setShowShareMenu(false)
@@ -130,7 +127,7 @@ export default function ShareProduct({
       await navigator.share({
         title: productTitle,
         text: shareText,
-        url: crawlUrl,
+        url: shareLink,
       })
       setShowShareMenu(false)
     } catch (err) {
@@ -147,14 +144,14 @@ export default function ShareProduct({
   }
 
   const handleFacebookShare = () => {
-    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(crawlUrl)}`
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`
     window.open(facebookUrl, '_blank', 'width=600,height=400')
     setShowShareMenu(false)
   }
 
   const handleEmailShare = () => {
     const subject = encodeURIComponent(`Check out ${productTitle} on NEFOL!`)
-    const bodyParts = [`Check out ${productTitle} on NEFOL!`, '', universalUrl]
+    const bodyParts = [`Check out ${productTitle} on NEFOL!`, '', shareLink]
     if (productDescription) bodyParts.push('', productDescription)
     const mailtoUrl = `mailto:?subject=${subject}&body=${encodeURIComponent(bodyParts.join('\n'))}`
     window.location.href = mailtoUrl
@@ -162,7 +159,7 @@ export default function ShareProduct({
   }
 
   const copyShareContent = async () => {
-    const shareContent = `Check out ${productTitle} on NEFOL!\n\n${universalUrl}`
+    const shareContent = `Check out ${productTitle} on NEFOL!\n\n${shareLink}`
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(shareContent)
     } else {

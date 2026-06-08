@@ -7,12 +7,17 @@ export function getShareSiteOrigin(): string {
 }
 
 export type ProductShareUrls = {
-  /** Hash route — opens the product in the SPA immediately (copy link, email). */
+  /** Hash-only SPA route. */
   appUrl: string
-  /** Crawlable URL — backend serves OG tags + redirects to appUrl (WhatsApp, Facebook). */
+  /** Path before # — used by crawlers for OG (do not share alone). */
   crawlUrl: string
-  /** Path + hash — copy/share on VPS hash routing. */
+  /** Primary share link: /product/:slug#/user/product/:slug */
   universalUrl: string
+}
+
+/** Primary share link for copy, WhatsApp, Facebook, etc. Includes #/user. */
+export function getProductShareLink(slug: string): string {
+  return getProductShareUrls(slug).universalUrl
 }
 
 /** Path-safe slug for share URLs (avoid double-encoding). */
@@ -36,8 +41,4 @@ export function getProductShareUrls(slug: string): ProductShareUrls {
     crawlUrl,
     universalUrl: `${crawlUrl}#/user/product/${pathSlug}`,
   }
-}
-
-export function getProductShareLink(slug: string): string {
-  return getProductShareUrls(slug).universalUrl
 }

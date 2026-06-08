@@ -32,7 +32,8 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
       const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
       const slugPath = encodeURIComponent(slug)
-      return res.redirect(302, `${frontendBase}/#/user/product/${slugPath}`)
+      const universal = `${frontendBase}/product/${slugPath}#/user/product/${slugPath}`
+      return res.redirect(302, universal)
     }
 
     const { rows } = await pool.query(
@@ -41,20 +42,20 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
         (
           SELECT pi.url FROM product_images pi
           WHERE pi.product_id = p.id AND (pi.type = 'pdp' OR pi.type IS NULL)
-          ORDER BY COALESCE(pi.display_order, pi.id) ASC, pi.id ASC
+          ORDER BY pi.id ASC
           LIMIT 1
         ) AS first_pdp_url,
         (
           SELECT pi.url FROM product_images pi
           WHERE pi.product_id = p.id AND pi.type = 'banner'
-          ORDER BY COALESCE(pi.display_order, pi.id) ASC, pi.id ASC
+          ORDER BY pi.id ASC
           LIMIT 1
         ) AS first_banner_url
       FROM products p
-      WHERE p.slug = $1
+      WHERE p.slug = $1 OR p.slug = $2
       LIMIT 1
       `,
-      [slug]
+      [slug, rawSlug]
     )
 
     if (rows.length === 0) {
@@ -93,7 +94,18 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       return ''
     }
 
-    const details = row.details && typeof row.details === 'object' ? row.details : {}
+    const details =
+      row.details && typeof row.details === 'object' && !Array.isArray(row.details)
+        ? (row.details as Record<string, unknown>)
+        : typeof row.details === 'string'
+          ? (() => {
+              try {
+                return JSON.parse(row.details) as Record<string, unknown>
+              } catch {
+                return {}
+              }
+            })()
+          : {}
     const descRaw =
       (typeof row.description === 'string' && row.description) ||
       (typeof details.description === 'string' && details.description) ||
@@ -105,17 +117,17 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       'Discover premium skincare from NEFOL.'
 
     const slugPath = encodeURIComponent(row.slug)
-    const spaUrl = `${frontendBase}/#/user/product/${slugPath}`
-    const pageUrl = `${frontendBase}/product/${slugPath}`
+    const universalUrl = `${frontendBase}/product/${slugPath}#/user/product/${slugPath}`
+    const pageUrl = universalUrl
 
     const envOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
     const siteLogo = `${frontendBase}/IMAGES/NEFOL%20icon.png`
     const detailsListImage =
-      details && typeof details.list_image === 'string' ? details.list_image : null
+      typeof details.list_image === 'string' ? details.list_image : null
 
     const productOg = pickImage(
-      row.first_pdp_url,
       row.list_image,
+      row.first_pdp_url,
       row.first_banner_url,
       detailsListImage
     )
@@ -149,7 +161,7 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
   ${redirectBlock}
 </head>
 <body>
-  <p><a href="${escapeHtmlMeta(spaUrl)}">${escapeHtmlMeta(row.title || 'View product')}</a> on NEFOL</p>
+  <p><a href="${escapeHtmlMeta(universalUrl)}">${escapeHtmlMeta(row.title || 'View product')}</a> on NEFOL</p>
 </body>
 </html>`
 

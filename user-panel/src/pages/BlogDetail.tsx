@@ -228,8 +228,8 @@ export default function BlogDetail() {
     const description = post.meta_description || post.excerpt || ''
     const ogTitle = post.og_title || title
     const ogDescription = post.og_description || description
-    const { crawlUrl } = getBlogShareUrls(post.id)
-    const canonicalUrl = crawlUrl
+    const { universalUrl } = getBlogShareUrls(post.id)
+    const canonicalUrl = universalUrl
     const ogImage =
       absoluteBlogMediaUrl(post.og_image) ||
       absoluteBlogMediaUrl(post.cover_image) ||

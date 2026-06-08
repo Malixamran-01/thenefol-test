@@ -1605,7 +1605,8 @@ export async function serveAuthorMetaPage(req: express.Request, res: express.Res
     const authorPath = encodeURIComponent(authorId)
 
     if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
-      return res.redirect(302, `${frontendBase}/#/user/author/${authorPath}`)
+      const universal = `${frontendBase}/author/${authorPath}#/user/author/${authorPath}`
+      return res.redirect(302, universal)
     }
 
     const mediaBase = (process.env.PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || frontendBase
@@ -1626,8 +1627,8 @@ export async function serveAuthorMetaPage(req: express.Request, res: express.Res
     const ogImageSecure = ogImageRaw.startsWith('https://')
       ? ogImageRaw
       : ogImageRaw.replace(/^http:\/\//i, 'https://')
-    const pageUrl = `${frontendBase}/author/${authorPath}`
-    const spaUrl = `${frontendBase}/#/user/author/${authorPath}`
+    const pageUrl = `${frontendBase}/author/${authorPath}#/user/author/${authorPath}`
+    const spaUrl = pageUrl
 
     const html = `<!DOCTYPE html>
 <html lang="en">

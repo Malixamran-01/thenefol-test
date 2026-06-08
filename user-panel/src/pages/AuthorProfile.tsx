@@ -22,7 +22,7 @@ import {
   X
 } from 'lucide-react'
 import { getApiBase, toAbsoluteMediaUrl } from '../utils/apiBase'
-import { getAuthorShareUrls } from '../utils/authorShareUrls'
+import { getAuthorShareLink } from '../utils/authorShareUrls'
 import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import { useAuth } from '../contexts/AuthContext'
 import CustomSelect from '../components/CustomSelect'
@@ -735,15 +735,11 @@ export default function AuthorProfile() {
       : String(effectiveAuthorId)
   }, [effectiveAuthorId, hasAuthorProfile, authorProfile?.unique_user_id])
 
-  const authorShareUrls = useMemo(
-    () => (shareAuthorId ? getAuthorShareUrls(shareAuthorId) : null),
-    [shareAuthorId]
-  )
-
   // Open Graph meta tags for when profile is shared (client-side fallback for JS crawlers)
   useEffect(() => {
-    if (!resolvedAuthor?.name || !shareAuthorId || !authorShareUrls) return
-    const canonicalUrl = authorShareUrls.crawlUrl
+    if (!resolvedAuthor?.name || !shareAuthorId) return
+    const shareLink = getAuthorShareLink(shareAuthorId)
+    const canonicalUrl = shareLink
     const ogImage = toAbsoluteMediaUrl(profileImage || coverImage || '')
     const description = (aboutText || '').replace(/<[^>]*>/g, '').slice(0, 200)
 
@@ -782,7 +778,7 @@ export default function AuthorProfile() {
       document.head.appendChild(canonical)
     }
     canonical.setAttribute('href', canonicalUrl)
-  }, [resolvedAuthor?.name, shareAuthorId, authorShareUrls, aboutText, profileImage, coverImage, handle])
+  }, [resolvedAuthor?.name, shareAuthorId, aboutText, profileImage, coverImage, handle])
 
   const ensureAuthForAction = () => {
     if (isAuthenticated) return true
@@ -859,17 +855,17 @@ export default function AuthorProfile() {
   }
 
   const handleShareProfile = async () => {
-    if (!authorShareUrls) return
-    const { crawlUrl, universalUrl } = authorShareUrls
+    if (!shareAuthorId) return
+    const shareLink = getAuthorShareLink(shareAuthorId)
     try {
       if (navigator.share) {
         await navigator.share({
           title: `${resolvedAuthor.name} on NEFOL`,
           text: `${resolvedAuthor.name}'s profile on NEFOL. ${aboutText ? aboutText.slice(0, 100) + '...' : ''}`,
-          url: crawlUrl,
+          url: shareLink,
         })
       } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(universalUrl)
+        await navigator.clipboard.writeText(shareLink)
         setShowCopied(true)
         window.setTimeout(() => setShowCopied(false), 1800)
       }
