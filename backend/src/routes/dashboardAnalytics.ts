@@ -198,7 +198,7 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
             title: `${lowStockCount} product${lowStockCount > 1 ? 's' : ''} running low on stock`,
             icon: '⚠️',
             color: 'text-orange-600',
-            href: '/admin/inventory'
+            href: '/loginasadmin/inventory'
           })
         }
       } catch {}
@@ -216,7 +216,7 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
             title: `${pendingCount} order${pendingCount > 1 ? 's' : ''} pending processing`,
             icon: '📦',
             color: 'text-blue-600',
-            href: '/admin/orders'
+            href: '/loginasadmin/orders'
           })
         }
       } catch {}
@@ -234,7 +234,7 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
             title: `${affiliateCount} affiliate request${affiliateCount > 1 ? 's' : ''} pending approval`,
             icon: '🤝',
             color: 'text-purple-600',
-            href: '/admin/affiliate-requests'
+            href: '/loginasadmin/affiliate-requests'
           })
         }
       } catch {}
@@ -252,7 +252,7 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
             title: `${noImageCount} product${noImageCount > 1 ? 's' : ''} missing images`,
             icon: '🖼️',
             color: 'text-yellow-600',
-            href: '/admin/products'
+            href: '/loginasadmin/products'
           })
         }
       } catch {}
@@ -270,7 +270,7 @@ export function registerDashboardAnalyticsRoutes(app: express.Express, pool: Poo
             title: `${messagesCount} unread contact message${messagesCount > 1 ? 's' : ''}`,
             icon: '📧',
             color: 'text-green-600',
-            href: '/admin/contact-messages'
+            href: '/loginasadmin/contact-messages'
           })
         }
       } catch {}

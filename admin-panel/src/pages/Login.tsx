@@ -20,7 +20,7 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   if (isAuthenticated) {
-    const from = location.state?.from?.pathname || '/admin/dashboard'
+    const from = location.state?.from?.pathname || '/loginasadmin/dashboard'
     return <Navigate to={from} replace />
   }
 

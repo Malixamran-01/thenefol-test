@@ -1333,7 +1333,7 @@ export default function CollabRequests() {
                     Creator tasks ({creatorDetailTasksLoading ? '…' : creatorDetailTasks.length})
                   </p>
                   <RouterLink
-                    to={`/admin/collab-tasks?collab=${selected.id}`}
+                    to={`/loginasadmin/collab-tasks?collab=${selected.id}`}
                     style={{ fontSize: 12, fontWeight: 600, color: '#4B97C9', textDecoration: 'none' }}
                   >
                     Open in task registry →

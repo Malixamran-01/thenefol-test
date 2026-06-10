@@ -340,12 +340,12 @@ const Returns = () => {
               {filteredReturns.map((returnItem) => (
                 <tr key={returnItem.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-4">
-                    <Link to={`/admin/returns/${returnItem.id}`} className="text-brand-primary hover:underline font-medium">
+                    <Link to={`/loginasadmin/returns/${returnItem.id}`} className="text-brand-primary hover:underline font-medium">
                       {returnItem.returnNumber}
                     </Link>
                   </td>
                   <td className="py-3 px-4">
-                    <Link to={`/admin/orders/${returnItem.orderId}`} className="text-brand-primary hover:underline">
+                    <Link to={`/loginasadmin/orders/${returnItem.orderId}`} className="text-brand-primary hover:underline">
                       {returnItem.orderId}
                     </Link>
                   </td>

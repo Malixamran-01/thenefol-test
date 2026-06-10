@@ -128,7 +128,7 @@ export default function CollabTasks() {
             All assigned tasks across creators — assigned, in progress, completed, and paid. Open a row to review or verify.
           </p>
           <div className="flex flex-wrap gap-2 mt-3 text-sm">
-            <Link to="/admin/collab-requests" className="text-[#4B97C9] hover:underline inline-flex items-center gap-1">
+            <Link to="/loginasadmin/collab-requests" className="text-[#4B97C9] hover:underline inline-flex items-center gap-1">
               ← Collab requests
             </Link>
             {collabFromUrl ? (

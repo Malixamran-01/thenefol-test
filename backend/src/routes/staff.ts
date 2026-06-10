@@ -39,10 +39,10 @@ const SESSION_TTL_HOURS = Number(process.env.STAFF_SESSION_TTL_HOURS || 12)
 
 /** Admin UI paths that imply access to `/api/staff/*` management endpoints (not session-only routes). */
 const TEAM_SECTION_PAGE_PREFIXES = [
-  '/admin/system/staff',
-  '/admin/system/roles',
-  '/admin/system/admin-management',
-  '/admin/account-security',
+  '/loginasadmin/system/staff',
+  '/loginasadmin/system/roles',
+  '/loginasadmin/system/admin-management',
+  '/loginasadmin/account-security',
 ]
 
 const STAFF_AUTH_SESSION_PATHS = new Set([
@@ -51,12 +51,19 @@ const STAFF_AUTH_SESSION_PATHS = new Set([
   '/api/staff/auth/change-password',
 ])
 
+function normalizeAdminPagePath(path: string): string {
+  return path.replace(/^\/admin(\/|$)/, '/loginasadmin$1')
+}
+
 function canAccessStaffManagementApis(pagePermissions: string[] | null): boolean {
   if (pagePermissions === null) return true
   if (pagePermissions.length === 0) return false
-  return pagePermissions.some((p) =>
-    TEAM_SECTION_PAGE_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))
-  )
+  return pagePermissions.some((p) => {
+    const normalized = normalizeAdminPagePath(p)
+    return TEAM_SECTION_PAGE_PREFIXES.some(
+      (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`)
+    )
+  })
 }
 
 type StaffAggregatedRow = {
@@ -884,75 +891,75 @@ export async function listAdminPanelPages(pool: Pool, req: Request, res: Respons
   try {
     // Return a predefined list of all admin panel pages
     const pages = [
-      { path: '/admin/dashboard', name: 'Dashboard', section: 'Dashboard' },
-      { path: '/admin/store', name: 'Online Store', section: 'Dashboard' },
-      { path: '/admin/homepage-layout', name: 'Homepage Layout', section: 'Dashboard' },
-      { path: '/admin/product-collections', name: 'Product Collections', section: 'Dashboard' },
-      { path: '/admin/marketplaces', name: 'Marketplaces', section: 'Dashboard' },
-      { path: '/admin/fb-shop', name: 'FB Shop Integration', section: 'Dashboard' },
-      { path: '/admin/meta', name: 'Meta (Business & Ads)', section: 'Dashboard' },
-      { path: '/admin/google', name: 'Google & YouTube', section: 'Dashboard' },
-      { path: '/admin/facebook', name: 'Facebook & Instagram', section: 'Dashboard' },
-      { path: '/admin/loyalty-program', name: 'Loyalty Program', section: 'Dashboard' },
-      { path: '/admin/cashback', name: 'Cashback System', section: 'Dashboard' },
-      { path: '/admin/products', name: 'Products', section: 'Products & Catalog' },
-      { path: '/admin/categories', name: 'Categories', section: 'Products & Catalog' },
-      { path: '/admin/product-variants', name: 'Product Variants', section: 'Products & Catalog' },
-      { path: '/admin/inventory', name: 'Inventory', section: 'Products & Catalog' },
-      { path: '/admin/warehouses', name: 'Warehouses', section: 'Products & Catalog' },
-      { path: '/admin/orders', name: 'Orders', section: 'Sales & Orders' },
-      { path: '/admin/shipments', name: 'Shipments', section: 'Sales & Orders' },
-      { path: '/admin/returns', name: 'Returns', section: 'Sales & Orders' },
-      { path: '/admin/pos', name: 'POS System', section: 'Sales & Orders' },
-      { path: '/admin/cms', name: 'CMS', section: 'Content & CMS' },
-      { path: '/admin/blog-requests', name: 'Blog Requests', section: 'Content & CMS' },
-      { path: '/admin/author-management', name: 'Author Management', section: 'Content & CMS' },
-      { path: '/admin/video-manager', name: 'Video Manager', section: 'Content & CMS' },
-      { path: '/admin/static-pages', name: 'Static Pages', section: 'Content & CMS' },
-      { path: '/admin/community-management', name: 'Community Management', section: 'Content & CMS' },
-      { path: '/admin/customers', name: 'Customers', section: 'Customer & CRM' },
-      { path: '/admin/users', name: 'Users', section: 'Customer & CRM' },
-      { path: '/admin/user-profiles', name: 'User Profiles', section: 'Customer & CRM' },
-      { path: '/admin/user-notifications', name: 'User Notifications', section: 'Customer & CRM' },
-      { path: '/admin/customer-segmentation', name: 'Customer Segmentation', section: 'Customer & CRM' },
-      { path: '/admin/custom-audience', name: 'Custom Audience', section: 'Customer & CRM' },
-      { path: '/admin/whatsapp-subscriptions', name: 'WhatsApp Subscriptions', section: 'Customer & CRM' },
-      { path: '/admin/whatsapp-chat', name: 'WhatsApp Chat', section: 'Customer & CRM' },
-      { path: '/admin/whatsapp-management', name: 'WhatsApp Management', section: 'Customer & CRM' },
-      { path: '/admin/whatsapp-notifications', name: 'WhatsApp Notifications', section: 'Customer & CRM' },
-      { path: '/admin/journey-funnel', name: 'Journey Funnel', section: 'Customer & CRM' },
-      { path: '/admin/journey-tracking', name: 'Journey Tracking', section: 'Customer & CRM' },
-      { path: '/admin/live-chat', name: 'Live Chat', section: 'Customer & CRM' },
-      { path: '/admin/invoices', name: 'Invoices', section: 'Finance & Payments' },
-      { path: '/admin/invoice-settings', name: 'Invoice Settings', section: 'Finance & Payments' },
-      { path: '/admin/payment', name: 'Payment', section: 'Finance & Payments' },
-      { path: '/admin/payment-options', name: 'Payment Options', section: 'Finance & Payments' },
-      { path: '/admin/tax', name: 'Tax', section: 'Finance & Payments' },
-      { path: '/admin/marketing', name: 'Marketing', section: 'Marketing' },
-      { path: '/admin/discounts', name: 'Discounts', section: 'Marketing' },
-      { path: '/admin/affiliate-program', name: 'Affiliate Program', section: 'Affiliate & Monetization' },
-      { path: '/admin/affiliate-requests', name: 'Affiliate Requests', section: 'Affiliate & Monetization' },
-      { path: '/admin/coin-withdrawals', name: 'Coin Withdrawals', section: 'Affiliate & Monetization' },
-      { path: '/admin/loyalty-program-management', name: 'Loyalty Program Management', section: 'Affiliate & Monetization' },
-      { path: '/admin/analytics', name: 'Analytics', section: 'Analytics & Insights' },
-      { path: '/admin/advanced-analytics', name: 'Advanced Analytics', section: 'Analytics & Insights' },
-      { path: '/admin/actionable-analytics', name: 'Actionable Analytics', section: 'Analytics & Insights' },
-      { path: '/admin/system/audit-logs', name: 'Audit Logs', section: 'Analytics & Insights' },
-      { path: '/admin/ai-box', name: 'AI Box', section: 'AI Tools' },
-      { path: '/admin/ai-personalization', name: 'AI Personalization', section: 'AI Tools' },
-      { path: '/admin/workflow-automation', name: 'Workflow Automation', section: 'Automation & Workflows' },
-      { path: '/admin/api-manager', name: 'API Manager', section: 'Automation & Workflows' },
-      { path: '/admin/omni-channel', name: 'Omni Channel', section: 'Automation & Workflows' },
-      { path: '/admin/cart-checkout', name: 'Cart & Checkout', section: 'E-Commerce' },
-      { path: '/admin/forms', name: 'Forms', section: 'Forms & Communication' },
-      { path: '/admin/form-builder', name: 'Form Builder', section: 'Forms & Communication' },
-      { path: '/admin/form-submissions', name: 'Form Submissions', section: 'Forms & Communication' },
-      { path: '/admin/contact-messages', name: 'Contact Messages', section: 'Forms & Communication' },
-      { path: '/admin/system/alerts', name: 'Alert Settings', section: 'Forms & Communication' },
-      { path: '/admin/system/staff', name: 'Staff Accounts', section: 'Team & Access' },
-      { path: '/admin/system/admin-management', name: 'Admin Management', section: 'Team & Access' },
-      { path: '/admin/system/roles', name: 'Roles & Permissions', section: 'Team & Access' },
-      { path: '/admin/account-security', name: 'Account Security', section: 'Team & Access' },
+      { path: '/loginasadmin/dashboard', name: 'Dashboard', section: 'Dashboard' },
+      { path: '/loginasadmin/store', name: 'Online Store', section: 'Dashboard' },
+      { path: '/loginasadmin/homepage-layout', name: 'Homepage Layout', section: 'Dashboard' },
+      { path: '/loginasadmin/product-collections', name: 'Product Collections', section: 'Dashboard' },
+      { path: '/loginasadmin/marketplaces', name: 'Marketplaces', section: 'Dashboard' },
+      { path: '/loginasadmin/fb-shop', name: 'FB Shop Integration', section: 'Dashboard' },
+      { path: '/loginasadmin/meta', name: 'Meta (Business & Ads)', section: 'Dashboard' },
+      { path: '/loginasadmin/google', name: 'Google & YouTube', section: 'Dashboard' },
+      { path: '/loginasadmin/facebook', name: 'Facebook & Instagram', section: 'Dashboard' },
+      { path: '/loginasadmin/loyalty-program', name: 'Loyalty Program', section: 'Dashboard' },
+      { path: '/loginasadmin/cashback', name: 'Cashback System', section: 'Dashboard' },
+      { path: '/loginasadmin/products', name: 'Products', section: 'Products & Catalog' },
+      { path: '/loginasadmin/categories', name: 'Categories', section: 'Products & Catalog' },
+      { path: '/loginasadmin/product-variants', name: 'Product Variants', section: 'Products & Catalog' },
+      { path: '/loginasadmin/inventory', name: 'Inventory', section: 'Products & Catalog' },
+      { path: '/loginasadmin/warehouses', name: 'Warehouses', section: 'Products & Catalog' },
+      { path: '/loginasadmin/orders', name: 'Orders', section: 'Sales & Orders' },
+      { path: '/loginasadmin/shipments', name: 'Shipments', section: 'Sales & Orders' },
+      { path: '/loginasadmin/returns', name: 'Returns', section: 'Sales & Orders' },
+      { path: '/loginasadmin/pos', name: 'POS System', section: 'Sales & Orders' },
+      { path: '/loginasadmin/cms', name: 'CMS', section: 'Content & CMS' },
+      { path: '/loginasadmin/blog-requests', name: 'Blog Requests', section: 'Content & CMS' },
+      { path: '/loginasadmin/author-management', name: 'Author Management', section: 'Content & CMS' },
+      { path: '/loginasadmin/video-manager', name: 'Video Manager', section: 'Content & CMS' },
+      { path: '/loginasadmin/static-pages', name: 'Static Pages', section: 'Content & CMS' },
+      { path: '/loginasadmin/community-management', name: 'Community Management', section: 'Content & CMS' },
+      { path: '/loginasadmin/customers', name: 'Customers', section: 'Customer & CRM' },
+      { path: '/loginasadmin/users', name: 'Users', section: 'Customer & CRM' },
+      { path: '/loginasadmin/user-profiles', name: 'User Profiles', section: 'Customer & CRM' },
+      { path: '/loginasadmin/user-notifications', name: 'User Notifications', section: 'Customer & CRM' },
+      { path: '/loginasadmin/customer-segmentation', name: 'Customer Segmentation', section: 'Customer & CRM' },
+      { path: '/loginasadmin/custom-audience', name: 'Custom Audience', section: 'Customer & CRM' },
+      { path: '/loginasadmin/whatsapp-subscriptions', name: 'WhatsApp Subscriptions', section: 'Customer & CRM' },
+      { path: '/loginasadmin/whatsapp-chat', name: 'WhatsApp Chat', section: 'Customer & CRM' },
+      { path: '/loginasadmin/whatsapp-management', name: 'WhatsApp Management', section: 'Customer & CRM' },
+      { path: '/loginasadmin/whatsapp-notifications', name: 'WhatsApp Notifications', section: 'Customer & CRM' },
+      { path: '/loginasadmin/journey-funnel', name: 'Journey Funnel', section: 'Customer & CRM' },
+      { path: '/loginasadmin/journey-tracking', name: 'Journey Tracking', section: 'Customer & CRM' },
+      { path: '/loginasadmin/live-chat', name: 'Live Chat', section: 'Customer & CRM' },
+      { path: '/loginasadmin/invoices', name: 'Invoices', section: 'Finance & Payments' },
+      { path: '/loginasadmin/invoice-settings', name: 'Invoice Settings', section: 'Finance & Payments' },
+      { path: '/loginasadmin/payment', name: 'Payment', section: 'Finance & Payments' },
+      { path: '/loginasadmin/payment-options', name: 'Payment Options', section: 'Finance & Payments' },
+      { path: '/loginasadmin/tax', name: 'Tax', section: 'Finance & Payments' },
+      { path: '/loginasadmin/marketing', name: 'Marketing', section: 'Marketing' },
+      { path: '/loginasadmin/discounts', name: 'Discounts', section: 'Marketing' },
+      { path: '/loginasadmin/affiliate-program', name: 'Affiliate Program', section: 'Affiliate & Monetization' },
+      { path: '/loginasadmin/affiliate-requests', name: 'Affiliate Requests', section: 'Affiliate & Monetization' },
+      { path: '/loginasadmin/coin-withdrawals', name: 'Coin Withdrawals', section: 'Affiliate & Monetization' },
+      { path: '/loginasadmin/loyalty-program-management', name: 'Loyalty Program Management', section: 'Affiliate & Monetization' },
+      { path: '/loginasadmin/analytics', name: 'Analytics', section: 'Analytics & Insights' },
+      { path: '/loginasadmin/advanced-analytics', name: 'Advanced Analytics', section: 'Analytics & Insights' },
+      { path: '/loginasadmin/actionable-analytics', name: 'Actionable Analytics', section: 'Analytics & Insights' },
+      { path: '/loginasadmin/system/audit-logs', name: 'Audit Logs', section: 'Analytics & Insights' },
+      { path: '/loginasadmin/ai-box', name: 'AI Box', section: 'AI Tools' },
+      { path: '/loginasadmin/ai-personalization', name: 'AI Personalization', section: 'AI Tools' },
+      { path: '/loginasadmin/workflow-automation', name: 'Workflow Automation', section: 'Automation & Workflows' },
+      { path: '/loginasadmin/api-manager', name: 'API Manager', section: 'Automation & Workflows' },
+      { path: '/loginasadmin/omni-channel', name: 'Omni Channel', section: 'Automation & Workflows' },
+      { path: '/loginasadmin/cart-checkout', name: 'Cart & Checkout', section: 'E-Commerce' },
+      { path: '/loginasadmin/forms', name: 'Forms', section: 'Forms & Communication' },
+      { path: '/loginasadmin/form-builder', name: 'Form Builder', section: 'Forms & Communication' },
+      { path: '/loginasadmin/form-submissions', name: 'Form Submissions', section: 'Forms & Communication' },
+      { path: '/loginasadmin/contact-messages', name: 'Contact Messages', section: 'Forms & Communication' },
+      { path: '/loginasadmin/system/alerts', name: 'Alert Settings', section: 'Forms & Communication' },
+      { path: '/loginasadmin/system/staff', name: 'Staff Accounts', section: 'Team & Access' },
+      { path: '/loginasadmin/system/admin-management', name: 'Admin Management', section: 'Team & Access' },
+      { path: '/loginasadmin/system/roles', name: 'Roles & Permissions', section: 'Team & Access' },
+      { path: '/loginasadmin/account-security', name: 'Account Security', section: 'Team & Access' },
     ]
     sendSuccess(res, pages)
   } catch (err) {

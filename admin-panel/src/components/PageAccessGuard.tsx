@@ -23,11 +23,11 @@ export default function PageAccessGuard({ children }: PageAccessGuardProps) {
 
   const pp = user.pagePermissions
   if (pp !== null && pp !== undefined && pp.length === 0) {
-    return <Navigate to="/admin/login?reason=no_pages" replace />
+    return <Navigate to="/loginasadmin/login?reason=no_pages" replace />
   }
 
   if (pp !== null && pp !== undefined && pp.length > 0 && !hasPageAccess(location.pathname)) {
-    return <Navigate to="/admin/dashboard" replace />
+    return <Navigate to="/loginasadmin/dashboard" replace />
   }
 
   return <>{children}</>

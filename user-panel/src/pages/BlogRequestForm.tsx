@@ -536,7 +536,7 @@ export default function BlogRequestForm() {
 
   const syncActiveEditable = (el: HTMLDivElement | null) => {
     if (!el) return
-    if (el === titleRef.current) setFormData(prev => ({ ...prev, title: el.innerHTML }))
+    if (el === titleRef.current) setFormData(prev => ({ ...prev, title: el.innerText || el.textContent || '' }))
     else if (el === subtitleRef.current) setFormData(prev => ({ ...prev, excerpt: el.innerHTML }))
     else if (el === editorRef.current) handleEditorInput()
   }
@@ -1319,7 +1319,7 @@ export default function BlogRequestForm() {
       const apiBase = getApiBase()
       const content = (editorRef.current?.innerHTML ?? formData.content) || ''
       const formDataToSend = new FormData()
-      formDataToSend.append('title', titleRef.current?.innerHTML ?? formData.title)
+      formDataToSend.append('title', (titleRef.current ? (titleRef.current.innerText || titleRef.current.textContent || '') : formData.title))
       formDataToSend.append('content', content)
       formDataToSend.append('excerpt', subtitleRef.current?.innerHTML ?? formData.excerpt)
       formDataToSend.append('author_name', formData.author_name)

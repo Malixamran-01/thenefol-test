@@ -511,7 +511,7 @@ export default function MetaAds({ embeddedInHub = false }: MetaAdsProps) {
               <code className="rounded bg-gray-100 px-1 text-xs dark:bg-gray-800">ads_management</code>.
             </p>
             <Link
-              to="/admin/meta?view=home"
+              to="/loginasadmin/meta?view=home"
               className="mt-1 inline-block text-sm text-cyan-700 underline dark:text-cyan-400"
             >
               ← Meta dashboard
@@ -551,7 +551,7 @@ export default function MetaAds({ embeddedInHub = false }: MetaAdsProps) {
             </h1>
             <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)' }}>
               Marketing API: campaigns, ad sets, ads, insights, and audiences — also available under{' '}
-              <Link to="/admin/meta?view=ads" className="underline">
+              <Link to="/loginasadmin/meta?view=ads" className="underline">
                 Meta hub
               </Link>
               .

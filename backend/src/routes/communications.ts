@@ -211,7 +211,7 @@ export function registerCommunicationsRoutes(app: express.Express, pool: Pool, i
           'form_submission',
           'New Form Submission',
           `New submission for form: ${formCheck.rows[0].name}${userName ? ` from ${userName}` : ''}`,
-          `/admin/form-builder`,
+          `/loginasadmin/form-builder`,
           '📋',
           'medium',
           JSON.stringify({ form_id: id, submission_id: rows[0].id, user_email: userEmail })
@@ -256,7 +256,7 @@ export function registerCommunicationsRoutes(app: express.Express, pool: Pool, i
         await pool.query(`
           INSERT INTO admin_notifications (user_id, notification_type, title, message, link, icon, priority, metadata)
           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        `, [null, 'contact', 'New Contact Message', `Message from ${name} (${email})`, `/admin/contact-messages`, '📧', 'medium', JSON.stringify({ message_id: rows[0].id, name, email })])
+        `, [null, 'contact', 'New Contact Message', `Message from ${name} (${email})`, `/loginasadmin/contact-messages`, '📧', 'medium', JSON.stringify({ message_id: rows[0].id, name, email })])
         io.to('admin-panel').emit('new-notification', { notification_type: 'contact' })
       } catch {}
       try {

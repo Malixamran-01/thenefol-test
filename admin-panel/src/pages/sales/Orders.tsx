@@ -424,7 +424,7 @@ export default function Orders() {
                       </td>
                       <td className="py-4 pr-4">
                         <div className="flex flex-wrap gap-2">
-                          <button onClick={()=>navigate(`/admin/orders/${o.id}`)} className="btn-secondary text-xs px-3 py-1.5">Details</button>
+                          <button onClick={()=>navigate(`/loginasadmin/orders/${o.id}`)} className="btn-secondary text-xs px-3 py-1.5">Details</button>
                           <Can permission="orders:update">
                             <button onClick={()=>updateStatus(o.id,'paid')} className="btn-secondary text-xs px-3 py-1.5">Mark Paid</button>
                           </Can>

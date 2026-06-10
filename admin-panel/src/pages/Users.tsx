@@ -286,7 +286,7 @@ export default function UsersPage() {
                   return (
                     <tr 
                       key={user.id} 
-                      onClick={() => navigate(`/admin/users/${user.id}`)}
+                      onClick={() => navigate(`/loginasadmin/users/${user.id}`)}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">

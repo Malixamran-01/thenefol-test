@@ -176,15 +176,15 @@ export default function App() {
       <ToastProvider>
       <Routes>
         {/* Authentication & onboarding */}
-        <Route path="/admin/login" element={<LoginPage />} />
-        <Route path="/admin/staff-onboarding" element={<StaffOnboarding />} />
-        <Route path="/admin/accept-invite" element={<StaffOnboarding />} />
+        <Route path="/loginasadmin/login" element={<LoginPage />} />
+        <Route path="/loginasadmin/staff-onboarding" element={<StaffOnboarding />} />
+        <Route path="/loginasadmin/accept-invite" element={<StaffOnboarding />} />
         
         {/* Protected Admin Routes */}
-        <Route path="/admin" element={<ProtectedRoute />}>
+        <Route path="/loginasadmin" element={<ProtectedRoute />}>
           <Route element={<PageAccessGuard><Layout /></PageAccessGuard>}>
             {/* Default redirect */}
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route index element={<Navigate to="/loginasadmin/dashboard" replace />} />
             
             {/* ========== DASHBOARD ========== */}
             <Route path="dashboard" element={<Dashboard />} />
@@ -225,8 +225,8 @@ export default function App() {
             {/* ========== MARKETING & COMMUNICATIONS ========== */}
             <Route path="marketing" element={<Marketing />} />
             <Route path="meta" element={<MetaHub />} />
-            <Route path="meta-ads" element={<Navigate to="/admin/meta?view=ads" replace />} />
-            <Route path="meta-business" element={<Navigate to="/admin/meta?view=suite" replace />} />
+            <Route path="meta-ads" element={<Navigate to="/loginasadmin/meta?view=ads" replace />} />
+            <Route path="meta-business" element={<Navigate to="/loginasadmin/meta?view=suite" replace />} />
             <Route path="discounts" element={<Discounts />} />
             <Route path="whatsapp-subscriptions" element={<WhatsAppSubscriptions />} />
             <Route path="whatsapp-notifications" element={<WhatsAppNotifications />} />
@@ -299,7 +299,7 @@ export default function App() {
         </Route>
         
         {/* Catch-all route - redirect to dashboard */}
-        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/loginasadmin/dashboard" replace />} />
       </Routes>
       </ToastProvider>
     </AuthProvider>

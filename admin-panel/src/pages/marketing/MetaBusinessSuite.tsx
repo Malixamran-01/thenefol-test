@@ -326,7 +326,7 @@ export default function MetaBusinessSuite({ embedded = false }: MetaBusinessSuit
               endpoints. Inbox may also use{' '}
               <code className="rounded bg-gray-100 px-0.5 dark:bg-gray-800">META_PAGE_ACCESS_TOKEN</code> when required.
               Open{' '}
-              <Link to="/admin/meta?view=ads" className="text-cyan-700 underline dark:text-cyan-400">
+              <Link to="/loginasadmin/meta?view=ads" className="text-cyan-700 underline dark:text-cyan-400">
                 Ads manager
               </Link>{' '}
               from the Meta hub.
@@ -359,28 +359,28 @@ export default function MetaBusinessSuite({ embedded = false }: MetaBusinessSuit
               <p className="text-[11px] text-gray-500">Shortcuts</p>
               <div className="mt-2 flex flex-col gap-1.5 text-xs">
                 <Link
-                  to="/admin/meta?view=ads"
+                  to="/loginasadmin/meta?view=ads"
                   className="inline-flex items-center gap-1 text-cyan-700 hover:underline dark:text-cyan-400"
                 >
                   <Megaphone className="h-3.5 w-3.5" />
                   Ads campaigns
                 </Link>
                 <Link
-                  to="/admin/meta?view=home"
+                  to="/loginasadmin/meta?view=home"
                   className="inline-flex items-center gap-1 text-cyan-700 hover:underline dark:text-cyan-400"
                 >
                   <LayoutGrid className="h-3.5 w-3.5" />
                   Meta dashboard
                 </Link>
                 <Link
-                  to="/admin/facebook"
+                  to="/loginasadmin/facebook"
                   className="inline-flex items-center gap-1 text-cyan-700 hover:underline dark:text-cyan-400"
                 >
                   <Instagram className="h-3.5 w-3.5" />
                   Brand Instagram
                 </Link>
                 <Link
-                  to="/admin/fb-shop"
+                  to="/loginasadmin/fb-shop"
                   className="inline-flex items-center gap-1 text-cyan-700 hover:underline dark:text-cyan-400"
                 >
                   <ShoppingBag className="h-3.5 w-3.5" />
@@ -738,7 +738,7 @@ export default function MetaBusinessSuite({ embedded = false }: MetaBusinessSuit
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Uses Marketing API objects tied to <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">act_…</code>
                 . Full campaign editing lives in{' '}
-                <Link to="/admin/meta?view=ads" className="text-cyan-700 underline dark:text-cyan-400">
+                <Link to="/loginasadmin/meta?view=ads" className="text-cyan-700 underline dark:text-cyan-400">
                   Ads manager
                 </Link>
                 .

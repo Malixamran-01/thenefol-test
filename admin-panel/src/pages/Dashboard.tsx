@@ -209,7 +209,7 @@ const Dashboard = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <button 
-            onClick={() => navigate('/admin/analytics')}
+            onClick={() => navigate('/loginasadmin/analytics')}
             className="flex items-center space-x-2 px-3 py-2 sm:px-4 border rounded-xl hover:bg-[var(--arctic-blue-lighter)] transition-all duration-300 text-sm sm:text-base"
             style={{ 
               borderColor: 'var(--arctic-blue-light)',
@@ -223,7 +223,7 @@ const Dashboard = () => {
             <span>Last 30 days</span>
           </button>
           <button 
-            onClick={() => navigate('/admin/analytics')}
+            onClick={() => navigate('/loginasadmin/analytics')}
             className="flex items-center space-x-2 px-3 py-2 sm:px-4 border rounded-xl hover:bg-[var(--arctic-blue-lighter)] transition-all duration-300 text-sm sm:text-base"
             style={{ 
               borderColor: 'var(--arctic-blue-light)',
@@ -284,7 +284,7 @@ const Dashboard = () => {
                 <h3 className="text-sm font-medium" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>{metric.title}</h3>
               </div>
               <button 
-                onClick={() => navigate('/admin/analytics')}
+                onClick={() => navigate('/loginasadmin/analytics')}
                 className="transition-colors hover:opacity-70"
                 style={{ color: 'var(--arctic-blue-primary)' }}
                 title="View detailed analytics"
@@ -480,7 +480,7 @@ const Dashboard = () => {
                 This is just the beginning of your journey. Keep pushing forward and watch your business grow with each new customer.
               </p>
               <button 
-                onClick={() => navigate('/admin/orders')}
+                onClick={() => navigate('/loginasadmin/orders')}
                 className="btn-primary"
               >
                 View orders report

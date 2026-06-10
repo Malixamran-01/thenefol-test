@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { useTheme } from '../contexts/ThemeContext'
 
 interface LogoProps {
@@ -6,7 +6,7 @@ interface LogoProps {
   href?: string
 }
 
-export default function Logo({ className = "font-semibold text-xl hover:text-blue-600 transition-colors", href = "/admin" }: LogoProps) {
+export default function Logo({ className = "font-semibold text-xl hover:text-blue-600 transition-colors", href = "/loginasadmin" }: LogoProps) {
   const { theme } = useTheme()
   
   const logoSrc = theme === 'light' 

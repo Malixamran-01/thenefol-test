@@ -343,7 +343,7 @@ export default function Customers() {
                   return (
                     <tr 
                       key={customer.id} 
-                      onClick={() => navigate(`/admin/users/${customer.id}`)}
+                      onClick={() => navigate(`/loginasadmin/users/${customer.id}`)}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">

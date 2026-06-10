@@ -95,7 +95,7 @@ export default function StaffOnboarding() {
         setError(data?.error || 'Something went wrong')
         return
       }
-      navigate('/admin/login?onboarded=1')
+      navigate('/loginasadmin/login?onboarded=1')
     } catch {
       setError('Network error. Try again.')
     } finally {

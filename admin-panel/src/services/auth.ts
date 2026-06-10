@@ -216,6 +216,11 @@ class AuthService {
     return { ...this.authState }
   }
 
+  /** Normalize legacy /admin/* paths to /loginasadmin/* for permission checks. */
+  private normalizeAdminPagePath(path: string): string {
+    return path.replace(/^\/admin(\/|$)/, '/loginasadmin$1')
+  }
+
   // Check if user has access to a specific page
   hasPageAccess(pagePath: string): boolean {
     const user = this.authState.user
@@ -229,7 +234,14 @@ class AuthService {
     if (perms === null || perms === undefined) return true
     if (perms.length === 0) return false
 
-    return perms.some((p: string) => pagePath === p || pagePath.startsWith(`${p}/`))
+    const normalizedPath = this.normalizeAdminPagePath(pagePath)
+    return perms.some((p: string) => {
+      const normalizedPerm = this.normalizeAdminPagePath(p)
+      return (
+        normalizedPath === normalizedPerm ||
+        normalizedPath.startsWith(`${normalizedPerm}/`)
+      )
+    })
   }
 
   // Login user

@@ -1324,7 +1324,7 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
         'collab_product_not_received',
         'Creator did not receive product',
         `${titleStr} — ${note ? `Note: ${note}` : 'No extra details.'} (task #${id})`,
-        '/admin/collab-requests',
+        '/loginasadmin/collab-requests',
         { collab_task_id: id, collab_application_id: app.id }
       )
       return res.json({ task: updated })
@@ -1577,7 +1577,7 @@ export async function submitUserCollabTask(pool: Pool, req: Request, res: Respon
       'collab_task_submitted',
       'Creator task submitted for review',
       `${t.title}${orderStored ? ` — order ${orderStored}` : ''}`,
-      '/admin/collab-requests',
+      '/loginasadmin/collab-requests',
       { collab_task_id: id, collab_application_id: app.id }
     )
 

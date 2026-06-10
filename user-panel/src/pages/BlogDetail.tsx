@@ -223,13 +223,19 @@ export default function BlogDetail() {
         ? post.meta_keywords
         : ''
 
+    const stripHtmlStr = (html: string) => {
+      const div = document.createElement('div')
+      div.innerHTML = html
+      return div.textContent || div.innerText || ''
+    }
+
     // Fallback chain (matches backend meta page)
-    const title = post.meta_title || post.title
+    const title = post.meta_title || stripHtmlStr(post.title)
     const description = post.meta_description || post.excerpt || ''
     const ogTitle = post.og_title || title
     const ogDescription = post.og_description || description
-    const { universalUrl } = getBlogShareUrls(post.id)
-    const canonicalUrl = universalUrl
+    const { appUrl } = getBlogShareUrls(post.id)
+    const canonicalUrl = appUrl
     const ogImage =
       absoluteBlogMediaUrl(post.og_image) ||
       absoluteBlogMediaUrl(post.cover_image) ||
@@ -289,12 +295,12 @@ export default function BlogDetail() {
     }
   }, [post])
 
-  // Show /blog/:id in the address bar (plus hash) so copy/paste shares a crawler-friendly URL on VPS hash routing
+  // Keep address bar in sync with the same short share link users copy/send
   useEffect(() => {
     if (!post?.id) return
-    const { universalUrl } = getBlogShareUrls(post.id)
+    const { appUrl } = getBlogShareUrls(post.id)
     try {
-      window.history.replaceState(window.history.state, '', universalUrl)
+      window.history.replaceState(window.history.state, '', appUrl)
     } catch {
       /* ignore */
     }
@@ -916,6 +922,12 @@ export default function BlogDetail() {
     window.location.hash = `#/user/author/${authorId}`
   }
 
+  const stripHtml = (html: string) => {
+    const div = document.createElement('div')
+    div.innerHTML = html
+    return div.textContent || div.innerText || ''
+  }
+
   const getReadingTime = (content: string) => {
     const text = content.replace(/<[^>]*>/g, ' ')
     const words = text.trim().split(/\s+/).filter(Boolean).length
@@ -1084,7 +1096,7 @@ export default function BlogDetail() {
 
         {/* Title */}
         <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
-          {post.title}
+          {stripHtml(post.title)}
         </h1>
 
         {/* Author Block */}
@@ -1142,9 +1154,10 @@ export default function BlogDetail() {
 
         {/* Excerpt */}
         {post.excerpt && (
-          <p className="mt-8 text-lg sm:text-xl leading-relaxed text-gray-700">
-            {post.excerpt}
-          </p>
+          <p
+            className="mt-8 text-lg sm:text-xl leading-relaxed text-gray-700"
+            dangerouslySetInnerHTML={{ __html: post.excerpt }}
+          />
         )}
 
         {/* Content */}

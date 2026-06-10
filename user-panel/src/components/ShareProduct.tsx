@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Share2, Copy, Check, Facebook, Mail, Instagram } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { getProductShareLink, getShareSiteOrigin } from '../utils/productShareUrls'
@@ -23,10 +23,10 @@ export default function ShareProduct({
   const [showIconOnly, setShowIconOnly] = useState(false)
   const [showInstagramOptions, setShowInstagramOptions] = useState(false)
 
+  /** Same short link for copy, WhatsApp, Facebook, etc.: /#/user/product/:slug */
   const shareLink = getProductShareLink(productSlug)
   const siteOrigin = getShareSiteOrigin()
   const siteLogoOgUrl = `${siteOrigin}/IMAGES/NEFOL%20icon.png`
-  /** Hybrid URL: /product/:slug#/user/product/:slug — includes #/user; crawlers read path before # for OG. */
   const shareText = `Check out ${productTitle} on NEFOL! ${shareLink}`
   const copyLinkLabel = copied ? 'Link copied!' : 'Copy share link'
 

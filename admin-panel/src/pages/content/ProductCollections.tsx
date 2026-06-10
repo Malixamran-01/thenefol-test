@@ -855,7 +855,7 @@ function CollectionForm({
                     No products available. Please add products first in the Products page.
                     <button
                       type="button"
-                      onClick={() => window.open('/admin/products', '_blank')}
+                      onClick={() => window.open('/loginasadmin/products', '_blank')}
                       className="ml-2 text-blue-600 hover:underline"
                     >
                       Go to Products

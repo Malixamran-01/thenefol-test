@@ -205,7 +205,7 @@ export default function NotificationBell() {
             {notifications.length > 0 && (
               <div className="p-3 border-t border-gray-200">
                 <button
-                  onClick={() => navigate('/admin/notifications')}
+                  onClick={() => navigate('/loginasadmin/notifications')}
                   className="w-full py-2 text-sm text-center text-blue-600 hover:text-blue-700 font-medium"
                 >
                   View all notifications

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Instagram Business Login — direct Instagram OAuth (no Facebook Page required)
  *
  * Uses api.instagram.com OAuth + graph.instagram.com for all API calls.
@@ -502,7 +502,7 @@ async function handleCallbackAdminBrand(
     if (tokenData.error_type || !tokenData.access_token) {
       console.error('IG token exchange error (admin brand):', tokenData)
       return res.redirect(
-        `${adminUrl}/#/admin/facebook?ig_error=${encodeURIComponent('Token exchange failed. Please try again.')}`
+        `${adminUrl}//loginasadmin/facebook?ig_error=${encodeURIComponent('Token exchange failed. Please try again.')}`
       )
     }
 
@@ -522,7 +522,7 @@ async function handleCallbackAdminBrand(
     if (profile.error) {
       console.error('IG profile fetch error (admin brand):', profile.error)
       return res.redirect(
-        `${adminUrl}/#/admin/facebook?ig_error=${encodeURIComponent(
+        `${adminUrl}//loginasadmin/facebook?ig_error=${encodeURIComponent(
           'Could not read Instagram profile. Use a Creator or Business Instagram account.'
         )}`
       )
@@ -534,7 +534,7 @@ async function handleCallbackAdminBrand(
 
     if (accountType === 'personal') {
       return res.redirect(
-        `${adminUrl}/#/admin/facebook?ig_error=${encodeURIComponent(
+        `${adminUrl}//loginasadmin/facebook?ig_error=${encodeURIComponent(
           'Personal Instagram accounts cannot be used. Switch to Professional (Creator or Business) in Instagram settings.'
         )}`
       )
@@ -542,11 +542,11 @@ async function handleCallbackAdminBrand(
 
     await upsertAdminBrandInstagram(pool, igUserToken, igUserId, igUsername, tokenExpiresAt)
     console.log(`✅ Admin brand Instagram connected: @${igUsername} (${accountType})`)
-    return res.redirect(`${adminUrl}/#/admin/facebook?ig_connected=1`)
+    return res.redirect(`${adminUrl}//loginasadmin/facebook?ig_connected=1`)
   } catch (err) {
     console.error('Instagram admin brand callback error:', err)
     return res.redirect(
-      `${adminUrl}/#/admin/facebook?ig_error=${encodeURIComponent('Connection failed. Please try again.')}`
+      `${adminUrl}//loginasadmin/facebook?ig_error=${encodeURIComponent('Connection failed. Please try again.')}`
     )
   }
 }
@@ -605,7 +605,7 @@ export async function handleCallback(pool: Pool, req: Request, res: Response) {
     console.error('Instagram OAuth error:', error, error_description)
     const errQ = encodeURIComponent(error_description || error || 'OAuth failed')
     if (isAdminBrand) {
-      return res.redirect(`${adminUrl}/#/admin/facebook?ig_error=${errQ}`)
+      return res.redirect(`${adminUrl}//loginasadmin/facebook?ig_error=${errQ}`)
     }
     return res.redirect(`${frontendUrl}/#/user/collab?ig_error=${errQ}`)
   }

@@ -14,11 +14,11 @@ export default function ProtectedRoute({ allow }: { allow?: Role[] }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace key="redirect-to-login" />
+    return <Navigate to="/loginasadmin/login" replace key="redirect-to-login" />
   }
 
   if (allow && !allow.includes(role)) {
-    return <Navigate to="/admin/dashboard" replace key="redirect-to-home" />
+    return <Navigate to="/loginasadmin/dashboard" replace key="redirect-to-home" />
   }
 
   return <Outlet />

@@ -14,6 +14,7 @@
  *  10  Creator Program (assigned tasks, badge ack, blocks, user_notifications, weekly blog reward)
  *  11  Blog comment ancestors backfill
  *  12  Super admin staff account (from .env)
+ *  13  Admin panel URL prefix (/admin → /loginasadmin in staff_page_permissions & alert links)
  *
  * Full app schema is applied on backend startup via ensureSchema() in src/utils/schema.ts.
  * This script is safe to re-run (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
@@ -1765,6 +1766,36 @@ async function runMigration() {
 
     console.log('📝 Step 12: Super admin staff account (from .env)…');
     await syncEnvSuperAdmin();
+
+    console.log('📝 Step 13: Admin panel route prefix (/admin → /loginasadmin)…');
+    const spp = await pool.query(`
+      UPDATE staff_page_permissions
+      SET page_path = '/loginasadmin' || SUBSTRING(page_path FROM 7)
+      WHERE page_path LIKE '/admin/%'
+      RETURNING id
+    `);
+    if (spp.rowCount > 0) {
+      console.log(`  Updated ${spp.rowCount} staff_page_permissions row(s)`);
+    }
+    const sppExact = await pool.query(`
+      UPDATE staff_page_permissions SET page_path = '/loginasadmin' WHERE page_path = '/admin' RETURNING id
+    `);
+    if (sppExact.rowCount > 0) {
+      console.log(`  Updated ${sppExact.rowCount} staff_page_permissions row(s) (exact /admin)`);
+    }
+    try {
+      const alerts = await pool.query(`
+        UPDATE admin_alerts
+        SET link = '/loginasadmin' || SUBSTRING(link FROM 7)
+        WHERE link LIKE '/admin/%'
+        RETURNING id
+      `);
+      if (alerts.rowCount > 0) {
+        console.log(`  Updated ${alerts.rowCount} admin_alerts link(s)`);
+      }
+    } catch (e) {
+      if (!/admin_alerts|does not exist/i.test(String(e.message))) throw e;
+    }
     
     console.log('✅ Migration completed successfully!');
     process.exit(0);

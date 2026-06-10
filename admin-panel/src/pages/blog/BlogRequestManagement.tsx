@@ -700,7 +700,7 @@ export default function BlogRequestManagement() {
               Showing posts for <strong>user #{filterUserId}</strong> (from author management).
             </span>
             <Link
-              to="/admin/blog-requests"
+              to="/loginasadmin/blog-requests"
               className="font-medium text-[#1B4965] underline decoration-[#4B97C9]/50 hover:decoration-[#4B97C9]"
             >
               Clear filter

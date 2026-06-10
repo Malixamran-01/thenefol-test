@@ -618,13 +618,13 @@ export default function AuthorManagement() {
                     {userId != null && (
                       <>
                         <Link
-                          to={`/admin/users/${userId}`}
+                          to={`/loginasadmin/users/${userId}`}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100"
                         >
                           <User className="h-3.5 w-3.5" /> User #{userId}
                         </Link>
                         <Link
-                          to={`/admin/blog-requests?user_id=${userId}`}
+                          to={`/loginasadmin/blog-requests?user_id=${userId}`}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-[#4B97C9]/40 bg-[#f0f8fd] px-3 py-2 text-xs font-medium text-[#1B4965] hover:bg-[#e4f2fa]"
                         >
                           <BookOpen className="h-3.5 w-3.5" /> Blog posts

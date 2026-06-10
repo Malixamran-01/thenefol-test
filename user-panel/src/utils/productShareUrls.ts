@@ -15,9 +15,9 @@ export type ProductShareUrls = {
   universalUrl: string
 }
 
-/** Primary share link for copy, WhatsApp, Facebook, etc. Includes #/user. */
+/** Primary link for copy, WhatsApp, and all share actions. */
 export function getProductShareLink(slug: string): string {
-  return getProductShareUrls(slug).universalUrl
+  return getProductShareUrls(slug).appUrl
 }
 
 /** Path-safe slug for share URLs (avoid double-encoding). */

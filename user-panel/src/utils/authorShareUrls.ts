@@ -32,5 +32,5 @@ export function getAuthorShareUrls(authorId: string | number): AuthorShareUrls {
 }
 
 export function getAuthorShareLink(authorId: string | number): string {
-  return getAuthorShareUrls(authorId).universalUrl
+  return getAuthorShareUrls(authorId).appUrl
 }

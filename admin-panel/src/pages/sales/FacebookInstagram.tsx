@@ -102,18 +102,16 @@ export default function FacebookInstagram() {
   }, [loadDashboard])
 
   useEffect(() => {
-    const hash = window.location.hash || ''
-    const q = hash.includes('?') ? hash.split('?').slice(1).join('?') : ''
-    const params = new URLSearchParams(q)
+    const params = new URLSearchParams(window.location.search)
     if (params.get('ig_connected') === '1') {
       setOauthMsg('Instagram connected successfully.')
-      window.history.replaceState({}, '', '#/admin/facebook')
+      window.history.replaceState({}, '', '/loginasadmin/facebook')
       void loadDashboard()
     }
     const igErr = params.get('ig_error')
     if (igErr) {
       setError(decodeURIComponent(igErr))
-      window.history.replaceState({}, '', '#/admin/facebook')
+      window.history.replaceState({}, '', '/loginasadmin/facebook')
     }
   }, [loadDashboard])
 

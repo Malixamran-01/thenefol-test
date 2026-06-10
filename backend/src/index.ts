@@ -1,4 +1,4 @@
-﻿// Optimized main server file with centralized routes and utilities
+// Optimized main server file with centralized routes and utilities
 import 'dotenv/config'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
@@ -2314,7 +2314,7 @@ app.post('/api/product-questions', async (req, res) => {
         'product_question',
         'New Product Question',
         `Question from ${customer_name} (${customer_email})`,
-        `/admin/product-questions`,
+        `/loginasadmin/product-questions`,
         '❓',
         'medium',
         { question_id: rows[0].id, product_id, customer_name, customer_email }
@@ -3786,7 +3786,7 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
         'order',
         'New Order Received',
         `Order ${order_number} from ${customer_name} (₹${total.toFixed(2)})`,
-        `/admin/orders`,
+        `/loginasadmin/orders`,
         '📦',
         'high',
         { order_id: order.id, order_number, customer_name, total }

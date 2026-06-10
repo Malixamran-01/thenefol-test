@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
 import {
   Search,
@@ -114,7 +114,7 @@ const Layout = () => {
 
   const handleLogout = async () => {
     await logout()
-    navigate('/admin/login', { replace: true })
+    navigate('/loginasadmin/login', { replace: true })
   }
 
   // Grouped by RBAC division (see backend `rbacCatalog.ts`). Admins bypass via `hasPermission` + role `admin`.
@@ -124,7 +124,7 @@ const Layout = () => {
       SectionIcon: LayoutDashboard,
       requiredPermission: Nav.overview,
       defaultOpen: true,
-      items: [{ name: 'Dashboard', href: '/admin/dashboard', current: location.pathname === '/admin/dashboard' }],
+      items: [{ name: 'Dashboard', href: '/loginasadmin/dashboard', current: location.pathname === '/loginasadmin/dashboard' }],
     },
     {
       title: 'Store & homepage',
@@ -132,8 +132,8 @@ const Layout = () => {
       requiredPermission: Nav.store,
       defaultOpen: false,
       items: [
-        { name: 'Online store', href: '/admin/store', current: location.pathname === '/admin/store' },
-        { name: 'Homepage layout', href: '/admin/homepage-layout', badge: 'NEW', current: location.pathname === '/admin/homepage-layout' },
+        { name: 'Online store', href: '/loginasadmin/store', current: location.pathname === '/loginasadmin/store' },
+        { name: 'Homepage layout', href: '/loginasadmin/homepage-layout', badge: 'NEW', current: location.pathname === '/loginasadmin/homepage-layout' },
       ],
     },
     {
@@ -142,8 +142,8 @@ const Layout = () => {
       requiredPermission: Nav.channels,
       defaultOpen: false,
       items: [
-        { name: 'Marketplaces', href: '/admin/marketplaces', badge: 'NEW', current: location.pathname === '/admin/marketplaces' },
-        { name: 'FB Shop integration', href: '/admin/fb-shop', badge: 'NEW', current: location.pathname === '/admin/fb-shop' },
+        { name: 'Marketplaces', href: '/loginasadmin/marketplaces', badge: 'NEW', current: location.pathname === '/loginasadmin/marketplaces' },
+        { name: 'FB Shop integration', href: '/loginasadmin/fb-shop', badge: 'NEW', current: location.pathname === '/loginasadmin/fb-shop' },
       ],
     },
     {
@@ -154,12 +154,12 @@ const Layout = () => {
       items: [
         {
           name: 'Meta (Business & Ads)',
-          href: '/admin/meta',
+          href: '/loginasadmin/meta',
           badge: 'NEW',
           current:
-            location.pathname === '/admin/meta' ||
-            location.pathname === '/admin/meta-ads' ||
-            location.pathname === '/admin/meta-business',
+            location.pathname === '/loginasadmin/meta' ||
+            location.pathname === '/loginasadmin/meta-ads' ||
+            location.pathname === '/loginasadmin/meta-business',
         },
       ],
     },
@@ -168,14 +168,14 @@ const Layout = () => {
       SectionIcon: TextSearch,
       requiredPermission: Nav.google,
       defaultOpen: false,
-      items: [{ name: 'Google & YouTube', href: '/admin/google', current: location.pathname === '/admin/google' }],
+      items: [{ name: 'Google & YouTube', href: '/loginasadmin/google', current: location.pathname === '/loginasadmin/google' }],
     },
     {
       title: 'Facebook & Instagram',
       SectionIcon: Share2,
       requiredPermission: Nav.facebook,
       defaultOpen: false,
-      items: [{ name: 'Facebook & Instagram', href: '/admin/facebook', current: location.pathname === '/admin/facebook' }],
+      items: [{ name: 'Facebook & Instagram', href: '/loginasadmin/facebook', current: location.pathname === '/loginasadmin/facebook' }],
     },
     {
       title: 'Loyalty & rewards',
@@ -183,8 +183,8 @@ const Layout = () => {
       requiredPermission: Nav.loyalty,
       defaultOpen: false,
       items: [
-        { name: 'Loyalty program', href: '/admin/loyalty-program', current: location.pathname === '/admin/loyalty-program' },
-        { name: 'Cashback system', href: '/admin/cashback', current: location.pathname === '/admin/cashback' },
+        { name: 'Loyalty program', href: '/loginasadmin/loyalty-program', current: location.pathname === '/loginasadmin/loyalty-program' },
+        { name: 'Cashback system', href: '/loginasadmin/cashback', current: location.pathname === '/loginasadmin/cashback' },
       ],
     },
 
@@ -195,24 +195,24 @@ const Layout = () => {
       requiredAnyOf: [Nav.catalog, ...NAV_CATALOG_FINE_CODES],
       defaultOpen: true,
       items: [
-        { name: 'Products', href: '/admin/products', requiredPermission: NavCatalog.products, current: location.pathname === '/admin/products' },
-        { name: 'Catalog', href: '/admin/categories', requiredPermission: NavCatalog.categories, current: location.pathname === '/admin/categories' },
+        { name: 'Products', href: '/loginasadmin/products', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/products' },
+        { name: 'Catalog', href: '/loginasadmin/categories', requiredPermission: NavCatalog.categories, current: location.pathname === '/loginasadmin/categories' },
         {
           name: 'Product collections',
-          href: '/admin/product-collections',
+          href: '/loginasadmin/product-collections',
           badge: 'NEW',
           requiredPermission: NavCatalog.collections,
-          current: location.pathname === '/admin/product-collections',
+          current: location.pathname === '/loginasadmin/product-collections',
         },
         {
           name: 'Product variants',
-          href: '/admin/product-variants',
+          href: '/loginasadmin/product-variants',
           requiredPermission: NavCatalog.variants,
-          current: location.pathname === '/admin/product-variants',
+          current: location.pathname === '/loginasadmin/product-variants',
         },
-        { name: 'Inventory', href: '/admin/inventory', requiredPermission: NavCatalog.inventory, current: location.pathname === '/admin/inventory' },
-        { name: 'Warehouses', href: '/admin/warehouses', requiredPermission: NavCatalog.warehouses, current: location.pathname === '/admin/warehouses' },
-        { name: 'Discounts', href: '/admin/discounts', requiredPermission: NavCatalog.discounts, current: location.pathname === '/admin/discounts' },
+        { name: 'Inventory', href: '/loginasadmin/inventory', requiredPermission: NavCatalog.inventory, current: location.pathname === '/loginasadmin/inventory' },
+        { name: 'Warehouses', href: '/loginasadmin/warehouses', requiredPermission: NavCatalog.warehouses, current: location.pathname === '/loginasadmin/warehouses' },
+        { name: 'Discounts', href: '/loginasadmin/discounts', requiredPermission: NavCatalog.discounts, current: location.pathname === '/loginasadmin/discounts' },
       ],
     },
 
@@ -222,17 +222,17 @@ const Layout = () => {
       requiredPermission: Nav.sales,
       defaultOpen: false,
       items: [
-        { name: 'Orders', href: '/admin/orders', current: location.pathname === '/admin/orders' || location.pathname.startsWith('/admin/orders/') },
+        { name: 'Orders', href: '/loginasadmin/orders', current: location.pathname === '/loginasadmin/orders' || location.pathname.startsWith('/loginasadmin/orders/') },
         {
           name: 'Unified sales',
-          href: '/admin/unified-sales',
+          href: '/loginasadmin/unified-sales',
           badge: 'NEW',
-          current: location.pathname === '/admin/unified-sales',
+          current: location.pathname === '/loginasadmin/unified-sales',
         },
-        { name: 'Shipments', href: '/admin/shipments', current: location.pathname === '/admin/shipments' },
-        { name: 'Returns', href: '/admin/returns', current: location.pathname === '/admin/returns' },
-        { name: 'POS system', href: '/admin/pos', current: location.pathname === '/admin/pos' },
-        { name: 'Cart & checkout', href: '/admin/cart-checkout', current: location.pathname === '/admin/cart-checkout' },
+        { name: 'Shipments', href: '/loginasadmin/shipments', current: location.pathname === '/loginasadmin/shipments' },
+        { name: 'Returns', href: '/loginasadmin/returns', current: location.pathname === '/loginasadmin/returns' },
+        { name: 'POS system', href: '/loginasadmin/pos', current: location.pathname === '/loginasadmin/pos' },
+        { name: 'Cart & checkout', href: '/loginasadmin/cart-checkout', current: location.pathname === '/loginasadmin/cart-checkout' },
       ],
     },
 
@@ -242,13 +242,13 @@ const Layout = () => {
       requiredPermission: Nav.content,
       defaultOpen: true,
       items: [
-        { name: 'CMS', href: '/admin/cms', current: location.pathname === '/admin/cms' },
-        { name: 'Blog', href: '/admin/blog-requests', current: location.pathname === '/admin/blog-requests' },
-        { name: 'Ask Community', href: '/admin/ask-community', current: location.pathname === '/admin/ask-community' },
-        { name: 'Authors', href: '/admin/author-management', current: location.pathname === '/admin/author-management' },
-        { name: 'Video manager', href: '/admin/video-manager', current: location.pathname === '/admin/video-manager' },
-        { name: 'Static pages', href: '/admin/static-pages', current: location.pathname === '/admin/static-pages' },
-        { name: 'Community management', href: '/admin/community-management', current: location.pathname === '/admin/community-management' },
+        { name: 'CMS', href: '/loginasadmin/cms', current: location.pathname === '/loginasadmin/cms' },
+        { name: 'Blog', href: '/loginasadmin/blog-requests', current: location.pathname === '/loginasadmin/blog-requests' },
+        { name: 'Ask Community', href: '/loginasadmin/ask-community', current: location.pathname === '/loginasadmin/ask-community' },
+        { name: 'Authors', href: '/loginasadmin/author-management', current: location.pathname === '/loginasadmin/author-management' },
+        { name: 'Video manager', href: '/loginasadmin/video-manager', current: location.pathname === '/loginasadmin/video-manager' },
+        { name: 'Static pages', href: '/loginasadmin/static-pages', current: location.pathname === '/loginasadmin/static-pages' },
+        { name: 'Community management', href: '/loginasadmin/community-management', current: location.pathname === '/loginasadmin/community-management' },
       ],
     },
 
@@ -258,19 +258,19 @@ const Layout = () => {
       requiredPermission: Nav.crm,
       defaultOpen: true,
       items: [
-        { name: 'Customers', href: '/admin/customers', current: location.pathname === '/admin/customers' },
-        { name: 'Users', href: '/admin/users', current: location.pathname === '/admin/users' || location.pathname.startsWith('/admin/users/') },
-        { name: 'User profiles', href: '/admin/user-profiles', current: location.pathname === '/admin/user-profiles' },
-        { name: 'User notifications', href: '/admin/user-notifications', current: location.pathname === '/admin/user-notifications' },
-        { name: 'Customer segmentation', href: '/admin/customer-segmentation', current: location.pathname === '/admin/customer-segmentation' },
-        { name: 'Custom audience', href: '/admin/custom-audience', current: location.pathname === '/admin/custom-audience' },
-        { name: 'WhatsApp subscriptions', href: '/admin/whatsapp-subscriptions', current: location.pathname === '/admin/whatsapp-subscriptions' },
-        { name: 'WhatsApp chat', href: '/admin/whatsapp-chat', current: location.pathname === '/admin/whatsapp-chat' },
-        { name: 'WhatsApp management', href: '/admin/whatsapp-management', current: location.pathname === '/admin/whatsapp-management' },
-        { name: 'WhatsApp notifications', href: '/admin/whatsapp-notifications', current: location.pathname === '/admin/whatsapp-notifications' },
-        { name: 'Journey funnel', href: '/admin/journey-funnel', current: location.pathname === '/admin/journey-funnel' },
-        { name: 'Journey tracking', href: '/admin/journey-tracking', current: location.pathname === '/admin/journey-tracking' },
-        { name: 'Live chat', href: '/admin/live-chat', current: location.pathname === '/admin/live-chat' },
+        { name: 'Customers', href: '/loginasadmin/customers', current: location.pathname === '/loginasadmin/customers' },
+        { name: 'Users', href: '/loginasadmin/users', current: location.pathname === '/loginasadmin/users' || location.pathname.startsWith('/loginasadmin/users/') },
+        { name: 'User profiles', href: '/loginasadmin/user-profiles', current: location.pathname === '/loginasadmin/user-profiles' },
+        { name: 'User notifications', href: '/loginasadmin/user-notifications', current: location.pathname === '/loginasadmin/user-notifications' },
+        { name: 'Customer segmentation', href: '/loginasadmin/customer-segmentation', current: location.pathname === '/loginasadmin/customer-segmentation' },
+        { name: 'Custom audience', href: '/loginasadmin/custom-audience', current: location.pathname === '/loginasadmin/custom-audience' },
+        { name: 'WhatsApp subscriptions', href: '/loginasadmin/whatsapp-subscriptions', current: location.pathname === '/loginasadmin/whatsapp-subscriptions' },
+        { name: 'WhatsApp chat', href: '/loginasadmin/whatsapp-chat', current: location.pathname === '/loginasadmin/whatsapp-chat' },
+        { name: 'WhatsApp management', href: '/loginasadmin/whatsapp-management', current: location.pathname === '/loginasadmin/whatsapp-management' },
+        { name: 'WhatsApp notifications', href: '/loginasadmin/whatsapp-notifications', current: location.pathname === '/loginasadmin/whatsapp-notifications' },
+        { name: 'Journey funnel', href: '/loginasadmin/journey-funnel', current: location.pathname === '/loginasadmin/journey-funnel' },
+        { name: 'Journey tracking', href: '/loginasadmin/journey-tracking', current: location.pathname === '/loginasadmin/journey-tracking' },
+        { name: 'Live chat', href: '/loginasadmin/live-chat', current: location.pathname === '/loginasadmin/live-chat' },
       ],
     },
 
@@ -280,11 +280,11 @@ const Layout = () => {
       requiredPermission: Nav.finance,
       defaultOpen: false,
       items: [
-        { name: 'Invoices', href: '/admin/invoices', current: location.pathname === '/admin/invoices' },
-        { name: 'Invoice settings', href: '/admin/invoice-settings', current: location.pathname === '/admin/invoice-settings' },
-        { name: 'Payment', href: '/admin/payment', current: location.pathname === '/admin/payment' },
-        { name: 'Payment options', href: '/admin/payment-options', current: location.pathname === '/admin/payment-options' },
-        { name: 'Tax', href: '/admin/tax', current: location.pathname === '/admin/tax' },
+        { name: 'Invoices', href: '/loginasadmin/invoices', current: location.pathname === '/loginasadmin/invoices' },
+        { name: 'Invoice settings', href: '/loginasadmin/invoice-settings', current: location.pathname === '/loginasadmin/invoice-settings' },
+        { name: 'Payment', href: '/loginasadmin/payment', current: location.pathname === '/loginasadmin/payment' },
+        { name: 'Payment options', href: '/loginasadmin/payment-options', current: location.pathname === '/loginasadmin/payment-options' },
+        { name: 'Tax', href: '/loginasadmin/tax', current: location.pathname === '/loginasadmin/tax' },
       ],
     },
 
@@ -293,7 +293,7 @@ const Layout = () => {
       SectionIcon: Megaphone,
       requiredPermission: Nav.marketing,
       defaultOpen: false,
-      items: [{ name: 'Marketing', href: '/admin/marketing', current: location.pathname === '/admin/marketing' }],
+      items: [{ name: 'Marketing', href: '/loginasadmin/marketing', current: location.pathname === '/loginasadmin/marketing' }],
     },
 
     {
@@ -302,12 +302,12 @@ const Layout = () => {
       requiredPermission: Nav.affiliate,
       defaultOpen: false,
       items: [
-        { name: 'Affiliate program', href: '/admin/affiliate-program', current: location.pathname === '/admin/affiliate-program' },
-        { name: 'Affiliate requests', href: '/admin/affiliate-requests', badge: '3', current: location.pathname === '/admin/affiliate-requests' },
-        { name: 'Collab requests', href: '/admin/collab-requests', badge: pendingCollabCount > 0 ? String(pendingCollabCount) : undefined, current: location.pathname === '/admin/collab-requests' },
-        { name: 'Collab tasks', href: '/admin/collab-tasks', current: location.pathname === '/admin/collab-tasks' },
-        { name: 'Coin withdrawals', href: '/admin/coin-withdrawals', current: location.pathname === '/admin/coin-withdrawals' },
-        { name: 'Loyalty program management', href: '/admin/loyalty-program-management', current: location.pathname === '/admin/loyalty-program-management' },
+        { name: 'Affiliate program', href: '/loginasadmin/affiliate-program', current: location.pathname === '/loginasadmin/affiliate-program' },
+        { name: 'Affiliate requests', href: '/loginasadmin/affiliate-requests', badge: '3', current: location.pathname === '/loginasadmin/affiliate-requests' },
+        { name: 'Collab requests', href: '/loginasadmin/collab-requests', badge: pendingCollabCount > 0 ? String(pendingCollabCount) : undefined, current: location.pathname === '/loginasadmin/collab-requests' },
+        { name: 'Collab tasks', href: '/loginasadmin/collab-tasks', current: location.pathname === '/loginasadmin/collab-tasks' },
+        { name: 'Coin withdrawals', href: '/loginasadmin/coin-withdrawals', current: location.pathname === '/loginasadmin/coin-withdrawals' },
+        { name: 'Loyalty program management', href: '/loginasadmin/loyalty-program-management', current: location.pathname === '/loginasadmin/loyalty-program-management' },
       ],
     },
 
@@ -317,10 +317,10 @@ const Layout = () => {
       requiredPermission: Nav.analytics,
       defaultOpen: false,
       items: [
-        { name: 'Analytics', href: '/admin/analytics', current: location.pathname === '/admin/analytics' },
-        { name: 'Advanced analytics', href: '/admin/advanced-analytics', current: location.pathname === '/admin/advanced-analytics' },
-        { name: 'Actionable analytics', href: '/admin/actionable-analytics', current: location.pathname === '/admin/actionable-analytics' },
-        { name: 'Audit logs', href: '/admin/system/audit-logs', current: location.pathname === '/admin/system/audit-logs' },
+        { name: 'Analytics', href: '/loginasadmin/analytics', current: location.pathname === '/loginasadmin/analytics' },
+        { name: 'Advanced analytics', href: '/loginasadmin/advanced-analytics', current: location.pathname === '/loginasadmin/advanced-analytics' },
+        { name: 'Actionable analytics', href: '/loginasadmin/actionable-analytics', current: location.pathname === '/loginasadmin/actionable-analytics' },
+        { name: 'Audit logs', href: '/loginasadmin/system/audit-logs', current: location.pathname === '/loginasadmin/system/audit-logs' },
       ],
     },
 
@@ -330,11 +330,11 @@ const Layout = () => {
       requiredPermission: Nav.forms,
       defaultOpen: false,
       items: [
-        { name: 'Forms', href: '/admin/forms', current: location.pathname === '/admin/forms' },
-        { name: 'Form builder', href: '/admin/form-builder', current: location.pathname === '/admin/form-builder' },
-        { name: 'Form submissions', href: '/admin/form-submissions', current: location.pathname === '/admin/form-submissions' },
-        { name: 'Contact messages', href: '/admin/contact-messages', current: location.pathname === '/admin/contact-messages' },
-        { name: 'Alert settings', href: '/admin/system/alerts', current: location.pathname === '/admin/system/alerts' },
+        { name: 'Forms', href: '/loginasadmin/forms', current: location.pathname === '/loginasadmin/forms' },
+        { name: 'Form builder', href: '/loginasadmin/form-builder', current: location.pathname === '/loginasadmin/form-builder' },
+        { name: 'Form submissions', href: '/loginasadmin/form-submissions', current: location.pathname === '/loginasadmin/form-submissions' },
+        { name: 'Contact messages', href: '/loginasadmin/contact-messages', current: location.pathname === '/loginasadmin/contact-messages' },
+        { name: 'Alert settings', href: '/loginasadmin/system/alerts', current: location.pathname === '/loginasadmin/system/alerts' },
       ],
     },
 
@@ -344,10 +344,10 @@ const Layout = () => {
       requiredPermission: Nav.team,
       defaultOpen: false,
       items: [
-        { name: 'Staff accounts', href: '/admin/system/staff', current: location.pathname === '/admin/system/staff' },
-        { name: 'Admin management', href: '/admin/system/admin-management', current: location.pathname === '/admin/system/admin-management' },
-        { name: 'Roles & permissions', href: '/admin/system/roles', current: location.pathname === '/admin/system/roles' },
-        { name: 'Account security', href: '/admin/account-security', current: location.pathname === '/admin/account-security' },
+        { name: 'Staff accounts', href: '/loginasadmin/system/staff', current: location.pathname === '/loginasadmin/system/staff' },
+        { name: 'Admin management', href: '/loginasadmin/system/admin-management', current: location.pathname === '/loginasadmin/system/admin-management' },
+        { name: 'Roles & permissions', href: '/loginasadmin/system/roles', current: location.pathname === '/loginasadmin/system/roles' },
+        { name: 'Account security', href: '/loginasadmin/account-security', current: location.pathname === '/loginasadmin/account-security' },
       ],
     },
   ]
@@ -612,7 +612,7 @@ const Layout = () => {
           {canNav(Nav.settings) && (
             <div className="border-t border-[var(--brand-border)] p-3">
               <Link
-                to="/admin/settings"
+                to="/loginasadmin/settings"
                 className="flex items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--brand-highlight)] hover:text-[var(--text-primary)]"
               >
                 <Settings className="h-4 w-4 flex-shrink-0 opacity-80" aria-hidden />
@@ -740,7 +740,7 @@ const Layout = () => {
                     </div>
                     <div className="py-2">
                       <Link
-                        to="/admin/account-security"
+                        to="/loginasadmin/account-security"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                         onClick={() => setIsUserMenuOpen(false)}
                       >

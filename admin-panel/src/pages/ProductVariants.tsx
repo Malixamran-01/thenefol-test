@@ -150,7 +150,7 @@ export default function ProductVariants() {
               <br />
               <strong>Agar aapke products mein sirf ek hi size hai, to is page ki zaroorat nahi hai.</strong>
               <br />
-              Single-size products ko directly <a href="/admin/products" className="underline font-semibold" style={{ color: 'var(--arctic-blue-primary-dark)' }}>Products page</a> se manage karein.
+              Single-size products ko directly <a href="/loginasadmin/products" className="underline font-semibold" style={{ color: 'var(--arctic-blue-primary-dark)' }}>Products page</a> se manage karein.
             </p>
           </div>
         </div>

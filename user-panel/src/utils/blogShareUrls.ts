@@ -24,9 +24,9 @@ export function getBlogShareUrls(id: string | number): BlogShareUrls {
   }
 }
 
-/** Primary link for clipboard + social (hybrid when possible). */
+/** Primary link for copy, WhatsApp, and all share actions. */
 export function getBlogShareLink(id: string | number): string {
-  return getBlogShareUrls(id).universalUrl
+  return getBlogShareUrls(id).appUrl
 }
 
 /** Absolute URL for /uploads/ paths used in og:image (must be same-origin for crawlers). */

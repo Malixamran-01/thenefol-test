@@ -861,13 +861,13 @@ export default function InventoryManagement() {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Shortcuts</span>
           <Link
-            to="/admin/products"
+            to="/loginasadmin/products"
             className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-100"
           >
             Products
           </Link>
           <Link
-            to="/admin/product-variants"
+            to="/loginasadmin/product-variants"
             className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-100"
           >
             Product variants
@@ -1174,13 +1174,13 @@ export default function InventoryManagement() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Link
-                    to="/admin/products"
+                    to="/loginasadmin/products"
                     className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                   >
                     Catalog
                   </Link>
                   <Link
-                    to={`/admin/product-variants?product=${product.product_id}`}
+                    to={`/loginasadmin/product-variants?product=${product.product_id}`}
                     className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                   >
                     Variants
@@ -1553,7 +1553,7 @@ export default function InventoryManagement() {
                               : 'Create inventory SKU'}
                         </button>
                         <Link
-                          to={`/admin/product-variants?product=${product.product_id}`}
+                          to={`/loginasadmin/product-variants?product=${product.product_id}`}
                           className="px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 hover:bg-slate-50"
                         >
                           Product Variants (multi-SKU)

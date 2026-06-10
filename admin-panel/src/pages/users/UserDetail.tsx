@@ -274,7 +274,7 @@ export default function UserDetail() {
     return (
       <div className="p-8 text-center">
         <p className="text-red-600">{error || 'User not found'}</p>
-        <button onClick={() => navigate('/admin/users')} className="mt-4 text-blue-600">
+        <button onClick={() => navigate('/loginasadmin/users')} className="mt-4 text-blue-600">
           Back to Users
         </button>
       </div>
@@ -299,7 +299,7 @@ export default function UserDetail() {
       <div className="admin-page-header">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/admin/users')}
+            onClick={() => navigate('/loginasadmin/users')}
             className="p-2 hover:bg-[var(--arctic-blue-lighter)] rounded-xl transition-colors"
             style={{ color: 'var(--text-secondary)' }}
           >

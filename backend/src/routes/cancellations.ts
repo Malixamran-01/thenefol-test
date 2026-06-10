@@ -736,7 +736,7 @@ export async function cancelOrderImmediate(pool: Pool, req: Request, res: Respon
                   'coin_exploit_prevention',
                   'Coins Deducted from Other Orders',
                   `Order ${order_number} cancelled. ${totalCoinsToDeduct - cashbackCoins} coins that were used in ${affectedOrders.length} other order(s) have been deducted. Affected orders: ${affectedOrders.map(o => o.order_number).join(', ')}`,
-                  `/admin/orders/${order.id}`,
+                  `/loginasadmin/orders/${order.id}`,
                   'alert-triangle',
                   'high',
                   JSON.stringify({
@@ -812,7 +812,7 @@ export async function cancelOrderImmediate(pool: Pool, req: Request, res: Respon
           'order_cancelled',
           'Order Cancelled',
           `Order ${order_number} has been cancelled by customer. Reason: ${reason}`,
-          `/admin/sales/orders/${order.id}`,
+          `/loginasadmin/orders/${order.id}`,
           'x-circle',
           'high',
           JSON.stringify({ order_number, reason, shiprocket_cancelled: shiprocketCancelled })
