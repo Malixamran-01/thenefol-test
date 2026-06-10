@@ -371,7 +371,7 @@ export default function LoginPage() {
           </div>
 
           {/* Google + Facebook */}
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {/* <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <button
               type="button"
               onClick={handleGoogleSignIn}
@@ -412,7 +412,7 @@ export default function LoginPage() {
               </svg>
               Facebook
             </button>
-          </div>
+          </div> */}
 
           {/* WhatsApp — always visible, no tabs */}
           <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
