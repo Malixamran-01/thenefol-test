@@ -40,20 +40,31 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
       return sendError(res, 400, 'Google token is required')
     }
 
-    // Verify the Google token by calling Google's userinfo endpoint
+    // Verify the Google token.
+    // The frontend (Google One Tap / GSI) sends an ID token (JWT) as `accessToken`.
+    // ID tokens must be verified via tokeninfo, not the userinfo Bearer endpoint.
     let googleUser: GoogleUserInfo
     try {
-      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: {
-          Authorization: `Bearer ${accessToken || idToken}`
+      const token = idToken || accessToken
+      // Try ID token verification first (Google One Tap / GSI flow)
+      const idTokenRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`)
+      if (idTokenRes.ok) {
+        const data = await idTokenRes.json() as GoogleUserInfo & { aud?: string; error?: string }
+        if (data.error) throw new Error(data.error)
+        // Validate the token was issued for our app
+        const clientId = process.env.GOOGLE_CLIENT_ID
+        if (clientId && data.aud && data.aud !== clientId) {
+          throw new Error('Token audience mismatch')
         }
-      })
-
-      if (!response.ok) {
-        throw new Error('Invalid Google token')
+        googleUser = data
+      } else {
+        // Fall back to access token userinfo endpoint
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!userInfoRes.ok) throw new Error('Invalid Google token')
+        googleUser = await userInfoRes.json() as GoogleUserInfo
       }
-
-      googleUser = await response.json() as GoogleUserInfo
     } catch (error) {
       console.error('Google token verification failed:', error)
       return sendError(res, 401, 'Invalid Google token')

@@ -148,7 +148,8 @@ const SQL_AUTHOR_PROFILE_LATERAL = `
            ap_inner.status AS ap_profile_status,
            ap_inner.display_name AS ap_display_name,
            ap_inner.pen_name AS ap_pen_name,
-           ap_inner.username AS ap_username
+           ap_inner.username AS ap_username,
+           ap_inner.profile_image AS ap_profile_image
     FROM author_profiles ap_inner
     WHERE ap_inner.user_id = p.user_id AND ap_inner.status != 'deleted'
     ORDER BY ap_inner.id ASC
@@ -164,9 +165,15 @@ function omitAuthorProfileJoinCols(r: any) {
     ap_display_name: _d,
     ap_pen_name: _p,
     ap_username: _u,
+    ap_profile_image: _pi,
     ...rest
   } = r
   return rest
+}
+
+/** Resolve author photo: prefer author_profiles.profile_image, fall back to users.profile_photo */
+function resolveAuthorPhoto(r: any): string | null {
+  return r.ap_profile_image || r.profile_photo || null
 }
 
 function parseBlogStringArray(value: any): string[] {
@@ -1300,13 +1307,14 @@ router.get('/posts/my', authenticateToken, async (req, res) => {
     if (!userId || !pool) return res.status(401).json({ message: 'Authentication required' })
 
     const { rows } = await pool.query(
-      `SELECT p.*, u.unique_user_id as author_unique_user_id,
+      `SELECT p.*, u.unique_user_id as author_unique_user_id, u.profile_photo,
         authprof.ap_id,
         authprof.ap_is_verified,
         authprof.ap_profile_status,
         authprof.ap_display_name,
         authprof.ap_pen_name,
-        authprof.ap_username
+        authprof.ap_username,
+        authprof.ap_profile_image
        FROM blog_posts p
        LEFT JOIN users u ON p.user_id = u.id
        ${SQL_AUTHOR_PROFILE_LATERAL}
@@ -1320,6 +1328,7 @@ router.get('/posts/my', authenticateToken, async (req, res) => {
         author_name: resolvePublicAuthorName(r),
         author_id: r.user_id,
         author_unique_user_id: r.author_unique_user_id,
+        author_photo: resolveAuthorPhoto(r),
       }))
     )
   } catch (error) {
@@ -1364,7 +1373,7 @@ router.get('/posts/:id/for-edit', authenticateToken, async (req, res) => {
 
     const { rows } = await pool.query(
       `
-      SELECT p.*, u.unique_user_id as author_unique_user_id,
+      SELECT p.*, u.unique_user_id as author_unique_user_id, u.profile_photo,
         authprof.ap_id,
         authprof.ap_is_verified,
         authprof.ap_profile_status,
@@ -1608,7 +1617,7 @@ router.get('/posts', async (req, res) => {
 
     const { rows } = await pool.query(
       `
-      SELECT p.*, u.unique_user_id as author_unique_user_id,
+      SELECT p.*, u.unique_user_id as author_unique_user_id, u.profile_photo,
         authprof.ap_id,
         authprof.ap_is_verified,
         authprof.ap_profile_status,
@@ -1635,6 +1644,7 @@ router.get('/posts', async (req, res) => {
           author_name: resolvePublicAuthorName(r),
           author_id: r.user_id,
           author_is_verified: authorIsVerified,
+          author_photo: resolveAuthorPhoto(r),
         }
       })
     )
@@ -1813,7 +1823,7 @@ router.get('/posts/:id', async (req, res) => {
 
     const { rows } = await pool.query(
       `
-      SELECT p.*, u.unique_user_id as author_unique_user_id,
+      SELECT p.*, u.unique_user_id as author_unique_user_id, u.profile_photo,
         authprof.ap_id,
         authprof.ap_is_verified,
         authprof.ap_profile_status,
@@ -1845,6 +1855,7 @@ router.get('/posts/:id', async (req, res) => {
       author_id: raw.user_id,
       author_unique_user_id: raw.author_unique_user_id,
       author_is_verified: authorIsVerified,
+      author_photo: resolveAuthorPhoto(raw),
     })
   } catch (error) {
     console.error('Error fetching blog post:', error)

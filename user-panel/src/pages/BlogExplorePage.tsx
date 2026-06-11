@@ -37,6 +37,7 @@ interface Post {
   author_id?: number | string | null
   author_unique_user_id?: string | null
   author_is_verified?: boolean
+  author_photo?: string | null
   categories?: string[] | string | null
   meta_keywords?: string[] | string | null
   likes_count?: number
@@ -208,7 +209,7 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
         )}
         <div className="mt-auto flex items-center justify-between pt-2">
           <div className="flex items-center gap-1.5">
-            <PostAvatar name={post.author_name} />
+            <AuthorAvatar name={post.author_name} avatar={post.author_photo ?? null} size="sm" />
             <span className="inline-flex items-center gap-1 text-[11px] text-gray-500">
               {post.author_name}
               {post.author_is_verified === true ? <AuthorVerifiedBadge size="md" /> : null}

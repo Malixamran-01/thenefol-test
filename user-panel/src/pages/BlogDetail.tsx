@@ -144,19 +144,53 @@ export default function BlogDetail() {
     fetchComments()
   }, [post, commentSort])
 
-  // Deep-link scroll when URL contains #comment-<id> (e.g. from profile activity)
+  // Deep-link scroll + highlight when URL contains #comment-<id> (e.g. from notification)
   useEffect(() => {
     if (!post || comments.length === 0) return
     const hash = window.location.hash || ''
     const m = hash.match(/#comment-([^/?#]+)/)
     if (!m) return
     const commentId = m[1]
-    const el = document.getElementById(`comment-${commentId}`)
-    if (el) {
-      requestAnimationFrame(() => {
-        safeElementScrollIntoView(el, { behavior: 'smooth', block: 'center' })
-      })
+
+    // If the target comment is a reply, we need to expand its parent first.
+    // Find ancestor comment IDs by walking the flat comments list.
+    const commentMap: Record<string, BlogComment> = {}
+    comments.forEach(c => { commentMap[c.id] = c })
+
+    const expandAncestors = (id: string) => {
+      const c = commentMap[id]
+      if (!c) return
+      if (c.parent_id) {
+        // Expand the parent so replies are visible
+        setExpandedComments(prev => ({ ...prev, [c.parent_id!]: true }))
+        expandAncestors(c.parent_id)
+      }
     }
+    expandAncestors(commentId)
+
+    // Wait a tick for the DOM to update after expanding, then scroll + highlight
+    const attempt = (retries: number) => {
+      const el = document.getElementById(`comment-${commentId}`)
+      if (el) {
+        requestAnimationFrame(() => {
+          safeElementScrollIntoView(el, { behavior: 'smooth', block: 'center' })
+          // Pulse highlight animation
+          el.style.transition = 'background-color 0.4s ease'
+          el.style.backgroundColor = 'rgba(75, 151, 201, 0.12)'
+          el.style.borderRadius = '12px'
+          setTimeout(() => {
+            el.style.backgroundColor = ''
+            setTimeout(() => {
+              el.style.backgroundColor = 'rgba(75, 151, 201, 0.06)'
+              setTimeout(() => { el.style.backgroundColor = '' }, 600)
+            }, 400)
+          }, 800)
+        })
+      } else if (retries > 0) {
+        setTimeout(() => attempt(retries - 1), 120)
+      }
+    }
+    setTimeout(() => attempt(5), 100)
   }, [post, comments])
 
   // Record a "read" once the user has spent at least as long as the post's
@@ -708,7 +742,7 @@ export default function BlogDetail() {
     const replyCount = replies.length
 
     return (
-      <div key={comment.id} id={`comment-${comment.id}`} className="border-b border-gray-100 last:border-b-0 py-5 first:pt-0 scroll-mt-6">
+      <div key={comment.id} id={`comment-${comment.id}`} className="border-b border-gray-100 last:border-b-0 py-5 first:pt-0 scroll-mt-6 px-2 -mx-2" style={{ transition: 'background-color 0.4s ease' }}>
         <div className={`flex gap-3 ${depth > 0 ? 'ml-6' : ''}`}>
           <div className="flex-shrink-0">
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-700" style={{ backgroundColor: '#E8F4F8' }}>

@@ -50,7 +50,7 @@ export interface AuthContextValue {
   error: string | null
   login: (email: string, password: string) => Promise<boolean>
   loginWithWhatsApp: (phone: string, otp: string) => Promise<boolean>
-  loginWithGoogle: (accessToken: string) => Promise<boolean>
+  loginWithGoogle: (idToken: string) => Promise<boolean>
   loginWithFacebook: (accessToken: string, userID: string) => Promise<boolean>
   signup: (userData: SignupData) => Promise<boolean>
   logout: () => void
@@ -211,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const loginWithGoogle = useCallback(async (accessToken: string): Promise<boolean> => {
+  const loginWithGoogle = useCallback(async (idToken: string): Promise<boolean> => {
     const myId = ++requestIdRef.current
     setError(null)
     setIsLoading(true)
@@ -221,7 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch(`${apiBase}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken }),
+        body: JSON.stringify({ idToken }),
       })
 
       if (myId !== requestIdRef.current) return false

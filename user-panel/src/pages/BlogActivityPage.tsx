@@ -18,6 +18,31 @@ import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 
+// ─── Navigation helpers ───────────────────────────────────────────────────────
+
+function goToAuthor(n: Notification) {
+  if (!n.actor_user_id) return
+  sessionStorage.setItem('blog_author_profile', JSON.stringify({ id: n.actor_user_id, name: n.actor_name }))
+  window.location.hash = `#/user/author/${n.actor_user_id}`
+}
+
+function goToPost(n: Notification) {
+  if (!n.post_id) return
+  window.location.hash = `#/user/blog/${n.post_id}`
+}
+
+function goToComment(n: Notification) {
+  if (!n.post_id) return
+  const anchor = n.comment_id ? `#comment-${n.comment_id}` : ''
+  window.location.hash = `#/user/blog/${n.post_id}${anchor}`
+}
+
+function markRead(n: Notification, setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>) {
+  if (n.is_read) return
+  blogActivityAPI.markNotificationRead(n.id).catch(() => {})
+  setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)))
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Notification {
@@ -38,87 +63,107 @@ type MuteDuration = '1h' | '3h' | '8h' | '1d' | '1w' | 'forever'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// Each entry: icon, badge colour, and a render function that returns
+// an array of inline segments. Each segment has text and an optional onClick.
+type Segment = { text: string; onClick?: () => void; bold?: boolean }
+
 const TYPE_META: Record<
   string,
-  { icon: React.ReactNode; color: string; label: (n: Notification) => string }
+  { icon: React.ReactNode; color: string; segments: (n: Notification, sn: React.Dispatch<React.SetStateAction<Notification[]>>) => Segment[] }
 > = {
   post_liked: {
     icon: <Heart className="h-4 w-4" />,
     color: 'text-rose-500',
-    label: (n) => `liked your post${n.post_title ? ` "${n.post_title}"` : ''}`,
+    segments: (n, sn) => [
+      { text: 'liked your post', onClick: () => { markRead(n, sn); goToPost(n) } },
+      ...(n.post_title ? [{ text: ` "${n.post_title}"`, onClick: () => { markRead(n, sn); goToPost(n) }, bold: false }] : []),
+    ],
   },
   post_commented: {
     icon: <MessageCircle className="h-4 w-4" />,
     color: 'text-[#4B97C9]',
-    label: (n) => `commented on${n.post_title ? ` "${n.post_title}"` : ' your post'}`,
+    segments: (n, sn) => [
+      { text: 'commented on' },
+      ...(n.post_title ? [{ text: ` "${n.post_title}"`, onClick: () => { markRead(n, sn); goToComment(n) } }] : [{ text: ' your post', onClick: () => { markRead(n, sn); goToComment(n) } }]),
+    ],
   },
   comment_replied: {
     icon: <MessageCircle className="h-4 w-4" />,
     color: 'text-[#4B97C9]',
-    label: () => 'replied to your comment',
+    segments: (n, sn) => [
+      { text: 'replied to your comment', onClick: () => { markRead(n, sn); goToComment(n) } },
+    ],
   },
   comment_liked: {
     icon: <Heart className="h-4 w-4" />,
     color: 'text-rose-500',
-    label: () => 'liked your comment',
+    segments: (n, sn) => [
+      { text: 'liked your comment', onClick: () => { markRead(n, sn); goToComment(n) } },
+    ],
   },
   post_reposted: {
     icon: <Repeat2 className="h-4 w-4" />,
     color: 'text-green-500',
-    label: (n) => `reposted your post${n.post_title ? ` "${n.post_title}"` : ''}`,
+    segments: (n, sn) => [
+      { text: 'reposted your post', onClick: () => { markRead(n, sn); goToPost(n) } },
+      ...(n.post_title ? [{ text: ` "${n.post_title}"`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
+    ],
   },
   followed: {
     icon: <UserPlus className="h-4 w-4" />,
     color: 'text-[#1B4965]',
-    label: () => 'started following you',
+    segments: (_n, _sn) => [{ text: 'started following you' }],
   },
   subscribed: {
     icon: <Star className="h-4 w-4" />,
     color: 'text-amber-500',
-    label: () => 'subscribed to your profile',
+    segments: (_n, _sn) => [{ text: 'subscribed to your profile' }],
   },
   collab_task_assigned: {
     icon: <ClipboardList className="h-4 w-4" />,
     color: 'text-[#4B97C9]',
-    label: (n) => `assigned you a brand task${n.post_title ? `: ${n.post_title}` : ''}`,
+    segments: (n, _sn) => [{ text: `assigned you a brand task${n.post_title ? `: ${n.post_title}` : ''}` }],
   },
   collab_task_revision: {
     icon: <ClipboardList className="h-4 w-4" />,
     color: 'text-orange-500',
-    label: () => 'asked for updates on your brand task',
+    segments: (_n, _sn) => [{ text: 'asked for updates on your brand task' }],
   },
   collab_task_rejected: {
     icon: <ClipboardList className="h-4 w-4" />,
     color: 'text-red-500',
-    label: () => 'did not approve a brand task submission',
+    segments: (_n, _sn) => [{ text: 'did not approve a brand task submission' }],
   },
   collab_task_paid: {
     icon: <CircleDollarSign className="h-4 w-4" />,
     color: 'text-emerald-600',
-    label: () => 'recorded payout for a brand task',
+    segments: (_n, _sn) => [{ text: 'recorded payout for a brand task' }],
   },
   collab_task_submitted: {
     icon: <ClipboardList className="h-4 w-4" />,
     color: 'text-slate-500',
-    label: () => 'received your brand task submission',
+    segments: (_n, _sn) => [{ text: 'received your brand task submission' }],
   },
   author_warning: {
     icon: <AlertTriangle className="h-4 w-4" />,
     color: 'text-amber-600',
-    label: (n) =>
-      `sent a moderation notice${n.post_title ? ` — ${n.post_title}` : ''}`,
+    segments: (n, _sn) => [{ text: `sent a moderation notice${n.post_title ? ` — ${n.post_title}` : ''}` }],
   },
   post_revision_approved: {
     icon: <FileText className="h-4 w-4" />,
     color: 'text-emerald-600',
-    label: (n) =>
-      `approved your blog edit${n.post_title ? ` — ${n.post_title}` : ''}`,
+    segments: (n, sn) => [
+      { text: 'approved your blog edit', onClick: () => { markRead(n, sn); goToPost(n) } },
+      ...(n.post_title ? [{ text: ` — ${n.post_title}`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
+    ],
   },
   post_revision_rejected: {
     icon: <AlertTriangle className="h-4 w-4" />,
     color: 'text-rose-600',
-    label: (n) =>
-      `did not approve your blog edit${n.post_title ? ` — ${n.post_title}` : ''}`,
+    segments: (n, sn) => [
+      { text: 'did not approve your blog edit', onClick: () => { markRead(n, sn); goToPost(n) } },
+      ...(n.post_title ? [{ text: ` — ${n.post_title}`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
+    ],
   },
 }
 
@@ -257,25 +302,6 @@ export default function BlogActivityPage() {
     blogActivityAPI.markAllNotificationsRead().catch(() => {})
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
     window.dispatchEvent(new CustomEvent('blog-notifications-read-all'))
-  }
-
-  const handleNotifClick = (n: Notification) => {
-    if (!n.is_read) {
-      blogActivityAPI.markNotificationRead(n.id).catch(() => {})
-      setNotifications((prev) =>
-        prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x))
-      )
-    }
-    if (n.type === 'author_warning') {
-      return
-    }
-    if (String(n.type).startsWith('collab_task_') || n.post_id === 'collab') {
-      window.location.hash = '#/user/collab?tab=collab&work=tasks'
-      return
-    }
-    if (n.post_id) {
-      window.location.hash = `#/user/blog/${n.post_id}`
-    }
   }
 
   const handleMute = async (duration: MuteDuration) => {
@@ -434,17 +460,27 @@ export default function BlogActivityPage() {
             if (n.type === 'collab_task_assigned') return null
             const meta = TYPE_META[n.type]
             if (!meta) return null
+            const segments = meta.segments(n, setNotifications)
+            const hasAuthorProfile = !!n.actor_user_id
+            const hasPost = !!n.post_id
+            const hasComment = hasPost && !!n.comment_id
             return (
-              <button
+              <div
                 key={n.id}
-                onClick={() => handleNotifClick(n)}
-                className={`flex w-full items-start gap-3.5 px-5 py-4 text-left transition-colors hover:bg-[#f4f9fc] ${
+                className={`flex w-full items-start gap-3.5 px-5 py-4 transition-colors ${
                   !n.is_read ? 'bg-[#f0f7fd]' : 'bg-white'
                 }`}
               >
-                {/* Avatar + type badge */}
+                {/* Avatar — clickable → author profile */}
                 <div className="relative flex-shrink-0">
-                  <Avatar name={n.actor_name} avatar={n.actor_avatar} />
+                  <button
+                    onClick={() => { markRead(n, setNotifications); goToAuthor(n) }}
+                    disabled={!hasAuthorProfile}
+                    className={hasAuthorProfile ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}
+                    aria-label={`View ${n.actor_name || 'user'}'s profile`}
+                  >
+                    <Avatar name={n.actor_name} avatar={n.actor_avatar} />
+                  </button>
                   <span
                     className={`absolute -bottom-0.5 -right-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white shadow-sm ${meta.color}`}
                   >
@@ -454,23 +490,70 @@ export default function BlogActivityPage() {
 
                 {/* Text block */}
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-[14px] leading-snug text-gray-800">
-                    <span className="font-semibold">{n.actor_name || 'Someone'}</span>{' '}
-                    <span className="text-gray-600">{meta.label(n)}</span>
+                  <p className="text-[14px] leading-snug text-gray-800 flex flex-wrap items-baseline gap-x-1">
+                    {/* Author name — clickable → profile */}
+                    <button
+                      onClick={() => { markRead(n, setNotifications); goToAuthor(n) }}
+                      disabled={!hasAuthorProfile}
+                      className={`font-semibold text-gray-900 ${hasAuthorProfile ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
+                    >
+                      {n.actor_name || 'Someone'}
+                    </button>
+
+                    {/* Action segments — each can have its own destination */}
+                    {segments.map((seg, i) => (
+                      seg.onClick ? (
+                        <button
+                          key={i}
+                          onClick={(e) => { e.stopPropagation(); seg.onClick!() }}
+                          className="text-gray-600 hover:text-[#1B4965] hover:underline cursor-pointer text-left"
+                        >
+                          {seg.text}
+                        </button>
+                      ) : (
+                        <span key={i} className="text-gray-600">{seg.text}</span>
+                      )
+                    ))}
                   </p>
+
+                  {/* Comment excerpt — clickable → comment */}
                   {n.comment_excerpt && (
-                    <p className="mt-1 line-clamp-2 text-[12px] italic text-gray-400">
+                    <button
+                      onClick={() => { markRead(n, setNotifications); goToComment(n) }}
+                      disabled={!hasPost}
+                      className={`mt-1 block w-full text-left line-clamp-2 text-[12px] italic text-gray-400 ${hasComment ? 'hover:text-[#4B97C9] hover:underline cursor-pointer' : 'cursor-default'}`}
+                    >
                       "{n.comment_excerpt}"
-                    </p>
+                    </button>
                   )}
-                  <p className="mt-1.5 text-[11px] text-gray-400">{timeAgo(n.created_at)}</p>
+
+                  {/* Timestamp row with quick-action chips */}
+                  <div className="mt-1.5 flex items-center gap-3 flex-wrap">
+                    <span className="text-[11px] text-gray-400">{timeAgo(n.created_at)}</span>
+                    {hasPost && (
+                      <button
+                        onClick={() => { markRead(n, setNotifications); goToPost(n) }}
+                        className="text-[11px] text-[#4B97C9] hover:underline"
+                      >
+                        View post
+                      </button>
+                    )}
+                    {hasComment && (
+                      <button
+                        onClick={() => { markRead(n, setNotifications); goToComment(n) }}
+                        className="text-[11px] text-[#4B97C9] hover:underline"
+                      >
+                        Go to comment ↓
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Unread dot */}
                 {!n.is_read && (
                   <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-[#4B97C9]" />
                 )}
-              </button>
+              </div>
             )
           })}
 
