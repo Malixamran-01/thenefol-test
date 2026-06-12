@@ -710,17 +710,39 @@ async function runMigration() {
 
         -- Add email and unique_user_id to author_profiles for profile identification
         IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
+          SELECT 1 FROM information_schema.columns
           WHERE table_name = 'author_profiles' AND column_name = 'email'
         ) THEN
           ALTER TABLE author_profiles ADD COLUMN email text;
         END IF;
 
         IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns 
+          SELECT 1 FROM information_schema.columns
           WHERE table_name = 'author_profiles' AND column_name = 'unique_user_id'
         ) THEN
           ALTER TABLE author_profiles ADD COLUMN unique_user_id text;
+        END IF;
+
+        -- Profile & cover images for users and author_profiles (may be missing on older schemas)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'profile_photo'
+        ) THEN
+          ALTER TABLE users ADD COLUMN profile_photo text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'author_profiles' AND column_name = 'profile_image'
+        ) THEN
+          ALTER TABLE author_profiles ADD COLUMN profile_image text;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'author_profiles' AND column_name = 'cover_image'
+        ) THEN
+          ALTER TABLE author_profiles ADD COLUMN cover_image text;
         END IF;
 
         -- Backfill email and unique_user_id for existing author profiles from users table

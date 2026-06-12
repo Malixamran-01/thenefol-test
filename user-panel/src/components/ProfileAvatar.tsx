@@ -3,7 +3,7 @@ import React from 'react'
 interface ProfileAvatarProps {
   profilePhoto?: string
   name?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '50px'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '50px' | 'nav'
   className?: string
   showName?: boolean
   onClick?: () => void
@@ -20,6 +20,7 @@ export default function ProfileAvatar({
   clickable = false
 }: ProfileAvatarProps) {
   const sizeMap: Record<string, { px: string; text: string; num: number }> = {
+    nav:   { px: 'h-8 w-8',   text: 'text-sm',  num: 32  },
     sm:    { px: 'h-8 w-8',   text: 'text-sm',  num: 32  },
     md:    { px: 'h-12 w-12', text: 'text-lg',  num: 48  },
     lg:    { px: 'h-16 w-16', text: 'text-xl',  num: 64  },

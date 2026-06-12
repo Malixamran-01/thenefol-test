@@ -606,17 +606,17 @@ function AppContent() {
                 </button>
                 
                 {/* Account Icon - Visible on all screens */}
-                <button 
+                <button
                   onClick={() => window.location.hash = isAuthenticated ? '#/user/profile' : '#/user/login'}
-                  className="w-[50px] h-[50px] flex items-center justify-center transition-colors duration-300 relative group"
+                  className="w-8 h-8 flex items-center justify-center transition-colors duration-300 relative group overflow-hidden rounded-full"
                   aria-label="Account"
                   style={{ touchAction: 'manipulation' }}
                 >
                   {isAuthenticated && user ? (
-                    <ProfileAvatar 
+                    <ProfileAvatar
                       profilePhoto={user.profile_photo}
                       name={user.name}
-                      size="50px"
+                      size="nav"
                       className="border border-slate-200"
                     />
                   ) : (

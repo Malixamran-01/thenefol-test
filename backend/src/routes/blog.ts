@@ -1379,7 +1379,8 @@ router.get('/posts/:id/for-edit', authenticateToken, async (req, res) => {
         authprof.ap_profile_status,
         authprof.ap_display_name,
         authprof.ap_pen_name,
-        authprof.ap_username
+        authprof.ap_username,
+        authprof.ap_profile_image
        FROM blog_posts p
        LEFT JOIN users u ON p.user_id = u.id
        ${SQL_AUTHOR_PROFILE_LATERAL}
@@ -1624,6 +1625,7 @@ router.get('/posts', async (req, res) => {
         authprof.ap_display_name,
         authprof.ap_pen_name,
         authprof.ap_username,
+        authprof.ap_profile_image,
         (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id)                        AS likes_count,
         (SELECT COUNT(*)::int FROM blog_comments    WHERE post_id = p.id AND is_deleted = false) AS comments_count
       FROM blog_posts p
@@ -1829,7 +1831,8 @@ router.get('/posts/:id', async (req, res) => {
         authprof.ap_profile_status,
         authprof.ap_display_name,
         authprof.ap_pen_name,
-        authprof.ap_username
+        authprof.ap_username,
+        authprof.ap_profile_image
       FROM blog_posts p
       LEFT JOIN users u ON p.user_id = u.id
       ${SQL_AUTHOR_PROFILE_LATERAL}

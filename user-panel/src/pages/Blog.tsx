@@ -18,6 +18,7 @@ interface BlogPost {
   author_email: string
   author_id?: number | string | null
   author_unique_user_id?: string | null
+  author_photo?: string | null
   cover_image?: string
   detail_image?: string
   images: string[]
@@ -82,6 +83,9 @@ export default function Blog() {
 
   const mapPostUrls = (post: BlogPost, apiBase: string): BlogPost => ({
     ...post,
+    author_photo: post.author_photo && post.author_photo.startsWith('/uploads/')
+      ? `${apiBase}${post.author_photo}`
+      : post.author_photo,
     cover_image: post.cover_image && post.cover_image.startsWith('/uploads/')
       ? `${apiBase}${post.cover_image}`
       : post.cover_image,
@@ -584,6 +588,7 @@ export default function Blog() {
                       authorId={post.author_id}
                       authorUniqueUserId={post.author_unique_user_id}
                       authorName={post.author_name}
+                      authorProfileImage={post.author_photo ?? null}
                       authorVerified={post.author_is_verified === true}
                     />
                     <BlogPostCard
@@ -609,6 +614,7 @@ export default function Blog() {
                       authorId={post.author_id}
                       authorUniqueUserId={post.author_unique_user_id}
                       authorName={post.author_name}
+                      authorProfileImage={post.author_photo ?? null}
                       authorVerified={post.author_is_verified === true}
                     />
                     <BlogPostCard post={post} initialLikes={likes} initialComments={comments} />
