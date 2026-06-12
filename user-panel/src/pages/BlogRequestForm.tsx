@@ -203,6 +203,7 @@ export default function BlogRequestForm() {
   // Mobile: show extra toolbar items in overflow menu
   const [showToolbarOverflow, setShowToolbarOverflow] = useState(false)
   const toolbarOverflowRef = useRef<HTMLDivElement>(null)
+  const editorInputDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingDraftRestore = useRef<ReturnType<typeof getLocalDraft> | null>(null)
   const hasCheckedDraftRef = useRef(false)
   const discardedDraftRef = useRef(false)
@@ -519,6 +520,12 @@ export default function BlogRequestForm() {
 
   const handleEditorInput = () => {
     if (editorRef.current) setFormData(prev => ({ ...prev, content: getEditorContentForSave() }))
+  }
+
+  // Debounced version used for raw typing — avoids cloning the editor DOM + full re-render on every keystroke
+  const handleEditorInputDebounced = () => {
+    if (editorInputDebounceRef.current) clearTimeout(editorInputDebounceRef.current)
+    editorInputDebounceRef.current = setTimeout(handleEditorInput, 400)
   }
 
   const getActiveEditable = (): HTMLDivElement | null => {
@@ -1420,16 +1427,16 @@ export default function BlogRequestForm() {
     <>
       <style>{`
         [contenteditable][data-placeholder]:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }
-.editor-content { line-height: 1.8; color: #111827; word-break: break-word; overflow-wrap: break-word; overflow: hidden; }
+.editor-content { line-height: 1.8; color: #111827; word-break: break-word; overflow-wrap: break-word; max-width: 100%; box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .overflow-y-auto { scrollbar-width: thin; scrollbar-color: #cbd5e0 #f7fafc; }
 .overflow-y-auto::-webkit-scrollbar { width: 6px; }
 .overflow-y-auto::-webkit-scrollbar-track { background: #f7fafc; }
 .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
-.title-editable { white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; width: 100%; max-width: 100%; }
-.editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
-.editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; }
-.editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
-.editor-content h4 { font-size: 1.25em; font-weight: bold; margin: 0.5em 0; }
+.title-editable { white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; width: 100%; max-width: 100%; box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.editor-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; padding-left: 0; max-width: 100%; box-sizing: border-box; }
+.editor-content h2 { font-size: 1.75em; font-weight: bold; margin: 0.5em 0; padding-left: 0; max-width: 100%; box-sizing: border-box; }
+.editor-content h3 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; padding-left: 0; max-width: 100%; box-sizing: border-box; }
+.editor-content h4 { font-size: 1.25em; font-weight: bold; margin: 0.5em 0; padding-left: 0; max-width: 100%; box-sizing: border-box; }
 .editor-content p { margin: 0.5em 0; color: #111827; }
 .editor-content blockquote { margin: 1em 0; padding-left: 1em; border-left: 4px solid #d1d5db; color: #6b7280; font-style: italic; }
 .editor-content ul { list-style: disc; margin-left: 2em; padding-left: 0.5em; }
@@ -1448,8 +1455,9 @@ export default function BlogRequestForm() {
 /* Contain everything inside viewport on mobile */
 @media (max-width: 640px) {
   input, textarea, select, [contenteditable] { font-size: 16px !important; }
-  .editor-content { max-width: 100vw; }
-  .title-editable { font-size: clamp(1.5rem, 5vw, 2.25rem) !important; }
+  .editor-content { max-width: 100%; overflow-x: clip; }
+  .editor-content h1, .editor-content h2, .editor-content h3, .editor-content h4 { max-width: 100%; overflow-wrap: break-word; word-break: break-word; }
+  .title-editable { font-size: clamp(1.5rem, 5vw, 2.25rem) !important; overflow-x: clip; }
 }
 /* Toolbar expand/collapse transition */
 .toolbar-expanded { max-height: 200px; opacity: 1; }
@@ -1587,7 +1595,7 @@ export default function BlogRequestForm() {
   </div>
 </div>
         {/* ── Scrollable Content ── */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto" style={{ overflowX: 'clip' }}>
           <form id="blog-form" onSubmit={handleSubmit} className="min-h-full flex flex-col">
             <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 min-w-0">
 
@@ -1630,7 +1638,7 @@ export default function BlogRequestForm() {
                 {isEditorContentEmpty(formData.content) && (
                   <span className="absolute top-0 left-0 pt-1 text-sm sm:text-base text-gray-400 pointer-events-none select-none">Start writing..</span>
                 )}
-                <div ref={editorRef} contentEditable onInput={handleEditorInput} onKeyDown={handleEditorKeyDown} onFocus={updateToolbarState} onBlur={() => { const fd = formDataRef.current; if (fd) { const content = (editorRef.current?.innerHTML ?? fd.content) || ''; const payload = { ...fd, content }; if (!isEditMode) { saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } } }} onClick={updateToolbarState} className="editor-content min-h-[40vh] sm:min-h-[500px] outline-none text-sm sm:text-base text-gray-800 w-full pt-1 pb-24 sm:pb-32" suppressContentEditableWarning />
+                <div ref={editorRef} contentEditable onInput={handleEditorInputDebounced} onKeyDown={handleEditorKeyDown} onFocus={updateToolbarState} onBlur={() => { if (editorInputDebounceRef.current) { clearTimeout(editorInputDebounceRef.current); editorInputDebounceRef.current = null; handleEditorInput() } const fd = formDataRef.current; if (fd) { const content = (editorRef.current?.innerHTML ?? fd.content) || ''; const payload = { ...fd, content }; if (!isEditMode) { saveLocalDraft(payload); setLastSavedAt(new Date().toISOString()); syncToServer() } } }} onClick={updateToolbarState} className="editor-content min-h-[40vh] sm:min-h-[500px] outline-none text-sm sm:text-base text-gray-800 w-full pt-1 pb-24 sm:pb-32" suppressContentEditableWarning />
               </div>
             </div>
 
