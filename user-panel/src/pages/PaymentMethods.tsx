@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { CreditCard, Plus, Trash2, Edit, Shield, Check } from 'lucide-react'
+import { CreditCard, Plus, Trash2, Edit, Shield, Check, ArrowLeft, Wallet, Smartphone, X } from 'lucide-react'
 
 interface PaymentMethod {
   id: string
@@ -51,7 +51,7 @@ export default function PaymentMethods() {
       id: Date.now().toString(),
       type: newPaymentMethod.type as 'card' | 'upi' | 'wallet',
       name: newPaymentMethod.name,
-      number: newPaymentMethod.type === 'card' 
+      number: newPaymentMethod.type === 'card'
         ? `**** **** **** ${newPaymentMethod.number.slice(-4)}`
         : newPaymentMethod.number,
       expiry: newPaymentMethod.expiry,
@@ -70,142 +70,225 @@ export default function PaymentMethods() {
   }
 
   const handleDeleteMethod = (id: string) => {
-    setPaymentMethods(paymentMethods.filter(method => method.id !== id))
+    if (confirm('Remove this payment method?')) {
+      setPaymentMethods(paymentMethods.filter(method => method.id !== id))
+    }
   }
 
   const getPaymentIcon = (type: string) => {
     switch (type) {
       case 'card':
-        return <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        return <CreditCard className="w-5 h-5 text-white" />
       case 'upi':
-        return <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
+        return <Smartphone className="w-5 h-5 text-white" />
       case 'wallet':
-        return <CreditCard className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+        return <Wallet className="w-5 h-5 text-white" />
       default:
-        return <CreditCard className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+        return <CreditCard className="w-5 h-5 text-white" />
+    }
+  }
+
+  const getIconBg = (type: string) => {
+    switch (type) {
+      case 'card': return 'rgb(75,151,201)'
+      case 'upi': return '#4caf82'
+      case 'wallet': return '#9b7fd4'
+      default: return 'rgb(75,151,201)'
     }
   }
 
   return (
-    <main className="py-10 dark:bg-slate-900 min-h-screen">
-      <div className="mx-auto max-w-4xl px-4">
+    <main
+      className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20"
+      style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}
+    >
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => window.location.hash = '#/user/profile'}
+            className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Back to Profile</span>
+          </button>
+        </div>
+
         {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+        <div className="text-center mb-12">
+          <div
+            className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
+            style={{ backgroundColor: 'rgb(75,151,201)' }}
+          >
+            <CreditCard className="w-10 h-10 text-white" />
+          </div>
+          <h1
+            className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]"
+            style={{
+              color: '#1a1a1a',
+              fontFamily: 'var(--font-heading-family)',
+              letterSpacing: '0.15em'
+            }}
+          >
             Payment Methods
           </h1>
-          <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
+          <p
+            className="text-sm sm:text-base font-light tracking-wide"
+            style={{ color: '#666', letterSpacing: '0.05em' }}
+          >
             Manage your saved payment methods for faster checkout.
           </p>
         </div>
 
         {/* Payment Methods List */}
-        <div className="space-y-4 mb-8">
+        <div className="space-y-3 mb-6">
+          {paymentMethods.length === 0 && (
+            <div className="text-center py-14 border border-dashed rounded-xl" style={{ borderColor: '#e0e0e0', color: '#999' }}>
+              <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="font-light tracking-wide text-sm">No payment methods saved yet.</p>
+            </div>
+          )}
           {paymentMethods.map((method) => (
-            <div key={method.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
-                    {getPaymentIcon(method.type)}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      {method.name}
-                    </h3>
-                    <p className="text-slate-600 dark:text-slate-400">
-                      {method.number}
-                      {method.expiry && ` • Expires ${method.expiry}`}
-                    </p>
-                  </div>
+            <div
+              key={method.id}
+              className="flex items-center justify-between px-5 py-4 rounded-xl border transition-all"
+              style={{
+                borderColor: method.isDefault ? 'rgb(75,151,201)' : '#e8e8e8',
+                backgroundColor: method.isDefault ? 'rgba(75,151,201,0.04)' : '#fafafa'
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: getIconBg(method.type) }}
+                >
+                  {getPaymentIcon(method.type)}
                 </div>
-                <div className="flex items-center space-x-2">
-                  {method.isDefault && (
-                    <span className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-3 py-1 rounded-full text-sm font-medium flex items-center">
-                      <Check className="w-4 h-4 mr-1" />
-                      Default
-                    </span>
-                  )}
-                  {!method.isDefault && (
-                    <button
-                      onClick={() => handleSetDefault(method.id)}
-                      className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
-                    >
-                      Set as Default
-                    </button>
-                  )}
-                  <button className="text-slate-600 dark:text-slate-400" onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'} onMouseLeave={(e) => e.currentTarget.style.color = ''}>
-                    <Edit className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMethod(method.id)}
-                    className="text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                <div>
+                  <p className="font-medium text-sm" style={{ color: '#1a1a1a' }}>{method.name}</p>
+                  <p className="text-xs font-light mt-0.5" style={{ color: '#888' }}>
+                    {method.number}{method.expiry && ` · Expires ${method.expiry}`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {method.isDefault ? (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full"
+                    style={{ backgroundColor: 'rgb(75,151,201)', color: '#fff' }}
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Check className="w-3 h-3" />
+                    Default
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handleSetDefault(method.id)}
+                    className="text-xs font-light tracking-wide transition-opacity hover:opacity-70"
+                    style={{ color: 'rgb(75,151,201)' }}
+                  >
+                    Set Default
                   </button>
-                </div>
+                )}
+                <button
+                  className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+                  style={{ color: '#aaa' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'rgb(75,151,201)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#aaa')}
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteMethod(method.id)}
+                  className="p-1.5 rounded-lg transition-colors hover:bg-red-50"
+                  style={{ color: '#aaa' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#aaa')}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Add New Payment Method */}
+        {/* Add New Payment Method Button / Form */}
         {!showAddForm ? (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full text-white py-4 rounded-xl font-semibold transition-colors flex items-center justify-center"
-            style={{ backgroundColor: 'rgb(75,151,201)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-dashed font-light text-sm tracking-wide transition-all hover:opacity-80"
+            style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
           >
-            <Plus className="w-5 h-5 mr-2" />
+            <Plus className="w-4 h-4" />
             Add New Payment Method
           </button>
         ) : (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-6">
-              Add New Payment Method
-            </h2>
-            
+          <div className="border rounded-xl p-6 mt-2" style={{ borderColor: '#e8e8e8', backgroundColor: '#fafafa' }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-light tracking-widest text-sm uppercase" style={{ color: '#1a1a1a', letterSpacing: '0.12em' }}>
+                Add Payment Method
+              </h2>
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                style={{ color: '#aaa' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
             <form onSubmit={handleAddPaymentMethod} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Payment Type
-                </label>
-                <select
-                  value={newPaymentMethod.type}
-                  onChange={(e) => setNewPaymentMethod({...newPaymentMethod, type: e.target.value})}
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                >
-                  <option value="card">Credit/Debit Card</option>
-                  <option value="upi">UPI</option>
-                  <option value="wallet">Digital Wallet</option>
-                </select>
+              {/* Type selector */}
+              <div className="flex gap-2">
+                {(['card', 'upi', 'wallet'] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setNewPaymentMethod({ ...newPaymentMethod, type: t })}
+                    className="flex-1 py-2.5 rounded-lg text-xs font-medium tracking-wide border transition-all"
+                    style={{
+                      borderColor: newPaymentMethod.type === t ? 'rgb(75,151,201)' : '#e0e0e0',
+                      backgroundColor: newPaymentMethod.type === t ? 'rgba(75,151,201,0.08)' : '#fff',
+                      color: newPaymentMethod.type === t ? 'rgb(75,151,201)' : '#888'
+                    }}
+                  >
+                    {t === 'card' ? 'Card' : t === 'upi' ? 'UPI' : 'Wallet'}
+                  </button>
+                ))}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  {newPaymentMethod.type === 'card' ? 'Card Name' : 'Account Name'}
+                <label className="block text-xs font-light tracking-widest uppercase mb-1.5" style={{ color: '#888', letterSpacing: '0.1em' }}>
+                  {newPaymentMethod.type === 'card' ? 'Cardholder Name' : 'Account Name'}
                 </label>
                 <input
                   type="text"
                   value={newPaymentMethod.name}
-                  onChange={(e) => setNewPaymentMethod({...newPaymentMethod, name: e.target.value})}
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                  onChange={e => setNewPaymentMethod({ ...newPaymentMethod, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border text-sm font-light outline-none focus:ring-0 transition-colors"
+                  style={{ borderColor: '#e0e0e0', color: '#1a1a1a', backgroundColor: '#fff' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgb(75,151,201)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#e0e0e0')}
                   placeholder={newPaymentMethod.type === 'card' ? 'John Doe' : 'Account Holder Name'}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  {newPaymentMethod.type === 'card' ? 'Card Number' : 'Account Number/ID'}
+                <label className="block text-xs font-light tracking-widest uppercase mb-1.5" style={{ color: '#888', letterSpacing: '0.1em' }}>
+                  {newPaymentMethod.type === 'card' ? 'Card Number' : 'Account / UPI ID'}
                 </label>
                 <input
                   type="text"
                   value={newPaymentMethod.number}
-                  onChange={(e) => setNewPaymentMethod({...newPaymentMethod, number: e.target.value})}
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                  placeholder={newPaymentMethod.type === 'card' ? '1234 5678 9012 3456' : 'Account Number or UPI ID'}
+                  onChange={e => setNewPaymentMethod({ ...newPaymentMethod, number: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border text-sm font-light outline-none transition-colors"
+                  style={{ borderColor: '#e0e0e0', color: '#1a1a1a', backgroundColor: '#fff' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgb(75,151,201)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                  placeholder={newPaymentMethod.type === 'card' ? '1234 5678 9012 3456' : 'user@upi or account number'}
                   required
                 />
               </div>
@@ -213,39 +296,43 @@ export default function PaymentMethods() {
               {newPaymentMethod.type === 'card' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Expiry Date
+                    <label className="block text-xs font-light tracking-widest uppercase mb-1.5" style={{ color: '#888', letterSpacing: '0.1em' }}>
+                      Expiry
                     </label>
                     <input
                       type="text"
                       value={newPaymentMethod.expiry}
-                      onChange={(e) => {
-                        let value = e.target.value.replace(/\D/g, '') // Remove non-digits
-                        if (value.length >= 2) {
-                          value = value.slice(0, 2) + '/' + value.slice(2, 4)
-                        }
-                        setNewPaymentMethod({...newPaymentMethod, expiry: value})
+                      onChange={e => {
+                        let value = e.target.value.replace(/\D/g, '')
+                        if (value.length >= 2) value = value.slice(0, 2) + '/' + value.slice(2, 4)
+                        setNewPaymentMethod({ ...newPaymentMethod, expiry: value })
                       }}
                       maxLength={5}
-                      className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                      className="w-full px-4 py-3 rounded-lg border text-sm font-light outline-none transition-colors"
+                      style={{ borderColor: '#e0e0e0', color: '#1a1a1a', backgroundColor: '#fff' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgb(75,151,201)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = '#e0e0e0')}
                       placeholder="MM/YY"
                       inputMode="numeric"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    <label className="block text-xs font-light tracking-widest uppercase mb-1.5" style={{ color: '#888', letterSpacing: '0.1em' }}>
                       CVV
                     </label>
                     <input
-                      type="text"
+                      type="password"
                       value={newPaymentMethod.cvv}
-                      onChange={(e) => {
+                      onChange={e => {
                         const value = e.target.value.replace(/\D/g, '').slice(0, 4)
-                        setNewPaymentMethod({...newPaymentMethod, cvv: value})
+                        setNewPaymentMethod({ ...newPaymentMethod, cvv: value })
                       }}
-                      className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                      placeholder="123"
+                      className="w-full px-4 py-3 rounded-lg border text-sm font-light outline-none transition-colors"
+                      style={{ borderColor: '#e0e0e0', color: '#1a1a1a', backgroundColor: '#fff' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgb(75,151,201)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = '#e0e0e0')}
+                      placeholder="•••"
                       inputMode="numeric"
                       maxLength={4}
                       required
@@ -254,20 +341,19 @@ export default function PaymentMethods() {
                 </div>
               )}
 
-              <div className="flex space-x-4">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 text-white py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 py-3 rounded-lg text-white text-sm font-medium tracking-wide transition-opacity hover:opacity-90"
                   style={{ backgroundColor: 'rgb(75,151,201)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
                 >
-                  Add Payment Method
+                  Save Method
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="flex-1 border-2 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 py-3 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  className="flex-1 py-3 rounded-lg text-sm font-light tracking-wide border transition-colors hover:bg-gray-50"
+                  style={{ borderColor: '#e0e0e0', color: '#666' }}
                 >
                   Cancel
                 </button>
@@ -277,24 +363,18 @@ export default function PaymentMethods() {
         )}
 
         {/* Security Notice */}
-        <div className="mt-16 bg-gradient-to-r from-green-50 to-blue-50 dark:from-slate-800 dark:to-slate-800 rounded-2xl p-8">
-          <div className="flex items-center mb-4">
-            <Shield className="w-8 h-8 text-green-600 dark:text-green-400 mr-3" />
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              Your Payment Information is Secure
-            </h2>
+        <div className="mt-10 flex items-start gap-4 px-5 py-4 rounded-xl" style={{ backgroundColor: '#f7fafe', border: '1px solid rgba(75,151,201,0.15)' }}>
+          <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'rgb(75,151,201)' }} />
+          <div>
+            <p className="text-xs font-medium tracking-wide mb-1" style={{ color: '#1a1a1a' }}>
+              Your payment info is secure
+            </p>
+            <p className="text-xs font-light leading-relaxed" style={{ color: '#888' }}>
+              SSL-encrypted · PCI DSS compliant · Card details are never stored on our servers.
+            </p>
           </div>
-          <p className="text-slate-600 dark:text-slate-400 mb-4">
-            We use industry-standard encryption to protect your payment information. 
-            Your card details are never stored on our servers and are processed securely through our payment partners.
-          </p>
-          <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-            <li>• SSL encryption for all data transmission</li>
-            <li>• PCI DSS compliant payment processing</li>
-            <li>• No storage of sensitive card information</li>
-            <li>• Regular security audits and monitoring</li>
-          </ul>
         </div>
+
       </div>
     </main>
   )
