@@ -1321,7 +1321,7 @@ export default function AuthorProfile() {
                   const postOnlyLink = `#/user/blog/${item.post_id}`
                   const recommentDeepLink =
                     isRepostedComment && item.comment_id != null
-                      ? `#/user/blog/${item.post_id}#comment-${item.comment_id}`
+                      ? `#/user/blog/${item.post_id}?comment=${item.comment_id}`
                       : null
 
                   const commentProfileSlug =
@@ -1381,7 +1381,7 @@ export default function AuthorProfile() {
 
                   if (isIncoming) {
                     const inboundCommentHref =
-                      isReceivedComment && item.comment_id != null ? `${postOnlyLink}#comment-${item.comment_id}` : postOnlyLink
+                      isReceivedComment && item.comment_id != null ? `${postOnlyLink}?comment=${item.comment_id}` : postOnlyLink
                     return (
                       <div key={activityKey} className="border-b border-gray-200 py-4 last:border-0">
                         <div className="flex gap-3">

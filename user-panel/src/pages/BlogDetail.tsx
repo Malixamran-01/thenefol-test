@@ -144,53 +144,60 @@ export default function BlogDetail() {
     fetchComments()
   }, [post, commentSort])
 
-  // Deep-link scroll + highlight when URL contains #comment-<id> (e.g. from notification)
+  // Deep-link scroll + highlight when URL contains ?comment=<id> (from activity/notification links)
   useEffect(() => {
     if (!post || comments.length === 0) return
-    const hash = window.location.hash || ''
-    const m = hash.match(/#comment-([^/?#]+)/)
-    if (!m) return
-    const commentId = m[1]
 
-    // If the target comment is a reply, we need to expand its parent first.
-    // Find ancestor comment IDs by walking the flat comments list.
+    // Parse target comment from ?comment=<id> query param in the hash
+    const hash = window.location.hash || ''
+    const queryStr = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : ''
+    const params = new URLSearchParams(queryStr)
+    const commentId = params.get('comment')
+    if (!commentId) return
+
+    // Expand ancestor comments so replies are visible before scrolling
     const commentMap: Record<string, BlogComment> = {}
     comments.forEach(c => { commentMap[c.id] = c })
 
     const expandAncestors = (id: string) => {
       const c = commentMap[id]
-      if (!c) return
-      if (c.parent_id) {
-        // Expand the parent so replies are visible
-        setExpandedComments(prev => ({ ...prev, [c.parent_id!]: true }))
-        expandAncestors(c.parent_id)
-      }
+      if (!c || !c.parent_id) return
+      setExpandedComments(prev => ({ ...prev, [c.parent_id!]: true }))
+      expandAncestors(c.parent_id)
     }
     expandAncestors(commentId)
 
-    // Wait a tick for the DOM to update after expanding, then scroll + highlight
+    const highlight = (el: HTMLElement) => {
+      el.style.transition = 'background-color 0.4s ease'
+      el.style.backgroundColor = 'rgba(75, 151, 201, 0.12)'
+      el.style.borderRadius = '12px'
+      setTimeout(() => {
+        el.style.backgroundColor = ''
+        setTimeout(() => {
+          el.style.backgroundColor = 'rgba(75, 151, 201, 0.06)'
+          setTimeout(() => { el.style.backgroundColor = '' }, 600)
+        }, 400)
+      }, 800)
+    }
+
+    // Retry until the element appears in the DOM (expansion takes a render cycle)
     const attempt = (retries: number) => {
       const el = document.getElementById(`comment-${commentId}`)
       if (el) {
         requestAnimationFrame(() => {
           safeElementScrollIntoView(el, { behavior: 'smooth', block: 'center' })
-          // Pulse highlight animation
-          el.style.transition = 'background-color 0.4s ease'
-          el.style.backgroundColor = 'rgba(75, 151, 201, 0.12)'
-          el.style.borderRadius = '12px'
-          setTimeout(() => {
-            el.style.backgroundColor = ''
-            setTimeout(() => {
-              el.style.backgroundColor = 'rgba(75, 151, 201, 0.06)'
-              setTimeout(() => { el.style.backgroundColor = '' }, 600)
-            }, 400)
-          }, 800)
+          highlight(el)
+          // Remove the ?comment= param from the URL after scrolling so a manual
+          // refresh doesn't re-scroll, but keep the rest of the hash path intact.
+          const cleanHash = hash.replace(/[?&]comment=[^&]*/, '').replace(/[?&]$/, '')
+          if (cleanHash !== hash) window.history.replaceState(null, '', window.location.pathname + cleanHash)
         })
       } else if (retries > 0) {
-        setTimeout(() => attempt(retries - 1), 120)
+        setTimeout(() => attempt(retries - 1), 150)
       }
     }
-    setTimeout(() => attempt(5), 100)
+    // Give the page scroll-to-top (App.tsx rAF on path change) time to finish first
+    setTimeout(() => attempt(8), 400)
   }, [post, comments])
 
   // Record a "read" once the user has spent at least as long as the post's
@@ -1273,10 +1280,6 @@ export default function BlogDetail() {
               <Heart className={`w-[18px] h-[18px] ${liked ? 'text-red-500 fill-current' : 'text-gray-500'}`} />
               <span>{likesCount}</span>
             </button>
-            <span className="inline-flex items-center gap-2 text-gray-500">
-              <MessageCircle className="w-[18px] h-[18px]" />
-              <span>{comments.length}</span>
-            </span>
             {post && (
               <RepostButton
                 postId={Number(post.id)}

@@ -33,8 +33,8 @@ function goToPost(n: Notification) {
 
 function goToComment(n: Notification) {
   if (!n.post_id) return
-  const anchor = n.comment_id ? `#comment-${n.comment_id}` : ''
-  window.location.hash = `#/user/blog/${n.post_id}${anchor}`
+  const query = n.comment_id ? `?comment=${n.comment_id}` : ''
+  window.location.hash = `#/user/blog/${n.post_id}${query}`
 }
 
 function markRead(n: Notification, setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>) {

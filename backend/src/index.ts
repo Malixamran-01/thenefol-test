@@ -884,6 +884,40 @@ app.use('/api/cms', createCMSRouter(pool, io))
 // Initialize blog router with database pool
 initBlogRouter(pool)
 // Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.) - path-based URL
+app.get('/', (req, res) => {
+  const frontendBase = (process.env.FRONTEND_URL || 'https://thenefol.com').replace(/\/$/, '')
+  const ogImage = `${frontendBase}/IMAGES/og_logo.jpg`
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Natural as the Morning Dew | NEFOL</title>
+  <meta name="description" content="Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="NEFOL">
+  <meta property="og:title" content="Best skincare and haircare products | NEFOL">
+  <meta property="og:description" content="Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.">
+  <meta property="og:url" content="${frontendBase}/">
+  <meta property="og:image" content="${ogImage}">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Best skincare and haircare products | NEFOL">
+  <meta name="twitter:description" content="Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.">
+  <meta name="twitter:image" content="${ogImage}">
+  <link rel="canonical" href="${frontendBase}/">
+  <meta http-equiv="refresh" content="0;url=${frontendBase}/">
+</head>
+<body>
+  <p><a href="${frontendBase}/">Visit NEFOL</a></p>
+</body>
+</html>`
+  res.setHeader('Content-Type', 'text/html; charset=utf-8')
+  res.setHeader('Cache-Control', 'public, max-age=300')
+  res.send(html)
+})
 app.get('/blog/:id', serveBlogMetaPage)
 app.get('/author/:id', serveAuthorMetaPage)
 app.get('/product/:slug', (req, res) => productRoutes.serveProductMetaPage(pool, req, res))
