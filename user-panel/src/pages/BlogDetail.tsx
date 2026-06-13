@@ -1369,33 +1369,56 @@ export default function BlogDetail() {
           </div>
 
           <div className="mb-8 pb-6 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-100 text-gray-700" style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}>
-                {isAuthenticated && user?.name ? (user.name).charAt(0).toUpperCase() : '?'}
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold" style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}>
+                  {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+                </div>
+                <input
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  className="flex-1 rounded-xl px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:outline-none placeholder:text-gray-400"
+                  placeholder="Leave a reply..."
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.ctrlKey && commentText.trim()) {
+                      submitComment()
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => submitComment()}
+                  className="rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 transition-colors flex-shrink-0"
+                  style={{ backgroundColor: '#1B4965' }}
+                  onMouseEnter={(e) => { if (commentText.trim()) e.currentTarget.style.backgroundColor = '#2c5f7d' }}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1B4965'}
+                  disabled={!commentText.trim()}
+                >
+                  Post
+                </button>
               </div>
-              <input
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                className="flex-1 rounded-xl px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:outline-none placeholder:text-gray-400"
-                placeholder={isAuthenticated ? 'Leave a reply...' : 'Sign in to leave a reply'}
-                disabled={!isAuthenticated}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.ctrlKey && isAuthenticated && commentText.trim()) {
-                    submitComment()
-                  }
-                }}
-              />
-              <button
-                onClick={() => submitComment()}
-                className="rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 transition-colors flex-shrink-0"
-                style={{ backgroundColor: '#1B4965' }}
-                onMouseEnter={(e) => { if (isAuthenticated && commentText.trim()) e.currentTarget.style.backgroundColor = '#2c5f7d' }}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1B4965'}
-                disabled={!isAuthenticated || !commentText.trim()}
-              >
-                Post
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <p className="flex-1 text-sm text-gray-500">Join the conversation</p>
+                <button
+                  onClick={() => { window.location.hash = '#/user/login' }}
+                  className="rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors flex-shrink-0"
+                  style={{ backgroundColor: '#1B4965' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2c5f7d' }}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1B4965'}
+                >
+                  Log in
+                </button>
+                <button
+                  onClick={() => { window.location.hash = '#/user/signup' }}
+                  className="rounded-lg px-4 py-2.5 text-sm font-medium border transition-colors flex-shrink-0"
+                  style={{ borderColor: '#1B4965', color: '#1B4965' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#E8F4F8' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                >
+                  Sign up
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
