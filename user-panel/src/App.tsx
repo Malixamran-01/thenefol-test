@@ -1044,6 +1044,7 @@ const Ingredients = lazy(() => import('./pages/Ingredients'))
 const IngredientDetail = lazy(() => import('./pages/IngredientDetail'))
 const Blog = lazy(() => import('./pages/Blog'))
 const BlogDetail = lazy(() => import('./pages/BlogDetail'))
+const BlogCommentPage = lazy(() => import('./pages/BlogCommentPage'))
 const BlogActivityPage = lazy(() => import('./pages/BlogActivityPage'))
 const BlogExplorePage = lazy(() => import('./pages/BlogExplorePage'))
 const AskCommunityPage = lazy(() => import('./pages/AskCommunityPage'))
@@ -1277,6 +1278,14 @@ function RouterView({ affiliateId, currentPath, currentHash, navigate }: RouterV
   }
   if (pathWithoutQuery === '/user/blog/my-blogs') return RequiredAuth(<BlogLayout currentHash={currentHash}><MyBlogsPage /></BlogLayout>)
   if (pathWithoutQuery === '/user/blog/settings') return <BlogLayout currentHash={currentHash}><NefolSocialSettings /></BlogLayout>
+  if (/^\/user\/blog\/[^/]+\/comment\/[^/]+/.test(pathWithoutQuery)) {
+    return (
+      <BlogLayout currentHash={currentHash}>
+        <BlogCommentPage />
+      </BlogLayout>
+    )
+  }
+
   if (
     currentPath.startsWith('/user/blog/') &&
     currentPath !== '/user/blog' &&

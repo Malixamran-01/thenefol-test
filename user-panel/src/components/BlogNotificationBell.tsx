@@ -220,7 +220,11 @@ export default function BlogNotificationBell() {
       return
     }
     if (n.post_id) {
-      window.location.hash = `#/user/blog/${n.post_id}`
+      if (n.comment_id) {
+        window.location.hash = `#/user/blog/${n.post_id}/comment/${n.comment_id}`
+      } else {
+        window.location.hash = `#/user/blog/${n.post_id}`
+      }
     }
   }
 
