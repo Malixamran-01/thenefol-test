@@ -200,24 +200,19 @@ export default function BlogDetail() {
 
   // Fire when already on the page and the hash gains a ?comment= param
   // (e.g. clicking a notification while already reading the post)
+  const commentsRef = React.useRef(comments)
+  useEffect(() => { commentsRef.current = comments }, [comments])
+
   useEffect(() => {
     if (!post) return
     const handler = () => {
       const hash = window.location.hash || ''
       if (!hash.includes('?comment=')) return
-      // If comments are already loaded use them; otherwise fetch first
-      if (comments.length > 0) {
-        scrollToCommentFromHash(comments)
-      } else {
-        fetchComments().then(() => {
-          // comments state updates async; a short delay lets the render settle
-          setTimeout(() => scrollToCommentFromHash(comments), 200)
-        })
-      }
+      scrollToCommentFromHash(commentsRef.current)
     }
     window.addEventListener('hashchange', handler)
     return () => window.removeEventListener('hashchange', handler)
-  }, [post, comments, scrollToCommentFromHash, fetchComments])
+  }, [post, scrollToCommentFromHash])
 
   // Record a "read" once the user has spent at least as long as the post's
   // estimated read time (word count ÷ 200 wpm). Minimum 30 s, max 10 min.
@@ -1024,7 +1019,6 @@ export default function BlogDetail() {
       try {
         await navigator.share({
           title: shareTitle,
-          text: shareText,
           url: shareLink
         })
         setShowShareMenu(false)

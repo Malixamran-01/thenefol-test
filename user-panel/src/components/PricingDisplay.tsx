@@ -56,22 +56,22 @@ export function PricingDisplay({
     
     return (
       <div className={`flex flex-col gap-1 ${className}`}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-lg sm:text-xl font-bold" style={{color: '#1a1a1a'}}>₹{parseFloat(formattedWebsitePrice).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           <span className="text-sm text-gray-500 line-through">MRP. ₹{parseFloat(formattedMrp).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          {discountPercent > 0 && (
+            <span
+              className="text-xs font-medium px-1.5 py-0.5 rounded border self-start"
+              style={{
+                color: '#4B97C9',
+                borderColor: '#4B97C9',
+                backgroundColor: 'rgba(75, 151, 201, 0.1)'
+              }}
+            >
+              {discountPercent}% OFF
+            </span>
+          )}
         </div>
-        {discountPercent > 0 && (
-          <span
-            className="text-xs font-medium px-2 py-0.5 rounded border-2 self-start"
-            style={{
-              color: '#4B97C9',
-              borderColor: '#4B97C9',
-              backgroundColor: 'rgba(75, 151, 201, 0.1)'
-            }}
-          >
-            {discountPercent}% OFF
-          </span>
-        )}
       </div>
     )
   }
