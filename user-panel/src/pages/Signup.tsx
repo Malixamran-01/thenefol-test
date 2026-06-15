@@ -52,30 +52,6 @@ export default function SignupPage() {
     }
   }
 
-  const handleGoogleResponse = React.useCallback(
-    async (response: any) => {
-      try {
-        setLoading(true)
-        setOauthError('')
-        setEmailError('')
-        setWaError('')
-
-        const success = await loginWithGoogle(response.credential)
-
-        if (success) {
-          redirectAfterSignup()
-        } else {
-          setOauthError(authError || 'Google signup failed')
-        }
-      } catch {
-        setOauthError('Google signup failed. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [loginWithGoogle, authError]
-  )
-
   React.useEffect(() => {
     const script = document.createElement('script')
     script.src = 'https://accounts.google.com/gsi/client'
@@ -83,12 +59,6 @@ export default function SignupPage() {
     script.defer = true
     script.onload = () => {
       setGoogleLoaded(true)
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: '269814794814-bbq2slkc637hnh7dqbchb6l3hu9b80j5.apps.googleusercontent.com',
-          callback: handleGoogleResponse
-        })
-      }
     }
     script.onerror = () => {
       console.error('Failed to load Google SDK')
@@ -100,12 +70,35 @@ export default function SignupPage() {
         document.body.removeChild(script)
       }
     }
-  }, [handleGoogleResponse])
+  }, [])
 
   const handleGoogleSignUp = () => {
-    if (window.google) {
-      window.google.accounts.id.prompt()
-    }
+    if (!window.google) return
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: '269814794814-bbq2slkc637hnh7dqbchb6l3hu9b80j5.apps.googleusercontent.com',
+      scope: 'email profile openid',
+      callback: async (response: { access_token?: string; error?: string }) => {
+        if (response.error || !response.access_token) {
+          setOauthError('Google sign-up was cancelled or failed. Please try again.')
+          return
+        }
+        setLoading(true)
+        setOauthError('')
+        try {
+          const success = await loginWithGoogle(response.access_token)
+          if (success) {
+            redirectAfterSignup()
+          } else {
+            setOauthError(authError || 'Google signup failed')
+          }
+        } catch {
+          setOauthError('Google signup failed. Please try again.')
+        } finally {
+          setLoading(false)
+        }
+      },
+    })
+    tokenClient.requestAccessToken({ prompt: 'select_account' })
   }
 
   React.useEffect(() => {

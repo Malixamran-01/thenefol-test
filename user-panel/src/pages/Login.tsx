@@ -46,30 +46,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleGoogleResponse = React.useCallback(
-    async (response: any) => {
-      try {
-        setLoading(true)
-        setOauthError('')
-        setEmailError('')
-        setWaError('')
-
-        const success = await loginWithGoogle(response.credential)
-
-        if (success) {
-          redirectAfterLogin()
-        } else {
-          setOauthError(authError || 'Google login failed')
-        }
-      } catch {
-        setOauthError('Google login failed. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [loginWithGoogle, authError]
-  )
-
   React.useEffect(() => {
     const script = document.createElement('script')
     script.src = 'https://accounts.google.com/gsi/client'
@@ -77,12 +53,6 @@ export default function LoginPage() {
     script.defer = true
     script.onload = () => {
       setGoogleLoaded(true)
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: '269814794814-bbq2slkc637hnh7dqbchb6l3hu9b80j5.apps.googleusercontent.com',
-          callback: handleGoogleResponse,
-        })
-      }
     }
     script.onerror = () => {
       console.error('Failed to load Google SDK')
@@ -94,12 +64,37 @@ export default function LoginPage() {
         document.body.removeChild(script)
       }
     }
-  }, [handleGoogleResponse])
+  }, [])
 
   const handleGoogleSignIn = () => {
-    if (window.google) {
-      window.google.accounts.id.prompt()
-    }
+    if (!window.google) return
+    // Use OAuth token popup — works on all browsers/devices unlike One Tap (prompt())
+    // which is silently suppressed on desktop when third-party cookies are blocked.
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: '269814794814-bbq2slkc637hnh7dqbchb6l3hu9b80j5.apps.googleusercontent.com',
+      scope: 'email profile openid',
+      callback: async (response: { access_token?: string; error?: string }) => {
+        if (response.error || !response.access_token) {
+          setOauthError('Google sign-in was cancelled or failed. Please try again.')
+          return
+        }
+        setLoading(true)
+        setOauthError('')
+        try {
+          const success = await loginWithGoogle(response.access_token)
+          if (success) {
+            redirectAfterLogin()
+          } else {
+            setOauthError(authError || 'Google login failed')
+          }
+        } catch {
+          setOauthError('Google login failed. Please try again.')
+        } finally {
+          setLoading(false)
+        }
+      },
+    })
+    tokenClient.requestAccessToken({ prompt: 'select_account' })
   }
 
   React.useEffect(() => {

@@ -256,18 +256,6 @@ export default function ShareProduct({
               maxHeight: '90vh',
             }}
           >
-            {typeof navigator !== 'undefined' && 'share' in navigator && (
-              <button
-                onClick={handleNativeShare}
-                className="flex w-full items-center gap-3 border-b border-gray-100 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
-                aria-label="Share product with image"
-              >
-                <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-500">
-                  <Share2 className="h-6 w-6 text-white" />
-                </span>
-                <span className="font-medium">Share Image & Link</span>
-              </button>
-            )}
             <button
               onClick={handleWhatsAppShare}
               className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"

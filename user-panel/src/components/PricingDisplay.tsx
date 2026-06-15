@@ -55,12 +55,14 @@ export function PricingDisplay({
     const discountPercent = Math.round(((cleanMrp - cleanWebsitePrice) / cleanMrp) * 100)
     
     return (
-      <div className={`flex items-center gap-2 flex-wrap ${className}`}>
-        <span className="text-lg sm:text-xl font-bold" style={{color: '#1a1a1a'}}>₹{parseFloat(formattedWebsitePrice).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        <span className="text-sm text-gray-500 line-through">MRP. ₹{parseFloat(formattedMrp).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      <div className={`flex flex-col gap-1 ${className}`}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg sm:text-xl font-bold" style={{color: '#1a1a1a'}}>₹{parseFloat(formattedWebsitePrice).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="text-sm text-gray-500 line-through">MRP. ₹{parseFloat(formattedMrp).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>
         {discountPercent > 0 && (
-          <span 
-            className="text-xs sm:text-sm font-medium px-2 py-1 rounded border-2"
+          <span
+            className="text-xs font-medium px-2 py-0.5 rounded border-2 self-start"
             style={{
               color: '#4B97C9',
               borderColor: '#4B97C9',

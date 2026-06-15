@@ -51,10 +51,15 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
       if (idTokenRes.ok) {
         const data = await idTokenRes.json() as GoogleUserInfo & { aud?: string; error?: string }
         if (data.error) throw new Error(data.error)
-        // Validate the token was issued for our app
+        // Validate the token was issued for our app.
+        // aud can be a comma-separated list when multiple OAuth clients are authorised.
         const clientId = process.env.GOOGLE_CLIENT_ID
-        if (clientId && data.aud && data.aud !== clientId) {
-          throw new Error('Token audience mismatch')
+        if (clientId && data.aud) {
+          const audiences = String(data.aud).split(',').map(s => s.trim())
+          if (!audiences.includes(clientId)) {
+            console.error(`Token audience mismatch — token aud: "${data.aud}", expected GOOGLE_CLIENT_ID: "${clientId}"`)
+            throw new Error('Token audience mismatch')
+          }
         }
         googleUser = data
       } else {
