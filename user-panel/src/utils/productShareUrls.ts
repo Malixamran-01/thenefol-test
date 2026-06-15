@@ -9,15 +9,10 @@ export function getShareSiteOrigin(): string {
 export type ProductShareUrls = {
   /** Hash-only SPA route. */
   appUrl: string
-  /** Path before # — used by crawlers for OG (do not share alone). */
+  /** Short crawlable path for OG — thenefol.com/p/:slug */
   crawlUrl: string
-  /** Primary share link: /product/:slug#/user/product/:slug */
+  /** Primary share link (short, OG-friendly). */
   universalUrl: string
-}
-
-/** Primary link for copy, WhatsApp, and all share actions. */
-export function getProductShareLink(slug: string): string {
-  return getProductShareUrls(slug).appUrl
 }
 
 /** Path-safe slug for share URLs (avoid double-encoding). */
@@ -34,11 +29,16 @@ export function slugForSharePath(slug: string): string {
 export function getProductShareUrls(slug: string): ProductShareUrls {
   const origin = getShareSiteOrigin()
   const pathSlug = slugForSharePath(slug)
-  const crawlUrl = `${origin}/product/${pathSlug}`
+  const crawlUrl = `${origin}/p/${pathSlug}`
   const appUrl = `${origin}/#/user/product/${pathSlug}`
   return {
     appUrl,
     crawlUrl,
-    universalUrl: `${crawlUrl}#/user/product/${pathSlug}`,
+    universalUrl: crawlUrl,
   }
+}
+
+/** Primary link for copy, WhatsApp, and all share actions. */
+export function getProductShareLink(slug: string): string {
+  return getProductShareUrls(slug).universalUrl
 }

@@ -508,7 +508,7 @@ function CreatorDashboardImpl() {
   const copyLink = () => {
     if (!data?.author) return
     const id = data.author.username ?? data.author.id
-    navigator.clipboard.writeText(`${window.location.origin}/#/user/author/${id}`)
+    navigator.clipboard.writeText(`${window.location.origin}/a/${id}`)
     setCopied(true); setTimeout(() => setCopied(false), 2000)
   }
 

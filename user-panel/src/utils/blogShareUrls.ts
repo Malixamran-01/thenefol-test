@@ -3,30 +3,27 @@ import { getShareSiteOrigin } from './productShareUrls'
 export type BlogShareUrls = {
   /** Hash-only SPA route (in-app navigation). */
   appUrl: string
-  /** Crawlable path — WhatsApp/Facebook fetch this (hash is stripped by crawlers). */
+  /** Short crawlable path for OG — thenefol.com/b/:id */
   crawlUrl: string
-  /**
-   * Path + hash — best for copy/share on hash-router VPS:
-   * crawlers read `/blog/:id`, humans keep `#/user/blog/:id` in the SPA.
-   */
+  /** Primary share link (short, OG-friendly). */
   universalUrl: string
 }
 
 export function getBlogShareUrls(id: string | number): BlogShareUrls {
   const origin = getShareSiteOrigin()
   const postId = String(id)
-  const crawlUrl = `${origin}/blog/${postId}`
+  const crawlUrl = `${origin}/b/${postId}`
   const appUrl = `${origin}/#/user/blog/${postId}`
   return {
     appUrl,
     crawlUrl,
-    universalUrl: `${crawlUrl}#/user/blog/${postId}`,
+    universalUrl: crawlUrl,
   }
 }
 
 /** Primary link for copy, WhatsApp, and all share actions. */
 export function getBlogShareLink(id: string | number): string {
-  return getBlogShareUrls(id).appUrl
+  return getBlogShareUrls(id).universalUrl
 }
 
 /** Absolute URL for /uploads/ paths used in og:image (must be same-origin for crawlers). */

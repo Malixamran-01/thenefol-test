@@ -3,9 +3,9 @@ import { getShareSiteOrigin } from './productShareUrls'
 export type AuthorShareUrls = {
   /** Hash-only SPA route. */
   appUrl: string
-  /** Crawlable path — WhatsApp/Facebook fetch this for OG tags. */
+  /** Short crawlable path for OG — thenefol.com/a/:id */
   crawlUrl: string
-  /** Path + hash — copy/share on VPS hash routing. */
+  /** Primary share link (short, OG-friendly). */
   universalUrl: string
 }
 
@@ -22,15 +22,15 @@ export function authorIdForSharePath(authorId: string | number): string {
 export function getAuthorShareUrls(authorId: string | number): AuthorShareUrls {
   const origin = getShareSiteOrigin()
   const pathId = authorIdForSharePath(authorId)
-  const crawlUrl = `${origin}/author/${pathId}`
+  const crawlUrl = `${origin}/a/${pathId}`
   const appUrl = `${origin}/#/user/author/${pathId}`
   return {
     appUrl,
     crawlUrl,
-    universalUrl: `${crawlUrl}#/user/author/${pathId}`,
+    universalUrl: crawlUrl,
   }
 }
 
 export function getAuthorShareLink(authorId: string | number): string {
-  return getAuthorShareUrls(authorId).appUrl
+  return getAuthorShareUrls(authorId).universalUrl
 }

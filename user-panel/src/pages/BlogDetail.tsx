@@ -144,20 +144,16 @@ export default function BlogDetail() {
     fetchComments()
   }, [post, commentSort])
 
-  // Deep-link scroll + highlight when URL contains ?comment=<id> (from activity/notification links)
-  useEffect(() => {
-    if (!post || comments.length === 0) return
-
-    // Parse target comment from ?comment=<id> query param in the hash
+  // Deep-link scroll + highlight when URL contains ?comment=<id>
+  // Extracted so it can be called both on data-load and on hashchange events.
+  const scrollToCommentFromHash = useCallback((commentsSnapshot: BlogComment[]) => {
     const hash = window.location.hash || ''
     const queryStr = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : ''
-    const params = new URLSearchParams(queryStr)
-    const commentId = params.get('comment')
+    const commentId = new URLSearchParams(queryStr).get('comment')
     if (!commentId) return
 
-    // Expand ancestor comments so replies are visible before scrolling
     const commentMap: Record<string, BlogComment> = {}
-    comments.forEach(c => { commentMap[c.id] = c })
+    commentsSnapshot.forEach(c => { commentMap[c.id] = c })
 
     const expandAncestors = (id: string) => {
       const c = commentMap[id]
@@ -180,15 +176,12 @@ export default function BlogDetail() {
       }, 800)
     }
 
-    // Retry until the element appears in the DOM (expansion takes a render cycle)
     const attempt = (retries: number) => {
       const el = document.getElementById(`comment-${commentId}`)
       if (el) {
         requestAnimationFrame(() => {
           safeElementScrollIntoView(el, { behavior: 'smooth', block: 'center' })
           highlight(el)
-          // Remove the ?comment= param from the URL after scrolling so a manual
-          // refresh doesn't re-scroll, but keep the rest of the hash path intact.
           const cleanHash = hash.replace(/[?&]comment=[^&]*/, '').replace(/[?&]$/, '')
           if (cleanHash !== hash) window.history.replaceState(null, '', window.location.pathname + cleanHash)
         })
@@ -196,9 +189,35 @@ export default function BlogDetail() {
         setTimeout(() => attempt(retries - 1), 150)
       }
     }
-    // Give the page scroll-to-top (App.tsx rAF on path change) time to finish first
-    setTimeout(() => attempt(8), 400)
-  }, [post, comments])
+    setTimeout(() => attempt(8), 300)
+  }, [])
+
+  // Fire on initial data load (cold navigation or page refresh with ?comment= in hash)
+  useEffect(() => {
+    if (!post || comments.length === 0) return
+    scrollToCommentFromHash(comments)
+  }, [post, comments, scrollToCommentFromHash])
+
+  // Fire when already on the page and the hash gains a ?comment= param
+  // (e.g. clicking a notification while already reading the post)
+  useEffect(() => {
+    if (!post) return
+    const handler = () => {
+      const hash = window.location.hash || ''
+      if (!hash.includes('?comment=')) return
+      // If comments are already loaded use them; otherwise fetch first
+      if (comments.length > 0) {
+        scrollToCommentFromHash(comments)
+      } else {
+        fetchComments().then(() => {
+          // comments state updates async; a short delay lets the render settle
+          setTimeout(() => scrollToCommentFromHash(comments), 200)
+        })
+      }
+    }
+    window.addEventListener('hashchange', handler)
+    return () => window.removeEventListener('hashchange', handler)
+  }, [post, comments, scrollToCommentFromHash, fetchComments])
 
   // Record a "read" once the user has spent at least as long as the post's
   // estimated read time (word count ÷ 200 wpm). Minimum 30 s, max 10 min.

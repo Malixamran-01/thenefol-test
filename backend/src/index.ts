@@ -921,6 +921,35 @@ app.get('/', (req, res) => {
 app.get('/blog/:id', serveBlogMetaPage)
 app.get('/author/:id', serveAuthorMetaPage)
 app.get('/product/:slug', (req, res) => productRoutes.serveProductMetaPage(pool, req, res))
+
+// ── Short share URLs (/p/:slug  /b/:id  /a/:id) ──────────────────────────────
+// Crawlers get full OG meta HTML; humans get a 302 to the SPA hash route.
+import { isSocialCrawler } from './utils/socialCrawler'
+
+app.get('/p/:slug', (req: Request, res: Response) => {
+  if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
+    const base = (process.env.FRONTEND_URL || `${(req.headers['x-forwarded-proto'] as string) || 'https'}://${(req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'}`).replace(/\/$/, '')
+    return res.redirect(302, `${base}/#/user/product/${encodeURIComponent(req.params.slug)}`)
+  }
+  return productRoutes.serveProductMetaPage(pool, req, res)
+})
+
+app.get('/b/:id', (req: Request, res: Response) => {
+  if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
+    const base = (process.env.FRONTEND_URL || `${(req.headers['x-forwarded-proto'] as string) || 'https'}://${(req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'}`).replace(/\/$/, '')
+    return res.redirect(302, `${base}/#/user/blog/${req.params.id}`)
+  }
+  return serveBlogMetaPage(req, res)
+})
+
+app.get('/a/:id', (req: Request, res: Response) => {
+  if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
+    const base = (process.env.FRONTEND_URL || `${(req.headers['x-forwarded-proto'] as string) || 'https'}://${(req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'}`).replace(/\/$/, '')
+    return res.redirect(302, `${base}/#/user/author/${req.params.id}`)
+  }
+  return serveAuthorMetaPage(req, res)
+})
+
 const nefolSocialBan = nefolSocialBanGuard(pool)
 app.use('/api/blog', nefolSocialBan)
 app.use('/api/blog', blogRouter)

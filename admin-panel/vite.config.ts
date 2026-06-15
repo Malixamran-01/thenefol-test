@@ -4,6 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  base: '/loginasadmin/',
   server: {
     host: '0.0.0.0', // Listen on all network interfaces
     port: Number(process.env.VITE_ADMIN_PANEL_PORT || 2002),
