@@ -1,6 +1,9 @@
 // Centralized API utilities to eliminate duplicate code
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
+import jwt from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 // Standardized error response
 export function sendError(res: Response, status: number, message: string, error?: any) {
@@ -112,12 +115,26 @@ export function authenticateToken(req: Request, res: Response, next: Function) {
     return sendError(res, 401, 'No token provided')
   }
 
+  // JWT format (three dot-separated segments) — used by Google auth and new email login
+  if (/^[^\s.]+\.[^\s.]+\.[^\s.]+$/.test(token)) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId?: string | number; user_id?: string | number }
+      if (!decoded.userId) {
+        return sendError(res, 401, 'Invalid token')
+      }
+      req.userId = String(decoded.userId)
+      return next()
+    } catch {
+      return sendError(res, 401, 'Invalid or expired token')
+    }
+  }
+
+  // Legacy format: user_token_{userId}_{timestamp}
   const tokenParts = token.split('_')
   if (tokenParts.length < 3 || tokenParts[0] !== 'user' || tokenParts[1] !== 'token') {
     return sendError(res, 401, 'Invalid token format')
   }
-  
-  // Extract userId from token (format: user_token_{userId}_{timestamp})
+
   req.userId = tokenParts[2]
   next()
 }

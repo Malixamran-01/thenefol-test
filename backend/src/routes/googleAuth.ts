@@ -81,9 +81,9 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
       return sendError(res, 400, 'Email not provided by Google')
     }
 
-    // Check if user exists
+    // Check if user exists (case-insensitive to prevent duplicate accounts)
     const userQuery = await pool.query(
-      'SELECT * FROM users WHERE email = $1',
+      'SELECT * FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))',
       [email]
     )
 

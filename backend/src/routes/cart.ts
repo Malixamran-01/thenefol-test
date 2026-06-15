@@ -2,6 +2,7 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import { logUserActivity } from '../utils/userActivitySchema'
 import { sendWelcomeEmail, sendCartAddedEmail, sendVerificationEmail } from '../services/emailService'
@@ -16,6 +17,7 @@ import {
 } from '../services/customerSegmentService'
 
 const SALT_ROUNDS = 10
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 /** Total sellable units for a product (all variants: on hand − reserved). */
 async function getSellableQuantity(pool: Pool, productId: number): Promise<number> {
@@ -347,21 +349,26 @@ export async function login(pool: Pool, req: Request, res: Response) {
       return sendError(res, 400, validationError)
     }
     
-    // Find user by email
+    // Find user by email (case-insensitive to match Google-created accounts)
     const { rows } = await pool.query(
-      'SELECT id, name, email, password, unique_user_id FROM users WHERE email = $1',
+      'SELECT id, name, email, password, unique_user_id, user_id, google_id, profile_photo, phone, address, loyalty_points, total_orders, created_at, is_verified FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))',
       [email]
     )
-    
+
     if (rows.length === 0) {
       return sendError(res, 401, 'Invalid credentials')
     }
-    
+
     const user = rows[0]
-    
+
+    // Account was created via Google (no password set) — tell user to use Google sign-in
+    if (!user.password || user.password === '') {
+      return sendError(res, 401, 'This account was created with Google. Please sign in with Google instead.')
+    }
+
     // Check password using bcrypt (with backward compatibility for plain text)
     let passwordValid = false
-    
+
     // Check if password is bcrypt hash (starts with $2a$, $2b$, or $2y$)
     if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$')) {
       // Password is hashed with bcrypt
@@ -379,26 +386,38 @@ export async function login(pool: Pool, req: Request, res: Response) {
         console.log(`✅ Migrated password to bcrypt for user: ${user.id}`)
       }
     }
-    
+
     if (!passwordValid) {
       return sendError(res, 401, 'Invalid credentials')
     }
-    
-    // Generate token
-    const token = `user_token_${user.id}_${Date.now()}`
-    
+
     // Update last login
     await pool.query(
       'UPDATE users SET updated_at = NOW() WHERE id = $1',
       [user.id]
     )
-    
+
+    // Generate JWT (same format as Google auth so middleware treats both identically)
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, user_id: user.user_id || user.unique_user_id },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    )
+
     sendSuccess(res, {
       token,
       user: {
         id: user.id,
+        user_id: user.user_id || user.unique_user_id,
         name: user.name,
         email: user.email,
+        phone: user.phone || '',
+        address: user.address || { street: '', city: '', state: '', zip: '' },
+        profile_photo: user.profile_photo || null,
+        loyalty_points: user.loyalty_points || 0,
+        total_orders: user.total_orders || 0,
+        member_since: user.created_at,
+        is_verified: user.is_verified,
         unique_user_id: user.unique_user_id
       }
     })
@@ -434,15 +453,19 @@ export async function register(pool: Pool, req: Request, res: Response) {
       return sendError(res, 400, validationError)
     }
     
-    // Check if user already exists
+    // Check if user already exists (case-insensitive)
     const existingUser = await pool.query(
-      'SELECT id FROM users WHERE email = $1',
+      'SELECT id, google_id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))',
       [email]
     )
-    
+
     if (existingUser.rows.length > 0) {
       console.log('❌ User already exists:', email)
-      return sendError(res, 409, 'User already exists')
+      // Give a specific message if the existing account was created via Google
+      if (existingUser.rows[0].google_id) {
+        return sendError(res, 409, 'An account with this email already exists. Please sign in with Google.')
+      }
+      return sendError(res, 409, 'An account with this email already exists. Please sign in.')
     }
     
     console.log('✅ Creating new user...')
