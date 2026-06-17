@@ -281,7 +281,17 @@ export default function BlogDetail() {
     const stripHtmlStr = (html: string) => {
       const div = document.createElement('div')
       div.innerHTML = html
-      return div.textContent || div.innerText || ''
+      const text = div.textContent || div.innerText || ''
+      return text
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/__(.+?)__/g, '$1')
+        .replace(/_(.+?)_/g, '$1')
+        .replace(/~~(.+?)~~/g, '$1')
+        .replace(/`(.+?)`/g, '$1')
+        .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+        .trim()
     }
 
     // Fallback chain (matches backend meta page)
@@ -980,7 +990,17 @@ export default function BlogDetail() {
   const stripHtml = (html: string) => {
     const div = document.createElement('div')
     div.innerHTML = html
-    return div.textContent || div.innerText || ''
+    const text = div.textContent || div.innerText || ''
+    return text
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/__(.+?)__/g, '$1')
+      .replace(/_(.+?)_/g, '$1')
+      .replace(/~~(.+?)~~/g, '$1')
+      .replace(/`(.+?)`/g, '$1')
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+      .trim()
   }
 
   const getReadingTime = (content: string) => {

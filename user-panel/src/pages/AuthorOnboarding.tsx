@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Check, ChevronRight, PenLine, User, BookOpen, Share2, Settings, Loader2, Upload, X } from 'lucide-react'
+import { Check, ChevronRight, PenLine, User, BookOpen, Share2, Settings, Loader2, Upload, X, ArrowLeft, ChevronDown, ChevronUp, Shield, FileText, Briefcase, Users } from 'lucide-react'
 import { authorAPI } from '../services/authorAPI'
 import { uploadAuthorProfileImage, uploadAuthorCoverImage } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -24,6 +24,13 @@ const AuthorOnboarding = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [agreedNDA, setAgreedNDA] = useState(false)
+  const [agreedTasks, setAgreedTasks] = useState(false)
+  const [agreedContent, setAgreedContent] = useState(false)
+  const [agreedCommunity, setAgreedCommunity] = useState(false)
+  const [expandedAgreement, setExpandedAgreement] = useState<string | null>(null)
+
+  const allAgreed = agreedToTerms && agreedNDA && agreedTasks && agreedContent && agreedCommunity
 
   // Step 1 data
   const [username, setUsername] = useState('')
@@ -248,6 +255,20 @@ const AuthorOnboarding = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
+        {/* Back button */}
+        <div className="mb-6">
+          <button
+            onClick={() => {
+              if (window.history.length > 1) window.history.back()
+              else window.location.hash = '#/user/blog'
+            }}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+        </div>
+
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
@@ -820,40 +841,132 @@ const AuthorOnboarding = () => {
                 </ul>
               </div>
 
-              {/* ── Agreement checkbox ── */}
-              <div className="rounded-xl border border-[#4B97C9]/30 bg-[#F0F9FF] p-4 text-left">
-                <label className="flex items-start gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={e => setAgreedToTerms(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9] flex-shrink-0"
-                  />
-                  <span className="text-sm text-gray-700 leading-relaxed">
-                    I have read and agree to the{' '}
-                    <a
-                      href="#/user/creator-agreement"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-[#4B97C9] underline underline-offset-2 hover:opacity-80"
-                    >
-                      Creator, Collab &amp; Affiliate Program Agreement
-                    </a>{' '}
-                    and the{' '}
-                    <a
-                      href="#/user/terms-of-service"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-[#4B97C9] underline underline-offset-2 hover:opacity-80"
-                    >
-                      Nefol Terms &amp; Conditions
-                    </a>
-                    . I understand that by publishing content I irrevocably assign all rights to that content to Nefol Aesthetics Private Limited.
-                  </span>
-                </label>
-                {!agreedToTerms && (
-                  <p className="mt-2 text-xs text-amber-600 pl-7">
-                    You must accept the Agreement to activate your author profile.
+              {/* ── Agreements ── */}
+              <div className="text-left space-y-3">
+                <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-[#4B97C9]" />
+                  Please read and accept all agreements to continue
+                </p>
+
+                {/* 1. Terms & Creator Agreement */}
+                {[{
+                  id: 'terms',
+                  icon: <FileText className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  label: 'Terms & Creator Agreement',
+                  summary: 'I have read and agree to the Nefol Terms & Conditions and the Creator, Collab & Affiliate Program Agreement.',
+                  detail: (
+                    <ul className="mt-2 space-y-1 text-xs text-gray-600 list-disc pl-4">
+                      <li>I will comply with Nefol's content policies and community standards at all times.</li>
+                      <li>I understand my author profile may be suspended or removed for policy violations.</li>
+                      <li>I agree to the <a href="#/user/creator-agreement" target="_blank" rel="noreferrer" className="text-[#4B97C9] underline">Creator, Collab &amp; Affiliate Program Agreement</a> and the <a href="#/user/terms-of-service" target="_blank" rel="noreferrer" className="text-[#4B97C9] underline">Nefol Terms &amp; Conditions</a>.</li>
+                    </ul>
+                  ),
+                  checked: agreedToTerms,
+                  onChange: setAgreedToTerms,
+                }, {
+                  id: 'nda',
+                  icon: <Shield className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  label: 'Non-Disclosure Agreement (NDA)',
+                  summary: 'I agree to keep confidential any internal Nefol information, unreleased products, campaign details, or business data I may access as a creator.',
+                  detail: (
+                    <ul className="mt-2 space-y-1 text-xs text-gray-600 list-disc pl-4">
+                      <li>I will not share, publish, or disclose any confidential business information, unreleased product details, internal pricing, campaign strategies, or proprietary data belonging to Nefol Aesthetics Private Limited.</li>
+                      <li>This obligation applies during and after my time as a Nefol creator.</li>
+                      <li>Breaching this NDA may result in immediate removal from the creator program and potential legal action.</li>
+                      <li>Publicly available information and my own original content are not subject to this NDA.</li>
+                    </ul>
+                  ),
+                  checked: agreedNDA,
+                  onChange: setAgreedNDA,
+                }, {
+                  id: 'tasks',
+                  icon: <Briefcase className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  label: 'Creator Task & Collab Consent',
+                  summary: 'I understand that collab tasks assigned to me are voluntary and I consent to Nefol tracking task completion for reward purposes.',
+                  detail: (
+                    <ul className="mt-2 space-y-1 text-xs text-gray-600 list-disc pl-4">
+                      <li>Collab tasks (e.g. writing posts, social shares, product reviews) are optional unless I have explicitly accepted a specific task.</li>
+                      <li>I consent to Nefol tracking my task completions, content performance, and engagement metrics for the purpose of calculating creator rewards and coins.</li>
+                      <li>Rewards are non-transferable and have no cash value unless explicitly stated in a separate agreement.</li>
+                      <li>Nefol reserves the right to modify, pause, or discontinue the creator reward program at any time with reasonable notice.</li>
+                      <li>I will not fabricate task completions or misrepresent metrics.</li>
+                    </ul>
+                  ),
+                  checked: agreedTasks,
+                  onChange: setAgreedTasks,
+                }, {
+                  id: 'content',
+                  icon: <BookOpen className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  label: 'Content & Intellectual Property',
+                  summary: 'I confirm that content I submit is my original work and I grant Nefol the right to publish, distribute, and promote it on the platform.',
+                  detail: (
+                    <ul className="mt-2 space-y-1 text-xs text-gray-600 list-disc pl-4">
+                      <li>All content I submit is my original creation and does not infringe any third-party copyright, trademark, or other rights.</li>
+                      <li>By publishing on Nefol, I grant Nefol Aesthetics Private Limited a non-exclusive, royalty-free, worldwide license to publish, display, distribute, and promote my content on the platform and its marketing channels.</li>
+                      <li>I retain ownership of my original work. Nefol will not sell my content to third parties without my consent.</li>
+                      <li>I understand that content flagged as plagiarised or infringing will be removed without notice.</li>
+                    </ul>
+                  ),
+                  checked: agreedContent,
+                  onChange: setAgreedContent,
+                }, {
+                  id: 'community',
+                  icon: <Users className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  label: 'Community Guidelines',
+                  summary: 'I agree to maintain respectful conduct and will not post harmful, misleading, or prohibited content on the Nefol platform.',
+                  detail: (
+                    <ul className="mt-2 space-y-1 text-xs text-gray-600 list-disc pl-4">
+                      <li>I will not post content that is hateful, discriminatory, sexually explicit, or promotes violence.</li>
+                      <li>I will not spread misinformation or make false claims about products, people, or events.</li>
+                      <li>I will treat other creators, readers, and Nefol staff with respect in all interactions on the platform.</li>
+                      <li>I understand that violations may result in content removal, account suspension, or permanent ban from the creator program.</li>
+                    </ul>
+                  ),
+                  checked: agreedCommunity,
+                  onChange: setAgreedCommunity,
+                }].map(agreement => (
+                  <div
+                    key={agreement.id}
+                    className={`rounded-xl border transition-colors ${agreement.checked ? 'border-[#4B97C9]/40 bg-[#F0F9FF]' : 'border-gray-200 bg-white'}`}
+                  >
+                    <div className="p-4">
+                      <label className="flex items-start gap-3 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={agreement.checked}
+                          onChange={e => agreement.onChange(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9] flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            {agreement.icon}
+                            <span className="text-sm font-semibold text-gray-800">{agreement.label}</span>
+                            {agreement.checked && <Check className="w-3.5 h-3.5 text-[#4B97C9] ml-auto flex-shrink-0" />}
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500 leading-relaxed">{agreement.summary}</p>
+                        </div>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedAgreement(expandedAgreement === agreement.id ? null : agreement.id)}
+                        className="mt-2 ml-7 inline-flex items-center gap-1 text-xs text-[#4B97C9] hover:underline"
+                      >
+                        {expandedAgreement === agreement.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        {expandedAgreement === agreement.id ? 'Hide details' : 'Read full terms'}
+                      </button>
+                      {expandedAgreement === agreement.id && (
+                        <div className="mt-2 ml-7 rounded-lg bg-gray-50 border border-gray-200 p-3">
+                          {agreement.detail}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {!allAgreed && (
+                  <p className="text-xs text-amber-600 flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 flex-shrink-0" />
+                    You must accept all agreements above to activate your author profile.
                   </p>
                 )}
               </div>
@@ -868,7 +981,7 @@ const AuthorOnboarding = () => {
                 </button>
                 <button
                   onClick={handleComplete}
-                  disabled={loading || !agreedToTerms}
+                  disabled={loading || !allAgreed}
                   className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (

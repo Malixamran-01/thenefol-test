@@ -351,7 +351,7 @@ export async function login(pool: Pool, req: Request, res: Response) {
     
     // Find user by email (case-insensitive to match Google-created accounts)
     const { rows } = await pool.query(
-      'SELECT id, name, email, password, unique_user_id, user_id, google_id, profile_photo, phone, address, loyalty_points, total_orders, created_at, is_verified FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))',
+      'SELECT id, name, email, password, unique_user_id, google_id, profile_photo, phone, address, loyalty_points, total_orders, created_at, is_verified FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))',
       [email]
     )
 
@@ -399,7 +399,7 @@ export async function login(pool: Pool, req: Request, res: Response) {
 
     // Generate JWT (same format as Google auth so middleware treats both identically)
     const token = jwt.sign(
-      { userId: user.id, email: user.email, user_id: user.user_id || user.unique_user_id },
+      { userId: user.id, email: user.email, user_id: user.unique_user_id },
       JWT_SECRET,
       { expiresIn: '30d' }
     )
@@ -408,7 +408,7 @@ export async function login(pool: Pool, req: Request, res: Response) {
       token,
       user: {
         id: user.id,
-        user_id: user.user_id || user.unique_user_id,
+        user_id: user.unique_user_id,
         name: user.name,
         email: user.email,
         phone: user.phone || '',

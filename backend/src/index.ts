@@ -3166,15 +3166,9 @@ app.post('/api/products-csv/upload', upload.single('file'), async (req, res) => 
 })
 
 // Wishlist endpoints
-app.get('/api/wishlist', async (req, res) => {
+app.get('/api/wishlist', authenticateToken as any, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    if (!token) return sendError(res, 401, 'No token provided')
-    
-    const tokenParts = token.split('_')
-    if (tokenParts.length < 3) return sendError(res, 401, 'Invalid token format')
-    
-    const userId = tokenParts[2]
+    const userId = req.userId
     const { rows } = await pool.query(`
       SELECT w.*, p.title, p.price, p.list_image, p.slug, p.description
       FROM wishlist w
@@ -3182,64 +3176,52 @@ app.get('/api/wishlist', async (req, res) => {
       WHERE w.user_id = $1
       ORDER BY w.created_at DESC
     `, [userId])
-    
+
     sendSuccess(res, rows)
   } catch (err) {
     sendError(res, 500, 'Failed to fetch wishlist', err)
   }
 })
 
-app.post('/api/wishlist', async (req, res) => {
+app.post('/api/wishlist', authenticateToken as any, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    if (!token) return sendError(res, 401, 'No token provided')
-    
-    const tokenParts = token.split('_')
-    if (tokenParts.length < 3) return sendError(res, 401, 'Invalid token format')
-    
-    const userId = tokenParts[2]
+    const userId = req.userId
     const { product_id } = req.body
-    
+
     if (!product_id) return sendError(res, 400, 'product_id is required')
-    
+
     const { rows } = await pool.query(`
       INSERT INTO wishlist (user_id, product_id)
       VALUES ($1, $2)
       ON CONFLICT (user_id, product_id) DO NOTHING
       RETURNING *
     `, [userId, product_id])
-    
+
     if (rows.length === 0) {
       return sendSuccess(res, { message: 'Item already in wishlist' })
     }
-    
+
     sendSuccess(res, rows[0], 201)
   } catch (err) {
     sendError(res, 500, 'Failed to add to wishlist', err)
   }
 })
 
-app.delete('/api/wishlist/:productId', async (req, res) => {
+app.delete('/api/wishlist/:productId', authenticateToken as any, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    if (!token) return sendError(res, 401, 'No token provided')
-    
-    const tokenParts = token.split('_')
-    if (tokenParts.length < 3) return sendError(res, 401, 'Invalid token format')
-    
-    const userId = tokenParts[2]
+    const userId = req.userId
     const { productId } = req.params
-    
+
     const { rows } = await pool.query(`
-      DELETE FROM wishlist 
+      DELETE FROM wishlist
       WHERE user_id = $1 AND product_id = $2
       RETURNING *
     `, [userId, productId])
-    
+
     if (rows.length === 0) {
       return sendError(res, 404, 'Wishlist item not found')
     }
-    
+
     sendSuccess(res, { message: 'Item removed from wishlist' })
   } catch (err) {
     sendError(res, 500, 'Failed to remove from wishlist', err)

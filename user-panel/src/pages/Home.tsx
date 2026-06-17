@@ -71,9 +71,9 @@ export default function Home() {
   const [topMediaIndex, setTopMediaIndex] = useState(0)
 
   const [heroImages, setHeroImages] = useState<string[]>([
-    '/IMAGES/BANNER (1).webp',
-    '/IMAGES/BANNER (2).webp',
-    '/IMAGES/BANNER (3).webp'
+    '/IMAGES/BANNER%20(1).webp',
+    '/IMAGES/BANNER%20(2).webp',
+    '/IMAGES/BANNER%20(3).webp'
   ])
   const [heroSettings, setHeroSettings] = useState<any>({
     animationType: 'fade',
@@ -105,7 +105,7 @@ export default function Home() {
     buttonLink: '/shop'
   })
   const [whatsappSubscription, setWhatsappSubscription] = useState({
-    image: '/IMAGES/BANNER (1).webp',
+    image: '/IMAGES/BANNER%20(1).webp',
     logo: '',
     heading: 'Join The NEFOL Circle',
     description: 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
@@ -353,7 +353,7 @@ export default function Home() {
           const c = whatsappSection.content
           setWhatsappSubscription((prev) => {
             const next = {
-              image: c.image ? normalizeUrl(c.image) : '/IMAGES/BANNER (1).webp',
+              image: c.image ? normalizeUrl(c.image) : '/IMAGES/BANNER%20(1).webp',
               logo: c.logo ? normalizeUrl(c.logo) : '',
               heading: c.heading || 'Join The NEFOL Circle',
               description:

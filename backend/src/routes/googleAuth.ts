@@ -110,8 +110,8 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
       
       const insertResult = await pool.query(
         `INSERT INTO users (
-          user_id, email, name, password, 
-          google_id, profile_photo, is_verified, 
+          unique_user_id, email, name, password,
+          google_id, profile_photo, is_verified,
           loyalty_points, total_orders, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
         RETURNING *`,
@@ -133,10 +133,10 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
 
     // Generate JWT token
     const token = jwt.sign(
-      { 
-        userId: user.id, 
+      {
+        userId: user.id,
         email: user.email,
-        user_id: user.user_id 
+        user_id: user.unique_user_id
       },
       JWT_SECRET,
       { expiresIn: '30d' }
@@ -147,7 +147,7 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
       token,
       user: {
         id: user.id,
-        user_id: user.user_id,
+        user_id: user.unique_user_id,
         name: user.name,
         email: user.email,
         phone: user.phone || '',

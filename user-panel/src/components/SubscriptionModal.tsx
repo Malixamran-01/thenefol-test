@@ -17,7 +17,7 @@ interface SubscriptionModalProps {
 export default function SubscriptionModal({ 
   isOpen, 
   onClose, 
-  image = '/IMAGES/BANNER (1).webp',
+  image = '/IMAGES/BANNER%20(1).webp',
   logo = '',
   logoName = 'NEFOL',
   heading = 'Join The NEFOL Circle',

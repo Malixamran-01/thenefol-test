@@ -22,6 +22,9 @@
 require('dotenv/config')
 const { Pool } = require('pg')
 
+// Pass --dry-run to preview what will be merged without making any changes
+const DRY_RUN = process.argv.includes('--dry-run')
+
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/nefol'
 const isSupabase = connectionString.includes('supabase.co')
 const pool = new Pool(
@@ -36,16 +39,38 @@ function log(msg)  { console.log(`  ${msg}`) }
 function warn(msg) { console.warn(`  ⚠️  ${msg}`) }
 function ok(msg)   { console.log(`  ✅ ${msg}`) }
 
-/** Run a query, swallow "relation does not exist" errors (table not created yet). */
+let _savepointCounter = 0
+
+/** Run a query inside a savepoint so a failure doesn't abort the whole transaction. */
 async function safeUpdate(client, sql, params, label) {
+  const sp = `sp_${_savepointCounter++}`
+  await client.query(`SAVEPOINT ${sp}`)
   try {
     const res = await client.query(sql, params)
+    await client.query(`RELEASE SAVEPOINT ${sp}`)
     if (res.rowCount > 0) log(`   → updated ${res.rowCount} row(s) in ${label}`)
   } catch (err) {
-    if (err.code === '42P01') {
-      // Table does not exist — skip silently
-    } else {
-      throw err
+    await client.query(`ROLLBACK TO SAVEPOINT ${sp}`)
+    await client.query(`RELEASE SAVEPOINT ${sp}`)
+    if (err.code !== '42P01' && err.code !== '42703') {
+      // 42P01 = table does not exist, 42703 = column does not exist — skip both silently
+      warn(`Skipped ${label}: ${err.message}`)
+    }
+  }
+}
+
+/** Run an arbitrary block inside a savepoint. */
+async function safeDo(client, label, fn) {
+  const sp = `sp_${_savepointCounter++}`
+  await client.query(`SAVEPOINT ${sp}`)
+  try {
+    await fn()
+    await client.query(`RELEASE SAVEPOINT ${sp}`)
+  } catch (err) {
+    await client.query(`ROLLBACK TO SAVEPOINT ${sp}`)
+    await client.query(`RELEASE SAVEPOINT ${sp}`)
+    if (err.code !== '42P01' && err.code !== '42703') {
+      warn(`Skipped ${label}: ${err.message}`)
     }
   }
 }
@@ -57,30 +82,43 @@ async function run() {
   let pairsFound = 0
   let mergedCount = 0
 
+  if (DRY_RUN) console.log('\n🔍 DRY RUN — no changes will be made\n')
+
   try {
     await client.query('BEGIN')
 
     // Find every email that has more than one account
+    // Exclude NULL emails — they can't be matched and would falsely group together
     const { rows: groups } = await client.query(`
       SELECT
         LOWER(TRIM(email)) AS norm_email,
         array_agg(id ORDER BY
-          CASE WHEN password IS NOT NULL AND password != '' THEN 0 ELSE 1 END,
+          -- Prefer account with a real bcrypt password first, then oldest
+          CASE WHEN password IS NOT NULL AND password != '' AND password LIKE '$2%' THEN 0 ELSE 1 END,
           created_at ASC
         ) AS ids,
         array_agg(password ORDER BY
-          CASE WHEN password IS NOT NULL AND password != '' THEN 0 ELSE 1 END,
+          CASE WHEN password IS NOT NULL AND password != '' AND password LIKE '$2%' THEN 0 ELSE 1 END,
           created_at ASC
         ) AS passwords,
         array_agg(google_id ORDER BY
-          CASE WHEN password IS NOT NULL AND password != '' THEN 0 ELSE 1 END,
+          CASE WHEN password IS NOT NULL AND password != '' AND password LIKE '$2%' THEN 0 ELSE 1 END,
           created_at ASC
         ) AS google_ids,
         array_agg(profile_photo ORDER BY
-          CASE WHEN password IS NOT NULL AND password != '' THEN 0 ELSE 1 END,
+          CASE WHEN password IS NOT NULL AND password != '' AND password LIKE '$2%' THEN 0 ELSE 1 END,
           created_at ASC
-        ) AS profile_photos
+        ) AS profile_photos,
+        array_agg(created_at ORDER BY
+          CASE WHEN password IS NOT NULL AND password != '' AND password LIKE '$2%' THEN 0 ELSE 1 END,
+          created_at ASC
+        ) AS created_ats,
+        array_agg(COALESCE(name, '') ORDER BY
+          CASE WHEN password IS NOT NULL AND password != '' AND password LIKE '$2%' THEN 0 ELSE 1 END,
+          created_at ASC
+        ) AS names
       FROM users
+      WHERE email IS NOT NULL AND TRIM(email) != ''
       GROUP BY LOWER(TRIM(email))
       HAVING COUNT(*) > 1
     `)
@@ -93,6 +131,20 @@ async function run() {
 
     console.log(`\nFound ${groups.length} duplicate email group(s).\n`)
 
+    if (DRY_RUN) {
+      for (const group of groups) {
+        const keeperId = group.ids[0]
+        console.log(`\n📧 ${group.norm_email}`)
+        console.log(`   KEEP  → id=${keeperId}  name="${group.names[0]}"  created=${group.created_ats[0]}  pwd=${group.passwords[0] ? (group.passwords[0].startsWith('$2') ? 'bcrypt' : 'other') : 'none'}`)
+        for (let i = 1; i < group.ids.length; i++) {
+          console.log(`   MERGE → id=${group.ids[i]}  name="${group.names[i]}"  created=${group.created_ats[i]}  pwd=${group.passwords[i] ? (group.passwords[i].startsWith('$2') ? 'bcrypt' : 'other') : 'none'}  google_id=${group.google_ids[i] || 'none'}`)
+        }
+      }
+      console.log('\n\nRun without --dry-run to apply.\n')
+      await client.query('ROLLBACK')
+      return
+    }
+
     for (const group of groups) {
       pairsFound++
       const keeperId   = group.ids[0]
@@ -103,16 +155,18 @@ async function run() {
       log(`Duplicate id(s): ${duplicates.join(', ')}`)
 
       for (let i = 0; i < duplicates.length; i++) {
-        const googleId  = duplicates[i]
-        const googlePwd = group.passwords[i + 1]
+        const googleId   = duplicates[i]
+        const googlePwd  = group.passwords[i + 1]
+        const googleName = group.names[i + 1]
+        const googleCreatedAt = group.created_ats[i + 1]
 
-        // Both have real passwords — skip, needs human review
-        if (googlePwd && googlePwd !== '') {
-          warn(`id=${googleId} also has a password — skipping (manual review needed)`)
-          continue
+        const hasRealPassword = googlePwd && googlePwd !== '' && googlePwd.startsWith('$2')
+
+        if (hasRealPassword) {
+          log(`id=${googleId} also has a bcrypt password (name: "${googleName}", created: ${googleCreatedAt}) — merging data into keeper id=${keeperId} but keeping keeper's password`)
         }
 
-        log(`Merging Google-only account id=${googleId} → keeper id=${keeperId}`)
+        log(`Merging duplicate account id=${googleId} → keeper id=${keeperId}`)
 
         // 1. Copy google_id + profile_photo to keeper
         await client.query(`
@@ -147,31 +201,33 @@ async function run() {
           [keeperId, googleId], 'user_sessions')
 
         // user_stats (PRIMARY KEY — merge then delete)
-        try {
+        await safeDo(client, 'user_stats', async () => {
           await client.query(`
-            INSERT INTO user_stats (user_id, total_orders, total_spent, avg_order_value, last_order_date, created_at, updated_at)
-            SELECT $1, total_orders, total_spent, avg_order_value, last_order_date, created_at, NOW()
+            INSERT INTO user_stats (user_id, total_orders, total_spent, total_page_views, total_sessions, last_order_date, updated_at)
+            SELECT $1, total_orders, total_spent, total_page_views, total_sessions, last_order_date, NOW()
             FROM user_stats WHERE user_id = $2
             ON CONFLICT (user_id) DO UPDATE
               SET
-                total_orders    = user_stats.total_orders    + EXCLUDED.total_orders,
-                total_spent     = user_stats.total_spent     + EXCLUDED.total_spent,
-                last_order_date = GREATEST(user_stats.last_order_date, EXCLUDED.last_order_date),
-                updated_at      = NOW()
+                total_orders      = user_stats.total_orders      + EXCLUDED.total_orders,
+                total_spent       = user_stats.total_spent       + EXCLUDED.total_spent,
+                total_page_views  = user_stats.total_page_views  + EXCLUDED.total_page_views,
+                total_sessions    = user_stats.total_sessions    + EXCLUDED.total_sessions,
+                last_order_date   = GREATEST(user_stats.last_order_date, EXCLUDED.last_order_date),
+                updated_at        = NOW()
           `, [keeperId, googleId])
           await client.query('DELETE FROM user_stats WHERE user_id = $1', [googleId])
-        } catch (err) { if (err.code !== '42P01') throw err }
+        })
 
         // user_preferences (PRIMARY KEY — keeper wins on conflict)
-        try {
+        await safeDo(client, 'user_preferences', async () => {
           await client.query(`
-            INSERT INTO user_preferences (user_id, preferences, created_at, updated_at)
-            SELECT $1, preferences, created_at, NOW()
+            INSERT INTO user_preferences (user_id, email_notifications, sms_notifications, push_notifications, marketing_emails, theme, language, currency, updated_at)
+            SELECT $1, email_notifications, sms_notifications, push_notifications, marketing_emails, theme, language, currency, NOW()
             FROM user_preferences WHERE user_id = $2
             ON CONFLICT (user_id) DO NOTHING
           `, [keeperId, googleId])
           await client.query('DELETE FROM user_preferences WHERE user_id = $1', [googleId])
-        } catch (err) { if (err.code !== '42P01') throw err }
+        })
 
         // Notes / tags
         await safeUpdate(client,
@@ -206,7 +262,7 @@ async function run() {
           [keeperId, googleId], 'blog_comments')
 
         // Blog post likes (unique constraint — move non-conflicting, drop the rest)
-        try {
+        await safeDo(client, 'blog_post_likes', async () => {
           await client.query(`
             UPDATE blog_post_likes SET user_id = $1
             WHERE user_id = $2
@@ -216,10 +272,10 @@ async function run() {
               )
           `, [keeperId, googleId])
           await client.query('DELETE FROM blog_post_likes WHERE user_id = $1', [googleId])
-        } catch (err) { if (err.code !== '42P01') throw err }
+        })
 
         // Blog comment likes
-        try {
+        await safeDo(client, 'blog_comment_likes', async () => {
           await client.query(`
             UPDATE blog_comment_likes SET user_id = $1
             WHERE user_id = $2
@@ -229,7 +285,7 @@ async function run() {
               )
           `, [keeperId, googleId])
           await client.query('DELETE FROM blog_comment_likes WHERE user_id = $1', [googleId])
-        } catch (err) { if (err.code !== '42P01') throw err }
+        })
 
         // Blog reposts
         await safeUpdate(client,
@@ -237,7 +293,7 @@ async function run() {
           [keeperId, googleId], 'blog_reposts')
 
         // Blog post reposts (unique constraint)
-        try {
+        await safeDo(client, 'blog_post_reposts', async () => {
           await client.query(`
             UPDATE blog_post_reposts SET user_id = $1
             WHERE user_id = $2
@@ -247,10 +303,10 @@ async function run() {
               )
           `, [keeperId, googleId])
           await client.query('DELETE FROM blog_post_reposts WHERE user_id = $1', [googleId])
-        } catch (err) { if (err.code !== '42P01') throw err }
+        })
 
         // Blog bookmarks (unique constraint)
-        try {
+        await safeDo(client, 'blog_post_bookmarks', async () => {
           await client.query(`
             UPDATE blog_post_bookmarks SET user_id = $1
             WHERE user_id = $2
@@ -260,7 +316,7 @@ async function run() {
               )
           `, [keeperId, googleId])
           await client.query('DELETE FROM blog_post_bookmarks WHERE user_id = $1', [googleId])
-        } catch (err) { if (err.code !== '42P01') throw err }
+        })
 
         // Blog notifications
         await safeUpdate(client,
@@ -290,14 +346,14 @@ async function run() {
           [keeperId, googleId], 'collab_assigned_tasks')
 
         // creator_program_badge_ack (PRIMARY KEY)
-        try {
+        await safeDo(client, 'creator_program_badge_ack', async () => {
           await client.query(`
             INSERT INTO creator_program_badge_ack (user_id, last_seen_badge, acked_at)
             SELECT $1, last_seen_badge, acked_at FROM creator_program_badge_ack WHERE user_id = $2
             ON CONFLICT (user_id) DO NOTHING
           `, [keeperId, googleId])
           await client.query('DELETE FROM creator_program_badge_ack WHERE user_id = $1', [googleId])
-        } catch (err) { if (err.code !== '42P01') throw err }
+        })
 
         // Affiliate
         await safeUpdate(client,
@@ -314,7 +370,7 @@ async function run() {
           [keeperId, googleId], 'coin_transactions')
 
         // blog_weekly_creator_reward (unique on user_id + week_start)
-        try {
+        await safeDo(client, 'blog_weekly_creator_reward', async () => {
           await client.query(`
             UPDATE blog_weekly_creator_reward SET user_id = $1
             WHERE user_id = $2
@@ -324,7 +380,7 @@ async function run() {
               )
           `, [keeperId, googleId])
           await client.query('DELETE FROM blog_weekly_creator_reward WHERE user_id = $1', [googleId])
-        } catch (err) { if (err.code !== '42P01') throw err }
+        })
 
         // WhatsApp / subscriptions
         await safeUpdate(client,
@@ -341,9 +397,9 @@ async function run() {
           'UPDATE user_notifications SET user_id = $1 WHERE user_id = $2',
           [keeperId, googleId], 'user_notifications')
 
-        // 3. Delete the now-empty Google account
+        // 3. Delete the now-empty duplicate account
         await client.query('DELETE FROM users WHERE id = $1', [googleId])
-        ok(`Deleted Google-only account id=${googleId}, merged into keeper id=${keeperId}`)
+        ok(`Deleted duplicate account id=${googleId}, merged into keeper id=${keeperId}`)
         mergedCount++
       }
     }

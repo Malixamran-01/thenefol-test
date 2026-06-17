@@ -854,6 +854,32 @@ export default function AuthorProfile() {
     }
   }
 
+  const handleUndoRepost = async (postId: number, commentId: number | null) => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    try {
+      await fetch(`${getApiBase()}/api/blog/reposts`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ post_id: postId, comment_id: commentId ?? null }),
+      })
+      setActivities((prev: any[]) =>
+        prev.filter((a: any) => {
+          if (commentId != null) {
+            return !(
+              (a.activity_type === 'reposted_comment') &&
+              a.post_id === postId &&
+              a.comment_id === commentId
+            )
+          }
+          return !(a.activity_type === 'reposted_post' && a.post_id === postId)
+        })
+      )
+    } catch {
+      // silent — item stays in list if request failed
+    }
+  }
+
   const handleShareProfile = async () => {
     if (!shareAuthorId) return
     const shareLink = getAuthorShareLink(shareAuthorId)
@@ -1477,6 +1503,16 @@ export default function AuthorProfile() {
                           <div className="mb-2.5 flex items-center gap-1.5 text-[12px] text-gray-400">
                             <span className={isReposted ? 'text-green-500' : 'text-gray-400'}>{actionLabel.icon}</span>
                             <span className={`font-medium ${isReposted ? 'text-green-600' : 'text-gray-500'}`}>{actionLabel.text}</span>
+                            {isReposted && isOwnProfile && (
+                              <button
+                                onClick={() => handleUndoRepost(item.post_id, item.comment_id ?? null)}
+                                className="ml-auto flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                title="Remove repost"
+                              >
+                                <X className="h-3 w-3" />
+                                <span>Remove</span>
+                              </button>
+                            )}
                           </div>
 
                           {isReposted && item.repost_note && (

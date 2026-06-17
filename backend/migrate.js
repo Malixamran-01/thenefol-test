@@ -1819,6 +1819,35 @@ async function runMigration() {
       if (!/admin_alerts|does not exist/i.test(String(e.message))) throw e;
     }
     
+    // ── Step 14: Ensure Google/Facebook OAuth columns exist on users table ──────
+    console.log('Step 14: Google/Facebook OAuth columns on users table...');
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'google_id') THEN
+          ALTER TABLE users ADD COLUMN google_id text;
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'facebook_id') THEN
+          ALTER TABLE users ADD COLUMN facebook_id text;
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_users_facebook_id ON users(facebook_id) WHERE facebook_id IS NOT NULL;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'profile_photo') THEN
+          ALTER TABLE users ADD COLUMN profile_photo text;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'is_verified') THEN
+          ALTER TABLE users ADD COLUMN is_verified boolean default false;
+        END IF;
+
+        -- Allow password to be empty string or NULL for OAuth-only accounts
+        ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
+      END $$;
+    `);
+    console.log('  ✅ OAuth columns ensured');
+
     console.log('✅ Migration completed successfully!');
     process.exit(0);
   } catch (error) {

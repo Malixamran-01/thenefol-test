@@ -118,7 +118,8 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
     } else {
       const base64 = editedImageObject.imageBase64
       const blob = await fetch(base64).then((r) => r.blob())
-      const editedFile = new File([blob], currentFile?.name || 'edited.png', { type: blob.type })
+      const baseName = (currentFile?.name || 'edited').replace(/\.[^.]+$/, '')
+      const editedFile = new File([blob], `${baseName}.webp`, { type: 'image/webp' })
       setImages((prev) => [...prev, editedFile])
     }
     setEditorOpen(false)
@@ -149,6 +150,8 @@ export default function ImageEditor({ images, setImages, source, onSave, onClose
           Text: { text: 'NEFOL' },
           savingPixelRatio: 1,
           previewPixelRatio: 1,
+          defaultSavedImageType: 'webp',
+          defaultSavedImageQuality: 0.82,
           onSave: (imageInfo: any) => {
             handleSave(imageInfo)
           },
