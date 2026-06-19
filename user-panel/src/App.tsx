@@ -261,7 +261,25 @@ function AppContent() {
       }, 4000) as unknown as number
     }
 
+    const handleBlogBookmarked = (event: Event) => {
+      const custom = event as CustomEvent
+      const isSaved = custom.detail?.saved as boolean
+      const id = Date.now()
+      setCartToast({
+        message: isSaved ? 'Post saved' : 'Post removed from saved',
+        id,
+      })
+      if (cartToastTimeoutRef.current !== undefined) {
+        window.clearTimeout(cartToastTimeoutRef.current)
+      }
+      cartToastTimeoutRef.current = window.setTimeout(() => {
+        cartToastTimeoutRef.current = undefined
+        setCartToast((prev) => (prev && prev.id === id ? null : prev))
+      }, 2500) as unknown as number
+    }
+
     window.addEventListener('cart:item-added', handleCartAdded)
+    window.addEventListener('blog:bookmarked', handleBlogBookmarked)
 
     return () => {
       unsubscribeNotification()
@@ -274,6 +292,7 @@ function AppContent() {
       unsubscribeDiscountUpdate()
       unsubscribeCMSUpdate()
       window.removeEventListener('cart:item-added', handleCartAdded)
+      window.removeEventListener('blog:bookmarked', handleBlogBookmarked)
       if (cartToastTimeoutRef.current !== undefined) {
         window.clearTimeout(cartToastTimeoutRef.current)
         cartToastTimeoutRef.current = undefined

@@ -462,7 +462,7 @@ export default function Blog() {
           </p>
         </div>
 
-        {loading ? (
+        {!showSaved && (loading ? (
           <div className="text-center py-12">
             <p style={{color: '#9DB4C0'}}>Loading blog posts...</p>
           </div>
@@ -471,7 +471,7 @@ export default function Blog() {
             <p className="text-red-600 mb-4">{error}</p>
             <p className="text-sm text-gray-500">No posts available at the moment</p>
           </div>
-        ) : null}
+        ) : null)}
 
         {/* View tabs: All Posts / Saved */}
         <div className="mb-6 flex items-center gap-1 rounded-xl bg-white border border-[#DCE6EE] p-1 w-fit shadow-sm">
@@ -596,6 +596,7 @@ export default function Blog() {
                       initialLikes={likes}
                       initialComments={comments}
                       initialSaved={true}
+                      skipStatusFetch={true}
                       onUnsave={() => setSavedPosts(prev => prev.filter(p => p.id !== post.id))}
                     />
                   </div>

@@ -443,7 +443,7 @@ export default function SignupPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2.5">
             <button
               type="button"
               onClick={handleGoogleSignUp}
@@ -486,7 +486,8 @@ export default function SignupPage() {
             </button>
           </div>
 
-          <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          {/* WhatsApp — temporarily disabled (Meta API down) */}
+          {/* <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
             <div className="flex items-start gap-2">
               <div
                 className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] shadow-sm"
@@ -574,7 +575,7 @@ export default function SignupPage() {
                     : 'Send code via WhatsApp'}
               </button>
             </form>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

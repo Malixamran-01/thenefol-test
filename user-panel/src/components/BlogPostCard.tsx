@@ -84,6 +84,7 @@ export function BlogPostCard({
   initialSaved,
   onUnsave,
   showActions = true,
+  skipStatusFetch = false,
 }: {
   post: BlogPostCardPost
   initialLikes: number
@@ -92,6 +93,8 @@ export function BlogPostCard({
   onUnsave?: () => void
   /** Homepage preview: no like / comment / repost / save (read-only teaser) */
   showActions?: boolean
+  /** Skip per-card likes/reposts/bookmarks fetch (e.g. already known from parent) */
+  skipStatusFetch?: boolean
 }) {
   const coverImage = post.cover_image || (post.images && post.images[0]) || '/IMAGES/default-blog.jpg'
   const cardBg = useImageThemeColor(coverImage)
@@ -110,7 +113,7 @@ export function BlogPostCard({
   const isLoggedIn = !!token
 
   useEffect(() => {
-    if (!showActions) return
+    if (!showActions || skipStatusFetch) return
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
     Promise.all([
       fetch(`${apiBase}/api/blog/posts/${post.id}/likes`, { headers }).then(r => r.ok ? r.json() : null),
@@ -153,6 +156,7 @@ export function BlogPostCard({
     const wasSaved = saved
     setSaved(!wasSaved)
     setActionPending('bookmark')
+    window.dispatchEvent(new CustomEvent('blog:bookmarked', { detail: { saved: !wasSaved } }))
     try {
       const endpoint = wasSaved ? 'unbookmark' : 'bookmark'
       const res = await fetch(`${apiBase}/api/blog/posts/${post.id}/${endpoint}`, {
@@ -160,10 +164,14 @@ export function BlogPostCard({
       })
       if (!res.ok) {
         setSaved(wasSaved)
+        window.dispatchEvent(new CustomEvent('blog:bookmarked', { detail: { saved: wasSaved } }))
       } else if (wasSaved && onUnsave) {
         onUnsave()
       }
-    } catch { setSaved(wasSaved) }
+    } catch {
+      setSaved(wasSaved)
+      window.dispatchEvent(new CustomEvent('blog:bookmarked', { detail: { saved: wasSaved } }))
+    }
     finally { setActionPending(null) }
   }, [saved, isLoggedIn, actionPending, apiBase, post.id, token, onUnsave])
 
