@@ -416,7 +416,6 @@ export default function LoginPage() {
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] shadow-sm"
                 aria-hidden
               >
-                {/* WhatsApp logo — standard 32×32 viewBox, scaled to fill the circle evenly */}
                 <svg viewBox="0 0 32 32" className="h-6 w-6" fill="none" aria-hidden="true">
                   <path
                     fill="#fff"
