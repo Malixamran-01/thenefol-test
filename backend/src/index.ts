@@ -884,28 +884,52 @@ app.use('/api/cms', createCMSRouter(pool, io))
 // Initialize blog router with database pool
 initBlogRouter(pool)
 // Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.) - path-based URL
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   const frontendBase = (process.env.FRONTEND_URL || 'https://thenefol.com').replace(/\/$/, '')
   const ogImage = `${frontendBase}/IMAGES/og_logo.jpg`
+
+  const DEFAULT_TITLE = 'Best skincare and haircare products | NEFOL'
+  const DEFAULT_DESC = 'Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.'
+  const DEFAULT_BRAND = 'NEFOL'
+
+  let ogTitle = DEFAULT_TITLE
+  let ogDesc = DEFAULT_DESC
+  let brandName = DEFAULT_BRAND
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT setting_key, setting_value FROM cms_settings WHERE setting_key IN ('site_browser_title','site_meta_description','site_brand_name')`
+    )
+    for (const row of rows) {
+      if (row.setting_key === 'site_browser_title' && row.setting_value) ogTitle = row.setting_value
+      if (row.setting_key === 'site_meta_description' && row.setting_value) ogDesc = row.setting_value
+      if (row.setting_key === 'site_brand_name' && row.setting_value) brandName = row.setting_value
+    }
+  } catch (_) {
+    // fall back to defaults if DB unavailable
+  }
+
+  const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Natural as the Morning Dew | NEFOL</title>
-  <meta name="description" content="Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.">
+  <title>${esc(ogTitle)}</title>
+  <meta name="description" content="${esc(ogDesc)}">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="NEFOL">
-  <meta property="og:title" content="Best skincare and haircare products | NEFOL">
-  <meta property="og:description" content="Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.">
+  <meta property="og:site_name" content="${esc(brandName)}">
+  <meta property="og:title" content="${esc(ogTitle)}">
+  <meta property="og:description" content="${esc(ogDesc)}">
   <meta property="og:url" content="${frontendBase}/">
   <meta property="og:image" content="${ogImage}">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Best skincare and haircare products | NEFOL">
-  <meta name="twitter:description" content="Natural and safe skincare for every skin type. Shop premium haircare and face care made with love.">
+  <meta name="twitter:title" content="${esc(ogTitle)}">
+  <meta name="twitter:description" content="${esc(ogDesc)}">
   <meta name="twitter:image" content="${ogImage}">
   <link rel="canonical" href="${frontendBase}/">
   <meta http-equiv="refresh" content="0;url=${frontendBase}/">
