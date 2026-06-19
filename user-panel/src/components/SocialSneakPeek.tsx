@@ -14,6 +14,7 @@ interface SneakPost extends BlogPostCardPost {
   author_is_verified?: boolean
   author_id?: number | string | null
   author_unique_user_id?: string | null
+  author_photo?: string | null
   likes_count?: number | null
   comments_count?: number | null
 }
@@ -31,6 +32,10 @@ function mapPostUrls(post: SneakPost): SneakPost {
     images: (post.images || []).map((imagePath: string) =>
       imagePath.startsWith('/uploads/') ? `${apiBase}${imagePath}` : imagePath
     ),
+    author_photo:
+      post.author_photo && post.author_photo.startsWith('/uploads/')
+        ? `${apiBase}${post.author_photo}`
+        : post.author_photo,
   }
 }
 
@@ -41,6 +46,7 @@ function CommunityPostColumn({ post }: { post: SneakPost }) {
         authorId={post.author_id}
         authorUniqueUserId={post.author_unique_user_id}
         authorName={post.author_name ?? 'NEFOL Community'}
+        authorProfileImage={post.author_photo ?? null}
         authorVerified={post.author_is_verified === true}
         showFollowButton={false}
       />
