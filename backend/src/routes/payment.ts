@@ -2,7 +2,7 @@ import { Router } from 'express'
 import crypto from 'crypto'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import Razorpay from 'razorpay'
-import { sendPaymentFailedEmail } from '../services/emailService'
+import { sendPaymentFailedEmail, sendOrderConfirmationEmail, sendInvoicePDFEmail } from '../services/emailService'
 
 const router = Router()
 
@@ -283,18 +283,27 @@ export const verifyRazorpayPayment = (pool: any) => async (req: any, res: any) =
     
     const updatedOrder = result.rows[0]
     
-    // Auto-create Shiprocket shipment after payment verification (async, don't block response)
+    // After payment is verified: create Shiprocket shipment and send confirmation emails
     if (updatedOrder.payment_status === 'paid') {
       try {
         const { autoCreateShiprocketShipment } = await import('./shiprocket')
         autoCreateShiprocketShipment(pool, updatedOrder).catch((shiprocketErr: any) => {
           console.error('❌ Error auto-creating Shiprocket shipment after payment verification:', shiprocketErr)
-          // Don't fail payment verification if Shiprocket fails
         })
       } catch (importErr: any) {
         console.error('❌ Error importing Shiprocket module:', importErr)
-        // Don't fail payment verification if import fails
       }
+
+      // Send order confirmation and invoice emails now that payment is confirmed
+      sendOrderConfirmationEmail(updatedOrder, false).catch((err: any) => {
+        console.error('Failed to send order confirmation email to customer:', err)
+      })
+      sendOrderConfirmationEmail(updatedOrder, true).catch((err: any) => {
+        console.error('Failed to send order confirmation email to admin:', err)
+      })
+      sendInvoicePDFEmail(pool, updatedOrder, 'https://thenefol.com').catch((err: any) => {
+        console.error('Failed to send invoice PDF email:', err)
+      })
     }
     
     sendSuccess(res, {

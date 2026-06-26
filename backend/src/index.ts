@@ -3924,37 +3924,40 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       }
     }
     
-    // Automatically create Shiprocket shipment if shipping address is complete
-    // Creates shipment regardless of payment status (for both paid and unpaid orders)
-    if (shipping_address?.address && shipping_address?.city && shipping_address?.pincode) {
-      try {
-        const { autoCreateShiprocketShipment } = await import('./routes/shiprocket')
-        autoCreateShiprocketShipment(pool, order).catch((shiprocketErr: any) => {
-        console.error('❌ Error auto-creating Shiprocket shipment:', shiprocketErr)
-        // Don't fail the order if Shiprocket fails - just log it
-        })
-      } catch (importErr: any) {
-        console.error('❌ Error importing Shiprocket module:', importErr)
-        // Don't fail the order if import fails
+    // For Razorpay orders, skip Shiprocket and emails here — payment is not yet confirmed.
+    // These are triggered in verifyRazorpayPayment after the payment signature is validated.
+    const isRazorpayOrder = payment_method === 'razorpay' || payment_method === 'coins+razorpay'
+
+    if (!isRazorpayOrder) {
+      // Automatically create Shiprocket shipment if shipping address is complete
+      if (shipping_address?.address && shipping_address?.city && shipping_address?.pincode) {
+        try {
+          const { autoCreateShiprocketShipment } = await import('./routes/shiprocket')
+          autoCreateShiprocketShipment(pool, order).catch((shiprocketErr: any) => {
+            console.error('❌ Error auto-creating Shiprocket shipment:', shiprocketErr)
+          })
+        } catch (importErr: any) {
+          console.error('❌ Error importing Shiprocket module:', importErr)
+        }
+      } else {
+        console.log(`ℹ️ Skipping auto-shipment creation for order ${generatedOrderNumber} - incomplete shipping address`)
       }
+
+      // Send order confirmation email (async, don't wait)
+      sendOrderConfirmationEmail(order, false).catch(err => {
+        console.error('Failed to send order confirmation email to customer:', err)
+      })
+      sendOrderConfirmationEmail(order, true).catch(err => {
+        console.error('Failed to send order confirmation email to admin:', err)
+      })
+
+      // Send invoice PDF email automatically (async, don't wait)
+      sendInvoicePDFEmail(pool, order, req.protocol && req.get('host') ? `${req.protocol}://${req.get('host')}` : 'https://thenefol.com').catch(err => {
+        console.error('Failed to send invoice PDF email:', err)
+      })
     } else {
-      console.log(`ℹ️ Skipping auto-shipment creation for order ${order_number} - incomplete shipping address (address: ${!!shipping_address?.address}, city: ${!!shipping_address?.city}, pincode: ${!!shipping_address?.pincode})`)
+      console.log(`ℹ️ Razorpay order ${generatedOrderNumber} created — skipping Shiprocket and emails until payment is verified.`)
     }
-    
-    // Send order confirmation email (async, don't wait)
-    // Send to customer
-    sendOrderConfirmationEmail(order, false).catch(err => {
-      console.error('Failed to send order confirmation email to customer:', err)
-    })
-    // Also send copy to admin
-    sendOrderConfirmationEmail(order, true).catch(err => {
-      console.error('Failed to send order confirmation email to admin:', err)
-    })
-    
-    // Send invoice PDF email automatically (async, don't wait)
-    sendInvoicePDFEmail(pool, order, req.protocol && req.get('host') ? `${req.protocol}://${req.get('host')}` : 'https://thenefol.com').catch(err => {
-      console.error('Failed to send invoice PDF email:', err)
-    })
     
     sendSuccess(res, order, 201)
   } catch (err) {

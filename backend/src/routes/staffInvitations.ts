@@ -80,7 +80,7 @@ export async function inviteStaff(pool: Pool, req: Request, res: Response) {
       [normalized, token, ctx.staffId, expiresAt]
     )
 
-    const inviteUrl = `${getAdminPanelOrigin()}/admin/staff-onboarding?token=${encodeURIComponent(token)}`
+    const inviteUrl = `${getAdminPanelOrigin()}/loginasadmin/staff-onboarding?token=${encodeURIComponent(token)}`
     try {
       await sendStaffAdminInvitationEmail({
         to: normalized,

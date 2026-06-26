@@ -68,8 +68,6 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = () => {
     if (!window.google) return
-    // Use OAuth token popup — works on all browsers/devices unlike One Tap (prompt())
-    // which is silently suppressed on desktop when third-party cookies are blocked.
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: '269814794814-bbq2slkc637hnh7dqbchb6l3hu9b80j5.apps.googleusercontent.com',
       scope: 'email profile openid',
@@ -287,7 +285,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 !py-2.5 !pl-12 !pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 !py-2.5 !pl-10 !pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
                   placeholder="you@example.com"
                 />
               </div>
@@ -315,7 +313,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 !py-2.5 !pl-12 !pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/50 !py-2.5 !pl-10 !pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200"
                   placeholder="••••••••"
                 />
                 <button
@@ -365,7 +363,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Google + Facebook */}
+          {/* Google */}
           <div className="grid grid-cols-1 gap-2.5">
             <button
               type="button"
@@ -374,36 +372,18 @@ export default function LoginPage() {
               className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               Google
             </button>
-            {/* <button
-              type="button"
-              onClick={handleFacebookLogin}
-              disabled={loading || !fbLoaded}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            {/* Facebook — disabled
+            <button type="button" onClick={handleFacebookLogin} disabled={loading || !fbLoaded}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
               <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
-                <path
-                  fill="#1877F2"
-                  d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
-                />
+                <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
               </svg>
               Facebook
             </button> */}
@@ -411,91 +391,33 @@ export default function LoginPage() {
 
           {/* WhatsApp — temporarily disabled (Meta API down) */}
           {/* <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-            <div className="flex items-start gap-2">
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#25D366] shadow-sm"
-                aria-hidden
-              >
-                <svg viewBox="0 0 32 32" className="h-6 w-6" fill="none" aria-hidden="true">
-                  <path
-                    fill="#fff"
-                    d="M16 3C8.82 3 3 8.82 3 16c0 2.3.6 4.5 1.74 6.44L3 29l6.74-1.72A13 13 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3Zm6.46 17.8c-.27.76-1.59 1.46-2.18 1.55-.55.08-1.25.12-2.02-.13-.46-.15-1.06-.35-1.82-.69-3.2-1.38-5.28-4.58-5.44-4.79-.16-.21-1.3-1.73-1.3-3.3 0-1.57.82-2.34 1.11-2.66.29-.32.63-.4.84-.4h.6c.19 0 .45-.07.7.54.26.63.88 2.16.96 2.32.08.16.13.35.03.56-.1.21-.15.34-.3.52-.15.18-.32.4-.46.54-.15.15-.3.3-.13.6.17.29.76 1.26 1.63 2.04 1.12 1 2.06 1.31 2.35 1.46.29.15.46.13.63-.08.17-.21.73-.86.93-1.15.2-.29.39-.24.66-.14.27.1 1.71.81 2 .95.29.14.48.21.55.33.07.12.07.7-.2 1.47Z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-slate-800">WhatsApp OTP</h2>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-                  We’ll send a 6-digit code to your WhatsApp. No password needed.
-                </p>
-              </div>
-            </div>
-
             <form onSubmit={handleWhatsAppLogin} className="mt-4 space-y-3">
               {!otpSent ? (
-                <PhoneInput
-                  value={loginPhone}
-                  onChange={(value) => setLoginPhone(value)}
-                  onCountryCodeChange={setCountryCode}
-                  defaultCountry={countryCode}
-                  placeholder="Phone number"
-                  required
-                  showLabel
-                  label="Mobile number"
-                />
+                <PhoneInput value={loginPhone} onChange={setLoginPhone} onCountryCodeChange={setCountryCode}
+                  defaultCountry={countryCode} placeholder="Phone number" required showLabel label="Mobile number" />
               ) : (
-                <>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Enter OTP</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={6}
-                      value={otp}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '')
-                        setOtp(value)
-                        setWaError('')
-                      }}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-xl tracking-[0.35em] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-                      placeholder="••••••"
-                    />
-                    {otpCountdown > 0 && (
-                      <p className="mt-2 text-center text-xs text-slate-500">
-                        Code expires in {Math.floor(otpCountdown / 60)}:
-                        {(otpCountdown % 60).toString().padStart(2, '0')}
-                      </p>
-                    )}
-                    <div className="mt-2 text-center">
-                      <button
-                        type="button"
-                        onClick={resetWhatsApp}
-                        className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
-                      >
-                        Use a different number
-                      </button>
-                    </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-600">Enter OTP</label>
+                  <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp}
+                    onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '')); setWaError('') }}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-xl tracking-[0.35em] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                    placeholder="••••••" />
+                  {otpCountdown > 0 && (
+                    <p className="mt-2 text-center text-xs text-slate-500">
+                      Code expires in {Math.floor(otpCountdown / 60)}:{(otpCountdown % 60).toString().padStart(2, '0')}
+                    </p>
+                  )}
+                  <div className="mt-2 text-center">
+                    <button type="button" onClick={resetWhatsApp} className="text-xs font-medium text-slate-600 underline hover:text-slate-900">
+                      Use a different number
+                    </button>
                   </div>
-                </>
+                </div>
               )}
-
-              {waError && (
-                <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">{waError}</div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-lg border border-[#128C7E]/30 bg-white py-2.5 text-sm font-semibold text-[#075E54] transition hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading
-                  ? otpSent
-                    ? 'Verifying…'
-                    : 'Sending…'
-                  : otpSent
-                    ? 'Verify and sign in'
-                    : 'Send code via WhatsApp'}
+              {waError && <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-800">{waError}</div>}
+              <button type="submit" disabled={loading}
+                className="w-full rounded-lg border border-[#128C7E]/30 bg-white py-2.5 text-sm font-semibold text-[#075E54] transition hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-50">
+                {loading ? (otpSent ? 'Verifying…' : 'Sending…') : (otpSent ? 'Verify and sign in' : 'Send code via WhatsApp')}
               </button>
             </form>
           </div> */}
