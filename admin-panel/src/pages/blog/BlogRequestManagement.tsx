@@ -1375,7 +1375,7 @@ function AdminBlogPreview({
       )}
 
       <h1 className="text-3xl sm:text-4xl font-bold leading-tight text-[#1B4965] mb-4">
-        {/<[^>]+>/.test(titleHtml) ? <span dangerouslySetInnerHTML={{ __html: titleHtml }} /> : titleHtml || 'Untitled'}
+        {stripHtml(titleHtml) || 'Untitled'}
       </h1>
 
       <div className="mb-6 flex flex-wrap items-center gap-3 text-sm text-slate-600">
