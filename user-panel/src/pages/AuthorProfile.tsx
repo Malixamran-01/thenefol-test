@@ -167,6 +167,13 @@ const parseCategories = (value: BlogPost['categories']) => {
   return []
 }
 
+const stripHtml = (html: string) => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || div.innerText || ''
+}
+
 const getReadingTime = (content: string, excerpt: string) => {
   const text = (content || excerpt || '').replace(/<[^>]*>/g, ' ')
   const words = text.split(/\s+/).filter(Boolean).length
@@ -684,7 +691,7 @@ export default function AuthorProfile() {
 
     if (normalizedQuery) {
       next = next.filter((post) => {
-        const haystack = `${post.title} ${post.excerpt} ${parseCategories(post.categories).join(' ')}`
+        const haystack = `${stripHtml(post.title)} ${stripHtml(post.excerpt)} ${parseCategories(post.categories).join(' ')}`
         return haystack.toLowerCase().includes(normalizedQuery)
       })
     }
@@ -705,10 +712,10 @@ export default function AuthorProfile() {
       id: post.id,
       headline:
         index === 0
-          ? `Published “${post.title}”`
+          ? `Published “${stripHtml(post.title)}”`
           : index % 2 === 0
-            ? `Updated readers on “${post.title}”`
-            : `Post gained fresh engagement on “${post.title}”`,
+            ? `Updated readers on “${stripHtml(post.title)}”`
+            : `Post gained fresh engagement on “${stripHtml(post.title)}”`,
       summary: `${post.likes_count ?? 0} likes • ${post.comments_count ?? 0} comments • ${Math.max(
         1,
         Math.round((post.views_count ?? 150) / 10)
@@ -1391,12 +1398,12 @@ export default function AuthorProfile() {
                       )}
                       <div className="flex-1 min-w-0">
                         <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 leading-snug">
-                          {item.post_title}
+                          {stripHtml(item.post_title || '')}
                         </h3>
                         {isIncoming || isRepostedComment ? null : isCommented && item.comment_content ? (
                           <p className="mt-1 line-clamp-1 text-xs text-gray-500 italic">&quot;{item.comment_content}&quot;</p>
                         ) : !isRepostedComment && item.post_excerpt ? (
-                          <p className="mt-1 line-clamp-1 text-xs text-gray-400">{item.post_excerpt}</p>
+                          <p className="mt-1 line-clamp-1 text-xs text-gray-400">{stripHtml(item.post_excerpt)}</p>
                         ) : null}
                         <p className="mt-1.5 text-[11px] text-gray-400">
                           {new Date(item.activity_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1557,7 +1564,7 @@ export default function AuthorProfile() {
                                   href={postOnlyLink}
                                   className="font-medium text-[#4B97C9] underline-offset-2 hover:underline"
                                 >
-                                  {item.post_title}
+                                  {stripHtml(item.post_title || '')}
                                 </a>
                               </p>
                             </div>
@@ -1593,7 +1600,7 @@ export default function AuthorProfile() {
                           <div className="h-36 w-full shrink-0 overflow-hidden bg-[#edf3f8] sm:h-auto sm:w-56">
                             <img
                               src={cover}
-                              alt={post.title}
+                              alt={stripHtml(post.title)}
                               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             />
                           </div>
@@ -1601,9 +1608,9 @@ export default function AuthorProfile() {
                         <div className="flex flex-1 flex-col justify-between p-4 sm:p-6">
                           <div>
                             <h3 className="text-base font-bold leading-snug text-gray-900 group-hover:text-[#1B4965] sm:text-xl">
-                              {post.title}
+                              {stripHtml(post.title)}
                             </h3>
-                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-600 sm:mt-2 sm:text-sm">{post.excerpt}</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-600 sm:mt-2 sm:text-sm">{stripHtml(post.excerpt)}</p>
 
                             {categories.length > 0 && (
                               <div className="mt-3 flex flex-wrap gap-2">

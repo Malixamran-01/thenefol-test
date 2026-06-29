@@ -5,6 +5,13 @@ import { absoluteBlogMediaUrl } from '../utils/blogShareUrls'
 import { useAuth } from '../contexts/AuthContext'
 import { RepostButton } from '../components/RepostButton'
 
+const stripHtml = (html: string | null | undefined) => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || div.innerText || ''
+}
+
 interface BlogPost {
   id: string
   title: string
@@ -314,7 +321,7 @@ export default function BlogCommentPage() {
       <div className="mb-4">
         <h2 className="text-base font-semibold text-gray-800">Comment</h2>
         {post?.title && (
-          <p className="text-xs text-gray-400 mt-0.5 truncate">on "{post.title}"</p>
+          <p className="text-xs text-gray-400 mt-0.5 truncate">on "{stripHtml(post.title)}"</p>
         )}
       </div>
 

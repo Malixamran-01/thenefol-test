@@ -26,6 +26,13 @@ import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
 
+const stripHtml = (html: string) => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || div.innerText || ''
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Post {
@@ -170,7 +177,7 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
     >
       {imgSrc && (
         <div className="relative h-40 overflow-hidden sm:h-44">
-          <img src={imgSrc} alt={post.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+          <img src={imgSrc} alt={stripHtml(post.title)} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
           {post.featured && (
             <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-semibold text-white shadow">
               <Star className="h-2.5 w-2.5" /> Featured
@@ -189,10 +196,10 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
           </div>
         )}
         <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 group-hover:text-[#1B4965]">
-          {post.title}
+          {stripHtml(post.title)}
         </h3>
         {post.excerpt && (
-          <p className="line-clamp-2 text-xs leading-relaxed text-gray-500">{post.excerpt}</p>
+          <p className="line-clamp-2 text-xs leading-relaxed text-gray-500">{stripHtml(post.excerpt || '')}</p>
         )}
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1">

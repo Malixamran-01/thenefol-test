@@ -294,10 +294,10 @@ export default function BlogDetail() {
         .trim()
     }
 
-    // Fallback chain (matches backend meta page)
-    const title = post.meta_title || stripHtmlStr(post.title)
-    const description = post.meta_description || post.excerpt || ''
-    const ogTitle = post.og_title || title
+    // Fallback chain (matches backend meta page) — strip HTML from all title fields
+    const title = stripHtmlStr(post.meta_title || post.title)
+    const description = post.meta_description || stripHtmlStr(post.excerpt || '')
+    const ogTitle = stripHtmlStr(post.og_title || post.meta_title || post.title)
     const ogDescription = post.og_description || description
     const { appUrl } = getBlogShareUrls(post.id)
     const canonicalUrl = appUrl
@@ -1316,7 +1316,7 @@ export default function BlogDetail() {
             {post && (
               <RepostButton
                 postId={Number(post.id)}
-                postTitle={post.title}
+                postTitle={stripHtml(post.title)}
                 postCover={post.cover_image || post.images?.[0]}
                 initialReposted={reposted}
                 initialCount={repostsCount}

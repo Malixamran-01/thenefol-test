@@ -16,6 +16,13 @@ import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 
+const stripHtml = (html: string | null | undefined) => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || div.innerText || ''
+}
+
 interface Notification {
   id: number
   actor_user_id: number | null
@@ -34,12 +41,12 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
   post_liked: {
     icon: <Heart className="h-4 w-4" />,
     color: 'text-rose-500',
-    label: (n) => `liked your post${n.post_title ? ` "${n.post_title}"` : ''}`,
+    label: (n) => `liked your post${n.post_title ? ` "${stripHtml(n.post_title)}"` : ''}`,
   },
   post_commented: {
     icon: <MessageCircle className="h-4 w-4" />,
     color: 'text-[#4B97C9]',
-    label: (n) => `commented on${n.post_title ? ` "${n.post_title}"` : ' your post'}`,
+    label: (n) => `commented on${n.post_title ? ` "${stripHtml(n.post_title)}"` : ' your post'}`,
   },
   comment_replied: {
     icon: <MessageCircle className="h-4 w-4" />,
@@ -54,7 +61,7 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
   post_reposted: {
     icon: <Repeat2 className="h-4 w-4" />,
     color: 'text-green-500',
-    label: (n) => `reposted your post${n.post_title ? ` "${n.post_title}"` : ''}`,
+    label: (n) => `reposted your post${n.post_title ? ` "${stripHtml(n.post_title)}"` : ''}`,
   },
   followed: {
     icon: <UserPlus className="h-4 w-4" />,
@@ -69,7 +76,7 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
   collab_task_assigned: {
     icon: <ClipboardList className="h-4 w-4" />,
     color: 'text-[#4B97C9]',
-    label: (n) => `assigned you a brand task${n.post_title ? `: ${n.post_title}` : ''}`,
+    label: (n) => `assigned you a brand task${n.post_title ? `: ${stripHtml(n.post_title)}` : ''}`,
   },
   collab_task_revision: {
     icon: <ClipboardList className="h-4 w-4" />,
@@ -95,19 +102,19 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
     icon: <AlertTriangle className="h-4 w-4" />,
     color: 'text-amber-600',
     label: (n) =>
-      `sent a moderation notice${n.post_title ? ` — ${n.post_title}` : ''}`,
+      `sent a moderation notice${n.post_title ? ` — ${stripHtml(n.post_title)}` : ''}`,
   },
   post_revision_approved: {
     icon: <Check className="h-4 w-4" />,
     color: 'text-emerald-600',
     label: (n) =>
-      `approved your blog edit${n.post_title ? ` — ${n.post_title}` : ''}`,
+      `approved your blog edit${n.post_title ? ` — ${stripHtml(n.post_title)}` : ''}`,
   },
   post_revision_rejected: {
     icon: <AlertTriangle className="h-4 w-4" />,
     color: 'text-rose-600',
     label: (n) =>
-      `did not approve your blog edit${n.post_title ? ` — ${n.post_title}` : ''}`,
+      `did not approve your blog edit${n.post_title ? ` — ${stripHtml(n.post_title)}` : ''}`,
   },
 }
 

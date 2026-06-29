@@ -18,6 +18,13 @@ import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 
+const stripHtml = (html: string | null | undefined) => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || div.innerText || ''
+}
+
 // ─── Navigation helpers ───────────────────────────────────────────────────────
 
 function goToAuthor(n: Notification) {
@@ -79,7 +86,7 @@ const TYPE_META: Record<
     color: 'text-rose-500',
     segments: (n, sn) => [
       { text: 'liked your post', onClick: () => { markRead(n, sn); goToPost(n) } },
-      ...(n.post_title ? [{ text: ` "${n.post_title}"`, onClick: () => { markRead(n, sn); goToPost(n) }, bold: false }] : []),
+      ...(n.post_title ? [{ text: ` "${stripHtml(n.post_title)}"`, onClick: () => { markRead(n, sn); goToPost(n) }, bold: false }] : []),
     ],
   },
   post_commented: {
@@ -87,7 +94,7 @@ const TYPE_META: Record<
     color: 'text-[#4B97C9]',
     segments: (n, sn) => [
       { text: 'commented on' },
-      ...(n.post_title ? [{ text: ` "${n.post_title}"`, onClick: () => { markRead(n, sn); goToComment(n) } }] : [{ text: ' your post', onClick: () => { markRead(n, sn); goToComment(n) } }]),
+      ...(n.post_title ? [{ text: ` "${stripHtml(n.post_title)}"`, onClick: () => { markRead(n, sn); goToComment(n) } }] : [{ text: ' your post', onClick: () => { markRead(n, sn); goToComment(n) } }]),
     ],
   },
   comment_replied: {
@@ -109,7 +116,7 @@ const TYPE_META: Record<
     color: 'text-green-500',
     segments: (n, sn) => [
       { text: 'reposted your post', onClick: () => { markRead(n, sn); goToPost(n) } },
-      ...(n.post_title ? [{ text: ` "${n.post_title}"`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
+      ...(n.post_title ? [{ text: ` "${stripHtml(n.post_title)}"`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
     ],
   },
   followed: {
@@ -125,7 +132,7 @@ const TYPE_META: Record<
   collab_task_assigned: {
     icon: <ClipboardList className="h-4 w-4" />,
     color: 'text-[#4B97C9]',
-    segments: (n, _sn) => [{ text: `assigned you a brand task${n.post_title ? `: ${n.post_title}` : ''}` }],
+    segments: (n, _sn) => [{ text: `assigned you a brand task${n.post_title ? `: ${stripHtml(n.post_title)}` : ''}` }],
   },
   collab_task_revision: {
     icon: <ClipboardList className="h-4 w-4" />,
@@ -150,14 +157,14 @@ const TYPE_META: Record<
   author_warning: {
     icon: <AlertTriangle className="h-4 w-4" />,
     color: 'text-amber-600',
-    segments: (n, _sn) => [{ text: `sent a moderation notice${n.post_title ? ` — ${n.post_title}` : ''}` }],
+    segments: (n, _sn) => [{ text: `sent a moderation notice${n.post_title ? ` — ${stripHtml(n.post_title)}` : ''}` }],
   },
   post_revision_approved: {
     icon: <FileText className="h-4 w-4" />,
     color: 'text-emerald-600',
     segments: (n, sn) => [
       { text: 'approved your blog edit', onClick: () => { markRead(n, sn); goToPost(n) } },
-      ...(n.post_title ? [{ text: ` — ${n.post_title}`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
+      ...(n.post_title ? [{ text: ` — ${stripHtml(n.post_title)}`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
     ],
   },
   post_revision_rejected: {
@@ -165,7 +172,7 @@ const TYPE_META: Record<
     color: 'text-rose-600',
     segments: (n, sn) => [
       { text: 'did not approve your blog edit', onClick: () => { markRead(n, sn); goToPost(n) } },
-      ...(n.post_title ? [{ text: ` — ${n.post_title}`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
+      ...(n.post_title ? [{ text: ` — ${stripHtml(n.post_title)}`, onClick: () => { markRead(n, sn); goToPost(n) } }] : []),
     ],
   },
 }

@@ -7,6 +7,13 @@ import { authorAPI } from '../services/authorAPI'
 import { clearLocalDraft, getLocalDraft } from '../utils/blogDraft'
 import AuthorPromptModal from '../components/AuthorPromptModal'
 
+const stripHtml = (html: string) => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || div.innerText || ''
+}
+
 interface BlogPost {
   id: string
   title: string
@@ -224,7 +231,7 @@ export default function MyBlogsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-gray-900 truncate pr-2">
-                          {post.title || 'Untitled'}
+                          {stripHtml(post.title) || 'Untitled'}
                         </h3>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-xs text-gray-500">
                           <span
@@ -252,7 +259,7 @@ export default function MyBlogsPage() {
                           )}
                         </div>
                         {post.excerpt && (
-                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{post.excerpt}</p>
+                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{stripHtml(post.excerpt)}</p>
                         )}
                       </div>
                     </a>

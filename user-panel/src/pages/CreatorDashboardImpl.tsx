@@ -40,6 +40,13 @@ import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 
+const stripHtml = (html: string | null | undefined) => {
+  if (!html) return ''
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || div.innerText || ''
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface AuthorProfile {
@@ -179,9 +186,9 @@ function AreaChart({ points, color, h = 150 }: { points: { month: string; value:
 const ACT: Record<string, { icon: React.ReactNode; dot: string; label: (a: Activity) => string }> = {
   followed:        { icon: <UserPlus className="h-3 w-3" />,       dot: 'bg-[#1B4965]',  label: () => 'started following you' },
   subscribed:      { icon: <Star className="h-3 w-3" />,           dot: 'bg-amber-500',  label: () => 'subscribed to you' },
-  post_liked:      { icon: <Heart className="h-3 w-3" />,          dot: 'bg-rose-500',   label: (a) => `liked "${a.post_title ?? 'your post'}"` },
-  post_commented:  { icon: <MessageCircle className="h-3 w-3" />,  dot: 'bg-[#4B97C9]', label: (a) => `commented on "${a.post_title ?? 'your post'}"` },
-  post_reposted:   { icon: <Repeat2 className="h-3 w-3" />,        dot: 'bg-emerald-500',label: (a) => `reposted "${a.post_title ?? 'your post'}"` },
+  post_liked:      { icon: <Heart className="h-3 w-3" />,          dot: 'bg-rose-500',   label: (a) => `liked "${stripHtml(a.post_title) ?? 'your post'}"` },
+  post_commented:  { icon: <MessageCircle className="h-3 w-3" />,  dot: 'bg-[#4B97C9]', label: (a) => `commented on "${stripHtml(a.post_title) ?? 'your post'}"` },
+  post_reposted:   { icon: <Repeat2 className="h-3 w-3" />,        dot: 'bg-emerald-500',label: (a) => `reposted "${stripHtml(a.post_title) ?? 'your post'}"` },
   comment_liked:   { icon: <Heart className="h-3 w-3" />,          dot: 'bg-rose-400',   label: () => 'liked your comment' },
   comment_replied: { icon: <MessageCircle className="h-3 w-3" />,  dot: 'bg-[#4B97C9]', label: () => 'replied to your comment' },
 }
@@ -759,7 +766,7 @@ function CreatorDashboardImpl() {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">{post.title}</p>
+                          <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">{stripHtml(post.title)}</p>
                           <p className="text-[11px] text-gray-400">{fmtDate(post.created_at)}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-3 text-[11px] text-gray-400">
@@ -925,7 +932,7 @@ function CreatorDashboardImpl() {
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">{post.title}</p>
+                            <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">{stripHtml(post.title)}</p>
                             {post.featured && <Star className="h-3 w-3 shrink-0 text-amber-400" fill="currentColor" />}
                           </div>
                           <p className="text-[11px] text-gray-400">{fmtDate(post.created_at)}</p>
