@@ -25,6 +25,15 @@ type Order = {
   total: number
   status: string
   created_at: string
+  payment_method?: string
+  payment_type?: string
+  payment_status?: string
+  cod?: boolean
+  discount_code?: string
+  discount_amount?: number
+  coins_used?: number
+  segment_discount?: number
+  customer_segment_label?: string
   history?: Array<{ id: number; old_status: string | null; new_status: string; note?: string | null; created_at: string }>
 }
 
@@ -420,6 +429,97 @@ export default function OrderDetails() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Payment Information */}
+      <div className="metric-card">
+        <h2 className="font-semibold mb-4">Payment</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+          {/* Method */}
+          <div>
+            <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Method</p>
+            <p className="font-medium">
+              {order.payment_method === 'cod'
+                ? 'Cash on Delivery'
+                : order.payment_method === 'razorpay'
+                ? 'Online (Razorpay)'
+                : order.payment_method === 'coins+razorpay'
+                ? 'Coins + Razorpay'
+                : order.payment_method === 'coins'
+                ? 'Nefol Coins'
+                : order.payment_method || '—'}
+            </p>
+          </div>
+
+          {/* Status */}
+          <div>
+            <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Payment Status</p>
+            {(() => {
+              const status = order.payment_status || (order.cod ? 'pending' : 'paid')
+              const colors: Record<string, string> = {
+                paid: 'bg-green-100 text-green-700',
+                pending: 'bg-yellow-100 text-yellow-700',
+                failed: 'bg-red-100 text-red-700',
+                refunded: 'bg-blue-100 text-blue-700',
+              }
+              const cls = colors[status] || 'bg-gray-100 text-gray-700'
+              return (
+                <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${cls}`}>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </span>
+              )
+            })()}
+          </div>
+
+          {/* COD badge */}
+          {order.cod && (
+            <div>
+              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>COD</p>
+              <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">
+                Cash on Delivery
+              </span>
+            </div>
+          )}
+
+          {/* Payment type */}
+          {order.payment_type && (
+            <div>
+              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Type</p>
+              <p className="font-medium capitalize">{order.payment_type}</p>
+            </div>
+          )}
+
+          {/* Coupon */}
+          {order.discount_code && (
+            <div>
+              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Coupon</p>
+              <p className="font-medium font-mono">{order.discount_code}</p>
+              {Number(order.discount_amount) > 0 && (
+                <p className="text-xs text-green-600">−₹{Number(order.discount_amount).toFixed(2)}</p>
+              )}
+            </div>
+          )}
+
+          {/* Coins used */}
+          {Number(order.coins_used) > 0 && (
+            <div>
+              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Coins Used</p>
+              <p className="font-medium">{order.coins_used} coins</p>
+              <p className="text-xs text-green-600">−₹{(Number(order.coins_used) / 10).toFixed(2)}</p>
+            </div>
+          )}
+
+          {/* Segment discount */}
+          {Number(order.segment_discount) > 0 && (
+            <div>
+              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Member Discount</p>
+              {order.customer_segment_label && (
+                <p className="text-xs text-gray-500 mb-0.5">{order.customer_segment_label}</p>
+              )}
+              <p className="text-xs text-green-600">−₹{Number(order.segment_discount).toFixed(2)}</p>
+            </div>
+          )}
         </div>
       </div>
 

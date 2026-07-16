@@ -4,7 +4,7 @@ import { Pool } from 'pg'
 import { generateInvoicePDF } from '../utils/pdfGenerator'
 
 const SITE_URL     = 'https://thenefol.com'
-const LOGO_URL     = 'https://thenefol.com/IMAGES/NEFOL%20wide.png'
+const LOGO_URL     = 'https://thenefol.com/IMAGES/NEFOL%20wide%20white.png'
 const BRAND_DARK   = '#0f172a'   // near-black navy for header
 const BRAND_ACCENT = '#7c3aed'   // rich violet
 const BRAND_GOLD   = '#f59e0b'   // amber accent
@@ -113,7 +113,10 @@ function orderItemRow(item: any): string {
   const qty   = toNum(item.quantity) || 1
   const lineTotal = (price * qty).toFixed(2)
   const name  = item.title || item.name || 'Product'
-  const img   = item.listImage || item.list_image || item.image || ''
+  const rawImg = item.listImage || item.list_image || item.image || ''
+  const img   = rawImg && !/^https?:\/\//i.test(rawImg)
+    ? `${SITE_URL}${rawImg.startsWith('/') ? '' : '/'}${rawImg}`
+    : rawImg
   const slug  = item.slug || ''
 
   const imgCell = img

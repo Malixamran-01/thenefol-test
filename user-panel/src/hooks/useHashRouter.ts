@@ -6,27 +6,52 @@ import {
   type NefolHashRouteDetail,
 } from '../utils/hashRouteEvents'
 
-function readHash(): string {
-  return window.location.hash || '#/user/'
+/**
+ * Resolve the active route on initial page load.
+ * Priority: hash fragment (existing behaviour) → pathname (for SEO / clean-URL landings).
+ */
+function initialPath(): string {
+  const hash = window.location.hash
+  if (hash && hash.length > 1) return pathFromLocationHash()
+  const pathname = window.location.pathname
+  if (pathname && pathname !== '/' && pathname !== '/index.html') {
+    return pathname.toLowerCase().replace(/\/$/, '') || '/user/'
+  }
+  return '/user/'
+}
+
+function initialHash(): string {
+  const hash = window.location.hash
+  if (hash && hash.length > 1) return hash
+  const pathname = window.location.pathname
+  if (pathname && pathname !== '/' && pathname !== '/index.html') {
+    return `#${pathname.toLowerCase().replace(/\/$/, '')}`
+  }
+  return '#/user/'
 }
 
 export type UseHashRouterResult = {
-  /** Hash path without `#`, lowercased, query stripped (e.g. `/user/blog/dashboard`). */
+  /** Path without `#`, lowercased, query stripped (e.g. `/user/blog/dashboard`). */
   currentPath: string
   /** Full hash including `#` — updates on query-only changes (for blog chrome). */
   currentHash: string
-  /** Sets `window.location.hash` (`path` may be `/user/foo` or `#/user/foo`). */
+  /** Navigate to a path. Accepts `/user/foo` or `#/user/foo`. */
   navigate: (path: string) => void
 }
 
 /**
- * Single `hashchange` listener for the app. Dispatches `NEFOL_HASH_ROUTE_CHANGE` for
- * subscribers (badges, ban check, blog nav) without additional listeners in `App`.
+ * Single route-change listener for the app.
+ *
+ * Supports two entry modes:
+ *  - Hash-based (existing): `thenefol.com/#/user/shop`
+ *  - Clean-URL (SEO): `thenefol.com/user/shop` — detected on first render;
+ *    subsequent navigations normalise back to hash so all existing `href="#/…"` links
+ *    continue to work without any changes to the 90+ files that use them.
  */
 export function useHashRouter(): UseHashRouterResult {
-  const pathRef = useRef(pathFromLocationHash())
+  const pathRef = useRef(initialPath())
   const [currentPath, setCurrentPath] = useState(() => pathRef.current)
-  const [currentHash, setCurrentHash] = useState(readHash)
+  const [currentHash, setCurrentHash] = useState(initialHash)
 
   const navigate = useCallback((path: string) => {
     const trimmed = path.trim()
@@ -34,12 +59,17 @@ export function useHashRouter(): UseHashRouterResult {
       ? trimmed
       : `#${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`
     if (window.location.hash === hash) return
+    // If the browser is on a clean pathname URL (from a Google / direct landing),
+    // normalise back to root so the URL doesn't become `/user/shop#/user/blog`.
+    if (window.location.pathname !== '/' && window.location.pathname !== '') {
+      history.replaceState(null, '', '/')
+    }
     window.location.hash = hash
   }, [])
 
   useEffect(() => {
     const onHashChange = (e: HashChangeEvent) => {
-      const hash = readHash()
+      const hash = window.location.hash || '#/user/'
       const nextPath = pathFromLocationHash()
       const oldHash = parseHashFromFullUrl(String(e.oldURL ?? ''))
 

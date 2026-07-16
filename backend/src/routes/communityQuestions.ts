@@ -877,4 +877,100 @@ router.post('/questions/bulk-delete', authenticateToken, async (req: Request, re
   }
 })
 
+// ─── Server-side meta page for community questions (for Google / search crawlers) ───
+
+import { Request as ExpressRequest, Response as ExpressResponse } from 'express'
+import { isSocialCrawler } from '../utils/socialCrawler'
+
+function escapeHtmlQ(s: string) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+export async function serveQuestionMetaPage(req: ExpressRequest, res: ExpressResponse) {
+  try {
+    const id = req.params.id
+    const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
+    const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
+    const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
+    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+
+    if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
+      return res.redirect(302, `${frontendBase}/#/user/blog/ask-community/${id}`)
+    }
+
+    const { rows } = await pool.query(
+      `SELECT cq.id, cq.title, cq.body, cq.created_at,
+              p.title AS product_title, p.slug AS product_slug
+       FROM community_questions cq
+       LEFT JOIN products p ON p.id = cq.product_id
+       WHERE cq.id = $1 AND (cq.is_deleted = false OR cq.is_deleted IS NULL)`,
+      [id]
+    )
+    if (rows.length === 0) return res.status(404).send('Question not found')
+
+    const q = rows[0] as any
+    const title = `${q.title} | NEFOL Community`
+    const bodyText = String(q.body || '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 200)
+    const description = bodyText || `Community discussion on NEFOL: ${q.title}`
+    const pageUrl = `${frontendBase}/q/${id}`
+    const spaUrl = `${frontendBase}/#/user/blog/ask-community/${id}`
+    const siteLogo = `${frontendBase}/IMAGES/NEFOL%20icon.png`
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtmlQ(title)}</title>
+  <meta name="description" content="${escapeHtmlQ(description)}">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="${escapeHtmlQ(title)}">
+  <meta property="og:description" content="${escapeHtmlQ(description)}">
+  <meta property="og:url" content="${escapeHtmlQ(pageUrl)}">
+  <meta property="og:site_name" content="NEFOL">
+  <meta property="og:image" content="${escapeHtmlQ(siteLogo)}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="${escapeHtmlQ(title)}">
+  <meta name="twitter:description" content="${escapeHtmlQ(description)}">
+  <link rel="canonical" href="${escapeHtmlQ(pageUrl)}">
+  <script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'QAPage',
+    name: q.title,
+    description,
+    url: pageUrl,
+    datePublished: q.created_at,
+    mainEntity: {
+      '@type': 'Question',
+      name: q.title,
+      text: bodyText,
+      dateCreated: q.created_at,
+      answerCount: 0,
+    }
+  })}</script>
+</head>
+<body>
+  <h1>${escapeHtmlQ(q.title)}</h1>
+  ${q.body ? `<p>${escapeHtmlQ(bodyText)}</p>` : ''}
+  <p><a href="${escapeHtmlQ(spaUrl)}">View full discussion on NEFOL</a></p>
+</body>
+</html>`
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.setHeader('Cache-Control', 'public, max-age=300')
+    res.send(html)
+  } catch (err) {
+    console.error('Question meta page error:', err)
+    res.status(500).send('Server error')
+  }
+}
+
 export default router

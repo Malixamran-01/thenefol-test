@@ -40,7 +40,7 @@ import createCMSRouter, { initCMSTables } from './routes/cms'
 import blogRouter, { initBlogRouter, ensureBlogAuxTables, serveBlogMetaPage, cleanupOldDrafts } from './routes/blog'
 import blogActivityRouter, { initBlogActivityRouter, serveAuthorMetaPage } from './routes/blogActivity'
 import blogNotificationsRouter, { initBlogNotificationsRouter } from './routes/blogNotifications'
-import communityQuestionsRouter, { initCommunityQuestionsRouter } from './routes/communityQuestions'
+import communityQuestionsRouter, { initCommunityQuestionsRouter, serveQuestionMetaPage } from './routes/communityQuestions'
 import authorOnboardingRouter, { initAuthorOnboardingRouter } from './routes/authorOnboarding'
 import { initRoleCheck } from './middleware/roleCheck'
 import { nefolSocialBanGuard } from './middleware/nefolSocialBanGuard'
@@ -945,6 +945,122 @@ app.get('/', async (req, res) => {
 app.get('/blog/:id', serveBlogMetaPage)
 app.get('/author/:id', serveAuthorMetaPage)
 app.get('/product/:slug', (req, res) => productRoutes.serveProductMetaPage(pool, req, res))
+app.get('/q/:id', serveQuestionMetaPage)
+
+// ── Dynamic sitemap.xml ───────────────────────────────────────────────────────
+app.get('/sitemap.xml', async (req: Request, res: Response) => {
+  try {
+    const base = 'https://thenefol.com'
+
+    const toDate = (ts: any) =>
+      ts ? new Date(ts).toISOString().split('T')[0] : null
+
+    const toAbsImg = (url: string | null | undefined): string => {
+      if (!url) return ''
+      const u = String(url).trim()
+      if (!u) return ''
+      if (/^https?:\/\//i.test(u)) return u
+      return `${base}${u.startsWith('/') ? '' : '/'}${u}`
+    }
+
+    // Static pages — no lastmod (content is managed, not DB-tracked).
+    // Omitting lastmod is better than lying with today's date.
+    const staticPages = [
+      { loc: `${base}/`,                  changefreq: 'daily',   priority: '1.0' },
+      { loc: `${base}/user/shop`,         changefreq: 'daily',   priority: '0.9' },
+      { loc: `${base}/user/face`,         changefreq: 'weekly',  priority: '0.85' },
+      { loc: `${base}/user/body`,         changefreq: 'weekly',  priority: '0.85' },
+      { loc: `${base}/user/hair`,         changefreq: 'weekly',  priority: '0.85' },
+      { loc: `${base}/user/skincare`,     changefreq: 'weekly',  priority: '0.85' },
+      { loc: `${base}/user/combos`,       changefreq: 'weekly',  priority: '0.85' },
+      { loc: `${base}/user/new-arrivals`, changefreq: 'weekly',  priority: '0.8'  },
+      { loc: `${base}/user/best-sellers`, changefreq: 'weekly',  priority: '0.8'  },
+      { loc: `${base}/user/blog`,         changefreq: 'daily',   priority: '0.75' },
+      { loc: `${base}/user/ingredients`,  changefreq: 'monthly', priority: '0.7'  },
+      { loc: `${base}/user/community`,    changefreq: 'daily',   priority: '0.65' },
+      { loc: `${base}/user/about`,        changefreq: 'monthly', priority: '0.6'  },
+      { loc: `${base}/user/contact`,      changefreq: 'monthly', priority: '0.5'  },
+      { loc: `${base}/user/faq`,          changefreq: 'monthly', priority: '0.5'  },
+    ].map(p => `  <url>
+    <loc>${p.loc}</loc>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`).join('\n')
+
+    // Products — with actual updated_at and image from VPS uploads
+    const { rows: prodRows } = await pool.query(`
+      SELECT slug, title, list_image, updated_at
+      FROM products
+      WHERE slug IS NOT NULL AND slug != ''
+      ORDER BY updated_at DESC
+      LIMIT 5000
+    `)
+    const productUrls = prodRows.map((r: any) => {
+      const lastmod = toDate(r.updated_at)
+      const imgUrl  = toAbsImg(r.list_image)
+      const imgBlock = imgUrl ? `
+    <image:image>
+      <image:loc>${imgUrl}</image:loc>
+      <image:title>${(r.title || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</image:title>
+    </image:image>` : ''
+      return `  <url>
+    <loc>${base}/product/${encodeURIComponent(r.slug)}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>${imgBlock}
+  </url>`
+    }).join('\n')
+
+    // Blog posts — actual updated_at from DB
+    const { rows: blogRows } = await pool.query(`
+      SELECT id, updated_at
+      FROM blog_posts
+      WHERE status = 'approved' AND is_active = true AND is_deleted = false AND is_archived = false
+      ORDER BY updated_at DESC
+      LIMIT 5000
+    `)
+    const blogUrls = blogRows.map((r: any) => {
+      const lastmod = toDate(r.updated_at)
+      return `  <url>
+    <loc>${base}/blog/${r.id}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>`
+    }).join('\n')
+
+    // Community questions — actual created_at / updated_at from DB
+    const { rows: qRows } = await pool.query(`
+      SELECT id, COALESCE(updated_at, created_at) AS modified_at
+      FROM community_questions
+      WHERE (is_deleted = false OR is_deleted IS NULL)
+      ORDER BY modified_at DESC
+      LIMIT 5000
+    `)
+    const questionUrls = qRows.map((r: any) => {
+      const lastmod = toDate(r.modified_at)
+      return `  <url>
+    <loc>${base}/q/${r.id}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}
+    <changefreq>weekly</changefreq>
+    <priority>0.65</priority>
+  </url>`
+    }).join('\n')
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${staticPages}
+${productUrls}
+${blogUrls}
+${questionUrls}
+</urlset>`
+
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8')
+    res.setHeader('Cache-Control', 'public, max-age=3600')
+    res.send(xml)
+  } catch (err) {
+    console.error('Sitemap error:', err)
+    res.status(500).send('Sitemap generation failed')
+  }
+})
 
 // ── Short share URLs (/p/:slug  /b/:id  /a/:id) ──────────────────────────────
 // Crawlers get full OG meta HTML; humans get a 302 to the SPA hash route.

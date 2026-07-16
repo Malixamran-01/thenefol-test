@@ -1,0 +1,34 @@
+User-agent: *
+Allow: /
+
+# Block private/account pages from indexing
+Disallow: /api/
+Disallow: /#/user/login
+Disallow: /#/user/signup
+Disallow: /#/user/checkout
+Disallow: /#/user/cart
+Disallow: /#/user/account
+Disallow: /#/user/orders
+Disallow: /#/user/user-orders
+Disallow: /#/user/profile
+Disallow: /#/user/wishlist
+Disallow: /#/user/notifications
+Disallow: /#/user/payment-methods
+Disallow: /#/user/manage-address
+Disallow: /#/user/privacy-security
+Disallow: /#/user/saved-cards
+Disallow: /#/user/nefol-coins
+Disallow: /#/user/coin-withdrawal
+Disallow: /#/user/referral-history
+Disallow: /#/user/blog/dashboard
+Disallow: /#/user/blog/my-blogs
+Disallow: /#/user/blog/edit-image
+Disallow: /#/user/blog/settings
+Disallow: /#/user/confirmation
+Disallow: /#/user/order/
+Disallow: /#/user/cancel-order/
+Disallow: /#/user/reset-password
+Disallow: /loginasadmin
+
+# Sitemap
+Sitemap: https://thenefol.com/sitemap.xml
