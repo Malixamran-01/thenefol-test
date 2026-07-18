@@ -40,7 +40,9 @@ function shell(preheader: string, headerHtml: string, bodyHtml: string, footerEx
         <!-- Logo bar -->
         <tr>
           <td style="background:${BRAND_DARK};padding:20px 40px;text-align:center;">
-            <img src="${LOGO_URL}" alt="NEFOL" width="140" style="display:inline-block;max-width:140px;" />
+            <a href="${SITE_URL}" style="text-decoration:none;">
+              <span style="display:inline-block;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:5px;text-transform:uppercase;line-height:1;">NEFOL</span>
+            </a>
           </td>
         </tr>
 
@@ -145,9 +147,11 @@ function orderItemRow(item: any): string {
     : rawImg
   const slug  = item.slug || ''
 
+  const initial = (name.charAt(0) || 'N').toUpperCase()
+  // Purple background table shows through when img is blocked; initial letter used when no image at all
   const imgCell = img
-    ? `<img src="${img}" alt="${name}" width="80" height="80" style="width:80px;height:80px;object-fit:cover;border-radius:8px;display:block;border:1px solid ${BORDER};" />`
-    : `<div style="width:80px;height:80px;border-radius:8px;background:${BG_SUBTLE};border:1px solid ${BORDER};display:flex;align-items:center;justify-content:center;font-size:28px;">🧴</div>`
+    ? `<table width="80" height="80" cellpadding="0" cellspacing="0" border="0" style="width:80px;height:80px;border-radius:8px;border:1px solid ${BORDER};background:#e8e0f7;"><tr><td style="padding:0;border-radius:8px;"><img src="${img}" alt="${initial}" width="80" height="80" style="width:80px;height:80px;object-fit:cover;border-radius:8px;display:block;" /></td></tr></table>`
+    : `<table width="80" height="80" cellpadding="0" cellspacing="0" border="0" style="width:80px;height:80px;border-radius:8px;border:1px solid ${BORDER};background:#e8e0f7;"><tr><td align="center" valign="middle" style="font-size:28px;font-weight:900;color:${BRAND_ACCENT};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1;border-radius:8px;">${initial}</td></tr></table>`
 
   const productUrl = slug ? `${SITE_URL}/#/products/${slug}` : SITE_URL
 

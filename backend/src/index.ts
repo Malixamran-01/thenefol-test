@@ -1058,7 +1058,7 @@ ${questionUrls}
     res.send(xml)
   } catch (err) {
     console.error('Sitemap error:', err)
-    res.status(500).send('Sitemap generation failed')
+    if (!res.headersSent) res.status(500).send('Sitemap generation failed')
   }
 })
 
@@ -5714,6 +5714,7 @@ if (fs.existsSync(indexPath)) {
   app.get('*', (req, res, next) => {
     if (res.headersSent) return next()
     if (req.method !== 'GET') return next()
+    if (req.path === '/sitemap.xml' || req.path.startsWith('/api/')) return next()
     res.sendFile(indexPath)
   })
   console.log('[SPA] User panel fallback enabled for GET /')
