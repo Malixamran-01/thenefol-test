@@ -1031,7 +1031,6 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
     const { rows: qRows } = await pool.query(`
       SELECT id, COALESCE(updated_at, created_at) AS modified_at
       FROM community_questions
-      WHERE (is_deleted = false OR is_deleted IS NULL)
       ORDER BY modified_at DESC
       LIMIT 5000
     `)
