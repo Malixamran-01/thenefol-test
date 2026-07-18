@@ -106,7 +106,7 @@ export default function Cart() {
           <div className="text-center py-16">
             <div className="mb-6">
               <img 
-                src="/IMAGES/BANNER2.webp"
+                src="/IMAGES/BANNER (2).webp"
                 alt="Empty Cart" 
                 className="w-32 h-32 mx-auto rounded-lg object-cover shadow-lg"
                 onError={(e) => {
@@ -183,7 +183,7 @@ export default function Cart() {
                       {/* Product Image */}
                       <div className="flex-shrink-0">
                           <img
-                            src={item.image || '/IMAGES/BANNER1.webp'}
+                            src={item.image || '/IMAGES/BANNER (1).webp'}
                             alt={item.title}
                             className="w-24 h-24 object-cover rounded-lg border shadow-sm hover:shadow-md transition-shadow"
                             style={{borderColor: '#D0E8F2'}}

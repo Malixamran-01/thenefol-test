@@ -4050,10 +4050,10 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       // Shiprocket shipment is NOT auto-created — admin must confirm and select courier from the admin panel.
 
       // Send order confirmation email (async, don't wait)
-      sendOrderConfirmationEmail(order, false).catch(err => {
+      sendOrderConfirmationEmail(order, false, pool).catch(err => {
         console.error('Failed to send order confirmation email to customer:', err)
       })
-      sendOrderConfirmationEmail(order, true).catch(err => {
+      sendOrderConfirmationEmail(order, true, pool).catch(err => {
         console.error('Failed to send order confirmation email to admin:', err)
       })
 

@@ -105,6 +105,32 @@ function badge(text: string, bg = BRAND_ACCENT): string {
   return `<span style="display:inline-block;background:${bg};color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:50px;letter-spacing:0.5px;text-transform:uppercase;">${text}</span>`
 }
 
+// ─── Fetch fresh product images from DB to enrich order items ────────────────
+
+async function enrichItemImages(pool: Pool, items: any[]): Promise<any[]> {
+  if (!items.length) return items
+  const slugs = items.map((i: any) => i.slug).filter(Boolean)
+  if (!slugs.length) return items
+  try {
+    const { rows } = await pool.query(
+      'SELECT slug, list_image FROM products WHERE slug = ANY($1::text[])',
+      [slugs]
+    )
+    const imgMap: Record<string, string> = {}
+    for (const row of rows) {
+      if (row.list_image) imgMap[row.slug] = row.list_image
+    }
+    return items.map((item: any) => {
+      const existing = item.listImage || item.list_image || item.image || ''
+      if (existing) return item
+      const fresh = item.slug ? imgMap[item.slug] : ''
+      return fresh ? { ...item, image: fresh } : item
+    })
+  } catch {
+    return items
+  }
+}
+
 // ─── Order item row with product image ───────────────────────────────────────
 
 function orderItemRow(item: any): string {
@@ -403,11 +429,13 @@ export async function sendAccountSecurityAlertEmail(userEmail: string, action: s
 
 // ─── 7. Order Confirmation ────────────────────────────────────────────────────
 
-export async function sendOrderConfirmationEmail(order: any, sendToAdmin = false): Promise<void> {
+export async function sendOrderConfirmationEmail(order: any, sendToAdmin = false, pool?: Pool): Promise<void> {
   try {
-    const items: any[] = Array.isArray(order.items) ? order.items : (() => {
+    const rawItems: any[] = Array.isArray(order.items) ? order.items : (() => {
       try { return JSON.parse(order.items || '[]') } catch { return [] }
     })()
+
+    const items = pool ? await enrichItemImages(pool, rawItems) : rawItems
 
     const shippingAddr = (() => {
       try {
@@ -941,9 +969,11 @@ export async function sendInvoicePDFEmail(
     const pdfBuffer = await generateInvoicePDF(pool, order, baseUrl)
     const invoiceFileName = `Invoice-${order.invoice_number || order.order_number || order.id}.pdf`
 
-    const items: any[] = Array.isArray(order.items) ? order.items : (() => {
+    const rawItems: any[] = Array.isArray(order.items) ? order.items : (() => {
       try { return JSON.parse(order.items || '[]') } catch { return [] }
     })()
+
+    const items = await enrichItemImages(pool, rawItems)
 
     const orderDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', {
       day: 'numeric', month: 'long', year: 'numeric'

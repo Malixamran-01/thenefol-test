@@ -287,10 +287,10 @@ export const verifyRazorpayPayment = (pool: any) => async (req: any, res: any) =
     // Shiprocket shipment is NOT auto-created — admin must confirm and select courier from the admin panel.
     if (updatedOrder.payment_status === 'paid') {
       // Send order confirmation and invoice emails now that payment is confirmed
-      sendOrderConfirmationEmail(updatedOrder, false).catch((err: any) => {
+      sendOrderConfirmationEmail(updatedOrder, false, pool).catch((err: any) => {
         console.error('Failed to send order confirmation email to customer:', err)
       })
-      sendOrderConfirmationEmail(updatedOrder, true).catch((err: any) => {
+      sendOrderConfirmationEmail(updatedOrder, true, pool).catch((err: any) => {
         console.error('Failed to send order confirmation email to admin:', err)
       })
       sendInvoicePDFEmail(pool, updatedOrder, 'https://thenefol.com').catch((err: any) => {

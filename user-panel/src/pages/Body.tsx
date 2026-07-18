@@ -150,7 +150,7 @@ export default function Body() {
                     <a href={`#/user/product/${product.slug}`}>
                       {product.list_image && (
                         <img 
-                          src={product.list_image || '/IMAGES/BANNER1.webp'}
+                          src={product.list_image || '/IMAGES/BANNER (1).webp'}
                           alt={product.title}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 rounded-xl" 
                           loading="lazy"
