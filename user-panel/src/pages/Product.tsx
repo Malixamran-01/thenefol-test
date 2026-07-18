@@ -732,7 +732,7 @@ export default function ProductPage() {
     if (r.pdp_image_4) images.push(toAbs(r.pdp_image_4))
     if (r.pdp_image_5) images.push(toAbs(r.pdp_image_5))
     if (r.pdp_image_6) images.push(toAbs(r.pdp_image_6))
-    return images.length > 0 ? images : ['/IMAGES/BANNER%20%281%29.webp']
+    return images.length > 0 ? images : ['/IMAGES/BANNER1.webp']
   }
 
   const toggleSection = (section: string) => {

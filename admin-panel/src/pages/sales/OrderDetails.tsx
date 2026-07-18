@@ -50,6 +50,11 @@ export default function OrderDetails() {
   const [splitIndexes, setSplitIndexes] = useState<string>('')
   const [hasShipment, setHasShipment] = useState(false)
   const [shipmentInfo, setShipmentInfo] = useState<any>(null)
+  const [courierOptions, setCourierOptions] = useState<any[]>([])
+  const [selectedCourierId, setSelectedCourierId] = useState<string>('')
+  const [loadingCouriers, setLoadingCouriers] = useState(false)
+  const [showCourierPanel, setShowCourierPanel] = useState(false)
+  const [confirmingShipment, setConfirmingShipment] = useState(false)
   // Use centralized API URL utility that respects VITE_API_URL
   const apiBase = getApiBaseUrl()
 
@@ -186,6 +191,47 @@ export default function OrderDetails() {
       console.error('Create shipment error:', e)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCourierOptions = async () => {
+    if (!order) return
+    try {
+      setLoadingCouriers(true)
+      setCourierOptions([])
+      setSelectedCourierId('')
+      const res = await fetch(`${apiBase}/shiprocket/orders/${order.id}/courier-serviceability`, { headers: authHeaders })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to fetch couriers')
+      setCourierOptions(data?.couriers || [])
+      setShowCourierPanel(true)
+    } catch (e: any) {
+      notify('error', e?.message || 'Failed to fetch courier options')
+    } finally {
+      setLoadingCouriers(false)
+    }
+  }
+
+  const confirmAndShip = async () => {
+    if (!order || !selectedCourierId) return
+    try {
+      setConfirmingShipment(true)
+      const res = await fetch(`${apiBase}/shiprocket/orders/${order.id}/confirm-and-ship`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ courier_id: selectedCourierId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to confirm shipment')
+      notify('success', `Shipment confirmed! AWB: ${data?.awb_code || 'pending'}`)
+      setShowCourierPanel(false)
+      setCourierOptions([])
+      setSelectedCourierId('')
+      await load()
+    } catch (e: any) {
+      notify('error', e?.message || 'Failed to confirm shipment')
+    } finally {
+      setConfirmingShipment(false)
     }
   }
 
@@ -386,46 +432,101 @@ export default function OrderDetails() {
             </div>
             <div className="pt-4 border-t mt-4">
               <label className="block text-sm font-medium mb-2">Shipping (Shiprocket)</label>
+
+              {/* Confirmed shipment info */}
               {hasShipment && shipmentInfo && (
                 <div className="mb-3 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs">
-                  <p className="text-green-700 dark:text-green-300 font-medium">✓ Shipment Created</p>
-                  {shipmentInfo.shipment_id && (
-                    <p className="text-green-600 dark:text-green-400">ID: {shipmentInfo.shipment_id}</p>
+                  <p className="text-green-700 dark:text-green-300 font-medium">✓ Shipment Confirmed</p>
+                  {shipmentInfo.shipment_id && <p className="text-green-600 dark:text-green-400">ID: {shipmentInfo.shipment_id}</p>}
+                  {shipmentInfo.awb_code && <p className="text-green-600 dark:text-green-400">AWB: {shipmentInfo.awb_code}</p>}
+                </div>
+              )}
+
+              {/* Pending confirmation notice */}
+              {!hasShipment && !showCourierPanel && (
+                <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs">
+                  <p className="text-amber-700 dark:text-amber-300 font-medium">Awaiting admin confirmation</p>
+                  <p className="text-amber-600 dark:text-amber-400 mt-0.5">Select a courier partner to confirm this order and create a shipment on Shiprocket.</p>
+                </div>
+              )}
+
+              {/* Courier selection panel */}
+              {showCourierPanel && (
+                <div className="mb-3 border border-[var(--brand-border)] rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-[var(--brand-highlight)] flex items-center justify-between">
+                    <span className="text-xs font-semibold">Select Courier Partner</span>
+                    <button onClick={() => setShowCourierPanel(false)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">✕</button>
+                  </div>
+                  {courierOptions.length === 0 ? (
+                    <p className="p-3 text-xs text-[var(--text-muted)]">No couriers available for this pincode.</p>
+                  ) : (
+                    <div className="max-h-56 overflow-y-auto divide-y divide-[var(--brand-border)]">
+                      {courierOptions.map((c) => (
+                        <label key={c.courier_id} className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-[var(--brand-highlight)] text-xs ${selectedCourierId === String(c.courier_id) ? 'bg-[var(--brand-accent-soft)]' : ''}`}>
+                          <input
+                            type="radio"
+                            name="courier"
+                            value={String(c.courier_id)}
+                            checked={selectedCourierId === String(c.courier_id)}
+                            onChange={() => setSelectedCourierId(String(c.courier_id))}
+                            className="flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{c.courier_name}</p>
+                            <p className="text-[var(--text-muted)]">ETD: {c.etd || '—'}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-semibold">₹{Number(c.rate || 0).toFixed(0)}</p>
+                            {Number(c.cod_charges) > 0 && <p className="text-[var(--text-muted)]">+₹{Number(c.cod_charges).toFixed(0)} COD</p>}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
                   )}
-                  {shipmentInfo.awb_code && (
-                    <p className="text-green-600 dark:text-green-400">AWB: {shipmentInfo.awb_code}</p>
+                  {courierOptions.length > 0 && (
+                    <div className="p-2 border-t border-[var(--brand-border)]">
+                      <button
+                        onClick={confirmAndShip}
+                        disabled={!selectedCourierId || confirmingShipment}
+                        className="btn-primary w-full text-xs"
+                      >
+                        {confirmingShipment ? 'Confirming…' : 'Confirm Order & Create Shipment'}
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
-              {!hasShipment && (
-                <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
-                  <p className="text-yellow-700 dark:text-yellow-300">⚠️ Create a shipment first to generate AWB</p>
-                </div>
-              )}
+
               <div className="flex flex-col gap-2">
-                <button 
-                  onClick={createShipment} 
-                  className="btn-primary w-full"
-                  disabled={loading || hasShipment}
-                >
-                  {hasShipment ? 'Shipment Already Created' : 'Create Shipment'}
-                </button>
-                <button 
-                  onClick={createAwb} 
-                  className="btn-secondary w-full"
-                  disabled={loading || !hasShipment}
-                  title={!hasShipment ? 'Please create a shipment first' : ''}
-                >
-                  Generate AWB & Label
-                </button>
-                <button 
-                  onClick={viewTracking} 
-                  className="btn-secondary w-full"
-                  disabled={loading || !hasShipment || !shipmentInfo?.awb_code}
-                  title={!hasShipment ? 'Please create a shipment first' : !shipmentInfo?.awb_code ? 'AWB not generated yet' : ''}
-                >
-                  View Tracking
-                </button>
+                {!hasShipment && (
+                  <button
+                    onClick={fetchCourierOptions}
+                    disabled={loadingCouriers || showCourierPanel}
+                    className="btn-primary w-full"
+                  >
+                    {loadingCouriers ? 'Fetching couriers…' : showCourierPanel ? 'Courier panel open' : 'Confirm & Select Courier'}
+                  </button>
+                )}
+                {hasShipment && (
+                  <>
+                    <button
+                      onClick={createAwb}
+                      className="btn-secondary w-full"
+                      disabled={loading || !shipmentInfo?.shipment_id}
+                      title={!shipmentInfo?.shipment_id ? 'Shipment ID not available' : ''}
+                    >
+                      Regenerate AWB & Label
+                    </button>
+                    <button
+                      onClick={viewTracking}
+                      className="btn-secondary w-full"
+                      disabled={loading || !shipmentInfo?.awb_code}
+                      title={!shipmentInfo?.awb_code ? 'AWB not generated yet' : ''}
+                    >
+                      View Tracking
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -1,8 +1,37 @@
 User-agent: *
 Allow: /
 
-# Block private/account pages from indexing
+# Allow public API endpoints needed to render pages
+Allow: /api/products
+Allow: /api/products/
+Allow: /api/search
+Allow: /api/search/
+Allow: /api/recommendations
+Allow: /api/recommendations/
+Allow: /api/blog/posts
+Allow: /api/blog/posts/
+Allow: /api/blog/authors/
+Allow: /api/blog/tags
+Allow: /api/blog/feed
+Allow: /api/blog/community/questions
+Allow: /api/blog/community/questions/
+Allow: /api/blog/community/answers/
+Allow: /api/cms/sections/
+Allow: /api/cms/settings
+Allow: /api/testimonials
+Allow: /api/product-reviews/
+Allow: /api/product-questions/
+Allow: /api/collections
+Allow: /api/videos
+Allow: /api/videos/
+Allow: /api/forms
+Allow: /api/recommendation-posts
+Allow: /api/public/
+
+# Block all other API endpoints (private/authenticated/write)
 Disallow: /api/
+
+# Block private/account pages from indexing
 Disallow: /#/user/login
 Disallow: /#/user/signup
 Disallow: /#/user/checkout

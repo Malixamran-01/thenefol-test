@@ -118,6 +118,7 @@ const Layout = () => {
   }
 
   // Grouped by RBAC division (see backend `rbacCatalog.ts`). Admins bypass via `hasPermission` + role `admin`.
+  // Order: daily operations first → inventory/catalog → customers → insights → growth → config/setup
   const navigationSections: NavigationSection[] = [
     {
       title: 'Overview',
@@ -126,65 +127,24 @@ const Layout = () => {
       defaultOpen: true,
       items: [{ name: 'Dashboard', href: '/loginasadmin/dashboard', current: location.pathname === '/loginasadmin/dashboard' }],
     },
+
     {
-      title: 'Store & homepage',
-      SectionIcon: Store,
-      requiredPermission: Nav.store,
+      title: 'Sales & e-commerce',
+      SectionIcon: ShoppingCart,
+      requiredPermission: Nav.sales,
       defaultOpen: false,
       items: [
-        { name: 'Online store', href: '/loginasadmin/store', current: location.pathname === '/loginasadmin/store' },
-        { name: 'Homepage layout', href: '/loginasadmin/homepage-layout', badge: 'NEW', current: location.pathname === '/loginasadmin/homepage-layout' },
-      ],
-    },
-    {
-      title: 'Sales channels',
-      SectionIcon: Globe2,
-      requiredPermission: Nav.channels,
-      defaultOpen: false,
-      items: [
-        { name: 'Marketplaces', href: '/loginasadmin/marketplaces', badge: 'NEW', current: location.pathname === '/loginasadmin/marketplaces' },
-        { name: 'FB Shop integration', href: '/loginasadmin/fb-shop', badge: 'NEW', current: location.pathname === '/loginasadmin/fb-shop' },
-      ],
-    },
-    {
-      title: 'Meta',
-      SectionIcon: Radio,
-      requiredPermission: Nav.meta,
-      defaultOpen: false,
-      items: [
+        { name: 'Orders', href: '/loginasadmin/orders', current: location.pathname === '/loginasadmin/orders' || location.pathname.startsWith('/loginasadmin/orders/') },
         {
-          name: 'Meta (Business & Ads)',
-          href: '/loginasadmin/meta',
+          name: 'Unified sales',
+          href: '/loginasadmin/unified-sales',
           badge: 'NEW',
-          current:
-            location.pathname === '/loginasadmin/meta' ||
-            location.pathname === '/loginasadmin/meta-ads' ||
-            location.pathname === '/loginasadmin/meta-business',
+          current: location.pathname === '/loginasadmin/unified-sales',
         },
-      ],
-    },
-    {
-      title: 'Google & YouTube',
-      SectionIcon: TextSearch,
-      requiredPermission: Nav.google,
-      defaultOpen: false,
-      items: [{ name: 'Google & YouTube', href: '/loginasadmin/google', current: location.pathname === '/loginasadmin/google' }],
-    },
-    {
-      title: 'Facebook & Instagram',
-      SectionIcon: Share2,
-      requiredPermission: Nav.facebook,
-      defaultOpen: false,
-      items: [{ name: 'Facebook & Instagram', href: '/loginasadmin/facebook', current: location.pathname === '/loginasadmin/facebook' }],
-    },
-    {
-      title: 'Loyalty & rewards',
-      SectionIcon: Gift,
-      requiredPermission: Nav.loyalty,
-      defaultOpen: false,
-      items: [
-        { name: 'Loyalty program', href: '/loginasadmin/loyalty-program', current: location.pathname === '/loginasadmin/loyalty-program' },
-        { name: 'Cashback system', href: '/loginasadmin/cashback', current: location.pathname === '/loginasadmin/cashback' },
+        { name: 'Shipments', href: '/loginasadmin/shipments', current: location.pathname === '/loginasadmin/shipments' },
+        { name: 'Returns', href: '/loginasadmin/returns', current: location.pathname === '/loginasadmin/returns' },
+        { name: 'POS system', href: '/loginasadmin/pos', current: location.pathname === '/loginasadmin/pos' },
+        { name: 'Cart & checkout', href: '/loginasadmin/cart-checkout', current: location.pathname === '/loginasadmin/cart-checkout' },
       ],
     },
 
@@ -217,46 +177,10 @@ const Layout = () => {
     },
 
     {
-      title: 'Sales & e-commerce',
-      SectionIcon: ShoppingCart,
-      requiredPermission: Nav.sales,
-      defaultOpen: false,
-      items: [
-        { name: 'Orders', href: '/loginasadmin/orders', current: location.pathname === '/loginasadmin/orders' || location.pathname.startsWith('/loginasadmin/orders/') },
-        {
-          name: 'Unified sales',
-          href: '/loginasadmin/unified-sales',
-          badge: 'NEW',
-          current: location.pathname === '/loginasadmin/unified-sales',
-        },
-        { name: 'Shipments', href: '/loginasadmin/shipments', current: location.pathname === '/loginasadmin/shipments' },
-        { name: 'Returns', href: '/loginasadmin/returns', current: location.pathname === '/loginasadmin/returns' },
-        { name: 'POS system', href: '/loginasadmin/pos', current: location.pathname === '/loginasadmin/pos' },
-        { name: 'Cart & checkout', href: '/loginasadmin/cart-checkout', current: location.pathname === '/loginasadmin/cart-checkout' },
-      ],
-    },
-
-    {
-      title: 'Content & CMS',
-      SectionIcon: FileText,
-      requiredPermission: Nav.content,
-      defaultOpen: true,
-      items: [
-        { name: 'CMS', href: '/loginasadmin/cms', current: location.pathname === '/loginasadmin/cms' },
-        { name: 'Blog', href: '/loginasadmin/blog-requests', current: location.pathname === '/loginasadmin/blog-requests' },
-        { name: 'Ask Community', href: '/loginasadmin/ask-community', current: location.pathname === '/loginasadmin/ask-community' },
-        { name: 'Authors', href: '/loginasadmin/author-management', current: location.pathname === '/loginasadmin/author-management' },
-        { name: 'Video manager', href: '/loginasadmin/video-manager', current: location.pathname === '/loginasadmin/video-manager' },
-        { name: 'Static pages', href: '/loginasadmin/static-pages', current: location.pathname === '/loginasadmin/static-pages' },
-        { name: 'Community management', href: '/loginasadmin/community-management', current: location.pathname === '/loginasadmin/community-management' },
-      ],
-    },
-
-    {
       title: 'Customer & CRM',
       SectionIcon: Users,
       requiredPermission: Nav.crm,
-      defaultOpen: true,
+      defaultOpen: false,
       items: [
         { name: 'Customers', href: '/loginasadmin/customers', current: location.pathname === '/loginasadmin/customers' },
         { name: 'Users', href: '/loginasadmin/users', current: location.pathname === '/loginasadmin/users' || location.pathname.startsWith('/loginasadmin/users/') },
@@ -271,6 +195,19 @@ const Layout = () => {
         { name: 'Journey funnel', href: '/loginasadmin/journey-funnel', current: location.pathname === '/loginasadmin/journey-funnel' },
         { name: 'Journey tracking', href: '/loginasadmin/journey-tracking', current: location.pathname === '/loginasadmin/journey-tracking' },
         { name: 'Live chat', href: '/loginasadmin/live-chat', current: location.pathname === '/loginasadmin/live-chat' },
+      ],
+    },
+
+    {
+      title: 'Analytics & insights',
+      SectionIcon: BarChart3,
+      requiredPermission: Nav.analytics,
+      defaultOpen: false,
+      items: [
+        { name: 'Analytics', href: '/loginasadmin/analytics', current: location.pathname === '/loginasadmin/analytics' },
+        { name: 'Advanced analytics', href: '/loginasadmin/advanced-analytics', current: location.pathname === '/loginasadmin/advanced-analytics' },
+        { name: 'Actionable analytics', href: '/loginasadmin/actionable-analytics', current: location.pathname === '/loginasadmin/actionable-analytics' },
+        { name: 'Audit logs', href: '/loginasadmin/system/audit-logs', current: location.pathname === '/loginasadmin/system/audit-logs' },
       ],
     },
 
@@ -297,6 +234,22 @@ const Layout = () => {
     },
 
     {
+      title: 'Content & CMS',
+      SectionIcon: FileText,
+      requiredPermission: Nav.content,
+      defaultOpen: false,
+      items: [
+        { name: 'CMS', href: '/loginasadmin/cms', current: location.pathname === '/loginasadmin/cms' },
+        { name: 'Blog', href: '/loginasadmin/blog-requests', current: location.pathname === '/loginasadmin/blog-requests' },
+        { name: 'Ask Community', href: '/loginasadmin/ask-community', current: location.pathname === '/loginasadmin/ask-community' },
+        { name: 'Authors', href: '/loginasadmin/author-management', current: location.pathname === '/loginasadmin/author-management' },
+        { name: 'Video manager', href: '/loginasadmin/video-manager', current: location.pathname === '/loginasadmin/video-manager' },
+        { name: 'Static pages', href: '/loginasadmin/static-pages', current: location.pathname === '/loginasadmin/static-pages' },
+        { name: 'Community management', href: '/loginasadmin/community-management', current: location.pathname === '/loginasadmin/community-management' },
+      ],
+    },
+
+    {
       title: 'Affiliate & monetization',
       SectionIcon: Handshake,
       requiredPermission: Nav.affiliate,
@@ -312,15 +265,13 @@ const Layout = () => {
     },
 
     {
-      title: 'Analytics & insights',
-      SectionIcon: BarChart3,
-      requiredPermission: Nav.analytics,
+      title: 'Loyalty & rewards',
+      SectionIcon: Gift,
+      requiredPermission: Nav.loyalty,
       defaultOpen: false,
       items: [
-        { name: 'Analytics', href: '/loginasadmin/analytics', current: location.pathname === '/loginasadmin/analytics' },
-        { name: 'Advanced analytics', href: '/loginasadmin/advanced-analytics', current: location.pathname === '/loginasadmin/advanced-analytics' },
-        { name: 'Actionable analytics', href: '/loginasadmin/actionable-analytics', current: location.pathname === '/loginasadmin/actionable-analytics' },
-        { name: 'Audit logs', href: '/loginasadmin/system/audit-logs', current: location.pathname === '/loginasadmin/system/audit-logs' },
+        { name: 'Loyalty program', href: '/loginasadmin/loyalty-program', current: location.pathname === '/loginasadmin/loyalty-program' },
+        { name: 'Cashback system', href: '/loginasadmin/cashback', current: location.pathname === '/loginasadmin/cashback' },
       ],
     },
 
@@ -336,6 +287,62 @@ const Layout = () => {
         { name: 'Contact messages', href: '/loginasadmin/contact-messages', current: location.pathname === '/loginasadmin/contact-messages' },
         { name: 'Alert settings', href: '/loginasadmin/system/alerts', current: location.pathname === '/loginasadmin/system/alerts' },
       ],
+    },
+
+    {
+      title: 'Store & homepage',
+      SectionIcon: Store,
+      requiredPermission: Nav.store,
+      defaultOpen: false,
+      items: [
+        { name: 'Online store', href: '/loginasadmin/store', current: location.pathname === '/loginasadmin/store' },
+        { name: 'Homepage layout', href: '/loginasadmin/homepage-layout', badge: 'NEW', current: location.pathname === '/loginasadmin/homepage-layout' },
+      ],
+    },
+
+    {
+      title: 'Sales channels',
+      SectionIcon: Globe2,
+      requiredPermission: Nav.channels,
+      defaultOpen: false,
+      items: [
+        { name: 'Marketplaces', href: '/loginasadmin/marketplaces', badge: 'NEW', current: location.pathname === '/loginasadmin/marketplaces' },
+        { name: 'FB Shop integration', href: '/loginasadmin/fb-shop', badge: 'NEW', current: location.pathname === '/loginasadmin/fb-shop' },
+      ],
+    },
+
+    {
+      title: 'Meta',
+      SectionIcon: Radio,
+      requiredPermission: Nav.meta,
+      defaultOpen: false,
+      items: [
+        {
+          name: 'Meta (Business & Ads)',
+          href: '/loginasadmin/meta',
+          badge: 'NEW',
+          current:
+            location.pathname === '/loginasadmin/meta' ||
+            location.pathname === '/loginasadmin/meta-ads' ||
+            location.pathname === '/loginasadmin/meta-business',
+        },
+      ],
+    },
+
+    {
+      title: 'Google & YouTube',
+      SectionIcon: TextSearch,
+      requiredPermission: Nav.google,
+      defaultOpen: false,
+      items: [{ name: 'Google & YouTube', href: '/loginasadmin/google', current: location.pathname === '/loginasadmin/google' }],
+    },
+
+    {
+      title: 'Facebook & Instagram',
+      SectionIcon: Share2,
+      requiredPermission: Nav.facebook,
+      defaultOpen: false,
+      items: [{ name: 'Facebook & Instagram', href: '/loginasadmin/facebook', current: location.pathname === '/loginasadmin/facebook' }],
     },
 
     {

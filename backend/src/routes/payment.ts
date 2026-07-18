@@ -283,17 +283,9 @@ export const verifyRazorpayPayment = (pool: any) => async (req: any, res: any) =
     
     const updatedOrder = result.rows[0]
     
-    // After payment is verified: create Shiprocket shipment and send confirmation emails
+    // After payment is verified: send confirmation emails.
+    // Shiprocket shipment is NOT auto-created — admin must confirm and select courier from the admin panel.
     if (updatedOrder.payment_status === 'paid') {
-      try {
-        const { autoCreateShiprocketShipment } = await import('./shiprocket')
-        autoCreateShiprocketShipment(pool, updatedOrder).catch((shiprocketErr: any) => {
-          console.error('❌ Error auto-creating Shiprocket shipment after payment verification:', shiprocketErr)
-        })
-      } catch (importErr: any) {
-        console.error('❌ Error importing Shiprocket module:', importErr)
-      }
-
       // Send order confirmation and invoice emails now that payment is confirmed
       sendOrderConfirmationEmail(updatedOrder, false).catch((err: any) => {
         console.error('Failed to send order confirmation email to customer:', err)

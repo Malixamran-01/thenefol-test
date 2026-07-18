@@ -1413,6 +1413,8 @@ app.post('/api/shiprocket/config', authenticateAndAttach as any, requireRole(['a
 app.post('/api/shiprocket/orders/:orderId/shipment', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => shiprocketRoutes.createShipment(pool, req, res))
 app.post('/api/shiprocket/orders/:orderId/awb', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => shiprocketRoutes.createAwbAndLabel(pool, req, res))
 app.get('/api/shiprocket/orders/:orderId/track', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) => shiprocketRoutes.trackShipment(pool, req, res))
+app.get('/api/shiprocket/orders/:orderId/courier-serviceability', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => shiprocketRoutes.getCourierServiceabilityForOrder(pool, req, res))
+app.post('/api/shiprocket/orders/:orderId/confirm-and-ship', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => shiprocketRoutes.confirmAndCreateShipmentWithCourier(pool, req, res))
 // Public endpoint for checking delivery serviceability (for product pages)
 app.get('/api/public/shiprocket/serviceability', async (req, res) => {
   try {
@@ -4045,19 +4047,7 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     const isRazorpayOrder = payment_method === 'razorpay' || payment_method === 'coins+razorpay'
 
     if (!isRazorpayOrder) {
-      // Automatically create Shiprocket shipment if shipping address is complete
-      if (shipping_address?.address && shipping_address?.city && shipping_address?.pincode) {
-        try {
-          const { autoCreateShiprocketShipment } = await import('./routes/shiprocket')
-          autoCreateShiprocketShipment(pool, order).catch((shiprocketErr: any) => {
-            console.error('❌ Error auto-creating Shiprocket shipment:', shiprocketErr)
-          })
-        } catch (importErr: any) {
-          console.error('❌ Error importing Shiprocket module:', importErr)
-        }
-      } else {
-        console.log(`ℹ️ Skipping auto-shipment creation for order ${generatedOrderNumber} - incomplete shipping address`)
-      }
+      // Shiprocket shipment is NOT auto-created — admin must confirm and select courier from the admin panel.
 
       // Send order confirmation email (async, don't wait)
       sendOrderConfirmationEmail(order, false).catch(err => {

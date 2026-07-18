@@ -1158,6 +1158,225 @@ export async function autoCreateShiprocketShipment(pool: Pool, order: any): Prom
   }
 }
 
+// Get available courier partners with rates for a specific order
+export async function getCourierServiceabilityForOrder(pool: Pool, req: Request, res: Response) {
+  try {
+    const { orderId } = req.params as any
+    const { rows: orders } = await pool.query('SELECT * FROM orders WHERE id = $1', [orderId])
+    if (orders.length === 0) return sendError(res, 404, 'Order not found')
+
+    const order = orders[0]
+    const shippingAddress = typeof order.shipping_address === 'string'
+      ? JSON.parse(order.shipping_address)
+      : order.shipping_address || {}
+
+    const deliveryPincode = shippingAddress.zip || shippingAddress.pincode
+    if (!deliveryPincode) return sendError(res, 400, 'Order is missing delivery pincode')
+
+    const token = await getToken(pool)
+    if (!token) return sendError(res, 400, 'Shiprocket credentials not configured')
+
+    // Get pickup location to obtain its pincode
+    const pickupLocations = await getPickupLocations(pool)
+    let pickupPincode = '226010' // fallback: Lucknow pincode
+    if (pickupLocations && pickupLocations.length > 0) {
+      const loc = pickupLocations.find((l: any) =>
+        l.pickup_location === 'Home' || l.pickup_location?.toLowerCase() === 'home'
+      ) || pickupLocations[0]
+      pickupPincode = loc?.pin_code || loc?.pincode || loc?.pickup_pincode || pickupPincode
+    }
+
+    const isCod = order.cod === true || order.payment_method === 'cod' || order.payment_type === 'cod'
+    const base = getBaseUrl()
+    const url = `${base}/courier/serviceability/?pickup_postcode=${encodeURIComponent(pickupPincode)}&delivery_postcode=${encodeURIComponent(deliveryPincode)}&cod=${isCod ? 1 : 0}&weight=0.5`
+
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    const data: any = await resp.json()
+
+    if (!resp.ok) return sendError(res, 400, 'Failed to fetch courier serviceability', data)
+
+    // Normalise: Shiprocket returns data.data.available_courier_companies
+    const couriers: any[] = data?.data?.available_courier_companies || data?.available_courier_companies || []
+    const normalised = couriers.map((c: any) => ({
+      courier_id: c.courier_company_id,
+      courier_name: c.courier_name,
+      rate: c.rate,
+      cod_charges: c.cod_charges || 0,
+      etd: c.etd || c.estimated_delivery_days,
+      min_weight: c.min_weight,
+      city: c.city,
+      is_surface: c.is_surface,
+    }))
+
+    sendSuccess(res, { couriers: normalised, pickup_pincode: pickupPincode, delivery_pincode: deliveryPincode })
+  } catch (err: any) {
+    sendError(res, 500, 'Failed to fetch courier serviceability', err)
+  }
+}
+
+// Confirm order and create Shiprocket shipment with a specific courier
+export async function confirmAndCreateShipmentWithCourier(pool: Pool, req: Request, res: Response) {
+  try {
+    const { orderId } = req.params as any
+    const { courier_id } = req.body || {}
+
+    if (!courier_id) return sendError(res, 400, 'courier_id is required')
+
+    const { rows: orders } = await pool.query('SELECT * FROM orders WHERE id = $1', [orderId])
+    if (orders.length === 0) return sendError(res, 404, 'Order not found')
+
+    const order = orders[0]
+
+    // Check if shipment already exists
+    const { rows: existing } = await pool.query(
+      'SELECT id, shipment_id FROM shiprocket_shipments WHERE order_id = $1',
+      [order.id]
+    )
+    if (existing.length > 0 && existing[0].shipment_id) {
+      return sendError(res, 409, 'Shipment already exists for this order')
+    }
+
+    const token = await getToken(pool)
+    if (!token) return sendError(res, 400, 'Shiprocket credentials not configured')
+
+    const shippingAddress = typeof order.shipping_address === 'string'
+      ? JSON.parse(order.shipping_address)
+      : order.shipping_address || {}
+    const billingAddress = typeof order.billing_address === 'string'
+      ? JSON.parse(order.billing_address || '{}')
+      : order.billing_address || {}
+    const items = Array.isArray(order.items) ? order.items : JSON.parse(order.items || '[]')
+    const isCod = order.cod === true || order.payment_method === 'cod' || order.payment_type === 'cod'
+
+    const getTenDigitPhone = (p: string | undefined) => {
+      if (!p) return ''
+      const clean = p.replace(/\D/g, '')
+      return clean.length > 10 ? clean.slice(-10) : clean
+    }
+
+    const pickupLocations = await getPickupLocations(pool)
+    let pickupLocation = 'Home'
+    if (pickupLocations && pickupLocations.length > 0) {
+      const loc = pickupLocations.find((l: any) =>
+        l.pickup_location === 'Home' || l.pickup_location?.toLowerCase() === 'home'
+      ) || pickupLocations[0]
+      pickupLocation = loc?.pickup_location || 'Home'
+    }
+
+    const shipmentPayload: any = {
+      order_id: order.order_number || `ORDER-${order.id}`,
+      order_date: new Date(order.created_at || Date.now()).toISOString().split('T')[0],
+      pickup_location: pickupLocation,
+      billing_customer_name: order.customer_name,
+      billing_last_name: shippingAddress.lastName || '',
+      billing_address: shippingAddress.address || shippingAddress.street || '',
+      billing_address_2: shippingAddress.apartment || shippingAddress.area || '',
+      billing_city: shippingAddress.city || '',
+      billing_pincode: shippingAddress.zip || shippingAddress.pincode || '',
+      billing_state: shippingAddress.state || '',
+      billing_country: shippingAddress.country || 'India',
+      billing_email: order.customer_email,
+      billing_phone: getTenDigitPhone(shippingAddress.phone || billingAddress.phone),
+      shipping_is_billing: !billingAddress || Object.keys(billingAddress).length === 0,
+      shipping_customer_name: order.customer_name,
+      shipping_last_name: shippingAddress.lastName || '',
+      shipping_address: shippingAddress.address || shippingAddress.street || '',
+      shipping_address_2: shippingAddress.apartment || shippingAddress.area || '',
+      shipping_city: shippingAddress.city || '',
+      shipping_pincode: shippingAddress.zip || shippingAddress.pincode || '',
+      shipping_state: shippingAddress.state || '',
+      shipping_country: shippingAddress.country || 'India',
+      shipping_email: order.customer_email,
+      shipping_phone: getTenDigitPhone(shippingAddress.phone),
+      order_items: items.map((item: any, i: number) => ({
+        name: item.name || item.title || `Product ${i + 1}`,
+        sku: item.sku || item.variant_id || `SKU-${item.product_id || i}`,
+        units: item.quantity || 1,
+        selling_price: item.price || item.unit_price || 0,
+      })),
+      payment_method: isCod ? 'COD' : 'Prepaid',
+      sub_total: order.subtotal || 0,
+      length: 10, breadth: 10, height: 10, weight: 0.5,
+      total_discount: order.discount_amount || 0,
+      shipping_charges: order.shipping || 0,
+      giftwrap_charges: 0, transaction_charges: 0,
+      total_discounts: order.discount_amount || 0,
+      cod_charges: 0, add_charges: 0,
+      order_amount: order.total || 0,
+      comment: `Order from NEFOL - ${order.order_number || order.id}`,
+    }
+
+    const base = getBaseUrl()
+
+    // Step 1: Create order in Shiprocket
+    const createResp = await fetch(`${base}/orders/create/adhoc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(shipmentPayload),
+    })
+    const createData: any = await createResp.json()
+
+    if (!createResp.ok) {
+      console.error('Shiprocket create order error:', createData)
+      return sendError(res, 400, 'Failed to create order in Shiprocket', createData)
+    }
+
+    const shipmentId = createData?.shipment_id || createData?.data?.shipment_id || createData?.order_id || null
+
+    if (!shipmentId) {
+      return sendError(res, 400, 'Shiprocket did not return a shipment_id', createData)
+    }
+
+    // Step 2: Assign courier and generate AWB
+    const awbResp = await fetch(`${base}/courier/assign/awb`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ shipment_id: String(shipmentId), courier_id: String(courier_id) }),
+    })
+    const awbData: any = await awbResp.json()
+    const awbCode = awbData?.response?.data?.awb_code || awbData?.awb_code || null
+
+    if (!awbResp.ok || !awbCode) {
+      console.error('AWB assignment error:', awbData)
+      // Still save the shipment even if AWB failed — admin can retry AWB separately
+    }
+
+    // Step 3: Save to DB and update order status to 'confirmed'
+    let savedRow: any
+    if (existing.length === 0) {
+      const { rows } = await pool.query(
+        `INSERT INTO shiprocket_shipments (order_id, shipment_id, tracking_url, status, awb_code, label_url, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
+        [order.id, String(shipmentId), createData?.tracking_url || null, createData?.status || 'pending', awbCode, createData?.label_url || null]
+      )
+      savedRow = rows[0]
+    } else {
+      const { rows } = await pool.query(
+        `UPDATE shiprocket_shipments SET shipment_id=$1, tracking_url=$2, status=$3, awb_code=$4, label_url=$5, updated_at=NOW()
+         WHERE order_id=$6 RETURNING *`,
+        [String(shipmentId), createData?.tracking_url || null, createData?.status || 'pending', awbCode, createData?.label_url || null, order.id]
+      )
+      savedRow = rows[0]
+    }
+
+    // Mark order as confirmed/processing
+    await pool.query(
+      `UPDATE orders SET status='confirmed' WHERE id=$1 AND status NOT IN ('cancelled','delivered','shipped')`,
+      [order.id]
+    )
+    await pool.query(
+      `INSERT INTO order_status_history (order_id, old_status, new_status, note, created_at)
+       VALUES ($1, $2, 'confirmed', $3, NOW())`,
+      [order.id, order.status, `Shipment confirmed with courier_id=${courier_id}, AWB=${awbCode || 'pending'}`]
+    )
+
+    sendSuccess(res, { ...savedRow, awb_code: awbCode, shiprocket_response: createData }, 201)
+  } catch (err: any) {
+    console.error('confirmAndCreateShipmentWithCourier error:', err)
+    sendError(res, 500, 'Failed to confirm and create shipment', err)
+  }
+}
+
 export async function trackShipment(pool: Pool, req: Request, res: Response) {
   try {
     const { orderId } = req.params as any
