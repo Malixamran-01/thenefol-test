@@ -30,6 +30,7 @@ import NotificationBell from '../components/NotificationBell'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBaseUrl } from '../utils/apiUrl'
 import { Nav, NAV_CATALOG_FINE_CODES, NavCatalog } from '../config/rbacNav'
+import { socketService } from '../services/socket'
 
 interface NavigationSection {
   title: string
@@ -62,6 +63,7 @@ const Layout = () => {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [pendingCollabCount, setPendingCollabCount] = useState(0)
+  const [pendingOrderCount, setPendingOrderCount] = useState(0)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const { user, logout, hasPermission, hasRole } = useAuth()
   const canNav = (code: string) => hasRole('admin') || hasPermission(code)
@@ -108,6 +110,47 @@ const Layout = () => {
     return () => clearInterval(interval)
   }, [])
   
+  // Fetch pending order count for sidebar badge
+  useEffect(() => {
+    const fetchPendingOrders = async () => {
+      try {
+        const token = localStorage.getItem('auth_token')
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'x-user-role': 'admin',
+          'x-user-permissions': 'orders:read',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        }
+        const res = await fetch(`${getApiBaseUrl()}/orders?status=pending&limit=1`, { headers })
+        if (res.ok) {
+          const data = await res.json().catch(() => [])
+          // Backend may return array or { data: [], pagination: { total } }
+          const total = data?.pagination?.total ?? (Array.isArray(data) ? data.length : (data?.data?.length ?? 0))
+          setPendingOrderCount(total)
+        }
+      } catch { /* silent */ }
+    }
+    fetchPendingOrders()
+    const interval = setInterval(fetchPendingOrders, 30_000)
+
+    // Real-time: new order arrives → increment; order updated away from pending → re-fetch
+    const unsubCreate = socketService.subscribe('order_created', () => {
+      setPendingOrderCount(prev => prev + 1)
+    })
+    const unsubUpdate = socketService.subscribe('order_updated', (order: any) => {
+      if (order?.status && order.status !== 'pending') {
+        // Re-fetch accurate count when an order leaves pending state
+        fetchPendingOrders()
+      }
+    })
+
+    return () => {
+      clearInterval(interval)
+      unsubCreate()
+      unsubUpdate()
+    }
+  }, [])
+
   const userInitials = user?.name
     ? user.name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase()
     : 'NA'
@@ -134,7 +177,7 @@ const Layout = () => {
       requiredPermission: Nav.sales,
       defaultOpen: false,
       items: [
-        { name: 'Orders', href: '/loginasadmin/orders', current: location.pathname === '/loginasadmin/orders' || location.pathname.startsWith('/loginasadmin/orders/') },
+        { name: 'Orders', href: '/loginasadmin/orders', badge: pendingOrderCount > 0 ? String(pendingOrderCount) : undefined, current: location.pathname === '/loginasadmin/orders' || location.pathname.startsWith('/loginasadmin/orders/') },
         {
           name: 'Unified sales',
           href: '/loginasadmin/unified-sales',
@@ -392,7 +435,10 @@ const Layout = () => {
       }
       return next
     })
-    // navigationSections is rebuilt each render with fresh `current` flags; we only need to react to URL changes
+    // Clear pending order badge when admin visits the orders list
+    if (location.pathname === '/loginasadmin/orders') {
+      setPendingOrderCount(0)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
