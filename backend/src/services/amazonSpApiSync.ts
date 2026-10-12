@@ -1,6 +1,7 @@
 import { Pool } from 'pg'
 import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
-import { getMaxUnifiedOrderDate, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
+import { getLastSyncCursor, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
+import { getSellerStateCode, normalizeIndianState, round2, snapGstRate, splitGst } from './gstUtils'
 import {
   createAmazonSellingPartner,
   DEFAULT_MARKETPLACE_IN,
@@ -64,8 +65,16 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms))
 }
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100
+/**
+ * Amazon.in (and EU) Orders API prices are tax-INCLUSIVE: ItemPrice already contains ItemTax.
+ * Default true for the India marketplace; override with AMAZON_ITEM_PRICE_INCLUDES_TAX=0/1.
+ * (Rows later get replaced by the GST MTR report figures anyway — see amazonInvoicingReportSync.)
+ */
+function itemPriceIncludesTax(marketplaceId: string): boolean {
+  const v = process.env.AMAZON_ITEM_PRICE_INCLUDES_TAX
+  if (v === '0' || v === 'false') return false
+  if (v === '1' || v === 'true') return true
+  return marketplaceId === DEFAULT_MARKETPLACE_IN
 }
 
 /** B2B vs B2C from Orders API `IsBusinessOrder`. */
@@ -171,7 +180,8 @@ function extractAmazonInvoiceNumber(
   }
 
   const keyLooksInvoice = (k: string): boolean => {
-    if (/(^|_)(irn|einvoice|e_invoice|gstin)/i.test(k)) return true
+    // NB: never match *gstin* keys — those hold the buyer's GSTIN, not a document number
+    if (/(^|_)(irn|einvoice|e_invoice)/i.test(k)) return true
     if (!/invoice/i.test(k)) return false
     if (/(status|url|method|history|date|time|type)$/i.test(k)) return false
     return true
@@ -215,18 +225,20 @@ function parseOrderFromGetOrderResponse(ordRes: any): Record<string, unknown> | 
   return ord && typeof ord === 'object' ? (ord as Record<string, unknown>) : null
 }
 
+
 export type AmazonSyncResult = { rows: number; skipped: boolean; logMessage?: string }
 
 /**
  * Upserts `unified_sales` rows for platform `amazon` from Orders API.
- * **List feed**: `getOrders` passes explicit `OrderStatuses` (all standard states) so the sync is not skewed to
- * a single status. **Per-order detail**: for India by default, or with `AMAZON_UNIFIED_SALES_GET_ORDER=1`, we merge
- * `getOrder` into the list row for invoice fields, `OrderStatus`, B2B flags, and embedded ship address when present.
- * Set `AMAZON_UNIFIED_SALES_GET_ORDER=0` to skip extra getOrder calls (weaker invoice data).
- * Ship-to **state** can use `getOrderAddress` (needs PII roles).
- * **B2B GSTIN** via `getOrderBuyerInfo` when `business_type` is B2B.
- * **Line taxes** from `getOrderItems` (India GST deep-scan; many orders lack split components).
- * **Post-shipment FBA returns / settlements** may not appear on Orders/Items; use SP-API reports for full return ledgers.
+ *
+ * **Windows**: first run (or `AMAZON_UNIFIED_SALES_FULL_SYNC=1`) walks `CreatedAfter` in 30-day chunks over the
+ * lookback. Later runs use `LastUpdatedAfter` = last successful sync − 2h, so status changes on OLD orders
+ * (pending → shipped with prices, shipped → cancelled) are refreshed too.
+ * **List feed**: `getOrders` passes explicit `OrderStatuses` (all standard states).
+ * **Per-order detail**: India by default (or `AMAZON_UNIFIED_SALES_GET_ORDER=1`) merges `getOrder` for B2B flags /
+ * ship address. Ship-to state can use `getOrderAddress` (needs PII roles). B2B GSTIN via `getOrderBuyerInfo`.
+ * **Amounts**: ItemPrice/ShippingPrice are tax-inclusive on Amazon.in (see `itemPriceIncludesTax`); promotions
+ * are netted. These are provisional — the GST MTR report sync overwrites them with Amazon's invoice figures.
  */
 export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResult> {
   const refresh_token = await resolveAmazonRefreshToken(pool)
@@ -251,46 +263,60 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
   const delayMs = orderApiDelayMs()
   const fetchAddr = addressFetchEnabled()
   const fetchBuyerInfo = buyerInfoFetchEnabled()
+  const inclusive = itemPriceIncludesTax(marketplaceId)
+  const sellerState = await getSellerStateCode(pool)
 
   const sp = createAmazonSellingPartner(region, refresh_token)
 
   const MS_DAY = 24 * 60 * 60 * 1000
-  const lookbackMs = Math.min(days * MS_DAY, MAX_LOOKBACK_DAYS * MS_DAY)
-  const fullLookbackMinTime = Date.now() - lookbackMs
   const catalogMinTime = Date.now() - MAX_LOOKBACK_DAYS * MS_DAY
-  const chunkMs = CHUNK_DAYS * MS_DAY
+  const windowEnd = Date.now() - 2 * 60 * 1000
 
   const forceFull = process.env.AMAZON_UNIFIED_SALES_FULL_SYNC === '1'
-  const maxStored = await getMaxUnifiedOrderDate(pool, 'amazon')
-  const useIncremental =
-    !forceFull &&
-    maxStored != null &&
-    maxStored.getTime() < Date.now() - 60 * 1000
+  const cursor = forceFull ? null : await getLastSyncCursor(pool, 'amazon')
 
-  const minTime = useIncremental
-    ? Math.max(catalogMinTime, maxStored!.getTime() - UNIFIED_SALES_INCREMENTAL_OVERLAP_MS)
-    : fullLookbackMinTime
+  /** Each window is either a CreatedAfter/Before chunk (full) or one LastUpdatedAfter/Before window (incremental). */
+  type Win = { kind: 'created' | 'updated'; from: number; to: number }
+  const windows: Win[] = []
+  if (cursor) {
+    windows.push({
+      kind: 'updated',
+      from: Math.max(catalogMinTime, cursor.getTime() - UNIFIED_SALES_INCREMENTAL_OVERLAP_MS),
+      to: windowEnd,
+    })
+  } else {
+    const minTime = Date.now() - Math.min(days, MAX_LOOKBACK_DAYS) * MS_DAY
+    let chunkEnd = windowEnd
+    while (chunkEnd > minTime) {
+      const chunkStart = Math.max(chunkEnd - CHUNK_DAYS * MS_DAY, minTime)
+      windows.push({ kind: 'created', from: chunkStart, to: chunkEnd })
+      chunkEnd = chunkStart - 1
+    }
+  }
 
   let inserted = 0
-  let chunkEnd = Date.now() - 2 * 60 * 1000
+  let failedOrders = 0
+  let skippedNoDate = 0
+  const failedSamples: string[] = []
 
-  while (chunkEnd > minTime) {
-    const chunkStart = Math.max(chunkEnd - chunkMs, minTime)
-    const createdAfter = new Date(chunkStart).toISOString()
-    const createdBefore = new Date(chunkEnd).toISOString()
+  for (const win of windows) {
+    const range =
+      win.kind === 'created'
+        ? { CreatedAfter: new Date(win.from).toISOString(), CreatedBefore: new Date(win.to).toISOString() }
+        : { LastUpdatedAfter: new Date(win.from).toISOString(), LastUpdatedBefore: new Date(win.to).toISOString() }
 
     let ordersNext: string | undefined
     do {
       const ordersRes = await sp.callAPI({
         operation: 'getOrders',
         endpoint: 'orders',
-        query: {
-          MarketplaceIds: [marketplaceId],
-          CreatedAfter: createdAfter,
-          CreatedBefore: createdBefore,
-          OrderStatuses: [...SP_GET_ORDERS_STATUSES] as string[],
-          ...(ordersNext ? { NextToken: ordersNext } : {}),
-        },
+        query: ordersNext
+          ? { MarketplaceIds: [marketplaceId], NextToken: ordersNext }
+          : {
+              MarketplaceIds: [marketplaceId],
+              ...range,
+              OrderStatuses: [...SP_GET_ORDERS_STATUSES] as string[],
+            },
       })
 
       const orders = (ordersRes.Orders || []) as Record<string, unknown>[]
@@ -326,7 +352,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
         }
 
         const orderStatus = String(mergedOrder.OrderStatus || order.OrderStatus || '').trim() || null
-        let businessType = amazonBusinessType(mergedOrder)
+        const businessType = amazonBusinessType(mergedOrder)
         let shipCity: string | null = null
         let shipState: string | null = null
         {
@@ -352,6 +378,7 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
           }
           await sleep(delayMs)
         }
+        const stateNorm = normalizeIndianState(shipState)
 
         let buyerGstin: string | null = null
         if (fetchBuyerInfo && businessType === 'B2B') {
@@ -368,11 +395,14 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
           await sleep(delayMs)
         }
 
-        const purchaseDate = mergedOrder.PurchaseDate
-          ? new Date(String(mergedOrder.PurchaseDate))
-          : order.PurchaseDate
-            ? new Date(String(order.PurchaseDate))
-            : new Date()
+        const purchaseRaw = mergedOrder.PurchaseDate || order.PurchaseDate
+        const purchaseDate = purchaseRaw ? new Date(String(purchaseRaw)) : null
+        if (!purchaseDate || Number.isNaN(purchaseDate.getTime())) {
+          // Never default to "now": it would put the sale in the wrong GST period
+          skippedNoDate += 1
+          continue
+        }
+
         let itemsNext: string | undefined
         try {
           do {
@@ -391,12 +421,25 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
               const qty = Math.max(0, Math.floor(Number(it.QuantityOrdered ?? 0)))
               const qtyShipped = Math.max(0, Math.floor(Number(it.QuantityShipped ?? 0)))
               const title = String(it.Title || 'Amazon item').slice(0, 500)
-              const itemPrice = moneyAmount(it.ItemPrice)
-              const itemTax = moneyAmount(it.ItemTax)
-              const shipPrice = moneyAmount(it.ShippingPrice)
-              const shippingTax = moneyAmount(it.ShippingTax)
-              const unit = qty > 0 ? Math.round((itemPrice / qty) * 100) / 100 : Math.round(itemPrice * 100) / 100
-              const total = Math.round((itemPrice + itemTax + shipPrice + shippingTax) * 100) / 100
+
+              // Net of promotions (Amazon reports discounts as positive amounts)
+              const itemGross = moneyAmount(it.ItemPrice) - moneyAmount(it.PromotionDiscount)
+              const itemTax = moneyAmount(it.ItemTax) - moneyAmount(it.PromotionDiscountTax)
+              const shipGross = moneyAmount(it.ShippingPrice) - moneyAmount(it.ShippingDiscount)
+              const shipTax = moneyAmount(it.ShippingTax) - moneyAmount(it.ShippingDiscountTax)
+              const giftGross = moneyAmount(it.GiftWrapPrice)
+              const giftTax = moneyAmount(it.GiftWrapTax)
+
+              const tax = round2(itemTax + shipTax + giftTax)
+              const shippingExTax = round2(inclusive ? shipGross - shipTax : shipGross)
+              const taxableValue = round2(
+                inclusive
+                  ? itemGross - itemTax + shipGross - shipTax + giftGross - giftTax
+                  : itemGross + shipGross + giftGross
+              )
+              const total = round2(taxableValue + tax)
+              const unit = qty > 0 ? round2(taxableValue / qty) : taxableValue
+
               const lineKey = `amazon:${orderId}:${oid}`
               const lineNote = [formatBuyerCancelNote(it), formatReturnOrRefundLineNote(it)]
                 .filter(Boolean)
@@ -405,15 +448,11 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
 
               const gst = parseIndiaGstFromOrderItem(it)
               const gstSum = sumGstComponents(gst)
-              const hasGstSplit = gstSum > 0.0001
-
-              const principal = itemPrice > 0 ? itemPrice : Math.max(0, total - itemTax - shippingTax - shipPrice)
-              const taxableValue = principal > 0 ? round2(principal) : null
-              const totalLineTax = itemTax + shippingTax
-              let taxRatePct: number | null = null
-              if (taxableValue != null && taxableValue > 0 && totalLineTax > 0) {
-                taxRatePct = Math.round(((totalLineTax / taxableValue) * 100) * 10000) / 10000
-              }
+              const split =
+                gstSum > 0.0001
+                  ? { igst: round2(gst.igst), cgst: round2(gst.cgst), sgst: round2(gst.sgst) }
+                  : splitGst(tax, stateNorm.code, sellerState)
+              const taxRatePct = taxableValue > 0 && tax > 0 ? snapGstRate((tax / taxableValue) * 100) : null
 
               const sku = String(it.SellerSKU || '').trim().slice(0, 120) || null
               const asin = String(it.ASIN || '').trim().slice(0, 20) || null
@@ -426,47 +465,51 @@ export async function syncAmazonUnifiedSales(pool: Pool): Promise<AmazonSyncResu
                 product_name: title,
                 quantity: qty,
                 price: unit,
-                tax: itemTax,
-                shipping: shipPrice,
+                tax,
+                shipping: shippingExTax,
                 total,
                 city: cityDisplay,
                 order_date: purchaseDate,
                 currency: 'INR',
                 order_status: orderStatus,
                 business_type: businessType,
-                shipping_state: shipState,
+                shipping_state: stateNorm.name,
+                ship_state_code: stateNorm.code,
                 quantity_shipped: qtyShipped,
                 line_note: lineNote,
                 buyer_gstin: buyerGstin,
                 seller_sku: sku,
                 asin,
-                igst: hasGstSplit ? round2(gst.igst) : null,
-                cgst: hasGstSplit ? round2(gst.cgst) : null,
-                sgst: hasGstSplit ? round2(gst.sgst) : null,
-                utgst: hasGstSplit ? round2(gst.utgst) : null,
-                cess: hasGstSplit ? round2(gst.cess) : null,
+                igst: split ? split.igst : null,
+                cgst: split ? split.cgst : null,
+                sgst: split ? split.sgst : null,
+                utgst: gstSum > 0.0001 ? round2(gst.utgst) : null,
+                cess: gstSum > 0.0001 ? round2(gst.cess) : null,
                 tax_rate_pct: taxRatePct,
                 taxable_value: taxableValue,
                 invoice_number: invoiceNo,
+                doc_type: 'invoice',
+                tax_source: 'order_api',
               })
               inserted += 1
             }
           } while (itemsNext)
-        } catch {
-          /* No items (e.g. some pending/cancel edge cases) — skip order */
+        } catch (e: any) {
+          // Previously swallowed silently — surface it in the sync log instead
+          failedOrders += 1
+          if (failedSamples.length < 3) failedSamples.push(`${orderId}: ${String(e?.message || e).slice(0, 80)}`)
         }
       }
     } while (ordersNext)
 
-    chunkEnd = chunkStart - 1
-    await new Promise((r) => setTimeout(r, 400))
+    await sleep(400)
   }
 
-  const modeHint = useIncremental ? 'incremental (new since last sync)' : `full lookback ${days}d`
-  const logMessage =
-    inserted === 0
-      ? `No Amazon order lines (${modeHint}; or empty API response for this marketplace)`
-      : undefined
+  const modeHint = cursor ? 'incremental (orders updated since last sync)' : `full lookback ${days}d`
+  const notes: string[] = []
+  if (inserted === 0) notes.push(`No Amazon order lines (${modeHint}; or empty API response for this marketplace)`)
+  if (failedOrders > 0) notes.push(`${failedOrders} order(s) failed getOrderItems — e.g. ${failedSamples.join('; ')}`)
+  if (skippedNoDate > 0) notes.push(`${skippedNoDate} order(s) skipped: missing PurchaseDate`)
 
-  return { rows: inserted, skipped: false, logMessage }
+  return { rows: inserted, skipped: false, logMessage: notes.length ? notes.join(' | ') : undefined }
 }

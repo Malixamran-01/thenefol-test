@@ -1,38 +1,51 @@
 import React, { useState, useEffect } from 'react'
+import { getApiBaseUrl } from '../utils/apiUrl'
 
 interface MarketplaceAccount {
   id: number
   channel: string
   name: string
   is_active: boolean
+  has_refresh_token?: boolean
+}
+
+const authHeaders = (): Record<string, string> => {
+  const token = localStorage.getItem('auth_token')
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
 }
 
 export default function MarketplaceIntegrations() {
+  const apiBase = getApiBaseUrl()
   const [amazonAccounts, setAmazonAccounts] = useState<MarketplaceAccount[]>([])
   const [flipkartAccounts, setFlipkartAccounts] = useState<MarketplaceAccount[]>([])
   const [newAccount, setNewAccount] = useState({ name: '', channel: 'amazon' as string, credentials: { api_key: '', api_secret: '' } })
 
   const fetchAccounts = async (channel: string) => {
-    const resp = await fetch(`/api/marketplaces/${channel}/accounts`)
+    const resp = await fetch(`${apiBase}/marketplaces/${channel}/accounts`, { headers: authHeaders() })
+    if (!resp.ok) return
     const data = await resp.json()
-    if (data.success) {
-      if (channel === 'amazon') setAmazonAccounts(data.data)
-      else setFlipkartAccounts(data.data)
+    if (Array.isArray(data)) {
+      if (channel === 'amazon') setAmazonAccounts(data)
+      else setFlipkartAccounts(data)
     }
   }
 
   const createAccount = async () => {
-    const endpoint = newAccount.channel === 'amazon' ? '/api/marketplaces/amazon/accounts' : '/api/marketplaces/flipkart/accounts'
-    const resp = await fetch(endpoint, {
+    const resp = await fetch(`${apiBase}/marketplaces/${newAccount.channel}/accounts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ name: newAccount.name, credentials: newAccount.credentials })
     })
-    const data = await resp.json()
-    if (data.success) {
-      alert('Account created successfully')
+    const data = await resp.json().catch(() => ({}))
+    if (resp.ok) {
+      alert('Account saved successfully')
       setNewAccount({ name: '', channel: 'amazon', credentials: { api_key: '', api_secret: '' } })
       fetchAccounts(newAccount.channel)
+    } else {
+      alert((data as any)?.error || `Failed to save account (${resp.status})`)
     }
   }
 

@@ -119,8 +119,8 @@ export async function saveAmazonAccount(pool: Pool, req: Request, res: Response)
     const { rows } = await pool.query(
       `insert into marketplace_accounts (channel, name, credentials, is_active, created_at, updated_at)
        values ('amazon', $1, $2::jsonb, true, now(), now())
-       on conflict (channel, name) do update set credentials = excluded.credentials, updated_at = now()
-       returning *`,
+       on conflict (channel, name) do update set credentials = marketplace_accounts.credentials || excluded.credentials, updated_at = now()
+       returning ${MARKETPLACE_ACCOUNT_PUBLIC_COLUMNS}`,
       [name, JSON.stringify(credentials)]
     )
     sendSuccess(res, rows[0])
@@ -129,9 +129,16 @@ export async function saveAmazonAccount(pool: Pool, req: Request, res: Response)
   }
 }
 
+/** Never return the credentials JSON (refresh tokens / secrets) to the browser. */
+export const MARKETPLACE_ACCOUNT_PUBLIC_COLUMNS = `id, channel, name, is_active, created_at, updated_at,
+  (credentials ? 'refresh_token') as has_refresh_token,
+  (credentials->>'spapi_oauth_connected_at') as connected_at`
+
 export async function listAmazonAccounts(pool: Pool, req: Request, res: Response) {
   try {
-    const { rows } = await pool.query(`select * from marketplace_accounts where channel = 'amazon' order by created_at desc`)
+    const { rows } = await pool.query(
+      `select ${MARKETPLACE_ACCOUNT_PUBLIC_COLUMNS} from marketplace_accounts where channel = 'amazon' order by created_at desc`
+    )
     sendSuccess(res, rows)
   } catch (err) {
     sendError(res, 500, 'Failed to list Amazon accounts', err)
@@ -156,23 +163,6 @@ export async function syncProductsToAmazon(pool: Pool, req: Request, res: Respon
     sendSuccess(res, { message: 'Product sync queued (stub)' })
   } catch (err) {
     sendError(res, 500, 'Failed to sync products to Amazon', err)
-  }
-}
-
-export async function importAmazonOrders(pool: Pool, req: Request, res: Response) {
-  try {
-    const { accountId } = req.query as any
-    if (!accountId) return sendError(res, 400, 'accountId is required')
-    // stub: mark a channel_orders row
-    await pool.query(
-      `insert into channel_orders (channel, account_id, external_order_id, status, imported_at, updated_at)
-       values ('amazon', $1, $2, 'imported', now(), now())
-       on conflict (channel, external_order_id) do nothing`,
-      [accountId, `AMZ-${Date.now()}`]
-    )
-    sendSuccess(res, { message: 'Order import triggered (stub)' })
-  } catch (err) {
-    sendError(res, 500, 'Failed to import Amazon orders', err)
   }
 }
 

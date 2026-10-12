@@ -223,7 +223,26 @@ export async function ensureSchema(pool: Pool) {
         alter table unified_sales add column invoice_number text;
       end if;
     end $$;
+    -- GST / BUSY export fields. doc_type: 'invoice' (sale) or 'credit_note' (sales return).
+    -- tax_source: 'gst_report' rows carry Amazon MTR (authoritative) figures that the Orders API sync must not overwrite.
+    alter table unified_sales add column if not exists hsn_code text;
+    alter table unified_sales add column if not exists invoice_date timestamptz;
+    alter table unified_sales add column if not exists doc_type text not null default 'invoice';
+    alter table unified_sales add column if not exists tax_source text;
+    alter table unified_sales add column if not exists buyer_name text;
+    alter table unified_sales add column if not exists ship_state_code text;
     create index if not exists idx_unified_sales_amazon_state on unified_sales(shipping_state) where platform = 'amazon';
+
+    -- Per-platform incremental cursor (time the last successful sync started)
+    create table if not exists sales_sync_state (
+      platform text primary key,
+      last_success_at timestamptz not null
+    );
+
+    -- Old Flipkart rows were keyed flipkart:<shipmentId>:<orderItemId> and stored zero amounts and
+    -- dispatch-by dates (priceComponents/orderDate were never read). Drop them; the next sync re-imports
+    -- with keys flipkart:<orderItemId>.
+    delete from unified_sales where platform = 'flipkart' and line_key ~ '^flipkart:[^:]+:[^:]+$';
     
     -- Replenishment fields (Amazon-style: lead time, case pack, min reorder)
     do $$ 

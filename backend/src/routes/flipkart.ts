@@ -1,7 +1,8 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
-import { syncFlipkartUnifiedSales } from '../services/flipkartSellerSync'
+import { runUnifiedSalesSync } from '../services/runUnifiedSalesSync'
+import { MARKETPLACE_ACCOUNT_PUBLIC_COLUMNS } from './amazon'
 
 export async function saveFlipkartAccount(pool: Pool, req: Request, res: Response) {
   try {
@@ -11,8 +12,8 @@ export async function saveFlipkartAccount(pool: Pool, req: Request, res: Respons
     const { rows } = await pool.query(
       `insert into marketplace_accounts (channel, name, credentials, is_active, created_at, updated_at)
        values ('flipkart', $1, $2::jsonb, true, now(), now())
-       on conflict (channel, name) do update set credentials = excluded.credentials, updated_at = now()
-       returning *`,
+       on conflict (channel, name) do update set credentials = marketplace_accounts.credentials || excluded.credentials, updated_at = now()
+       returning ${MARKETPLACE_ACCOUNT_PUBLIC_COLUMNS}`,
       [name, JSON.stringify(credentials)]
     )
     sendSuccess(res, rows[0])
@@ -23,7 +24,9 @@ export async function saveFlipkartAccount(pool: Pool, req: Request, res: Respons
 
 export async function listFlipkartAccounts(pool: Pool, req: Request, res: Response) {
   try {
-    const { rows } = await pool.query(`select * from marketplace_accounts where channel = 'flipkart' order by created_at desc`)
+    const { rows } = await pool.query(
+      `select ${MARKETPLACE_ACCOUNT_PUBLIC_COLUMNS} from marketplace_accounts where channel = 'flipkart' order by created_at desc`
+    )
     sendSuccess(res, rows)
   } catch (err) {
     sendError(res, 500, 'Failed to list Flipkart accounts', err)
@@ -55,8 +58,16 @@ export async function syncProductsToFlipkart(pool: Pool, req: Request, res: Resp
  */
 export async function importFlipkartOrders(pool: Pool, req: Request, res: Response) {
   try {
-    // query.accountId reserved for future per-account routing; unified sync uses FLIPKART_* env
-    const result = await syncFlipkartUnifiedSales(pool)
+    // query.accountId reserved for future per-account routing; unified sync uses FLIPKART_* env.
+    // Goes through runUnifiedSalesSync so it shares the sync lock and writes a sales_sync_logs row.
+    const out = await runUnifiedSalesSync(pool, ['flipkart'])
+    if (out.busy) {
+      return sendError(res, 409, 'A sales sync is already running — try again in a few minutes')
+    }
+    const result = out.flipkart
+    if (!result || result.error) {
+      return sendError(res, 500, result?.error || 'Flipkart sync failed')
+    }
     if (result.skipped) {
       return sendSuccess(res, {
         ok: true,
@@ -74,7 +85,7 @@ export async function importFlipkartOrders(pool: Pool, req: Request, res: Respon
     })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error('[Flipkart] importFlipkartOrders / syncFlipkartUnifiedSales:', err)
+    console.error('[Flipkart] importFlipkartOrders:', err)
     sendError(res, 500, msg || 'Failed to run Flipkart unified import', err)
   }
 }

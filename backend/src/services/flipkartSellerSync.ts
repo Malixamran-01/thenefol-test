@@ -1,6 +1,7 @@
 import { Pool } from 'pg'
 import { upsertUnifiedSaleLine } from './unifiedSalesUpsert'
-import { getMaxUnifiedOrderDate, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
+import { getLastSyncCursor, UNIFIED_SALES_INCREMENTAL_OVERLAP_MS } from './unifiedSalesCursor'
+import { fromInclusive, getSellerStateCode, normalizeIndianState, round2, snapGstRate, splitGst } from './gstUtils'
 
 /**
  * Flipkart Seller / Sales API credentials — read from the **backend** `.env` (same folder as `backend/package.json`).
@@ -155,12 +156,6 @@ async function flipkartClientCredentialsToken(): Promise<string> {
   return token
 }
 
-function isoDaysAgo(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString()
-}
-
 function flipkartLookbackDays(): number {
   const raw = process.env.FLIPKART_UNIFIED_SALES_LOOKBACK_DAYS || '90'
   const n = parseInt(String(raw), 10)
@@ -168,25 +163,48 @@ function flipkartLookbackDays(): number {
   return Math.min(730, Math.max(1, n))
 }
 
-function isoNow(): string {
-  return new Date().toISOString()
+/**
+ * The shipments filter has no "modified since" date, so incremental runs re-read every order placed in the
+ * last N days (default 30) to pick up status changes (packed → shipped → delivered).
+ */
+function flipkartStatusRefreshDays(): number {
+  const n = parseInt(String(process.env.FLIPKART_STATUS_REFRESH_DAYS || '30'), 10)
+  return Number.isFinite(n) && n >= 1 ? Math.min(180, n) : 30
 }
 
-type FlipkartFilterBase = {
-  type: 'preDispatch' | 'postDispatch'
-  states: string[]
-}
+const MS_DAY = 24 * 60 * 60 * 1000
 
-type FlipkartFilter = FlipkartFilterBase & {
-  orderDate: { from: string; to: string }
-}
+/** Documented v3 filter types / states (seller.flipkart.com/api-docs/order-api-docs/v3/PostShipmentSearch.html) */
+type FlipkartFilter =
+  | { type: 'preDispatch' | 'postDispatch'; states: string[]; orderDate: { from: string; to: string } }
+  | {
+      type: 'cancelled'
+      states: string[]
+      cancellationType: 'marketplaceCancellation' | 'sellerCancellation' | 'buyerCancellation'
+      cancellationDate: { from: string; to: string }
+    }
 
 function resolveFlipkartUrl(u: string): string {
   const t = u.trim()
   if (/^https?:\/\//i.test(t)) return t
   const base = getFlipkartApiBaseUrl()
-  if (t.startsWith('/')) return base + t
-  return `${base}/${t}`
+  if (t.startsWith('/sellers/')) return base + t
+  if (t.startsWith('/')) return `${base}/sellers${t}`
+  return `${base}/sellers/${t}`
+}
+
+async function flipkartGetJson(accessToken: string, url: string, context: string): Promise<Record<string, unknown>> {
+  const res = await flipkartHttpFetch(
+    url,
+    { method: 'GET', headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } },
+    context
+  )
+  const json = await readFlipkartJsonBody(res, context)
+  if (!res.ok) {
+    const msg = (json.message as string) || (json.error as string) || JSON.stringify(json)
+    throw new Error(`Flipkart ${context} failed (${res.status}): ${msg}`)
+  }
+  return json
 }
 
 async function postShipmentFilter(
@@ -194,39 +212,33 @@ async function postShipmentFilter(
   filter: FlipkartFilter,
   nextPageUrl?: string | null
 ): Promise<{ shipments: any[]; nextPageUrl?: string | null }> {
-  const base = getFlipkartApiBaseUrl()
-  const useNext = nextPageUrl && String(nextPageUrl).trim().length > 0
-  const url = useNext ? resolveFlipkartUrl(String(nextPageUrl)) : `${base}/sellers/v3/shipments/filter/`
-  const body = useNext
-    ? '{}'
-    : JSON.stringify({
-        filter: {
-          ...filter,
-          orderDate: filter.orderDate!,
+  let json: Record<string, unknown>
+  if (nextPageUrl && String(nextPageUrl).trim()) {
+    // nextPageUrl is a GET link carrying the search context
+    json = await flipkartGetJson(accessToken, resolveFlipkartUrl(String(nextPageUrl)), 'shipments/filter (next page)')
+  } else {
+    const res = await flipkartHttpFetch(
+      `${getFlipkartApiBaseUrl()}/sellers/v3/shipments/filter/`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
-        pagination: { pageSize: 20 },
-      })
-  const res = await flipkartHttpFetch(
-    url,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+        body: JSON.stringify({ filter, pagination: { pageSize: 20 } }),
       },
-      body,
-    },
-    'shipments/filter'
-  )
-  const json = await readFlipkartJsonBody(res, 'shipments/filter')
-  if (!res.ok) {
-    const msg = (json.message as string) || (json.error as string) || JSON.stringify(json)
-    throw new Error(`Flipkart shipments filter failed (${res.status}): ${msg}`)
+      'shipments/filter'
+    )
+    json = await readFlipkartJsonBody(res, 'shipments/filter')
+    if (!res.ok) {
+      const msg = (json.message as string) || (json.error as string) || JSON.stringify(json)
+      throw new Error(`Flipkart shipments filter (${filter.type}) failed (${res.status}): ${msg}`)
+    }
   }
   const shipments = Array.isArray(json.shipments) ? json.shipments : []
-  const np = json.nextPageUrl as string | null | undefined
-  return { shipments, nextPageUrl: np ?? null }
+  const np = json.hasMore === false ? null : ((json.nextPageUrl as string | null | undefined) ?? null)
+  return { shipments, nextPageUrl: np }
 }
 
 function num(x: unknown): number {
@@ -235,88 +247,146 @@ function num(x: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
-function invoiceNumberFromFlipkart(
-  shipment: Record<string, unknown>,
-  item: Record<string, unknown>
-): string | null {
-  const fromObj = (inv: unknown): string | null => {
-    if (!inv || typeof inv !== 'object') return null
-    const o = inv as Record<string, unknown>
-    const keys = [
-      'invoiceNumber',
-      'invoiceId',
-      'taxInvoiceNumber',
-      'invoiceNo',
-      'number',
-      'gstInvoiceNumber',
-      'commercialInvoiceNumber',
-    ]
-    for (const k of keys) {
-      const v = o[k]
-      if (typeof v === 'string' && v.trim()) return v.trim().slice(0, 120)
+/** Flipkart rates may come as 18 or 0.18 */
+function pct(x: unknown): number {
+  const n = num(x)
+  return n > 0 && n < 1 ? n * 100 : n
+}
+
+type FkInvoiceItem = {
+  invoiceNumber: string | null
+  invoiceDate: Date | null
+  invoiceAmount: number | null
+  ratePct: number | null
+  igstRate: number
+  cgstRate: number
+}
+
+type FkAddress = { city: string | null; state: string | null }
+
+/** GET /v3/shipments/{ids}/invoices (JSON) → per orderItemId invoice no, date, amount, GST rates. */
+async function fetchInvoices(accessToken: string, shipmentIds: string[]): Promise<Map<string, FkInvoiceItem>> {
+  const out = new Map<string, FkInvoiceItem>()
+  const json = await flipkartGetJson(
+    accessToken,
+    `${getFlipkartApiBaseUrl()}/sellers/v3/shipments/${shipmentIds.map(encodeURIComponent).join(',')}/invoices`,
+    'shipments/invoices'
+  )
+  const invoices = Array.isArray(json.invoices) ? (json.invoices as Record<string, unknown>[]) : []
+  for (const inv of invoices) {
+    const invNo = typeof inv.invoiceNumber === 'string' && inv.invoiceNumber.trim() ? inv.invoiceNumber.trim() : null
+    const invDate = inv.invoiceDate ? new Date(String(inv.invoiceDate)) : null
+    const items = Array.isArray(inv.orderItems) ? (inv.orderItems as Record<string, unknown>[]) : []
+    for (const it of items) {
+      const id = String(it.orderItemId || '')
+      if (!id) continue
+      const td = (it.taxDetails || {}) as Record<string, unknown>
+      const igstRate = pct(td.igstRate)
+      const cgstRate = pct(td.cgstRate)
+      const sgstRate = pct(td.sgstRate)
+      const fromDetails = igstRate + cgstRate + sgstRate
+      const rate = fromDetails > 0 ? fromDetails : pct(it.taxRate)
+      out.set(id, {
+        invoiceNumber: invNo,
+        invoiceDate: invDate && !Number.isNaN(invDate.getTime()) ? invDate : null,
+        invoiceAmount: it.invoiceAmount != null ? num(it.invoiceAmount) : null,
+        ratePct: rate > 0 || it.taxRate != null ? rate : null,
+        igstRate,
+        cgstRate,
+      })
     }
-    return null
   }
-  const direct =
-    fromObj(item.invoice) ||
-    fromObj(shipment.invoice) ||
-    (typeof shipment.invoiceNumber === 'string' && shipment.invoiceNumber.trim()
-      ? shipment.invoiceNumber.trim().slice(0, 120)
-      : null) ||
-    (typeof shipment.taxInvoiceNumber === 'string' && shipment.taxInvoiceNumber.trim()
-      ? shipment.taxInvoiceNumber.trim().slice(0, 120)
-      : null)
-  return direct
+  return out
 }
 
-function lineTotalFromItem(item: Record<string, unknown>): { price: number; tax: number; shipping: number; total: number } {
-  const invoice = item.invoice as Record<string, unknown> | undefined
-  const sellingPrice = (item.sellingPrice as Record<string, unknown> | undefined)?.amount
-  const price =
-    num(invoice?.total) ||
-    num(invoice?.invoiceAmount) ||
-    num(item.netAmount) ||
-    num(sellingPrice) ||
-    num(item.price) ||
-    0
-  const tax = num(invoice?.tax) || num(item.tax) || 0
-  const shipping = num(invoice?.shipping) || num(item.shipping) || 0
-  const total = price + tax + shipping
-  return {
-    price: Math.round(price * 100) / 100,
-    tax: Math.round(tax * 100) / 100,
-    shipping: Math.round(shipping * 100) / 100,
-    total: Math.round(total * 100) / 100,
+/** GET /v3/shipments/{ids} → delivery address per shipment. */
+async function fetchAddresses(accessToken: string, shipmentIds: string[]): Promise<Map<string, FkAddress>> {
+  const out = new Map<string, FkAddress>()
+  const json = await flipkartGetJson(
+    accessToken,
+    `${getFlipkartApiBaseUrl()}/sellers/v3/shipments/${shipmentIds.map(encodeURIComponent).join(',')}`,
+    'shipments/details'
+  )
+  const list = Array.isArray(json.shipments) ? (json.shipments as Record<string, unknown>[]) : []
+  for (const s of list) {
+    const id = String(s.shipmentId || '')
+    const a = (s.deliveryAddress || s.billingAddress) as Record<string, unknown> | undefined
+    if (!id || !a) continue
+    out.set(id, {
+      city: a.city ? String(a.city).trim() : null,
+      state: a.state ? String(a.state).trim() : a.stateCode ? String(a.stateCode).trim() : null,
+    })
   }
+  return out
 }
 
-function extractOrderItems(shipment: Record<string, unknown>): Record<string, unknown>[] {
-  const direct = shipment.orderItems
-  if (Array.isArray(direct)) return direct as Record<string, unknown>[]
-  const nested = shipment.shipmentItems
-  if (Array.isArray(nested)) return nested as Record<string, unknown>[]
-  const ois = shipment.orderItem
-  if (Array.isArray(ois)) return ois as Record<string, unknown>[]
-  return []
+type PendingLine = {
+  shipmentId: string
+  orderId: string
+  orderItemId: string
+  orderDate: Date
+  status: string | null
+  qty: number
+  title: string
+  sku: string | null
+  hsn: string | null
+  sellingPrice: number
+  shippingCharge: number
+  totalPrice: number
+  note: string | null
 }
 
-function cityFromShipment(shipment: Record<string, unknown>): string {
-  const addr =
-    (shipment.shippingAddress as Record<string, unknown>) ||
-    (shipment.deliveryAddress as Record<string, unknown>) ||
-    (shipment.address as Record<string, unknown>)
-  if (!addr) return ''
-  const parts = [addr.city, addr.state, addr.stateName].filter(Boolean)
-  return String(parts.join(', ')).slice(0, 200)
+function toPendingLines(shipment: Record<string, unknown>): { lines: PendingLine[]; noDate: number } {
+  const shipmentId = String(shipment.shipmentId || shipment.id || '')
+  const items = Array.isArray(shipment.orderItems) ? (shipment.orderItems as Record<string, unknown>[]) : []
+  const lines: PendingLine[] = []
+  let noDate = 0
+  for (const it of items) {
+    const orderItemId = String(it.orderItemId || it.id || '')
+    if (!orderItemId) continue
+    const od = it.orderDate ? new Date(String(it.orderDate)) : null
+    if (!od || Number.isNaN(od.getTime())) {
+      noDate += 1
+      continue
+    }
+    const pc = (it.priceComponents || {}) as Record<string, unknown>
+    const sellingPrice = num(pc.sellingPrice)
+    const shippingCharge = num(pc.shippingCharge)
+    const totalPrice = pc.totalPrice != null ? num(pc.totalPrice) : sellingPrice + shippingCharge
+    const cancelNote = it.cancellationReason
+      ? `Cancelled: ${String(it.cancellationReason)}${it.cancellationSubReason ? ` / ${String(it.cancellationSubReason)}` : ''}`
+      : null
+    lines.push({
+      shipmentId,
+      orderId: String(it.orderId || shipmentId),
+      orderItemId,
+      orderDate: od,
+      status: it.status ? String(it.status) : null,
+      qty: Math.max(0, Math.floor(num(it.quantity))),
+      title: String(it.title || it.sku || 'Flipkart item').slice(0, 500),
+      sku: it.sku ? String(it.sku).trim().slice(0, 120) : null,
+      hsn: it.hsn ? String(it.hsn).trim() : null,
+      sellingPrice,
+      shippingCharge,
+      totalPrice,
+      note: [cancelNote, it.isReplacement === true ? 'Replacement order' : null].filter(Boolean).join(' · ') || null,
+    })
+  }
+  return { lines, noDate }
 }
 
 export type FlipkartSyncResult = { rows: number; skipped: boolean; logMessage?: string }
 
 /**
- * Pulls shipments via Order Management filter API and maps lines into unified_sales.
- * First run: orderDate window = last FLIPKART_UNIFIED_SALES_LOOKBACK_DAYS (default 90).
- * Later runs: **incremental** — orderDate.from = last stored order_date minus overlap (only new/changed shipments in range).
- * FLIPKART_UNIFIED_SALES_FULL_SYNC=1 forces the full lookback window again.
+ * Pulls shipments via the v3 Order Management filter API and maps order items into unified_sales.
+ *
+ * - Amounts come from `orderItems[].priceComponents` (tax-INCLUSIVE; totalPrice = sellingPrice + shippingCharge,
+ *   for the full quantity). GST is backed out using the rate from `/v3/shipments/{ids}/invoices`
+ *   (taxDetails igst/cgst/sgst rates) — before an invoice exists, `FLIPKART_DEFAULT_GST_RATE` is used if set,
+ *   otherwise the line is flagged "GST rate unknown".
+ * - Keys: `flipkart:<orderItemId>`, `source_order_id` = Flipkart orderId (not shipmentId).
+ * - First run / `FLIPKART_UNIFIED_SALES_FULL_SYNC=1`: orders from the last FLIPKART_UNIFIED_SALES_LOOKBACK_DAYS (90).
+ *   Later runs: orders from the last FLIPKART_STATUS_REFRESH_DAYS (30) + cancellations since the last sync.
  */
 export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSyncResult> {
   if (isFlipkartUnifiedSalesSyncDisabled()) {
@@ -331,98 +401,145 @@ export async function syncFlipkartUnifiedSales(pool: Pool): Promise<FlipkartSync
   }
 
   const accessToken = await flipkartClientCredentialsToken()
+  const sellerState = await getSellerStateCode(pool)
 
-  const lookbackDays = flipkartLookbackDays()
+  const now = Date.now()
   const forceFull = process.env.FLIPKART_UNIFIED_SALES_FULL_SYNC === '1'
-  const maxStored = await getMaxUnifiedOrderDate(pool, 'flipkart')
-  const useIncremental =
-    !forceFull &&
-    maxStored != null &&
-    maxStored.getTime() < Date.now() - 60 * 1000
+  const cursor = forceFull ? null : await getLastSyncCursor(pool, 'flipkart')
+  const orderFrom = new Date(now - (cursor ? flipkartStatusRefreshDays() : flipkartLookbackDays()) * MS_DAY).toISOString()
+  const cancelFrom = cursor
+    ? new Date(cursor.getTime() - UNIFIED_SALES_INCREMENTAL_OVERLAP_MS).toISOString()
+    : orderFrom
+  const to = new Date(now).toISOString()
 
-  const orderDateRange = useIncremental
-    ? {
-        from: new Date(maxStored!.getTime() - UNIFIED_SALES_INCREMENTAL_OVERLAP_MS).toISOString(),
-        to: isoNow(),
-      }
-    : {
-        from: isoDaysAgo(lookbackDays),
-        to: isoNow(),
-      }
-
-  const seenShipmentIds = new Set<string>()
-  const filters: FlipkartFilterBase[] = [
+  const filters: FlipkartFilter[] = [
     {
       type: 'preDispatch',
       states: ['APPROVED', 'PACKING_IN_PROGRESS', 'PACKED', 'FORM_FAILED', 'READY_TO_DISPATCH'],
+      orderDate: { from: orderFrom, to },
     },
-    {
-      type: 'postDispatch',
-      states: ['DELIVERED', 'DISPATCHED', 'SHIPPED', 'COMPLETE'],
-    },
+    { type: 'postDispatch', states: ['SHIPPED', 'DELIVERED', 'PICKUP_COMPLETE'], orderDate: { from: orderFrom, to } },
+    ...(['marketplaceCancellation', 'sellerCancellation', 'buyerCancellation'] as const).map(
+      (cancellationType): FlipkartFilter => ({
+        type: 'cancelled',
+        states: ['CANCELLED'],
+        cancellationType,
+        cancellationDate: { from: cancelFrom, to },
+      })
+    ),
   ]
 
-  let inserted = 0
+  const byItem = new Map<string, PendingLine>()
+  let noDate = 0
+  const filterErrors: string[] = []
   for (const filter of filters) {
-    const filterWithDates: FlipkartFilter = { ...filter, orderDate: orderDateRange }
     let next: string | null | undefined
-    do {
-      const page = await postShipmentFilter(accessToken, filterWithDates, next)
-      const shipments = page.shipments || []
-      next = page.nextPageUrl || null
-
-      for (const raw of shipments) {
-        const shipment = raw as Record<string, unknown>
-        const shipmentId = String(shipment.shipmentId || shipment.id || '')
-        if (!shipmentId || seenShipmentIds.has(shipmentId)) continue
-        seenShipmentIds.add(shipmentId)
-
-        const orderDateRaw =
-          (shipment.orderDate as string) ||
-          (shipment.dispatchByDate as string) ||
-          (shipment.createdAt as string) ||
-          (shipment.createdDate as string)
-        const orderDate = orderDateRaw ? new Date(orderDateRaw) : new Date()
-        const city = cityFromShipment(shipment)
-        const items = extractOrderItems(shipment)
-        if (items.length === 0) continue
-
-        for (let i = 0; i < items.length; i++) {
-          const it = items[i]
-          const orderItemId = String(it.orderItemId || it.orderItemID || it.id || `${i}`)
-          const qty = Math.max(1, Math.floor(num(it.quantity ?? it.quantityOrdered ?? 1)))
-          const title = String(
-            it.title || it.productTitle || it.listingTitle || it.sellerSku || 'Flipkart item'
-          ).slice(0, 500)
-          const { price, tax, shipping, total } = lineTotalFromItem(it)
-          const lineKey = `flipkart:${shipmentId}:${orderItemId}`
-          const invNo = invoiceNumberFromFlipkart(shipment, it as Record<string, unknown>)
-
-          await upsertUnifiedSaleLine(pool, {
-            platform: 'flipkart',
-            source_order_id: shipmentId,
-            line_key: lineKey,
-            product_name: title,
-            quantity: qty,
-            price,
-            tax,
-            shipping,
-            total,
-            city: city || null,
-            order_date: orderDate,
-            currency: 'INR',
-            invoice_number: invNo,
-          })
-          inserted += 1
+    try {
+      do {
+        const page = await postShipmentFilter(accessToken, filter, next)
+        next = page.nextPageUrl || null
+        for (const raw of page.shipments || []) {
+          const r = toPendingLines(raw as Record<string, unknown>)
+          noDate += r.noDate
+          for (const l of r.lines) byItem.set(l.orderItemId, l) // later filters (cancelled) win
         }
-      }
-    } while (next)
+      } while (next)
+    } catch (e: any) {
+      // pre/post-dispatch failures are fatal (we'd silently miss sales); a cancellation sub-filter is not
+      if (filter.type !== 'cancelled') throw e
+      filterErrors.push(`${filter.cancellationType}: ${String(e?.message || e).slice(0, 120)}`)
+    }
   }
 
-  const logMessage =
-    inserted === 0
-      ? 'No Flipkart shipment lines returned (filters / account / API access)'
-      : undefined
+  // Enrich in batches of 25 shipments (Flipkart's recommended limit)
+  const shipmentIds = [...new Set([...byItem.values()].map((l) => l.shipmentId).filter(Boolean))]
+  const invoices = new Map<string, FkInvoiceItem>()
+  const addresses = new Map<string, FkAddress>()
+  let enrichErrors = 0
+  for (let i = 0; i < shipmentIds.length; i += 25) {
+    const batch = shipmentIds.slice(i, i + 25)
+    try {
+      for (const [k, v] of await fetchInvoices(accessToken, batch)) invoices.set(k, v)
+    } catch {
+      enrichErrors += 1 // invoices not generated yet for pre-dispatch shipments, or endpoint not enabled
+    }
+    try {
+      for (const [k, v] of await fetchAddresses(accessToken, batch)) addresses.set(k, v)
+    } catch {
+      enrichErrors += 1
+    }
+  }
 
-  return { rows: inserted, skipped: false, logMessage }
+  const defaultRate = process.env.FLIPKART_DEFAULT_GST_RATE ? pct(process.env.FLIPKART_DEFAULT_GST_RATE) : null
+  let inserted = 0
+  let unknownRate = 0
+
+  for (const l of byItem.values()) {
+    const inv = invoices.get(l.orderItemId)
+    const addr = addresses.get(l.shipmentId)
+    const state = normalizeIndianState(addr?.state)
+    const gross = round2(inv?.invoiceAmount != null && inv.invoiceAmount > 0 ? inv.invoiceAmount : l.totalPrice)
+    const ratePct = snapGstRate(inv?.ratePct ?? defaultRate)
+    const notes = [l.note]
+    let taxable = gross
+    let tax = 0
+    let shippingExTax = round2(l.shippingCharge)
+    let split: { igst: number; cgst: number; sgst: number } | null = null
+    if (ratePct != null) {
+      const b = fromInclusive(gross, ratePct)
+      taxable = b.taxable
+      tax = b.tax
+      shippingExTax = fromInclusive(l.shippingCharge, ratePct).taxable
+      if (inv && inv.igstRate > 0) split = { igst: tax, cgst: 0, sgst: 0 }
+      else if (inv && inv.cgstRate > 0) {
+        const half = round2(tax / 2)
+        split = { igst: 0, cgst: half, sgst: round2(tax - half) }
+      } else split = splitGst(tax, state.code, sellerState)
+      if (!inv) notes.push(`GST rate assumed ${ratePct}% (no Flipkart invoice yet)`)
+    } else {
+      unknownRate += 1
+      notes.push('GST rate unknown — amount shown is tax-inclusive; review before export')
+    }
+
+    await upsertUnifiedSaleLine(pool, {
+      platform: 'flipkart',
+      source_order_id: l.orderId,
+      line_key: `flipkart:${l.orderItemId}`,
+      product_name: l.title,
+      quantity: l.qty,
+      price: l.qty > 0 ? round2(taxable / l.qty) : taxable,
+      tax,
+      shipping: shippingExTax,
+      total: round2(taxable + tax),
+      city: addr?.city ? (state.name ? `${addr.city}, ${state.name}` : addr.city) : null,
+      order_date: l.orderDate,
+      currency: 'INR',
+      order_status: l.status,
+      business_type: 'B2C',
+      shipping_state: state.name,
+      ship_state_code: state.code,
+      line_note: notes.filter(Boolean).join(' · ') || null,
+      seller_sku: l.sku,
+      hsn_code: l.hsn,
+      igst: split ? split.igst : null,
+      cgst: split ? split.cgst : null,
+      sgst: split ? split.sgst : null,
+      tax_rate_pct: ratePct,
+      taxable_value: taxable,
+      invoice_number: inv?.invoiceNumber ?? null,
+      invoice_date: inv?.invoiceDate ?? null,
+      doc_type: 'invoice',
+      tax_source: inv ? 'flipkart_invoice' : 'flipkart_order',
+    })
+    inserted += 1
+  }
+
+  const msgs: string[] = []
+  if (inserted === 0) msgs.push('No Flipkart order items returned (filters / account / API access)')
+  if (unknownRate) msgs.push(`${unknownRate} line(s) without GST rate (set FLIPKART_DEFAULT_GST_RATE or wait for invoices)`)
+  if (noDate) msgs.push(`${noDate} item(s) skipped: missing orderDate`)
+  if (enrichErrors) msgs.push(`${enrichErrors} invoice/address batch call(s) failed`)
+  if (filterErrors.length) msgs.push(`cancelled filter errors: ${filterErrors.join('; ')}`)
+
+  return { rows: inserted, skipped: false, logMessage: msgs.length ? msgs.join(' | ') : undefined }
 }

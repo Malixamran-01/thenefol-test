@@ -41,7 +41,7 @@ type Summary = {
     tax: string
     shipping: string
     orders_estimate: number
-    profit_ex_tax_and_shipping: number
+    net_sales_ex_tax: string
   }
 }
 
@@ -121,14 +121,12 @@ export default function UnifiedSalesDashboard() {
   })
   const [gstData, setGstData] = useState<any>(null)
 
-  /** Fresh headers each call — avoids stale token and ensures RBAC headers are always sent. */
+  /** Fresh headers each call — the backend resolves permissions from the staff session token. */
   const getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem('auth_token')
     return {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'x-user-permissions': 'orders:read,orders:update',
-      'x-user-role': 'admin',
     }
   }
 
@@ -256,6 +254,85 @@ export default function UnifiedSalesDashboard() {
     }
   }
 
+  const [busyExporting, setBusyExporting] = useState(false)
+
+  /**
+   * BUSY "Import Vouchers from Excel" workbook (.xls — BUSY reads Excel, not CSV).
+   * One row per item; rows sharing a Vch/Bill No form one voucher. Sheets: Sales, Sales Return, Needs Review, Read Me.
+   */
+  const exportBusy = async () => {
+    setBusyExporting(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('from', new Date(from + 'T00:00:00').toISOString())
+      params.set('to', new Date(to + 'T23:59:59').toISOString())
+      if (platformFilter) params.set('platform', platformFilter)
+      const res = await fetch(`${apiBase}/sales/export/busy?${params}`, { headers: getAuthHeaders() })
+      const data = (await parseJson(res)) as {
+        sales: Record<string, unknown>[]
+        returns: Record<string, unknown>[]
+        review: Record<string, unknown>[]
+        sellerStateCode: string
+        config: Record<string, any>
+      }
+      const XLSX = await import('xlsx')
+
+      // Real Excel dates (dd-mm-yyyy) so BUSY doesn't misread day/month
+      const withDates = (rs: Record<string, unknown>[]) =>
+        rs.map((r) => {
+          const d = String(r.Date || '')
+          const [y, m, dd] = d.split('-').map(Number)
+          // Local midnight: SheetJS converts Dates in local time, so this yields a whole-day serial
+          return { ...r, Date: y && m && dd ? new Date(y, m - 1, dd) : d }
+        })
+      const sheet = (rs: Record<string, unknown>[], emptyNote: string) => {
+        const ws = rs.length
+          ? XLSX.utils.json_to_sheet(withDates(rs), { cellDates: true, dateNF: 'dd-mm-yyyy' })
+          : XLSX.utils.aoa_to_sheet([[emptyNote]])
+        if (rs.length) ws['!cols'] = Object.keys(rs[0]).map((k) => ({ wch: Math.min(40, Math.max(10, k.length + 2)) }))
+        return ws
+      }
+
+      const cfg = data.config || {}
+      const readMe = [
+        ['BUSY import — how to use this file'],
+        [''],
+        ['1. Masters first: every Item Name (or Item Code/SKU alias), Party Name, Sale Type, Material Centre and Unit must exist in BUSY.'],
+        ['   Items need their GST tax category set in the Item Master, otherwise BUSY will not calculate GST.'],
+        [`   Party ledgers used for B2C: ${Object.values(cfg.party || {}).join(', ')} — create them once (state = your own state).`],
+        [`2. BUSY → Administration → Data Export Import → Import Vouchers from Excel → Voucher Type "Sales" → Configure.`],
+        ['   Header entries: Series, Date, Vch/Bill No, Sale Type, Party Name, Material Centre, Narration (and Place of Supply / GSTIN if your version lists them).'],
+        ['   Item entries: Item Name, Qty, Unit, Price (ex-GST), Amount (Taxable). Leave GST to BUSY (Sale Type ItemWise) or map IGST/CGST/SGST.'],
+        ['   Save the format (e.g. "Marketplace Sales") — you only configure it once.'],
+        ['3. Choose this file, Sheet 1 (Sales), Starting Row 2, Ending Row = last row, Import.'],
+        ['4. Repeat with Voucher Type "Sales Return" / Credit Note for sheet 2 (Sales Return).'],
+        ['5. Sheet 3 (Needs Review) is NOT for import: fix those lines (missing GST rate, state, HSN, not yet invoiced) first.'],
+        [''],
+        [`Sale Type: ${cfg.saleTypeLocal} when ship-to state = your GST state (code ${data.sellerStateCode}), else ${cfg.saleTypeCentral}.`],
+        ['Amount (Taxable) already includes shipping (GST treats it as part of the item supply). Invoice Value = Amount + GST.'],
+        ['Names come from backend env BUSY_SERIES, BUSY_SALE_TYPE_LOCAL/CENTRAL, BUSY_MATERIAL_CENTRE, BUSY_UNIT, BUSY_PARTY_*.'],
+        ['This file is saved as Excel 97-2003 (.xls), which every BUSY version can read. Dates are real Excel dates (dd-mm-yyyy).'],
+      ]
+
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, sheet(data.sales, 'No invoiced sales in this range'), 'Sales')
+      XLSX.utils.book_append_sheet(wb, sheet(data.returns, 'No credit notes in this range'), 'Sales Return')
+      XLSX.utils.book_append_sheet(wb, sheet(data.review, 'Nothing to review'), 'Needs Review')
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(readMe), 'Read Me')
+      XLSX.writeFile(wb, `busy-sales-${platformFilter || 'all'}-${from}-to-${to}.xls`, { bookType: 'biff8' })
+
+      notify(
+        data.review.length ? 'info' : 'success',
+        `BUSY file: ${data.sales.length} sale line(s), ${data.returns.length} return line(s)` +
+          (data.review.length ? ` — ${data.review.length} need review (see "Needs Review" sheet)` : '')
+      )
+    } catch (e: any) {
+      notify('error', e?.message || 'BUSY export failed')
+    } finally {
+      setBusyExporting(false)
+    }
+  }
+
   const loadGst = async () => {
     try {
       const res = await fetch(`${apiBase}/sales/reports/gst?month=${encodeURIComponent(gstMonth)}`, {
@@ -370,14 +447,14 @@ export default function UnifiedSalesDashboard() {
         {summary && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              { label: 'Revenue', value: fmt(summary.totals.revenue), sub: 'All platforms' },
+              { label: 'Revenue', value: fmt(summary.totals.revenue), sub: 'Incl. GST, net of returns & cancellations' },
               { label: 'Orders (est.)', value: String(summary.totals.orders_estimate ?? 0), sub: 'Distinct order IDs' },
-              { label: 'Tax', value: fmt(summary.totals.tax), sub: 'Allocated' },
-              { label: 'Shipping', value: fmt(summary.totals.shipping), sub: 'Allocated' },
+              { label: 'GST', value: fmt(summary.totals.tax), sub: 'Output tax' },
+              { label: 'Shipping', value: fmt(summary.totals.shipping), sub: 'Ex-GST, included in net sales' },
               {
-                label: 'Profit (approx.)',
-                value: fmt(summary.totals.profit_ex_tax_and_shipping),
-                sub: 'Revenue − tax − shipping',
+                label: 'Net sales',
+                value: fmt(summary.totals.net_sales_ex_tax),
+                sub: 'Taxable value (revenue − GST)',
               },
             ].map((c) => (
               <div
@@ -506,6 +583,15 @@ export default function UnifiedSalesDashboard() {
                 className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
               >
                 Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={exportBusy}
+                disabled={busyExporting}
+                title="Excel workbook for BUSY → Administration → Data Export Import → Import Vouchers from Excel"
+                className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
+              >
+                {busyExporting ? 'Preparing…' : 'Export for BUSY'}
               </button>
             </div>
           </div>
@@ -687,15 +773,28 @@ export default function UnifiedSalesDashboard() {
                   <thead>
                     <tr className="border-b text-xs text-slate-500">
                       <th className="py-2 text-left">Platform</th>
-                      <th className="py-2 text-right">Turnover</th>
-                      <th className="py-2 text-right">Tax</th>
+                      <th className="py-2 text-right">Taxable</th>
+                      <th className="py-2 text-right">IGST</th>
+                      <th className="py-2 text-right">CGST</th>
+                      <th className="py-2 text-right">SGST/UTGST</th>
+                      <th className="py-2 text-right">Total GST</th>
                     </tr>
                   </thead>
                   <tbody>
                     {gstData.byPlatform.map((p: any, i: number) => (
                       <tr key={i} className="border-b border-slate-50">
-                        <td className="py-2 capitalize">{p.platform}</td>
+                        <td className="py-2 capitalize">
+                          {p.platform}
+                          {p.lines_without_gst_split > 0 && (
+                            <span className="ml-1 text-[10px] text-amber-600" title="Ship-to state unknown, IGST/CGST split missing">
+                              ({p.lines_without_gst_split} unsplit)
+                            </span>
+                          )}
+                        </td>
                         <td className="py-2 text-right tabular-nums">{fmt(p.taxable_turnover)}</td>
+                        <td className="py-2 text-right tabular-nums">{fmt(p.igst)}</td>
+                        <td className="py-2 text-right tabular-nums">{fmt(p.cgst)}</td>
+                        <td className="py-2 text-right tabular-nums">{fmt(p.sgst_utgst)}</td>
                         <td className="py-2 text-right tabular-nums">{fmt(p.tax_collected)}</td>
                       </tr>
                     ))}

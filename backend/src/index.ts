@@ -1380,25 +1380,29 @@ app.patch('/api/inventory/:productId/:variantId/settings', (req, res) => invento
 app.post('/api/inventory/:productId/:variantId/adjust', (req, res) => inventoryRoutes.adjustStock(pool, req, res))
 app.post('/api/inventory/:productId/:variantId/low-threshold', (req, res) => inventoryRoutes.setLowStockThreshold(pool, req, res))
 app.put('/api/inventory/:productId/:variantId/quantity', (req, res) => inventoryRoutes.setStockQuantity(pool, req, res))
-app.get('/api/sales/combined', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+// Unified sales: staff session token only (permissions come from the DB session, never from client headers)
+app.get('/api/sales/combined', staffAuth, staffPermLocal('orders:read'), (req, res) =>
   unifiedSalesRoutes.getCombinedSales(pool, req, res)
 )
-app.get('/api/sales/export.csv', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+app.get('/api/sales/export.csv', staffAuth, staffPermLocal('orders:read'), (req, res) =>
   unifiedSalesRoutes.exportUnifiedSalesCsv(pool, req, res)
 )
-app.get('/api/sales/platform/:platform', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+app.get('/api/sales/export/busy', staffAuth, staffPermLocal('orders:read'), (req, res) =>
+  unifiedSalesRoutes.getBusyExport(pool, req, res)
+)
+app.get('/api/sales/platform/:platform', staffAuth, staffPermLocal('orders:read'), (req, res) =>
   unifiedSalesRoutes.getSalesByPlatform(pool, req, res)
 )
-app.get('/api/sales/summary', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+app.get('/api/sales/summary', staffAuth, staffPermLocal('orders:read'), (req, res) =>
   unifiedSalesRoutes.getSalesSummary(pool, req, res)
 )
-app.get('/api/sales/sync/logs', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+app.get('/api/sales/sync/logs', staffAuth, staffPermLocal('orders:read'), (req, res) =>
   unifiedSalesRoutes.getSyncLogs(pool, req, res)
 )
-app.get('/api/sales/reports/gst', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) =>
+app.get('/api/sales/reports/gst', staffAuth, staffPermLocal('orders:read'), (req, res) =>
   unifiedSalesRoutes.getGstReport(pool, req, res)
 )
-app.post('/api/sales/sync/manual', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) =>
+app.post('/api/sales/sync/manual', staffAuth, staffPermLocal('orders:update'), (req, res) =>
   unifiedSalesRoutes.postManualSync(pool, req, res)
 )
 app.get('/api/inventory/:productId/:variantId/batches', (req, res) => inventoryRoutes.listInventoryBatches(pool, req, res))
@@ -1447,16 +1451,15 @@ app.post('/api/shiprocket/rto/:orderId', authenticateAndAttach as any, requirePe
 
 // ==================== AMAZON ====================
 app.get('/api/amazon/oauth/callback', (req, res) => amazonRoutes.amazonOAuthCallback(pool, req, res))
-app.post('/api/marketplaces/amazon/accounts', (req, res) => amazonRoutes.saveAmazonAccount(pool, req, res))
-app.get('/api/marketplaces/amazon/accounts', (req, res) => amazonRoutes.listAmazonAccounts(pool, req, res))
-app.post('/api/marketplaces/amazon/sync-products', (req, res) => amazonRoutes.syncProductsToAmazon(pool, req, res))
-app.get('/api/marketplaces/amazon/import-orders', (req, res) => amazonRoutes.importAmazonOrders(pool, req, res))
+app.post('/api/marketplaces/amazon/accounts', staffAuth, staffPermLocal('orders:update'), (req, res) => amazonRoutes.saveAmazonAccount(pool, req, res))
+app.get('/api/marketplaces/amazon/accounts', staffAuth, staffPermLocal('orders:update'), (req, res) => amazonRoutes.listAmazonAccounts(pool, req, res))
+app.post('/api/marketplaces/amazon/sync-products', staffAuth, staffPermLocal('orders:update'), (req, res) => amazonRoutes.syncProductsToAmazon(pool, req, res))
 
 // ==================== FLIPKART ====================
-app.post('/api/marketplaces/flipkart/accounts', (req, res) => flipkartRoutes.saveFlipkartAccount(pool, req, res))
-app.get('/api/marketplaces/flipkart/accounts', (req, res) => flipkartRoutes.listFlipkartAccounts(pool, req, res))
-app.post('/api/marketplaces/flipkart/sync-products', (req, res) => flipkartRoutes.syncProductsToFlipkart(pool, req, res))
-app.get('/api/marketplaces/flipkart/import-orders', (req, res) => flipkartRoutes.importFlipkartOrders(pool, req, res))
+app.post('/api/marketplaces/flipkart/accounts', staffAuth, staffPermLocal('orders:update'), (req, res) => flipkartRoutes.saveFlipkartAccount(pool, req, res))
+app.get('/api/marketplaces/flipkart/accounts', staffAuth, staffPermLocal('orders:update'), (req, res) => flipkartRoutes.listFlipkartAccounts(pool, req, res))
+app.post('/api/marketplaces/flipkart/sync-products', staffAuth, staffPermLocal('orders:update'), (req, res) => flipkartRoutes.syncProductsToFlipkart(pool, req, res))
+app.get('/api/marketplaces/flipkart/import-orders', staffAuth, staffPermLocal('orders:update'), (req, res) => flipkartRoutes.importFlipkartOrders(pool, req, res))
 
 // ==================== BULK OPS ====================
 app.post('/api/bulk/orders/status', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => bulkRoutes.bulkUpdateOrderStatus(pool, req, res))
