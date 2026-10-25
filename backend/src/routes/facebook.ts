@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { sendError, sendSuccess, validateRequired, withTransaction } from '../utils/apiHelpers'
 import { sendAlert } from './notifications'
 
 type JobStatus = { id: string; type: 'products'|'stock'; total: number; success: number; failed: number; started_at: number; finished_at?: number; running: boolean }
@@ -176,14 +176,13 @@ export async function saveFieldMapping(pool: Pool, req: Request, res: Response) 
   try {
     await ensureTables(pool)
     const mapping = req.body || {}
-    await pool.query('begin')
-    for (const [k,v] of Object.entries(mapping)) {
-      await pool.query(`insert into facebook_field_mapping (key, value, updated_at) values ($1,$2, now()) on conflict (key) do update set value = excluded.value, updated_at = now()`, [k, String(v)])
-    }
-    await pool.query('commit')
+    await withTransaction(pool, async (client) => {
+      for (const [k,v] of Object.entries(mapping)) {
+        await client.query(`insert into facebook_field_mapping (key, value, updated_at) values ($1,$2, now()) on conflict (key) do update set value = excluded.value, updated_at = now()`, [k, String(v)])
+      }
+    })
     sendSuccess(res, { saved: Object.keys(mapping).length })
   } catch (err) {
-    await pool.query('rollback')
     sendError(res, 500, 'Failed to save field mapping', err)
   }
 }

@@ -91,7 +91,7 @@ const TYPE_META: Record<
   },
   post_commented: {
     icon: <MessageCircle className="h-4 w-4" />,
-    color: 'text-[#4B97C9]',
+    color: 'text-[color:var(--nf-primary)]',
     segments: (n, sn) => [
       { text: 'commented on' },
       ...(n.post_title ? [{ text: ` "${stripHtml(n.post_title)}"`, onClick: () => { markRead(n, sn); goToComment(n) } }] : [{ text: ' your post', onClick: () => { markRead(n, sn); goToComment(n) } }]),
@@ -99,7 +99,7 @@ const TYPE_META: Record<
   },
   comment_replied: {
     icon: <MessageCircle className="h-4 w-4" />,
-    color: 'text-[#4B97C9]',
+    color: 'text-[color:var(--nf-primary)]',
     segments: (n, sn) => [
       { text: 'replied to your comment', onClick: () => { markRead(n, sn); goToComment(n) } },
     ],
@@ -121,7 +121,7 @@ const TYPE_META: Record<
   },
   followed: {
     icon: <UserPlus className="h-4 w-4" />,
-    color: 'text-[#1B4965]',
+    color: 'text-[color:var(--nf-heading)]',
     segments: (_n, _sn) => [{ text: 'started following you' }],
   },
   subscribed: {
@@ -131,7 +131,7 @@ const TYPE_META: Record<
   },
   collab_task_assigned: {
     icon: <ClipboardList className="h-4 w-4" />,
-    color: 'text-[#4B97C9]',
+    color: 'text-[color:var(--nf-primary)]',
     segments: (n, _sn) => [{ text: `assigned you a brand task${n.post_title ? `: ${stripHtml(n.post_title)}` : ''}` }],
   },
   collab_task_revision: {
@@ -220,7 +220,7 @@ function Avatar({ name, avatar }: { name: string | null; avatar: string | null }
   return src ? (
     <img src={src} alt={name || ''} className="h-10 w-10 flex-shrink-0 rounded-full object-cover" />
   ) : (
-    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[12px] font-bold text-[#1B4965]">
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[12px] font-bold text-[color:var(--nf-heading)]">
       {initials}
     </div>
   )
@@ -345,7 +345,7 @@ export default function BlogActivityPage() {
         <p className="text-base font-semibold text-gray-500">Sign in to see your notifications</p>
         <a
           href="#/user/login"
-          className="rounded-xl bg-[#1B4965] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#163d54]"
+          className="rounded-xl bg-[color:var(--nf-heading)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[color:var(--nf-heading-hover)]"
         >
           Sign in
         </a>
@@ -361,7 +361,7 @@ export default function BlogActivityPage() {
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1B4965]">Activity</h1>
+          <h1 className="text-2xl font-bold text-[color:var(--nf-heading)]">Activity</h1>
           {isMuted && mutedUntil && (
             <p className="mt-0.5 text-[12px] text-amber-600">{muteLabel(mutedUntil)}</p>
           )}
@@ -372,7 +372,7 @@ export default function BlogActivityPage() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllRead}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#4B97C9] transition-colors hover:bg-[#edf4f9]"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[color:var(--nf-primary)] transition-colors hover:bg-[#edf4f9]"
             >
               <Check className="h-3.5 w-3.5" />
               Mark all read
@@ -413,7 +413,7 @@ export default function BlogActivityPage() {
                     </div>
                     <button
                       onClick={handleUnmute}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-medium text-[#1B4965] transition-colors hover:bg-[#edf4f9]"
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-medium text-[color:var(--nf-heading)] transition-colors hover:bg-[#edf4f9]"
                     >
                       <Bell className="h-4 w-4" />
                       Turn notifications back on
@@ -454,7 +454,7 @@ export default function BlogActivityPage() {
       {/* ── Content ───────────────────────────────────────────────────────── */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
         </div>
       ) : notifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -516,7 +516,7 @@ export default function BlogActivityPage() {
                         <button
                           key={i}
                           onClick={(e) => { e.stopPropagation(); seg.onClick!() }}
-                          className="text-gray-600 hover:text-[#1B4965] hover:underline cursor-pointer text-left"
+                          className="text-gray-600 hover:text-[color:var(--nf-heading)] hover:underline cursor-pointer text-left"
                         >
                           {seg.text}
                         </button>
@@ -531,7 +531,7 @@ export default function BlogActivityPage() {
                     <button
                       onClick={() => { markRead(n, setNotifications); goToComment(n) }}
                       disabled={!hasPost}
-                      className={`mt-1 block w-full text-left line-clamp-2 text-[12px] italic text-gray-400 ${hasComment ? 'hover:text-[#4B97C9] hover:underline cursor-pointer' : 'cursor-default'}`}
+                      className={`mt-1 block w-full text-left line-clamp-2 text-[12px] italic text-gray-400 ${hasComment ? 'hover:text-[color:var(--nf-primary)] hover:underline cursor-pointer' : 'cursor-default'}`}
                     >
                       "{n.comment_excerpt}"
                     </button>
@@ -543,7 +543,7 @@ export default function BlogActivityPage() {
                     {hasPost && (
                       <button
                         onClick={() => { markRead(n, setNotifications); goToPost(n) }}
-                        className="text-[11px] text-[#4B97C9] hover:underline"
+                        className="text-[11px] text-[color:var(--nf-primary)] hover:underline"
                       >
                         View post
                       </button>
@@ -551,7 +551,7 @@ export default function BlogActivityPage() {
                     {hasComment && (
                       <button
                         onClick={() => { markRead(n, setNotifications); goToComment(n) }}
-                        className="text-[11px] text-[#4B97C9] hover:underline"
+                        className="text-[11px] text-[color:var(--nf-primary)] hover:underline"
                       >
                         Go to comment ↓
                       </button>
@@ -561,7 +561,7 @@ export default function BlogActivityPage() {
 
                 {/* Unread dot */}
                 {!n.is_read && (
-                  <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-[#4B97C9]" />
+                  <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-[color:var(--nf-primary)]" />
                 )}
               </div>
             )
@@ -573,10 +573,10 @@ export default function BlogActivityPage() {
               <button
                 onClick={() => fetchNotifications(false)}
                 disabled={loadingMore}
-                className="flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-medium text-[#4B97C9] transition-colors hover:bg-[#edf4f9] disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-medium text-[color:var(--nf-primary)] transition-colors hover:bg-[#edf4f9] disabled:opacity-50"
               >
                 {loadingMore ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
                 ) : null}
                 {loadingMore ? 'Loading…' : 'Load more'}
               </button>

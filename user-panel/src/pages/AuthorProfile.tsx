@@ -132,7 +132,7 @@ const LoadingSpinner = ({ size = 'md', message }: { size?: 'sm' | 'md' | 'lg'; m
 
   return (
     <div className="flex flex-col items-center justify-center py-8">
-      <div className={`${sizeClasses[size]} animate-spin rounded-full border-solid border-gray-300 border-t-[#4B97C9]`}></div>
+      <div className={`${sizeClasses[size]} animate-spin rounded-full border-solid border-gray-300 border-t-[color:var(--nf-primary)]`}></div>
       {message && <p className="mt-3 text-sm text-gray-500">{message}</p>}
     </div>
   )
@@ -330,7 +330,7 @@ function EditAuthorProfileModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <input type="checkbox" id="email-visible" checked={emailVisible} onChange={(e) => setEmailVisible(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-[#4B97C9]" />
+            <input type="checkbox" id="email-visible" checked={emailVisible} onChange={(e) => setEmailVisible(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-[color:var(--nf-primary)]" />
             <label htmlFor="email-visible" className="text-sm text-gray-700">Show email on profile</label>
           </div>
 
@@ -339,7 +339,7 @@ function EditAuthorProfileModal({
             <button
               type="submit"
               disabled={loading || !usernameOk || usernameAvailability === 'checking'}
-              className="flex-1 rounded-lg bg-[#4B97C9] px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-[color:var(--nf-primary)] px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
@@ -960,12 +960,12 @@ export default function AuthorProfile() {
 
   if (profileUnavailable && routeAuthorId !== 'me') {
     return (
-      <main className="min-h-screen bg-[#F4F9F9] pb-16">
+      <main className="min-h-screen bg-[color:var(--nf-surface-soft)] pb-16">
         <div className="mx-auto w-full max-w-lg px-4 pt-8 text-center sm:pt-14">
           <button
             type="button"
             onClick={goBack}
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#1B4965] hover:opacity-80"
+            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[color:var(--nf-heading)] hover:opacity-80"
           >
             <ArrowLeft className="h-4 w-4" />
             {backLabel}
@@ -980,13 +980,13 @@ export default function AuthorProfile() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F4F9F9] pb-16">
+    <main className="min-h-screen bg-[color:var(--nf-surface-soft)] pb-16">
       {/* Back button — sits above the page card */}
       <div className="mx-auto w-full max-w-5xl px-3 pt-4 sm:px-4 sm:pt-7">
         <button
           onClick={goBack}
           className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium transition-colors hover:opacity-80 sm:mb-4 sm:gap-2 sm:text-sm"
-          style={{ color: '#1B4965' }}
+          style={{ color: 'var(--nf-heading)' }}
         >
           <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           {backLabel}
@@ -1019,7 +1019,7 @@ export default function AuthorProfile() {
         <section>
           {/* ── Cover Banner ── */}
           <div
-            className={`relative h-40 w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#1B4965] via-[#2d6688] to-[#4B97C9] sm:h-64 sm:rounded-2xl ${coverImage ? 'cursor-zoom-in' : ''}`}
+            className={`relative h-40 w-full overflow-hidden rounded-xl bg-gradient-to-r from-[color:var(--nf-heading)] via-[#2d6688] to-[color:var(--nf-primary)] sm:h-64 sm:rounded-2xl ${coverImage ? 'cursor-zoom-in' : ''}`}
             onClick={() => coverImage && setLightboxImage(coverImage)}
             role={coverImage ? 'button' : undefined}
             aria-label={coverImage ? 'View cover image' : undefined}
@@ -1060,7 +1060,7 @@ export default function AuthorProfile() {
                 {profileImage ? (
                   <img src={profileImage} alt={resolvedAuthor.name} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-4xl font-bold text-white sm:text-5xl">
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] text-4xl font-bold text-white sm:text-5xl">
                     {resolvedAuthor.name?.charAt(0)?.toUpperCase() || 'A'}
                   </div>
                 )}
@@ -1072,7 +1072,7 @@ export default function AuthorProfile() {
               {isOwnProfile ? (
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[#1B4965] text-[#1B4965] transition-all duration-200 hover:bg-[#1B4965] hover:text-white sm:h-auto sm:w-auto sm:gap-2 sm:rounded-full sm:px-5 sm:py-2 sm:text-sm sm:font-semibold"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[color:var(--nf-heading)] text-[color:var(--nf-heading)] transition-all duration-200 hover:bg-[color:var(--nf-heading)] hover:text-white sm:h-auto sm:w-auto sm:gap-2 sm:rounded-full sm:px-5 sm:py-2 sm:text-sm sm:font-semibold"
                   aria-label="Edit profile"
                 >
                   <Pencil className="h-4 w-4 shrink-0" />
@@ -1086,7 +1086,7 @@ export default function AuthorProfile() {
                       <>
                         <button
                           onClick={() => setShowUnfollowMenu((s) => !s)}
-                          className="inline-flex items-center gap-1 rounded-full border-2 border-[#1B4965] bg-[#1B4965] px-4 py-1.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#163d57] sm:gap-1.5 sm:px-6 sm:py-2"
+                          className="inline-flex items-center gap-1 rounded-full border-2 border-[color:var(--nf-heading)] bg-[color:var(--nf-heading)] px-4 py-1.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#163d57] sm:gap-1.5 sm:px-6 sm:py-2"
                         >
                           Following
                           <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1106,7 +1106,7 @@ export default function AuthorProfile() {
                     ) : (
                       <button
                         onClick={handleFollow}
-                        className="inline-flex items-center gap-1 rounded-full border-2 border-[#4B97C9] bg-[#4B97C9] px-4 py-1.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#3a82b0] sm:gap-1.5 sm:px-6 sm:py-2"
+                        className="inline-flex items-center gap-1 rounded-full border-2 border-[color:var(--nf-primary)] bg-[color:var(--nf-primary)] px-4 py-1.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#3a82b0] sm:gap-1.5 sm:px-6 sm:py-2"
                       >
                         <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Follow
@@ -1120,7 +1120,7 @@ export default function AuthorProfile() {
               <div className="relative shrink-0" ref={dotsMenuRef}>
                 <button
                   onClick={() => setShowDotsMenu((s) => !s)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#dbe7ef] bg-white text-gray-600 transition-all duration-200 hover:border-[#4B97C9] hover:text-[#1B4965] sm:h-10 sm:w-10"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#dbe7ef] bg-white text-gray-600 transition-all duration-200 hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-heading)] sm:h-10 sm:w-10"
                   aria-label="More options"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -1160,7 +1160,7 @@ export default function AuthorProfile() {
                         ) : (
                           <button
                             onClick={() => { handleFollow(); setShowDotsMenu(false) }}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-[#1B4965] hover:bg-[#f0f7fc] transition-colors"
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-[color:var(--nf-heading)] hover:bg-[#f0f7fc] transition-colors"
                           >
                             <UserPlus className="h-4 w-4" />
                             Follow
@@ -1240,18 +1240,18 @@ export default function AuthorProfile() {
                   onClick={() => setActiveTab(tab)}
                   className={`relative px-3 py-3 text-xs font-semibold capitalize transition-colors duration-200 sm:px-4 sm:py-4 sm:text-sm ${
                     activeTab === tab
-                      ? 'text-[#1B4965]'
+                      ? 'text-[color:var(--nf-heading)]'
                       : 'text-gray-400 hover:text-gray-700'
                   }`}
                 >
                   {tab}
                   {tab === 'posts' && posts.length > 0 && (
-                    <span className="ml-1 rounded-full bg-[#edf4f9] px-1 py-px text-[10px] font-bold text-[#4B97C9] sm:ml-1.5 sm:px-1.5 sm:py-0.5">
+                    <span className="ml-1 rounded-full bg-[#edf4f9] px-1 py-px text-[10px] font-bold text-[color:var(--nf-primary)] sm:ml-1.5 sm:px-1.5 sm:py-0.5">
                       {posts.length}
                     </span>
                   )}
                   {activeTab === tab && (
-                    <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-t-full bg-[#1B4965]" />
+                    <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-t-full bg-[color:var(--nf-heading)]" />
                   )}
                 </button>
               ))}
@@ -1261,7 +1261,7 @@ export default function AuthorProfile() {
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="h-8 w-44 rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                  className="h-8 w-44 rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20"
                   placeholder="Search posts..."
                 />
                 <CustomSelect
@@ -1282,7 +1282,7 @@ export default function AuthorProfile() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="h-9 w-full rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                className="h-9 w-full rounded-lg border border-[#dbe7ef] px-3 text-sm outline-none transition-colors focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20"
                 placeholder="Search posts..."
               />
               <CustomSelect
@@ -1421,7 +1421,7 @@ export default function AuthorProfile() {
                           {actorProfileHrefIn ? (
                             <a
                               href={actorProfileHrefIn}
-                              className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
+                              className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--nf-primary)]"
                             >
                               {actorAvatarUrl ? (
                                 <img
@@ -1430,7 +1430,7 @@ export default function AuthorProfile() {
                                   className="h-11 w-11 rounded-full object-cover border border-gray-100 bg-white"
                                 />
                               ) : (
-                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-sm font-bold text-white">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] text-sm font-bold text-white">
                                   {actorInitial}
                                 </div>
                               )}
@@ -1453,7 +1453,7 @@ export default function AuthorProfile() {
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] leading-snug text-gray-800">
                               {actorProfileHrefIn ? (
-                                <a href={actorProfileHrefIn} className="font-semibold text-[#1B4965] hover:underline">
+                                <a href={actorProfileHrefIn} className="font-semibold text-[color:var(--nf-heading)] hover:underline">
                                   {item.actor_name || 'Someone'}
                                 </a>
                               ) : (
@@ -1491,7 +1491,7 @@ export default function AuthorProfile() {
                       <div className="flex gap-3">
                         <a
                           href={profileOwnerHref}
-                          className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
+                          className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--nf-primary)]"
                           title="View profile"
                         >
                           {profileImage ? (
@@ -1501,7 +1501,7 @@ export default function AuthorProfile() {
                               className="h-11 w-11 rounded-full object-cover border border-gray-100 bg-white"
                             />
                           ) : (
-                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-sm font-bold text-white">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] text-sm font-bold text-white">
                               {ownerInitial}
                             </div>
                           )}
@@ -1530,18 +1530,18 @@ export default function AuthorProfile() {
 
                           {isRepostedComment && item.comment_content && recommentDeepLink && (
                             <div className="mb-2.5 flex flex-col gap-1 rounded-xl border border-[#e6f0f8] bg-[#f4f9fc] p-3 -mx-0">
-                              <div className="mb-0.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[#4B97C9] uppercase tracking-wide">
+                              <div className="mb-0.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[color:var(--nf-primary)] uppercase tracking-wide">
                                 <MessageCircle className="h-3 w-3 shrink-0" />
                                 <span>Comment by</span>
                                 {commentProfileHref ? (
                                   <a
                                     href={commentProfileHref}
-                                    className="font-semibold text-[#1B4965] underline-offset-2 hover:underline normal-case tracking-normal"
+                                    className="font-semibold text-[color:var(--nf-heading)] underline-offset-2 hover:underline normal-case tracking-normal"
                                   >
                                     {item.comment_author_name || 'Anonymous'}
                                   </a>
                                 ) : (
-                                  <span className="font-semibold text-[#1B4965] normal-case tracking-normal">
+                                  <span className="font-semibold text-[color:var(--nf-heading)] normal-case tracking-normal">
                                     {item.comment_author_name || 'Anonymous'}
                                   </span>
                                 )}
@@ -1562,7 +1562,7 @@ export default function AuthorProfile() {
                                 from:{' '}
                                 <a
                                   href={postOnlyLink}
-                                  className="font-medium text-[#4B97C9] underline-offset-2 hover:underline"
+                                  className="font-medium text-[color:var(--nf-primary)] underline-offset-2 hover:underline"
                                 >
                                   {stripHtml(item.post_title || '')}
                                 </a>
@@ -1607,7 +1607,7 @@ export default function AuthorProfile() {
                         )}
                         <div className="flex flex-1 flex-col justify-between p-4 sm:p-6">
                           <div>
-                            <h3 className="text-base font-bold leading-snug text-gray-900 group-hover:text-[#1B4965] sm:text-xl">
+                            <h3 className="text-base font-bold leading-snug text-gray-900 group-hover:text-[color:var(--nf-heading)] sm:text-xl">
                               {stripHtml(post.title)}
                             </h3>
                             <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-600 sm:mt-2 sm:text-sm">{stripHtml(post.excerpt)}</p>
@@ -1617,7 +1617,7 @@ export default function AuthorProfile() {
                                 {categories.slice(0, 3).map((category) => (
                                   <span
                                     key={`${post.id}-${category}`}
-                                    className="rounded-full bg-[#f0f7fc] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#1B4965]"
+                                    className="rounded-full bg-[#f0f7fc] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[color:var(--nf-heading)]"
                                   >
                                     {category}
                                   </span>
@@ -1648,7 +1648,7 @@ export default function AuthorProfile() {
 
                             <a
                               href={`#/user/blog/${post.id}`}
-                              className="inline-flex items-center gap-1 rounded-lg bg-[#1B4965] px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#0f2f42]"
+                              className="inline-flex items-center gap-1 rounded-lg bg-[color:var(--nf-heading)] px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#0f2f42]"
                             >
                               Read post
                               <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
@@ -1664,7 +1664,7 @@ export default function AuthorProfile() {
         ) : (
           <div className="px-4 py-4 sm:px-8 sm:py-6">
             <div className="mb-6 flex items-start gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-white">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] text-white">
                 <UserRound className="h-6 w-6" />
               </div>
               <div>
@@ -1680,7 +1680,7 @@ export default function AuthorProfile() {
                     <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Languages</div>
                     <div className="flex flex-wrap gap-2">
                       {authorProfile.writing_languages.map((lang) => (
-                        <span key={lang} className="rounded-full bg-[#f0f7fc] px-3 py-1 text-sm font-medium text-[#1B4965]">{lang}</span>
+                        <span key={lang} className="rounded-full bg-[#f0f7fc] px-3 py-1 text-sm font-medium text-[color:var(--nf-heading)]">{lang}</span>
                       ))}
                     </div>
                   </div>
@@ -1694,7 +1694,7 @@ export default function AuthorProfile() {
                 {authorProfile?.website ? (
                   <div className="py-4">
                     <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Website</div>
-                    <a href={authorProfile.website.startsWith('http') ? authorProfile.website : `https://${authorProfile.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#4B97C9] hover:underline">{authorProfile.website}</a>
+                    <a href={authorProfile.website.startsWith('http') ? authorProfile.website : `https://${authorProfile.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[color:var(--nf-primary)] hover:underline">{authorProfile.website}</a>
                   </div>
                 ) : null}
                 {authorProfile?.social_links && Object.keys(authorProfile.social_links).length > 0 ? (
@@ -1702,7 +1702,7 @@ export default function AuthorProfile() {
                     <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Connect</div>
                     <div className="flex flex-wrap gap-3">
                       {Object.entries(authorProfile.social_links).filter(([, url]) => url).map(([platform, url]) => (
-                        <a key={platform} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium capitalize text-[#4B97C9] hover:underline">{platform}</a>
+                        <a key={platform} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium capitalize text-[color:var(--nf-primary)] hover:underline">{platform}</a>
                       ))}
                     </div>
                   </div>
@@ -1715,7 +1715,7 @@ export default function AuthorProfile() {
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
                   Publishing cadence
                 </div>
-                <div className="text-lg font-bold text-[#1B4965]">
+                <div className="text-lg font-bold text-[color:var(--nf-heading)]">
                   {authorStats.posts > 8 ? 'Weekly' : authorStats.posts > 3 ? 'Bi-weekly' : 'Occasional'}
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
@@ -1724,7 +1724,7 @@ export default function AuthorProfile() {
               </div>
               <div className="rounded-xl border border-[#e6eff5] bg-[#f8fbfd] p-5">
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Community</div>
-                <div className="text-lg font-bold text-[#1B4965]">
+                <div className="text-lg font-bold text-[color:var(--nf-heading)]">
                   {formatCompactNumber(authorStats.followers + authorStats.following)}
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
@@ -1743,7 +1743,7 @@ export default function AuthorProfile() {
                   {(hasAuthorProfile && authorProfile?.writing_categories?.length ? authorProfile.writing_categories : featuredCategories).map((topic) => (
                     <span
                       key={topic}
-                      className="rounded-full border border-[#dce9f2] bg-[#f0f7fc] px-4 py-1.5 text-sm font-medium capitalize text-[#1B4965] transition-all duration-200 hover:border-[#4B97C9]"
+                      className="rounded-full border border-[#dce9f2] bg-[#f0f7fc] px-4 py-1.5 text-sm font-medium capitalize text-[color:var(--nf-heading)] transition-all duration-200 hover:border-[color:var(--nf-primary)]"
                     >
                       {topic}
                     </span>
@@ -1757,7 +1757,7 @@ export default function AuthorProfile() {
                 <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Contact</div>
                 <a
                   href={`mailto:${resolvedAuthor.email}`}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-[#4B97C9] transition-colors hover:text-[#1B4965] hover:underline"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-[color:var(--nf-primary)] transition-colors hover:text-[color:var(--nf-heading)] hover:underline"
                 >
                   <span>{resolvedAuthor.email}</span>
                 </a>
@@ -1837,7 +1837,7 @@ export default function AuthorProfile() {
                     onClick={() => switchSocialTab(tab)}
                     className={`flex-1 py-3 text-[13px] font-semibold transition-colors ${
                       socialModalTab === tab
-                        ? 'border-b-2 border-[#1B4965] text-[#1B4965]'
+                        ? 'border-b-2 border-[color:var(--nf-heading)] text-[color:var(--nf-heading)]'
                         : 'text-gray-400 hover:text-gray-600'
                     }`}
                   >
@@ -1851,7 +1851,7 @@ export default function AuthorProfile() {
             <div className="min-h-0 flex-1 overflow-y-auto" style={{ overscrollBehavior: 'contain' }}>
               {loadingSocial ? (
                 <div className="flex items-center justify-center py-16">
-                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
                 </div>
               ) : socialList.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -1891,7 +1891,7 @@ export default function AuthorProfile() {
                               className="h-11 w-11 flex-shrink-0 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[13px] font-bold text-[#1B4965]">
+                            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[13px] font-bold text-[color:var(--nf-heading)]">
                               {initials}
                             </div>
                           )}

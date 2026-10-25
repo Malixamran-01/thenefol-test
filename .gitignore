@@ -38,6 +38,7 @@ security-audit.md
 .cursor/
 .agents/
 node_modules
+.claude/
 
 # Large upload files (exceed GitHub 100MB limit)
 # Exclude entire uploads folder (legacy in-tree path)

@@ -193,7 +193,7 @@ export default function Notifications() {
   })
 
   return (
-    <main className="py-10 min-h-screen" style={{backgroundColor: '#F4F9F9'}}>
+    <main className="py-10 min-h-screen" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="mx-auto max-w-4xl px-4">
         {/* Header */}
         <div className="mb-8">
@@ -212,9 +212,9 @@ export default function Notifications() {
               <button
                 onClick={markAllAsRead}
                 className="px-4 py-2 text-sm text-white rounded-lg transition-colors"
-                style={{ backgroundColor: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                style={{ backgroundColor: 'var(--nf-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
               >
                 Mark all as read
               </button>
@@ -235,7 +235,7 @@ export default function Notifications() {
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
                 {f === 'unread' && unreadCount > 0 && (
-                  <span className="ml-2 px-2 py-0.5 text-xs text-white rounded-full" style={{ backgroundColor: 'rgb(75,151,201)' }}>
+                  <span className="ml-2 px-2 py-0.5 text-xs text-white rounded-full" style={{ backgroundColor: 'var(--nf-primary)' }}>
                     {unreadCount}
                   </span>
                 )}

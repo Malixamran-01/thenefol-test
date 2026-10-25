@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx'
 import { useToast } from '../../components/ToastProvider'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { parseCSV, slugify } from '../../utils/csv'
-import { uploadFile } from '../../utils/upload'
+import { uploadFile, uploadMedia, isVideoUrl, MAX_VIDEO_BYTES, VIDEO_ACCEPT } from '../../utils/upload'
 import { socketService } from '../../services/socket'
 import { getApiBaseUrl } from '../../utils/apiUrl'
 
@@ -72,7 +72,8 @@ function ProductsManager() {
   const [bulkRows, setBulkRows] = useState<Record<string, string>[]>([])
   const [bulkLoading, setBulkLoading] = useState(false)
   const [selected, setSelected] = useState<Product | null>(null)
-  const [pdpImages, setPdpImages] = useState<Array<{ id: number; url: string; type?: string; display_order?: number }>>([])
+  const [pdpImages, setPdpImages] = useState<Array<{ id: number; url: string; type?: string; display_order?: number; poster_url?: string | null }>>([])
+  const [videoUpload, setVideoUpload] = useState<{ name: string; percent: number } | null>(null)
   const [bannerImages, setBannerImages] = useState<Array<{ id: number; url: string; type?: string; display_order?: number }>>([])
   const [draggedImage, setDraggedImage] = useState<{ id: number; type: 'pdp' | 'banner'; index: number } | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<{ type: 'pdp' | 'banner'; index: number } | null>(null)
@@ -88,6 +89,7 @@ function ProductsManager() {
   })
   const [formMainImage, setFormMainImage] = useState<File | null>(null)
   const [formPdpImages, setFormPdpImages] = useState<File[]>([])
+  const [formPdpVideo, setFormPdpVideo] = useState<File | null>(null)
 
   // Use centralized API URL utility that respects VITE_API_URL
   const apiBase = getApiBaseUrl()
@@ -102,6 +104,50 @@ function ProductsManager() {
     if (permissions) headers['x-user-permissions'] = permissions
     return headers
   }, [])
+
+  /** Returns an error message when the file can't be used as a PDP video. */
+  const validateVideoFile = (file: File): string | null => {
+    if (!file.type.startsWith('video/') && !isVideoUrl(file.name)) return 'Please choose a video file (MP4, WebM or MOV).'
+    if (file.size > MAX_VIDEO_BYTES) return `Video is ${(file.size / 1048576).toFixed(0)}MB — keep PDP videos under ${MAX_VIDEO_BYTES / 1048576}MB.`
+    return null
+  }
+
+  const loadProductMedia = async (productId: number) => {
+    const imagesRes = await fetch(`${apiBase}/products/${productId}/images`)
+    if (!imagesRes.ok) return
+    const response = await imagesRes.json()
+    // Handle both direct array response and wrapped response
+    const images = Array.isArray(response) ? response : (response.data || response.images || [])
+    // Store full image objects with IDs for deletion, sorted by display_order
+    const toItem = (img: any) => ({ id: img.id, url: img.url, type: img.type, display_order: img.display_order || img.id, poster_url: img.poster_url || null })
+    const byOrder = (a: any, b: any) => (a.display_order || 0) - (b.display_order || 0)
+    setPdpImages(images.filter((img: any) => (img.type === 'pdp' || !img.type) && img.url && img.id).map(toItem).sort(byOrder))
+    setBannerImages(images.filter((img: any) => img.type === 'banner' && img.url && img.id).map(toItem).sort(byOrder))
+  }
+
+  const uploadPdpVideo = async (productId: number, file: File) => {
+    const invalid = validateVideoFile(file)
+    if (invalid) {
+      notify('error', invalid)
+      return false
+    }
+    setVideoUpload({ name: file.name, percent: 0 })
+    try {
+      const media = await uploadMedia(file, apiBase, (percent) => setVideoUpload({ name: file.name, percent }))
+      const res = await fetch(`${apiBase}/products/${productId}/images`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ images: [{ url: media.url, poster: media.poster }], type: 'pdp' })
+      })
+      if (!res.ok) throw new Error('save failed')
+      return true
+    } catch (err) {
+      notify('error', `Video upload failed${err instanceof Error && err.message ? `: ${err.message}` : ''}`)
+      return false
+    } finally {
+      setVideoUpload(null)
+    }
+  }
 
   const deleteOneProductImage = async (imageId: number) => {
     if (!selected) return false
@@ -251,10 +297,15 @@ function ProductsManager() {
           // ignore PDP upload errors for now
         }
       }
+      if (formPdpVideo) {
+        // Appended after the images; reorder from the Images dialog
+        await uploadPdpVideo(created.id, formPdpVideo)
+      }
       await load()
       setForm({ slug: '', title: '', category: '', price: '', list_image: '', description: '', details: { ...form.details, sku: '', hsn: '', mrp: '', websitePrice: '', discountPercent: '' } })
       setFormMainImage(null)
       setFormPdpImages([])
+      setFormPdpVideo(null)
     } catch (e) {
       notify('error','Create failed')
     }
@@ -728,7 +779,7 @@ function ProductsManager() {
               <span className="text-xs text-white/50">or</span>
               <input className="flex-1 rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="List Image URL (optional)" value={form.list_image||''} onChange={e=>setForm(prev=>({...prev, list_image:e.target.value}))} />
             </div>
-            <div className="mt-2 text-xs text-white/50">Add additional video in PDP Media below.</div>
+            <div className="mt-2 text-xs text-white/50">Add a product video in PDP Video below.</div>
           </div>
           <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-3" placeholder="Description" value={form.description||''} onChange={e=>setForm(prev=>({...prev, description:e.target.value}))} />
           <textarea className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-3" placeholder="How to Use" value={form.details?.howToUse||''} onChange={e=>setForm(prev=>({...prev, details: { ...(prev.details||{}), howToUse:e.target.value }}))} />
@@ -736,12 +787,32 @@ function ProductsManager() {
           <textarea className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-3" placeholder="Ingredient Benefits" value={form.details?.ingredientBenefits||''} onChange={e=>setForm(prev=>({...prev, details: { ...(prev.details||{}), ingredientBenefits:e.target.value }}))} />
           <textarea className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-3" placeholder="Bullet Highlights" value={form.details?.bulletHighlights||''} onChange={e=>setForm(prev=>({...prev, details: { ...(prev.details||{}), bulletHighlights:e.target.value }}))} />
           <div className="md:col-span-3">
-            <div className="mb-1 text-xs text-white/70">PDP Media (images or 1 video)</div>
-            <input multiple type="file" accept="image/*,video/*" onChange={e=>setFormPdpImages(Array.from(e.target.files||[]))} className="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-            <div className="mt-2 text-xs text-white/50">Tip: Upload up to 7 images and 1 short video (mp4/webm).</div>
+            <div className="mb-1 text-xs text-white/70">PDP Images</div>
+            <input multiple type="file" accept="image/*" onChange={e=>setFormPdpImages(Array.from(e.target.files||[]))} className="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            <div className="mt-2 text-xs text-white/50">Tip: Upload up to 7 images.</div>
           </div>
           <div className="md:col-span-3">
-            <button className="rounded bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-700">Save</button>
+            <div className="mb-1 text-xs text-white/70">PDP Video (optional)</div>
+            <input type="file" accept={VIDEO_ACCEPT} onChange={e=>{
+              const file = e.target.files?.[0] || null
+              const invalid = file ? validateVideoFile(file) : null
+              if (invalid) {
+                notify('error', invalid)
+                e.target.value = ''
+                setFormPdpVideo(null)
+                return
+              }
+              setFormPdpVideo(file)
+            }} className="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            <div className="mt-2 text-xs text-white/50">MP4, WebM or MOV, up to {MAX_VIDEO_BYTES / 1048576}MB. A 15–60s clip works best; it's compressed for fast loading after upload.</div>
+          </div>
+          <div className="md:col-span-3 flex items-center gap-3">
+            <button disabled={!!videoUpload} className="rounded bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-700 disabled:opacity-60">Save</button>
+            {videoUpload && (
+              <span className="text-xs text-white/70">
+                {videoUpload.percent < 100 ? `Uploading video… ${videoUpload.percent}%` : 'Optimizing video…'}
+              </span>
+            )}
           </div>
         </form>
       </div>
@@ -852,23 +923,7 @@ function ProductsManager() {
                           setBannerImages([])
                           // Load existing images
                           try {
-                            const imagesRes = await fetch(`${apiBase}/products/${p.id}/images`)
-                            if (imagesRes.ok) {
-                              const response = await imagesRes.json()
-                              // Handle both direct array response and wrapped response
-                              const images = Array.isArray(response) ? response : (response.data || response.images || [])
-                              // Store full image objects with IDs for deletion, sorted by display_order
-                              const pdpImgs: Array<{ id: number; url: string; type?: string; display_order?: number }> = images
-                                .filter((img: any) => (img.type === 'pdp' || !img.type) && img.url && img.id)
-                                .map((img: any) => ({ id: img.id, url: img.url, type: img.type, display_order: img.display_order || img.id }))
-                                .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
-                              const bannerImgs: Array<{ id: number; url: string; type?: string; display_order?: number }> = images
-                                .filter((img: any) => img.type === 'banner' && img.url && img.id)
-                                .map((img: any) => ({ id: img.id, url: img.url, type: img.type, display_order: img.display_order || img.id }))
-                                .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
-                              setPdpImages(pdpImgs)
-                              setBannerImages(bannerImgs)
-                            }
+                            await loadProductMedia(p.id)
                           } catch (_) {
                             // ignore errors
                           }
@@ -975,7 +1030,7 @@ function ProductsManager() {
                 <div>
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm text-gray-700">
-                      PDP images <span className="text-xs text-gray-500">(drag to reorder · click Remove on each)</span>
+                      PDP images &amp; video <span className="text-xs text-gray-500">(drag to reorder · click Remove on each)</span>
                     </span>
                     {pdpImages.length > 0 && (
                       <button
@@ -994,7 +1049,7 @@ function ProductsManager() {
                   <div className="flex flex-wrap gap-2">
                     {pdpImages.map((img, idx) => {
                       const abs = toAbs(img.url)
-                      const isVid = /\.(mp4|webm|ogg)(\?|$)/i.test(abs)
+                      const isVid = isVideoUrl(abs)
                       const isDragging = draggedImage?.id === img.id && draggedImage?.type === 'pdp'
                       const isDragOver = dragOverIndex?.type === 'pdp' && dragOverIndex?.index === idx
                       return (
@@ -1036,9 +1091,18 @@ function ProductsManager() {
                           <div className="absolute top-1 left-1 bg-blue-500 text-white rounded-full p-1 text-xs z-10">
                             {idx + 1}
                           </div>
-                          <div className="h-16 w-16 rounded border border-gray-200 bg-gray-50 overflow-hidden">
+                          <div className="relative h-16 w-16 rounded border border-gray-200 bg-gray-50 overflow-hidden">
                             {isVid ? (
-                              <video src={abs} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                              <>
+                                {img.poster_url ? (
+                                  <img src={toAbs(img.poster_url)} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <video src={`${abs}#t=0.1`} preload="metadata" muted playsInline className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                                )}
+                                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25">
+                                  <svg className="h-5 w-5 text-white drop-shadow" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                                </span>
+                              </>
                             ) : (
                               <img src={abs} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
                             )}
@@ -1047,7 +1111,7 @@ function ProductsManager() {
                             type="button"
                             onClick={async (e) => {
                               e.stopPropagation()
-                              if (!confirm('Remove this PDP image from the product?')) return
+                              if (!confirm(isVid ? 'Remove this video from the product? The file is deleted from the server.' : 'Remove this PDP image from the product?')) return
                               try {
                                 const ok = await deleteOneProductImage(img.id)
                                 if (ok) {
@@ -1070,41 +1134,59 @@ function ProductsManager() {
                       )
                     })}
                   </div>
-                  <div className="mt-2">
-                    <input multiple type="file" accept="image/*,video/*" className="rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" onChange={async e=>{
-                      const files = Array.from(e.target.files || [])
-                      if (!files.length) return
-                      try {
-                        const uploaded: string[] = []
-                        for (const f of files) {
-                          const url = await uploadFile(f, apiBase)
-                          uploaded.push(url)
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-medium text-gray-600">Add images</span>
+                      <input multiple type="file" accept="image/*" className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" onChange={async e=>{
+                        const files = Array.from(e.target.files || [])
+                        e.target.value = ''
+                        if (!files.length) return
+                        try {
+                          const uploaded: string[] = []
+                          for (const f of files) {
+                            const url = await uploadFile(f, apiBase)
+                            uploaded.push(url)
+                          }
+                          await fetch(`${apiBase}/products/${selected.id}/images`, {
+                            method: 'POST',
+                            headers: authHeaders,
+                            body: JSON.stringify({ images: uploaded, type: 'pdp' })
+                          })
+                          // Reload images from database to get full objects with IDs
+                          await loadProductMedia(selected.id)
+                          await load()
+                          notify('success','PDP images uploaded')
+                        } catch (_) {
+                          notify('error','Upload failed')
                         }
-                        await fetch(`${apiBase}/products/${selected.id}/images`, {
-                          method: 'POST',
-                          headers: authHeaders,
-                          body: JSON.stringify({ images: uploaded, type: 'pdp' })
-                        })
-                        // Reload images from database to get full objects with IDs
-                        const imagesRes = await fetch(`${apiBase}/products/${selected.id}/images`)
-                        if (imagesRes.ok) {
-                          const response = await imagesRes.json()
-                          // Handle both direct array response and wrapped response
-                          const images = Array.isArray(response) ? response : (response.data || response.images || [])
-                          // Store full image objects with IDs for deletion, sorted by display_order
-                          const pdpImgs: Array<{ id: number; url: string; type?: string; display_order?: number }> = images
-                            .filter((img: any) => (img.type === 'pdp' || !img.type) && img.url && img.id)
-                            .map((img: any) => ({ id: img.id, url: img.url, type: img.type, display_order: img.display_order || img.id }))
-                            .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
-                          setPdpImages(pdpImgs)
-                        }
+                      }} />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-medium text-gray-600">Add video <span className="font-normal text-gray-400">(MP4/WebM/MOV, ≤ {MAX_VIDEO_BYTES / 1048576}MB)</span></span>
+                      <input type="file" accept={VIDEO_ACCEPT} disabled={!!videoUpload} className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-60" onChange={async e=>{
+                        const file = e.target.files?.[0]
+                        e.target.value = ''
+                        if (!file) return
+                        const productId = selected.id
+                        const ok = await uploadPdpVideo(productId, file)
+                        if (!ok) return
+                        await loadProductMedia(productId)
                         await load()
-                        notify('success','PDP images uploaded')
-                      } catch (_) {
-                        notify('error','Upload failed')
-                      }
-                    }} />
+                        notify('success','Video added to PDP')
+                      }} />
+                    </label>
                   </div>
+                  {videoUpload && (
+                    <div className="mt-2">
+                      <div className="mb-1 flex justify-between text-xs text-gray-600">
+                        <span className="truncate pr-2">{videoUpload.name}</span>
+                        <span>{videoUpload.percent < 100 ? `Uploading ${videoUpload.percent}%` : 'Optimizing for fast playback…'}</span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded bg-gray-200">
+                        <div className={`h-full bg-blue-600 transition-all ${videoUpload.percent >= 100 ? 'animate-pulse' : ''}`} style={{ width: `${videoUpload.percent}%` }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

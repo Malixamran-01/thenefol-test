@@ -199,6 +199,7 @@ const Layout = () => {
       defaultOpen: true,
       items: [
         { name: 'Products', href: '/loginasadmin/products', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/products' },
+        { name: 'Reviews', href: '/loginasadmin/product-reviews', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/product-reviews' },
         { name: 'Catalog', href: '/loginasadmin/categories', requiredPermission: NavCatalog.categories, current: location.pathname === '/loginasadmin/categories' },
         {
           name: 'Product collections',
@@ -340,6 +341,7 @@ const Layout = () => {
       items: [
         { name: 'Online store', href: '/loginasadmin/store', current: location.pathname === '/loginasadmin/store' },
         { name: 'Homepage layout', href: '/loginasadmin/homepage-layout', badge: 'NEW', current: location.pathname === '/loginasadmin/homepage-layout' },
+        { name: 'Theme customizer', href: '/loginasadmin/theme', badge: 'NEW', current: location.pathname === '/loginasadmin/theme' },
       ],
     },
 

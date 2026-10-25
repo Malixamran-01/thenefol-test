@@ -6,16 +6,16 @@ export default function CoinWithdrawal() {
   return (
     <main
       className="min-h-screen overflow-x-hidden py-8 sm:py-12 md:py-16"
-      style={{ backgroundColor: '#F4F9F9', fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}
+      style={{ backgroundColor: 'var(--nf-surface-soft)', fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}
     >
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
 
@@ -34,7 +34,7 @@ export default function CoinWithdrawal() {
         <div className="mb-8">
           <h1
             className="text-3xl sm:text-4xl font-light tracking-[0.1em] mb-2"
-            style={{ color: '#1B4965', fontFamily: 'var(--font-heading-family)' }}
+            style={{ color: 'var(--nf-heading)', fontFamily: 'var(--font-heading-family)' }}
           >
             Coin withdrawal
           </h1>

@@ -947,12 +947,12 @@ useEffect(() => {
       <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
-            --arctic-blue-primary: rgb(75,151,201);
-            --arctic-blue-primary-hover: rgb(60,120,160);
-            --arctic-blue-primary-dark: rgb(50,100,140);
-            --arctic-blue-light: #E0F5F5;
-            --arctic-blue-lighter: #F0F9F9;
-            --arctic-blue-background: #F4F9F9;
+            --arctic-blue-primary: var(--nf-primary);
+            --arctic-blue-primary-hover: var(--nf-primary-hover);
+            --arctic-blue-primary-dark: var(--nf-primary-dark);
+            --arctic-blue-light: var(--nf-primary-light);
+            --arctic-blue-lighter: var(--nf-primary-lighter);
+            --arctic-blue-background: var(--nf-surface-soft);
           }
         `}</style>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
@@ -984,12 +984,12 @@ useEffect(() => {
       <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
-            --arctic-blue-primary: rgb(75,151,201);
-            --arctic-blue-primary-hover: rgb(60,120,160);
-            --arctic-blue-primary-dark: rgb(50,100,140);
-            --arctic-blue-light: #E0F5F5;
-            --arctic-blue-lighter: #F0F9F9;
-            --arctic-blue-background: #F4F9F9;
+            --arctic-blue-primary: var(--nf-primary);
+            --arctic-blue-primary-hover: var(--nf-primary-hover);
+            --arctic-blue-primary-dark: var(--nf-primary-dark);
+            --arctic-blue-light: var(--nf-primary-light);
+            --arctic-blue-lighter: var(--nf-primary-lighter);
+            --arctic-blue-background: var(--nf-surface-soft);
           }
         `}</style>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -997,7 +997,7 @@ useEffect(() => {
             <h1
               className="text-2xl sm:text-3xl md:text-4xl font-light mb-2 tracking-[0.12em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.12em',
               }}
@@ -1039,12 +1039,12 @@ useEffect(() => {
       <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <style>{`
           :root {
-            --arctic-blue-primary: rgb(75,151,201);
-            --arctic-blue-primary-hover: rgb(60,120,160);
-            --arctic-blue-primary-dark: rgb(50,100,140);
-            --arctic-blue-light: #E0F5F5;
-            --arctic-blue-lighter: #F0F9F9;
-            --arctic-blue-background: #F4F9F9;
+            --arctic-blue-primary: var(--nf-primary);
+            --arctic-blue-primary-hover: var(--nf-primary-hover);
+            --arctic-blue-primary-dark: var(--nf-primary-dark);
+            --arctic-blue-light: var(--nf-primary-light);
+            --arctic-blue-lighter: var(--nf-primary-lighter);
+            --arctic-blue-background: var(--nf-surface-soft);
           }
         `}</style>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -1075,7 +1075,7 @@ useEffect(() => {
                 <h1 
                   className="text-3xl sm:text-4xl md:text-5xl font-light mb-3 tracking-[0.15em]" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -1131,7 +1131,7 @@ useEffect(() => {
               {partnerDashboardRevTabs.map(({ key, label }) => (
                 <button key={key} type="button" onClick={() => setRevTab(key)}
                   className={`border-b-2 px-4 py-2.5 text-[13px] transition-colors font-light tracking-wide ${
-                    revTab === key ? 'border-[rgb(75,151,201)] text-[rgb(50,100,140)]' : 'border-transparent text-gray-400 hover:text-gray-600'
+                    revTab === key ? 'border-[color:var(--nf-primary)] text-[color:var(--nf-primary-dark)]' : 'border-transparent text-gray-400 hover:text-gray-600'
                   }`} style={{ letterSpacing: '0.05em' }}>
                   {label}
                 </button>
@@ -1149,7 +1149,7 @@ useEffect(() => {
             )}
             {/* Currency Selector */}
             <div className="mb-6 flex items-center gap-3">
-              <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Currency:</p>
+              <p className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>Currency:</p>
               <div className="flex gap-2">
                 {[
                   { code: 'INR', symbol: '₹', flag: '🇮🇳', name: 'Indian Rupee' },
@@ -1166,7 +1166,7 @@ useEffect(() => {
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                     style={{
-                      color: selectedCurrency === currency.code ? 'rgb(75,151,201)' : '#666'
+                      color: selectedCurrency === currency.code ? 'var(--nf-primary)' : 'var(--nf-text-muted)'
                     }}
                   >
                     <span className="text-lg">{currency.flag}</span>
@@ -1182,7 +1182,7 @@ useEffect(() => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-light tracking-wide mb-2" style={{ color: 'var(--arctic-blue-primary-dark)', letterSpacing: '0.05em' }}>Total Earnings</p>
-                    <p className="text-2xl sm:text-3xl font-light" style={{ color: '#1a1a1a' }}>
+                    <p className="text-2xl sm:text-3xl font-light" style={{ color: 'var(--nf-text)' }}>
                       {selectedCurrency === 'INR' && '₹'}
                       {selectedCurrency === 'USD' && '$'}
                       {selectedCurrency === 'EUR' && '€'}
@@ -1217,7 +1217,7 @@ useEffect(() => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-light tracking-wide mb-2" style={{ color: 'var(--arctic-blue-primary-dark)', letterSpacing: '0.05em' }}>Total Referrals</p>
-                    <p className="text-2xl sm:text-3xl font-light" style={{ color: '#1a1a1a' }}>{affiliateData?.total_referrals || 0}</p>
+                    <p className="text-2xl sm:text-3xl font-light" style={{ color: 'var(--nf-text)' }}>{affiliateData?.total_referrals || 0}</p>
                   </div>
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                     <Users className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
@@ -1229,7 +1229,7 @@ useEffect(() => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-light tracking-wide mb-2" style={{ color: 'var(--arctic-blue-primary-dark)', letterSpacing: '0.05em' }}>Conversion Rate</p>
-                    <p className="text-2xl sm:text-3xl font-light" style={{ color: '#1a1a1a' }}>{(affiliateData?.conversion_rate || 0).toFixed(1)}%</p>
+                    <p className="text-2xl sm:text-3xl font-light" style={{ color: 'var(--nf-text)' }}>{(affiliateData?.conversion_rate || 0).toFixed(1)}%</p>
                   </div>
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                     <TrendingUp className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
@@ -1241,7 +1241,7 @@ useEffect(() => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-light tracking-wide mb-2" style={{ color: 'var(--arctic-blue-primary-dark)', letterSpacing: '0.05em' }}>Commission Rate</p>
-                    <p className="text-2xl sm:text-3xl font-light" style={{ color: '#1a1a1a' }}>
+                    <p className="text-2xl sm:text-3xl font-light" style={{ color: 'var(--nf-text)' }}>
                       {(commissionSettings?.commission_percentage !== undefined 
                         ? commissionSettings.commission_percentage 
                         : affiliateData?.commission_rate) || 0}%
@@ -1257,7 +1257,7 @@ useEffect(() => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs sm:text-sm font-light tracking-wide mb-2" style={{ color: 'var(--arctic-blue-primary-dark)', letterSpacing: '0.05em' }}>Nefol Coins</p>
-                    <p className="text-2xl sm:text-3xl font-light" style={{ color: '#1a1a1a' }}>
+                    <p className="text-2xl sm:text-3xl font-light" style={{ color: 'var(--nf-text)' }}>
                       {affiliateData?.total_earnings ? Math.floor(affiliateData.total_earnings * 10) : nefolCoins}
                     </p>
                     <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#999', letterSpacing: '0.05em' }}>1 rupee = 10 coins</p>
@@ -1274,7 +1274,7 @@ useEffect(() => {
             <div className="mb-8 sm:mb-10">
               <h2
                 className="text-xl sm:text-2xl font-light mb-5 tracking-[0.1em]"
-                style={{ color: '#1B4965', fontFamily: 'var(--font-heading-family)' }}
+                style={{ color: 'var(--nf-heading)', fontFamily: 'var(--font-heading-family)' }}
               >
                 Withdraw earnings
               </h2>
@@ -1287,7 +1287,7 @@ useEffect(() => {
                 <h2 
                   className="text-xl sm:text-2xl font-light mb-4 tracking-[0.15em]" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -1337,7 +1337,7 @@ useEffect(() => {
               <h2 
                 className="text-xl sm:text-2xl font-light mb-6 tracking-[0.15em]" 
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -1388,7 +1388,7 @@ useEffect(() => {
                 <h2 
                   className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -1396,7 +1396,7 @@ useEffect(() => {
                   Recent Referrals
                 </h2>
                 {referralsTotal > 0 && (
-                  <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+                  <p className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                     Showing {((referralsPage - 1) * 10) + 1}-{Math.min(referralsPage * 10, referralsTotal)} of {referralsTotal}
                   </p>
                 )}
@@ -1588,7 +1588,7 @@ useEffect(() => {
                 <h2 
                   className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -2146,12 +2146,12 @@ useEffect(() => {
     <main className={mainEmbed} style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -2171,7 +2171,7 @@ useEffect(() => {
             <h1 
               className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]" 
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -2196,7 +2196,7 @@ useEffect(() => {
                 {applicationStatus === 'approved' ? (
                   <CheckCircle className="h-6 w-6 text-green-600" />
                 ) : applicationStatus === 'pending' ? (
-                  <Clock className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+                  <Clock className="h-6 w-6" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />
                 ) : (
                   <AlertCircle className="h-6 w-6 text-red-600" />
                 )}
@@ -2258,16 +2258,16 @@ useEffect(() => {
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/80"
                   style={{ backgroundColor: 'rgba(75, 151, 201, 0.12)' }}
                 >
-                  <Award className="h-4 w-4" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+                  <Award className="h-4 w-4" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-gray-800 uppercase tracking-wide">Creator Collab Achievement</p>
                   <div className="flex items-center gap-3 mt-1">
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700">
-                      <Eye className="h-3 w-3" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />{collabStats.views.toLocaleString()} views
+                      <Eye className="h-3 w-3" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />{collabStats.views.toLocaleString()} views
                     </span>
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700">
-                      <Heart className="h-3 w-3" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />{collabStats.likes.toLocaleString()} likes
+                      <Heart className="h-3 w-3" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />{collabStats.likes.toLocaleString()} likes
                     </span>
                   </div>
                 </div>
@@ -2278,7 +2278,7 @@ useEffect(() => {
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                 <UserPlus className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
               </div>
-                <h3 className="text-xl sm:text-2xl font-light text-[#1B4965] mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
+                <h3 className="text-xl sm:text-2xl font-light text-[color:var(--nf-heading)] mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>
                   Apply for partnership
               </h3>
                 <p className="text-gray-600 font-light tracking-wide text-sm sm:text-[15px] leading-relaxed" style={{ letterSpacing: '0.05em' }}>
@@ -2326,7 +2326,7 @@ useEffect(() => {
                     onChange={(e) => setCollabApplyTerms(e.target.checked)}
                     required
                     className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    style={{ accentColor: '#4b97c9' }}
+                    style={{ accentColor: 'var(--nf-primary)' }}
                   />
                   <label htmlFor="affiliate-collab-terms" className="text-sm font-light text-gray-700 tracking-wide cursor-pointer" style={{ letterSpacing: '0.05em' }}>
                     I agree to the terms and conditions *
@@ -2365,7 +2365,7 @@ useEffect(() => {
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 shrink-0" style={{ backgroundColor: 'var(--arctic-blue-light)' }}>
                 <Key className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: 'var(--arctic-blue-primary-dark)' }} />
               </div>
-              <h3 className="text-xl sm:text-2xl font-light text-[#1B4965] mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>Verification Code</h3>
+              <h3 className="text-xl sm:text-2xl font-light text-[color:var(--nf-heading)] mb-3 tracking-[0.15em]" style={{ fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}>Verification Code</h3>
               <p className="text-gray-600 font-light tracking-wide text-sm sm:text-[15px] leading-relaxed min-h-[3rem]" style={{ letterSpacing: '0.05em' }}>
                 After an admin approves your affiliate application, we email you a 20-character code. Enter it here to activate your partner account.
               </p>
@@ -2377,7 +2377,7 @@ useEffect(() => {
                 type="button"
                 onClick={handleResendVerificationEmail}
                 disabled={resendCodeLoading}
-                className="w-full px-4 sm:px-6 py-3 rounded-xl border-2 border-[#4B97C9] text-[#1B4965] bg-white hover:bg-[#f0f8fd] transition-all font-light tracking-wide text-xs sm:text-sm disabled:opacity-50"
+                className="w-full px-4 sm:px-6 py-3 rounded-xl border-2 border-[color:var(--nf-primary)] text-[color:var(--nf-heading)] bg-white hover:bg-[#f0f8fd] transition-all font-light tracking-wide text-xs sm:text-sm disabled:opacity-50"
                 style={{ letterSpacing: '0.08em' }}
               >
                 {resendCodeLoading ? 'Sending…' : 'Resend code to my email'}

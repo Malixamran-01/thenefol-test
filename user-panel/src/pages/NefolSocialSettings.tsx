@@ -47,18 +47,18 @@ function SettingsListRow({
   href?: string
 }) {
   const className =
-    'w-full rounded-2xl border border-[#e8eef4] bg-white shadow-sm px-5 py-4 sm:px-6 sm:py-5 flex items-center gap-4 text-left transition-colors hover:border-[#d6eaf8] hover:bg-[#fafcfd] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9] focus-visible:ring-offset-2'
+    'w-full rounded-2xl border border-[#e8eef4] bg-white shadow-sm px-5 py-4 sm:px-6 sm:py-5 flex items-center gap-4 text-left transition-colors hover:border-[#d6eaf8] hover:bg-[#fafcfd] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--nf-primary)] focus-visible:ring-offset-2'
 
   const inner = (
     <>
       <div
-        className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border border-[#d6eaf8] bg-[#f0f8fd] text-[#4B97C9]"
+        className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border border-[#d6eaf8] bg-[#f0f8fd] text-[color:var(--nf-primary)]"
         aria-hidden
       >
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-base font-bold text-[#1B4965]">{title}</p>
+        <p className="text-base font-bold text-[color:var(--nf-heading)]">{title}</p>
         <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>
       </div>
       <ChevronRight className="h-5 w-5 text-gray-300 flex-shrink-0" />
@@ -132,7 +132,7 @@ export default function NefolSocialSettings() {
         <button
           type="button"
           onClick={goSettingsHome}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#1B4965] hover:opacity-80 transition-opacity"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[color:var(--nf-heading)] hover:opacity-80 transition-opacity"
         >
           <ArrowLeft className="h-4 w-4" />
           Settings
@@ -141,7 +141,7 @@ export default function NefolSocialSettings() {
         <header className="mb-8">
           <h1
             className="text-2xl sm:text-3xl font-bold tracking-[0.04em]"
-            style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
+            style={{ fontFamily: 'var(--font-heading-family)', color: 'var(--nf-heading)' }}
           >
             Creator Program
           </h1>
@@ -160,10 +160,10 @@ export default function NefolSocialSettings() {
                 className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border border-[#d6eaf8] bg-[#f0f8fd]"
                 aria-hidden
               >
-                <Clapperboard className="h-5 w-5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+                <Clapperboard className="h-5 w-5" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />
               </div>
               <div className="min-w-0">
-                <h2 id="creator-program-sidebar-heading" className="text-base font-bold text-[#1B4965]">
+                <h2 id="creator-program-sidebar-heading" className="text-base font-bold text-[color:var(--nf-heading)]">
                   Show in side panel
                 </h2>
                 <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
@@ -179,8 +179,8 @@ export default function NefolSocialSettings() {
               aria-checked={creatorProgramInSidebar}
               aria-label="Show Creator Program in side panel"
               onClick={toggleCreatorProgram}
-              className={`relative flex-shrink-0 inline-flex h-8 w-[52px] items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9] focus-visible:ring-offset-2 ${
-                creatorProgramInSidebar ? 'bg-[#1B4965]' : 'bg-gray-200'
+              className={`relative flex-shrink-0 inline-flex h-8 w-[52px] items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--nf-primary)] focus-visible:ring-offset-2 ${
+                creatorProgramInSidebar ? 'bg-[color:var(--nf-heading)]' : 'bg-gray-200'
               }`}
             >
               <span
@@ -201,7 +201,7 @@ export default function NefolSocialSettings() {
         <button
           type="button"
           onClick={goSettingsHome}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#1B4965] hover:opacity-80 transition-opacity"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[color:var(--nf-heading)] hover:opacity-80 transition-opacity"
         >
           <ArrowLeft className="h-4 w-4" />
           Settings
@@ -210,7 +210,7 @@ export default function NefolSocialSettings() {
         <header className="mb-6">
           <h1
             className="text-2xl sm:text-3xl font-bold tracking-[0.04em]"
-            style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
+            style={{ fontFamily: 'var(--font-heading-family)', color: 'var(--nf-heading)' }}
           >
             Payout method
           </h1>
@@ -233,7 +233,7 @@ export default function NefolSocialSettings() {
         <button
           type="button"
           onClick={goSettingsHome}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[#1B4965] hover:opacity-80 transition-opacity"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-[color:var(--nf-heading)] hover:opacity-80 transition-opacity"
         >
           <ArrowLeft className="h-4 w-4" />
           Settings
@@ -242,7 +242,7 @@ export default function NefolSocialSettings() {
         <header className="mb-6">
           <h1
             className="text-2xl sm:text-3xl font-bold tracking-[0.04em]"
-            style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
+            style={{ fontFamily: 'var(--font-heading-family)', color: 'var(--nf-heading)' }}
           >
             Manage interests
           </h1>
@@ -265,7 +265,7 @@ export default function NefolSocialSettings() {
                   onClick={() => toggleInterest(opt.id)}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition-colors border ${
                     on
-                      ? 'border-[#1B4965] bg-[#1B4965] text-white'
+                      ? 'border-[color:var(--nf-heading)] bg-[color:var(--nf-heading)] text-white'
                       : 'border-gray-200 bg-gray-50/80 text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -287,7 +287,7 @@ export default function NefolSocialSettings() {
       <header className="mb-8">
         <h1
           className="text-2xl sm:text-3xl font-bold tracking-[0.04em]"
-          style={{ fontFamily: 'var(--font-heading-family)', color: '#1B4965' }}
+          style={{ fontFamily: 'var(--font-heading-family)', color: 'var(--nf-heading)' }}
         >
           Settings
         </h1>

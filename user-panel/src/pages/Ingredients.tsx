@@ -4820,7 +4820,7 @@ function EfficacyBar({ label, pct, animate }: { label: string; pct: number; anim
       <div style={{ flex: 1, height: 3, background: 'rgba(75,151,201,0.18)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{
           height: '100%', borderRadius: 2,
-          background: 'linear-gradient(90deg, rgb(75,151,201), rgba(75,151,201,0.45))',
+          background: 'linear-gradient(90deg, var(--nf-primary), rgba(75,151,201,0.45))',
           width: animate ? `${pct}%` : '0%',
           transition: 'width 0.9s ease',
         }} />
@@ -4835,7 +4835,7 @@ function EfficacyBar({ label, pct, animate }: { label: string; pct: number; anim
 function StatCell({ val, label }: { val: string; label: string }) {
   return (
     <div style={{ textAlign: 'center', padding: '0.7rem 0.5rem', border: '1px solid rgba(75,151,201,0.2)', borderRadius: 6, background: 'rgba(75,151,201,0.07)' }}>
-      <div style={{ fontFamily: 'var(--font-heading-family)', fontSize: '1.1rem', fontWeight: 600, color: 'rgb(75,151,201)', lineHeight: 1.1, marginBottom: 4, letterSpacing: '0.02em' }}>
+      <div style={{ fontFamily: 'var(--font-heading-family)', fontSize: '1.1rem', fontWeight: 600, color: 'var(--nf-primary)', lineHeight: 1.1, marginBottom: 4, letterSpacing: '0.02em' }}>
         {val}
       </div>
       <div style={{ fontFamily: 'var(--font-body-family)', fontSize: 9, fontWeight: 400, letterSpacing: '0.14em', color: 'rgba(224,245,245,0.42)', textTransform: 'uppercase' }}>
@@ -4880,7 +4880,7 @@ function ExpandedPanel({ ing, meta, onClose }: { ing: typeof ingredients[number]
         <div style={{ width: 128, height: 128, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(75,151,201,0.4)', flexShrink: 0 }}>
           <img src={getOptimizedImage(ing.image)} alt={ing.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
-        <div style={{ fontFamily: 'var(--font-heading-family)', fontSize: '1.3rem', fontWeight: 600, color: '#e0f5f5', textAlign: 'center', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+        <div style={{ fontFamily: 'var(--font-heading-family)', fontSize: '1.3rem', fontWeight: 600, color: 'var(--nf-primary-light)', textAlign: 'center', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           {ing.name}
         </div>
         <div style={{ fontFamily: 'var(--font-body-family)', fontSize: 9, fontWeight: 400, letterSpacing: '0.2em', color: 'rgba(75,151,201,0.85)', textTransform: 'uppercase', textAlign: 'center' }}>
@@ -4911,7 +4911,7 @@ function ExpandedPanel({ ing, meta, onClose }: { ing: typeof ingredients[number]
         <SectionBlock label="Key benefits">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {meta.benefits.map(b => (
-              <span key={b} style={{ fontFamily: 'var(--font-body-family)', fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', color: 'rgb(75,151,201)', background: 'rgba(75,151,201,0.12)', padding: '3px 10px', borderRadius: 20, textTransform: 'uppercase' }}>
+              <span key={b} style={{ fontFamily: 'var(--font-body-family)', fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', color: 'var(--nf-primary)', background: 'rgba(75,151,201,0.12)', padding: '3px 10px', borderRadius: 20, textTransform: 'uppercase' }}>
                 {b}
               </span>
             ))}
@@ -4927,7 +4927,7 @@ function ExpandedPanel({ ing, meta, onClose }: { ing: typeof ingredients[number]
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
           <button
             onClick={() => { window.location.hash = `#/user/ingredients/${ing.id}` }}
-            style={{ padding: '7px 18px', background: 'rgba(75,151,201,0.15)', border: '1px solid rgba(75,151,201,0.4)', color: 'rgb(75,151,201)', fontFamily: 'var(--font-body-family)', fontWeight: 500, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: 4 }}
+            style={{ padding: '7px 18px', background: 'rgba(75,151,201,0.15)', border: '1px solid rgba(75,151,201,0.4)', color: 'var(--nf-primary)', fontFamily: 'var(--font-body-family)', fontWeight: 500, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: 4 }}
           >
             Deep Dive {'\u2192'}
           </button>
@@ -4965,7 +4965,7 @@ function IngredientCard({ ing, meta, isExpanded, onToggle }: { ing: typeof ingre
         {/* Bottom accent line */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-          background: 'linear-gradient(90deg, rgb(75,151,201), rgba(75,151,201,0.28))',
+          background: 'linear-gradient(90deg, var(--nf-primary), rgba(75,151,201,0.28))',
           transform: hovered || isExpanded ? 'scaleX(1)' : 'scaleX(0)',
           transformOrigin: 'left', transition: 'transform 0.3s',
         }} />
@@ -4990,16 +4990,16 @@ function IngredientCard({ ing, meta, isExpanded, onToggle }: { ing: typeof ingre
             >
               {meta.sci}
             </div>
-            <div style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 500, fontSize: '1rem', color: isExpanded ? '#e0f5f5' : '#1a1a1a', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.25s' }}>
+            <div style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 500, fontSize: '1rem', color: isExpanded ? 'var(--nf-primary-light)' : 'var(--nf-text)', letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.25s' }}>
               {ing.name}
             </div>
-            <span style={{ fontFamily: 'var(--font-body-family)', display: 'inline-block', fontSize: 9, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '2px 9px', borderRadius: 20, marginTop: 5, color: isExpanded ? 'rgb(75,151,201)' : tc.text, background: isExpanded ? 'rgba(75,151,201,0.15)' : tc.bg, border: `1px solid ${isExpanded ? 'rgba(75,151,201,0.35)' : tc.border}` }}>
+            <span style={{ fontFamily: 'var(--font-body-family)', display: 'inline-block', fontSize: 9, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '2px 9px', borderRadius: 20, marginTop: 5, color: isExpanded ? 'var(--nf-primary)' : tc.text, background: isExpanded ? 'rgba(75,151,201,0.15)' : tc.bg, border: `1px solid ${isExpanded ? 'rgba(75,151,201,0.35)' : tc.border}` }}>
               {meta.tag}
             </span>
           </div>
 
-          <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: hovered || isExpanded ? 'none' : '1px solid rgba(75,151,201,0.28)', background: hovered || isExpanded ? 'rgb(75,151,201)' : 'transparent', flexShrink: 0, transition: 'all 0.25s' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke={hovered || isExpanded ? '#fff' : 'rgb(75,151,201)'} strokeWidth="2" width={11} height={11} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.3s' }}>
+          <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: hovered || isExpanded ? 'none' : '1px solid rgba(75,151,201,0.28)', background: hovered || isExpanded ? 'var(--nf-primary)' : 'transparent', flexShrink: 0, transition: 'all 0.25s' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke={hovered || isExpanded ? '#fff' : 'var(--nf-primary)'} strokeWidth="2" width={11} height={11} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.3s' }}>
               <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
@@ -5053,15 +5053,15 @@ export default function Ingredients() {
     <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
         }
         .ing-page * { box-sizing: border-box; }
         .ing-filter-btn { transition: background 0.2s, color 0.2s, border-color 0.2s; }
-        .ing-filter-btn:hover, .ing-filter-btn.active { background: rgb(75,151,201) !important; color: #fff !important; border-color: rgb(75,151,201) !important; }
-        .ing-search:focus { outline: none; border-color: rgb(75,151,201); box-shadow: 0 0 0 3px rgba(75,151,201,0.12); }
+        .ing-filter-btn:hover, .ing-filter-btn.active { background: var(--nf-primary) !important; color: #fff !important; border-color: var(--nf-primary) !important; }
+        .ing-search:focus { outline: none; border-color: var(--nf-primary); box-shadow: 0 0 0 3px rgba(75,151,201,0.12); }
         .ing-filter-bar::-webkit-scrollbar { display: none; }
         .ing-filter-bar { scrollbar-width: none; }
         @keyframes ing-bounce { 0%,100%{ transform: rotate(45deg) translateY(0); } 50%{ transform: rotate(45deg) translateY(5px); } }
@@ -5073,12 +5073,12 @@ export default function Ingredients() {
 
         {/* Hero */}
         <div style={{ textAlign: 'center', paddingBottom: '2.5rem', marginBottom: '1.75rem', borderBottom: '1px solid #e4f0f7' }}>
-          <p style={{ fontFamily: 'var(--font-body-family)', fontSize: 10, fontWeight: 500, letterSpacing: '0.35em', color: 'rgb(75,151,201)', textTransform: 'uppercase', marginBottom: '1rem' }}>
+          <p style={{ fontFamily: 'var(--font-body-family)', fontSize: 10, fontWeight: 500, letterSpacing: '0.35em', color: 'var(--nf-primary)', textTransform: 'uppercase', marginBottom: '1rem' }}>
             Nefol — The Botanical Index
           </p>
-          <h1 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: 'clamp(2rem,5vw,3.5rem)', letterSpacing: '0.08em', color: '#1a1a1a', lineHeight: 1.15, marginBottom: '0.75rem', textTransform: 'uppercase' }}>
+          <h1 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: 'clamp(2rem,5vw,3.5rem)', letterSpacing: '0.08em', color: 'var(--nf-text)', lineHeight: 1.15, marginBottom: '0.75rem', textTransform: 'uppercase' }}>
             Every ingredient
-            <span style={{ display: 'block', color: 'rgb(75,151,201)', fontWeight: 200, letterSpacing: '0.15em', fontSize: '0.85em' }}>
+            <span style={{ display: 'block', color: 'var(--nf-primary)', fontWeight: 200, letterSpacing: '0.15em', fontSize: '0.85em' }}>
               tells a story
             </span>
           </h1>
@@ -5086,15 +5086,15 @@ export default function Ingredients() {
             We trace each extract from source to skin — ancient botanicals, modern science, and the wisdom between them.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-            <span style={{ width: 60, height: 1, background: '#e0f5f5', display: 'block' }} />
+            <span style={{ width: 60, height: 1, background: 'var(--nf-primary-light)', display: 'block' }} />
             <svg viewBox="0 0 20 20" fill="none" width={16} height={16}>
-              <circle cx="10" cy="10" r="9" stroke="rgb(75,151,201)" strokeWidth="1" opacity="0.5" />
-              <circle cx="10" cy="10" r="3" fill="rgb(75,151,201)" opacity="0.4" />
+              <circle cx="10" cy="10" r="9" stroke="var(--nf-primary)" strokeWidth="1" opacity="0.5" />
+              <circle cx="10" cy="10" r="3" fill="var(--nf-primary)" opacity="0.4" />
             </svg>
-            <span style={{ width: 60, height: 1, background: '#e0f5f5', display: 'block' }} />
+            <span style={{ width: 60, height: 1, background: 'var(--nf-primary-light)', display: 'block' }} />
           </div>
           <p style={{ fontSize: 10, fontWeight: 300, letterSpacing: '0.2em', color: '#ccc', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <span className={bounceArrow ? 'ing-bounce' : ''} style={{ width: 12, height: 12, borderRight: '1.5px solid rgb(75,151,201)', borderBottom: '1.5px solid rgb(75,151,201)', transform: 'rotate(45deg)', display: 'inline-block' }} />
+            <span className={bounceArrow ? 'ing-bounce' : ''} style={{ width: 12, height: 12, borderRight: '1.5px solid var(--nf-primary)', borderBottom: '1.5px solid var(--nf-primary)', transform: 'rotate(45deg)', display: 'inline-block' }} />
             scroll to explore
           </p>
         </div>
@@ -5111,7 +5111,7 @@ export default function Ingredients() {
               placeholder="Search {'\u2014'} blue tea, charcoal, vitamin c, saffron..."
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setExpandedId(null) }}
-              style={{ width: '100%', padding: '10px 14px 10px 40px', border: '1px solid #d8eaf4', background: '#fff', fontFamily: 'var(--font-body-family)', fontSize: 13, letterSpacing: '0.03em', color: '#1a1a1a', borderRadius: 6, transition: 'border-color 0.2s, box-shadow 0.2s' }}
+              style={{ width: '100%', padding: '10px 14px 10px 40px', border: '1px solid #d8eaf4', background: '#fff', fontFamily: 'var(--font-body-family)', fontSize: 13, letterSpacing: '0.03em', color: 'var(--nf-text)', borderRadius: 6, transition: 'border-color 0.2s, box-shadow 0.2s' }}
             />
           </div>
         </div>
@@ -5123,7 +5123,7 @@ export default function Ingredients() {
               key={f}
               className={`ing-filter-btn${activeFilter === f ? ' active' : ''}`}
               onClick={() => { setActiveFilter(f); setExpandedId(null) }}
-              style={{ flexShrink: 0, padding: '5px 15px', border: '1px solid', borderColor: activeFilter === f ? 'rgb(75,151,201)' : 'rgba(75,151,201,0.32)', background: activeFilter === f ? 'rgb(75,151,201)' : 'transparent', fontFamily: 'var(--font-body-family)', fontSize: 10, fontWeight: 500, letterSpacing: '0.13em', color: activeFilter === f ? '#fff' : 'rgb(75,151,201)', textTransform: 'uppercase', cursor: 'pointer', borderRadius: 20, whiteSpace: 'nowrap' }}
+              style={{ flexShrink: 0, padding: '5px 15px', border: '1px solid', borderColor: activeFilter === f ? 'var(--nf-primary)' : 'rgba(75,151,201,0.32)', background: activeFilter === f ? 'var(--nf-primary)' : 'transparent', fontFamily: 'var(--font-body-family)', fontSize: 10, fontWeight: 500, letterSpacing: '0.13em', color: activeFilter === f ? '#fff' : 'var(--nf-primary)', textTransform: 'uppercase', cursor: 'pointer', borderRadius: 20, whiteSpace: 'nowrap' }}
             >
               {f === 'all' ? 'All Ingredients' : f}
             </button>
@@ -5162,10 +5162,10 @@ export default function Ingredients() {
 
         {/* Why Natural */}
         <div style={{ marginTop: '4rem', textAlign: 'center' }}>
-          <p style={{ fontSize: 9, fontWeight: 300, letterSpacing: '0.3em', color: 'rgb(75,151,201)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+          <p style={{ fontSize: 9, fontWeight: 300, letterSpacing: '0.3em', color: 'var(--nf-primary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
             Our Commitment
           </p>
-          <h2 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: 'clamp(1.5rem,3vw,2.2rem)', color: '#1a1a1a', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: 'clamp(1.5rem,3vw,2.2rem)', color: 'var(--nf-text)', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>
             Why Natural Ingredients?
           </h2>
           <p style={{ fontSize: 13, fontWeight: 300, color: '#888', maxWidth: 520, margin: '0 auto 2.5rem', lineHeight: 1.75, letterSpacing: '0.04em' }}>
@@ -5178,9 +5178,9 @@ export default function Ingredients() {
               { icon: '\uD83D\uDD2C', title: 'Scientifically Proven', desc: 'Backed by research and traditional knowledge' },
               { icon: '\uD83C\uDF0D', title: 'Eco-Friendly', desc: 'Sustainable sourcing and environmentally conscious' },
             ].map(card => (
-              <div key={card.title} style={{ background: '#fff', borderRadius: 8, padding: '1.5rem', textAlign: 'center', border: '1px solid #e0f5f5', boxShadow: '0 2px 12px rgba(75,151,201,0.06)' }}>
+              <div key={card.title} style={{ background: '#fff', borderRadius: 8, padding: '1.5rem', textAlign: 'center', border: '1px solid var(--nf-primary-light)', boxShadow: '0 2px 12px rgba(75,151,201,0.06)' }}>
                 <div style={{ fontSize: 28, marginBottom: '0.75rem' }}>{card.icon}</div>
-                <div style={{ fontSize: 13, fontWeight: 400, color: '#1a1a1a', marginBottom: '0.4rem', letterSpacing: '0.04em' }}>{card.title}</div>
+                <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--nf-text)', marginBottom: '0.4rem', letterSpacing: '0.04em' }}>{card.title}</div>
                 <div style={{ fontSize: 12, fontWeight: 300, color: '#888', lineHeight: 1.65 }}>{card.desc}</div>
               </div>
             ))}
@@ -5188,20 +5188,20 @@ export default function Ingredients() {
         </div>
 
         {/* CTA */}
-        <div style={{ background: '#fff', borderRadius: 12, padding: '2.5rem 2rem', textAlign: 'center', boxShadow: '0 2px 20px rgba(75,151,201,0.08)', border: '1px solid #e0f5f5' }}>
-          <h2 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: 'clamp(1.5rem,3vw,2.2rem)', color: '#1a1a1a', letterSpacing: '0.12em', marginBottom: '0.75rem' }}>
+        <div style={{ background: '#fff', borderRadius: 12, padding: '2.5rem 2rem', textAlign: 'center', boxShadow: '0 2px 20px rgba(75,151,201,0.08)', border: '1px solid var(--nf-primary-light)' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: 'clamp(1.5rem,3vw,2.2rem)', color: 'var(--nf-text)', letterSpacing: '0.12em', marginBottom: '0.75rem' }}>
             Experience Natural Ingredients
           </h2>
           <p style={{ fontSize: 13, fontWeight: 300, color: '#888', maxWidth: 520, margin: '0 auto 1.75rem', lineHeight: 1.75, letterSpacing: '0.04em' }}>
             Discover our range of products enriched with these powerful natural ingredients and experience the difference for yourself.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="#/user/shop" style={{ display: 'inline-block', padding: '10px 28px', background: 'rgb(75,151,201)', color: '#fff', fontFamily: 'inherit', fontSize: 10, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase', borderRadius: 8, textDecoration: 'none', transition: 'background 0.2s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgb(60,120,160)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgb(75,151,201)' }}>
+            <a href="#/user/shop" style={{ display: 'inline-block', padding: '10px 28px', background: 'var(--nf-primary)', color: '#fff', fontFamily: 'inherit', fontSize: 10, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase', borderRadius: 8, textDecoration: 'none', transition: 'background 0.2s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nf-primary-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nf-primary)' }}>
               Shop Now
             </a>
-            <a href="#/user/contact" style={{ display: 'inline-block', padding: '10px 28px', border: '1px solid rgb(75,151,201)', color: 'rgb(75,151,201)', fontFamily: 'inherit', fontSize: 10, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase', borderRadius: 8, textDecoration: 'none', background: 'transparent', transition: 'background 0.2s' }}
+            <a href="#/user/contact" style={{ display: 'inline-block', padding: '10px 28px', border: '1px solid var(--nf-primary)', color: 'var(--nf-primary)', fontFamily: 'inherit', fontSize: 10, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase', borderRadius: 8, textDecoration: 'none', background: 'transparent', transition: 'background 0.2s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(75,151,201,0.06)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}>
               Contact Us

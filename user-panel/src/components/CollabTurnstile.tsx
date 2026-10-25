@@ -152,7 +152,7 @@ export default function CollabTurnstile({ onToken }: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        <Shield className="h-3.5 w-3.5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} aria-hidden />
+        <Shield className="h-3.5 w-3.5" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} aria-hidden />
         Security verification
       </div>
       {loadError && (

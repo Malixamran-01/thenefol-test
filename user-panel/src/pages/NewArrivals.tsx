@@ -181,7 +181,7 @@ export default function NewArrivals() {
               <h2 
                 className="text-2xl font-semibold mb-3"
                 style={{ 
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.05em'
                 }}
@@ -191,7 +191,7 @@ export default function NewArrivals() {
               <p 
                 className="mt-3"
                 style={{ 
-                  color: '#666',
+                  color: 'var(--nf-text-muted)',
                   fontFamily: 'var(--font-body-family, sans-serif)',
                   lineHeight: '1.6',
                   letterSpacing: '0.02em'
@@ -205,9 +205,9 @@ export default function NewArrivals() {
                   placeholder="Enter email for launch alerts"
                   className="w-full rounded-full border px-4 py-3 text-sm focus:outline-none focus:ring-2"
                   style={{ 
-                    borderColor: '#1a1a1a',
+                    borderColor: 'var(--nf-text)',
                     backgroundColor: '#fff',
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-body-family, sans-serif)'
                   }}
                   onFocus={(e) => {
@@ -216,7 +216,7 @@ export default function NewArrivals() {
                     e.currentTarget.style.outlineOffset = '2px'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#1a1a1a'
+                    e.currentTarget.style.borderColor = 'var(--nf-text)'
                     e.currentTarget.style.outline = 'none'
                   }}
                 />
@@ -241,7 +241,7 @@ export default function NewArrivals() {
               <h3 
                 className="text-lg font-semibold"
                 style={{ 
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.03em'
                 }}
@@ -251,7 +251,7 @@ export default function NewArrivals() {
               <p 
                 className="mt-3 text-sm"
                 style={{ 
-                  color: '#666',
+                  color: 'var(--nf-text-muted)',
                   fontFamily: 'var(--font-body-family, sans-serif)',
                   lineHeight: '1.5',
                   letterSpacing: '0.02em'

@@ -185,14 +185,14 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
 
                       <h3
                         className="text-4xl lg:text-5xl font-bold mb-4 leading-tight transition-colors duration-300"
-                        style={{ color: isActive ? '#bfa45a' : '#1a1a1a' }}
+                        style={{ color: isActive ? '#bfa45a' : 'var(--nf-text)' }}
                       >
                         {ingredient.name}
                       </h3>
 
                       <div
                         className="text-base lg:text-lg font-light leading-relaxed max-w-lg"
-                        style={{ color: '#666' }}
+                        style={{ color: 'var(--nf-text-muted)' }}
                         dangerouslySetInnerHTML={{
                           __html: ingredient.description
                             .split('\n')[0]
@@ -242,7 +242,7 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
                   style={{
                     borderRadius: '48% 52% 44% 56% / 38% 42% 58% 62%',
                     border: '1px solid rgba(191,164,90,0.2)',
-                    background: '#f0f9f9',
+                    background: 'var(--nf-primary-lighter)',
                   }}
                 >
                   {/* Counter badge */}
@@ -350,7 +350,7 @@ export default function IngredientsScrollytelling<T extends IngredientBase>({
             {/* Text */}
             <div className="p-5">
               <h3 className="text-xl font-bold mb-2" style={{ color: '#bfa45a' }}>{ingredient.name}</h3>
-              <p className="text-sm font-light leading-relaxed line-clamp-3" style={{ color: '#666' }}>
+              <p className="text-sm font-light leading-relaxed line-clamp-3" style={{ color: 'var(--nf-text-muted)' }}>
                 {ingredient.description.split('\n')[0].replace(/\*\*(.*?)\*\*/g, '$1')}
               </p>
               <span className="inline-flex items-center gap-1 mt-3 text-xs font-medium tracking-wider uppercase" style={{ color: '#bfa45a' }}>

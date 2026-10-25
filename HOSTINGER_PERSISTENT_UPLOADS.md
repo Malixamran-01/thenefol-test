@@ -127,6 +127,24 @@ Common causes:
 
 Keep at least a few days of backups off-server (S3, Google Drive, etc.).
 
+## Product videos (PDP)
+
+Admin → Catalog → Products → **Images** → **Add video** (MP4/WebM/MOV, ≤ 200MB). Videos are stored in the same persistent `UPLOADS_DIR` and are only removed from disk when you click **Remove** on them in admin.
+
+One-time server setup for fast-loading videos:
+
+```bash
+# ffmpeg: faststart remux (playback starts before full download), H.264 ≤1280px transcode, poster frames
+sudo apt install -y ffmpeg
+pm2 restart nefol-backend   # log shows: [video] ffmpeg found
+# nginx: deploy the repo nginx.conf (serves /uploads/*.mp4 directly from /var/lib/nefol/uploads with 1-year caching)
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Without ffmpeg uploads still work — videos are just stored as-is with no poster.
+
+**Scaling to very high traffic:** put Cloudflare (proxied/orange-cloud) in front of thenefol.com. Video and poster responses carry `Cache-Control: public, max-age=31536000, immutable`, so the CDN edge serves them and the VPS only sees the first request per file.
+
 ## PDP image placeholders after VPS reset
 
 If product pages show many **empty image frames**, the database still has `product_images` rows but files under `/uploads/` are gone.

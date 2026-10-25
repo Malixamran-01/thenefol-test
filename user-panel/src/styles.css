@@ -21,7 +21,7 @@
   font-family: 'Great Vibes', cursive;
   font-size: 70px;
   font-weight: 400;
-  color: rgb(75,151,201);
+  color: var(--nf-primary);
   letter-spacing: 1px;
 }
 
@@ -34,7 +34,7 @@
   
   /* Cart toast notification - mobile color */
   .cart-toast-mobile {
-    background-color: rgb(75,151,201) !important;
+    background-color: var(--nf-toast-bg) !important;
   }
   
   /* Footer copyright text - ensure it displays correctly on small screens */
@@ -106,32 +106,116 @@
 /* ===== CORE DESIGN TOKENS (USER PANEL) ===== */
 
 :root {
-  /* Color system */
-  --color-screen-bg: #358D9E; /* Primary screen / page background */
-  --color-nav-bg: #0E2730; /* Navigation bar / app shell background */
-  --color-text-on-nav: #FFFFFF;
-  --color-text-secondary-on-teal: #E8F5F7;
-  --color-text-body: #0E2730; /* Body text on white / light surfaces */
+  /* Theme tokens — defaults mirror common/src/theme.ts (THEME_GROUPS). The admin Theme Customizer
+     overrides them at runtime (src/theme/applyTheme.ts). */
+  /* Global & brand */
+  --nf-page-bg: #FFFFFF;
+  --nf-surface: #FFFFFF;
+  --nf-surface-soft: #F4F9F9;
+  --nf-primary: #4B97C9;
+  --nf-primary-hover: #3C78A0;
+  --nf-primary-dark: #32648C;
+  --nf-primary-light: #E0F5F5;
+  --nf-primary-lighter: #F0F9F9;
+  --nf-on-primary: #FFFFFF;
+  --nf-heading: #1B4965;
+  --nf-heading-hover: #163D54;
+  --nf-text: #1A1A1A;
+  --nf-text-muted: #666666;
+  --nf-border: #E5E7EB;
+  /* Header & navigation */
+  --nf-header-bg: #0E2730;
+  --nf-header-text: #FFFFFF;
+  --nf-header-link: #E8F5F7;
+  --nf-header-border: rgba(232, 245, 247, 0.16);
+  --nf-header-badge-bg: #FF4B4B;
+  --nf-menu-bg: #FFFFFF;
+  --nf-menu-text: #1A1A1A;
+  /* Announcement bar */
+  --nf-announcement-bg: #4B97C9;
+  --nf-announcement-text: #FFFFFF;
+  /* Buttons */
+  --nf-button-primary-bg: #4B97C9;
+  --nf-button-primary-hover: #3C78A0;
+  --nf-button-primary-text: #FFFFFF;
+  --nf-button-secondary-border: #0E2730;
+  --nf-button-secondary-text: #0E2730;
+  --nf-button-disabled-bg: #F3F4F6;
+  --nf-button-disabled-text: #6B7280;
+  /* Product cards & prices */
+  --nf-card-bg: #FFFFFF;
+  --nf-card-title: #1A1A1A;
+  --nf-card-desc: #666666;
+  --nf-price: #1A1A1A;
+  --nf-price-mrp: #9CA3AF;
+  --nf-discount-bg: #DCFCE7;
+  --nf-discount-text: #15803D;
+  --nf-badge-bg: #32648C;
+  --nf-badge-text: #FFFFFF;
+  --nf-rating-star: #FBBF24;
+  /* Forms & inputs */
+  --nf-input-bg: #FFFFFF;
+  --nf-input-border: #DCE5E7;
+  --nf-input-focus: #4B97C9;
+  --nf-input-text: #1A1A1A;
+  /* Popups, toasts & chat */
+  --nf-modal-bg: #FFFFFF;
+  --nf-toast-bg: #0F172A;
+  --nf-toast-text: #FFFFFF;
+  --nf-chat-button: #4B97C9;
+  --nf-success: #16A34A;
+  --nf-danger: #DC2626;
+  /* Footer */
+  --nf-footer-bg: #0E2730;
+  --nf-footer-heading: #FFFFFF;
+  --nf-footer-text: #E8F5F7;
+  --nf-footer-divider: rgba(255, 255, 255, 0.1);
+  /* Mobile bottom bar */
+  --nf-bottomnav-bg: #FFFFFF;
+  --nf-bottomnav-border: #E5E7EB;
+  --nf-bottomnav-icon: #6B7280;
+  --nf-bottomnav-active: #1F2937;
+  --nf-bottomnav-badge: #EF4444;
+  /* Nefol Social */
+  --nf-social-bg: #F4F9F9;
+  --nf-social-sidebar-bg: #F4F9F9;
+  --nf-social-surface: #FFFFFF;
+  --nf-social-brand: #1B4965;
+  --nf-social-brand-hover: #163D54;
+  --nf-social-accent: #4B97C9;
+  --nf-social-accent-hover: #3C78A0;
+  --nf-social-text: #1A1A1A;
+  --nf-social-nav-text: #374151;
+  /* Typography */
+  --nf-font-heading: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --nf-font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --color-card-bg: #FFFFFF;
+  /* Legacy names (still referenced across pages) → theme tokens */
+  --color-screen-bg: var(--nf-page-bg);
+  --color-nav-bg: var(--nf-header-bg);
+  --color-text-on-nav: var(--nf-header-text);
+  --color-text-secondary-on-teal: var(--nf-header-link);
+  --color-text-body: var(--nf-text);
+
+  --color-card-bg: var(--nf-card-bg);
   --color-card-shadow: 0px 4px 20px rgba(0, 0, 0, 0.06);
 
-  --color-input-bg: #FFFFFF;
-  --color-input-border: #DCE5E7;
-  --color-input-focus-ring: #358D9E;
+  --color-input-bg: var(--nf-input-bg);
+  --color-input-border: var(--nf-input-border);
+  --color-input-focus-ring: var(--nf-input-focus);
 
-  --color-button-primary-bg: rgb(75,151,201);
-  --color-button-primary-hover-bg: rgb(60,120,160);
-  --color-button-primary-text: #FFFFFF;
+  --color-button-primary-bg: var(--nf-button-primary-bg);
+  --color-button-primary-hover-bg: var(--nf-button-primary-hover);
+  --color-button-primary-text: var(--nf-button-primary-text);
 
   --color-button-secondary-bg: transparent;
-  --color-button-secondary-border: #0E2730;
-  --color-button-secondary-text: #0E2730;
+  --color-button-secondary-border: var(--nf-button-secondary-border);
+  --color-button-secondary-text: var(--nf-button-secondary-text);
   --color-button-secondary-hover-bg: rgba(14, 39, 48, 0.1);
 
   /* Typography */
-  --font-heading-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-body-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading-family: var(--nf-font-heading);
+  --font-body-family: var(--nf-font-body);
 
   --font-weight-h1: 700;
   --font-weight-h2: 600;
@@ -142,6 +226,18 @@
 
   --line-height-heading: 1.2;
   --line-height-body: 1.6;
+}
+
+/* Nefol Social pages re-map the shared tokens to their own theme group, so every component
+   that reads --nf-primary / --nf-heading / … picks up the Social colours inside this subtree. */
+.nf-scope-social {
+  --nf-heading: var(--nf-social-brand);
+  --nf-heading-hover: var(--nf-social-brand-hover);
+  --nf-primary: var(--nf-social-accent);
+  --nf-primary-hover: var(--nf-social-accent-hover);
+  --nf-surface-soft: var(--nf-social-bg);
+  --nf-surface: var(--nf-social-surface);
+  --nf-text: var(--nf-social-text);
 }
 
 /* ===== BASE TYPOGRAPHY & LAYOUT USING TOKENS ===== */
@@ -175,8 +271,8 @@
     font-family: var(--font-body-family);
     font-weight: var(--font-weight-paragraph);
     line-height: var(--line-height-body);
-    color: var(--color-text-secondary-on-teal);
-    background: var(--color-screen-bg);
+    color: var(--nf-text);
+    background: var(--nf-page-bg);
     min-height: 100vh;
     overflow-x: hidden;
     width: 100%;
@@ -1170,7 +1266,7 @@ video {
   align-items: stretch;
   height: 100%;
   width: 100%;
-  background: #fff;
+  background: var(--nf-card-bg);
   position: relative;
 }
 
@@ -1227,7 +1323,7 @@ video {
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: 0.05em;
-  color: #1a1a1a;
+  color: var(--nf-card-title);
   text-overflow: ellipsis;
 }
 
@@ -1246,7 +1342,7 @@ video {
   text-overflow: ellipsis;
   font-size: 0.875rem;
   line-height: 1.25rem;
-  color: #666;
+  color: var(--nf-card-desc);
 }
 
 .nefol-product-card__rating {
@@ -1290,13 +1386,13 @@ video {
   text-transform: uppercase;
   letter-spacing: 0.15em;
   text-decoration: none;
-  color: #fff;
-  background-color: rgb(75, 151, 201);
-  transition: opacity 0.3s;
+  color: var(--nf-button-primary-text);
+  background-color: var(--nf-button-primary-bg);
+  transition: background-color 0.3s;
 }
 
 .nefol-product-card__cta:hover {
-  opacity: 0.92;
+  background-color: var(--nf-button-primary-hover);
 }
 
 /* Text overflow prevention */

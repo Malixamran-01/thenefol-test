@@ -8,11 +8,9 @@
 
 import { Pool } from 'pg'
 import { Request, Response } from 'express'
-import jwt from 'jsonwebtoken'
 import { sendError, sendSuccess } from '../utils/apiHelpers'
 import { generateUniqueUserId } from '../utils/generateUserId'
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+import { signUserToken } from '../utils/authTokens'
 
 // TypeScript interface for Google user info
 interface GoogleUserInfo {
@@ -132,15 +130,7 @@ export async function googleAuth(pool: Pool, req: Request, res: Response) {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        user_id: user.unique_user_id
-      },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    )
+    const token = signUserToken(user)
 
     // Return user data and token
     return sendSuccess(res, {

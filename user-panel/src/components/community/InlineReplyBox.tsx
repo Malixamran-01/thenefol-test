@@ -35,7 +35,7 @@ export default function InlineReplyBox({
 
   return (
     <div className="mt-3 animate-[fadeIn_200ms_ease-out] rounded-xl border border-[#d0e8f5] bg-[#f8fbfd] p-3">
-      <p className="mb-2 text-[11px] font-semibold tracking-wide text-[#4B97C9]">
+      <p className="mb-2 text-[11px] font-semibold tracking-wide text-[color:var(--nf-primary)]">
         {headerText ?? (replyingToName ? `Replying to @${replyingToName}` : 'Your reply')}
       </p>
       <textarea
@@ -44,13 +44,13 @@ export default function InlineReplyBox({
         onChange={(e) => onChange(e.target.value.slice(0, maxLength))}
         rows={rows}
         placeholder={placeholder}
-        className="mb-3 w-full min-h-[80px] resize-none rounded-lg border border-[#d0e8f5] bg-white px-3 py-2.5 text-[16px] leading-relaxed text-[#374151] outline-none transition-shadow duration-150 focus:border-[#4B97C9] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)] sm:text-[14px]"
+        className="mb-3 w-full min-h-[80px] resize-none rounded-lg border border-[#d0e8f5] bg-white px-3 py-2.5 text-[16px] leading-relaxed text-[#374151] outline-none transition-shadow duration-150 focus:border-[color:var(--nf-primary)] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)] sm:text-[14px]"
       />
       <div className="flex justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="min-h-[44px] rounded-lg px-4 text-[13px] font-semibold text-[#64748b] transition-colors hover:text-[#1B4965]"
+          className="min-h-[44px] rounded-lg px-4 text-[13px] font-semibold text-[#64748b] transition-colors hover:text-[color:var(--nf-heading)]"
         >
           Cancel
         </button>
@@ -58,7 +58,7 @@ export default function InlineReplyBox({
           type="button"
           disabled={submitting || !value.trim()}
           onClick={onSubmit}
-          className="min-h-[44px] rounded-lg bg-[#1B4965] px-5 text-[13px] font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-[#163d52] hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
+          className="min-h-[44px] rounded-lg bg-[color:var(--nf-heading)] px-5 text-[13px] font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-[#163d52] hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
         >
           {submitting ? 'Saving…' : submitLabel}
         </button>

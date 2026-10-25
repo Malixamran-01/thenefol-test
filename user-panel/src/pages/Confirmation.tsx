@@ -253,7 +253,7 @@ export default function Confirmation() {
         <div className="mx-auto max-w-3xl px-4 text-center">
           <h1 className="text-3xl font-bold mb-2 dark:text-slate-100">Order Not Found</h1>
           <p className="text-slate-600 dark:text-slate-400">{error || 'Unable to load order details'}</p>
-          <a href="#/user/shop" className="inline-block mt-6 rounded px-5 py-2.5 font-semibold text-white" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>Continue Shopping</a>
+          <a href="#/user/shop" className="inline-block mt-6 rounded px-5 py-2.5 font-semibold text-white" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}>Continue Shopping</a>
         </div>
       </main>
     )

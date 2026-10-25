@@ -29,7 +29,7 @@ function clearCollabPurchaseToken() {
 }
 
 const paymentMethods = [
-  { id: 'razorpay', name: 'Razorpay Secure (UPI, Cards, Int\'l Cards, Wallets)', icon: CreditCard, color: 'rgb(75,151,201)' },
+  { id: 'razorpay', name: 'Razorpay Secure (UPI, Cards, Int\'l Cards, Wallets)', icon: CreditCard, color: 'var(--nf-primary)' },
   { id: 'cod', name: 'Cash on Delivery', icon: CreditCard, color: 'bg-green-600' }
 ]
 
@@ -1571,7 +1571,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   }}
                   className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   style={{ 
-                    accentColor: '#4b97c9',
+                    accentColor: 'var(--nf-primary)',
                     WebkitAppearance: 'checkbox',
                     appearance: 'checkbox'
                   }}
@@ -1673,7 +1673,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                     onChange={(e) => setSelectedPayment(e.target.value)}
                     disabled={useCoins && (coinsToUse / 10) >= finalSubtotal}
                     className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    style={{ accentColor: '#4b97c9' }}
+                    style={{ accentColor: 'var(--nf-primary)' }}
                   />
                   <div className="flex-1">
                     <div className="font-medium text-slate-700 text-gray-900">
@@ -1721,7 +1721,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                     onChange={(e) => setSelectedPayment(e.target.value)}
                     disabled={useCoins && (coinsToUse / 10) >= finalSubtotal}
                     className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    style={{ accentColor: '#4b97c9' }}
+                    style={{ accentColor: 'var(--nf-primary)' }}
                   />
                   <div className="flex-1">
                     <div className="font-medium text-slate-700 text-gray-900">
@@ -1777,7 +1777,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                                 setShowNewAddressForm(false)
                               }}
                               className="mt-1 w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                              style={{ accentColor: 'rgb(75,151,201)' }}
+                              style={{ accentColor: 'var(--nf-primary)' }}
                             />
                             <div className="flex-1">
                               <div className="flex items-start justify-between mb-2">
@@ -2093,7 +2093,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   type="checkbox" 
                   className="mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   style={{ 
-                    accentColor: 'rgb(75,151,201)',
+                    accentColor: 'var(--nf-primary)',
                     WebkitAppearance: 'checkbox',
                     appearance: 'checkbox'
                   }}
@@ -2107,7 +2107,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   type="checkbox" 
                   className="mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   style={{ 
-                    accentColor: 'rgb(75,151,201)',
+                    accentColor: 'var(--nf-primary)',
                     WebkitAppearance: 'checkbox',
                     appearance: 'checkbox'
                   }}
@@ -2130,9 +2130,9 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
             type="submit"
             disabled={loading} 
             className="w-full rounded px-5 py-3 font-semibold text-white disabled:opacity-50 transition-colors"
-            style={{ backgroundColor: 'rgb(75,151,201)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+            style={{ backgroundColor: 'var(--nf-primary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
           >
             {loading ? 'Processing Order...' : 
              useCoins && (coinsToUse / 10) >= finalSubtotal ? `Place Order (Paid with ${coinsToUse} Coins)` :
@@ -2183,7 +2183,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                                 setShowNewAddressForm(false)
                               }}
                               className="mt-1 w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                              style={{ accentColor: 'rgb(75,151,201)' }}
+                              style={{ accentColor: 'var(--nf-primary)' }}
                             />
                             <div className="flex-1">
                               <div className="flex items-start justify-between mb-2">
@@ -2504,7 +2504,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                 <input 
                   type="checkbox" 
                   className="mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  style={{ accentColor: 'rgb(75,151,201)' }}
+                  style={{ accentColor: 'var(--nf-primary)' }}
                   checked={saveInfo} 
                   onChange={e=>setSaveInfo(e.target.checked)} 
                 />
@@ -2514,7 +2514,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                 <input 
                   type="checkbox" 
                   className="mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  style={{ accentColor: 'rgb(75,151,201)' }}
+                  style={{ accentColor: 'var(--nf-primary)' }}
                   checked={newsOffers} 
                   onChange={e=>setNewsOffers(e.target.checked)} 
                 />
@@ -2622,7 +2622,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                       }}
                       className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
                       style={{ 
-                        accentColor: '#4b97c9',
+                        accentColor: 'var(--nf-primary)',
                         WebkitAppearance: 'checkbox',
                         appearance: 'checkbox'
                       }}
@@ -2699,7 +2699,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                     onChange={(e) => setSelectedPayment(e.target.value)}
                     disabled={useCoins && (coinsToUse / 10) >= finalSubtotal}
                     className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    style={{ accentColor: '#4b97c9' }}
+                    style={{ accentColor: 'var(--nf-primary)' }}
                   />
                   <div className="flex-1">
                     <div className="font-medium text-slate-700 text-gray-900">
@@ -2746,7 +2746,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                     onChange={(e) => setSelectedPayment(e.target.value)}
                     disabled={useCoins && (coinsToUse / 10) >= finalSubtotal}
                     className="mt-1 mr-3 w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    style={{ accentColor: '#4b97c9' }}
+                    style={{ accentColor: 'var(--nf-primary)' }}
                   />
                   <div className="flex-1">
                     <div className="font-medium text-slate-700 text-gray-900">
@@ -2771,9 +2771,9 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
             type="submit"
             disabled={loading} 
             className="w-full rounded px-5 py-3 font-semibold text-white disabled:opacity-50 transition-colors"
-            style={{ backgroundColor: 'rgb(75,151,201)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+            style={{ backgroundColor: 'var(--nf-primary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
           >
             {loading ? 'Processing Order...' : 
              useCoins && (coinsToUse / 10) >= finalSubtotal ? `Place Order (Paid with ${coinsToUse} Coins)` :

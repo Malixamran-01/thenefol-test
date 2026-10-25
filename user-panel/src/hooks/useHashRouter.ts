@@ -7,6 +7,24 @@ import {
 } from '../utils/hashRouteEvents'
 
 /**
+ * Clean-URL landings (`/product/<slug>` from the sitemap / Google, `/blog/<id>`, `/user/shop`, …)
+ * are rewritten in place to the equivalent `#/…` route before the app renders, because pages
+ * read their params from `window.location.hash`. Printed QR codes and old `#/` links are
+ * untouched — they already carry a hash.
+ */
+function normalizeCleanLandingToHash(): void {
+  if (typeof window === 'undefined') return
+  const { pathname, search, hash } = window.location
+  if (hash && hash.length > 1) return
+  if (!pathname || pathname === '/' || pathname === '/index.html') return
+  const clean = pathname.replace(/\/+$/, '')
+  const m = clean.match(/^\/(product|blog|author)\/(.+)$/i)
+  const route = m ? `/user/${m[1].toLowerCase()}/${m[2]}` : clean
+  history.replaceState(history.state, '', `/${search}#${route}`)
+}
+normalizeCleanLandingToHash()
+
+/**
  * Resolve the active route on initial page load.
  * Priority: hash fragment (existing behaviour) → pathname (for SEO / clean-URL landings).
  */

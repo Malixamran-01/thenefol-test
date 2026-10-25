@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, useMemo, useCallback, lazy, Suspense } fro
 import type { Product } from '../types'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
-import { getApiBase } from '../utils/apiBase'
+import { getApiBase, getSiteUrl } from '../utils/apiBase'
+import { setPageMeta, setCanonical } from '../utils/pageMeta'
 import { NEFOL_HASH_ROUTE_CHANGE } from '../utils/hashRouteEvents'
 import { userSocketService } from '../services/socket'
 import { api, productQuestionsAPI } from '../services/api'
@@ -11,6 +12,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import StickyAddToCart from '../components/StickyAddToCart'
 import ShareProduct from '../components/ShareProduct'
 import ImageZoom from '../components/ImageZoom'
+import ProductVideo, { isVideoUrl } from '../components/ProductVideo'
 import VerifiedBadge from '../components/VerifiedBadge'
 const RelatedProductsCarousel = lazy(() => import('../components/RelatedProductsCarousel'))
 const RecentlyViewed = lazy(() => import('../components/RecentlyViewed'))
@@ -96,6 +98,54 @@ export default function ProductPage() {
     setZoomImageIndex(0)
     setThumbnailScrollIndex(0)
   }, [product?.id, product?.listImage, product?.pdpImages])
+
+  // Browser tab title, description, canonical clean URL and Product structured data for search
+  useEffect(() => {
+    if (!product?.slug) return
+    const details = product.details || {}
+    const size = typeof details.netQuantity === 'string' && details.netQuantity.trim() ? ` – ${details.netQuantity.trim()}` : ''
+    const description =
+      (typeof details.subtitle === 'string' && details.subtitle) || product.description || ''
+    setPageMeta(`${product.title}${size}`, description)
+
+    const site = getSiteUrl().replace(/\/$/, '')
+    const canonicalUrl = `${site}/product/${encodeURIComponent(product.slug)}`
+    setCanonical(canonicalUrl)
+
+    const price = parseFloat(String(details.websitePrice || product.price || '').replace(/[^\d.]/g, ''))
+    const image = buildProductGalleryImages(product).find((u) => u && !isVideoUrl(u))
+    const jsonLd: Record<string, unknown> = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.title,
+      url: canonicalUrl,
+      brand: { '@type': 'Brand', name: 'NEFOL' },
+      ...(image ? { image: [image] } : {}),
+      ...(description ? { description: String(description).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500) } : {}),
+      ...(typeof details.sku === 'string' && details.sku ? { sku: details.sku } : {}),
+      ...(Number.isFinite(price) && price > 0
+        ? {
+            offers: {
+              '@type': 'Offer',
+              url: canonicalUrl,
+              priceCurrency: 'INR',
+              price: price.toFixed(2),
+              availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            },
+          }
+        : {}),
+    }
+    const script = document.createElement('script')
+    script.type = 'application/ld+json'
+    script.dataset.nefol = 'product-jsonld'
+    script.textContent = JSON.stringify(jsonLd)
+    document.head.querySelectorAll('script[data-nefol="product-jsonld"]').forEach((el) => el.remove())
+    document.head.appendChild(script)
+    return () => {
+      script.remove()
+      setCanonical(null)
+    }
+  }, [product?.id, product?.slug, product?.title, product?.inStock])
 
   // Delivery availability state
   const [deliveryPincode, setDeliveryPincode] = useState('')
@@ -285,7 +335,18 @@ export default function ProductPage() {
         // Deduplicate by URL
         return [...new Map(normalized.map((url, idx) => [url, idx])).keys()]
       }
-      
+
+      const normalizeMediaPosters = (media: any): Record<string, string> => {
+        const posters: Record<string, string> = {}
+        if (!Array.isArray(media)) return posters
+        for (const m of media) {
+          if (m && typeof m.url === 'string' && typeof m.poster === 'string' && m.poster) {
+            posters[toAbs(m.url)] = toAbs(m.poster)
+          }
+        }
+        return posters
+      }
+
       // Fetch product and CSV data in parallel with caching
       try {
         setLoading(true)
@@ -314,6 +375,7 @@ export default function ProductPage() {
               price: data.price,
               listImage: toAbs(data.list_image || ''),
               pdpImages: normalizePdpImages(data.pdp_images, data.list_image),
+              mediaPosters: normalizeMediaPosters(data.pdp_media),
               bannerImages: normalizeBannerImages(data.banner_images),
               description: data.description || '',
               details: data.details,
@@ -662,6 +724,11 @@ export default function ProductPage() {
             price: data.price,
             listImage: toAbs(data.list_image || ''),
             pdpImages: normalizePdpImages(data.pdp_images),
+            mediaPosters: Object.fromEntries(
+              (Array.isArray(data.pdp_media) ? data.pdp_media : [])
+                .filter((m: any) => m && typeof m.url === 'string' && typeof m.poster === 'string' && m.poster)
+                .map((m: any) => [toAbs(m.url), toAbs(m.poster)])
+            ),
             bannerImages: normalizeBannerImages(data.banner_images),
             description: data.description || '',
             details: data.details
@@ -798,7 +865,8 @@ export default function ProductPage() {
               {(() => {
                 const uniqueImages = galleryImages
                 const currentImage = uniqueImages[currentImageIndex] || ''
-                
+                const currentIsVideo = isVideoUrl(currentImage)
+
                 const handlePreviousImage = () => {
                   setCurrentImageIndex(prev => Math.max(0, prev - 1))
                 }
@@ -833,9 +901,9 @@ export default function ProductPage() {
                 return currentImage ? (
                   <div 
                     ref={mainImageRef}
-                    className="aspect-square overflow-hidden rounded-lg border border-gray-200 flex items-center justify-center bg-gray-50 cursor-zoom-in group w-full relative"
+                    className={`aspect-square overflow-hidden rounded-lg border border-gray-200 flex items-center justify-center bg-gray-50 group w-full relative ${currentIsVideo ? '' : 'cursor-zoom-in'}`}
                     onMouseMove={(e) => {
-                      if (!mainImageRef.current) return
+                      if (!mainImageRef.current || currentIsVideo) return
                       const rect = mainImageRef.current.getBoundingClientRect()
                       const x = ((e.clientX - rect.left) / rect.width) * 100
                       const y = ((e.clientY - rect.top) / rect.height) * 100
@@ -856,26 +924,37 @@ export default function ProductPage() {
                         className="absolute left-2 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100"
                         aria-label="Previous image"
                       >
-                        <ChevronLeft className="w-5 h-5" style={{color: 'rgb(75,151,201)'}} />
+                        <ChevronLeft className="w-5 h-5" style={{color: 'var(--nf-primary)'}} />
                       </button>
                     )}
                     
-                    <img
-                      src={currentImage}
-                      alt={product.title}
-                      className="w-full h-full object-contain transition-opacity duration-300 max-w-full"
-                      loading={currentImageIndex === 0 ? "eager" : "lazy"}
-                      decoding="async"
-                      {...(currentImageIndex === 0 ? { fetchpriority: 'high' } as any : {})}
-                      onClick={() => {
-                        setZoomImageIndex(currentImageIndex)
-                        setShowImageZoom(true)
-                      }}
-                      onError={() => {
-                        if (currentImage) handleGalleryImageError(currentImage)
-                      }}
-                      draggable={false}
-                    />
+                    {currentIsVideo ? (
+                      <ProductVideo
+                        key={currentImage}
+                        src={currentImage}
+                        poster={product.mediaPosters?.[currentImage]}
+                        title={product.title}
+                        className="w-full h-full object-contain max-w-full"
+                        onError={() => handleGalleryImageError(currentImage)}
+                      />
+                    ) : (
+                      <img
+                        src={currentImage}
+                        alt={product.title}
+                        className="w-full h-full object-contain transition-opacity duration-300 max-w-full"
+                        loading={currentImageIndex === 0 ? "eager" : "lazy"}
+                        decoding="async"
+                        {...(currentImageIndex === 0 ? { fetchpriority: 'high' } as any : {})}
+                        onClick={() => {
+                          setZoomImageIndex(currentImageIndex)
+                          setShowImageZoom(true)
+                        }}
+                        onError={() => {
+                          if (currentImage) handleGalleryImageError(currentImage)
+                        }}
+                        draggable={false}
+                      />
+                    )}
                     
                     {/* Right Navigation Arrow - Desktop Only (Mamaearth style) */}
                     {uniqueImages.length > 1 && currentImageIndex < uniqueImages.length - 1 && (
@@ -887,13 +966,13 @@ export default function ProductPage() {
                         className="absolute right-2 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100"
                         aria-label="Next image"
                       >
-                        <ChevronRight className="w-5 h-5" style={{color: 'rgb(75,151,201)'}} />
+                        <ChevronRight className="w-5 h-5" style={{color: 'var(--nf-primary)'}} />
                       </button>
                     )}
                     
                     {/* Amazon-style hover zoom lens effect */}
-                    {hoverZoom.show && (
-                      <div 
+                    {hoverZoom.show && !currentIsVideo && (
+                      <div
                         className="absolute pointer-events-none z-20 rounded-full border-2 border-gray-300 shadow-2xl"
                         style={{
                           width: '200px',
@@ -967,7 +1046,7 @@ export default function ProductPage() {
                         aria-label="Previous thumbnails"
                         disabled={!canScrollLeft}
                       >
-                        <ChevronLeft className="w-5 h-5" style={{color: 'rgb(75,151,201)'}} />
+                        <ChevronLeft className="w-5 h-5" style={{color: 'var(--nf-primary)'}} />
                       </button>
                     )}
                     
@@ -1043,13 +1122,33 @@ export default function ProductPage() {
                             role="group"
                             aria-label={`${index + 1} / ${uniqueImages.length}`}
                           >
-                            {/\.(mp4|webm|ogg)(\?|$)/i.test(src) ? (
-                              <video 
-                                src={src} 
-                                className="h-full w-full object-cover"
-                                muted
-                                onError={() => handleGalleryImageError(src)}
-                              />
+                            {isVideoUrl(src) ? (
+                              <>
+                                {product.mediaPosters?.[src] ? (
+                                  <img
+                                    src={product.mediaPosters[src]}
+                                    alt={`${product.title} video`}
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                  />
+                                ) : (
+                                  // No poster: fetch only metadata + first frame, never the whole clip
+                                  <video
+                                    src={`${src}#t=0.1`}
+                                    className="h-full w-full object-cover"
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    onError={() => handleGalleryImageError(src)}
+                                  />
+                                )}
+                                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow">
+                                    <svg className="ml-0.5 h-4 w-4" viewBox="0 0 24 24" fill="var(--nf-primary)" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                                  </span>
+                                </span>
+                              </>
                             ) : (
                               <img 
                                 src={src} 
@@ -1075,7 +1174,7 @@ export default function ProductPage() {
                         aria-label="Next thumbnails"
                         disabled={!canScrollRight}
                       >
-                        <ChevronRight className="w-5 h-5" style={{color: 'rgb(75,151,201)'}} />
+                        <ChevronRight className="w-5 h-5" style={{color: 'var(--nf-primary)'}} />
                       </button>
                     )}
                     
@@ -1366,11 +1465,11 @@ export default function ProductPage() {
                           if (button) {
                             const originalText = button.textContent
                             button.textContent = 'Added to Cart!'
-                            button.style.backgroundColor = 'rgb(75,151,201)'
+                            button.style.backgroundColor = 'var(--nf-primary)'
                             button.style.color = '#FFFFFF'
                             setTimeout(() => {
                               button.textContent = originalText
-                              button.style.backgroundColor = 'rgb(75,151,201)'
+                              button.style.backgroundColor = 'var(--nf-primary)'
                               button.style.color = '#FFFFFF'
                             }, 4000) // Increased to 4 seconds for better visibility
                           }
@@ -1382,7 +1481,7 @@ export default function ProductPage() {
                     }}
                     data-add-to-cart
                     className="flex-1 rounded-md px-4 sm:px-6 py-3.5 sm:py-3 font-semibold text-white transition-colors min-h-[48px] touch-manipulation text-base sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
+                    style={{ backgroundColor: 'var(--nf-primary)', color: '#FFFFFF' }}
                   >
                 {product?.inStock ? 'ADD TO CART' : 'OUT OF STOCK'}
                   </button>
@@ -1403,7 +1502,7 @@ export default function ProductPage() {
                       }
                     }}
                     className="flex-1 rounded-md px-4 sm:px-6 py-3.5 sm:py-3 font-semibold text-white transition-colors min-h-[48px] touch-manipulation text-base sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
+                    style={{ backgroundColor: 'var(--nf-primary)', color: '#FFFFFF' }}
                   >
                     {product?.inStock ? 'BUY NOW' : 'UNAVAILABLE'}
                   </button>
@@ -1416,9 +1515,7 @@ export default function ProductPage() {
                   productTitle={product.title}
                   productImage={
                     // Use first PDP image if available (better quality), otherwise use listImage
-                    (product.pdpImages && product.pdpImages.length > 0 && product.pdpImages[0])
-                      ? product.pdpImages[0]
-                      : product.listImage
+                    product.pdpImages?.find((u) => u && !isVideoUrl(u)) || product.listImage
                   }
                   productDescription={product.description}
                 />
@@ -2217,7 +2314,7 @@ export default function ProductPage() {
                 aria-label="Previous"
                 disabled={!canGoPreviousRelated}
               >
-                <ChevronLeft className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
+                <ChevronLeft className="w-6 h-6" style={{color: 'var(--nf-primary)'}} />
               </button>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2271,7 +2368,8 @@ export default function ProductPage() {
                           </div>
                         )
                       }
-                      return null
+                      // Same height as the rating row so cards line up
+                      return <div className="mb-2 h-5" aria-hidden="true" />
                     })()}
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-2">
@@ -2282,7 +2380,7 @@ export default function ProductPage() {
                           {item.discount}% OFF
                         </span>
                       </div>
-                      <button className="w-full py-2 font-medium rounded-md" style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}>
+                      <button className="w-full py-2 font-medium rounded-md" style={{ backgroundColor: 'var(--nf-primary)', color: '#FFFFFF' }}>
                         ADD TO CART
                       </button>
                   </div>
@@ -2300,7 +2398,7 @@ export default function ProductPage() {
                 aria-label="Next"
                 disabled={!canGoNextRelated}
               >
-                <ChevronRight className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
+                <ChevronRight className="w-6 h-6" style={{color: 'var(--nf-primary)'}} />
               </button>
             </div>
           </section>
@@ -2444,6 +2542,7 @@ export default function ProductPage() {
       {showImageZoom && product && (
         <ImageZoom
           images={galleryImages}
+          posters={product.mediaPosters}
           currentIndex={zoomImageIndex}
           onClose={() => setShowImageZoom(false)}
           onIndexChange={(index) => {
@@ -2532,7 +2631,7 @@ function ReviewModal({ product, user, onClose, onSuccess }: {
         // Ignore if module not available
       }
       
-      alert('Review submitted successfully! Thank you for your feedback.')
+      alert('Thank you for your review! It will appear on this page once our team has checked it.')
       onSuccess()
     } catch (err: any) {
       console.error('Failed to submit review:', err)

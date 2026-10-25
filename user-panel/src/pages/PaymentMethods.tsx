@@ -90,10 +90,10 @@ export default function PaymentMethods() {
 
   const getIconBg = (type: string) => {
     switch (type) {
-      case 'card': return 'rgb(75,151,201)'
+      case 'card': return 'var(--nf-primary)'
       case 'upi': return '#4caf82'
       case 'wallet': return '#9b7fd4'
-      default: return 'rgb(75,151,201)'
+      default: return 'var(--nf-primary)'
     }
   }
 
@@ -109,7 +109,7 @@ export default function PaymentMethods() {
           <button
             onClick={() => window.location.hash = '#/user/profile'}
             className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Back to Profile</span>
@@ -120,14 +120,14 @@ export default function PaymentMethods() {
         <div className="text-center mb-12">
           <div
             className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
-            style={{ backgroundColor: 'rgb(75,151,201)' }}
+            style={{ backgroundColor: 'var(--nf-primary)' }}
           >
             <CreditCard className="w-10 h-10 text-white" />
           </div>
           <h1
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -136,7 +136,7 @@ export default function PaymentMethods() {
           </h1>
           <p
             className="text-sm sm:text-base font-light tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Manage your saved payment methods for faster checkout.
           </p>
@@ -155,7 +155,7 @@ export default function PaymentMethods() {
               key={method.id}
               className="flex items-center justify-between px-5 py-4 rounded-xl border transition-all"
               style={{
-                borderColor: method.isDefault ? 'rgb(75,151,201)' : '#e8e8e8',
+                borderColor: method.isDefault ? 'var(--nf-primary)' : '#e8e8e8',
                 backgroundColor: method.isDefault ? 'rgba(75,151,201,0.04)' : '#fafafa'
               }}
             >
@@ -167,7 +167,7 @@ export default function PaymentMethods() {
                   {getPaymentIcon(method.type)}
                 </div>
                 <div>
-                  <p className="font-medium text-sm" style={{ color: '#1a1a1a' }}>{method.name}</p>
+                  <p className="font-medium text-sm" style={{ color: 'var(--nf-text)' }}>{method.name}</p>
                   <p className="text-xs font-light mt-0.5" style={{ color: '#888' }}>
                     {method.number}{method.expiry && ` · Expires ${method.expiry}`}
                   </p>
@@ -178,7 +178,7 @@ export default function PaymentMethods() {
                 {method.isDefault ? (
                   <span
                     className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full"
-                    style={{ backgroundColor: 'rgb(75,151,201)', color: '#fff' }}
+                    style={{ backgroundColor: 'var(--nf-primary)', color: '#fff' }}
                   >
                     <Check className="w-3 h-3" />
                     Default
@@ -187,7 +187,7 @@ export default function PaymentMethods() {
                   <button
                     onClick={() => handleSetDefault(method.id)}
                     className="text-xs font-light tracking-wide transition-opacity hover:opacity-70"
-                    style={{ color: 'rgb(75,151,201)' }}
+                    style={{ color: 'var(--nf-primary)' }}
                   >
                     Set Default
                   </button>
@@ -195,7 +195,7 @@ export default function PaymentMethods() {
                 <button
                   className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
                   style={{ color: '#aaa' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'rgb(75,151,201)')}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--nf-primary)')}
                   onMouseLeave={e => (e.currentTarget.style.color = '#aaa')}
                 >
                   <Edit className="w-4 h-4" />
@@ -219,7 +219,7 @@ export default function PaymentMethods() {
           <button
             onClick={() => setShowAddForm(true)}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-dashed font-light text-sm tracking-wide transition-all hover:opacity-80"
-            style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+            style={{ borderColor: 'var(--nf-primary)', color: 'var(--nf-primary)' }}
           >
             <Plus className="w-4 h-4" />
             Add New Payment Method
@@ -227,7 +227,7 @@ export default function PaymentMethods() {
         ) : (
           <div className="border rounded-xl p-6 mt-2" style={{ borderColor: '#e8e8e8', backgroundColor: '#fafafa' }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-light tracking-widest text-sm uppercase" style={{ color: '#1a1a1a', letterSpacing: '0.12em' }}>
+              <h2 className="font-light tracking-widest text-sm uppercase" style={{ color: 'var(--nf-text)', letterSpacing: '0.12em' }}>
                 Add Payment Method
               </h2>
               <button
@@ -249,9 +249,9 @@ export default function PaymentMethods() {
                     onClick={() => setNewPaymentMethod({ ...newPaymentMethod, type: t })}
                     className="flex-1 py-2.5 rounded-lg text-xs font-medium tracking-wide border transition-all"
                     style={{
-                      borderColor: newPaymentMethod.type === t ? 'rgb(75,151,201)' : '#e0e0e0',
+                      borderColor: newPaymentMethod.type === t ? 'var(--nf-primary)' : '#e0e0e0',
                       backgroundColor: newPaymentMethod.type === t ? 'rgba(75,151,201,0.08)' : '#fff',
-                      color: newPaymentMethod.type === t ? 'rgb(75,151,201)' : '#888'
+                      color: newPaymentMethod.type === t ? 'var(--nf-primary)' : '#888'
                     }}
                   >
                     {t === 'card' ? 'Card' : t === 'upi' ? 'UPI' : 'Wallet'}
@@ -268,8 +268,8 @@ export default function PaymentMethods() {
                   value={newPaymentMethod.name}
                   onChange={e => setNewPaymentMethod({ ...newPaymentMethod, name: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border text-sm font-light outline-none focus:ring-0 transition-colors"
-                  style={{ borderColor: '#e0e0e0', color: '#1a1a1a', backgroundColor: '#fff' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgb(75,151,201)')}
+                  style={{ borderColor: '#e0e0e0', color: 'var(--nf-text)', backgroundColor: '#fff' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--nf-primary)')}
                   onBlur={e => (e.currentTarget.style.borderColor = '#e0e0e0')}
                   placeholder={newPaymentMethod.type === 'card' ? 'John Doe' : 'Account Holder Name'}
                   required
@@ -285,8 +285,8 @@ export default function PaymentMethods() {
                   value={newPaymentMethod.number}
                   onChange={e => setNewPaymentMethod({ ...newPaymentMethod, number: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border text-sm font-light outline-none transition-colors"
-                  style={{ borderColor: '#e0e0e0', color: '#1a1a1a', backgroundColor: '#fff' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgb(75,151,201)')}
+                  style={{ borderColor: '#e0e0e0', color: 'var(--nf-text)', backgroundColor: '#fff' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--nf-primary)')}
                   onBlur={e => (e.currentTarget.style.borderColor = '#e0e0e0')}
                   placeholder={newPaymentMethod.type === 'card' ? '1234 5678 9012 3456' : 'user@upi or account number'}
                   required
@@ -309,8 +309,8 @@ export default function PaymentMethods() {
                       }}
                       maxLength={5}
                       className="w-full px-4 py-3 rounded-lg border text-sm font-light outline-none transition-colors"
-                      style={{ borderColor: '#e0e0e0', color: '#1a1a1a', backgroundColor: '#fff' }}
-                      onFocus={e => (e.currentTarget.style.borderColor = 'rgb(75,151,201)')}
+                      style={{ borderColor: '#e0e0e0', color: 'var(--nf-text)', backgroundColor: '#fff' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--nf-primary)')}
                       onBlur={e => (e.currentTarget.style.borderColor = '#e0e0e0')}
                       placeholder="MM/YY"
                       inputMode="numeric"
@@ -329,8 +329,8 @@ export default function PaymentMethods() {
                         setNewPaymentMethod({ ...newPaymentMethod, cvv: value })
                       }}
                       className="w-full px-4 py-3 rounded-lg border text-sm font-light outline-none transition-colors"
-                      style={{ borderColor: '#e0e0e0', color: '#1a1a1a', backgroundColor: '#fff' }}
-                      onFocus={e => (e.currentTarget.style.borderColor = 'rgb(75,151,201)')}
+                      style={{ borderColor: '#e0e0e0', color: 'var(--nf-text)', backgroundColor: '#fff' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--nf-primary)')}
                       onBlur={e => (e.currentTarget.style.borderColor = '#e0e0e0')}
                       placeholder="•••"
                       inputMode="numeric"
@@ -345,7 +345,7 @@ export default function PaymentMethods() {
                 <button
                   type="submit"
                   className="flex-1 py-3 rounded-lg text-white text-sm font-medium tracking-wide transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  style={{ backgroundColor: 'var(--nf-primary)' }}
                 >
                   Save Method
                 </button>
@@ -353,7 +353,7 @@ export default function PaymentMethods() {
                   type="button"
                   onClick={() => setShowAddForm(false)}
                   className="flex-1 py-3 rounded-lg text-sm font-light tracking-wide border transition-colors hover:bg-gray-50"
-                  style={{ borderColor: '#e0e0e0', color: '#666' }}
+                  style={{ borderColor: '#e0e0e0', color: 'var(--nf-text-muted)' }}
                 >
                   Cancel
                 </button>
@@ -364,9 +364,9 @@ export default function PaymentMethods() {
 
         {/* Security Notice */}
         <div className="mt-10 flex items-start gap-4 px-5 py-4 rounded-xl" style={{ backgroundColor: '#f7fafe', border: '1px solid rgba(75,151,201,0.15)' }}>
-          <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'rgb(75,151,201)' }} />
+          <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--nf-primary)' }} />
           <div>
-            <p className="text-xs font-medium tracking-wide mb-1" style={{ color: '#1a1a1a' }}>
+            <p className="text-xs font-medium tracking-wide mb-1" style={{ color: 'var(--nf-text)' }}>
               Your payment info is secure
             </p>
             <p className="text-xs font-light leading-relaxed" style={{ color: '#888' }}>

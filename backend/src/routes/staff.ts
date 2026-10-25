@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { sendError, sendSuccess, validateRequired, withTransaction } from '../utils/apiHelpers'
 import crypto from 'crypto'
 import { hashPassword, verifyPassword } from '../utils/staffPassword'
 import {
@@ -493,15 +493,14 @@ export async function setRolePermissions(pool: Pool, req: Request, res: Response
     const validationError = validateRequired({ roleId }, ['roleId'])
     if (validationError) return sendError(res, 400, validationError)
     const ids = Array.isArray(permissionIds) ? permissionIds : []
-    await pool.query('begin')
-    await pool.query('delete from role_permissions where role_id = $1', [roleId])
-    for (const pid of ids) {
-      await pool.query('insert into role_permissions (role_id, permission_id) values ($1, $2) on conflict do nothing', [roleId, pid])
-    }
-    await pool.query('commit')
+    await withTransaction(pool, async (client) => {
+      await client.query('delete from role_permissions where role_id = $1', [roleId])
+      for (const pid of ids) {
+        await client.query('insert into role_permissions (role_id, permission_id) values ($1, $2) on conflict do nothing', [roleId, pid])
+      }
+    })
     sendSuccess(res, { roleId, permissionIds: ids })
   } catch (err) {
-    await pool.query('rollback')
     sendError(res, 500, 'Failed to set role permissions', err)
   }
 }
@@ -708,32 +707,31 @@ export async function seedStandardRolesAndPermissions(pool: Pool, req: Request, 
         'nav:catalog',
       ],
     }
-    await pool.query('begin')
-    // Ensure permissions
-    const permIdByCode: Record<string, number> = {}
-    for (const code of standardPerms) {
-      const pr = await pool.query(`insert into permissions (code) values ($1) on conflict (code) do nothing returning id`, [code])
-      if (pr.rows[0]?.id) permIdByCode[code] = pr.rows[0].id
-      else {
-        const sel = await pool.query('select id from permissions where code = $1', [code])
-        if (sel.rows[0]?.id) permIdByCode[code] = sel.rows[0].id
+    await withTransaction(pool, async (client) => {
+      // Ensure permissions
+      const permIdByCode: Record<string, number> = {}
+      for (const code of standardPerms) {
+        const pr = await client.query(`insert into permissions (code) values ($1) on conflict (code) do nothing returning id`, [code])
+        if (pr.rows[0]?.id) permIdByCode[code] = pr.rows[0].id
+        else {
+          const sel = await client.query('select id from permissions where code = $1', [code])
+          if (sel.rows[0]?.id) permIdByCode[code] = sel.rows[0].id
+        }
       }
-    }
-    // Ensure roles and assignments
-    for (const [roleName, codes] of Object.entries(standardRoles)) {
-      const rr = await pool.query(`insert into roles (name) values ($1) on conflict (name) do nothing returning id`, [roleName])
-      const roleId = rr.rows[0]?.id || (await pool.query('select id from roles where name = $1', [roleName])).rows[0]?.id
-      if (!roleId) continue
-      await pool.query('delete from role_permissions where role_id = $1', [roleId])
-      for (const code of codes) {
-        const pid = permIdByCode[code]
-        if (pid) await pool.query('insert into role_permissions (role_id, permission_id) values ($1, $2) on conflict do nothing', [roleId, pid])
+      // Ensure roles and assignments
+      for (const [roleName, codes] of Object.entries(standardRoles)) {
+        const rr = await client.query(`insert into roles (name) values ($1) on conflict (name) do nothing returning id`, [roleName])
+        const roleId = rr.rows[0]?.id || (await client.query('select id from roles where name = $1', [roleName])).rows[0]?.id
+        if (!roleId) continue
+        await client.query('delete from role_permissions where role_id = $1', [roleId])
+        for (const code of codes) {
+          const pid = permIdByCode[code]
+          if (pid) await client.query('insert into role_permissions (role_id, permission_id) values ($1, $2) on conflict do nothing', [roleId, pid])
+        }
       }
-    }
-    await pool.query('commit')
+    })
     sendSuccess(res, { ok: true })
   } catch (err) {
-    await pool.query('rollback')
     sendError(res, 500, 'Failed to seed roles/permissions', err)
   }
 }
@@ -746,9 +744,9 @@ export async function bulkCreateStaff(pool: Pool, req: Request, res: Response) {
       return sendError(res, 400, 'users array is required and must not be empty')
     }
 
+    // Each user is inserted independently so one duplicate email doesn't undo the others
     const results = []
-    await pool.query('begin')
-    
+
     for (const user of users) {
       const { name, email, password } = user || {}
       if (!name || !email || !password) {
@@ -775,10 +773,8 @@ export async function bulkCreateStaff(pool: Pool, req: Request, res: Response) {
       }
     }
 
-    await pool.query('commit')
     sendSuccess(res, { results, created: results.filter(r => r.success).length, failed: results.filter(r => !r.success).length }, 201)
   } catch (err) {
-    await pool.query('rollback')
     sendError(res, 500, 'Failed to bulk create staff users', err)
   }
 }
@@ -810,27 +806,25 @@ export async function assignLayoutPermissions(pool: Pool, req: Request, res: Res
 
     const slugs = Array.isArray(layoutPageSlugs) ? layoutPageSlugs : []
     
-    await pool.query('begin')
-    // Remove existing permissions for this staff
-    await pool.query('delete from staff_layout_permissions where staff_id = $1', [staffId])
-    
-    // Add new permissions
-    for (const slug of slugs) {
-      if (slug && typeof slug === 'string') {
-        await pool.query(
-          `insert into staff_layout_permissions (staff_id, layout_page_slug, can_edit, created_at, updated_at) 
-           values ($1, $2, true, now(), now()) 
-           on conflict (staff_id, layout_page_slug) do update set updated_at = now()`,
-          [staffId, slug]
-        )
+    await withTransaction(pool, async (client) => {
+      // Remove existing permissions for this staff
+      await client.query('delete from staff_layout_permissions where staff_id = $1', [staffId])
+
+      // Add new permissions
+      for (const slug of slugs) {
+        if (slug && typeof slug === 'string') {
+          await client.query(
+            `insert into staff_layout_permissions (staff_id, layout_page_slug, can_edit, created_at, updated_at)
+             values ($1, $2, true, now(), now())
+             on conflict (staff_id, layout_page_slug) do update set updated_at = now()`,
+            [staffId, slug]
+          )
+        }
       }
-    }
-    
-    await pool.query('commit')
+    })
     await logStaff(pool, staffId, 'assign_layout_permissions', { layoutPageSlugs: slugs })
     sendSuccess(res, { staffId, layoutPageSlugs: slugs }, 201)
   } catch (err) {
-    await pool.query('rollback')
     sendError(res, 500, 'Failed to assign layout permissions', err)
   }
 }
@@ -980,27 +974,25 @@ export async function assignPagePermissions(pool: Pool, req: Request, res: Respo
 
     const paths = Array.isArray(pagePaths) ? pagePaths : []
     
-    await pool.query('begin')
-    // Remove existing permissions for this staff
-    await pool.query('delete from staff_page_permissions where staff_id = $1', [staffId])
-    
-    // Add new permissions
-    for (const pagePath of paths) {
-      if (pagePath && typeof pagePath === 'string') {
-        await pool.query(
-          `insert into staff_page_permissions (staff_id, page_path, can_access, created_at, updated_at) 
-           values ($1, $2, true, now(), now()) 
-           on conflict (staff_id, page_path) do update set can_access = true, updated_at = now()`,
-          [staffId, pagePath]
-        )
+    await withTransaction(pool, async (client) => {
+      // Remove existing permissions for this staff
+      await client.query('delete from staff_page_permissions where staff_id = $1', [staffId])
+
+      // Add new permissions
+      for (const pagePath of paths) {
+        if (pagePath && typeof pagePath === 'string') {
+          await client.query(
+            `insert into staff_page_permissions (staff_id, page_path, can_access, created_at, updated_at)
+             values ($1, $2, true, now(), now())
+             on conflict (staff_id, page_path) do update set can_access = true, updated_at = now()`,
+            [staffId, pagePath]
+          )
+        }
       }
-    }
-    
-    await pool.query('commit')
+    })
     await logStaff(pool, staffId, 'assign_page_permissions', { pagePaths: paths })
     sendSuccess(res, { staffId, pagePaths: paths }, 201)
   } catch (err) {
-    await pool.query('rollback')
     sendError(res, 500, 'Failed to assign page permissions', err)
   }
 }
@@ -1055,21 +1047,18 @@ export async function applyRoleTemplate(pool: Pool, req: Request, res: Response)
       else missing.push(code)
     }
 
-    await pool.query('begin')
-    await pool.query('delete from role_permissions where role_id = $1', [roleId])
-    for (const pid of permissionIds) {
-      await pool.query(
-        'insert into role_permissions (role_id, permission_id) values ($1, $2) on conflict do nothing',
-        [roleId, pid]
-      )
-    }
-    await pool.query('commit')
+    await withTransaction(pool, async (client) => {
+      await client.query('delete from role_permissions where role_id = $1', [roleId])
+      for (const pid of permissionIds) {
+        await client.query(
+          'insert into role_permissions (role_id, permission_id) values ($1, $2) on conflict do nothing',
+          [roleId, pid]
+        )
+      }
+    })
     await logStaff(pool, (req as any).staffId, 'apply_role_template', { roleId, templateId, missing })
     sendSuccess(res, { roleId, templateId, permissionCount: permissionIds.length, missingCodes: missing })
   } catch (err) {
-    try {
-      await pool.query('rollback')
-    } catch { /* */ }
     sendError(res, 500, 'Failed to apply role template', err)
   }
 }

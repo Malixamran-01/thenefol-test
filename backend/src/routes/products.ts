@@ -3,6 +3,25 @@ import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { handleGetAll, handleCreate, handleUpdate, sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import { isSocialCrawler } from '../utils/socialCrawler'
+import { getUploadsRoot } from '../config/uploadsRoot'
+import { deleteUploadedVideo, VIDEO_EXT_RE } from '../utils/videoOptimize'
+import { toShareableOgImage } from '../utils/ogImage'
+import { normalizeOrderItems, lineQty } from '../services/inventoryBatchService'
+
+/** Free disk for removed product videos once no other product_images row points at them. */
+async function cleanupRemovedVideos(pool: Pool, removed: Array<{ url: string }>) {
+  const videoUrls = [...new Set(removed.map((r) => r.url).filter((u) => u && VIDEO_EXT_RE.test(u)))]
+  if (videoUrls.length === 0) return
+  try {
+    const { rows } = await pool.query('SELECT DISTINCT url FROM product_images WHERE url = ANY($1::text[])', [videoUrls])
+    const stillUsed = new Set(rows.map((r: any) => r.url))
+    for (const url of videoUrls) {
+      if (!stillUsed.has(url)) deleteUploadedVideo(getUploadsRoot(), url)
+    }
+  } catch (err) {
+    console.warn('[video] cleanup after delete failed', err)
+  }
+}
 
 function escapeHtmlMeta(s: string): string {
   return String(s)
@@ -32,7 +51,7 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
       const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
       const slugPath = encodeURIComponent(slug)
-      const universal = `${frontendBase}/product/${slugPath}#/user/product/${slugPath}`
+      const universal = `${frontendBase}/#/user/product/${slugPath}`
       return res.redirect(302, universal)
     }
 
@@ -42,6 +61,7 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
         (
           SELECT pi.url FROM product_images pi
           WHERE pi.product_id = p.id AND (pi.type = 'pdp' OR pi.type IS NULL)
+            AND pi.url !~* ${VIDEO_URL_SQL_RE}
           ORDER BY pi.id ASC
           LIMIT 1
         ) AS first_pdp_url,
@@ -117,8 +137,9 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       'Discover premium skincare from NEFOL.'
 
     const slugPath = encodeURIComponent(row.slug)
-    const universalUrl = `${frontendBase}/product/${slugPath}#/user/product/${slugPath}`
-    const pageUrl = universalUrl
+    const universalUrl = `${frontendBase}/#/user/product/${slugPath}`
+    // Clean, hash-free canonical (also what the sitemap lists); the SPA maps it to the hash route
+    const pageUrl = `${frontendBase}/product/${slugPath}`
 
     const envOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
     const siteLogo = `${frontendBase}/IMAGES/NEFOL%20icon.png`
@@ -131,7 +152,10 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
       row.first_banner_url,
       detailsListImage
     )
-    const ogImage = productOg || (envOg ? toAbsolute(envOg) || envOg : siteLogo)
+    const ogImage = await toShareableOgImage(
+      productOg || (envOg ? toAbsolute(envOg) || envOg : siteLogo),
+      mediaBase
+    )
     const ogImageSecure = ogImage.startsWith('https://') ? ogImage : ogImage.replace(/^http:\/\//i, 'https://')
 
     const title = `${row.title || 'Product'} | NEFOL`
@@ -175,14 +199,57 @@ export async function serveProductMetaPage(pool: Pool, req: Request, res: Respon
 }
 
 /** Sellable units across all variants (on hand − reserved). Drives storefront availability. */
-const SQL_INVENTORY_AVAILABLE = `
+export const SQL_INVENTORY_AVAILABLE = `
   (SELECT COALESCE(SUM(GREATEST(COALESCE(inv.quantity, 0) - COALESCE(inv.reserved, 0), 0)), 0)::integer
    FROM product_variants pv
    LEFT JOIN inventory inv ON inv.variant_id = pv.id AND inv.product_id = pv.product_id
    WHERE pv.product_id = p.id)
   AS inventory_available`
 
-function attachStockFlags(product: any) {
+/**
+ * Ordered PDP/banner media as correlated subqueries (uses idx_product_images_product_type).
+ * Replaces the old double LEFT JOIN, which multiplied pdp × banner rows and ignored display_order.
+ */
+const MEDIA_ORDER = 'ORDER BY COALESCE(pi.display_order, pi.id), pi.id'
+const SQL_PRODUCT_IMAGES = `
+  COALESCE((SELECT json_agg(pi.url ${MEDIA_ORDER}) FROM product_images pi
+            WHERE pi.product_id = p.id AND (pi.type = 'pdp' OR pi.type IS NULL)), '[]'::json) AS pdp_images,
+  COALESCE((SELECT json_agg(pi.url ${MEDIA_ORDER}) FROM product_images pi
+            WHERE pi.product_id = p.id AND pi.type = 'banner'), '[]'::json) AS banner_images`
+/** Single-product endpoints also get poster frames for PDP videos. */
+const SQL_PRODUCT_MEDIA = `${SQL_PRODUCT_IMAGES},
+  COALESCE((SELECT json_agg(json_build_object('url', pi.url, 'poster', pi.poster_url) ${MEDIA_ORDER}) FROM product_images pi
+            WHERE pi.product_id = p.id AND (pi.type = 'pdp' OR pi.type IS NULL)), '[]'::json) AS pdp_media`
+
+const VIDEO_URL_SQL_RE = `'\\.(mp4|webm|ogg|ogv|mov|m4v|avi)([?#]|$)'`
+
+/**
+ * Returns a customer-facing message for the first order line that isn't available
+ * (same rule as the storefront's in_stock flag), or null when everything can be fulfilled.
+ */
+export async function findOutOfStockOrderLine(pool: Pool, rawItems: unknown): Promise<string | null> {
+  const qtyByProduct = new Map<number, number>()
+  for (const line of normalizeOrderItems(rawItems)) {
+    const pid = Number(line?.product_id ?? line?.id)
+    if (!Number.isFinite(pid) || pid <= 0) continue
+    qtyByProduct.set(pid, (qtyByProduct.get(pid) || 0) + Math.max(1, lineQty(line)))
+  }
+  if (qtyByProduct.size === 0) return null
+
+  const { rows } = await pool.query(
+    `SELECT p.id, p.title, ${SQL_INVENTORY_AVAILABLE} FROM products p WHERE p.id = ANY($1::int[])`,
+    [[...qtyByProduct.keys()]]
+  )
+  for (const row of rows) {
+    const available = Number(row.inventory_available) || 0
+    const wanted = qtyByProduct.get(Number(row.id)) || 0
+    if (available <= 0) return `${row.title} is out of stock. Please remove it from your cart to continue.`
+    if (wanted > available) return `Only ${available} left of ${row.title}. Please reduce the quantity to continue.`
+  }
+  return null
+}
+
+export function attachStockFlags(product: any) {
   const n = Number(product?.inventory_available ?? 0)
   return {
     ...product,
@@ -197,37 +264,16 @@ export async function getProducts(pool: Pool, res: Response) {
     console.log(`📋 Fetching all products from database...`)
     
     const { rows } = await pool.query(`
-      SELECT p.*, 
+      SELECT p.*,
              ${SQL_INVENTORY_AVAILABLE},
-             COALESCE(
-               json_agg(
-                 json_build_object('url', pi.url, 'type', COALESCE(pi.type, 'pdp'))
-               ) FILTER (WHERE pi.url IS NOT NULL AND (pi.type = 'pdp' OR pi.type IS NULL)), 
-               '[]'::json
-             ) as pdp_images,
-             COALESCE(
-               json_agg(
-                 json_build_object('url', pi_banner.url, 'type', 'banner')
-               ) FILTER (WHERE pi_banner.url IS NOT NULL AND pi_banner.type = 'banner'), 
-               '[]'::json
-             ) as banner_images
+             ${SQL_PRODUCT_IMAGES}
       FROM products p
-      LEFT JOIN product_images pi ON p.id = pi.product_id AND (pi.type = 'pdp' OR pi.type IS NULL)
-      LEFT JOIN product_images pi_banner ON p.id = pi_banner.product_id AND pi_banner.type = 'banner'
-      GROUP BY p.id
       ORDER BY p.created_at DESC
     `)
-    
+
     console.log(`✅ Retrieved ${rows.length} products from database`)
-    
-    // Transform the data to match expected format
-    const products = rows.map((product: any) =>
-      attachStockFlags({
-        ...product,
-        pdp_images: product.pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
-        banner_images: product.banner_images.filter((img: any) => img.url).map((img: any) => img.url),
-      })
-    )
+
+    const products = rows.map((product: any) => attachStockFlags(product))
     
     sendSuccess(res, products)
   } catch (err) {
@@ -247,38 +293,18 @@ export async function getProductById(pool: Pool, req: Request, res: Response) {
     }
     
     const { rows } = await pool.query(`
-      SELECT p.*, 
+      SELECT p.*,
              ${SQL_INVENTORY_AVAILABLE},
-             COALESCE(
-               json_agg(
-                 json_build_object('url', pi.url, 'type', COALESCE(pi.type, 'pdp'))
-               ) FILTER (WHERE pi.url IS NOT NULL AND (pi.type = 'pdp' OR pi.type IS NULL)), 
-               '[]'::json
-             ) as pdp_images,
-             COALESCE(
-               json_agg(
-                 json_build_object('url', pi_banner.url, 'type', 'banner')
-               ) FILTER (WHERE pi_banner.url IS NOT NULL AND pi_banner.type = 'banner'), 
-               '[]'::json
-             ) as banner_images
+             ${SQL_PRODUCT_MEDIA}
       FROM products p
-      LEFT JOIN product_images pi ON p.id = pi.product_id AND (pi.type = 'pdp' OR pi.type IS NULL)
-      LEFT JOIN product_images pi_banner ON p.id = pi_banner.product_id AND pi_banner.type = 'banner'
       WHERE p.id = $1
-      GROUP BY p.id
     `, [id])
-    
+
     if (rows.length === 0) {
       return sendError(res, 404, 'Product not found')
     }
-    
-    const product = attachStockFlags({
-      ...rows[0],
-      pdp_images: rows[0].pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
-      banner_images: rows[0].banner_images.filter((img: any) => img.url).map((img: any) => img.url),
-    })
-    
-    sendSuccess(res, product)
+
+    sendSuccess(res, attachStockFlags(rows[0]))
   } catch (err) {
     sendError(res, 500, 'Failed to fetch product', err)
   }
@@ -294,33 +320,15 @@ export async function getProductBySku(pool: Pool, req: Request, res: Response) {
     const { rows } = await pool.query(`
       SELECT p.*,
              ${SQL_INVENTORY_AVAILABLE},
-             COALESCE(
-               json_agg(
-                 json_build_object('url', pi.url, 'type', COALESCE(pi.type, 'pdp'))
-               ) FILTER (WHERE pi.url IS NOT NULL AND (pi.type = 'pdp' OR pi.type IS NULL)),
-               '[]'::json
-             ) as pdp_images,
-             COALESCE(
-               json_agg(
-                 json_build_object('url', pi_banner.url, 'type', 'banner')
-               ) FILTER (WHERE pi_banner.url IS NOT NULL AND pi_banner.type = 'banner'),
-               '[]'::json
-             ) as banner_images
+             ${SQL_PRODUCT_MEDIA}
       FROM products p
-      LEFT JOIN product_images pi ON p.id = pi.product_id AND (pi.type = 'pdp' OR pi.type IS NULL)
-      LEFT JOIN product_images pi_banner ON p.id = pi_banner.product_id AND pi_banner.type = 'banner'
       WHERE p.details->>'sku' = $1
-      GROUP BY p.id
+      LIMIT 1
     `, [sku])
     if (rows.length === 0) {
       return sendError(res, 404, 'Product not found')
     }
-    const product = attachStockFlags({
-      ...rows[0],
-      pdp_images: rows[0].pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
-      banner_images: rows[0].banner_images.filter((img: any) => img.url).map((img: any) => img.url),
-    })
-    sendSuccess(res, product)
+    sendSuccess(res, attachStockFlags(rows[0]))
   } catch (err) {
     sendError(res, 500, 'Failed to fetch product by SKU', err)
   }
@@ -337,38 +345,18 @@ export async function getProductBySlug(pool: Pool, req: Request, res: Response) 
     }
     
     const { rows } = await pool.query(`
-      SELECT p.*, 
+      SELECT p.*,
              ${SQL_INVENTORY_AVAILABLE},
-             COALESCE(
-               json_agg(
-                 json_build_object('url', pi.url, 'type', COALESCE(pi.type, 'pdp'))
-               ) FILTER (WHERE pi.url IS NOT NULL AND (pi.type = 'pdp' OR pi.type IS NULL)), 
-               '[]'::json
-             ) as pdp_images,
-             COALESCE(
-               json_agg(
-                 json_build_object('url', pi_banner.url, 'type', 'banner')
-               ) FILTER (WHERE pi_banner.url IS NOT NULL AND pi_banner.type = 'banner'), 
-               '[]'::json
-             ) as banner_images
+             ${SQL_PRODUCT_MEDIA}
       FROM products p
-      LEFT JOIN product_images pi ON p.id = pi.product_id AND (pi.type = 'pdp' OR pi.type IS NULL)
-      LEFT JOIN product_images pi_banner ON p.id = pi_banner.product_id AND pi_banner.type = 'banner'
       WHERE p.slug = $1
-      GROUP BY p.id
     `, [slug])
-    
+
     if (rows.length === 0) {
       return sendError(res, 404, 'Product not found')
     }
-    
-    const product = attachStockFlags({
-      ...rows[0],
-      pdp_images: rows[0].pdp_images.filter((img: any) => img.url).map((img: any) => img.url),
-      banner_images: rows[0].banner_images.filter((img: any) => img.url).map((img: any) => img.url),
-    })
-    
-    sendSuccess(res, product)
+
+    sendSuccess(res, attachStockFlags(rows[0]))
   } catch (err) {
     sendError(res, 500, 'Failed to fetch product', err)
   }
@@ -532,32 +520,47 @@ export async function uploadProductImages(pool: Pool, req: Request, res: Respons
       return sendError(res, 404, 'Product not found')
     }
     
-    let imageUrls: string[] = []
-    const imageType = body.type || 'pdp' // Default to 'pdp' if not specified
-    
+    let media: Array<{ url: string; poster: string | null }> = []
+    const imageType = body.type === 'banner' ? 'banner' : 'pdp'
+
     // Handle multipart form data (actual file uploads)
     if (files && files.length > 0) {
-      imageUrls = files.map(file => `/uploads/${file.filename}`)
+      media = files.map(file => ({ url: `/uploads/${file.filename}`, poster: (file as any).posterUrl || null }))
     }
-    // Handle JSON data (pre-uploaded URLs)
+    // Handle JSON data (pre-uploaded URLs, or { url, poster } objects for videos)
     else if (body.images && Array.isArray(body.images)) {
-      imageUrls = body.images
+      media = body.images
+        .map((img: any) =>
+          typeof img === 'string'
+            ? { url: img, poster: null }
+            : { url: String(img?.url || ''), poster: img?.poster ? String(img.poster) : null }
+        )
+        .filter((m: { url: string }) => m.url.trim().length > 0)
     }
-    else {
+    if (media.length === 0) {
       return sendError(res, 400, 'No images provided')
     }
-    
-    // Insert image URLs into database with type
-    const insertedImages = []
-    
-    for (const url of imageUrls) {
-      const { rows } = await pool.query(
-        'INSERT INTO product_images (product_id, url, type) VALUES ($1, $2, $3) RETURNING *',
-        [id, url, imageType]
-      )
-      insertedImages.push(rows[0])
-    }
-    
+
+    // Append after existing media (keeps admin drag order) in a single round trip
+    const values: any[] = [id, imageType]
+    const tuples = media.map((m, i) => {
+      values.push(m.url, m.poster)
+      return `($${values.length - 1}::text, $${values.length}::text, ${i + 1})`
+    })
+    const { rows: insertedImages } = await pool.query(
+      `WITH base AS (
+         SELECT COALESCE(MAX(COALESCE(display_order, id)), 0) AS max_order
+         FROM product_images
+         WHERE product_id = $1 AND (type = $2 OR ($2 = 'pdp' AND type IS NULL))
+       )
+       INSERT INTO product_images (product_id, url, type, poster_url, display_order)
+       SELECT $1::integer, v.url, $2::text, v.poster_url, base.max_order + v.idx
+       FROM base, (VALUES ${tuples.join(', ')}) AS v(url, poster_url, idx)
+       ORDER BY v.idx
+       RETURNING *`,
+      values
+    )
+
     sendSuccess(res, insertedImages, 201)
   } catch (err) {
     sendError(res, 500, 'Failed to upload product images', err)
@@ -595,7 +598,8 @@ export async function deleteProductImage(pool: Pool, req: Request, res: Response
     if (rows.length === 0) {
       return sendError(res, 404, 'Product image not found')
     }
-    
+
+    await cleanupRemovedVideos(pool, rows)
     sendSuccess(res, { message: 'Product image deleted successfully', deleted: rows })
   } catch (err) {
     sendError(res, 500, 'Failed to delete product image', err)
@@ -630,6 +634,7 @@ export async function deleteAllProductImages(pool: Pool, req: Request, res: Resp
       return sendError(res, 400, 'Invalid type. Use pdp or banner.')
     }
 
+    await cleanupRemovedVideos(pool, rows)
     sendSuccess(res, {
       message: `Deleted ${rows.length} ${type} image(s)`,
       deletedCount: rows.length,

@@ -454,7 +454,7 @@ export default function Blog() {
   const categories = ['All', ...Array.from(new Set([...BLOG_CATEGORY_OPTIONS, ...postCategories]))]
 
   return (
-    <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
+    <main className="min-h-screen py-10" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="mx-auto max-w-7xl px-4">
         <div className="text-center mb-10">
           <p className="text-base sm:text-lg font-light max-w-xl mx-auto" style={{color: '#9DB4C0'}}>
@@ -479,9 +479,9 @@ export default function Blog() {
             type="button"
             onClick={() => setShowSaved(false)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
-              !showSaved ? 'text-white shadow-sm' : 'text-[#1B4965] hover:bg-[#F4F9F9]'
+              !showSaved ? 'text-white shadow-sm' : 'text-[color:var(--nf-heading)] hover:bg-[color:var(--nf-surface-soft)]'
             }`}
-            style={{ backgroundColor: !showSaved ? '#1B4965' : 'transparent' }}
+            style={{ backgroundColor: !showSaved ? 'var(--nf-heading)' : 'transparent' }}
           >
             <FileText strokeWidth={2.75} className="h-5 w-5" />
             All Posts
@@ -491,9 +491,9 @@ export default function Blog() {
               type="button"
               onClick={handleToggleSaved}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
-                showSaved ? 'text-white shadow-sm' : 'text-[#1B4965] hover:bg-[#F4F9F9]'
+                showSaved ? 'text-white shadow-sm' : 'text-[color:var(--nf-heading)] hover:bg-[color:var(--nf-surface-soft)]'
               }`}
-              style={{ backgroundColor: showSaved ? '#1B4965' : 'transparent' }}
+              style={{ backgroundColor: showSaved ? 'var(--nf-heading)' : 'transparent' }}
             >
               <Bookmark
                 strokeWidth={2.75}
@@ -509,7 +509,7 @@ export default function Blog() {
         {!showSaved && (
           <div className="mb-10">
             <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-[#1B4965]">
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-[color:var(--nf-heading)]">
                 <Tag strokeWidth={2.75} className="h-5 w-5" />
                 Browse by category
               </div>
@@ -522,9 +522,9 @@ export default function Blog() {
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
                       selectedCategory === category
                         ? 'text-white border-transparent'
-                        : 'text-[#1B4965] border-[#DCE6EE] bg-white'
+                        : 'text-[color:var(--nf-heading)] border-[#DCE6EE] bg-white'
                     }`}
-                    style={{ backgroundColor: selectedCategory === category ? '#1B4965' : 'white' }}
+                    style={{ backgroundColor: selectedCategory === category ? 'var(--nf-heading)' : 'white' }}
                   >
                     {category === 'All' ? 'All' : formatCategoryLabel(category)}
                   </button>
@@ -547,7 +547,7 @@ export default function Blog() {
         {showSaved ? (
           savedLoading ? (
             <div className="text-center py-20">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[#1B4965] border-t-transparent mb-3" />
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--nf-heading)] border-t-transparent mb-3" />
               <p className="text-sm" style={{ color: '#9DB4C0' }}>Loading your saved postsâ€¦</p>
             </div>
           ) : savedError ? (
@@ -556,7 +556,7 @@ export default function Blog() {
               <button
                 onClick={loadSavedPosts}
                 className="px-5 py-2 rounded-full text-sm font-medium text-white"
-                style={{ backgroundColor: '#1B4965' }}
+                style={{ backgroundColor: 'var(--nf-heading)' }}
               >
                 Try again
               </button>
@@ -566,14 +566,14 @@ export default function Blog() {
               <div className="rounded-full bg-white p-5 shadow-sm">
                 <Bookmark className="h-10 w-10" style={{ color: '#9DB4C0' }} />
               </div>
-              <p className="text-lg font-medium" style={{ color: '#1B4965' }}>No saved posts yet</p>
+              <p className="text-lg font-medium" style={{ color: 'var(--nf-heading)' }}>No saved posts yet</p>
               <p className="text-sm text-center max-w-xs" style={{ color: '#9DB4C0' }}>
                 Tap the bookmark icon on any post to save it here for later reading.
               </p>
               <button
                 onClick={() => setShowSaved(false)}
                 className="mt-2 px-5 py-2 rounded-full text-sm font-medium text-white"
-                style={{ backgroundColor: '#1B4965' }}
+                style={{ backgroundColor: 'var(--nf-heading)' }}
               >
                 Browse posts
               </button>
@@ -628,7 +628,7 @@ export default function Blog() {
                 <div ref={loadMoreSentinelRef} className="h-1 w-full" aria-hidden />
                 {loadingMore && (
                   <div className="flex justify-center py-8">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1B4965] border-t-transparent" />
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--nf-heading)] border-t-transparent" />
                   </div>
                 )}
                 {!hasMoreFeed && !loading && posts.length > 0 && (
@@ -647,7 +647,7 @@ export default function Blog() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="text-xl font-semibold" style={{ color: '#1B4965' }}>
+              <h3 className="text-xl font-semibold" style={{ color: 'var(--nf-heading)' }}>
                 My Drafts
               </h3>
               <button
@@ -740,10 +740,10 @@ export default function Blog() {
             <div className="text-center">
               <div className="mb-4">
                 <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ backgroundColor: 'rgb(75,151,201,0.1)' }}>
-                  <User className="w-8 h-8" style={{ color: 'rgb(75,151,201)' }} />
+                  <User className="w-8 h-8" style={{ color: 'var(--nf-primary)' }} />
                 </div>
               </div>
-              <h3 className="text-2xl font-serif mb-3" style={{color: '#1B4965'}}>
+              <h3 className="text-2xl font-serif mb-3" style={{color: 'var(--nf-heading)'}}>
                 Sign In Required
               </h3>
               <p className="text-base mb-6" style={{color: '#9DB4C0'}}>
@@ -757,9 +757,9 @@ export default function Blog() {
                     window.location.hash = '#/user/login'
                   }}
                   className="flex-1 px-6 py-3 text-white font-medium rounded-lg transition-colors"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                  style={{ backgroundColor: 'var(--nf-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                 >
                   Sign In
                 </button>
@@ -770,14 +770,14 @@ export default function Blog() {
                     window.location.hash = '#/user/signup'
                   }}
                   className="flex-1 px-6 py-3 font-medium rounded-lg transition-colors border-2"
-                  style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+                  style={{ borderColor: 'var(--nf-primary)', color: 'var(--nf-primary)' }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+                    e.currentTarget.style.backgroundColor = 'var(--nf-primary)'
                     e.currentTarget.style.color = 'white'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent'
-                    e.currentTarget.style.color = 'rgb(75,151,201)'
+                    e.currentTarget.style.color = 'var(--nf-primary)'
                   }}
                 >
                   Sign Up

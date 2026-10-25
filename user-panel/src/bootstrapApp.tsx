@@ -30,6 +30,14 @@ export function mountApp() {
   mergeBoot({ bootstrapStartedAt: Date.now(), safariHuntBatch: SAFARI_HUNT_DISABLE_BATCH })
 
   void (async () => {
+    // Last saved theme (admin → Theme Customizer) before first render — avoids a colour flash
+    try {
+      const { applyCachedTheme } = await import('./theme/applyTheme')
+      applyCachedTheme()
+    } catch {
+      /* fall back to CSS defaults */
+    }
+
     if (!skipBatch(7)) {
       try {
         await import('./styles.css')

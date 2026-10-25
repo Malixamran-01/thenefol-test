@@ -6,6 +6,8 @@ export type Product = {
   price: string
   listImage: string
   pdpImages: string[]
+  /** Poster frame per PDP video URL (absolute URLs, same keys as pdpImages). */
+  mediaPosters?: Record<string, string>
   bannerImages?: string[]
   description: string
   details?: any

@@ -2,6 +2,7 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess } from '../utils/apiHelpers'
+import { SQL_INVENTORY_AVAILABLE, attachStockFlags } from './products'
 
 // Simple search with basic filters
 export async function searchProducts(pool: Pool, req: Request, res: Response) {
@@ -11,7 +12,8 @@ export async function searchProducts(pool: Pool, req: Request, res: Response) {
 
     // Simple query that works with or without search term
     let sqlQuery = `
-      SELECT p.*, 
+      SELECT p.*,
+             ${SQL_INVENTORY_AVAILABLE},
              COALESCE(
                json_agg(
                  json_build_object('url', pi.url)
@@ -34,7 +36,7 @@ export async function searchProducts(pool: Pool, req: Request, res: Response) {
     const { rows } = await pool.query(sqlQuery, queryParams)
 
     // Transform the data
-    const products = rows.map((product: any) => ({
+    const products = rows.map((product: any) => attachStockFlags({
       ...product,
       pdp_images: product.pdp_images.filter((img: any) => img.url)
     }))

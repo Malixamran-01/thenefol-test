@@ -247,9 +247,7 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
       <button
         onClick={() => setOpen(true)}
         className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow text-white"
-        style={{ backgroundColor: 'rgb(75,151,201)' }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+        style={{ backgroundColor: 'var(--nf-chat-button)' }}
         aria-label="Open live chat"
       >
         <MessageCircle className="h-6 w-6 md:h-7 md:w-7" />
@@ -260,13 +258,13 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
   return (
     <>
       <div className="fixed bottom-24 right-6 md:bottom-6 w-80 bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col overflow-hidden z-50">
-        <div className="px-4 py-3 text-white flex items-center justify-between" style={{ backgroundColor: 'rgb(75,151,201)' }}>
+        <div className="px-4 py-3 text-white flex items-center justify-between" style={{ backgroundColor: 'var(--nf-primary)' }}>
           <div className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
             <span className="font-semibold">Support</span>
-            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'rgb(75,151,201)' }}>AI Assistant</span>
+            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--nf-primary)' }}>AI Assistant</span>
           </div>
-          <button onClick={() => setOpen(false)} aria-label="Close" className="p-1 rounded" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+          <button onClick={() => setOpen(false)} aria-label="Close" className="p-1 rounded" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -283,7 +281,7 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
           )}
           {messages.map((m) => (
             <div key={`${m.id}-${m.timestamp || ''}`} className={`flex ${m.sender === 'customer' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`${m.sender === 'customer' ? 'text-white' : 'bg-white text-gray-800 border border-gray-200'} px-3 py-2 rounded-lg max-w-[80%]`} style={m.sender === 'customer' ? { backgroundColor: 'rgb(75,151,201)' } : {}}>
+              <div className={`${m.sender === 'customer' ? 'text-white' : 'bg-white text-gray-800 border border-gray-200'} px-3 py-2 rounded-lg max-w-[80%]`} style={m.sender === 'customer' ? { backgroundColor: 'var(--nf-primary)' } : {}}>
                 {m.sender === 'agent' && m.senderName === 'NEFOL bot' && (
                   <div className="text-xs text-blue-600 mb-1 font-semibold">NEFOL bot</div>
                 )}
@@ -324,7 +322,7 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
               placeholder="Type your message..."
               className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <button onClick={sendMessage} className="p-2 text-white rounded transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'} aria-label="Send">
+            <button onClick={sendMessage} className="p-2 text-white rounded transition-colors" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'} aria-label="Send">
               <Send className="h-4 w-4" />
             </button>
           </div>
@@ -393,9 +391,9 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
                 onClick={handleCreateSupportRequest}
                 disabled={isSubmittingRequest || !requestForm.subject.trim() || !requestForm.description.trim()}
                 className="px-4 py-2 text-sm text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
-                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+                style={{ backgroundColor: 'var(--nf-primary)' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)')}
+                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary)')}
               >
                 {isSubmittingRequest ? 'Submitting...' : 'Submit Request'}
               </button>

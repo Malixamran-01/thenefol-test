@@ -47,7 +47,7 @@ export default function AnswerPillComposer({
           expanded ? 'rounded-2xl' : 'rounded-full'
         } ${
           focused
-            ? 'border-[#4B97C9] bg-white ring-[3px] ring-[rgba(75,151,201,0.1)]'
+            ? 'border-[color:var(--nf-primary)] bg-white ring-[3px] ring-[rgba(75,151,201,0.1)]'
             : 'border-[#e8eef4] hover:border-[#d0e8f5]'
         }`}
       >
@@ -80,7 +80,7 @@ export default function AnswerPillComposer({
           type="submit"
           disabled={!canSubmit}
           aria-label="Post answer"
-          className="flex h-9 shrink-0 items-center rounded-full bg-[#1B4965] px-4 text-[13px] font-semibold text-white transition-all duration-150 hover:bg-[#163d52] active:scale-[0.97] disabled:opacity-40 sm:px-5"
+          className="flex h-9 shrink-0 items-center rounded-full bg-[color:var(--nf-heading)] px-4 text-[13px] font-semibold text-white transition-all duration-150 hover:bg-[#163d52] active:scale-[0.97] disabled:opacity-40 sm:px-5"
         >
           {submitting ? '…' : 'Post'}
         </button>

@@ -3,6 +3,7 @@ import { Heart, ShoppingCart, Trash2, ArrowLeft } from 'lucide-react'
 import { useWishlist } from '../contexts/WishlistContext'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
+import { isOutOfStock, toCartProduct } from '../utils/stock'
 
 export default function Wishlist() {
   const { items, loading, refreshWishlist, removeFromWishlist } = useWishlist()
@@ -15,19 +16,10 @@ export default function Wishlist() {
   }, [])
 
   const handleAddToCart = async (item: any) => {
+    if (isOutOfStock(item)) return
     try {
       setMovingToCart(item.id)
-      const product = {
-        id: item.product_id,
-        slug: item.slug,
-        title: item.title,
-        category: item.category,
-        price: item.price,
-        listImage: item.list_image,
-        pdpImages: [],
-        description: item.description
-      }
-      await addItem(product, 1)
+      await addItem({ ...toCartProduct(item), id: item.product_id }, 1)
       alert(`${item.title} added to cart!`)
     } catch (error: any) {
       alert(error.message || 'Failed to add to cart')
@@ -51,11 +43,11 @@ export default function Wishlist() {
       <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-16">
-            <Heart className="h-16 w-16 mx-auto mb-4" style={{ color: '#666' }} />
+            <Heart className="h-16 w-16 mx-auto mb-4" style={{ color: 'var(--nf-text-muted)' }} />
             <h1 
               className="text-2xl sm:text-3xl font-light mb-4 tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -64,16 +56,16 @@ export default function Wishlist() {
             </h1>
             <p 
               className="mb-6 font-light tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               Sign in to save and manage your favorite products
             </p>
             <a
               href="#/user/login"
               className="inline-block px-6 py-3 text-white rounded-lg transition-colors text-xs font-light tracking-[0.15em] uppercase"
-              style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               Go to Login
             </a>
@@ -102,7 +94,7 @@ export default function Wishlist() {
           <a
             href="#/user/profile"
             className="inline-flex items-center mb-4 font-light tracking-wide transition-colors hover:opacity-70"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
             Back to Profile
@@ -110,7 +102,7 @@ export default function Wishlist() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-2 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -119,7 +111,7 @@ export default function Wishlist() {
           </h1>
           <p 
             className="font-light tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             {items.length === 0
               ? 'You have no items in your wishlist yet'
@@ -134,7 +126,7 @@ export default function Wishlist() {
             <h2 
               className="text-xl sm:text-2xl font-light mb-2 tracking-[0.1em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.1em'
               }}
@@ -143,16 +135,16 @@ export default function Wishlist() {
             </h2>
             <p 
               className="mb-6 font-light tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               Start saving products you love to your wishlist!
             </p>
             <a
               href="#/user/shop"
               className="inline-block px-6 py-3 text-white rounded-lg transition-colors text-xs font-light tracking-[0.15em] uppercase"
-              style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               Start Shopping
             </a>
@@ -184,7 +176,7 @@ export default function Wishlist() {
                   <a href={`#/user/product/${item.slug}`}>
                     <h3 
                       className="text-lg font-light mb-2 line-clamp-2 transition-colors hover:opacity-70 tracking-wide"
-                      style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                      style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                     >
                       {item.title}
                     </h3>
@@ -193,7 +185,7 @@ export default function Wishlist() {
                   <div className="flex items-center justify-between mb-4">
                     <span 
                       className="text-2xl font-light"
-                      style={{ color: '#1a1a1a' }}
+                      style={{ color: 'var(--nf-text)' }}
                     >
                       ₹{item.price}
                     </span>
@@ -203,22 +195,16 @@ export default function Wishlist() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleAddToCart(item)}
-                      disabled={movingToCart === item.id}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs font-light tracking-[0.1em] uppercase"
-                      style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF', letterSpacing: '0.1em' }}
-                      onMouseEnter={(e) => {
-                        if (!e.currentTarget.disabled) {
-                          e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!e.currentTarget.disabled) {
-                          e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
-                        }
-                      }}
+                      disabled={movingToCart === item.id || isOutOfStock(item)}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:cursor-not-allowed text-xs font-light tracking-[0.1em] uppercase ${
+                        isOutOfStock(item)
+                          ? 'bg-gray-100 text-gray-500'
+                          : 'bg-[color:var(--nf-primary)] text-white hover:bg-[color:var(--nf-primary-hover)] disabled:opacity-50'
+                      }`}
+                      style={{ letterSpacing: '0.1em' }}
                     >
                       <ShoppingCart className="h-4 w-4" />
-                      {movingToCart === item.id ? 'Adding...' : 'Add to Cart'}
+                      {isOutOfStock(item) ? 'Out of stock' : movingToCart === item.id ? 'Adding...' : 'Add to Cart'}
                     </button>
                     <button
                       onClick={() => handleRemoveFromWishlist(item.product_id)}

@@ -116,13 +116,13 @@ export default function AskCommunityNewPage() {
             window.location.hash = '#/user/blog/ask-community'
           }
         }}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[#4B97C9] hover:underline"
+        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[color:var(--nf-primary)] hover:underline"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
       </button>
 
-      <h1 className="mb-2 text-2xl font-bold text-[#1B4965]">Ask a question</h1>
+      <h1 className="mb-2 text-2xl font-bold text-[color:var(--nf-heading)]">Ask a question</h1>
       <p className="mb-6 text-sm text-gray-600">
         Your question goes live immediately. The community can reply in the thread.
       </p>
@@ -132,7 +132,7 @@ export default function AskCommunityNewPage() {
           <button
             type="button"
             onClick={() => pickTopic('product')}
-            className="flex flex-col items-start gap-3 rounded-2xl border-2 border-gray-100 bg-white p-6 text-left shadow-sm transition hover:border-[#4B97C9] hover:shadow-md"
+            className="flex flex-col items-start gap-3 rounded-2xl border-2 border-gray-100 bg-white p-6 text-left shadow-sm transition hover:border-[color:var(--nf-primary)] hover:shadow-md"
           >
             <div className="rounded-xl bg-amber-50 p-3 text-amber-800">
               <Package className="h-7 w-7" />
@@ -147,7 +147,7 @@ export default function AskCommunityNewPage() {
           <button
             type="button"
             onClick={() => pickTopic('brand')}
-            className="flex flex-col items-start gap-3 rounded-2xl border-2 border-gray-100 bg-white p-6 text-left shadow-sm transition hover:border-[#4B97C9] hover:shadow-md"
+            className="flex flex-col items-start gap-3 rounded-2xl border-2 border-gray-100 bg-white p-6 text-left shadow-sm transition hover:border-[color:var(--nf-primary)] hover:shadow-md"
           >
             <div className="rounded-xl bg-violet-50 p-3 text-violet-800">
               <Sparkles className="h-7 w-7" />
@@ -173,11 +173,11 @@ export default function AskCommunityNewPage() {
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
                   placeholder="Search products…"
-                  className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-[#4B97C9]"
+                  className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-[color:var(--nf-primary)]"
                 />
               </div>
               {selectedProduct && (
-                <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#4B97C9] bg-[#4B97C9]/5 p-3">
+                <div className="mb-3 flex items-center gap-3 rounded-xl border border-[color:var(--nf-primary)] bg-[#4B97C9]/5 p-3">
                   {selectedProduct.list_image && (
                     <img
                       src={productThumb(selectedProduct.list_image)}
@@ -189,7 +189,7 @@ export default function AskCommunityNewPage() {
                     <p className="truncate font-semibold text-sm">{selectedProduct.title}</p>
                     <button
                       type="button"
-                      className="text-xs text-[#4B97C9] hover:underline"
+                      className="text-xs text-[color:var(--nf-primary)] hover:underline"
                       onClick={() => setSelectedProduct(null)}
                     >
                       Change
@@ -240,7 +240,7 @@ export default function AskCommunityNewPage() {
               maxLength={200}
               required
               placeholder="Summarize your question in one line"
-              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-[#4B97C9]"
+              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-[color:var(--nf-primary)]"
             />
           </div>
 
@@ -255,7 +255,7 @@ export default function AskCommunityNewPage() {
               required
               rows={6}
               placeholder="Add context so others can help you better…"
-              className="w-full resize-y rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-[#4B97C9]"
+              className="w-full resize-y rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-[color:var(--nf-primary)]"
             />
           </div>
 
@@ -268,7 +268,7 @@ export default function AskCommunityNewPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-full bg-[#1B4965] py-3 text-sm font-semibold text-white disabled:opacity-60"
+            className="w-full rounded-full bg-[color:var(--nf-heading)] py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
             {submitting ? 'Posting…' : 'Post question'}
           </button>

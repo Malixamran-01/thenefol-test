@@ -176,11 +176,69 @@ function findOrderLine(orderItems: any[], spec: any): any | null {
   )
 }
 
+/**
+ * INVENTORY_DEDUCT_ON_ORDER=1 deducts stock when an order is confirmed (COD / fully-paid placement,
+ * or Razorpay payment verified). Off by default so existing manual stock handling is unchanged.
+ * When on, cancellations/returns only restock orders whose stock was actually deducted.
+ */
+export function inventoryDeductOnOrderEnabled(): boolean {
+  return process.env.INVENTORY_DEDUCT_ON_ORDER === '1'
+}
+
+/** Deducts stock for a confirmed order once (guarded by orders.stock_deducted). Never throws. */
+export async function deductStockForOrder(pool: Pool, orderId: number) {
+  if (!inventoryDeductOnOrderEnabled()) return
+  try {
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS stock_deducted BOOLEAN DEFAULT false`)
+    const { rows } = await pool.query(
+      `UPDATE orders SET stock_deducted = true WHERE id = $1 AND stock_deducted IS NOT TRUE RETURNING id, items`,
+      [orderId]
+    )
+    if (!rows.length) return
+    for (const line of normalizeOrderItems(rows[0].items)) {
+      try {
+        const productId = Number(line.product_id || line.id)
+        if (!Number.isFinite(productId)) continue
+        const variantId = await resolveVariantIdForLine(pool, productId, line)
+        if (!variantId) continue
+        const qty = lineQty(line)
+        if (qty <= 0) continue
+        const inv = await getInventoryRow(pool, productId, variantId)
+        const available = Math.max(0, Math.floor(Number(inv?.quantity ?? 0)))
+        const take = Math.min(qty, available)
+        if (take <= 0) {
+          console.warn(`[inventory] order ${orderId}: no stock to deduct for product ${productId}/${variantId}`)
+          continue
+        }
+        await adjustStockWithBatches(pool, productId, variantId, -take, {
+          reason: 'order_placed',
+          metadata: { order_id: orderId, requested: qty },
+        })
+      } catch (lineErr) {
+        console.error(`[inventory] order ${orderId}: stock deduction failed for a line:`, lineErr)
+      }
+    }
+  } catch (err) {
+    console.error(`[inventory] order ${orderId}: stock deduction failed:`, err)
+  }
+}
+
+async function orderStockWasDeducted(pool: Pool, order: { id: number; stock_deducted?: unknown }): Promise<boolean> {
+  if (order.stock_deducted !== undefined) return order.stock_deducted === true
+  try {
+    const { rows } = await pool.query(`SELECT to_jsonb(o) ->> 'stock_deducted' AS d FROM orders o WHERE id = $1`, [order.id])
+    return rows[0]?.d === 'true'
+  } catch {
+    return false
+  }
+}
+
 export async function restockFromCancellation(
   pool: Pool,
-  order: { id: number; items: unknown },
+  order: { id: number; items: unknown; stock_deducted?: unknown },
   opts: { cancellation_type?: string | null; items_to_cancel?: unknown }
 ) {
+  if (inventoryDeductOnOrderEnabled() && !(await orderStockWasDeducted(pool, order))) return
   const items = normalizeOrderItems(order.items)
   const type = (opts.cancellation_type || 'full').toLowerCase()
   const itemsToCancel = opts.items_to_cancel
@@ -222,6 +280,7 @@ export async function restockFromReturnItems(pool: Pool, orderId: number, itemsJ
   const items = Array.isArray(itemsJson) ? itemsJson : normalizeOrderItems(itemsJson)
   const { rows: ord } = await pool.query(`select id, items from orders where id = $1`, [orderId])
   if (!ord.length) return
+  if (inventoryDeductOnOrderEnabled() && !(await orderStockWasDeducted(pool, { id: orderId }))) return
   const orderItems = normalizeOrderItems(ord[0].items)
 
   for (const ret of items) {

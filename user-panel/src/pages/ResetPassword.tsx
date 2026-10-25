@@ -212,9 +212,9 @@ export default function ResetPassword() {
                 type="submit"
                 disabled={loading}
                 className="w-full rounded-md text-white py-3 text-xs font-light uppercase tracking-[0.15em] disabled:opacity-50 transition-colors"
-                style={{ backgroundColor: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
-                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+                style={{ backgroundColor: 'var(--nf-primary)' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)')}
+                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary)')}
               >
                 {loading ? 'Updating...' : 'Update Password'}
               </button>
@@ -247,9 +247,9 @@ export default function ResetPassword() {
                 type="submit"
                 disabled={loading}
                 className="w-full rounded-md text-white py-3 text-xs font-light uppercase tracking-[0.15em] disabled:opacity-50 transition-colors"
-                style={{ backgroundColor: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
-                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+                style={{ backgroundColor: 'var(--nf-primary)' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)')}
+                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary)')}
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>

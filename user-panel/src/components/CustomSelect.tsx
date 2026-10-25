@@ -67,12 +67,12 @@ export default function CustomSelect({
                 onClick={() => { onChange(option.value); setOpen(false) }}
                 className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors ${
                   isActive
-                    ? 'bg-[#EAF3F8] text-[#1B4965] font-medium'
+                    ? 'bg-[#EAF3F8] text-[color:var(--nf-heading)] font-medium'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 <span>{option.label}</span>
-                {isActive && <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#1B4965' }} />}
+                {isActive && <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--nf-heading)' }} />}
               </button>
             )
           })}

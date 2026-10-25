@@ -160,7 +160,7 @@ export default function OrderDetails() {
       case 'cancelled':
         return <XCircle className="w-6 h-6" style={{ color: '#EF4444' }} />
       default:
-        return <Package className="w-6 h-6" style={{ color: '#666' }} />
+        return <Package className="w-6 h-6" style={{ color: 'var(--nf-text-muted)' }} />
     }
   }
 
@@ -239,7 +239,7 @@ export default function OrderDetails() {
     return (
       <main className="min-h-screen bg-white flex items-center justify-center py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <div className="text-center">
-          <p style={{ color: '#666' }}>Loading order details...</p>
+          <p style={{ color: 'var(--nf-text-muted)' }}>Loading order details...</p>
         </div>
       </main>
     )
@@ -254,7 +254,7 @@ export default function OrderDetails() {
             <h2 
               className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]" 
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -284,12 +284,12 @@ export default function OrderDetails() {
     <main className="min-h-screen bg-white overflow-x-hidden py-8 sm:py-12 md:py-16" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -297,9 +297,9 @@ export default function OrderDetails() {
         <button
           onClick={() => window.location.hash = '#/user/user-orders'}
           className="mb-8 flex items-center gap-2 transition-colors font-light tracking-wide"
-          style={{ color: '#666' }}
-          onMouseEnter={(e) => e.currentTarget.style.color = '#1a1a1a'}
-          onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
+          style={{ color: 'var(--nf-text-muted)' }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-text)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-text-muted)'}
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Back to Orders</span>
@@ -313,32 +313,32 @@ export default function OrderDetails() {
                 <h1 
                   className="text-lg sm:text-xl font-bold mb-2" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontVariantNumeric: 'tabular-nums',
                     lineHeight: 1
                   }}
                 >
                   Order #{order.order_number}
                 </h1>
-                <p className="text-xs sm:text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+                <p className="text-xs sm:text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                   Placed on {formatDate(order.created_at)}
                 </p>
               </div>
               <div 
                 className="flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-300"
                 style={{
-                  backgroundColor: getStatusColor(order.status) === 'green' ? '#E0F5F5' : 
-                                  getStatusColor(order.status) === 'blue' ? '#E0F5F5' :
+                  backgroundColor: getStatusColor(order.status) === 'green' ? 'var(--nf-primary-light)' : 
+                                  getStatusColor(order.status) === 'blue' ? 'var(--nf-primary-light)' :
                                   getStatusColor(order.status) === 'yellow' ? '#FEF3C7' :
-                                  getStatusColor(order.status) === 'red' ? '#FEE2E2' : '#F0F9F9',
-                  borderColor: getStatusColor(order.status) === 'green' ? 'rgb(75,151,201)' : 
-                              getStatusColor(order.status) === 'blue' ? 'rgb(75,151,201)' :
+                                  getStatusColor(order.status) === 'red' ? '#FEE2E2' : 'var(--nf-primary-lighter)',
+                  borderColor: getStatusColor(order.status) === 'green' ? 'var(--nf-primary)' : 
+                              getStatusColor(order.status) === 'blue' ? 'var(--nf-primary)' :
                               getStatusColor(order.status) === 'yellow' ? '#F59E0B' :
-                              getStatusColor(order.status) === 'red' ? '#EF4444' : 'rgb(75,151,201)',
+                              getStatusColor(order.status) === 'red' ? '#EF4444' : 'var(--nf-primary)',
                   color: getStatusColor(order.status) === 'green' ? '#10b981' : 
                          getStatusColor(order.status) === 'blue' ? '#3B82F6' :
                          getStatusColor(order.status) === 'yellow' ? '#F59E0B' :
-                         getStatusColor(order.status) === 'red' ? '#EF4444' : '#666'
+                         getStatusColor(order.status) === 'red' ? '#EF4444' : 'var(--nf-text-muted)'
                 }}
               >
                 {getStatusIcon(order.status)}
@@ -351,8 +351,8 @@ export default function OrderDetails() {
               <div className="flex items-center gap-3 p-4 bg-white rounded-lg shadow-sm transition-all duration-300 hover:shadow-md">
                 <Calendar className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--arctic-blue-primary)' }} />
                 <div>
-                  <p className="text-xs font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Order Date</p>
-                  <p className="font-light text-sm mt-1" style={{ color: '#1a1a1a' }}>
+                  <p className="text-xs font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>Order Date</p>
+                  <p className="font-light text-sm mt-1" style={{ color: 'var(--nf-text)' }}>
                     {formatDate(order.created_at)}
                   </p>
                 </div>
@@ -360,8 +360,8 @@ export default function OrderDetails() {
               <div className="flex items-center gap-3 p-4 bg-white rounded-lg shadow-sm transition-all duration-300 hover:shadow-md">
                 <CreditCard className="w-5 h-5 flex-shrink-0" style={{ color: '#10b981' }} />
                 <div>
-                  <p className="text-xs font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Payment</p>
-                  <p className="font-light text-sm mt-1" style={{ color: '#1a1a1a' }}>
+                  <p className="text-xs font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>Payment</p>
+                  <p className="font-light text-sm mt-1" style={{ color: 'var(--nf-text)' }}>
                     {getPaymentMethodName(order.payment_method)}
                   </p>
                 </div>
@@ -370,8 +370,8 @@ export default function OrderDetails() {
                 <div className="flex items-center gap-3 p-4 bg-white rounded-lg shadow-sm transition-all duration-300 hover:shadow-md">
                   <Truck className="w-5 h-5 flex-shrink-0" style={{ color: '#8B5CF6' }} />
                   <div>
-                    <p className="text-xs font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Tracking</p>
-                    <p className="font-light text-sm mt-1" style={{ color: '#1a1a1a' }}>
+                    <p className="text-xs font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>Tracking</p>
+                    <p className="font-light text-sm mt-1" style={{ color: 'var(--nf-text)' }}>
                       {order.tracking_number}
                     </p>
                   </div>
@@ -387,7 +387,7 @@ export default function OrderDetails() {
             <h2 
               className="text-xl sm:text-2xl md:text-3xl font-light mb-8 sm:mb-12 tracking-[0.15em] text-center" 
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -412,14 +412,14 @@ export default function OrderDetails() {
                   key={index}
                   className="group flex items-start gap-4 sm:gap-6 p-4 sm:p-6 border rounded-xl transition-all duration-300 bg-white"
                   style={{ 
-                    borderColor: '#E0F5F5',
+                    borderColor: 'var(--nf-primary-light)',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(125, 211, 211, 0.15)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#E0F5F5'
+                    e.currentTarget.style.borderColor = 'var(--nf-primary-light)'
                     e.currentTarget.style.boxShadow = 'none'
                   }}
                 >
@@ -438,24 +438,24 @@ export default function OrderDetails() {
                     ) : null}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-light text-base sm:text-lg mb-1" style={{ color: '#1a1a1a' }}>
+                    <h3 className="font-light text-base sm:text-lg mb-1" style={{ color: 'var(--nf-text)' }}>
                       {item.name || item.title || 'Product'}
                     </h3>
-                    <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#666' }}>
+                    <p className="text-xs font-light tracking-wide mt-1" style={{ color: 'var(--nf-text-muted)' }}>
                       Quantity: {item.quantity || 1}
                     </p>
                     {item.details && typeof item.details === 'string' && (
-                      <p className="text-xs font-light mt-2 line-clamp-2" style={{ color: '#666' }}>
+                      <p className="text-xs font-light mt-2 line-clamp-2" style={{ color: 'var(--nf-text-muted)' }}>
                         {item.details}
                       </p>
                     )}
                     {item.details && typeof item.details === 'object' && item.details.longDescription && (
-                      <p className="text-xs font-light mt-2 line-clamp-2" style={{ color: '#666' }}>
+                      <p className="text-xs font-light mt-2 line-clamp-2" style={{ color: 'var(--nf-text-muted)' }}>
                         {item.details.longDescription}
                       </p>
                     )}
                     {item.details && typeof item.details === 'object' && item.details.subtitle && (
-                      <p className="text-xs font-light mt-2" style={{ color: '#666' }}>
+                      <p className="text-xs font-light mt-2" style={{ color: 'var(--nf-text-muted)' }}>
                         {item.details.subtitle}
                       </p>
                     )}
@@ -472,10 +472,10 @@ export default function OrderDetails() {
                     )}
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-light text-lg" style={{ color: '#1a1a1a' }}>
+                    <p className="font-light text-lg" style={{ color: 'var(--nf-text)' }}>
                       ₹{item.price ? roundPrice(parseFloat(item.price)).toLocaleString() : '0'}
                     </p>
-                    <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#666' }}>
+                    <p className="text-xs font-light tracking-wide mt-1" style={{ color: 'var(--nf-text-muted)' }}>
                       {item.quantity || 1}x
                     </p>
                   </div>
@@ -494,7 +494,7 @@ export default function OrderDetails() {
               <h2 
                 className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -502,7 +502,7 @@ export default function OrderDetails() {
                 Shipping Address
               </h2>
             </div>
-            <div className="space-y-1 font-light tracking-wide" style={{ color: '#1a1a1a' }}>
+            <div className="space-y-1 font-light tracking-wide" style={{ color: 'var(--nf-text)' }}>
               {order.shipping_address?.firstName || order.shipping_address?.first_name ? (
                 <>
                   <p className="font-semibold">
@@ -698,7 +698,7 @@ export default function OrderDetails() {
                 <h2 
                   className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -706,7 +706,7 @@ export default function OrderDetails() {
                   Billing Address
                 </h2>
               </div>
-            <div className="space-y-1 font-light tracking-wide" style={{ color: '#1a1a1a' }}>
+            <div className="space-y-1 font-light tracking-wide" style={{ color: 'var(--nf-text)' }}>
               {order.billing_address?.firstName || order.billing_address?.first_name ? (
                 <>
                   <p className="font-semibold">
@@ -755,8 +755,8 @@ export default function OrderDetails() {
             href="#/user/contact"
             className="flex items-center gap-2 border px-6 py-3 rounded-lg transition-colors font-light tracking-[0.15em] uppercase text-sm"
             style={{ 
-              borderColor: '#E0F5F5',
-              color: '#1a1a1a',
+              borderColor: 'var(--nf-primary-light)',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-body-family, Inter, sans-serif)'
             }}
             onMouseEnter={(e) => {
@@ -765,7 +765,7 @@ export default function OrderDetails() {
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.borderColor = '#E0F5F5';
+              e.currentTarget.style.borderColor = 'var(--nf-primary-light)';
             }}
           >
             Contact Support
@@ -815,18 +815,18 @@ export default function OrderDetails() {
               <h3 
                 className="text-xl sm:text-2xl font-light mb-4 tracking-[0.15em]" 
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
                 Cancel Order
               </h3>
-              <p className="font-light tracking-wide mb-4" style={{ color: '#666' }}>
+              <p className="font-light tracking-wide mb-4" style={{ color: 'var(--nf-text-muted)' }}>
                 Are you sure you want to cancel order <strong>{order.order_number}</strong>? This action cannot be undone.
               </p>
               <div className="mb-4">
-                <label className="block text-xs font-light tracking-wide mb-2" style={{ color: '#1a1a1a' }}>
+                <label className="block text-xs font-light tracking-wide mb-2" style={{ color: 'var(--nf-text)' }}>
                   Reason for Cancellation *
                 </label>
                 <textarea
@@ -835,12 +835,12 @@ export default function OrderDetails() {
                   placeholder="Please provide a reason for cancellation..."
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none font-light tracking-wide"
                   style={{ 
-                    borderColor: '#E0F5F5',
-                    color: '#1a1a1a',
+                    borderColor: 'var(--nf-primary-light)',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-body-family, Inter, sans-serif)'
                   }}
                   onFocus={(e) => e.currentTarget.style.borderColor = 'var(--arctic-blue-primary)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#E0F5F5'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--nf-primary-light)'}
                   rows={4}
                 />
               </div>
@@ -852,8 +852,8 @@ export default function OrderDetails() {
                   }}
                   className="px-4 py-2 border rounded-lg transition-colors font-light tracking-[0.15em] uppercase text-sm"
                   style={{ 
-                    borderColor: '#E0F5F5',
-                    color: '#1a1a1a',
+                    borderColor: 'var(--nf-primary-light)',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-body-family, Inter, sans-serif)'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--arctic-blue-lighter)'}
@@ -889,7 +889,7 @@ export default function OrderDetails() {
                 <h3 
                   className="text-xl sm:text-2xl font-light tracking-[0.15em]" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -897,12 +897,12 @@ export default function OrderDetails() {
                   Track Your Order
                 </h3>
               </div>
-            <p className="font-light tracking-wide mb-4" style={{ color: '#666' }}>
-              Tracking Number: <span className="font-light" style={{ color: '#1a1a1a' }}>{order.tracking_number}</span>
+            <p className="font-light tracking-wide mb-4" style={{ color: 'var(--nf-text-muted)' }}>
+              Tracking Number: <span className="font-light" style={{ color: 'var(--nf-text)' }}>{order.tracking_number}</span>
             </p>
             {order.estimated_delivery && (
-              <p className="font-light tracking-wide" style={{ color: '#666' }}>
-                Estimated Delivery: <span className="font-light" style={{ color: '#1a1a1a' }}>{formatDate(order.estimated_delivery)}</span>
+              <p className="font-light tracking-wide" style={{ color: 'var(--nf-text-muted)' }}>
+                Estimated Delivery: <span className="font-light" style={{ color: 'var(--nf-text)' }}>{formatDate(order.estimated_delivery)}</span>
               </p>
             )}
             </div>
@@ -916,14 +916,14 @@ export default function OrderDetails() {
               <h2 
                 className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 tracking-[0.15em]" 
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
                 You May Also Like
               </h2>
-              <p className="text-xs sm:text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+              <p className="text-xs sm:text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                 Discover more products from Nefol
               </p>
             </div>
@@ -958,11 +958,11 @@ export default function OrderDetails() {
                       </div>
                     )}
                     <div className="p-4">
-                      <h3 className="font-light text-sm sm:text-base mb-2 line-clamp-2 transition-colors" style={{ color: '#1a1a1a' }}>
+                      <h3 className="font-light text-sm sm:text-base mb-2 line-clamp-2 transition-colors" style={{ color: 'var(--nf-text)' }}>
                         {product.title || product.name}
                       </h3>
                       {product.category && (
-                        <p className="text-xs font-light tracking-wide mb-2" style={{ color: '#666' }}>
+                        <p className="text-xs font-light tracking-wide mb-2" style={{ color: 'var(--nf-text-muted)' }}>
                           {product.category}
                         </p>
                       )}

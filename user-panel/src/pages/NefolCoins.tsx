@@ -228,7 +228,7 @@ export default function NefolCoins() {
     return (
       <main className="min-h-screen bg-white flex items-center justify-center" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <div className="text-center">
-          <p className="text-slate-600" style={{ color: '#666' }}>Loading your coins...</p>
+          <p className="text-slate-600" style={{ color: 'var(--nf-text-muted)' }}>Loading your coins...</p>
         </div>
       </main>
     )
@@ -243,12 +243,12 @@ export default function NefolCoins() {
     <main className="min-h-screen bg-white overflow-x-hidden py-8 sm:py-12 md:py-16" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       
@@ -258,7 +258,7 @@ export default function NefolCoins() {
           <button
             onClick={() => window.location.hash = '#/user/profile'}
             className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Back to Profile</span>
@@ -270,7 +270,7 @@ export default function NefolCoins() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light tracking-[0.15em] mb-6"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -279,7 +279,7 @@ export default function NefolCoins() {
           </h1>
           <p 
             className="text-sm sm:text-base font-light tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Earn coins with every purchase and enjoy exclusive rewards
           </p>
@@ -290,7 +290,7 @@ export default function NefolCoins() {
           <div className="text-center mb-8">
             <p 
               className="text-sm sm:text-base font-light mb-4 tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               your total balance
             </p>
@@ -334,14 +334,14 @@ export default function NefolCoins() {
             <div className="text-center">
               <p 
                 className="text-xs sm:text-sm font-light mb-3 tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 loyalty points
               </p>
               <p 
                 className="text-lg sm:text-xl font-bold"
                 style={{ 
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontVariantNumeric: 'tabular-nums',
                   lineHeight: '1'
                 }}
@@ -352,14 +352,14 @@ export default function NefolCoins() {
             <div className="text-center">
               <p 
                 className="text-xs sm:text-sm font-light mb-3 tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 cashback
               </p>
               <p 
                 className="text-lg sm:text-xl font-bold"
                 style={{ 
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontVariantNumeric: 'tabular-nums',
                   lineHeight: '1'
                 }}
@@ -379,14 +379,14 @@ export default function NefolCoins() {
               <div className="text-center">
                 <p 
                   className="text-xs sm:text-sm font-light mb-3 tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   from referrals
                 </p>
                 <p 
                   className="text-lg sm:text-xl font-bold mb-1"
                   style={{ 
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontVariantNumeric: 'tabular-nums',
                     lineHeight: '1'
                   }}
@@ -396,7 +396,7 @@ export default function NefolCoins() {
                 <p 
                   className="text-lg sm:text-xl font-bold"
                   style={{ 
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontVariantNumeric: 'tabular-nums',
                     lineHeight: '1'
                   }}
@@ -415,7 +415,7 @@ export default function NefolCoins() {
             <h3 
               className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -430,13 +430,13 @@ export default function NefolCoins() {
                 <div>
                   <h4 
                     className="text-base sm:text-lg font-light mb-1 tracking-wide"
-                    style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                   >
                     make a purchase
                   </h4>
                   <p 
                     className="text-sm font-light tracking-wide"
-                    style={{ color: '#666', letterSpacing: '0.02em' }}
+                    style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.02em' }}
                   >
                     Earn coins for every purchase you make
                   </p>
@@ -449,13 +449,13 @@ export default function NefolCoins() {
                 <div>
                   <h4 
                     className="text-base sm:text-lg font-light mb-1 tracking-wide"
-                    style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                   >
                     refer friends
                   </h4>
                   <p 
                     className="text-sm font-light tracking-wide"
-                    style={{ color: '#666', letterSpacing: '0.02em' }}
+                    style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.02em' }}
                   >
                     Earn coins from affiliate referrals (1 rupee earned = 10 coins)
                   </p>
@@ -476,13 +476,13 @@ export default function NefolCoins() {
                 <div>
                   <h4 
                     className="text-base sm:text-lg font-light mb-1 tracking-wide"
-                    style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                   >
                     loyalty rewards
                   </h4>
                   <p 
                     className="text-sm font-light tracking-wide"
-                    style={{ color: '#666', letterSpacing: '0.02em' }}
+                    style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.02em' }}
                   >
                     Earn 5% cashback on all orders
                   </p>
@@ -497,7 +497,7 @@ export default function NefolCoins() {
               <h3 
                 className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -508,14 +508,14 @@ export default function NefolCoins() {
                 <div className="pb-6 border-b border-slate-100">
                   <p 
                     className="text-xs sm:text-sm font-light mb-2 tracking-wide"
-                    style={{ color: '#666', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                   >
                     total spent
                   </p>
                   <p 
                     className="text-2xl sm:text-3xl font-light"
                     style={{ 
-                      color: '#1a1a1a',
+                      color: 'var(--nf-text)',
                       fontFamily: 'var(--font-heading-family)',
                       fontVariantNumeric: 'tabular-nums',
                       lineHeight: '1',
@@ -528,14 +528,14 @@ export default function NefolCoins() {
                 <div>
                   <p 
                     className="text-xs sm:text-sm font-light mb-2 tracking-wide"
-                    style={{ color: '#666', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                   >
                     cashback earned
                   </p>
                   <p 
                     className="text-2xl sm:text-3xl font-light"
                     style={{ 
-                      color: '#1a1a1a',
+                      color: 'var(--nf-text)',
                       fontFamily: 'var(--font-heading-family)',
                       fontVariantNumeric: 'tabular-nums',
                       lineHeight: '1',
@@ -556,7 +556,7 @@ export default function NefolCoins() {
             <h3 
               className="text-2xl sm:text-3xl font-light tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -567,7 +567,7 @@ export default function NefolCoins() {
               <a
                 href="#/user/coin-withdrawal"
                 className="flex items-center gap-1 text-sm font-light tracking-wide transition-opacity hover:opacity-70"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 view all
                 <ArrowRight className="w-4 h-4" />
@@ -589,7 +589,7 @@ export default function NefolCoins() {
                       <div className="flex-1">
                         <p 
                           className="text-sm sm:text-base font-light mb-1 tracking-wide"
-                          style={{ color: '#1a1a1a', letterSpacing: '0.02em' }}
+                          style={{ color: 'var(--nf-text)', letterSpacing: '0.02em' }}
                         >
                           {transaction.description}
                         </p>
@@ -634,7 +634,7 @@ export default function NefolCoins() {
               <Clock className="w-12 h-12 mx-auto mb-4" style={{ color: '#999' }} />
               <p 
                 className="text-sm font-light tracking-wide mb-6"
-                style={{ color: '#666', letterSpacing: '0.02em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.02em' }}
               >
                 No transactions yet. Start shopping to earn coins!
               </p>

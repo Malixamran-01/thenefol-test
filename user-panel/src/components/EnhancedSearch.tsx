@@ -188,7 +188,7 @@ export default function EnhancedSearch({ onClose, className = '' }: EnhancedSear
                       />
                     )}
                     <div className="flex-1">
-                      <h3 className="font-medium" style={{color: '#1B4965'}}>
+                      <h3 className="font-medium" style={{color: 'var(--nf-heading)'}}>
                         {product.title}
                       </h3>
                       <p className="text-sm text-gray-600">

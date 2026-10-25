@@ -158,9 +158,9 @@ export default function ReferralHistory() {
             <button
               onClick={exportToCSV}
               className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors"
-              style={{ backgroundColor: 'rgb(75,151,201)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               <Download className="h-4 w-4" />
               Export CSV

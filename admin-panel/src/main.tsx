@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import App from './App'
 import './styles.css'
+import { installAdminAuthFetch } from './utils/authFetch'
+
+installAdminAuthFetch()
 
 const router = createBrowserRouter([
   {

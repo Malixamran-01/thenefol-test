@@ -568,6 +568,11 @@ export async function ensureSchema(pool: Pool) {
         update product_images set type = 'pdp' where type is null;
       end if;
     end $$;
+
+    -- Gallery ordering + video poster frames; index keeps per-product media lookups O(log n)
+    alter table product_images add column if not exists display_order integer;
+    alter table product_images add column if not exists poster_url text;
+    create index if not exists idx_product_images_product_type on product_images(product_id, type);
     
     create table if not exists cart (
       id serial primary key,
@@ -2343,6 +2348,8 @@ export async function ensureSchema(pool: Pool) {
       metadata jsonb,
       created_at timestamptz default now()
     );
+    -- routes/staff.ts logStaff() writes a details column
+    alter table staff_activity_logs add column if not exists details jsonb;
 
     -- Staff Layout Permissions (for assigning layout page access)
     create table if not exists staff_layout_permissions (
@@ -2431,7 +2438,32 @@ export async function ensureSchema(pool: Pool) {
     create index if not exists idx_coin_transactions_created_at on coin_transactions(created_at);
     create index if not exists idx_coin_transactions_order_id on coin_transactions(order_id);
     create index if not exists idx_coin_transactions_withdrawal_id on coin_transactions(withdrawal_id);
-    
+
+    -- Allow every coin transaction type the code writes (referral commission, refunds, reversals).
+    -- Rows of these types were previously rejected by the check constraint and silently lost.
+    DO $$
+    DECLARE c record;
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'coin_transactions'::regclass AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%(type = ANY%'
+          AND pg_get_constraintdef(oid) ILIKE '%cashback_reversed%'
+      ) THEN
+        FOR c IN
+          SELECT conname FROM pg_constraint
+          WHERE conrelid = 'coin_transactions'::regclass AND contype = 'c'
+            AND pg_get_constraintdef(oid) ILIKE '%(type = ANY%'
+        LOOP
+          EXECUTE format('ALTER TABLE coin_transactions DROP CONSTRAINT %I', c.conname);
+        END LOOP;
+        ALTER TABLE coin_transactions ADD CONSTRAINT coin_transactions_type_check
+          CHECK (type IN ('earned', 'redeemed', 'purchase_bonus', 'withdrawal_pending', 'withdrawal_processing',
+            'withdrawal_completed', 'withdrawal_rejected', 'withdrawal_failed', 'referral_bonus', 'order_bonus',
+            'cashback', 'referral_commission', 'refund', 'referral_commission_reversed', 'cashback_reversed'));
+      END IF;
+    END $$;
+
     -- Admin Notifications Table
     create table if not exists admin_notifications (
       id serial primary key,

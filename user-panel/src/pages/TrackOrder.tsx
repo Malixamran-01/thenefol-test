@@ -219,7 +219,7 @@ export default function TrackOrder() {
                               ? 'border-blue-500 text-white'
                               : 'bg-white border-gray-300 text-gray-400'
                           }`}
-                          style={isCurrent && !isCompleted ? { backgroundColor: 'rgb(75,151,201)' } : {}}
+                          style={isCurrent && !isCompleted ? { backgroundColor: 'var(--nf-primary)' } : {}}
                         >
                           {isCompleted ? (
                             <CheckCircle className="w-6 h-6" />
@@ -247,7 +247,7 @@ export default function TrackOrder() {
             <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Delivery Info</h3>
               
-              <button className="mb-4 flex items-center gap-2 text-sm font-medium" style={{ color: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}>
+              <button className="mb-4 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}>
                 <Edit className="w-4 h-4" />
                 Update delivery instructions
               </button>

@@ -1,7 +1,15 @@
 import { Pool } from 'pg'
 import { Request, Response } from 'express'
-import { sendSuccess, sendError } from '../utils/apiHelpers'
+import { sendSuccess, sendError, getStaffContext } from '../utils/apiHelpers'
 import nodemailer from 'nodemailer'
+
+/** Role used for admin views — only for requests with a valid staff session. */
+function staffViewRole(req: Request): string {
+  const ctx = getStaffContext(req)
+  if (!ctx) return ''
+  if (ctx.isSuperAdmin) return 'admin'
+  return String(req.headers['x-user-role'] || ctx.primaryRole || '')
+}
 
 const GRAPH_API_VERSION = process.env.META_WA_API_VERSION || 'v17.0'
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
@@ -80,8 +88,8 @@ const upsertWhatsAppTemplate = async (
 export const getCashbackWallet = async (pool: Pool, req: Request, res: Response) => {
   try {
     const userId = (req as any).userId
-    const role = req.headers['x-user-role'] as string
-    
+    const role = staffViewRole(req)
+
     // For admin users, return aggregate data or allow querying by user_id
     if (role === 'admin' || role === 'manager') {
       const queryUserId = req.query.user_id as string || userId
@@ -208,8 +216,8 @@ export const getCashbackOffers = async (pool: Pool, req: Request, res: Response)
 
 export const getCashbackTransactions = async (pool: Pool, req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId || req.headers['user-id'] as string
-    const role = req.headers['x-user-role'] as string
+    const userId = (req as any).userId
+    const role = staffViewRole(req)
     const queryUserId = req.query.user_id as string || userId
     
     // For admin users, return all transactions or filter by user_id if provided

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { safeWindowScrollToTop } from '../utils/safeScroll'
 import { useProducts } from '../hooks/useProducts'
 import { useCart } from '../contexts/CartContext'
+import { isOutOfStock } from '../utils/stock'
 import type { Product } from '../types'
 import { Heart, Star, ShoppingCart, Filter, SortAsc, SortDesc, X, Clock, TrendingUp } from 'lucide-react'
 
@@ -271,6 +272,7 @@ export default function Search({ addToWishlist }: SearchProps) {
   }, [allProducts, searchQuery, selectedCategory, priceRange, sortBy, sortOrder, ingredientMap])
 
   const handleAddToCart = (product: Product) => {
+    if (isOutOfStock(product)) return
     addItem(product, 1)
   }
 
@@ -613,9 +615,9 @@ export default function Search({ addToWishlist }: SearchProps) {
               <button
                 onClick={() => setSearchQuery('')}
                 className="px-6 py-3 text-white rounded-lg transition-colors"
-                style={{ backgroundColor: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                style={{ backgroundColor: 'var(--nf-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
               >
                 Clear Search
               </button>
@@ -642,7 +644,7 @@ export default function Search({ addToWishlist }: SearchProps) {
                     <Heart className={`w-4 h-4 ${wishlistItems.includes(product.slug) ? 'fill-current' : ''}`} />
                   </button>
                   {product.category && (
-                    <div className="absolute top-3 left-3 px-2 py-1 text-white text-xs rounded-full" style={{ backgroundColor: 'rgb(75,151,201)' }}>
+                    <div className="absolute top-3 left-3 px-2 py-1 text-white text-xs rounded-full" style={{ backgroundColor: 'var(--nf-primary)' }}>
                       {product.category}
                     </div>
                   )}
@@ -661,17 +663,15 @@ export default function Search({ addToWishlist }: SearchProps) {
                     </div>
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors"
-                      style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
-                      }}
+                      disabled={isOutOfStock(product)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        isOutOfStock(product)
+                          ? 'cursor-not-allowed bg-gray-100 text-gray-500'
+                          : 'bg-[color:var(--nf-primary)] text-white hover:bg-[color:var(--nf-primary-hover)]'
+                      }`}
                     >
                       <ShoppingCart className="w-4 h-4" />
-                      Add to Cart
+                      {isOutOfStock(product) ? 'Out of stock' : 'Add to Cart'}
                     </button>
                   </div>
                 </div>

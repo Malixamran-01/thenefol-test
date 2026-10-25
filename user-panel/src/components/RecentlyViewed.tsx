@@ -189,7 +189,7 @@ export default function RecentlyViewed({
   return (
     <section className={`py-8 md:py-12 ${className}`}>
       <div className="mx-auto max-w-7xl px-4">
-        <h2 className="text-2xl md:text-3xl font-serif mb-6" style={{color: '#1B4965'}}>
+        <h2 className="text-2xl md:text-3xl font-serif mb-6" style={{color: 'var(--nf-heading)'}}>
           Recently Viewed
         </h2>
         
@@ -203,7 +203,7 @@ export default function RecentlyViewed({
             aria-label="Previous"
             disabled={!canGoPrevious}
           >
-            <ChevronLeft className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
+            <ChevronLeft className="w-6 h-6" style={{color: 'var(--nf-primary)'}} />
           </button>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -242,7 +242,7 @@ export default function RecentlyViewed({
                 </div>
               )}
               <div className="p-3">
-                <h3 className="text-sm font-medium mb-2 line-clamp-2" style={{color: '#1B4965'}}>
+                <h3 className="text-sm font-medium mb-2 line-clamp-2" style={{color: 'var(--nf-heading)'}}>
                   {product.title}
                 </h3>
                 {(() => {
@@ -273,7 +273,8 @@ export default function RecentlyViewed({
                       </div>
                     )
                   }
-                  return null
+                  // Same height as the rating row so cards line up
+                  return <div className="mb-2 h-5" aria-hidden="true" />
                 })()}
                 <PricingDisplay product={product} />
               </div>
@@ -291,7 +292,7 @@ export default function RecentlyViewed({
             aria-label="Next"
             disabled={!canGoNext}
           >
-            <ChevronRight className="w-6 h-6" style={{color: 'rgb(75,151,201)'}} />
+            <ChevronRight className="w-6 h-6" style={{color: 'var(--nf-primary)'}} />
           </button>
         </div>
       </div>

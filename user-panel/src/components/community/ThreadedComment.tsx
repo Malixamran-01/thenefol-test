@@ -58,7 +58,7 @@ function timeAgo(iso: string): string {
 }
 
 const AVATAR_COLORS = [
-  'from-[#4B97C9] to-[#1B4965]',
+  'from-[color:var(--nf-primary)] to-[color:var(--nf-heading)]',
   'from-[#d97706] to-[#b45309]',
   'from-[#7c3aed] to-[#5b21b6]',
   'from-[#059669] to-[#047857]',
@@ -95,7 +95,7 @@ function Pill({
           ? 'border-red-100 bg-white text-[#94a3b8] hover:border-red-200 hover:bg-red-50 hover:text-red-500'
           : active
             ? 'border-[#E1306C]/25 bg-rose-50 text-[#E1306C]'
-            : 'border-[#e8eef4] bg-white text-[#64748b] hover:border-[#d0e8f5] hover:text-[#1B4965]'
+            : 'border-[#e8eef4] bg-white text-[#64748b] hover:border-[#d0e8f5] hover:text-[color:var(--nf-heading)]'
       }`}
     >
       {children}
@@ -186,12 +186,12 @@ export default function ThreadedComment({
               </div>
             )}
 
-            <span className="text-[13px] font-semibold text-[#1B4965]">
+            <span className="text-[13px] font-semibold text-[color:var(--nf-heading)]">
               {comment.author_name}
             </span>
 
             {isOp && (
-              <span className="rounded bg-[#1B4965]/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[#1B4965]">
+              <span className="rounded bg-[#1B4965]/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-[color:var(--nf-heading)]">
                 OP
               </span>
             )}
@@ -288,7 +288,7 @@ export default function ThreadedComment({
       {stopIndent && hasChildren && expanded && (
         <button
           type="button"
-          className="mb-2 ml-14 text-[12px] font-semibold text-[#4B97C9] hover:underline"
+          className="mb-2 ml-14 text-[12px] font-semibold text-[color:var(--nf-primary)] hover:underline"
           onClick={() =>
             document
               .getElementById(`comment-${comment.id}`)

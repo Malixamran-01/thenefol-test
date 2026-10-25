@@ -4,16 +4,8 @@ import path from 'path'
 import fs from 'fs'
 import { Server as SocketIOServer } from 'socket.io'
 import { sendError, sendSuccess, authenticateToken } from '../utils/apiHelpers'
-import Razorpay from 'razorpay'
+import { getRazorpay } from '../config/razorpay'
 import { generateAmazonInvoiceHTML } from '../utils/amazonInvoiceTemplate'
-
-// Initialize Razorpay for payouts
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_live_RigxrHNSReeV37'
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
-const razorpay = new Razorpay({
-  key_id: RAZORPAY_KEY_ID,
-  key_secret: RAZORPAY_KEY_SECRET
-})
 
 export function registerExtendedRoutes(app: express.Express, pool: Pool, io: SocketIOServer) {
   // ==================== CSV endpoints (FIXED PATH) ====================
@@ -585,7 +577,7 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
             // Create payout using Razorpay
             // Note: Razorpay payouts API may require different SDK methods
             // Using type assertion as payouts might not be in TypeScript definitions
-            const payout = await (razorpay as any).payouts.create(payoutData)
+            const payout = await (getRazorpay() as any).payouts.create(payoutData)
             razorpayPayoutId = payout.id
             
             console.log(`Razorpay payout created: ${razorpayPayoutId} for withdrawal ${withdrawalId}, amount: ₹${amountInRupees.toFixed(2)}`)

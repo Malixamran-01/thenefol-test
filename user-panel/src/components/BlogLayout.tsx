@@ -254,7 +254,7 @@ function SidePanelNav({
                 className="brand-social-logo object-contain"
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
               />
-              <span className="truncate text-[15px] tracking-wide text-[#1B4965] leading-none">
+              <span className="truncate text-[15px] tracking-wide text-[color:var(--nf-heading)] leading-none">
                 <span className="font-bold">NEFOL</span>{' '}
                 <span className="font-semibold opacity-80">Social</span>
               </span>
@@ -314,10 +314,10 @@ function SidePanelNav({
               }`}
             >
               {/* Left accent bar */}
-              <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-150 ${active ? 'h-6 bg-[#1B4965]' : 'h-0 bg-transparent'}`} />
+              <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-150 ${active ? 'h-6 bg-[color:var(--nf-heading)]' : 'h-0 bg-transparent'}`} />
 
               <span className={`relative flex-shrink-0 ${collapsed ? '' : 'pl-5'}`}>
-                <span className={`block transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-500 group-hover:text-gray-800'}`}>
+                <span className={`block transition-colors duration-150 ${active ? 'text-[color:var(--nf-heading)]' : item.placeholder ? 'text-gray-300' : 'text-[color:var(--nf-social-nav-text)] opacity-80 group-hover:opacity-100'}`}>
                   {item.icon}
                 </span>
                 {item.id === 'notifications' && showUnreadBadge && collapsed && (
@@ -335,7 +335,7 @@ function SidePanelNav({
               {/* Label + badge (expanded only) */}
               {!collapsed && (
                 <>
-                  <span className={`flex-1 text-[15px] font-bold transition-colors duration-150 ${active ? 'text-[#1B4965]' : item.placeholder ? 'text-gray-300' : 'text-gray-700 group-hover:text-gray-900'}`}>
+                  <span className={`flex-1 text-[15px] font-bold transition-colors duration-150 ${active ? 'text-[color:var(--nf-heading)]' : item.placeholder ? 'text-gray-300' : 'text-[color:var(--nf-social-nav-text)] group-hover:text-[color:var(--nf-heading)]'}`}>
                     {item.label}
                   </span>
                   {item.id === 'creator-program' && badgeDot(creatorBadge)}
@@ -365,7 +365,7 @@ function SidePanelNav({
               href="#/user/blog/request?new=1"
               onClick={handleWriteClick}
               title="Write"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B4965] text-white transition-colors hover:bg-[#163d54]"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--nf-heading)] text-white transition-colors hover:bg-[color:var(--nf-heading-hover)]"
             >
               <PenLine strokeWidth={2.75} className="h-5 w-5" />
             </a>
@@ -373,7 +373,7 @@ function SidePanelNav({
             <a
               href="#/user/blog/request?new=1"
               onClick={handleWriteClick}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1B4965] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#163d54]"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[color:var(--nf-heading)] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[color:var(--nf-heading-hover)]"
             >
               <PenLine className="h-3.5 w-3.5" />
               Write
@@ -390,7 +390,7 @@ function SidePanelNav({
               href="#/user/"
               onClick={onClose}
               title="Back to NEFOL Store"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1B4965] text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--nf-heading)] text-white shadow-md transition-colors hover:bg-[color:var(--nf-heading-hover)] hover:shadow-lg"
             >
               <img src={BRAND_ICON_SRC} alt="" className="brand-social-logo--sm object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             </a>
@@ -398,7 +398,7 @@ function SidePanelNav({
             <a
               href="#/user/"
               onClick={onClose}
-              className="flex items-center gap-2.5 rounded-lg bg-[#1B4965] px-4 py-3 text-[15px] font-bold text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg -mx-1"
+              className="flex items-center gap-2.5 rounded-lg bg-[color:var(--nf-heading)] px-4 py-3 text-[15px] font-bold text-white shadow-md transition-colors hover:bg-[color:var(--nf-heading-hover)] hover:shadow-lg -mx-1"
             >
               <img src={BRAND_ICON_SRC} alt="" className="brand-social-logo--sm flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
               Back to NEFOL Store
@@ -428,7 +428,7 @@ function SidePanelNav({
               sessionStorage.setItem('post_login_redirect', window.location.hash)
               onClose?.()
             }}
-            className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-[14px] font-medium text-[#1B4965] transition-colors hover:bg-gray-100 ${collapsed ? 'justify-center px-0' : ''}`}
+            className={`flex w-full items-center gap-3 rounded-lg py-2.5 text-[14px] font-medium text-[color:var(--nf-heading)] transition-colors hover:bg-gray-100 ${collapsed ? 'justify-center px-0' : ''}`}
             title="Sign in"
           >
             <LogIn className="h-5 w-5 flex-shrink-0" />
@@ -596,12 +596,12 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
 
   return (
     <CreatorProgramBadgeProvider>
-    <div className="flex min-h-screen w-full min-w-0 overflow-x-hidden" style={{ backgroundColor: '#F4F9F9' }}>
+    <div className="nf-scope-social flex min-h-screen w-full min-w-0 overflow-x-hidden" style={{ backgroundColor: 'var(--nf-social-bg)' }}>
 
       {/* ── Desktop fixed sidebar ────────────────────────────── */}
       <aside
         className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 border-r border-gray-200/70 overflow-hidden"
-        style={{ width: sidebarW, transition: 'width 200ms ease', backgroundColor: '#F4F9F9' }}
+        style={{ width: sidebarW, transition: 'width 200ms ease', backgroundColor: 'var(--nf-social-sidebar-bg)' }}
       >
         <SidePanelNav
           hash={currentHash}
@@ -627,7 +627,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
       />
 
       {/* ── Mobile top bar ──────────────────────────────────── */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200/70 px-4 lg:hidden" style={{ backgroundColor: '#F4F9F9' }}>
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200/70 px-4 lg:hidden" style={{ backgroundColor: 'var(--nf-social-sidebar-bg)' }}>
         <button
           onClick={() => setMobileMenuOpen(true)}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50"
@@ -643,7 +643,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
             className="brand-social-logo object-contain"
             onError={(e) => { e.currentTarget.style.display = 'none' }}
           />
-          <span className="text-[14px] tracking-wide text-[#1B4965] leading-none">
+          <span className="text-[14px] tracking-wide text-[color:var(--nf-heading)] leading-none">
             <span className="font-bold">NEFOL</span>{' '}
             <span className="font-semibold opacity-80">Social</span>
           </span>
@@ -676,7 +676,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
           <div className="absolute inset-0 bg-black/25 backdrop-blur-[2px]" />
           <div
             className="absolute inset-y-0 left-0 flex w-[240px] flex-col shadow-xl"
-            style={{ backgroundColor: '#F4F9F9' }}
+            style={{ backgroundColor: 'var(--nf-social-sidebar-bg)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* ── User identity header ─────────────────────── */}
@@ -699,7 +699,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
                       className="h-12 w-12 rounded-full object-cover mb-3 border-2 border-white shadow-sm"
                     />
                   ) : (
-                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#4B97C9] to-[#1B4965] text-lg font-bold text-white shadow-sm">
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] text-lg font-bold text-white shadow-sm">
                       {user.name?.charAt(0)?.toUpperCase() || 'U'}
                     </div>
                   )}
@@ -714,7 +714,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
                   <a
                     href="#/user/login"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="text-[14px] font-semibold text-[#1B4965]"
+                    className="text-[14px] font-semibold text-[color:var(--nf-heading)]"
                   >
                     Sign in
                   </a>
@@ -742,7 +742,7 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
       )}
 
       {/* ── Main content ────────────────────────────────────── */}
-      <main className="flex-1 min-w-0 w-full bg-[#F4F9F9] pt-14 lg:pt-0">
+      <main className="flex-1 min-w-0 w-full bg-[color:var(--nf-surface-soft)] pt-14 lg:pt-0">
         {children}
       </main>
 

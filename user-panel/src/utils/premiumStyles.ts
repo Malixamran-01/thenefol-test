@@ -4,17 +4,17 @@
 export const premiumStyles = {
   // Colors
   colors: {
-    primary: '#1a1a1a',
-    secondary: '#666',
+    primary: 'var(--nf-text)',
+    secondary: 'var(--nf-text-muted)',
     tertiary: '#999',
     background: '#ffffff',
     arcticBlue: {
-      primary: 'rgb(75,151,201)',
-      hover: 'rgb(60,120,160)',
-      dark: 'rgb(50,100,140)',
-      light: '#E0F5F5',
-      lighter: '#F0F9F9',
-      background: '#F4F9F9'
+      primary: 'var(--nf-primary)',
+      hover: 'var(--nf-primary-hover)',
+      dark: 'var(--nf-primary-dark)',
+      light: 'var(--nf-primary-light)',
+      lighter: 'var(--nf-primary-lighter)',
+      background: 'var(--nf-surface-soft)'
     }
   },
   
@@ -61,7 +61,7 @@ export const getHeadingStyle = (level: 1 | 2 | 3 | 4 = 1) => ({
 // Helper function to get premium button styles
 export const getButtonStyle = (variant: 'primary' | 'secondary' = 'primary') => ({
   ...premiumStyles.typography.button,
-  backgroundColor: variant === 'primary' ? 'rgb(75,151,201)' : 'transparent',
+  backgroundColor: variant === 'primary' ? 'var(--nf-primary)' : 'transparent',
   color: variant === 'primary' ? '#fff' : premiumStyles.colors.primary,
   border: variant === 'secondary' ? `1px solid ${premiumStyles.colors.primary}` : 'none',
   padding: '0.75rem 1.5rem',

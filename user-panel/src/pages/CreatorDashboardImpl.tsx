@@ -184,13 +184,13 @@ function AreaChart({ points, color, h = 150 }: { points: { month: string; value:
 // ─── Activity meta ────────────────────────────────────────────────────────────
 
 const ACT: Record<string, { icon: React.ReactNode; dot: string; label: (a: Activity) => string }> = {
-  followed:        { icon: <UserPlus className="h-3 w-3" />,       dot: 'bg-[#1B4965]',  label: () => 'started following you' },
+  followed:        { icon: <UserPlus className="h-3 w-3" />,       dot: 'bg-[color:var(--nf-heading)]',  label: () => 'started following you' },
   subscribed:      { icon: <Star className="h-3 w-3" />,           dot: 'bg-amber-500',  label: () => 'subscribed to you' },
   post_liked:      { icon: <Heart className="h-3 w-3" />,          dot: 'bg-rose-500',   label: (a) => `liked "${stripHtml(a.post_title) ?? 'your post'}"` },
-  post_commented:  { icon: <MessageCircle className="h-3 w-3" />,  dot: 'bg-[#4B97C9]', label: (a) => `commented on "${stripHtml(a.post_title) ?? 'your post'}"` },
+  post_commented:  { icon: <MessageCircle className="h-3 w-3" />,  dot: 'bg-[color:var(--nf-primary)]', label: (a) => `commented on "${stripHtml(a.post_title) ?? 'your post'}"` },
   post_reposted:   { icon: <Repeat2 className="h-3 w-3" />,        dot: 'bg-emerald-500',label: (a) => `reposted "${stripHtml(a.post_title) ?? 'your post'}"` },
   comment_liked:   { icon: <Heart className="h-3 w-3" />,          dot: 'bg-rose-400',   label: () => 'liked your comment' },
-  comment_replied: { icon: <MessageCircle className="h-3 w-3" />,  dot: 'bg-[#4B97C9]', label: () => 'replied to your comment' },
+  comment_replied: { icon: <MessageCircle className="h-3 w-3" />,  dot: 'bg-[color:var(--nf-primary)]', label: () => 'replied to your comment' },
 }
 
 // ─── Status badge (whitespace-nowrap prevents wrapping) ───────────────────────
@@ -236,12 +236,12 @@ function CreatorProgramTab() {
 
   // Level label
   const level = affiliateUnlocked ? 'Partner' : isApproved ? 'Creator' : 'Explorer'
-  const levelColor = affiliateUnlocked ? 'text-[#1B4965] bg-[#edf4f9]' : isApproved ? 'text-emerald-700 bg-emerald-50' : 'text-gray-500 bg-gray-100'
+  const levelColor = affiliateUnlocked ? 'text-[color:var(--nf-heading)] bg-[#edf4f9]' : isApproved ? 'text-emerald-700 bg-emerald-50' : 'text-gray-500 bg-gray-100'
 
   return (
     <div className="pb-20">
       {/* Header card */}
-      <div className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] via-[#2563a0] to-[#4B97C9] p-6 shadow-lg">
+      <div className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[color:var(--nf-heading)] via-[#2563a0] to-[color:var(--nf-primary)] p-6 shadow-lg">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white">
@@ -264,7 +264,7 @@ function CreatorProgramTab() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[#4B97C9] border-t-transparent" />
+          <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[color:var(--nf-primary)] border-t-transparent" />
         </div>
       ) : (
         <>
@@ -274,7 +274,7 @@ function CreatorProgramTab() {
               <p className="mb-4 text-[11px] font-bold uppercase tracking-wider text-gray-400">Affiliate Progress</p>
               <div className="space-y-4">
                 {[
-                  { label: 'Views', val: views, goal: VIEWS_GOAL, pct: viewsPct, icon: <Eye className="h-4 w-4 text-[#4B97C9]" /> },
+                  { label: 'Views', val: views, goal: VIEWS_GOAL, pct: viewsPct, icon: <Eye className="h-4 w-4 text-[color:var(--nf-primary)]" /> },
                   { label: 'Likes', val: likes, goal: LIKES_GOAL, pct: likesPct, icon: <Heart className="h-4 w-4 text-rose-400" /> },
                 ].map(({ label, val, goal, pct, icon }) => (
                   <div key={label}>
@@ -284,7 +284,7 @@ function CreatorProgramTab() {
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all"
+                        className="h-full rounded-full bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] transition-all"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -300,7 +300,7 @@ function CreatorProgramTab() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf4f9]">
-                  <ShieldCheck className="h-5 w-5 text-[#1B4965]" />
+                  <ShieldCheck className="h-5 w-5 text-[color:var(--nf-heading)]" />
                 </div>
                 <div>
                   <p className="text-[13px] font-bold text-gray-800">
@@ -323,17 +323,17 @@ function CreatorProgramTab() {
           {/* CTA */}
           <a
             href="#/user/collab"
-            className="flex w-full items-center justify-between rounded-2xl border border-[#d0e8f5] bg-[#f0f7fc] px-5 py-4 transition hover:border-[#4B97C9] hover:bg-[#e8f2f9]"
+            className="flex w-full items-center justify-between rounded-2xl border border-[#d0e8f5] bg-[#f0f7fc] px-5 py-4 transition hover:border-[color:var(--nf-primary)] hover:bg-[#e8f2f9]"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1B4965]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--nf-heading)]">
                 <Clapperboard className="h-4 w-4 text-white" />
               </div>
-              <span className="text-[13px] font-semibold text-[#1B4965]">
+              <span className="text-[13px] font-semibold text-[color:var(--nf-heading)]">
                 {isApplied ? 'View Creator Program' : 'Apply for Creator Program'}
               </span>
             </div>
-            <ChevronRight className="h-4 w-4 text-[#4B97C9]" />
+            <ChevronRight className="h-4 w-4 text-[color:var(--nf-primary)]" />
           </a>
         </>
       )}
@@ -373,7 +373,7 @@ function EarningsTab() {
   return (
     <div className="pb-20">
       {/* Header */}
-      <div className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] via-[#2d6688] to-[#4B97C9] p-6 shadow-lg">
+      <div className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[color:var(--nf-heading)] via-[#2d6688] to-[color:var(--nf-primary)] p-6 shadow-lg">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-black text-white">Earnings</h2>
@@ -387,7 +387,7 @@ function EarningsTab() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[#4B97C9] border-t-transparent" />
+          <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[color:var(--nf-primary)] border-t-transparent" />
         </div>
       ) : (
         <>
@@ -397,7 +397,7 @@ function EarningsTab() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf4f9]">
-                    <Percent className="h-5 w-5 text-[#1B4965]" />
+                    <Percent className="h-5 w-5 text-[color:var(--nf-heading)]" />
                   </div>
                   <div>
                     <p className="text-[13px] font-bold text-gray-800">Affiliate Application</p>
@@ -421,9 +421,9 @@ function EarningsTab() {
           <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
               { icon: <CircleDollarSign className="h-5 w-5 text-emerald-600" />, bg: 'bg-emerald-50', title: 'Earn Commissions', desc: 'Get rewarded every time someone purchases through your referral link.' },
-              { icon: <Users className="h-5 w-5 text-[#4B97C9]" />,            bg: 'bg-[#edf4f9]',  title: 'Track Referrals',  desc: 'See exactly how many readers signed up through your link.' },
+              { icon: <Users className="h-5 w-5 text-[color:var(--nf-primary)]" />,            bg: 'bg-[#edf4f9]',  title: 'Track Referrals',  desc: 'See exactly how many readers signed up through your link.' },
               { icon: <BarChart3 className="h-5 w-5 text-purple-600" />,       bg: 'bg-purple-50',   title: 'Performance Stats', desc: 'Clicks, conversions, and earnings — all in one place.' },
-              { icon: <TrendingUp className="h-5 w-5 text-[#1B4965]" />,       bg: 'bg-[#edf4f9]',  title: 'Tiered Rewards',   desc: 'Unlock higher commission rates as your referrals grow.' },
+              { icon: <TrendingUp className="h-5 w-5 text-[color:var(--nf-heading)]" />,       bg: 'bg-[#edf4f9]',  title: 'Tiered Rewards',   desc: 'Unlock higher commission rates as your referrals grow.' },
             ].map(({ icon, bg, title, desc }) => (
               <div key={title} className="flex items-start gap-4 rounded-2xl border border-[#e8eef4] bg-white p-4">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${bg}`}>{icon}</div>
@@ -438,15 +438,15 @@ function EarningsTab() {
           {/* CTA */}
           <a
             href="#/user/collab?tab=revenue"
-            className="flex w-full items-center justify-between rounded-2xl border border-[#d0e8f5] bg-[#f0f7fc] px-5 py-4 transition hover:border-[#4B97C9] hover:bg-[#e8f2f9]"
+            className="flex w-full items-center justify-between rounded-2xl border border-[#d0e8f5] bg-[#f0f7fc] px-5 py-4 transition hover:border-[color:var(--nf-primary)] hover:bg-[#e8f2f9]"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1B4965]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--nf-heading)]">
                 <DollarSign className="h-4 w-4 text-white" />
               </div>
-              <span className="text-[13px] font-semibold text-[#1B4965]">Open Earnings Dashboard</span>
+              <span className="text-[13px] font-semibold text-[color:var(--nf-heading)]">Open Earnings Dashboard</span>
             </div>
-            <ChevronRight className="h-4 w-4 text-[#4B97C9]" />
+            <ChevronRight className="h-4 w-4 text-[color:var(--nf-primary)]" />
           </a>
         </>
       )}
@@ -523,33 +523,33 @@ function CreatorDashboardImpl() {
 
   if (loading) return (
     <div className="flex min-h-[70vh] items-center justify-center">
-      <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#4B97C9] border-t-transparent" />
+      <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-[color:var(--nf-primary)] border-t-transparent" />
     </div>
   )
 
   if (!isAuthenticated) return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#edf4f9]">
-        <BarChart3 className="h-8 w-8 text-[#1B4965]" />
+        <BarChart3 className="h-8 w-8 text-[color:var(--nf-heading)]" />
       </div>
       <div>
         <p className="text-lg font-bold text-gray-800">Sign in to view your dashboard</p>
         <p className="mt-1 text-sm text-gray-500">Track posts, followers, and engagement in one place.</p>
       </div>
-      <a href="#/user/login" className="rounded-full bg-[#1B4965] px-6 py-2.5 text-sm font-semibold text-white shadow-md">Sign In</a>
+      <a href="#/user/login" className="rounded-full bg-[color:var(--nf-heading)] px-6 py-2.5 text-sm font-semibold text-white shadow-md">Sign In</a>
     </div>
   )
 
   if (!data?.author) return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#edf4f9]">
-        <Zap className="h-8 w-8 text-[#4B97C9]" />
+        <Zap className="h-8 w-8 text-[color:var(--nf-primary)]" />
       </div>
       <div>
         <p className="text-lg font-bold text-gray-800">Become an Author</p>
         <p className="mt-1 text-sm text-gray-500">Set up your author profile to unlock your creator dashboard.</p>
       </div>
-      <a href="#/user/author/onboarding" className="rounded-full bg-[#1B4965] px-6 py-2.5 text-sm font-semibold text-white shadow-md">Get Started</a>
+      <a href="#/user/author/onboarding" className="rounded-full bg-[color:var(--nf-heading)] px-6 py-2.5 text-sm font-semibold text-white shadow-md">Get Started</a>
     </div>
   )
 
@@ -557,7 +557,7 @@ function CreatorDashboardImpl() {
   const approvedCount = data.posts.filter(p => p.status === 'approved').length
   const pendingCount  = data.posts.filter(p => p.status === 'pending').length
   const postsToShow   = showAll ? sortedPosts : sortedPosts.slice(0, 8)
-  const chartColor    = chartMetric === 'likes' ? '#f43f5e' : chartMetric === 'posts' ? '#1B4965' : '#7c3aed'
+  const chartColor    = chartMetric === 'likes' ? '#f43f5e' : chartMetric === 'posts' ? 'var(--nf-heading)' : '#7c3aed'
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -577,12 +577,12 @@ function CreatorDashboardImpl() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={copyLink}
-            className="flex items-center gap-1.5 rounded-full border border-[#d0e4f0] bg-white px-3 py-2 text-[12px] font-semibold text-gray-600 shadow-sm transition hover:border-[#4B97C9] hover:text-[#1B4965]">
+            className="flex items-center gap-1.5 rounded-full border border-[#d0e4f0] bg-white px-3 py-2 text-[12px] font-semibold text-gray-600 shadow-sm transition hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-heading)]">
             {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
             {copied ? 'Copied!' : 'Share Profile'}
           </button>
           <a href="#/user/blog/request"
-            className="flex items-center gap-1.5 rounded-full bg-[#1B4965] px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:bg-[#163d57]">
+            className="flex items-center gap-1.5 rounded-full bg-[color:var(--nf-heading)] px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:bg-[#163d57]">
             <PenLine className="h-3.5 w-3.5" /> New Post
           </a>
         </div>
@@ -616,7 +616,7 @@ function CreatorDashboardImpl() {
           <button key={key} onClick={() => setActiveTab(key)}
             className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${
               activeTab === key
-                ? 'border-[#1B4965] text-[#1B4965]'
+                ? 'border-[color:var(--nf-heading)] text-[color:var(--nf-heading)]'
                 : 'border-transparent text-gray-400 hover:text-gray-600'
             }`}>
             {icon}{label}
@@ -634,7 +634,7 @@ function CreatorDashboardImpl() {
             {/* Row 1: big accent + Followers + Profile Views */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {/* Likes — accent card spanning 2 cols */}
-              <div className="col-span-2 flex items-center justify-between rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#2a6f9e] p-5 shadow-sm">
+              <div className="col-span-2 flex items-center justify-between rounded-2xl bg-gradient-to-br from-[color:var(--nf-heading)] to-[#2a6f9e] p-5 shadow-sm">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-200">Total Likes</p>
                   <p className="mt-1 text-5xl font-black text-white">{fmt(stats.likes)}</p>
@@ -673,7 +673,7 @@ function CreatorDashboardImpl() {
               {[
                 { label: 'Blog Reads',  value: stats.reads,    icon: <BookOpen className="h-4 w-4 text-emerald-600" />,     bg: 'bg-emerald-50'},
                 { label: 'Total Views', value: stats.views,    icon: <Eye className="h-4 w-4 text-amber-500" />,            bg: 'bg-amber-50' },
-                { label: 'Comments',    value: stats.comments, icon: <MessageCircle className="h-4 w-4 text-[#4B97C9]" />,  bg: 'bg-[#edf4f9]' },
+                { label: 'Comments',    value: stats.comments, icon: <MessageCircle className="h-4 w-4 text-[color:var(--nf-primary)]" />,  bg: 'bg-[#edf4f9]' },
                 { label: 'Published',   value: approvedCount,  icon: <CheckCircle2 className="h-4 w-4 text-orange-500" />, bg: 'bg-orange-50',
                   sub: pendingCount > 0 ? `${pendingCount} pending` : undefined },
               ].map(({ label, value, icon, bg, sub }) => (
@@ -702,14 +702,14 @@ function CreatorDashboardImpl() {
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Growth</p>
                 <h2 className="mt-0.5 text-lg font-black text-gray-900 flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-[#1B4965]" /> Overview
+                  <TrendingUp className="h-5 w-5 text-[color:var(--nf-heading)]" /> Overview
                   <span className="text-[12px] font-normal text-gray-400">— last 6 months</span>
                 </h2>
               </div>
               <div className="flex gap-1 rounded-2xl border border-[#e8eef4] bg-white p-1 shadow-sm">
                 {([
                   ['likes',     'Likes',     '#f43f5e'],
-                  ['posts',     'Posts',     '#1B4965'],
+                  ['posts',     'Posts',     'var(--nf-heading)'],
                   ['followers', 'Followers', '#7c3aed'],
                 ] as const).map(([key, label, color]) => (
                   <button key={key} onClick={() => setChartMetric(key)}
@@ -747,7 +747,7 @@ function CreatorDashboardImpl() {
                 <div className="flex flex-col items-center justify-center py-14 text-center">
                   <FileText className="mb-2 h-10 w-10 text-gray-200" />
                   <p className="text-sm text-gray-400">No published posts yet</p>
-                  <a href="#/user/blog/request" className="mt-3 text-[12px] font-semibold text-[#4B97C9] hover:underline">Write your first post →</a>
+                  <a href="#/user/blog/request" className="mt-3 text-[12px] font-semibold text-[color:var(--nf-primary)] hover:underline">Write your first post →</a>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -762,16 +762,16 @@ function CreatorDashboardImpl() {
                           <img src={img} alt="" className="h-10 w-14 shrink-0 rounded-lg object-cover" />
                         ) : (
                           <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg bg-[#edf4f9]">
-                            <BookOpen className="h-4 w-4 text-[#4B97C9]" />
+                            <BookOpen className="h-4 w-4 text-[color:var(--nf-primary)]" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">{stripHtml(post.title)}</p>
+                          <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[color:var(--nf-heading)]">{stripHtml(post.title)}</p>
                           <p className="text-[11px] text-gray-400">{fmtDate(post.created_at)}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-3 text-[11px] text-gray-400">
                           <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(post.likes_count)}</span>
-                          <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-[#4B97C9]" />{fmt(post.comments_count)}</span>
+                          <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-[color:var(--nf-primary)]" />{fmt(post.comments_count)}</span>
                           <span className="hidden items-center gap-1 sm:flex"><Eye className="h-3 w-3 text-gray-300" />{fmt(post.views_count)}</span>
                         </div>
                       </a>
@@ -786,9 +786,9 @@ function CreatorDashboardImpl() {
               <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">Latest</p>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-lg font-black text-gray-900">
-                  <Bell className="h-5 w-5 text-[#4B97C9]" /> Activity
+                  <Bell className="h-5 w-5 text-[color:var(--nf-primary)]" /> Activity
                 </h2>
-                <a href="#/user/blog/activity" className="flex items-center gap-0.5 text-[11px] font-semibold text-[#4B97C9] hover:text-[#1B4965]">
+                <a href="#/user/blog/activity" className="flex items-center gap-0.5 text-[11px] font-semibold text-[color:var(--nf-primary)] hover:text-[color:var(--nf-heading)]">
                   All <ArrowRight className="h-3 w-3" />
                 </a>
               </div>
@@ -808,7 +808,7 @@ function CreatorDashboardImpl() {
                           {src ? (
                             <img src={src} alt="" className="h-8 w-8 rounded-full object-cover" />
                           ) : (
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#dce8f0] text-[10px] font-bold text-[#1B4965]">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#dce8f0] text-[10px] font-bold text-[color:var(--nf-heading)]">
                               {(a.actor_name || 'U').slice(0, 2).toUpperCase()}
                             </div>
                           )}
@@ -848,7 +848,7 @@ function CreatorDashboardImpl() {
                     <FileText className="h-5 w-5 text-gray-400" /> Saved Drafts
                   </h2>
                 </div>
-                <a href="#/user/blog/my-blogs" className="flex items-center gap-0.5 text-[11px] font-semibold text-[#4B97C9] hover:text-[#1B4965]">
+                <a href="#/user/blog/my-blogs" className="flex items-center gap-0.5 text-[11px] font-semibold text-[color:var(--nf-primary)] hover:text-[color:var(--nf-heading)]">
                   View all <ArrowRight className="h-3 w-3" />
                 </a>
               </div>
@@ -857,10 +857,10 @@ function CreatorDashboardImpl() {
                   <a key={d.id} href="#/user/blog/request"
                     className="group flex items-center gap-3 rounded-xl border border-[#f0f4f7] bg-white px-4 py-3.5 shadow-sm transition hover:border-[#cce0f0] hover:shadow">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#e8eef4] bg-gray-50 transition group-hover:border-[#4B97C9]/30 group-hover:bg-[#edf4f9]">
-                      <Edit3 className="h-4 w-4 text-gray-400 transition group-hover:text-[#4B97C9]" />
+                      <Edit3 className="h-4 w-4 text-gray-400 transition group-hover:text-[color:var(--nf-primary)]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-semibold text-gray-700 group-hover:text-[#1B4965]">{d.title || 'Untitled'}</p>
+                      <p className="truncate text-[13px] font-semibold text-gray-700 group-hover:text-[color:var(--nf-heading)]">{d.title || 'Untitled'}</p>
                       <p className="flex items-center gap-1 text-[11px] text-gray-400">
                         <Clock className="h-3 w-3" /> {timeAgo(d.updated_at)}
                       </p>
@@ -878,8 +878,8 @@ function CreatorDashboardImpl() {
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Performance</p>
                 <h2 className="mt-0.5 flex items-center gap-2 text-lg font-black text-gray-900">
-                  <BarChart3 className="h-5 w-5 text-[#1B4965]" /> All Posts
-                  <span className="rounded-full bg-[#edf4f9] px-2.5 py-0.5 text-[11px] font-bold text-[#1B4965]">{sortedPosts.length}</span>
+                  <BarChart3 className="h-5 w-5 text-[color:var(--nf-heading)]" /> All Posts
+                  <span className="rounded-full bg-[#edf4f9] px-2.5 py-0.5 text-[11px] font-bold text-[color:var(--nf-heading)]">{sortedPosts.length}</span>
                 </h2>
               </div>
               <div className="flex gap-1 rounded-2xl border border-[#e8eef4] bg-white p-1 shadow-sm">
@@ -901,7 +901,7 @@ function CreatorDashboardImpl() {
                   ['views_count','Views'],['likes_count','Likes'],['comments_count','Cmts'],['reposts_count','Rpsts'],['created_at','Date'],
                 ] as [SortKey,string][]).map(([key, label]) => (
                   <button key={key} onClick={() => toggleSort(key)}
-                    className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-[#1B4965]">
+                    className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-[color:var(--nf-heading)]">
                     {label}
                     {sortKey === key ? (sortDir === 'desc' ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />) : null}
                   </button>
@@ -913,7 +913,7 @@ function CreatorDashboardImpl() {
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#d0e4f0] py-16 text-center">
                 <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
                 <p className="font-semibold text-gray-400">No posts found</p>
-                <a href="#/user/blog/request" className="mt-3 rounded-full bg-[#1B4965] px-4 py-2 text-[12px] font-semibold text-white">Write your first post</a>
+                <a href="#/user/blog/request" className="mt-3 rounded-full bg-[color:var(--nf-heading)] px-4 py-2 text-[12px] font-semibold text-white">Write your first post</a>
               </div>
             ) : (
               <>
@@ -927,12 +927,12 @@ function CreatorDashboardImpl() {
                           <img src={img} alt="" className="h-10 w-14 shrink-0 rounded-lg object-cover" />
                         ) : (
                           <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#edf4f9] to-[#d0e4f0]">
-                            <BookOpen className="h-4 w-4 text-[#4B97C9]" />
+                            <BookOpen className="h-4 w-4 text-[color:var(--nf-primary)]" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">{stripHtml(post.title)}</p>
+                            <p className="truncate text-[13px] font-semibold text-gray-800 group-hover:text-[color:var(--nf-heading)]">{stripHtml(post.title)}</p>
                             {post.featured && <Star className="h-3 w-3 shrink-0 text-amber-400" fill="currentColor" />}
                           </div>
                           <p className="text-[11px] text-gray-400">{fmtDate(post.created_at)}</p>
@@ -956,7 +956,7 @@ function CreatorDashboardImpl() {
                 </div>
                 {sortedPosts.length > 8 && (
                   <button onClick={() => setShowAll(s => !s)}
-                    className="mt-3 flex w-full items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold text-gray-400 transition hover:text-[#1B4965]">
+                    className="mt-3 flex w-full items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold text-gray-400 transition hover:text-[color:var(--nf-heading)]">
                     {showAll ? <><ChevronUp className="h-4 w-4" /> Collapse</> : <><ChevronDown className="h-4 w-4" /> Show all {sortedPosts.length} posts</>}
                   </button>
                 )}
@@ -976,10 +976,10 @@ function CreatorDashboardImpl() {
               ]).map(({ href, icon, label, sub, dark }) => (
                 <a key={label} href={href}
                   className={`group flex flex-col gap-2 rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                    dark ? 'border-[#1B4965] bg-[#1B4965]' : 'border-[#e8eef4] bg-white hover:border-[#cce0f0]'
+                    dark ? 'border-[color:var(--nf-heading)] bg-[color:var(--nf-heading)]' : 'border-[#e8eef4] bg-white hover:border-[#cce0f0]'
                   }`}>
                   <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${dark ? 'bg-white/20' : 'bg-[#edf4f9]'}`}>
-                    <span className={dark ? 'text-white' : 'text-[#1B4965]'}>{icon}</span>
+                    <span className={dark ? 'text-white' : 'text-[color:var(--nf-heading)]'}>{icon}</span>
                   </div>
                   <div>
                     <p className={`text-[13px] font-bold ${dark ? 'text-white' : 'text-gray-800'}`}>{label}</p>

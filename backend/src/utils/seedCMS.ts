@@ -18,16 +18,13 @@ export async function seedCMSContent(pool: Pool) {
       { slug: 'combos', title: 'Product Combos', meta_description: 'Shop product combination bundles' }
     ]
 
-    // Insert or update pages
+    // Create missing pages only — never overwrite titles / meta descriptions edited in admin.
+    // (This runs on every backend start, i.e. after every redeploy.)
     for (const page of pages) {
       await pool.query(`
         INSERT INTO cms_pages (slug, title, meta_description)
         VALUES ($1, $2, $3)
-        ON CONFLICT (slug) 
-        DO UPDATE SET 
-          title = EXCLUDED.title,
-          meta_description = EXCLUDED.meta_description,
-          updated_at = CURRENT_TIMESTAMP
+        ON CONFLICT (slug) DO NOTHING
       `, [page.slug, page.title, page.meta_description])
     }
 
@@ -279,7 +276,8 @@ export async function seedCMSContent(pool: Pool) {
       }
     }
 
-    // Seed global settings
+    // Default global settings. Inserted only when the key doesn't exist yet: anything saved from the
+    // admin panel (browser title, brand name, site_theme, …) must survive restarts and redeploys.
     const settings = [
       { setting_key: 'site_name', setting_value: 'Nefol', setting_type: 'text' },
       { setting_key: 'site_brand_name', setting_value: 'NEFOL', setting_type: 'text' },
@@ -308,11 +306,7 @@ export async function seedCMSContent(pool: Pool) {
       await pool.query(`
         INSERT INTO cms_settings (setting_key, setting_value, setting_type)
         VALUES ($1, $2, $3)
-        ON CONFLICT (setting_key)
-        DO UPDATE SET
-          setting_value = EXCLUDED.setting_value,
-          setting_type = EXCLUDED.setting_type,
-          updated_at = CURRENT_TIMESTAMP
+        ON CONFLICT (setting_key) DO NOTHING
       `, [setting.setting_key, setting.setting_value, setting.setting_type])
     }
 

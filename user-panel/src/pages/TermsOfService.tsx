@@ -4,8 +4,8 @@ import { getSiteUrl } from '../utils/apiBase'
 
 const s = {
   body:    { color: '#555', letterSpacing: '0.04em', lineHeight: '1.75' } as React.CSSProperties,
-  heading: { color: '#1a1a1a', fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' } as React.CSSProperties,
-  sub:     { color: '#1a1a1a', letterSpacing: '0.05em' } as React.CSSProperties,
+  heading: { color: 'var(--nf-text)', fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' } as React.CSSProperties,
+  sub:     { color: 'var(--nf-text)', letterSpacing: '0.05em' } as React.CSSProperties,
   blue:    'var(--arctic-blue-primary)' as string,
   light:   'var(--arctic-blue-light)' as string,
   lighter: 'var(--arctic-blue-lighter)' as string,
@@ -46,10 +46,10 @@ export default function TermsOfService() {
     >
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
         }
       `}</style>
 
@@ -484,7 +484,7 @@ export default function TermsOfService() {
             <h2 className="text-2xl sm:text-3xl font-light mb-3 tracking-[0.15em]" style={s.heading}>
               Questions About These Terms?
             </h2>
-            <p className="text-sm sm:text-base font-light mb-6 max-w-xl mx-auto" style={{ color: '#666', letterSpacing: '0.04em' }}>
+            <p className="text-sm sm:text-base font-light mb-6 max-w-xl mx-auto" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.04em' }}>
               Reach out to our Grievance Officer or support team and we'll respond within 48 hours.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

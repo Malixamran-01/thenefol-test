@@ -301,7 +301,7 @@ export default function WithdrawalPanel({
           if (fieldErrors[name]) setFieldErrors((p) => ({ ...p, [name]: '' }))
         }}
         placeholder={placeholder}
-        className={`w-full rounded-xl border px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/15 transition-all ${
+        className={`w-full rounded-xl border px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/15 transition-all ${
           fieldErrors[name] ? 'border-red-400' : 'border-gray-200'
         }`}
         {...extra}
@@ -346,7 +346,7 @@ export default function WithdrawalPanel({
               <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
             ) : (
               <>
-                <p className="text-3xl sm:text-4xl font-light text-[#1B4965] tabular-nums leading-none">
+                <p className="text-3xl sm:text-4xl font-light text-[color:var(--nf-heading)] tabular-nums leading-none">
                   {coins.available.toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">≈ ₹{fmtINR(coins.available)}</p>
@@ -376,7 +376,7 @@ export default function WithdrawalPanel({
           type="button"
           onClick={() => { setShowForm((p) => !p); setFormError(null); setFormSuccess(null) }}
           className="rounded-xl px-5 py-3 text-sm font-semibold text-white transition-colors self-start"
-          style={{ backgroundColor: showForm ? '#94a3b8' : 'var(--arctic-blue-primary, #4B97C9)' }}
+          style={{ backgroundColor: showForm ? '#94a3b8' : 'var(--arctic-blue-primary, var(--nf-primary))' }}
         >
           {showForm ? 'Cancel' : 'Request withdrawal'}
         </button>
@@ -406,7 +406,7 @@ export default function WithdrawalPanel({
         )}
         <a
           href="#/user/blog/settings?view=payout"
-          className="text-xs font-medium underline underline-offset-2 text-[#4B97C9] hover:opacity-80 transition-opacity"
+          className="text-xs font-medium underline underline-offset-2 text-[color:var(--nf-primary)] hover:opacity-80 transition-opacity"
         >
           {hasSavedPayout ? 'Edit' : 'Add bank / UPI'}
         </a>
@@ -425,7 +425,7 @@ export default function WithdrawalPanel({
 
   const WithdrawalForm = () => (
     <div className={`rounded-2xl border ${embedded ? 'border-[#e8eef4]' : 'border-slate-100'} bg-white shadow-sm p-5 sm:p-6`}>
-      <h3 className="text-base font-semibold text-[#1B4965] mb-5">Withdrawal request</h3>
+      <h3 className="text-base font-semibold text-[color:var(--nf-heading)] mb-5">Withdrawal request</h3>
       <form onSubmit={handleSubmit} className="space-y-5">
 
         {/* Amount */}
@@ -444,7 +444,7 @@ export default function WithdrawalPanel({
                 if (fieldErrors.amount) setFieldErrors((p) => ({ ...p, amount: '' }))
               }}
               placeholder={`Up to ${coins.available.toLocaleString()} available`}
-              className={`w-full rounded-xl border px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/15 pr-32 ${
+              className={`w-full rounded-xl border px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/15 pr-32 ${
                 fieldErrors.amount ? 'border-red-400' : 'border-gray-200'
               }`}
             />
@@ -471,7 +471,7 @@ export default function WithdrawalPanel({
                     key={v}
                     type="button"
                     onClick={() => setForm((p) => ({ ...p, amount: String(v) }))}
-                    className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:border-[#4B97C9] hover:text-[#1B4965] transition-colors"
+                    className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-heading)] transition-colors"
                   >
                     {v === coins.available ? 'All' : v.toLocaleString()}
                   </button>
@@ -488,7 +488,7 @@ export default function WithdrawalPanel({
                 type="checkbox"
                 checked={useSavedPayout}
                 onChange={(e) => setUseSavedPayout(e.target.checked)}
-                className="mt-0.5 rounded border-gray-300 accent-[#1B4965]"
+                className="mt-0.5 rounded border-gray-300 accent-[color:var(--nf-heading)]"
               />
               <div>
                 <p className="text-sm font-medium text-gray-800">Send to saved payout method</p>
@@ -513,7 +513,7 @@ export default function WithdrawalPanel({
                     type="button"
                     onClick={() => setForm((p) => ({ ...p, method: m }))}
                     className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                      form.method === m ? 'bg-white text-[#1B4965] shadow-sm' : 'text-gray-500 hover:text-gray-800'
+                      form.method === m ? 'bg-white text-[color:var(--nf-heading)] shadow-sm' : 'text-gray-500 hover:text-gray-800'
                     }`}
                   >
                     {m === 'upi' ? 'UPI' : 'Bank account'}
@@ -561,7 +561,7 @@ export default function WithdrawalPanel({
             {/* Save link */}
             <p className="text-xs text-gray-400">
               Save these for next time:{' '}
-              <a href="#/user/blog/settings?view=payout" className="text-[#4B97C9] underline underline-offset-2">
+              <a href="#/user/blog/settings?view=payout" className="text-[color:var(--nf-primary)] underline underline-offset-2">
                 Settings → Payout method
               </a>
             </p>
@@ -579,7 +579,7 @@ export default function WithdrawalPanel({
           type="submit"
           disabled={submitting}
           className="w-full sm:w-auto rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
-          style={{ backgroundColor: 'var(--arctic-blue-primary, #4B97C9)' }}
+          style={{ backgroundColor: 'var(--arctic-blue-primary, var(--nf-primary))' }}
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
           {submitting ? 'Submitting…' : 'Submit request'}
@@ -593,7 +593,7 @@ export default function WithdrawalPanel({
   const HistorySection = () => (
     <div className={`rounded-2xl border ${embedded ? 'border-[#e8eef4]' : 'border-slate-100'} bg-white shadow-sm overflow-hidden`}>
       <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="text-base font-semibold text-[#1B4965]">Withdrawal history</h3>
+        <h3 className="text-base font-semibold text-[color:var(--nf-heading)]">Withdrawal history</h3>
         {historyLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-300" />}
       </div>
 

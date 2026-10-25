@@ -101,7 +101,7 @@ function CommentNode({ comment, depth, targetId, postId, postTitle, postAuthorId
         <div className="flex items-start gap-3">
           <div
             className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-semibold"
-            style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}
+            style={{ backgroundColor: '#E8F4F8', color: 'var(--nf-heading)' }}
           >
             {(comment.author_name || 'U').charAt(0).toUpperCase()}
           </div>
@@ -109,7 +109,7 @@ function CommentNode({ comment, depth, targetId, postId, postTitle, postAuthorId
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold text-gray-900">{comment.author_name || 'User'}</span>
               {postAuthorId && String(comment.user_id || '') === String(postAuthorId) && (
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}>
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#E8F4F8', color: 'var(--nf-heading)' }}>
                   Author
                 </span>
               )}
@@ -310,7 +310,7 @@ export default function BlogCommentPage() {
         <button
           onClick={goToBlog}
           className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
-          style={{ backgroundColor: '#1B4965', color: '#fff' }}
+          style={{ backgroundColor: 'var(--nf-heading)', color: '#fff' }}
         >
           <BookOpen className="w-4 h-4" />
           View Blog
@@ -362,7 +362,7 @@ export default function BlogCommentPage() {
         <button
           onClick={goToAllComments}
           className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium border transition-colors"
-          style={{ borderColor: '#1B4965', color: '#1B4965' }}
+          style={{ borderColor: 'var(--nf-heading)', color: 'var(--nf-heading)' }}
         >
           <MessageCircle className="w-4 h-4" />
           View all comments

@@ -178,9 +178,9 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
             <button
               onClick={() => window.location.hash = `#/user/order/${orderNumber}`}
               className="text-white px-6 py-2 rounded-lg transition-colors"
-              style={{ backgroundColor: 'rgb(75,151,201)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               Back to Order Details
             </button>
@@ -288,7 +288,7 @@ export default function CancelOrder({ orderNumber: propOrderNumber }: CancelOrde
                           checked={selectedItems.includes(index)}
                           onChange={() => handleItemToggle(index)}
                           className="w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                        style={{ accentColor: '#4b97c9' }}
+                        style={{ accentColor: 'var(--nf-primary)' }}
                         />
                         <div className="flex-1">
                           <div className="font-medium text-slate-900 dark:text-slate-100">

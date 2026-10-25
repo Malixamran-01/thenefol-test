@@ -39,6 +39,36 @@ export async function initCMSTables(pool: Pool): Promise<void> {
     `)
 }
 
+/** Settings whose previous values are kept (last N) so an accidental save can be undone. */
+const VERSIONED_SETTINGS = new Set(['site_theme'])
+const MAX_SETTING_VERSIONS = 10
+const historyKey = (key: string) => `${key}_history`
+
+/** Push the current value of `key` onto `<key>_history` (newest first) before it is overwritten. */
+async function snapshotSettingVersion(pool: Pool, key: string) {
+  const { rows } = await pool.query(
+    'SELECT setting_key, setting_value, updated_at FROM cms_settings WHERE setting_key = ANY($1::text[])',
+    [[key, historyKey(key)]]
+  )
+  const current = rows.find((r: any) => r.setting_key === key)
+  if (!current?.setting_value) return
+  let history: Array<{ saved_at: string; value: unknown }> = []
+  const existing = rows.find((r: any) => r.setting_key === historyKey(key))
+  if (existing?.setting_value) {
+    try { history = JSON.parse(existing.setting_value) } catch { history = [] }
+  }
+  let value: unknown = current.setting_value
+  try { value = JSON.parse(current.setting_value) } catch { /* keep raw */ }
+  if (history[0] && JSON.stringify(history[0].value) === JSON.stringify(value)) return
+  history = [{ saved_at: new Date(current.updated_at || Date.now()).toISOString(), value }, ...history].slice(0, MAX_SETTING_VERSIONS)
+  await pool.query(
+    `INSERT INTO cms_settings (setting_key, setting_value, setting_type)
+     VALUES ($1, $2, 'json')
+     ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP`,
+    [historyKey(key), JSON.stringify(history)]
+  )
+}
+
 export function createCMSRouter(pool: Pool, io?: SocketIOServer) {
   const router = Router()
   
@@ -223,10 +253,25 @@ export function createCMSRouter(pool: Pool, io?: SocketIOServer) {
     }
   })
 
-  // GET all settings
+  // Saved versions of a versioned setting (e.g. /settings/history/site_theme), newest first
+  router.get('/settings/history/:key', async (req: Request, res: Response) => {
+    try {
+      const { key } = req.params
+      if (!VERSIONED_SETTINGS.has(key)) return res.status(404).json({ error: 'No history for this setting' })
+      const { rows } = await pool.query('SELECT setting_value FROM cms_settings WHERE setting_key = $1', [historyKey(key)])
+      let history: unknown = []
+      try { history = rows[0]?.setting_value ? JSON.parse(rows[0].setting_value) : [] } catch { history = [] }
+      res.json(Array.isArray(history) ? history : [])
+    } catch (error: any) {
+      res.status(500).json({ error: error.message })
+    }
+  })
+
+  // GET all settings (version history is served separately to keep this payload small — the
+  // storefront loads it on every visit)
   router.get('/settings', async (req: Request, res: Response) => {
     try {
-      const { rows } = await pool.query('SELECT * FROM cms_settings')
+      const { rows } = await pool.query(`SELECT * FROM cms_settings WHERE setting_key NOT LIKE '%\\_history'`)
       const settingsObj = rows.reduce((acc: any, setting: any) => {
         let value = setting.setting_value
         if (setting.setting_type === 'json' && value) {
@@ -253,7 +298,18 @@ export function createCMSRouter(pool: Pool, io?: SocketIOServer) {
   router.post('/settings', async (req: Request, res: Response) => {
     try {
       const { setting_key, setting_value, setting_type } = req.body
-      
+
+      if (VERSIONED_SETTINGS.has(setting_key)) {
+        let parsed: unknown = setting_value
+        if (typeof setting_value === 'string') {
+          try { parsed = JSON.parse(setting_value) } catch { parsed = null }
+        }
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          return res.status(400).json({ error: `${setting_key} must be a JSON object` })
+        }
+        await snapshotSettingVersion(pool, setting_key)
+      }
+
       let valueString = setting_value
       if (setting_type === 'json' && typeof setting_value !== 'string') {
         valueString = JSON.stringify(setting_value)

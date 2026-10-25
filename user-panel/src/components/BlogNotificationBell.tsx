@@ -45,12 +45,12 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
   },
   post_commented: {
     icon: <MessageCircle className="h-4 w-4" />,
-    color: 'text-[#4B97C9]',
+    color: 'text-[color:var(--nf-primary)]',
     label: (n) => `commented on${n.post_title ? ` "${stripHtml(n.post_title)}"` : ' your post'}`,
   },
   comment_replied: {
     icon: <MessageCircle className="h-4 w-4" />,
-    color: 'text-[#4B97C9]',
+    color: 'text-[color:var(--nf-primary)]',
     label: () => 'replied to your comment',
   },
   comment_liked: {
@@ -65,7 +65,7 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
   },
   followed: {
     icon: <UserPlus className="h-4 w-4" />,
-    color: 'text-[#1B4965]',
+    color: 'text-[color:var(--nf-heading)]',
     label: () => 'started following you',
   },
   subscribed: {
@@ -75,7 +75,7 @@ const TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: (
   },
   collab_task_assigned: {
     icon: <ClipboardList className="h-4 w-4" />,
-    color: 'text-[#4B97C9]',
+    color: 'text-[color:var(--nf-primary)]',
     label: (n) => `assigned you a brand task${n.post_title ? `: ${stripHtml(n.post_title)}` : ''}`,
   },
   collab_task_revision: {
@@ -136,7 +136,7 @@ function Avatar({ name, avatar }: { name: string | null; avatar: string | null }
   return src ? (
     <img src={src} alt={name || ''} className="h-9 w-9 flex-shrink-0 rounded-full object-cover" />
   ) : (
-    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[11px] font-bold text-[#1B4965]">
+    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[11px] font-bold text-[color:var(--nf-heading)]">
       {initials}
     </div>
   )
@@ -268,7 +268,7 @@ export default function BlogNotificationBell() {
                     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
                     setUnread(0)
                   }}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-[#4B97C9] transition-colors hover:bg-[#edf4f9]"
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-[color:var(--nf-primary)] transition-colors hover:bg-[#edf4f9]"
                   title="Mark all as read"
                 >
                   <Check className="h-3 w-3" />
@@ -288,7 +288,7 @@ export default function BlogNotificationBell() {
           <div className="min-h-0 flex-1 overflow-y-auto" style={{ overscrollBehavior: 'contain' }}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
               </div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 text-center">
@@ -336,7 +336,7 @@ export default function BlogNotificationBell() {
 
                         {/* Unread dot */}
                         {!n.is_read && (
-                          <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[#4B97C9]" />
+                          <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[color:var(--nf-primary)]" />
                         )}
                       </button>
                     </li>

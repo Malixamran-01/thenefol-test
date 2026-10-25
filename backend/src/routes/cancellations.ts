@@ -2,15 +2,9 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
-import Razorpay from 'razorpay'
+import { getRazorpay } from '../config/razorpay'
 import { WhatsAppService } from '../services/whatsappService'
 import { flagCollabTasksForReturnedOrder } from './collabTasks'
-
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_live_RigxrHNSReeV37',
-  key_secret: RAZORPAY_KEY_SECRET
-})
 
 // Request cancellation
 export async function requestCancellation(pool: Pool, req: Request, res: Response) {
@@ -251,7 +245,7 @@ export async function approveCancellation(pool: Pool, req: Request, res: Respons
     // Initialize refund if payment was made via Razorpay
     if (cancellation.razorpay_payment_id && cancellation.payment_method !== 'cod') {
       try {
-        const refund = await razorpay.payments.refund(cancellation.razorpay_payment_id, {
+        const refund = await getRazorpay().payments.refund(cancellation.razorpay_payment_id, {
           amount: Math.round(parseFloat(cancellation.refund_amount) * 100), // Convert to paise
           notes: {
             cancellation_id: id.toString(),
@@ -769,7 +763,7 @@ export async function cancelOrderImmediate(pool: Pool, req: Request, res: Respon
     // Process refund if payment was made via Razorpay
     if (order.razorpay_payment_id && order.payment_method !== 'cod') {
       try {
-        const refund = await razorpay.payments.refund(order.razorpay_payment_id, {
+        const refund = await getRazorpay().payments.refund(order.razorpay_payment_id, {
           amount: Math.round(refundAmount * 100), // Convert to paise
           notes: {
             cancellation_id: cancellationRows[0].id.toString(),

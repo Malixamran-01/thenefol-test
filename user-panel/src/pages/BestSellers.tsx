@@ -2,8 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../services/api'
 import PricingDisplay from '../components/PricingDisplay'
 import { getApiBase } from '../utils/apiBase'
+import { useCart } from '../contexts/CartContext'
+import { isOutOfStock, toCartProduct } from '../utils/stock'
 
 interface Product {
+  in_stock?: boolean
+  inventory_available?: number
+  description?: string
   id: number
   slug: string
   title: string
@@ -17,6 +22,7 @@ interface Product {
 }
 
 export default function BestSellers() {
+  const { addItem } = useCart()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -43,12 +49,22 @@ export default function BestSellers() {
           return `${base}${path}`
         }
         
+        // Collection rows don't carry stock — join live availability from the catalogue
+        const catalogue: any[] = await api.products.getAll().catch(() => [])
+        const stockById = new Map<number, any>(
+          (Array.isArray(catalogue) ? catalogue : []).map((p: any) => [Number(p.id), p])
+        )
+
         const collectionProducts = collectionsData.data
           .filter((item: any) => item.is_published && item.product_id)
           .map((item: any) => {
             // Prefer collection image_url, then product_image
             const imageUrl = item.image_url || item.product_image || ''
+            const live = stockById.get(Number(item.product_id))
             return {
+              in_stock: live?.in_stock,
+              inventory_available: live?.inventory_available,
+              description: live?.description || '',
               id: item.product_id,
               slug: item.product_slug || '',
               title: item.product_title || item.title || '',
@@ -167,10 +183,18 @@ export default function BestSellers() {
                         View Details
                       </button>
                       <button
-                        onClick={() => (window.location.hash = '#/user/cart')}
-                        className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+                        onClick={() => {
+                          if (isOutOfStock(product)) return
+                          addItem(toCartProduct(product)).catch(() => { /* CartContext shows the error */ })
+                        }}
+                        disabled={isOutOfStock(product)}
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                          isOutOfStock(product)
+                            ? 'cursor-not-allowed bg-gray-100 text-gray-500'
+                            : 'bg-slate-900 text-white hover:bg-slate-700'
+                        }`}
                       >
-                        Add to Bag
+                        {isOutOfStock(product) ? 'Out of stock' : 'Add to Bag'}
                       </button>
                     </div>
                     {(product.total_orders && product.total_orders > 0) && (

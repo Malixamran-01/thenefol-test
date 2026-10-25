@@ -8,7 +8,14 @@ set -e
 
 SERVER_IP="72.61.225.192"
 SERVER_USER="root"
-SERVER_PASS="Anoop2025@nefol"
+# Credentials are never stored in this file — export them before running:
+#   export NEFOL_DEPLOY_SSH_PASS='...'   (or switch to SSH keys)
+#   export NEFOL_DB_PASSWORD='...'
+SERVER_PASS="${NEFOL_DEPLOY_SSH_PASS:-}"
+if [ -z "$SERVER_PASS" ]; then
+    echo "❌ NEFOL_DEPLOY_SSH_PASS is not set. Export it (or use SSH keys) before deploying."
+    exit 1
+fi
 DEPLOY_PATH="/var/www/nefol"
 DOMAIN="thenefol.com"
 
@@ -62,7 +69,11 @@ echo -e "${YELLOW}   Creating database and user...${NC}"
 # Database credentials from env.example
 DB_NAME="nefol"
 DB_USER="nofol_users"
-DB_PASSWORD="Jhx82ndc9g@j"
+DB_PASSWORD="${NEFOL_DB_PASSWORD:-}"
+if [ -z "$DB_PASSWORD" ]; then
+    echo "❌ NEFOL_DB_PASSWORD is not set. Export it before deploying."
+    exit 1
+fi
 
 # Create database (check if exists first)
 run_remote "sudo -u postgres psql -tAc \"SELECT 1 FROM pg_database WHERE datname='$DB_NAME'\" | grep -q 1 || sudo -u postgres psql -c \"CREATE DATABASE $DB_NAME;\" || echo 'Database may already exist'"

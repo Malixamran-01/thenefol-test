@@ -39,7 +39,7 @@ export default function IngredientDetail() {
 
   if (loading) {
     return (
-      <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
+      <main className="min-h-screen py-10" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
         <div className="mx-auto max-w-4xl px-4">
           <div className="text-center py-12">
             <p style={{color: '#9DB4C0'}}>Loading ingredient...</p>
@@ -51,16 +51,16 @@ export default function IngredientDetail() {
 
   if (!ingredient) {
     return (
-      <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
+      <main className="min-h-screen py-10" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
         <div className="mx-auto max-w-4xl px-4">
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">Ingredient not found</p>
             <button
               onClick={handleBack}
               className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg"
-              style={{backgroundColor: 'rgb(75,151,201)'}}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{backgroundColor: 'var(--nf-primary)'}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Ingredients
@@ -72,13 +72,13 @@ export default function IngredientDetail() {
   }
 
   return (
-    <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
+    <main className="min-h-screen py-10" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="mx-auto max-w-4xl px-4">
         {/* Back Button */}
         <button
           onClick={handleBack}
           className="mb-6 inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
-          style={{color: '#1B4965'}}
+          style={{color: 'var(--nf-heading)'}}
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Ingredients
@@ -100,7 +100,7 @@ export default function IngredientDetail() {
             <div className="w-1/2 p-8 lg:p-12 overflow-y-auto">
               {/* Title */}
               <h1 className="text-3xl lg:text-4xl font-serif mb-6" style={{
-                color: '#1B4965', 
+                color: 'var(--nf-heading)', 
                 fontWeight: 600, 
                 letterSpacing: '-0.01em',
                 lineHeight: '1.3',
@@ -114,7 +114,7 @@ export default function IngredientDetail() {
                 <div 
                   className="prose prose-lg max-w-none mb-8"
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     lineHeight: '1.8',
                     fontSize: '1.0625rem',
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
@@ -124,7 +124,7 @@ export default function IngredientDetail() {
                 >
                   <div 
                     dangerouslySetInnerHTML={{
-                      __html: ingredient.description.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1a1a1a; font-size: 1.1em; font-weight: bold;">$1</strong>')
+                      __html: ingredient.description.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--nf-text); font-size: 1.1em; font-weight: bold;">$1</strong>')
                     }}
                   />
                 </div>
@@ -135,7 +135,7 @@ export default function IngredientDetail() {
                 <div 
                   className="prose prose-lg max-w-none mb-8"
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     lineHeight: '1.8',
                     fontSize: '1.0625rem',
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
@@ -145,7 +145,7 @@ export default function IngredientDetail() {
                 >
                   <div 
                     dangerouslySetInnerHTML={{
-                      __html: ingredient.detailedInfo.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1a1a1a; font-size: 1.2em; font-weight: bold;">$1</strong>')
+                      __html: ingredient.detailedInfo.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--nf-text); font-size: 1.2em; font-weight: bold;">$1</strong>')
                     }}
                   />
                 </div>
@@ -167,7 +167,7 @@ export default function IngredientDetail() {
           {/* Post Content - Mobile or when no image */}
           <div className="p-8 md:hidden">
             {/* Title */}
-            <h1 className="text-4xl font-serif mb-6" style={{color: '#1B4965', fontWeight: 600, letterSpacing: '-0.02em'}}>
+            <h1 className="text-4xl font-serif mb-6" style={{color: 'var(--nf-heading)', fontWeight: 600, letterSpacing: '-0.02em'}}>
               {ingredient.name}
             </h1>
 
@@ -176,7 +176,7 @@ export default function IngredientDetail() {
               <div 
                 className="prose prose-lg max-w-none mb-8"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   lineHeight: '1.8',
                   fontSize: '1.0625rem',
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
@@ -186,7 +186,7 @@ export default function IngredientDetail() {
               >
                 <div 
                   dangerouslySetInnerHTML={{
-                    __html: ingredient.description.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1a1a1a; font-size: 1.1em; font-weight: bold;">$1</strong>')
+                    __html: ingredient.description.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--nf-text); font-size: 1.1em; font-weight: bold;">$1</strong>')
                   }}
                 />
               </div>
@@ -197,7 +197,7 @@ export default function IngredientDetail() {
               <div 
                 className="prose prose-lg max-w-none mb-8"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   lineHeight: '1.8',
                   fontSize: '1.0625rem',
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
@@ -207,7 +207,7 @@ export default function IngredientDetail() {
               >
                 <div 
                   dangerouslySetInnerHTML={{
-                    __html: ingredient.detailedInfo.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #1a1a1a; font-size: 1.2em; font-weight: bold;">$1</strong>')
+                    __html: ingredient.detailedInfo.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--nf-text); font-size: 1.2em; font-weight: bold;">$1</strong>')
                   }}
                 />
               </div>
@@ -220,7 +220,7 @@ export default function IngredientDetail() {
           <button
             onClick={handleBack}
             className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90"
-            style={{backgroundColor: '#1B4965'}}
+            style={{backgroundColor: 'var(--nf-heading)'}}
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -228,7 +228,7 @@ export default function IngredientDetail() {
           {/* <button
             onClick={handleClose}
             className="inline-flex items-center gap-2 px-6 py-3 text-gray-700 font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90 border-2"
-            style={{borderColor: '#1B4965', backgroundColor: 'transparent', color: '#1B4965'}}
+            style={{borderColor: 'var(--nf-heading)', backgroundColor: 'transparent', color: 'var(--nf-heading)'}}
           >
             <X className="w-4 h-4" />
             Close

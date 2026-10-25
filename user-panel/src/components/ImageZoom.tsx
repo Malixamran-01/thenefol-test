@@ -1,19 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { safeElementScrollTo } from '../utils/safeScroll'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import ProductVideo, { isVideoUrl } from './ProductVideo'
 
 interface ImageZoomProps {
   images: string[]
+  /** Poster frame per video URL in `images`. */
+  posters?: Record<string, string>
   currentIndex: number
   onClose: () => void
   onIndexChange?: (index: number) => void
 }
 
-export default function ImageZoom({ 
-  images, 
-  currentIndex, 
+export default function ImageZoom({
+  images,
+  posters,
+  currentIndex,
   onClose,
-  onIndexChange 
+  onIndexChange
 }: ImageZoomProps) {
   const [activeIndex, setActiveIndex] = useState(currentIndex)
   const [zoomLevel, setZoomLevel] = useState(1)
@@ -174,21 +178,30 @@ export default function ImageZoom({
           className="relative max-w-full max-h-full flex items-center justify-center overflow-hidden"
           onMouseLeave={handleMouseLeave}
         >
-          <img
-            ref={imageRef}
-            src={images[activeIndex]}
-            alt={`Product image ${activeIndex + 1}`}
-            className="max-w-full max-h-[90vh] object-contain cursor-zoom-in select-none"
-            style={{
-              transform: `scale(${zoomLevel}) translate(${position.x}px, ${position.y}px)`,
-              transformOrigin: 'center center',
-              transition: zoomLevel === 1 ? 'transform 0.2s ease-out' : 'none',
-              willChange: zoomLevel > 1 ? 'transform' : 'auto'
-            }}
-            onClick={handleImageZoom}
-            onMouseMove={handleImageMove}
-            draggable={false}
-          />
+          {isVideoUrl(images[activeIndex]) ? (
+            <ProductVideo
+              key={images[activeIndex]}
+              src={images[activeIndex]}
+              poster={posters?.[images[activeIndex]]}
+              className="max-w-full max-h-[75vh] object-contain"
+            />
+          ) : (
+            <img
+              ref={imageRef}
+              src={images[activeIndex]}
+              alt={`Product image ${activeIndex + 1}`}
+              className="max-w-full max-h-[90vh] object-contain cursor-zoom-in select-none"
+              style={{
+                transform: `scale(${zoomLevel}) translate(${position.x}px, ${position.y}px)`,
+                transformOrigin: 'center center',
+                transition: zoomLevel === 1 ? 'transform 0.2s ease-out' : 'none',
+                willChange: zoomLevel > 1 ? 'transform' : 'auto'
+              }}
+              onClick={handleImageZoom}
+              onMouseMove={handleImageMove}
+              draggable={false}
+            />
+          )}
           {isZooming && (
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded text-sm">
               Click to zoom out
@@ -256,7 +269,7 @@ export default function ImageZoom({
                     className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-lg transition-all"
                     aria-label="Previous thumbnails"
                   >
-                    <ChevronLeft className="w-4 h-4" style={{color: 'rgb(75,151,201)'}} />
+                    <ChevronLeft className="w-4 h-4" style={{color: 'var(--nf-primary)'}} />
                   </button>
                 )}
 
@@ -288,9 +301,9 @@ export default function ImageZoom({
                             onIndexChange(index)
                           }
                         }}
-                        className={`flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
-                          activeIndex === index 
-                            ? 'border-white scale-110 shadow-lg' 
+                        className={`relative flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                          activeIndex === index
+                            ? 'border-white scale-110 shadow-lg'
                             : 'border-white/30 opacity-70 hover:opacity-100 hover:border-white/60'
                         }`}
                         style={{
@@ -298,15 +311,28 @@ export default function ImageZoom({
                           height: `${thumbnailSize}px`
                         }}
                       >
-                        <img
-                          src={img}
-                          alt={`Thumbnail ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.style.display = 'none'
-                          }}
-                        />
+                        {isVideoUrl(img) ? (
+                          <>
+                            {posters?.[img] ? (
+                              <img src={posters[img]} alt={`Video ${index + 1}`} className="w-full h-full object-cover" />
+                            ) : (
+                              <video src={`${img}#t=0.1`} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                            )}
+                            <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
+                              <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                            </span>
+                          </>
+                        ) : (
+                          <img
+                            src={img}
+                            alt={`Thumbnail ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                            }}
+                          />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -322,7 +348,7 @@ export default function ImageZoom({
                     className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-lg transition-all"
                     aria-label="Next thumbnails"
                   >
-                    <ChevronRight className="w-4 h-4" style={{color: 'rgb(75,151,201)'}} />
+                    <ChevronRight className="w-4 h-4" style={{color: 'var(--nf-primary)'}} />
                   </button>
                 )}
               </div>

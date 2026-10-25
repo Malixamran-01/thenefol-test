@@ -22,11 +22,15 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { getApiBase } from './utils/apiBase'
 import cmsService from './services/cms'
 import { applySiteBranding } from './utils/siteBranding'
+import { setBrandDefaults, setPageMeta, setCanonical, titleForRoute } from './utils/pageMeta'
+import { applyTheme, parseThemeSetting } from './theme/applyTheme'
+import { THEME_SETTING_KEY } from '../../common/src/theme'
 import { BRAND_ICON_SRC, BRAND_LOGO_WIDE_SRC } from './constants/brandAssets'
 import {
   CREATOR_PROGRAM_BADGES_REFRESH,
 } from './contexts/CreatorProgramBadgeContext'
 import { useHashRouter } from './hooks/useHashRouter'
+import { useStickyNav } from './hooks/useStickyNav'
 import { safeWindowScrollTo } from './utils/safeScroll'
 import {
   ROUTE_SHELL_ISOLATION,
@@ -81,6 +85,35 @@ const Cart = lazy(() => import('./pages/Cart'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'))
 
+const SPLASH_SEEN_KEY = 'nefol_splash_seen'
+
+/**
+ * Brand splash only on the first homepage visit of a browser session. Never on deep links —
+ * a product QR scan or shared link should open the page immediately.
+ */
+function shouldShowSplash(): boolean {
+  if (typeof window === 'undefined') return false
+  const hash = window.location.hash || ''
+  const path = window.location.pathname || '/'
+  const isHomeLanding =
+    (path === '/' || path === '/index.html') && (hash === '' || hash === '#' || hash === '#/' || /^#\/user\/?(\?.*)?$/.test(hash))
+  if (!isHomeLanding) return false
+  try {
+    if (sessionStorage.getItem(SPLASH_SEEN_KEY)) return false
+  } catch {
+    /* storage blocked (private mode) — show it, harmless */
+  }
+  return true
+}
+
+function markSplashSeen() {
+  try {
+    sessionStorage.setItem(SPLASH_SEEN_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
 function AppContent() {
   const { items: cartItems } = useCart()
   const { items: wishlistItems } = useWishlist()
@@ -94,7 +127,7 @@ function AppContent() {
     const notChrome = !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)
     return iOS && webkit && notChrome
   })()
-  const [showSplash, setShowSplash] = useState(!isIOSSafari)
+  const [showSplash, setShowSplash] = useState(() => !isIOSSafari && shouldShowSplash())
   const [showSearch, setShowSearch] = useState(false)
   const [showJoinUs, setShowJoinUs] = useState(false)
   const [affiliateUnlocked, setAffiliateUnlocked] = useState(false)
@@ -109,17 +142,41 @@ function AppContent() {
   const [cartToast, setCartToast] = useState<{ message: string; id: number } | null>(null)
   const desktopCollectionsRef = useRef<HTMLDivElement>(null)
   const { currentPath, currentHash, navigate } = useHashRouter()
+  const { compact: navCompact, hidden: navHiddenOnScroll } = useStickyNav()
 
-  // Browser tab / Safari URL suggestion title & meta (from CMS → Homepage Layout Manager)
+  // Brand name / homepage title & meta (from CMS → Homepage Layout Manager)
+  const [brandingVersion, setBrandingVersion] = useState(0)
   useEffect(() => {
     let cancelled = false
     cmsService.getSettings().then((settings) => {
-      if (!cancelled) applySiteBranding(settings)
+      if (cancelled) return
+      // Theme Customizer (admin) — CSS tokens; cached locally for the next visit
+      applyTheme(parseThemeSetting(settings[THEME_SETTING_KEY]))
+      const { brand, title, description } = applySiteBranding(settings)
+      setBrandDefaults({ name: brand, homeTitle: title, homeDescription: description })
+      setBrandingVersion((v) => v + 1)
     })
     return () => {
       cancelled = true
     }
   }, [])
+
+  // Admin saved a new theme → repaint without a reload
+  useEffect(() => {
+    const unsubscribe = userSocketService.subscribe('cms-update', (msg: any) => {
+      const data = msg?.data
+      if (data?.setting_key === THEME_SETTING_KEY) applyTheme(parseThemeSetting(data.setting_value))
+    })
+    return () => { unsubscribe() }
+  }, [])
+
+  // Per-page browser tab title. Product / blog / author pages set their own once data loads.
+  useEffect(() => {
+    const title = titleForRoute(currentPath, cartItems.length)
+    if (title === undefined) return
+    setPageMeta(title)
+    setCanonical(null)
+  }, [currentPath, cartItems.length, brandingVersion])
 
   // Fetch affiliate unlocked status when Join Us modal opens (if user logged in)
   useEffect(() => {
@@ -317,6 +374,7 @@ function AppContent() {
   }, [showDesktopCollections])
 
   const handleSplashComplete = () => {
+    markSplashSeen()
     setShowSplash(false)
   }
 
@@ -347,12 +405,11 @@ function AppContent() {
     <Suspense fallback={<PageLoader />}>{routerInner}</Suspense>
   )
 
-  /** Nefol Social shell — match BlogLayout so teal store bg never shows in side gaps */
-  const socialShellBg = '#F4F9F9'
+  /** Page background behind every section: store = page bg (white), Nefol Social = its own bg */
   const useSocialShellBg = !showSplash && isBlogLayoutRoute
   const appShellStyle = {
-    backgroundColor: useSocialShellBg ? socialShellBg : 'var(--color-screen-bg)',
-    color: useSocialShellBg ? 'var(--color-text-body)' : 'var(--color-text-secondary-on-teal)',
+    backgroundColor: useSocialShellBg ? 'var(--nf-social-bg)' : 'var(--nf-page-bg)',
+    color: useSocialShellBg ? 'var(--nf-social-text)' : 'var(--nf-text)',
     fontFamily: 'var(--font-body-family)',
   } as const
 
@@ -368,7 +425,7 @@ function AppContent() {
   }
 
   return (
-    <div className={`min-h-screen w-full overflow-x-hidden ${showSplash ? 'overflow-hidden h-screen' : ''}`} style={appShellStyle}>
+    <div className={`min-h-screen w-full overflow-x-hidden ${showSplash ? 'overflow-hidden h-screen' : ''} ${useSocialShellBg ? 'nf-scope-social' : ''}`} style={appShellStyle}>
       {showSplash ? (
         <SplashScreen onComplete={handleSplashComplete} />
       ) : isEditorPage ? (
@@ -378,17 +435,20 @@ function AppContent() {
         routerWithSuspense
       ) : (
         <>
+          {/* Fixed (not sticky): html/body/#root use overflow-x: hidden, which breaks position: sticky */}
           <header
-            className="relative z-50 w-full"
+            className={`fixed inset-x-0 top-0 z-50 w-full transition-[transform,box-shadow] duration-300 ease-out ${
+              navHiddenOnScroll && !showMobileMenu && !showSearch ? 'max-md:-translate-y-full' : 'translate-y-0'
+            } ${navCompact ? 'shadow-[0_6px_24px_-12px_rgba(0,0,0,0.45)]' : ''}`}
             style={{
               paddingLeft: 'env(safe-area-inset-left)',
               paddingRight: 'env(safe-area-inset-right)',
-              backgroundColor: 'var(--color-nav-bg)',
-              color: 'var(--color-text-on-nav)',
-              borderBottom: '1px solid rgba(232, 245, 247, 0.16)',
+              backgroundColor: 'var(--nf-header-bg)',
+              color: 'var(--nf-header-text)',
+              borderBottom: '1px solid var(--nf-header-border)',
             }}
           >
-            <div className="flex h-16 sm:h-20 items-center justify-between relative w-full px-4 sm:px-6 md:px-8 lg:px-12 max-w-[1920px] mx-auto">
+            <div className={`flex items-center justify-between relative w-full px-4 sm:px-6 md:px-8 lg:px-12 max-w-[1920px] mx-auto transition-[height] duration-300 ease-out ${navCompact ? 'h-14 sm:h-16' : 'h-16 sm:h-20'}`}>
               {/* Mobile/Tablet Layout: Hamburger, Logo (centered), Account */}
               <div className="flex items-center gap-3 md:hidden">
                 {/* Hamburger Menu */}
@@ -396,7 +456,7 @@ function AppContent() {
                   onClick={() => setShowMobileMenu(!showMobileMenu)}
                   className="w-8 h-8 flex items-center justify-center transition-colors duration-300"
                   aria-label="Menu"
-                  style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                  style={{ color: 'var(--nf-header-link)' }}
                 >
                   {showMobileMenu ? (
                     <X className="h-5 w-5" aria-hidden="true" />
@@ -422,7 +482,9 @@ function AppContent() {
                       img.src = BRAND_ICON_SRC
                     }}
                     alt="Nefol logo"
-                    className="brand-nav-logo h-16 w-auto object-contain sm:h-20 md:h-10 lg:h-12"
+                    className={`brand-nav-logo w-auto object-contain transition-[height] duration-300 ease-out ${
+                      navCompact ? 'h-12 sm:h-14 md:h-9 lg:h-10' : 'h-16 sm:h-20 md:h-10 lg:h-12'
+                    }`}
                     loading="eager"
                   />
                 </a>
@@ -439,7 +501,7 @@ function AppContent() {
                   style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
                 >
                   Home
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
                 
                 {/* Collections Dropdown - Desktop */}
@@ -477,7 +539,7 @@ function AppContent() {
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
                     </svg>
-                    <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                    <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                   </button>
                   {showDesktopCollections && (
                     <div 
@@ -500,7 +562,7 @@ function AppContent() {
                       <div 
                         className="w-64 shadow-2xl transition-all duration-300"
                         style={{
-                          backgroundColor: 'var(--color-nav-bg)',
+                          backgroundColor: 'var(--nf-header-bg)',
                           boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.06)',
                           border: '1px solid rgba(220, 229, 231, 0.9)',
                         }}
@@ -513,7 +575,7 @@ function AppContent() {
                             setShowDesktopCollections(false)
                             e.stopPropagation()
                           }}
-                          style={{ letterSpacing: '0.1em', color: 'var(--color-text-on-nav)' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--nf-header-text)' }}
                         >
                           Face Care
                         </a>
@@ -524,7 +586,7 @@ function AppContent() {
                             setShowDesktopCollections(false)
                             e.stopPropagation()
                           }}
-                          style={{ letterSpacing: '0.1em', color: 'var(--color-text-on-nav)' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--nf-header-text)' }}
                         >
                           Hair Care
                         </a>
@@ -535,7 +597,7 @@ function AppContent() {
                             setShowDesktopCollections(false)
                             e.stopPropagation()
                           }}
-                          style={{ letterSpacing: '0.1em', color: 'var(--color-text-on-nav)' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--nf-header-text)' }}
                         >
                           Body Care
                         </a>
@@ -546,7 +608,7 @@ function AppContent() {
                             setShowDesktopCollections(false)
                             e.stopPropagation()
                           }}
-                          style={{ letterSpacing: '0.1em', color: 'var(--color-text-on-nav)' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--nf-header-text)' }}
                         >
                           Combos
                         </a>
@@ -562,7 +624,7 @@ function AppContent() {
                   style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
                 >
                   Shop
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
                 <a
                   href="#/user/ingredients"
@@ -570,7 +632,7 @@ function AppContent() {
                   style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
                 >
                   Ingredients
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
                 <a
                   href="#/user/blog"
@@ -578,7 +640,7 @@ function AppContent() {
                   style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
                 >
                   Social
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
                 <a
                   href="#/user/contact"
@@ -586,12 +648,12 @@ function AppContent() {
                   style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
                 >
                   Contact Us
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
               </nav>
               
               {/* Right Side Icons - Desktop: Search, Wishlist, Socials, Cart, Account | Mobile/Tablet: Account, Cart */}
-              <div className="flex items-center gap-3 md:gap-4 lg:gap-6" style={{ color: 'var(--color-text-secondary-on-teal)' }}>
+              <div className="flex items-center gap-3 md:gap-4 lg:gap-6" style={{ color: 'var(--nf-header-link)' }}>
                 {/* Desktop: Search Icon */}
                 <button 
                   onClick={() => {
@@ -604,7 +666,7 @@ function AppContent() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-px transition-all duration-300 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-px transition-all duration-300 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </button>
                 
                 {/* Desktop: Wishlist Icon */}
@@ -617,11 +679,11 @@ function AppContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                   {wishlistItems.length > 0 && (
-                    <span className="absolute -top-1 -right-1 text-[10px] font-light rounded-full w-4 h-4 flex items-center justify-center" style={{ fontFamily: 'sans-serif', backgroundColor: 'var(--color-card-bg)', color: 'var(--color-text-body)' }}>
+                    <span className="absolute -top-1 -right-1 text-[10px] font-light rounded-full w-4 h-4 flex items-center justify-center" style={{ fontFamily: 'sans-serif', backgroundColor: 'var(--nf-menu-bg)', color: 'var(--nf-menu-text)' }}>
                       {wishlistItems.length}
                     </span>
                   )}
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-px transition-all duration-300 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-px transition-all duration-300 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </button>
                 
                 {/* Account Icon - Visible on all screens */}
@@ -643,7 +705,7 @@ function AppContent() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   )}
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-px transition-all duration-300 group-hover:w-full hidden md:block" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-px transition-all duration-300 group-hover:w-full hidden md:block" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </button>
                 
                 {/* Cart Icon - Hidden on mobile, visible on desktop */}
@@ -656,15 +718,17 @@ function AppContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                   {cartItems.length > 0 && (
-                    <span className="absolute -top-1 -right-1 text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center" style={{ fontFamily: 'sans-serif', backgroundColor: '#FF4B4B', color: '#FFFFFF' }}>
+                    <span className="absolute -top-1 -right-1 text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center" style={{ fontFamily: 'sans-serif', backgroundColor: 'var(--nf-header-badge-bg)', color: '#FFFFFF' }}>
                       {cartItems.length}
                     </span>
                   )}
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-px transition-all duration-300 group-hover:w-full" style={{ backgroundColor: 'var(--color-text-secondary-on-teal)' }}></span>
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-px transition-all duration-300 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </button>
               </div>
             </div>
           </header>
+          {/* Reserves the header's full (uncompacted) height so content never jumps */}
+          <div aria-hidden="true" className="h-16 sm:h-20" />
 
           {/* Mobile Menu - Premium Design */}
           {showMobileMenu && (
@@ -677,13 +741,13 @@ function AppContent() {
             >
               <div
                 className="fixed top-20 left-0 right-0 bottom-0 shadow-2xl overflow-y-auto"
-                style={{ maxHeight: 'calc(100vh - 80px)', backgroundColor: 'var(--color-card-bg)' }}
+                style={{ maxHeight: 'calc(100vh - 80px)', backgroundColor: 'var(--nf-menu-bg)' }}
               >
-                <nav className="flex flex-col px-6 py-12" style={{ backgroundColor: 'var(--color-card-bg)' }}>
+                <nav className="flex flex-col px-6 py-12" style={{ backgroundColor: 'var(--nf-menu-bg)' }}>
                   <a 
                     href="#/user/" 
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Home
@@ -691,7 +755,7 @@ function AppContent() {
                   <div>
                     <button
                       className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 w-full flex items-center justify-between transition-colors duration-300"
-                      style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
+                      style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
@@ -704,7 +768,7 @@ function AppContent() {
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
-                        style={{ color: '#1a1a1a' }}
+                        style={{ color: 'var(--nf-menu-text)' }}
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
                       </svg>
@@ -714,7 +778,7 @@ function AppContent() {
                         <a 
                           href="#/user/face" 
                           className="block py-3 px-8 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
-                          style={{ letterSpacing: '0.1em', color: '#1a1a1a' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--nf-menu-text)' }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowMobileMenu(false)
@@ -726,7 +790,7 @@ function AppContent() {
                         <a 
                           href="#/user/hair" 
                           className="block py-3 px-8 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
-                          style={{ letterSpacing: '0.1em', color: '#1a1a1a' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--nf-menu-text)' }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowMobileMenu(false)
@@ -738,7 +802,7 @@ function AppContent() {
                         <a 
                           href="#/user/body" 
                           className="block py-3 px-8 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent"
-                          style={{ letterSpacing: '0.1em', color: '#1a1a1a' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--nf-menu-text)' }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowMobileMenu(false)
@@ -750,7 +814,7 @@ function AppContent() {
                         <a 
                           href="#/user/combos" 
                           className="block py-3 px-8 text-xs font-light tracking-[0.1em] uppercase transition-all duration-300 border-l-2 border-transparent border-b border-slate-100"
-                          style={{ letterSpacing: '0.1em', color: '#1a1a1a' }}
+                          style={{ letterSpacing: '0.1em', color: 'var(--nf-menu-text)' }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowMobileMenu(false)
@@ -765,7 +829,7 @@ function AppContent() {
                   <a 
                     href="#/user/shop"
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Shop
@@ -773,7 +837,7 @@ function AppContent() {
                   <a 
                     href="#/user/ingredients"
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Ingredients
@@ -781,7 +845,7 @@ function AppContent() {
                   <a 
                     href="#/user/blog"
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     NEFOL Social
@@ -789,7 +853,7 @@ function AppContent() {
                   <a 
                     href="#/user/contact"
                     className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Contact Us
@@ -805,64 +869,64 @@ function AppContent() {
 
       <footer
         className="py-8 sm:py-12 md:py-16 text-sm w-full overflow-x-hidden"
-        style={{ backgroundColor: 'var(--color-nav-bg)', color: 'var(--color-text-secondary-on-teal)', borderTop: '1px solid rgba(232, 245, 247, 0.16)' }}
+        style={{ backgroundColor: 'var(--nf-footer-bg)', color: 'var(--nf-footer-text)', borderTop: '1px solid var(--nf-footer-divider)' }}
       >
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 w-full">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
             {/* Brand Section */}
             <div className="md:col-span-1">
-              <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-light tracking-wide" style={{ color: 'var(--color-text-on-nav)', fontFamily: 'var(--font-heading-family)' }}>NEFOL</h3>
-              <p className="text-xs sm:text-sm font-light leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Natural and safe skincare for every skin type. Made with love and care.</p>
+              <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-light tracking-wide" style={{ color: 'var(--nf-footer-heading)', fontFamily: 'var(--font-heading-family)' }}>NEFOL</h3>
+              <p className="text-xs sm:text-sm font-light leading-relaxed mb-4" style={{ color: 'var(--nf-footer-text)' }}>Natural and safe skincare for every skin type. Made with love and care.</p>
             </div>
 
             {/* Categories Section */}
             <div>
-              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--color-text-on-nav)' }}>Categories</h4>
+              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--nf-footer-heading)' }}>Categories</h4>
               <ul className="space-y-2">
-                <li><a href="#/user/" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Home</a></li>
-                <li><a href="#/user/offers" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Offers</a></li>
-                <li><a href="#/user/new-arrivals" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>New Arrivals</a></li>
-                <li><a href="#/user/face" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Face</a></li>
-                <li><a href="#/user/body" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Body</a></li>
-                <li><a href="#/user/hair" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Hair</a></li>
-                <li><a href="#/user/combos" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Combos</a></li>
-                <li><a href="#/user/best-sellers" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Best Seller</a></li>
+                <li><a href="#/user/" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Home</a></li>
+                <li><a href="#/user/offers" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Offers</a></li>
+                <li><a href="#/user/new-arrivals" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>New Arrivals</a></li>
+                <li><a href="#/user/face" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Face</a></li>
+                <li><a href="#/user/body" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Body</a></li>
+                <li><a href="#/user/hair" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Hair</a></li>
+                <li><a href="#/user/combos" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Combos</a></li>
+                <li><a href="#/user/best-sellers" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Best Seller</a></li>
               </ul>
             </div>
 
             {/* Company Section */}
             <div>
-              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--color-text-on-nav)' }}>Company</h4>
+              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--nf-footer-heading)' }}>Company</h4>
               <ul className="space-y-2">
-                <li><a href="#/user/about" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>About us</a></li>
-                <li><a href="#/user/faq" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>FAQ</a></li>
+                <li><a href="#/user/about" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>About us</a></li>
+                <li><a href="#/user/faq" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>FAQ</a></li>
                 <li>
                   <a
                     href="#/user/blog"
                     className="text-xs sm:text-sm font-light transition-colors hover:opacity-80"
-                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                    style={{ color: 'var(--nf-footer-text)' }}
                   >
                     NEFOL Social
                   </a>
                 </li>
 
-                <li><a href="#/user/contact" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Contact Us</a></li>
+                <li><a href="#/user/contact" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Contact Us</a></li>
               </ul>
             </div>
 
             {/* Legal & Social Section */}
             <div>
-              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--color-text-on-nav)' }}>Legal</h4>
+              <h4 className="mb-3 text-sm font-medium uppercase tracking-wide mb-4" style={{ color: 'var(--nf-footer-heading)' }}>Legal</h4>
               <ul className="space-y-2 mb-6">
-                <li><a href="#/user/privacy-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Privacy Policy</a></li>
-                <li><a href="#/user/refund-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Refund Policy</a></li>
-                <li><a href="#/user/shipping-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Shipping Policy</a></li>
-                <li><a href="#/user/terms-of-service" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--color-text-secondary-on-teal)' }}>Terms &amp; Conditions</a></li>
+                <li><a href="#/user/privacy-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Privacy Policy</a></li>
+                <li><a href="#/user/refund-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Refund Policy</a></li>
+                <li><a href="#/user/shipping-policy" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Shipping Policy</a></li>
+                <li><a href="#/user/terms-of-service" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Terms &amp; Conditions</a></li>
               </ul>
               
               {/* Social Media Icons */}
               <div className="mt-6">
-                <h4 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--color-text-on-nav)' }}>SOCIALLY CONNECT WITH US</h4>
+                <h4 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--nf-footer-heading)' }}>SOCIALLY CONNECT WITH US</h4>
                 <div className="flex items-center gap-2 flex-wrap">
                   <a
                     href="https://www.instagram.com/nefol_official?igsh=d2NkaXk2NW92emhq&utm_source=qr"
@@ -870,7 +934,7 @@ function AppContent() {
                     rel="noopener noreferrer"
                     aria-label="NEFOL on Instagram"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                    style={{ color: 'var(--nf-footer-text)' }}
                   >
                     <Instagram className="w-4 h-4" style={{ stroke: 'currentColor', fill: 'none' }} />
                   </a>
@@ -880,7 +944,7 @@ function AppContent() {
                     rel="noopener noreferrer"
                     aria-label="NEFOL on Facebook"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                    style={{ color: 'var(--nf-footer-text)' }}
                   >
                     <Facebook className="w-4 h-4" style={{ stroke: 'currentColor', fill: 'none' }} />
                   </a>
@@ -890,9 +954,9 @@ function AppContent() {
                     rel="noopener noreferrer"
                     aria-label="NEFOL on X"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                    style={{ color: 'var(--nf-footer-text)' }}
                   >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--color-text-secondary-on-teal)' }}>
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--nf-footer-text)' }}>
                       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                     </svg>
                   </a>
@@ -902,7 +966,7 @@ function AppContent() {
                     rel="noopener noreferrer"
                     aria-label="NEFOL on YouTube"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                    style={{ color: 'var(--nf-footer-text)' }}
                   >
                     <Youtube className="w-4 h-4" style={{ stroke: 'currentColor', fill: 'none' }} />
                   </a>
@@ -912,7 +976,7 @@ function AppContent() {
                     rel="noopener noreferrer"
                     aria-label="NEFOL on LinkedIn"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                    style={{ color: 'var(--nf-footer-text)' }}
                   >
                     <Linkedin className="w-4 h-4" style={{ stroke: 'currentColor', fill: 'none' }} />
                   </a>
@@ -922,7 +986,7 @@ function AppContent() {
                     rel="noopener noreferrer"
                     aria-label="NEFOL club on VK"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors text-[11px] font-semibold"
-                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                    style={{ color: 'var(--nf-footer-text)' }}
                   >
                     VK
                   </a>
@@ -932,9 +996,9 @@ function AppContent() {
                     rel="noopener noreferrer"
                     aria-label="NEFOL on Pinterest"
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 transition-colors"
-                    style={{ color: 'var(--color-text-secondary-on-teal)' }}
+                    style={{ color: 'var(--nf-footer-text)' }}
                   >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--color-text-secondary-on-teal)' }}>
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--nf-footer-text)' }}>
                       <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.619 11.174-.105-.949-.2-2.405.042-3.441.219-.937 1.407-5.965 1.407-5.965s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.487.535 6.624 0 12-5.373 12-12S18.627.001 12 .001z"/>
                     </svg>
                   </a>
@@ -944,12 +1008,12 @@ function AppContent() {
           </div>
 
           {/* Copyright Section */}
-          <div className="border-t border-white/10 pt-6 mt-6">
+          <div className="border-t pt-6 mt-6" style={{ borderColor: 'var(--nf-footer-divider)' }}>
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <small 
                 className="text-[10px] xs:text-[11px] sm:text-xs font-light text-center sm:text-left leading-relaxed block w-full" 
                 style={{ 
-                  color: 'var(--color-text-secondary-on-teal)',
+                  color: 'var(--nf-footer-text)',
                   wordBreak: 'break-word',
                   overflowWrap: 'break-word',
                   hyphens: 'auto'
@@ -969,7 +1033,8 @@ function AppContent() {
       {/* Global cart toast notification */}
       {cartToast && (
         <div 
-          className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm text-white shadow-lg flex items-center gap-2 transition-all duration-300 cart-toast-mobile sm:bg-slate-900/90"
+          className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm shadow-lg flex items-center gap-2 transition-all duration-300 cart-toast-mobile"
+          style={{ backgroundColor: 'var(--nf-toast-bg)', color: 'var(--nf-toast-text)' }}
         >
           <span>✅</span>
           <span>{cartToast.message}</span>
@@ -1193,9 +1258,9 @@ function RouterView({ affiliateId, currentPath, currentHash, navigate }: RouterV
   const onNefolSocial = isNefolSocialRoute(pathWithoutQuery)
   if (isAuthenticated && onNefolSocial && banLoading) {
     return (
-      <div className="flex min-h-[70vh] w-full items-center justify-center bg-[#f4f9f9]">
+      <div className="flex min-h-[70vh] w-full items-center justify-center bg-[color:var(--nf-surface-soft)]">
         <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-[#1B4965] border-t-transparent"
+          className="h-10 w-10 animate-spin rounded-full border-2 border-[color:var(--nf-heading)] border-t-transparent"
           aria-label="Loading"
         />
       </div>

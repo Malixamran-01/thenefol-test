@@ -47,7 +47,7 @@ export default function CMSPageTemplate({
   }
 
   return (
-    <main className={`min-h-screen overflow-x-hidden ${className}`} style={{backgroundColor: '#F4F9F9'}}>
+    <main className={`min-h-screen overflow-x-hidden ${className}`} style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       {/* SEO Meta Tags - You can add react-helmet here */}
       <title>{content.page.page_title || 'NEFOL'}</title>
       
@@ -122,9 +122,9 @@ export function useCMSPage(pageName: string) {
 // Default Loading Component
 function DefaultLoading() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#F4F9F9'}}>
+    <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="text-center">
-        <p className="mt-4 text-lg" style={{color: '#1B4965'}}>Loading...</p>
+        <p className="mt-4 text-lg" style={{color: 'var(--nf-heading)'}}>Loading...</p>
       </div>
     </div>
   )
@@ -133,14 +133,14 @@ function DefaultLoading() {
 // Default Error Component
 function DefaultError({ pageName }: { pageName: string }) {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#F4F9F9'}}>
+    <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="text-center max-w-md px-4">
         <div className="mb-6">
           <svg className="mx-auto h-24 w-24 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-2xl font-serif mb-2" style={{color: '#1B4965'}}>Page Not Found</h2>
+        <h2 className="text-2xl font-serif mb-2" style={{color: 'var(--nf-heading)'}}>Page Not Found</h2>
         <p className="text-gray-600 mb-6">
           The page "{pageName}" hasn't been created in the CMS yet.
         </p>
@@ -148,7 +148,7 @@ function DefaultError({ pageName }: { pageName: string }) {
           <a 
             href="#/user/" 
             className="inline-block px-6 py-3 text-white font-medium rounded-lg transition-all duration-300"
-            style={{backgroundColor: '#4B97C9'}}
+            style={{backgroundColor: 'var(--nf-primary)'}}
           >
             Go Home
           </a>

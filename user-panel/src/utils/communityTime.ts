@@ -15,7 +15,7 @@ export function formatCommunityTime(iso: string): string {
 
 export const DEPTH_BORDER_COLORS = [
   '',
-  '#4B97C9',
+  'var(--nf-primary)',
   '#64B5D9',
   '#90CAE8',
   '#B8DCF0',

@@ -9,10 +9,23 @@ import fs from 'fs'
 import { ensureUploadsTree, getUploadsRoot, warnIfEphemeralUploadsPath } from './config/uploadsRoot'
 import { buildPgPoolConfig, logPgPoolStartup } from './config/pgPool'
 import { convertToWebp, convertFilesToWebp } from './utils/toWebp'
+import { isVideoFile, optimizeUploadedVideo, hasFfmpeg } from './utils/videoOptimize'
 import { createServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
 import { ensureSchema } from './utils/schema'
-import { authenticateToken, requireRole, requirePermission, sendError, sendSuccess } from './utils/apiHelpers'
+import {
+  authenticateToken,
+  requireRole,
+  requirePermission,
+  sendError,
+  sendSuccess,
+  registerStaffContextResolver,
+  getStaffContext,
+  staffHasPermissions,
+} from './utils/apiHelpers'
+import { createAdminGuard } from './middleware/adminGuard'
+import { orderPriceCheckMode, validateOrderItemPrices } from './services/orderPricing'
+import { normalizeOrderItems, deductStockForOrder } from './services/inventoryBatchService'
 import { createUserActivityTables } from './utils/userActivitySchema'
 import * as productRoutes from './routes/products'
 import * as variantRoutes from './routes/variants'
@@ -107,6 +120,7 @@ const app = express()
 ensureUploadsTree()
 warnIfEphemeralUploadsPath()
 console.log('[uploads] Persistent storage root:', getUploadsRoot(), '(set UPLOADS_DIR to override)')
+hasFfmpeg().then((ok) => { if (ok) console.log('[video] ffmpeg found — uploaded videos get faststart + poster frames') })
 
 // Trust proxy for accurate IP detection behind reverse proxy (Nginx)
 // Required for express-rate-limit to work correctly with X-Forwarded-For header
@@ -206,12 +220,20 @@ app.use('/uploads', (req, res, next) => {
   next()
 }, express.static(getUploadsRoot(), {
   setHeaders(res, filePath) {
-    if (/\.mp4$/i.test(filePath)) {
+    if (/\.(mp4|m4v)$/i.test(filePath)) {
       res.setHeader('Content-Type', 'video/mp4')
       res.setHeader('Accept-Ranges', 'bytes')
     } else if (/\.webm$/i.test(filePath)) {
       res.setHeader('Content-Type', 'video/webm')
       res.setHeader('Accept-Ranges', 'bytes')
+    } else if (/\.mov$/i.test(filePath)) {
+      res.setHeader('Content-Type', 'video/quicktime')
+      res.setHeader('Accept-Ranges', 'bytes')
+    }
+    // Video + poster filenames are unique per upload and never rewritten after the
+    // upload response, so browsers/CDNs can cache them forever.
+    if (/\.(mp4|m4v|webm|mov|ogg|ogv)$|\.poster\.webp$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     }
   },
 }))
@@ -341,70 +363,13 @@ app.use(async (req, _res, next) => {
   }
 })
 
-// RBAC context attach middleware creator
-async function attachRBACContext(req: express.Request) {
-  try {
-    if (!req.userId) return
-    // Fetch roles and permissions for staff user
-    const rolesRes = await pool.query(
-      `select r.name as role_name, r.id as role_id
-       from staff_users su
-       left join staff_roles sr on sr.staff_id = su.id
-       left join roles r on r.id = sr.role_id
-       where su.id = $1`,
-      [req.userId]
-    )
-    const roleNames = rolesRes.rows.map((r: any) => r.role_name).filter(Boolean)
-    const roleIds = rolesRes.rows.map((r: any) => r.role_id).filter(Boolean)
-    let perms: string[] = []
-    if (roleIds.length > 0) {
-      const permsRes = await pool.query(
-        `select distinct p.code as code
-         from role_permissions rp
-         join permissions p on p.id = rp.permission_id
-         where rp.role_id = any($1::int[])`,
-        [roleIds]
-      )
-      perms = permsRes.rows.map((p: any) => p.code)
-    }
-    ;(req as any).userRole = roleNames.includes('admin') ? 'admin' : (roleNames[0] || undefined)
-    ;(req as any).userPermissions = perms
-  } catch (e) {
-    console.error('RBAC attach failed:', e)
-  }
-}
+// Staff sessions are attached for every staff_… token; admin-only endpoints require one.
+// `tables` (generic CRUD list) is read lazily at request time.
+app.use(createAdminGuard(() => tables.map((t) => t.name)))
 
-// Combined authenticate + RBAC attach middleware
-const authenticateAndAttach = (req: express.Request, res: express.Response, next: Function) => {
-  const authHeader = req.headers.authorization
-  const token = authHeader?.replace('Bearer ', '').trim()
-
-  if (token && token.startsWith('staff_')) {
-    staffRoutes.getStaffContextByToken(pool, token)
-      .then((context) => {
-        if (!context) {
-          return sendError(res, 401, 'Invalid admin session')
-        }
-        ;(req as any).staffId = context.staffId
-        ;(req as any).staffSessionId = context.sessionId
-        ;(req as any).staffSessionToken = context.token
-        ;(req as any).userRole = context.primaryRole
-        ;(req as any).userPermissions = context.permissions
-        ;(req as any).staffContext = context
-        next()
-      })
-      .catch((err) => {
-        console.error('Staff session validation failed:', err)
-        sendError(res, 401, 'Invalid admin session')
-      })
-    return
-  }
-
-  authenticateToken(req, res, async () => {
-    await attachRBACContext(req)
-    next()
-  })
-}
+// Staff session (staff_… token) or signed customer token. Staff roles/permissions come from the
+// session only — customer ids are never mapped to staff records.
+const authenticateAndAttach = authenticateToken
 
 // Create HTTP server and Socket.IO
 const server = createServer(app)
@@ -433,6 +398,7 @@ logPgPoolStartup(pgPoolMeta)
 pool.on('error', (err) => {
   console.error('[DB] idle pool client error:', err.message)
 })
+registerStaffContextResolver((token) => staffRoutes.getStaffContextByToken(pool, token))
 const staffAuthMiddleware = staffRoutes.createStaffAuthMiddleware(pool)
 const staffAuth = staffAuthMiddleware as any
 const staffPermLocal = (code: string) => staffRoutes.requireStaffPermission(code) as any
@@ -450,41 +416,12 @@ app.post('/api/whatsapp/webhook',
 
 // Middleware to allow staff with permissions OR regular authenticated users to create orders
 function allowOrderCreation(req: express.Request, res: express.Response, next: Function) {
-  // First check if admin/staff user via headers (admin panel sends these)
-  const role = req.headers['x-user-role'] as string
-  const permissionsHeader = req.headers['x-user-permissions'] as string
-  const userPerms = permissionsHeader ? permissionsHeader.split(',').map(s => s.trim()).filter(Boolean) : []
-  
-  // If admin/staff user with permissions, check directly
-  if (role && userPerms.length > 0) {
-    if (userPerms.includes('orders:create')) {
-      // Admin/staff with permission - allow
-      return next()
-    }
-  }
-  
-  // Otherwise, try regular authentication (skip if no auth token to avoid 401)
-  const token = req.headers.authorization?.replace('Bearer ', '')
-  if (!token) {
-    return sendError(res, 401, 'No token provided')
-  }
-  
   authenticateToken(req, res, async () => {
-    await attachRBACContext(req)
-    
-    // Check if user is staff with orders:create permission
-    const attached = (req as any).userPermissions as string[] | undefined
-    const attachedPerms = attached && Array.isArray(attached)
-      ? attached
-      : []
-    
-    const hasPermission = attachedPerms.includes('orders:create') || userPerms.includes('orders:create')
-    
-    if (hasPermission) {
-      // Staff user with permission - allow
-      return next()
+    // Staff session: needs orders:create
+    if (getStaffContext(req)) {
+      return staffHasPermissions(req, ['orders:create']) ? next() : sendError(res, 403, 'Forbidden')
     }
-    
+
     // Check if user is a regular user from users table
     if (req.userId) {
       try {
@@ -509,41 +446,12 @@ function allowOrderCreation(req: express.Request, res: express.Response, next: F
 
 // Middleware to allow staff with permissions OR regular authenticated users to view their own orders
 function allowOrderView(req: express.Request, res: express.Response, next: Function) {
-  // First check if admin/staff user via headers (admin panel sends these)
-  const role = req.headers['x-user-role'] as string
-  const permissionsHeader = req.headers['x-user-permissions'] as string
-  const userPerms = permissionsHeader ? permissionsHeader.split(',').map(s => s.trim()).filter(Boolean) : []
-  
-  // If admin/staff user with permissions, check directly
-  if (role && userPerms.length > 0) {
-    if (userPerms.includes('orders:read')) {
-      // Admin/staff with permission - allow viewing any order
-      return next()
-    }
-  }
-  
-  // Otherwise, try regular authentication (skip if no auth token to avoid 401)
-  const token = req.headers.authorization?.replace('Bearer ', '')
-  if (!token) {
-    return sendError(res, 401, 'No token provided')
-  }
-  
   authenticateToken(req, res, async () => {
-    await attachRBACContext(req)
-    
-    // Check if user is staff with orders:read permission
-    const attached = (req as any).userPermissions as string[] | undefined
-    const attachedPerms = attached && Array.isArray(attached)
-      ? attached
-      : []
-    
-    const hasPermission = attachedPerms.includes('orders:read') || userPerms.includes('orders:read')
-    
-    if (hasPermission) {
-      // Staff user with permission - allow viewing any order
-      return next()
+    // Staff session: needs orders:read to view any order
+    if (getStaffContext(req)) {
+      return staffHasPermissions(req, ['orders:read']) ? next() : sendError(res, 403, 'Forbidden')
     }
-    
+
     // Check if user is a regular user viewing their own order
     if (req.userId) {
       try {
@@ -1331,10 +1239,14 @@ app.post('/api/products/:id/images', (req, res) => {
   if (req.headers['content-type']?.includes('multipart/form-data')) {
     upload.array('images', 10)(req, res, async (err) => {
       if (err) return sendError(res, 400, 'File upload error', err)
-      // Convert every uploaded product image to WebP before handing off
+      // Convert every uploaded product image to WebP (videos: faststart + poster) before handing off
       const files = (req as any).files as Express.Multer.File[] | undefined
       if (files?.length) {
-        await convertFilesToWebp(files)
+        await convertFilesToWebp(files.filter((f) => !isVideoFile(f)))
+        for (const f of files.filter((f) => isVideoFile(f))) {
+          const { poster } = await optimizeUploadedVideo(f)
+          ;(f as any).posterUrl = poster ? `/uploads/${poster}` : null
+        }
       }
       productRoutes.uploadProductImages(pool, req, res)
     })
@@ -1776,6 +1688,23 @@ app.get('/api/users/search', (req, res) => userRoutes.searchUsers(pool, req, res
 // Get user segments (admin)
 app.get('/api/users/segments', (req, res) => userRoutes.getUserSegments(pool, req, res))
 
+// Non-staff callers (e.g. storefront author pages) only get a public summary of a user.
+const PUBLIC_USER_FIELDS = ['id', 'name', 'profile_photo', 'profile_image', 'cover_image', 'bio', 'about', 'about_me', 'description', 'created_at']
+app.get('/api/users/:id(\\d+)', async (req, res, next) => {
+  if (getStaffContext(req)) return next()
+  try {
+    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id])
+    if (!rows[0]) return sendError(res, 404, 'User not found')
+    const summary: Record<string, unknown> = {}
+    for (const key of PUBLIC_USER_FIELDS) {
+      if (rows[0][key] !== undefined) summary[key] = rows[0][key]
+    }
+    sendSuccess(res, summary)
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch user', err)
+  }
+})
+
 // Get detailed user profile with activities (admin)
 app.get('/api/users/:id', (req, res) => userRoutes.getUserDetails(pool, req, res))
 
@@ -1899,9 +1828,9 @@ app.get('/api/payment-gateways', async (req, res) => {
         name: 'Razorpay',
         type: 'online',
         is_active: true,
+        // Public endpoint: only the publishable key id, never the secret
         config: {
-          key_id: process.env.RAZORPAY_KEY_ID || 'rzp_live_RigxrHNSReeV37',
-          key_secret: process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
+          key_id: process.env.RAZORPAY_KEY_ID || ''
         }
       },
       {
@@ -2025,6 +1954,29 @@ app.get('/api/live-chat/widgets', marketingRoutes.getLiveChatWidgets.bind(null, 
 // These replace the duplicate code patterns found in the original file
 
 // Generic CRUD handler
+// Column names for generic CRUD come from request keys, so only real columns of the table are allowed.
+const crudColumnCache = new Map<string, Set<string>>()
+async function getTableColumns(tableName: string): Promise<Set<string>> {
+  const cached = crudColumnCache.get(tableName)
+  if (cached) return cached
+  const { rows } = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1`,
+    [tableName]
+  )
+  const cols = new Set<string>(rows.map((r: any) => String(r.column_name)))
+  if (cols.size > 0) crudColumnCache.set(tableName, cols)
+  return cols
+}
+
+const CRUD_HIDDEN_FIELDS: Record<string, string[]> = { users: ['password'] }
+function sanitizeCrudRow(tableName: string, row: any) {
+  const hidden = CRUD_HIDDEN_FIELDS[tableName]
+  if (!row || !hidden) return row
+  const copy = { ...row }
+  for (const key of hidden) delete copy[key]
+  return copy
+}
+
 function createCRUDHandler(tableName: string, requiredFields: string[] = []) {
   return {
     // GET all
@@ -2032,13 +1984,14 @@ function createCRUDHandler(tableName: string, requiredFields: string[] = []) {
       try {
         // Support query parameters for filtering
         const queryParams = req.query || {}
+        const columns = await getTableColumns(tableName)
         const conditions: string[] = []
         const values: any[] = []
         let paramIndex = 1
 
-        // Build WHERE clause from query parameters
-        // Note: In production, validate column names against schema for security
+        // Build WHERE clause from query parameters (known columns only)
         for (const [key, value] of Object.entries(queryParams)) {
+          if (!columns.has(key)) continue
           if (value !== undefined && value !== null && value !== '') {
             // Convert numeric strings to numbers for id fields
             let processedValue: any = value
@@ -2056,14 +2009,14 @@ function createCRUDHandler(tableName: string, requiredFields: string[] = []) {
 
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
         const query = `SELECT * FROM ${tableName} ${whereClause} ORDER BY created_at DESC`
-        
+
         const { rows } = await pool.query(query, values)
-        sendSuccess(res, rows)
+        sendSuccess(res, rows.map((r: any) => sanitizeCrudRow(tableName, r)))
       } catch (err) {
         sendError(res, 500, `Failed to fetch ${tableName}`, err)
       }
     },
-    
+
     // GET by ID
     getById: async (req: any, res: any) => {
       try {
@@ -2071,25 +2024,29 @@ function createCRUDHandler(tableName: string, requiredFields: string[] = []) {
         if (rows.length === 0) {
           return sendError(res, 404, `${tableName} not found`)
         }
-        sendSuccess(res, rows[0])
+        sendSuccess(res, sanitizeCrudRow(tableName, rows[0]))
       } catch (err) {
         sendError(res, 500, `Failed to fetch ${tableName}`, err)
       }
     },
-    
+
     // POST create
     create: async (req: any, res: any) => {
       try {
         const body = req.body || {}
-        
+
         // Validate required fields
         for (const field of requiredFields) {
           if (!body[field]) {
             return sendError(res, 400, `${field} is required`)
           }
         }
-        
-        const fields = Object.keys(body)
+
+        const columns = await getTableColumns(tableName)
+        const fields = Object.keys(body).filter(field => columns.has(field))
+        if (fields.length === 0) {
+          return sendError(res, 400, 'No valid fields provided')
+        }
         const values = fields.map(field => body[field])
         const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ')
         
@@ -2098,15 +2055,17 @@ function createCRUDHandler(tableName: string, requiredFields: string[] = []) {
           values
         )
         
+        const created = sanitizeCrudRow(tableName, rows[0])
+
         // Broadcast to admin
-        broadcastUpdate(`${tableName}_created`, rows[0])
-        
+        broadcastUpdate(`${tableName}_created`, created)
+
         // Broadcast to users for relevant tables
         if (['products', 'orders', 'discounts', 'announcements'].includes(tableName)) {
-          broadcastToUsers(`${tableName}-created`, rows[0])
+          broadcastToUsers(`${tableName}-created`, created)
         }
-        
-        sendSuccess(res, rows[0], 201)
+
+        sendSuccess(res, created, 201)
       } catch (err: any) {
         if (err?.code === '23505') {
           sendError(res, 409, `${tableName} already exists`)
@@ -2120,33 +2079,39 @@ function createCRUDHandler(tableName: string, requiredFields: string[] = []) {
     update: async (req: any, res: any) => {
       try {
         const body = req.body || {}
-        const fields = Object.keys(body).filter(key => body[key] !== undefined)
-        
+        const columns = await getTableColumns(tableName)
+        const fields = Object.keys(body).filter(
+          key => body[key] !== undefined && columns.has(key) && key !== 'id' && key !== 'updated_at'
+        )
+
         if (fields.length === 0) {
           return sendError(res, 400, 'No fields to update')
         }
-        
+
         const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(', ')
         const values = [req.params.id, ...fields.map(field => body[field])]
-        
+        const touchUpdatedAt = columns.has('updated_at') ? ', updated_at = NOW()' : ''
+
         const { rows } = await pool.query(
-          `UPDATE ${tableName} SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`,
+          `UPDATE ${tableName} SET ${setClause}${touchUpdatedAt} WHERE id = $1 RETURNING *`,
           values
         )
-        
+
         if (rows.length === 0) {
           return sendError(res, 404, `${tableName} not found`)
         }
-        
+
+        const updated = sanitizeCrudRow(tableName, rows[0])
+
         // Broadcast to admin
-        broadcastUpdate(`${tableName}_updated`, rows[0])
-        
+        broadcastUpdate(`${tableName}_updated`, updated)
+
         // Broadcast to users for relevant tables
         if (['products', 'orders', 'discounts', 'announcements'].includes(tableName)) {
-          broadcastToUsers(`${tableName}-updated`, rows[0])
+          broadcastToUsers(`${tableName}-updated`, updated)
         }
-        
-        sendSuccess(res, rows[0])
+
+        sendSuccess(res, updated)
       } catch (err) {
         sendError(res, 500, `Failed to update ${tableName}`, err)
       }
@@ -2164,12 +2129,14 @@ function createCRUDHandler(tableName: string, requiredFields: string[] = []) {
           return sendError(res, 404, `${tableName} not found`)
         }
         
+        const deleted = sanitizeCrudRow(tableName, rows[0])
+
         // Broadcast to admin
-        broadcastUpdate(`${tableName}_deleted`, rows[0])
-        
+        broadcastUpdate(`${tableName}_deleted`, deleted)
+
         // Broadcast to users for relevant tables
         if (['products', 'orders', 'discounts', 'announcements'].includes(tableName)) {
-          broadcastToUsers(`${tableName}-deleted`, rows[0])
+          broadcastToUsers(`${tableName}-deleted`, deleted)
         }
         
         sendSuccess(res, { message: `${tableName} deleted successfully` })
@@ -2426,8 +2393,23 @@ app.post('/api/product-reviews', async (req, res) => {
         comment,
         images,
         is_approved,
-        status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, 'approved')
+        status,
+        is_verified
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9,
+        -- Held for moderation: only shown on the storefront after an admin approves it
+        false, 'pending',
+        -- "Verified buyer" when the reviewer's email has an order containing this product
+        EXISTS (
+          SELECT 1 FROM orders o
+          CROSS JOIN LATERAL jsonb_array_elements(
+            CASE WHEN jsonb_typeof(o.items) = 'array' THEN o.items ELSE '[]'::jsonb END
+          ) AS line
+          WHERE lower(o.customer_email) = lower($3)
+            AND COALESCE(line->>'product_id', line->>'id') = $2::text
+            AND o.status NOT IN ('cancelled', 'failed', 'payment_failed')
+        )
+      )
       RETURNING *
     `, [
       order_id || null,
@@ -2455,6 +2437,95 @@ app.post('/api/product-reviews', async (req, res) => {
     } else {
       sendError(res, 500, 'Failed to create product review', err)
     }
+  }
+})
+
+// ==================== REVIEW MODERATION (ADMIN) ====================
+// /api/admin/* already requires a staff session (adminGuard).
+const REVIEW_STATUSES = ['pending', 'approved', 'rejected'] as const
+
+app.get('/api/admin/product-reviews', authenticateAndAttach as any, requirePermission(['products:update']), async (req, res) => {
+  try {
+    const status = String(req.query.status || 'pending')
+    const q = String(req.query.q || '').trim()
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50))
+    const offset = Math.max(0, parseInt(String(req.query.offset || '0'), 10) || 0)
+
+    const where: string[] = []
+    const params: any[] = []
+    if ((REVIEW_STATUSES as readonly string[]).includes(status)) {
+      // Legacy rows have status NULL and were live → treat as approved
+      params.push(status)
+      where.push(`COALESCE(pr.status, CASE WHEN pr.is_approved THEN 'approved' ELSE 'pending' END) = $${params.length}`)
+    }
+    if (q) {
+      params.push(`%${q}%`)
+      where.push(`(pr.customer_name ILIKE $${params.length} OR pr.customer_email ILIKE $${params.length} OR pr.title ILIKE $${params.length} OR pr.review_text ILIKE $${params.length} OR p.title ILIKE $${params.length})`)
+    }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
+
+    const [list, counts] = await Promise.all([
+      pool.query(
+        `SELECT pr.id, pr.product_id, pr.order_id, pr.customer_name, pr.customer_email, pr.rating, pr.title,
+                COALESCE(NULLIF(pr.review_text, ''), pr.comment) AS review_text, pr.images, pr.is_verified, pr.is_featured,
+                COALESCE(pr.status, CASE WHEN pr.is_approved THEN 'approved' ELSE 'pending' END) AS status,
+                pr.created_at, p.title AS product_title, p.slug AS product_slug, p.list_image AS product_image
+         FROM product_reviews pr
+         LEFT JOIN products p ON p.id = pr.product_id
+         ${whereSql}
+         ORDER BY pr.created_at DESC
+         LIMIT ${limit} OFFSET ${offset}`,
+        params
+      ),
+      pool.query(
+        `SELECT COALESCE(status, CASE WHEN is_approved THEN 'approved' ELSE 'pending' END) AS status, COUNT(*)::int AS count
+         FROM product_reviews GROUP BY 1`
+      ),
+    ])
+    const countMap: Record<string, number> = { pending: 0, approved: 0, rejected: 0 }
+    counts.rows.forEach((r: any) => { countMap[r.status] = r.count })
+    sendSuccess(res, { reviews: list.rows, counts: countMap })
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch reviews', err)
+  }
+})
+
+app.patch('/api/admin/product-reviews/:id', authenticateAndAttach as any, requirePermission(['products:update']), async (req, res) => {
+  try {
+    const { status, is_featured } = req.body || {}
+    const sets: string[] = []
+    const params: any[] = [req.params.id]
+    if (status !== undefined) {
+      if (!(REVIEW_STATUSES as readonly string[]).includes(status)) return sendError(res, 400, 'Invalid status')
+      params.push(status)
+      sets.push(`status = $${params.length}`, `is_approved = ($${params.length} = 'approved')`)
+    }
+    if (is_featured !== undefined) {
+      params.push(!!is_featured)
+      sets.push(`is_featured = $${params.length}`)
+    }
+    if (sets.length === 0) return sendError(res, 400, 'Nothing to update')
+    const { rows } = await pool.query(
+      `UPDATE product_reviews SET ${sets.join(', ')}, updated_at = now() WHERE id = $1 RETURNING *`,
+      params
+    )
+    if (rows.length === 0) return sendError(res, 404, 'Review not found')
+    // Storefront listeners refresh review lists / rating caches
+    broadcastToUsers('product-reviews-updated', { id: rows[0].id, product_id: rows[0].product_id, status: rows[0].status })
+    sendSuccess(res, rows[0])
+  } catch (err) {
+    sendError(res, 500, 'Failed to update review', err)
+  }
+})
+
+app.delete('/api/admin/product-reviews/:id', authenticateAndAttach as any, requirePermission(['products:update']), async (req, res) => {
+  try {
+    const { rows } = await pool.query('DELETE FROM product_reviews WHERE id = $1 RETURNING id, product_id', [req.params.id])
+    if (rows.length === 0) return sendError(res, 404, 'Review not found')
+    broadcastToUsers('product-reviews-updated', { id: rows[0].id, product_id: rows[0].product_id, status: 'deleted' })
+    sendSuccess(res, { deleted: rows[0].id })
+  } catch (err) {
+    sendError(res, 500, 'Failed to delete review', err)
   }
 })
 
@@ -2556,28 +2627,20 @@ app.get('/api/discounts/usage', async (req, res) => {
   }
 })
 
-// Apply discount code endpoint
-app.post('/api/discounts/apply', async (req, res) => {
-  try {
-    const { code, amount, customer_email, product_id, product_ids } = req.body || {}
-    
-    // Validate input
-    if (!code || typeof code !== 'string' || code.trim() === '') {
-      console.error('Invalid discount code input:', { code, type: typeof code })
-      return sendError(res, 400, 'Discount code is required and must be a non-empty string')
-    }
-    
-    if (amount === undefined || amount === null) {
-      console.error('Missing order amount:', { amount })
-      return sendError(res, 400, 'Order amount is required')
-    }
-    
-    const orderAmount = parseFloat(String(amount))
-    if (isNaN(orderAmount) || orderAmount < 0) {
-      console.error('Invalid order amount:', { amount, parsed: orderAmount })
-      return sendError(res, 400, 'Order amount must be a valid positive number')
-    }
+type DiscountEvaluation =
+  | { ok: true; response: { id: number; code: string; name: string; type: string; value: number; discountAmount: number; maxDiscount: number | null; finalPrice: number } }
+  | { ok: false; status: number; message: string }
 
+/** Shared by /api/discounts/apply (checkout preview) and POST /api/orders (server-side re-check). */
+async function evaluateDiscountCode(input: {
+  code: string
+  orderAmount: number
+  customer_email?: string | null
+  product_id?: unknown
+  product_ids?: unknown
+}): Promise<DiscountEvaluation> {
+  const { code, orderAmount, customer_email, product_id, product_ids } = input
+  const fail = (status: number, message: string): DiscountEvaluation => ({ ok: false, status, message })
     const codeUpper = code.trim().toUpperCase()
     console.log('Applying discount code:', { 
       code: codeUpper, 
@@ -2596,7 +2659,7 @@ app.post('/api/discounts/apply', async (req, res) => {
 
     if (discountResult.rows.length === 0) {
       console.log('Discount code not found or inactive:', codeUpper)
-      return sendError(res, 404, 'Invalid or inactive discount code')
+      return fail(404, 'Invalid or inactive discount code')
     }
 
     const discount = discountResult.rows[0]
@@ -2605,12 +2668,12 @@ app.post('/api/discounts/apply', async (req, res) => {
     // Check if discount is within validity period
     if (discount.valid_from && new Date(discount.valid_from) > now) {
       console.log('Discount code not yet valid:', { code: codeUpper, valid_from: discount.valid_from })
-      return sendError(res, 400, `Discount code is not yet valid. Valid from ${new Date(discount.valid_from).toLocaleDateString()}`)
+      return fail(400, `Discount code is not yet valid. Valid from ${new Date(discount.valid_from).toLocaleDateString()}`)
     }
 
     if (discount.valid_until && new Date(discount.valid_until) < now) {
       console.log('Discount code expired:', { code: codeUpper, valid_until: discount.valid_until })
-      return sendError(res, 400, `Discount code has expired. Expired on ${new Date(discount.valid_until).toLocaleDateString()}`)
+      return fail(400, `Discount code has expired. Expired on ${new Date(discount.valid_until).toLocaleDateString()}`)
     }
 
     // Check if discount is product-specific and product matches
@@ -2633,7 +2696,7 @@ app.post('/api/discounts/apply', async (req, res) => {
           cartProductIds,
           hasMatchingProduct: cartProductIds.includes(discountProductId)
         })
-        return sendError(res, 400, 'This discount code is only valid for a specific product')
+        return fail(400, 'This discount code is only valid for a specific product')
       }
       
       console.log('✅ Product-specific discount validated:', { code: codeUpper, discountProductId, cartProductIds })
@@ -2644,7 +2707,7 @@ app.post('/api/discounts/apply', async (req, res) => {
       const minPurchase = parseFloat(String(discount.min_purchase))
       if (orderAmount < minPurchase) {
         console.log('Minimum purchase not met:', { code: codeUpper, orderAmount, minPurchase })
-        return sendError(res, 400, `Minimum purchase amount of ₹${minPurchase} required. Current order amount: ₹${orderAmount}`)
+        return fail(400, `Minimum purchase amount of ₹${minPurchase} required. Current order amount: ₹${orderAmount}`)
       }
     }
 
@@ -2654,7 +2717,7 @@ app.post('/api/discounts/apply', async (req, res) => {
       const usageLimit = parseInt(String(discount.usage_limit))
       if (usageCount >= usageLimit) {
         console.log('Discount usage limit reached:', { code: codeUpper, usageCount, usageLimit })
-        return sendError(res, 400, `Discount code usage limit reached (${usageCount}/${usageLimit} uses)`)
+        return fail(400, `Discount code usage limit reached (${usageCount}/${usageLimit} uses)`)
       }
     }
 
@@ -2669,7 +2732,7 @@ app.post('/api/discounts/apply', async (req, res) => {
       const userUsageLimit = parseInt(String(discount.usage_limit_per_user))
       if (userUsageCount >= userUsageLimit) {
         console.log('Per-user usage limit reached:', { code: codeUpper, customer_email, userUsageCount, userUsageLimit })
-        return sendError(res, 400, `You have reached the maximum usage limit for this discount code (${userUsageCount}/${userUsageLimit} uses)`)
+        return fail(400, `You have reached the maximum usage limit for this discount code (${userUsageCount}/${userUsageLimit} uses)`)
       }
     }
 
@@ -2683,7 +2746,7 @@ app.post('/api/discounts/apply', async (req, res) => {
       const hasUsed = parseInt(String(existingUsage.rows[0]?.usage_count || 0)) > 0
       if (hasUsed) {
         console.log('One-time use discount already used:', { code: codeUpper, customer_email })
-        return sendError(res, 400, 'This discount code can only be used once and has already been used')
+        return fail(400, 'This discount code can only be used once and has already been used')
       }
     }
 
@@ -2712,7 +2775,7 @@ app.post('/api/discounts/apply', async (req, res) => {
       // The final price will be the fixed price
     } else {
       console.error('Invalid discount type:', { code: codeUpper, type: discount.type })
-      return sendError(res, 400, `Invalid discount type: ${discount.type}`)
+      return fail(400, `Invalid discount type: ${discount.type}`)
     }
 
     const response = {
@@ -2727,9 +2790,39 @@ app.post('/api/discounts/apply', async (req, res) => {
     }
 
     console.log('✅ Discount applied successfully:', { code: codeUpper, discountAmount: response.discountAmount })
-    
+
+    return { ok: true, response }
+}
+
+// Apply discount code endpoint
+app.post('/api/discounts/apply', async (req, res) => {
+  try {
+    const { code, amount, customer_email, product_id, product_ids } = req.body || {}
+
+    // Validate input
+    if (!code || typeof code !== 'string' || code.trim() === '') {
+      console.error('Invalid discount code input:', { code, type: typeof code })
+      return sendError(res, 400, 'Discount code is required and must be a non-empty string')
+    }
+
+    if (amount === undefined || amount === null) {
+      console.error('Missing order amount:', { amount })
+      return sendError(res, 400, 'Order amount is required')
+    }
+
+    const orderAmount = parseFloat(String(amount))
+    if (isNaN(orderAmount) || orderAmount < 0) {
+      console.error('Invalid order amount:', { amount, parsed: orderAmount })
+      return sendError(res, 400, 'Order amount must be a valid positive number')
+    }
+
+    const result = await evaluateDiscountCode({ code, orderAmount, customer_email, product_id, product_ids })
+    if (!result.ok) {
+      return sendError(res, result.status, result.message)
+    }
+
     // Return discount details
-    sendSuccess(res, response)
+    sendSuccess(res, result.response)
   } catch (err: any) {
     console.error('Error applying discount:', {
       error: err.message,
@@ -2976,6 +3069,24 @@ app.put('/api/loyalty-program/:id', async (req, res) => {
   }
 })
 
+// PUT /api/users/:id — staff may edit any user; a customer may only edit their own basic profile fields.
+const SELF_EDITABLE_USER_FIELDS = ['name', 'address', 'profile_photo']
+app.put('/api/users/:id(\\d+)', (req, res, next) => {
+  if (getStaffContext(req)) return next()
+  authenticateToken(req, res, () => {
+    if (!req.userId || String(req.userId) !== String(req.params.id)) {
+      return sendError(res, 403, 'Forbidden')
+    }
+    const body = req.body || {}
+    const filtered: Record<string, unknown> = {}
+    for (const key of SELF_EDITABLE_USER_FIELDS) {
+      if (body[key] !== undefined) filtered[key] = key === 'address' && typeof body[key] === 'object' ? JSON.stringify(body[key]) : body[key]
+    }
+    req.body = filtered
+    next()
+  })
+})
+
 // Register all CRUD routes
 tables.forEach(({ name, required }) => {
   const handler = createCRUDHandler(name, required)
@@ -3021,16 +3132,21 @@ app.post('/api/upload', (req, res, next) => {
     const file = (req as any).file as Express.Multer.File | undefined
     if (!file) return sendError(res, 400, 'No file uploaded')
 
-    const isVideo = file.mimetype.startsWith('video/') ||
-                    /\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(file.originalname)
+    const isVideo = isVideoFile(file)
 
-    if (!isVideo) {
+    let poster: string | null = null
+    if (isVideo) {
+      // faststart remux / transcode + poster frame (no-op when ffmpeg isn't installed)
+      const optimized = await optimizeUploadedVideo(file)
+      if (optimized.poster) poster = `/uploads/${optimized.poster}`
+    } else {
       await convertFilesToWebp(file)
     }
 
     const url = `/uploads/${file.filename}`
     sendSuccess(res, {
       url,
+      poster,
       filename: file.filename,
       originalname: file.originalname,
       mimetype: file.mimetype,
@@ -3314,14 +3430,15 @@ app.get('/api/wishlist', authenticateToken as any, async (req, res) => {
   try {
     const userId = req.userId
     const { rows } = await pool.query(`
-      SELECT w.*, p.title, p.price, p.list_image, p.slug, p.description
+      SELECT w.*, p.title, p.price, p.list_image, p.slug, p.description, p.category, p.details,
+             ${productRoutes.SQL_INVENTORY_AVAILABLE}
       FROM wishlist w
       JOIN products p ON w.product_id = p.id
       WHERE w.user_id = $1
       ORDER BY w.created_at DESC
     `, [userId])
 
-    sendSuccess(res, rows)
+    sendSuccess(res, rows.map((row: any) => productRoutes.attachStockFlags(row)))
   } catch (err) {
     sendError(res, 500, 'Failed to fetch wishlist', err)
   }
@@ -3624,11 +3741,67 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     const shipNum = Number(shipping) || 0
     const discNum = Number(discount_amount) || 0
     const coinsNum = Number(coins_used) || 0
+    if (shipNum < 0 || discNum < 0 || coinsNum < 0 || !Number.isInteger(coinsNum)) {
+      return sendError(res, 400, 'Invalid shipping, discount or coins amount')
+    }
     const coinsRupee = coinsNum / 10
     const expectedTotal = Math.max(0, Math.round(subNum + shipNum - segment_discount - discNum - coinsRupee))
     const clientTotal = Math.round(Number(total))
     if (Math.abs(expectedTotal - clientTotal) > 2) {
       return sendError(res, 400, 'Order total does not match. Please refresh and try again.')
+    }
+
+    // Server-side re-checks for customer orders (staff-created orders may set custom prices)
+    const isStaffOrder = !!getStaffContext(req)
+    let coinsPayerUserId: number | null = null
+    if (!isStaffOrder) {
+      // Same availability rule as the storefront (variant stock on hand − reserved). Catches stale
+      // carts, re-orders and old tabs that still show an "Add to cart" button.
+      const stockIssue = await productRoutes.findOutOfStockOrderLine(pool, items)
+      if (stockIssue) return sendError(res, 400, stockIssue)
+
+      const priceMode = orderPriceCheckMode()
+      if (priceMode !== 'off') {
+        const priceCheck = await validateOrderItemPrices(pool, items, subNum)
+        if (!priceCheck.ok) {
+          if (priceMode === 'enforce') return sendError(res, 400, priceCheck.message)
+          console.warn('[orders] price check (log mode):', priceCheck.message, { customer_email })
+        }
+      }
+
+      if (discNum > 0) {
+        if (!discount_code || typeof discount_code !== 'string') {
+          return sendError(res, 400, 'Discount code is required for a discount')
+        }
+        const productIds = normalizeOrderItems(items)
+          .map((i: any) => Number(i?.product_id ?? i?.id))
+          .filter((n: number) => Number.isFinite(n))
+        const discountCheck = await evaluateDiscountCode({
+          code: discount_code,
+          orderAmount: subNum,
+          customer_email,
+          product_ids: productIds,
+        })
+        if (!discountCheck.ok) {
+          return sendError(res, discountCheck.status, discountCheck.message)
+        }
+        if (discNum > Math.round(discountCheck.response.discountAmount) + 2) {
+          return sendError(res, 400, 'Discount amount does not match the discount code. Please re-apply the code.')
+        }
+      }
+
+      if (coinsNum > 0) {
+        // Coins are always taken from the signed-in customer's own balance
+        const tokenUserId = Number(req.userId)
+        if (!Number.isFinite(tokenUserId) || tokenUserId <= 0) {
+          return sendError(res, 401, 'Please sign in to use Nefol coins')
+        }
+        const { rows: coinRows } = await pool.query('SELECT loyalty_points FROM users WHERE id = $1', [tokenUserId])
+        if (!coinRows.length || Number(coinRows[0].loyalty_points || 0) < coinsNum) {
+          return sendError(res, 400, 'Not enough Nefol coins for this order')
+        }
+        coinsPayerUserId = tokenUserId
+      }
     }
 
     // Import order number generation utilities
@@ -3798,8 +3971,10 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     // Deduct coins if coins were used for payment
     if (coins_used && coins_used > 0) {
       try {
-        // Get user by email
-        const userResult = await pool.query('SELECT id, loyalty_points FROM users WHERE email = $1', [customer_email])
+        // Customer orders: the signed-in customer (checked above). Staff orders: user by email.
+        const userResult = coinsPayerUserId != null
+          ? await pool.query('SELECT id, loyalty_points FROM users WHERE id = $1', [coinsPayerUserId])
+          : await pool.query('SELECT id, loyalty_points FROM users WHERE email = $1', [customer_email])
         const userId = userResult.rows[0]?.id
         const currentCoins = userResult.rows[0]?.loyalty_points || 0
         
@@ -3990,15 +4165,11 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     let userId: string | number | null = null
     
     try {
-      const token = req.headers.authorization?.replace('Bearer ', '')
-      if (token) {
-        const tokenParts = token.split('_')
-        if (tokenParts.length >= 3) {
-          userId = tokenParts[2]
-          console.log(`📬 Creating notification for user from token: ${userId}`)
-        }
+      if (req.userId) {
+        userId = req.userId
+        console.log(`📬 Creating notification for user from token: ${userId}`)
       }
-      
+
       // If no userId from token, try email lookup
       if (!userId) {
         const userResult = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [customer_email])
@@ -4032,16 +4203,11 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     }
     
     // Broadcast to the specific user about their order
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    if (token) {
-      const tokenParts = token.split('_')
-      if (tokenParts.length >= 3) {
-        const userId = tokenParts[2]
-        broadcastToUser(userId, 'order-update', {
-          type: 'created',
-          order: order
-        })
-      }
+    if (req.userId) {
+      broadcastToUser(req.userId, 'order-update', {
+        type: 'created',
+        order: order
+      })
     }
     
     // For Razorpay orders, skip Shiprocket and emails here — payment is not yet confirmed.
@@ -4049,6 +4215,9 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
     const isRazorpayOrder = payment_method === 'razorpay' || payment_method === 'coins+razorpay'
 
     if (!isRazorpayOrder) {
+      // Stock deduction (only when INVENTORY_DEDUCT_ON_ORDER=1; Razorpay orders deduct on payment verify)
+      await deductStockForOrder(pool, order.id)
+
       // Shiprocket shipment is NOT auto-created — admin must confirm and select courier from the admin panel.
 
       // Send order confirmation email (async, don't wait)
@@ -4176,9 +4345,12 @@ app.put('/api/orders/:id', authenticateAndAttach as any, requirePermission(['ord
     
     // Only update orders table if there are fields to update (excluding note)
     let rows
-    if (fields.length > 0) {
-      const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(', ')
-      const values = [id, ...fields.map(field => updateFields[field])]
+    // Only real order columns may be updated (keys come from the request body)
+    const updatableColumns = new Set([...Object.keys(currentOrder), 'payment_status', 'cod', 'tags'])
+    const columnFields = fields.filter(field => updatableColumns.has(field) && field !== 'id' && field !== 'updated_at')
+    if (columnFields.length > 0) {
+      const setClause = columnFields.map((field, i) => `${field} = $${i + 2}`).join(', ')
+      const values = [id, ...columnFields.map(field => updateFields[field])]
       
       // Ensure columns exist for updates
       await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT`)

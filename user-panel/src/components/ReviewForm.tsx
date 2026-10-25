@@ -126,9 +126,6 @@ export default function ReviewForm({
         // Ignore if module not available
       }
       
-      // Show success message with points
-      alert(`Thank you for your review! You've earned 1000 loyalty points!`)
-      
     } catch (error) {
       console.error('Failed to submit review:', error)
       alert('Failed to submit review. Please try again.')
@@ -145,7 +142,7 @@ export default function ReviewForm({
           Review Submitted Successfully!
         </h3>
         <p className="text-green-800 dark:text-green-200">
-          Thank you for your review. You've earned 1000 loyalty points!
+          Thank you for your review. It will be published on the product page once our team has checked it.
         </p>
       </div>
     )
@@ -285,9 +282,9 @@ export default function ReviewForm({
           type="submit"
           disabled={isSubmitting || rating === 0}
           className="w-full rounded-lg py-3 font-semibold text-white disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
-          style={{ backgroundColor: 'rgb(75,151,201)' }}
-          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
-          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+          style={{ backgroundColor: 'var(--nf-primary)' }}
+          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)')}
+          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary)')}
         >
           {isSubmitting ? (
             <div className="flex items-center justify-center gap-2">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useCart } from '../contexts/CartContext'
 import { useWishlist } from '../contexts/WishlistContext'
 import { getApiBase } from '../utils/apiBase'
+import { isOutOfStock, toCartProduct } from '../utils/stock'
 import { userSocketService } from '../services/socket'
 import { Heart, Star, ShoppingCart, Filter, SortAsc, SortDesc, X, Clock, TrendingUp, Search as SearchIcon, SlidersHorizontal } from 'lucide-react'
 
@@ -361,15 +362,13 @@ export default function SearchPage() {
       (product as any).pdp_image_6 && toAbsoluteUrl((product as any).pdp_image_6)
     ].filter((value, index, self): value is string => !!value && self.indexOf(value) === index)
 
+    if (isOutOfStock(product)) return
     addItem({
+      ...toCartProduct(product),
       id: parseInt(product.id) || undefined,
       slug: product.slug || product.title.toLowerCase().replace(/\s+/g, '-'),
-      title: product.title,
-      price: product.price,
       listImage: primaryImage,
       pdpImages: gallery,
-      category: product.category,
-      description: product.description
     }, 1)
   }
 
@@ -654,7 +653,7 @@ export default function SearchPage() {
                     <Heart className={`w-4 h-4 ${isInWishlist(parseInt(product.id)) ? 'fill-current' : ''}`} />
                   </button>
                   {product.category && (
-                    <div className="absolute top-3 left-3 px-2 py-1 text-white text-xs rounded-full" style={{ backgroundColor: 'rgb(75,151,201)' }}>
+                    <div className="absolute top-3 left-3 px-2 py-1 text-white text-xs rounded-full" style={{ backgroundColor: 'var(--nf-primary)' }}>
                       {product.category}
                     </div>
                   )}
@@ -687,17 +686,15 @@ export default function SearchPage() {
                     </div>
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors"
-                      style={{ backgroundColor: 'rgb(75,151,201)', color: '#FFFFFF' }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
-                      }}
+                      disabled={isOutOfStock(product)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        isOutOfStock(product)
+                          ? 'cursor-not-allowed bg-gray-100 text-gray-500'
+                          : 'bg-[color:var(--nf-primary)] text-white hover:bg-[color:var(--nf-primary-hover)]'
+                      }`}
                     >
                       <ShoppingCart className="w-4 h-4" />
-                      Add to Cart
+                      {isOutOfStock(product) ? 'Out of stock' : 'Add to Cart'}
                     </button>
                   </div>
                 </div>
@@ -717,9 +714,9 @@ export default function SearchPage() {
             <button
               onClick={clearFilters}
               className="px-6 py-3 text-white rounded-lg transition-colors"
-              style={{ backgroundColor: 'rgb(75,151,201)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               Clear Filters
             </button>
@@ -748,7 +745,7 @@ export default function SearchPage() {
                       ? 'text-white border-blue-600'
                       : 'border-slate-300 hover:bg-slate-50'
                   }`}
-                  style={currentPage === page ? { backgroundColor: 'rgb(75,151,201)' } : undefined}
+                  style={currentPage === page ? { backgroundColor: 'var(--nf-primary)' } : undefined}
                 >
                   {page}
                 </button>

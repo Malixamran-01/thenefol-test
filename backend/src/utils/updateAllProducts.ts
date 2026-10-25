@@ -1,18 +1,24 @@
-// Script to update all products with MRP and discounted pricing
+// Fills in MRP / discounted pricing for products that don't have it yet.
+// Runs on every boot, so it must never overwrite prices that are already set (e.g. edited in the admin panel).
 import { Pool } from 'pg'
+
+function hasValue(v: unknown): boolean {
+  return v !== undefined && v !== null && String(v).trim() !== ''
+}
 
 export async function updateAllProductsWithPricing(pool: Pool) {
   try {
-    console.log('🔄 Updating all products with MRP and discounted pricing...')
+    console.log('🔄 Filling in missing MRP / discounted pricing...')
 
-    // Get all existing products
-    const { rows: products } = await pool.query(`
-      SELECT id, title, price, details 
-      FROM products 
+    // Only products that are missing MRP or website price
+    const { rows: allProducts } = await pool.query(`
+      SELECT id, title, price, details
+      FROM products
       ORDER BY id
     `)
+    const products = allProducts.filter((p: any) => !hasValue(p.details?.mrp) || !hasValue(p.details?.websitePrice))
 
-    console.log(`📦 Found ${products.length} products to update`)
+    console.log(`📦 Found ${products.length} of ${allProducts.length} products without pricing details`)
 
     // Sample pricing data for different product categories
     const pricingData = {
@@ -65,11 +71,13 @@ export async function updateAllProductsWithPricing(pool: Pool) {
       const websitePrice = Math.round(mrp - (mrp * discountPercent / 100))
 
       // Update product details
+      // Keep whichever of the values already exist
+      const existing = product.details || {}
       const updatedDetails = {
-        ...product.details,
-        mrp: mrp.toString(),
-        websitePrice: websitePrice.toString(),
-        discountPercent: discountPercent.toString()
+        ...existing,
+        mrp: hasValue(existing.mrp) ? existing.mrp : mrp.toString(),
+        websitePrice: hasValue(existing.websitePrice) ? existing.websitePrice : websitePrice.toString(),
+        discountPercent: hasValue(existing.discountPercent) ? existing.discountPercent : discountPercent.toString()
       }
 
       await pool.query(`

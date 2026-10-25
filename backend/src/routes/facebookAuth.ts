@@ -8,11 +8,9 @@
 
 import { Pool } from 'pg'
 import { Request, Response } from 'express'
-import jwt from 'jsonwebtoken'
 import { sendError, sendSuccess } from '../utils/apiHelpers'
 import { generateUniqueUserId } from '../utils/generateUserId'
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+import { signUserToken } from '../utils/authTokens'
 
 // TypeScript interface for Facebook user info
 interface FacebookUserInfo {
@@ -103,7 +101,7 @@ export async function facebookAuth(pool: Pool, req: Request, res: Response) {
       
       const insertResult = await pool.query(
         `INSERT INTO users (
-          user_id, email, name, password, 
+          unique_user_id, email, name, password,
           facebook_id, profile_photo, is_verified, 
           loyalty_points, total_orders, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
@@ -125,22 +123,15 @@ export async function facebookAuth(pool: Pool, req: Request, res: Response) {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email,
-        user_id: user.user_id 
-      },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    )
+    const token = signUserToken(user)
 
     // Return user data and token
     return sendSuccess(res, {
       token,
       user: {
         id: user.id,
-        user_id: user.user_id,
+        user_id: user.unique_user_id,
+        unique_user_id: user.unique_user_id,
         name: user.name,
         email: user.email,
         phone: user.phone || '',

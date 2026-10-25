@@ -49,7 +49,7 @@ export default function PopularQuestions({ productId }: Props) {
         {/* Header */}
         <div className="flex items-start justify-between mb-6 gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1B4965]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--nf-heading)]">
               <HelpCircle className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -63,7 +63,7 @@ export default function PopularQuestions({ productId }: Props) {
           </div>
           <button
             onClick={goViewAll}
-            className="flex-shrink-0 flex items-center gap-1.5 text-sm font-semibold text-[#1B4965] hover:text-[#4B97C9] transition-colors"
+            className="flex-shrink-0 flex items-center gap-1.5 text-sm font-semibold text-[color:var(--nf-heading)] hover:text-[color:var(--nf-primary)] transition-colors"
           >
             View all
             <ChevronRight className="h-4 w-4" />
@@ -77,11 +77,11 @@ export default function PopularQuestions({ productId }: Props) {
               key={q.id}
               type="button"
               onClick={() => openThread(q.id)}
-              className="group w-full text-left rounded-2xl border border-gray-200 bg-white px-4 sm:px-5 py-4 shadow-sm hover:border-[#4B97C9] hover:shadow-md transition-all duration-200"
+              className="group w-full text-left rounded-2xl border border-gray-200 bg-white px-4 sm:px-5 py-4 shadow-sm hover:border-[color:var(--nf-primary)] hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 leading-snug group-hover:text-[#1B4965] transition-colors line-clamp-2">
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 leading-snug group-hover:text-[color:var(--nf-heading)] transition-colors line-clamp-2">
                     {q.title}
                   </p>
                   {q.body && (
@@ -103,7 +103,7 @@ export default function PopularQuestions({ productId }: Props) {
                     )}
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-[#4B97C9] flex-shrink-0 mt-0.5 transition-colors" />
+                <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-[color:var(--nf-primary)] flex-shrink-0 mt-0.5 transition-colors" />
               </div>
             </button>
           ))}
@@ -113,14 +113,14 @@ export default function PopularQuestions({ productId }: Props) {
         <div className="mt-5 flex flex-col sm:flex-row items-center gap-3">
           <button
             onClick={goViewAll}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border-2 border-[#1B4965] px-5 py-2.5 text-sm font-semibold text-[#1B4965] hover:bg-[#1B4965] hover:text-white transition-all duration-200"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border-2 border-[color:var(--nf-heading)] px-5 py-2.5 text-sm font-semibold text-[color:var(--nf-heading)] hover:bg-[color:var(--nf-heading)] hover:text-white transition-all duration-200"
           >
             <MessageCircle className="h-4 w-4" />
             View all questions
           </button>
           <button
             onClick={goAsk}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-[#1B4965] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#163d55] transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-[color:var(--nf-heading)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#163d55] transition-colors"
           >
             <ArrowRight className="h-4 w-4" />
             Ask a question

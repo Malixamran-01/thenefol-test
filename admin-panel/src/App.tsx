@@ -8,7 +8,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import ToastProvider from './components/ToastProvider'
 import { socketService } from './services/socket'
 import { 
-  Dashboard, Orders, UnifiedSalesDashboard, Customers, Users, Categories, Settings, Products,
+  Dashboard, Orders, UnifiedSalesDashboard, Customers, Users, Categories, Settings, Products, ProductReviews,
   Analytics, Marketing, MetaHub, WhatsAppSubscriptions, Discounts, FacebookInstagram, OnlineStore, GoogleYouTube, Forms,
   Invoice, InvoiceSettings, Tax, Returns, Payment, UserProfiles, UserNotifications, LoyaltyProgramManagement,
   StaticPagesManagement, CommunityManagement, CartCheckoutManagement, AffiliateManagement, AffiliateRequests,
@@ -17,6 +17,7 @@ import {
   Staff, RolesPermissions, AuditLogs, AlertSettings, HomepageLayoutManager, ProductCollections, AccountSecurity,
   AdminManagement
 } from './pages'
+import ThemeCustomizer from './pages/ThemeCustomizer'
 import UserDetail from './pages/users/UserDetail'
 import Shipments from './pages/sales/Shipments'
 import OrderDetails from './pages/sales/OrderDetails'
@@ -191,6 +192,7 @@ export default function App() {
             
             {/* ========== PRODUCTS & CATALOG ========== */}
             <Route path="products" element={<Products />} />
+            <Route path="product-reviews" element={<ProductReviews />} />
             <Route path="product-variants" element={<ProductVariants />} />
             <Route path="categories" element={<Categories />} />
             <Route path="product-collections" element={<ProductCollections />} />
@@ -259,6 +261,7 @@ export default function App() {
             <Route path="static-pages" element={<StaticPagesManagement />} />
             <Route path="community-management" element={<CommunityManagement />} />
             <Route path="homepage-layout" element={<HomepageLayoutManager />} />
+            <Route path="theme" element={<ThemeCustomizer />} />
             <Route path="blog-requests" element={<BlogRequestManagement />} />
             <Route path="ask-community" element={<AskCommunityAdmin />} />
             <Route path="author-management" element={<AuthorManagement />} />

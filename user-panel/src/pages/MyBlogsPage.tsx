@@ -40,7 +40,7 @@ interface BlogDraft {
 
 const LoadingSpinner = () => (
   <div className="flex flex-col items-center justify-center py-16">
-    <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-gray-300 border-t-[#4B97C9]" />
+    <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-gray-300 border-t-[color:var(--nf-primary)]" />
     <p className="mt-3 text-sm text-gray-500">Loading your posts...</p>
   </div>
 )
@@ -165,9 +165,9 @@ export default function MyBlogsPage() {
   if (!isAuthenticated) return null
 
   return (
-    <main className="min-h-screen py-8 sm:py-10" style={{ backgroundColor: '#F4F9F9' }}>
+    <main className="min-h-screen py-8 sm:py-10" style={{ backgroundColor: 'var(--nf-surface-soft)' }}>
       <div className="mx-auto max-w-4xl px-4">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-1" style={{ color: '#1B4965' }}>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-1" style={{ color: 'var(--nf-heading)' }}>
           My Blogs
         </h1>
         <p className="text-sm sm:text-base mb-8" style={{ color: '#9DB4C0' }}>
@@ -181,8 +181,8 @@ export default function MyBlogsPage() {
         {/* Published posts */}
         <section className="mb-12">
           <div className="flex items-center gap-2 mb-4">
-            <BookOpen className="h-5 w-5" style={{ color: '#1B4965' }} />
-            <h2 className="text-lg font-bold" style={{ color: '#1B4965' }}>
+            <BookOpen className="h-5 w-5" style={{ color: 'var(--nf-heading)' }} />
+            <h2 className="text-lg font-bold" style={{ color: 'var(--nf-heading)' }}>
               Published ({posts.length})
             </h2>
           </div>
@@ -198,7 +198,7 @@ export default function MyBlogsPage() {
                 type="button"
                 onClick={handleWriteClick}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-colors"
-                style={{ backgroundColor: '#1B4965' }}
+                style={{ backgroundColor: 'var(--nf-heading)' }}
               >
                 <PenLine className="h-4 w-4" />
                 Write
@@ -296,8 +296,8 @@ export default function MyBlogsPage() {
         {/* Drafts */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-5 w-5" style={{ color: '#1B4965' }} />
-            <h2 className="text-lg font-bold" style={{ color: '#1B4965' }}>
+            <Clock className="h-5 w-5" style={{ color: 'var(--nf-heading)' }} />
+            <h2 className="text-lg font-bold" style={{ color: 'var(--nf-heading)' }}>
               Drafts ({drafts.length})
             </h2>
           </div>
@@ -313,7 +313,7 @@ export default function MyBlogsPage() {
                 type="button"
                 onClick={handleWriteClick}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white transition-colors"
-                style={{ backgroundColor: '#1B4965' }}
+                style={{ backgroundColor: 'var(--nf-heading)' }}
               >
                 <PenLine className="h-4 w-4" />
                 Write

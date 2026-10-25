@@ -4,7 +4,7 @@
 - **Server IP**: 72.61.225.192
 - **Domain**: thenefol.com
 - **User**: root
-- **Password**: Anoop2025@nefol
+- **Password**: not stored in the repo — ask the server owner (prefer SSH keys)
 
 ## Prerequisites
 1. All projects have been built successfully:
@@ -46,7 +46,7 @@
 #### Step 1: Connect to Server
 ```bash
 ssh root@72.61.225.192
-# Password: Anoop2025@nefol
+# Use your SSH key or the password from the server owner
 ```
 
 #### Step 2: Create Directories
@@ -87,7 +87,7 @@ systemctl enable postgresql
 # Create database and user
 sudo -u postgres psql << EOF
 CREATE DATABASE nefol;
-CREATE USER nofol_users WITH PASSWORD 'Jhx82ndc9g@j';
+CREATE USER nofol_users WITH PASSWORD '<strong-db-password>';
 GRANT ALL PRIVILEGES ON DATABASE nefol TO nofol_users;
 \c nefol
 GRANT ALL ON SCHEMA public TO nofol_users;
@@ -99,7 +99,7 @@ sed -i "s/#listen_addresses = 'localhost'/listen_addresses = 'localhost'/g" /etc
 systemctl restart postgresql
 ```
 
-**Note:** Change the password `Jhx82ndc9g@j` to a strong production password!
+**Note:** Use a strong, unique production password and keep it only in the server's `.env`.
 
 #### Step 5: Install Dependencies
 ```bash

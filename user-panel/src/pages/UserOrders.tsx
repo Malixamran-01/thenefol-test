@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Package, Clock, CheckCircle, XCircle, Truck, Eye, Search, ShoppingCart, Star, RotateCcw, Download, ChevronDown, ArrowLeft } from 'lucide-react'
 import { api } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
+import { toCartProduct } from '../utils/stock'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 
@@ -256,7 +257,10 @@ export default function UserOrders() {
             price: product.price || product.details?.websitePrice || product.details?.mrp || item.price || '0',
             listImage: product.list_image || product.listImage || item.list_image || item.image || item.product_image || '',
             pdpImages: product.pdp_images || [],
-            description: product.description || ''
+            description: product.description || '',
+            // Lets the cart's stock guard skip items that are out of stock now
+            inStock: toCartProduct(product).inStock,
+            inventoryAvailable: toCartProduct(product).inventoryAvailable,
           } : {
             id: item.id,
             slug: item.slug || '',
@@ -300,7 +304,7 @@ export default function UserOrders() {
       <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <p className="font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Loading your orders...</p>
+            <p className="font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>Loading your orders...</p>
           </div>
         </div>
       </main>
@@ -322,7 +326,7 @@ export default function UserOrders() {
           <button
             onClick={() => window.location.hash = '#/user/profile'}
             className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Back to Profile</span>
@@ -334,7 +338,7 @@ export default function UserOrders() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-2 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -419,13 +423,13 @@ export default function UserOrders() {
               </button>
             </div>
             <div className="relative flex items-center">
-              <span className="text-sm font-light tracking-wide mr-2 whitespace-nowrap" style={{ color: '#666', letterSpacing: '0.05em' }}>Period of orders:</span>
+              <span className="text-sm font-light tracking-wide mr-2 whitespace-nowrap" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>Period of orders:</span>
               <button
                 onClick={() => setShowTimeFilter(!showTimeFilter)}
                 className="flex items-center gap-1 px-3 py-2 text-sm font-light tracking-wide border border-slate-200 rounded-md transition-colors hover:border-blue-500"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#1a1a1a'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-text)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-text-muted)'}
               >
                 <span>{timeFilterOptions.find(opt => opt.value === timeFilter)?.label || 'past 3 months'}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${showTimeFilter ? 'rotate-180' : ''}`} />
@@ -467,7 +471,7 @@ export default function UserOrders() {
               <h3 
                 className="text-lg sm:text-xl font-light mb-2 tracking-[0.1em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.1em'
                 }}
@@ -488,7 +492,7 @@ export default function UserOrders() {
               </h3>
               <p 
                 className="text-sm font-light tracking-wide mb-4"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 {orders.length === 0 ? (
                   <>
@@ -497,7 +501,7 @@ export default function UserOrders() {
                       <button 
                         onClick={() => setTimeFilter('year')}
                         className="hover:underline ml-1 font-light"
-                        style={{ color: 'rgb(75,151,201)' }}
+                        style={{ color: 'var(--nf-primary)' }}
                       >
                         View orders in 2025
                       </button>
@@ -512,9 +516,9 @@ export default function UserOrders() {
                   <a 
                     href="#/user/shop" 
                     className="inline-block text-white px-6 py-2 rounded-md font-light tracking-[0.15em] uppercase transition-colors text-xs"
-                    style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                    style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                   >
                     Start Shopping
                   </a>
@@ -523,7 +527,7 @@ export default function UserOrders() {
               <div className="mt-8 pt-6 border-t border-slate-100">
                 <p 
                   className="text-sm font-light tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   › View or edit your browsing history
                 </p>
@@ -545,14 +549,14 @@ export default function UserOrders() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-2">
-                        <div className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+                        <div className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                           Order placed <span className="font-medium">{order.date}</span>
                         </div>
-                        <div className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+                        <div className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                           Order #{order.order_number}
                         </div>
                         {order.tracking_number && (
-                          <div className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+                          <div className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                             Tracking: <span className="font-medium">{order.tracking_number}</span>
                           </div>
                         )}
@@ -572,7 +576,7 @@ export default function UserOrders() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-light" style={{ color: '#1a1a1a' }}>
+                      <div className="text-lg font-light" style={{ color: 'var(--nf-text)' }}>
                         ₹{order.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -634,9 +638,9 @@ export default function UserOrders() {
                             <>
                               <button 
                                 className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
-                                style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                                style={{ color: 'var(--nf-primary)', letterSpacing: '0.05em' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}
                               >
                                 <Star className="w-4 h-4" />
                                 Write a product review
@@ -644,9 +648,9 @@ export default function UserOrders() {
                               <button 
                                 onClick={() => handleOrderAgain(order)}
                                 className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
-                                style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                                style={{ color: 'var(--nf-primary)', letterSpacing: '0.05em' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}
                               >
                                 <ShoppingCart className="w-4 h-4" />
                                 Buy it again
@@ -656,9 +660,9 @@ export default function UserOrders() {
                           {order.status === 'shipped' && (
                             <button 
                               className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
-                              style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                              style={{ color: 'var(--nf-primary)', letterSpacing: '0.05em' }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}
                             >
                               <Truck className="w-4 h-4" />
                               Track package
@@ -668,9 +672,9 @@ export default function UserOrders() {
                             <button 
                               onClick={() => window.location.hash = `#/user/checkout?order=${order.order_number}`}
                               className="text-sm text-white px-4 py-2 rounded-md font-light tracking-[0.15em] uppercase transition-colors"
-                              style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                              style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                             >
                               Pay Now
                             </button>
@@ -679,9 +683,9 @@ export default function UserOrders() {
                             <button 
                               onClick={() => handleOrderAgain(order)}
                               className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
-                              style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                              style={{ color: 'var(--nf-primary)', letterSpacing: '0.05em' }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}
                             >
                               <RotateCcw className="w-4 h-4" />
                               Order again
@@ -690,7 +694,7 @@ export default function UserOrders() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-light" style={{ color: '#1a1a1a' }}>
+                        <div className="text-sm font-light" style={{ color: 'var(--nf-text)' }}>
                           ₹{parseFloat(item.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
@@ -705,9 +709,9 @@ export default function UserOrders() {
                     {order.status === 'shipped' && (
                       <button 
                         className="text-sm font-light tracking-wide hover:underline transition-colors"
-                        style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                        style={{ color: 'var(--nf-primary)', letterSpacing: '0.05em' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}
                       >
                         Track package
                       </button>
@@ -716,18 +720,18 @@ export default function UserOrders() {
                       <>
                         <button 
                           className="text-sm font-light tracking-wide hover:underline transition-colors"
-                          style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                          style={{ color: 'var(--nf-primary)', letterSpacing: '0.05em' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}
                         >
                           Get invoice
                         </button>
                         <button 
                           onClick={() => handleOrderAgain(order)}
                           className="text-sm font-light tracking-wide hover:underline flex items-center gap-1 transition-colors"
-                          style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                          style={{ color: 'var(--nf-primary)', letterSpacing: '0.05em' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}
                         >
                           <ShoppingCart className="w-4 h-4" />
                           Buy it again
@@ -738,9 +742,9 @@ export default function UserOrders() {
                       <button
                         onClick={() => window.location.hash = `#/user/checkout?order=${order.order_number}`}
                         className="text-sm text-white px-4 py-2 rounded-md font-light tracking-[0.15em] uppercase transition-colors"
-                        style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                        style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                       >
                         Pay Now
                       </button>
@@ -749,9 +753,9 @@ export default function UserOrders() {
                       <button
                         onClick={() => window.location.hash = `#/user/order/${order.order_number}`}
                         className="text-sm font-light tracking-wide hover:underline transition-colors"
-                        style={{ color: 'rgb(75,151,201)', letterSpacing: '0.05em' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}
+                        style={{ color: 'var(--nf-primary)', letterSpacing: '0.05em' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}
                       >
                         View order details
                       </button>
@@ -759,9 +763,9 @@ export default function UserOrders() {
                     <button 
                       onClick={() => handleArchiveOrder(order.id)}
                       className="text-sm font-light tracking-wide hover:underline transition-colors"
-                      style={{ color: '#666', letterSpacing: '0.05em' }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = '#1a1a1a'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
+                      style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-text)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-text-muted)'}
                     >
                       Archive order
                     </button>

@@ -227,7 +227,7 @@ export default function BlueTeaBenefits() {
           <h2 
             className="text-3xl font-bold mb-4" 
             style={{ 
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.05em'
             }}
@@ -237,7 +237,7 @@ export default function BlueTeaBenefits() {
           <p 
             className="text-xl mb-8" 
             style={{ 
-              color: '#666',
+              color: 'var(--nf-text-muted)',
               fontFamily: 'var(--font-body-family, sans-serif)',
               lineHeight: '1.6',
               letterSpacing: '0.02em'
@@ -268,8 +268,8 @@ export default function BlueTeaBenefits() {
               className="inline-block px-8 py-3 rounded-lg font-semibold transition-colors"
               style={{ 
                 backgroundColor: 'transparent', 
-                color: '#1a1a1a',
-                border: '2px solid #1a1a1a',
+                color: 'var(--nf-text)',
+                border: '2px solid var(--nf-text)',
                 letterSpacing: '0.05em'
               }}
               onMouseEnter={(e) => {
@@ -279,8 +279,8 @@ export default function BlueTeaBenefits() {
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = '#1a1a1a'
-                e.currentTarget.style.borderColor = '#1a1a1a'
+                e.currentTarget.style.color = 'var(--nf-text)'
+                e.currentTarget.style.borderColor = 'var(--nf-text)'
               }}
             >
               Learn More

@@ -24,7 +24,8 @@ function setMeta(name: string, content: string, attr: 'name' | 'property' = 'nam
 }
 
 /**
- * Updates document title and head meta tags (Safari URL bar, bookmarks, social previews).
+ * Updates brand head meta tags (Safari URL bar, bookmarks, social previews) and returns the
+ * resolved values. The tab title itself is set per page by pageMeta.setPageMeta.
  */
 export function applySiteBranding(settings: SiteBrandingSettings = {}) {
   const brand =
@@ -37,8 +38,6 @@ export function applySiteBranding(settings: SiteBrandingSettings = {}) {
     (typeof settings.site_meta_description === 'string' && settings.site_meta_description.trim()) ||
     SITE_BRANDING_DEFAULTS.site_meta_description
 
-  document.title = title
-  setMeta('description', description)
   setMeta('application-name', brand)
   setMeta('apple-mobile-web-app-title', brand)
   setMeta('og:site_name', brand, 'property')
@@ -46,4 +45,5 @@ export function applySiteBranding(settings: SiteBrandingSettings = {}) {
   setMeta('og:description', description, 'property')
   setMeta('twitter:title', title)
   setMeta('twitter:description', description)
+  return { brand, title, description }
 }

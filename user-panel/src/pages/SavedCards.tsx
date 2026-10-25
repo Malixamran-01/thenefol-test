@@ -113,7 +113,7 @@ export default function SavedCards() {
       <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <p className="font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Loading your cards...</p>
+            <p className="font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>Loading your cards...</p>
           </div>
         </div>
       </main>
@@ -128,7 +128,7 @@ export default function SavedCards() {
           <button
             onClick={() => window.location.hash = '#/user/profile'}
             className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Back to Profile</span>
@@ -137,13 +137,13 @@ export default function SavedCards() {
         
         {/* Header */}
         <div className="text-center mb-12 sm:mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{ backgroundColor: 'rgb(75,151,201)' }}>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{ backgroundColor: 'var(--nf-primary)' }}>
             <CreditCard className="w-10 h-10 text-white" />
           </div>
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -152,7 +152,7 @@ export default function SavedCards() {
           </h1>
           <p 
             className="text-sm sm:text-base font-light tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Manage your payment methods
           </p>
@@ -163,9 +163,9 @@ export default function SavedCards() {
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-2 text-white px-6 py-3 rounded-lg font-light tracking-[0.15em] uppercase transition-colors text-xs"
-            style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+            style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
           >
             <Plus className="w-5 h-5" />
             Add New Card
@@ -178,7 +178,7 @@ export default function SavedCards() {
             <h3 
               className="text-xl sm:text-2xl font-light mb-4 tracking-[0.1em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.1em'
               }}
@@ -280,9 +280,9 @@ export default function SavedCards() {
                 <button
                   type="submit"
                   className="flex-1 text-white px-6 py-2.5 rounded-lg transition-colors text-xs font-light tracking-[0.15em] uppercase"
-                  style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                  style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                 >
                   Save Card
                 </button>
@@ -306,7 +306,7 @@ export default function SavedCards() {
             <h3 
               className="text-xl sm:text-2xl font-light mb-2 tracking-[0.1em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.1em'
               }}
@@ -315,16 +315,16 @@ export default function SavedCards() {
             </h3>
             <p 
               className="mb-6 font-light tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               Add a card to make checkout faster
             </p>
             <button
               onClick={() => setShowAddForm(true)}
               className="inline-block text-white px-6 py-3 rounded-lg transition-colors text-xs font-light tracking-[0.15em] uppercase"
-              style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               Add Your First Card
             </button>

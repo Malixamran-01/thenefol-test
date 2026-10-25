@@ -2,14 +2,15 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { signUserToken } from '../utils/authTokens'
 import { logUserActivity } from '../utils/userActivitySchema'
 import { sendWelcomeEmail, sendCartAddedEmail, sendVerificationEmail } from '../services/emailService'
 import { WhatsAppService } from '../services/whatsappService'
 import { verifyOtp } from '../services/otpService'
 import { sendWhatsAppTemplate, TemplateVariable } from '../utils/whatsappTemplateHelper'
 import { generateUniqueUserId } from '../utils/generateUserId'
+import { SQL_INVENTORY_AVAILABLE } from './products'
 import {
   computeSegmentDiscountAmount,
   getSegmentDiscountPercentForUser,
@@ -17,7 +18,6 @@ import {
 } from '../services/customerSegmentService'
 
 const SALT_ROUNDS = 10
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 /** Total sellable units for a product (all variants: on hand − reserved). */
 async function getSellableQuantity(pool: Pool, productId: number): Promise<number> {
@@ -38,7 +38,8 @@ export async function getCart(pool: Pool, req: Request, res: Response) {
     const userId = req.userId // Set by authenticateToken middleware
     
     const { rows } = await pool.query(`
-      SELECT c.*, p.title, p.price, p.list_image, p.slug, p.details, p.category
+      SELECT c.*, p.title, p.price, p.list_image, p.slug, p.details, p.category,
+             ${SQL_INVENTORY_AVAILABLE}
       FROM cart c
       JOIN products p ON c.product_id = p.id
       WHERE c.user_id = $1
@@ -76,6 +77,8 @@ export async function getCart(pool: Pool, req: Request, res: Response) {
         original_price: String(row.price),
         details: details, // Include full details object for frontend access
         csvProduct: details,
+        inventory_available: Number(row.inventory_available) || 0,
+        in_stock: (Number(row.inventory_available) || 0) > 0,
         created_at: row.created_at,
         updated_at: row.updated_at
       }
@@ -398,11 +401,7 @@ export async function login(pool: Pool, req: Request, res: Response) {
     )
 
     // Generate JWT (same format as Google auth so middleware treats both identically)
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, user_id: user.unique_user_id },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    )
+    const token = signUserToken(user)
 
     sendSuccess(res, {
       token,
@@ -485,8 +484,8 @@ export async function register(pool: Pool, req: Request, res: Response) {
     `, [name, email, hashedPassword, phone, req.body.address ? JSON.stringify(req.body.address) : null, uniqueUserId])
     
     const user = rows[0]
-    const token = `user_token_${user.id}_${Date.now()}`
-    
+    const token = signUserToken(user)
+
     console.log('✅ User created successfully:', user.email)
 
     // Send welcome email (async, don't wait)
@@ -809,8 +808,8 @@ export async function verifyOTPSignup(pool: Pool, req: Request, res: Response) {
     console.log(`✅ OTP verified and user created: ${normalizedPhone}`)
     
     const user = userRows[0]
-    const token = `user_token_${user.id}_${Date.now()}`
-    
+    const token = signUserToken(user)
+
     console.log('✅ User created via OTP signup:', normalizedPhone)
     
     // If address is provided, create a default address
@@ -1105,7 +1104,7 @@ export async function verifyOTPLogin(pool: Pool, req: Request, res: Response) {
     )
     
     // Generate token
-    const token = `user_token_${user.id}_${Date.now()}`
+    const token = signUserToken(user)
     
     // Update last login
     await pool.query(

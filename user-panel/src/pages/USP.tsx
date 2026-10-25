@@ -6,12 +6,12 @@ export default function USP() {
     <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -20,7 +20,7 @@ export default function USP() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -29,7 +29,7 @@ export default function USP() {
           </h1>
           <p 
             className="text-sm sm:text-base font-light max-w-3xl mx-auto tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Discover what makes Nefol products truly special and why thousands of customers 
             trust us for their skincare needs.
@@ -43,7 +43,7 @@ export default function USP() {
               <h2 
                 className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -52,7 +52,7 @@ export default function USP() {
               </h2>
               <p 
                 className="text-sm sm:text-base font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 Enriched with high antioxidants give dazzling beautiful skin
               </p>
@@ -63,7 +63,7 @@ export default function USP() {
                 <h3 
                   className="text-xl sm:text-2xl md:text-3xl font-light mb-4 tracking-[0.15em]"
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -72,14 +72,14 @@ export default function USP() {
                 </h3>
                 <p 
                   className="font-light leading-relaxed mb-4 tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   It is extracted from the plant called Clitoria Ternatea (Aprajita) that has multiple benefits 
                   and is beneficial for skin. Rich antioxidants which work staggering for hair growth and gleam the skin.
                 </p>
                 <p 
                   className="font-light leading-relaxed tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   It also helps to defend your skin against pollution and also give radical free skin. 
                   Blue tea present in the Nefol products is rich in Anthocyanins.
@@ -89,7 +89,7 @@ export default function USP() {
                 <h3 
                   className="text-xl sm:text-2xl md:text-3xl font-light mb-4 tracking-[0.15em]"
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -98,7 +98,7 @@ export default function USP() {
                 </h3>
                 <p 
                   className="font-light leading-relaxed mb-4 tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   Anthocyanins give it bright blue color and medical properties it uplift the moods and 
                   enhance skin, stimulate hair growth. The flavonoids existing in blue tea help to glow 
@@ -106,7 +106,7 @@ export default function USP() {
                 </p>
                 <p 
                   className="font-light leading-relaxed tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   EDTA in all Nefol products maintains pH balance of the skin.
                 </p>
@@ -120,7 +120,7 @@ export default function USP() {
           <h2 
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-8 sm:mb-12 text-center tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -173,13 +173,13 @@ export default function USP() {
               <div key={idx} className="bg-white rounded-xl shadow-sm p-6">
                 <h3 
                   className="text-lg sm:text-xl font-light mb-3 tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   {product.title}
                 </h3>
                 <p 
                   className="text-sm font-light tracking-wide leading-relaxed"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   {product.desc}
                 </p>
@@ -193,7 +193,7 @@ export default function USP() {
           <h2 
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-8 sm:mb-12 text-center tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -213,13 +213,13 @@ export default function USP() {
                 </div>
                 <h3 
                   className="text-lg sm:text-xl font-light mb-3 tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   {benefit.title}
                 </h3>
                 <p 
                   className="text-sm font-light tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   {benefit.desc}
                 </p>
@@ -233,7 +233,7 @@ export default function USP() {
           <h2 
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-8 sm:mb-12 text-center tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -248,7 +248,7 @@ export default function USP() {
               <h3 
                 className="text-xl sm:text-2xl md:text-3xl font-light mb-4 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -257,7 +257,7 @@ export default function USP() {
               </h3>
               <p 
                 className="font-light leading-relaxed max-w-4xl mx-auto tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 Our products fulfill all international compliance and Nefol products don't use components 
                 that are internationally prohibited or interdict. We maintain the highest quality standards 
@@ -273,7 +273,7 @@ export default function USP() {
             <h2 
               className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -282,7 +282,7 @@ export default function USP() {
             </h2>
             <p 
               className="text-sm sm:text-base font-light mb-8 tracking-wide max-w-2xl mx-auto"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               Join thousands of satisfied customers who have discovered the power of natural, 
               effective skincare with Nefol.

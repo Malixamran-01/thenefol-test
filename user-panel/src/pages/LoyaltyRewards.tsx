@@ -200,9 +200,9 @@ export default function LoyaltyRewards() {
                       ? 'text-white'
                       : 'bg-slate-300 dark:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-not-allowed'
                   }`}
-                  style={loyaltyPoints >= reward.points ? { backgroundColor: 'rgb(75,151,201)' } : {}}
-                  onMouseEnter={(e) => loyaltyPoints >= reward.points && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
-                  onMouseLeave={(e) => loyaltyPoints >= reward.points && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+                  style={loyaltyPoints >= reward.points ? { backgroundColor: 'var(--nf-primary)' } : {}}
+                  onMouseEnter={(e) => loyaltyPoints >= reward.points && (e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)')}
+                  onMouseLeave={(e) => loyaltyPoints >= reward.points && (e.currentTarget.style.backgroundColor = 'var(--nf-primary)')}
                 >
                   {loyaltyPoints >= reward.points ? 'Redeem Now' : 'Insufficient Points'}
                 </button>

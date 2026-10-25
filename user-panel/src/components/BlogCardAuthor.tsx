@@ -147,7 +147,7 @@ export function BlogCardAuthor({
             <User className="h-5 w-5 text-gray-600" />
           )}
         </div>
-        <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: '#1B4965' }}>
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--nf-heading)' }}>
           {authorName || 'Anonymous'}
           {authorVerified ? <AuthorVerifiedBadge size="md" /> : null}
         </span>
@@ -163,7 +163,7 @@ export function BlogCardAuthor({
                 disabled={loading}
                 className="flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors"
                 style={{
-                  backgroundColor: '#1B4965',
+                  backgroundColor: 'var(--nf-heading)',
                   color: 'white'
                 }}
               >
@@ -190,7 +190,7 @@ export function BlogCardAuthor({
               disabled={loading}
               className="rounded-full px-4 py-1.5 text-xs font-semibold transition-colors"
               style={{
-                backgroundColor: '#1B4965',
+                backgroundColor: 'var(--nf-heading)',
                 color: 'white'
               }}
             >

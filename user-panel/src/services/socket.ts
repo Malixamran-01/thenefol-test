@@ -80,6 +80,11 @@ class UserSocketService {
       this.notifyListeners('message', data)
     })
 
+    // CMS setting changes (e.g. theme saved in admin → applied live)
+    this.socket.on('cms-update', (data) => {
+      this.notifyListeners('cms-update', data)
+    })
+
     // Live chat events
     this.socket.on('live-chat:message', (data) => {
       this.notifyListeners('live-chat:message', data)

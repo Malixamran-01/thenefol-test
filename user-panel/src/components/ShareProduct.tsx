@@ -228,14 +228,14 @@ export default function ShareProduct({
         }`}
         aria-label="Share product"
         style={{
-          backgroundColor: 'rgb(75,151,201)',
+          backgroundColor: 'var(--nf-primary)',
           color: '#FFFFFF',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
+          e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+          e.currentTarget.style.backgroundColor = 'var(--nf-primary)'
         }}
       >
         <Share2 className="w-4 h-4" />

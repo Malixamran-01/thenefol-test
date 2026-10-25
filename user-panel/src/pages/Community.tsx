@@ -128,7 +128,7 @@ export default function Community() {
                     <Heart className="w-5 h-5" />
                     <span>{post.likes || 0}</span>
                   </button>
-                  <button className="flex items-center space-x-2 text-slate-600 dark:text-slate-400 transition-colors" onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'} onMouseLeave={(e) => e.currentTarget.style.color = ''}>
+                  <button className="flex items-center space-x-2 text-slate-600 dark:text-slate-400 transition-colors" onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary)'} onMouseLeave={(e) => e.currentTarget.style.color = ''}>
                     <MessageCircle className="w-5 h-5" />
                     <span>{post.comments || 0}</span>
                   </button>
@@ -151,10 +151,10 @@ export default function Community() {
             Share your Nefol journey, get tips from experts, and connect with like-minded people.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="text-white px-6 py-3 rounded-lg font-semibold transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>
+            <button className="text-white px-6 py-3 rounded-lg font-semibold transition-colors" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}>
               Share Your Story
             </button>
-            <button className="border-2 px-6 py-3 rounded-lg font-semibold transition-colors" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'; e.currentTarget.style.color = 'white'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'rgb(75,151,201)'; }}>
+            <button className="border-2 px-6 py-3 rounded-lg font-semibold transition-colors" style={{ borderColor: 'var(--nf-primary)', color: 'var(--nf-primary)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--nf-primary)'; e.currentTarget.style.color = 'white'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--nf-primary)'; }}>
               Ask Questions
             </button>
           </div>

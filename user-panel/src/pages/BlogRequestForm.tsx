@@ -710,7 +710,7 @@ export default function BlogRequestForm() {
       anchor.target = '_blank'
       anchor.rel = 'noopener noreferrer'
       anchor.textContent = linkText
-      anchor.style.color = '#4B97C9'
+      anchor.style.color = 'var(--nf-primary)'
       anchor.style.textDecoration = 'underline'
       range.insertNode(anchor)
       range.setStartAfter(anchor)
@@ -719,7 +719,7 @@ export default function BlogRequestForm() {
       selection?.addRange(range)
       handleEditorInput()
     } else {
-      exec('insertHTML', `<a href="${normalizedUrl}" target="_blank" rel="noopener noreferrer" style="color: #4B97C9; text-decoration: underline;">${linkText}</a>`)
+      exec('insertHTML', `<a href="${normalizedUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--nf-primary); text-decoration: underline;">${linkText}</a>`)
     }
     savedSelectionRef.current = null
     setShowLinkModal(false)
@@ -1375,7 +1375,7 @@ export default function BlogRequestForm() {
   if (isEditMode && editPostId != null && !editFetchDone) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-[rgb(75,151,201)]" />
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-[color:var(--nf-primary)]" />
         <p className="mt-4 text-gray-600 text-sm">Loading post for editing…</p>
       </div>
     )
@@ -1389,7 +1389,7 @@ export default function BlogRequestForm() {
           type="button"
           onClick={() => { window.location.hash = '#/user/blog/my-blogs' }}
           className="px-6 py-2 text-white rounded-lg"
-          style={{ backgroundColor: 'rgb(75,151,201)' }}
+          style={{ backgroundColor: 'var(--nf-primary)' }}
         >
           Back to My Blogs
         </button>
@@ -1408,7 +1408,7 @@ export default function BlogRequestForm() {
               ? 'Your changes were sent to the team for approval. The live post stays unchanged until they approve.'
               : 'Your blog post request has been submitted successfully.'}
           </p>
-          <button onClick={goBack} className="px-6 py-2 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}>
+          <button onClick={goBack} className="px-6 py-2 text-white rounded-lg transition-colors" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--nf-primary)')}>
             {isEditMode ? 'Back to My Blogs' : 'Go Back to Blog'}
           </button>
         </div>
@@ -1418,7 +1418,7 @@ export default function BlogRequestForm() {
 
   const keepFocus = (e: React.MouseEvent) => e.preventDefault()
   const isEditorOnly = activeEditableType === 'editor'
-  const btnActive = `p-2.5 rounded-lg bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]`
+  const btnActive = `p-2.5 rounded-lg bg-[rgba(75,151,201,0.2)] text-[color:var(--nf-primary)]`
   const btnInactive = `p-2.5 rounded-lg text-gray-800 hover:bg-gray-200`
   const btnDisabled = `p-2.5 rounded-lg text-gray-300 cursor-not-allowed`
   const toolbarIconSize = 22
@@ -1442,10 +1442,10 @@ export default function BlogRequestForm() {
 .editor-content ul { list-style: disc; margin-left: 2em; padding-left: 0.5em; }
 .editor-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
 .editor-content li { margin: 0.25em 0; padding-left: 0.25em; }
-.editor-content a { color: #4B97C9; text-decoration: underline; word-break: break-all; }
+.editor-content a { color: var(--nf-primary); text-decoration: underline; word-break: break-all; }
 .editor-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
-.editor-content img:hover { border-color: #4B97C9; }
-.editor-content img.editor-image-selected { border-color: rgb(75,151,201) !important; box-shadow: 0 0 0 2px rgb(75,151,201); }
+.editor-content img:hover { border-color: var(--nf-primary); }
+.editor-content img.editor-image-selected { border-color: var(--nf-primary) !important; box-shadow: 0 0 0 2px var(--nf-primary); }
 .editor-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; max-width: 100%; }
 .editor-content .youtube-embed-wrapper { position: relative; display: flex; justify-content: center; align-items: center; margin: 20px auto; width: 100%; max-width: 100%; }
 .editor-content .youtube-embed-wrapper iframe { max-width: 100%; width: 100%; height: auto; aspect-ratio: 16/9; border: 0; border-radius: 8px; }
@@ -1500,7 +1500,7 @@ export default function BlogRequestForm() {
               <button type="button" onClick={() => setShowPreview(true)} disabled={isSubmitting} className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition-colors">
                 Preview
               </button>
-              <button type="submit" form="blog-form" disabled={isSubmitting} className="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}>
+              <button type="submit" form="blog-form" disabled={isSubmitting} className="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--nf-primary)')}>
                 {isEditMode ? 'Submit edits' : 'Continue'}
               </button>
             </div>
@@ -1562,9 +1562,9 @@ export default function BlogRequestForm() {
   <div className={`toolbar-transition ${toolbarExpanded ? 'toolbar-expanded' : 'toolbar-collapsed'}`}>
     <div className="px-2 sm:px-3 py-1.5 flex flex-wrap gap-0.5 sm:gap-1">
       {/* Block format */}
-      <button type="button" onMouseDown={keepFocus} onClick={setParagraph} className={`px-2 sm:px-2.5 py-2 rounded-lg text-sm font-bold flex-shrink-0 ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'}`} title="Paragraph">P</button>
+      <button type="button" onMouseDown={keepFocus} onClick={setParagraph} className={`px-2 sm:px-2.5 py-2 rounded-lg text-sm font-bold flex-shrink-0 ${toolbarState.block === 'p' ? 'bg-[rgba(75,151,201,0.2)] text-[color:var(--nf-primary)]' : 'text-gray-700 hover:bg-gray-200'}`} title="Paragraph">P</button>
       {[1, 2, 3, 4].map(h => (
-        <button key={h} type="button" onMouseDown={keepFocus} onClick={() => setHeading(h)} className={`px-2 sm:px-2.5 py-2 rounded-lg text-sm font-bold flex-shrink-0 ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[rgb(75,151,201)]' : 'text-gray-700 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
+        <button key={h} type="button" onMouseDown={keepFocus} onClick={() => setHeading(h)} className={`px-2 sm:px-2.5 py-2 rounded-lg text-sm font-bold flex-shrink-0 ${toolbarState.block === `h${h}` ? 'bg-[rgba(75,151,201,0.2)] text-[color:var(--nf-primary)]' : 'text-gray-700 hover:bg-gray-200'}`} title={`Heading ${h}`}>H{h}</button>
       ))}
       <span className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0 self-center" />
       {/* Extra format */}
@@ -1615,7 +1615,7 @@ export default function BlogRequestForm() {
                     <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-red-600"><X size={12} /></button>
                   </span>
                 ))}
-                <button type="button" onClick={() => setShowCategoryPicker(prev => !prev)} className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border border-dashed border-gray-300 text-gray-500 text-xs sm:text-sm hover:border-[rgb(75,151,201)] hover:text-[rgb(75,151,201)] transition-colors">
+                <button type="button" onClick={() => setShowCategoryPicker(prev => !prev)} className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border border-dashed border-gray-300 text-gray-500 text-xs sm:text-sm hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-primary)] transition-colors">
                   <Plus size={12} weight="bold" />
                   Add category
                 </button>
@@ -1624,7 +1624,7 @@ export default function BlogRequestForm() {
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Select categories</p>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {categoryOptions.map(c => (
-                        <button key={c} type="button" onClick={() => toggleCategory(c)} className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-medium border transition-colors ${formData.categories.includes(c) ? 'text-white' : 'bg-white text-gray-700 border-gray-300 hover:border-[rgb(75,151,201)]'}`} style={formData.categories.includes(c) ? { backgroundColor: 'rgb(75,151,201)', borderColor: 'rgb(75,151,201)' } : undefined}>
+                        <button key={c} type="button" onClick={() => toggleCategory(c)} className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-medium border transition-colors ${formData.categories.includes(c) ? 'text-white' : 'bg-white text-gray-700 border-gray-300 hover:border-[color:var(--nf-primary)]'}`} style={formData.categories.includes(c) ? { backgroundColor: 'var(--nf-primary)', borderColor: 'var(--nf-primary)' } : undefined}>
                           {c}
                         </button>
                       ))}
@@ -1677,10 +1677,10 @@ export default function BlogRequestForm() {
                         <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1">Current cover</p>
                       </div>
                     ) : (
-                      <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[rgb(75,151,201)] hover:bg-[rgba(75,151,201,0.08)] transition-all group">
+                      <label htmlFor="cover-image-upload" className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[color:var(--nf-primary)] hover:bg-[rgba(75,151,201,0.08)] transition-all group">
                         <input type="file" accept="image/*" onChange={handleCoverImageUpload} className="hidden" id="cover-image-upload" disabled={isSubmitting} />
-                        <Upload size={28} className="text-gray-400 group-hover:text-[rgb(75,151,201)]" />
-                        <span className="text-sm text-gray-600 group-hover:text-[rgb(75,151,201)]">Choose cover image</span>
+                        <Upload size={28} className="text-gray-400 group-hover:text-[color:var(--nf-primary)]" />
+                        <span className="text-sm text-gray-600 group-hover:text-[color:var(--nf-primary)]">Choose cover image</span>
                         <span className="text-xs text-gray-400">JPG, PNG, WebP · Max 5MB</span>
                       </label>
                     )}
@@ -1712,10 +1712,10 @@ export default function BlogRequestForm() {
                         <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1">Current detail image</p>
                       </div>
                     ) : (
-                      <label htmlFor="detail-image-upload" className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[rgb(75,151,201)] hover:bg-[rgba(75,151,201,0.08)] transition-all group">
+                      <label htmlFor="detail-image-upload" className="flex flex-col items-center justify-center gap-2 py-5 px-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[color:var(--nf-primary)] hover:bg-[rgba(75,151,201,0.08)] transition-all group">
                         <input type="file" accept="image/*" onChange={handleDetailImageUpload} className="hidden" id="detail-image-upload" disabled={isSubmitting} />
-                        <Upload size={28} className="text-gray-400 group-hover:text-[rgb(75,151,201)]" />
-                        <span className="text-sm text-gray-600 group-hover:text-[rgb(75,151,201)]">Choose detail image</span>
+                        <Upload size={28} className="text-gray-400 group-hover:text-[color:var(--nf-primary)]" />
+                        <span className="text-sm text-gray-600 group-hover:text-[color:var(--nf-primary)]">Choose detail image</span>
                         <span className="text-xs text-gray-400">JPG, PNG, WebP · Max 5MB</span>
                       </label>
                     )}
@@ -1724,7 +1724,7 @@ export default function BlogRequestForm() {
 
                 {/* Author Info */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <input name="author_name" value={formData.author_name} onChange={handleInputChange} placeholder="Your name *" required disabled={isSubmitting || (isAuthenticated && !!user?.name)} className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] focus:border-transparent bg-white text-sm sm:text-base" />
+                  <input name="author_name" value={formData.author_name} onChange={handleInputChange} placeholder="Your name *" required disabled={isSubmitting || (isAuthenticated && !!user?.name)} className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:border-transparent bg-white text-sm sm:text-base" />
                   <div className="px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-sm sm:text-base text-gray-700">
                     {isAuthenticated && user ? (user.unique_user_id || `User #${user.id}`) : 'Sign in to use your account'}
                   </div>
@@ -1750,11 +1750,11 @@ export default function BlogRequestForm() {
                     <button type="button" onClick={goBack} className="px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm" disabled={isSubmitting}>
                       Cancel
                     </button>
-                    <button type="button" onClick={handleSaveDraft} disabled={isSubmitting || isSavingDraft || isEditMode} className="px-4 py-2.5 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm" style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }} onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)' }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}>
-                      {isSavingDraft ? <><div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(75,151,201)' }} />Saving...</> : <><FloppyDisk size={15} />Save Draft</>}
+                    <button type="button" onClick={handleSaveDraft} disabled={isSubmitting || isSavingDraft || isEditMode} className="px-4 py-2.5 border-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm" style={{ borderColor: 'var(--nf-primary)', color: 'var(--nf-primary)' }} onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = 'rgba(75,151,201,0.08)' }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}>
+                      {isSavingDraft ? <><div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--nf-primary)' }} />Saving...</> : <><FloppyDisk size={15} />Save Draft</>}
                     </button>
                     <button type="button" onClick={() => setShowSettingsModal(true)} className="col-span-2 sm:col-span-1 px-4 py-2.5 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium text-gray-700 text-sm">
-                      <Gear size={15} style={{ color: 'rgb(75,151,201)' }} />
+                      <Gear size={15} style={{ color: 'var(--nf-primary)' }} />
                       Settings
                     </button>
                   </div>
@@ -1782,11 +1782,11 @@ export default function BlogRequestForm() {
           <div className="bg-white rounded-t-2xl sm:rounded-lg p-5 sm:p-6 w-full sm:max-w-md">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Insert YouTube Video</h3>
             <label className="block text-sm font-medium text-gray-700 mb-2">YouTube URL</label>
-            <input type="url" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] text-sm" />
+            <input type="url" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] text-sm" />
             <p className="text-xs text-gray-500 mt-2">Paste a YouTube link to embed the video</p>
             <div className="flex gap-3 mt-5 justify-end">
               <button type="button" onClick={() => { setShowYouTubeModal(false); setYoutubeUrl('') }} className="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
-              <button type="button" onClick={confirmYouTube} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'rgb(75,151,201)' }}>Insert Video</button>
+              <button type="button" onClick={confirmYouTube} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'var(--nf-primary)' }}>Insert Video</button>
             </div>
           </div>
         </div>
@@ -1800,16 +1800,16 @@ export default function BlogRequestForm() {
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Link Text</label>
-                <input type="text" value={linkData.text} onChange={(e) => setLinkData(prev => ({ ...prev, text: e.target.value }))} placeholder="Enter link text..." className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] text-sm" />
+                <input type="text" value={linkData.text} onChange={(e) => setLinkData(prev => ({ ...prev, text: e.target.value }))} placeholder="Enter link text..." className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] text-sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">URL</label>
-                <input type="url" value={linkData.url} onChange={(e) => setLinkData(prev => ({ ...prev, url: e.target.value }))} placeholder="https://example.com" className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] text-sm" />
+                <input type="url" value={linkData.url} onChange={(e) => setLinkData(prev => ({ ...prev, url: e.target.value }))} placeholder="https://example.com" className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] text-sm" />
               </div>
             </div>
             <div className="flex gap-3 mt-5 justify-end">
               <button onClick={() => setShowLinkModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
-              <button onClick={confirmLink} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'rgb(75,151,201)' }}>Insert Link</button>
+              <button onClick={confirmLink} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'var(--nf-primary)' }}>Insert Link</button>
             </div>
           </div>
         </div>
@@ -1865,10 +1865,10 @@ export default function BlogRequestForm() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[70] p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-lg p-5 sm:p-6 w-full sm:max-w-md">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Edit Image Caption</h3>
-            <input type="text" value={imageCaption} onChange={(e) => setImageCaption(e.target.value)} placeholder="Enter caption..." className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] text-sm" />
+            <input type="text" value={imageCaption} onChange={(e) => setImageCaption(e.target.value)} placeholder="Enter caption..." className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] text-sm" />
             <div className="flex gap-3 mt-4 justify-end">
               <button onClick={() => setShowCaptionModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
-              <button onClick={saveImageCaption} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'rgb(75,151,201)' }}>Save</button>
+              <button onClick={saveImageCaption} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'var(--nf-primary)' }}>Save</button>
             </div>
           </div>
         </div>
@@ -1879,11 +1879,11 @@ export default function BlogRequestForm() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[70] p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-lg p-5 sm:p-6 w-full sm:max-w-md">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Edit Alt Text</h3>
-            <input type="text" value={imageAltText} onChange={(e) => setImageAltText(e.target.value)} placeholder="Enter alt text..." className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] text-sm" />
+            <input type="text" value={imageAltText} onChange={(e) => setImageAltText(e.target.value)} placeholder="Enter alt text..." className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] text-sm" />
             <p className="text-xs text-gray-500 mt-2">Alt text helps screen readers and SEO</p>
             <div className="flex gap-3 mt-4 justify-end">
               <button onClick={() => setShowAltTextModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
-              <button onClick={saveImageAltText} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'rgb(75,151,201)' }}>Save</button>
+              <button onClick={saveImageAltText} className="px-4 py-2 text-white rounded-lg text-sm" style={{ backgroundColor: 'var(--nf-primary)' }}>Save</button>
             </div>
           </div>
         </div>
@@ -1896,7 +1896,7 @@ export default function BlogRequestForm() {
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Unsaved draft found</h3>
             <p className="text-sm text-gray-600 mb-5">We found an unsaved draft from {getDraftAge(pendingDraftRestore.current)}.</p>
             <div className="space-y-3">
-              <button onClick={handleRestoreDraft} className="w-full px-4 py-3 text-white rounded-lg font-medium text-sm" style={{ backgroundColor: 'rgb(75,151,201)' }}>Restore draft</button>
+              <button onClick={handleRestoreDraft} className="w-full px-4 py-3 text-white rounded-lg font-medium text-sm" style={{ backgroundColor: 'var(--nf-primary)' }}>Restore draft</button>
               <div className="flex items-center gap-3 py-1"><div className="flex-1 h-px bg-gray-200" /><span className="text-xs text-gray-400">or</span><div className="flex-1 h-px bg-gray-200" /></div>
               <div className="flex gap-2">
                 <button onClick={handleKeepForLater} className="flex-1 px-4 py-2.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700">Keep for later</button>
@@ -1933,7 +1933,7 @@ export default function BlogRequestForm() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Meta Title</label>
-                  <input name="meta_title" value={formData.meta_title} onChange={handleInputChange} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] text-sm ${formData.meta_title.length > 65 ? 'border-amber-500' : 'border-gray-300'}`} placeholder="Auto-filled from title" maxLength={65} />
+                  <input name="meta_title" value={formData.meta_title} onChange={handleInputChange} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] text-sm ${formData.meta_title.length > 65 ? 'border-amber-500' : 'border-gray-300'}`} placeholder="Auto-filled from title" maxLength={65} />
                   <p className="text-xs mt-1 text-gray-500">{formData.meta_title.length}/65</p>
                 </div>
                 <div>
@@ -1948,12 +1948,12 @@ export default function BlogRequestForm() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Meta Description</label>
-                <textarea name="meta_description" value={formData.meta_description} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] text-sm" rows={2} maxLength={160} placeholder="Auto-filled from excerpt" />
+                <textarea name="meta_description" value={formData.meta_description} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] text-sm" rows={2} maxLength={160} placeholder="Auto-filled from excerpt" />
                 <p className="text-xs mt-1 text-gray-500">{formData.meta_description.length}/160</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Meta Tags</label>
-                <input name="meta_keywords" value={formData.meta_keywords} onChange={handleInputChange} list="blog-tags" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(75,151,201)] text-sm" placeholder="skincare, routine, glowing skin" />
+                <input name="meta_keywords" value={formData.meta_keywords} onChange={handleInputChange} list="blog-tags" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--nf-primary)] text-sm" placeholder="skincare, routine, glowing skin" />
                 <datalist id="blog-tags">{existingTags.map(t => <option key={t} value={t} />)}</datalist>
               </div>
               <div className="border-t pt-4">
@@ -1977,7 +1977,7 @@ export default function BlogRequestForm() {
                         <button type="button" onClick={removeOgImage} className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full"><X size={12} /></button>
                       </div>
                     ) : (
-                      <label className="flex-shrink-0 flex flex-col items-center justify-center h-20 w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[rgb(75,151,201)]">
+                      <label className="flex-shrink-0 flex flex-col items-center justify-center h-20 w-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[color:var(--nf-primary)]">
                         <Upload size={20} className="text-gray-400" />
                         <span className="text-xs text-gray-500 mt-1">Upload</span>
                         <input type="file" accept="image/*" className="hidden" onChange={handleOgImageUpload} />
@@ -1985,7 +1985,7 @@ export default function BlogRequestForm() {
                     )}
                     <input name="og_image" value={formData.og_image} onChange={handleInputChange} className="flex-1 min-w-0 px-4 py-2.5 border border-gray-300 rounded-lg text-sm" placeholder="Or paste URL" disabled={!!formData.ogImageFile} />
                   </div>
-                  {formData.coverImage && <button type="button" onClick={useCoverAsOg} className="text-xs hover:underline mt-2" style={{ color: 'rgb(75,151,201)' }}>Use cover image</button>}
+                  {formData.coverImage && <button type="button" onClick={useCoverAsOg} className="text-xs hover:underline mt-2" style={{ color: 'var(--nf-primary)' }}>Use cover image</button>}
                 </div>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">

@@ -49,7 +49,7 @@ function initials(name: string) {
 }
 
 const AV_GRADS = [
-  'from-[#4B97C9] to-[#1B4965]',
+  'from-[color:var(--nf-primary)] to-[color:var(--nf-heading)]',
   'from-[#d97706] to-[#b45309]',
   'from-[#7c3aed] to-[#5b21b6]',
   'from-[#059669] to-[#047857]',
@@ -98,17 +98,17 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
     <button
       type="button"
       onClick={onClick}
-      className="group w-full overflow-hidden rounded-2xl border border-[#e8eef4] bg-white text-left shadow-[0_1px_4px_rgba(27,73,101,0.06)] transition-all duration-200 hover:border-[#4B97C9]/50 hover:shadow-[0_4px_16px_rgba(27,73,101,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B97C9]"
+      className="group w-full overflow-hidden rounded-2xl border border-[#e8eef4] bg-white text-left shadow-[0_1px_4px_rgba(27,73,101,0.06)] transition-all duration-200 hover:border-[#4B97C9]/50 hover:shadow-[0_4px_16px_rgba(27,73,101,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--nf-primary)]"
     >
       {/* Animated top accent */}
-      <div className="h-[3px] w-0 rounded-t-2xl bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all duration-300 group-hover:w-full" />
+      <div className="h-[3px] w-0 rounded-t-2xl bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] transition-all duration-300 group-hover:w-full" />
 
       <div className="flex min-w-0 gap-3 p-4 sm:gap-4 sm:p-5">
         {/* Answer count box */}
         <div className="flex w-11 shrink-0 flex-col items-center gap-1 pt-0.5 sm:w-12">
           <div
             className={`flex h-11 w-11 flex-col items-center justify-center rounded-xl text-center sm:h-12 sm:w-12 ${
-              isAnswered ? 'bg-[#1B4965] text-white' : 'border border-[#e8eef4] bg-[#f8fbfd] text-[#94a3b8]'
+              isAnswered ? 'bg-[color:var(--nf-heading)] text-white' : 'border border-[#e8eef4] bg-[#f8fbfd] text-[#94a3b8]'
             }`}
           >
             <span className="text-[15px] font-bold leading-none sm:text-[16px]">{q.answer_count}</span>
@@ -137,7 +137,7 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
             )}
             {productLabel && (
               <span
-                className="block min-w-0 w-full basis-full truncate text-[11px] font-medium text-[#4B97C9] sm:inline-block sm:w-auto sm:max-w-[280px] sm:basis-auto sm:align-bottom"
+                className="block min-w-0 w-full basis-full truncate text-[11px] font-medium text-[color:var(--nf-primary)] sm:inline-block sm:w-auto sm:max-w-[280px] sm:basis-auto sm:align-bottom"
                 title={productLabel}
               >
                 {productLabel}
@@ -148,7 +148,7 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
           {/* Title + thumbnail */}
           <div className="flex items-start gap-2 sm:gap-3">
             <div className="min-w-0 flex-1">
-              <h2 className="line-clamp-2 text-[14px] font-semibold leading-snug text-[#1a1a1a] transition-colors group-hover:text-[#1B4965] sm:text-[15px]">
+              <h2 className="line-clamp-2 text-[14px] font-semibold leading-snug text-[color:var(--nf-text)] transition-colors group-hover:text-[color:var(--nf-heading)] sm:text-[15px]">
                 {q.title}
               </h2>
               <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-[#64748b] sm:text-[13px]">
@@ -172,14 +172,14 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
               >
                 {initials(q.author_name)}
               </span>
-              <span className="font-medium text-[#1B4965]">{q.author_name}</span>
+              <span className="font-medium text-[color:var(--nf-heading)]">{q.author_name}</span>
             </span>
             <span aria-hidden className="text-[#e2e8f0]">·</span>
             <time dateTime={q.last_activity_at || q.created_at}>
               {relTime(q.last_activity_at || q.created_at)}
             </time>
             <span aria-hidden className="text-[#e2e8f0]">·</span>
-            <span className="flex items-center gap-1 font-semibold text-[#4B97C9]">
+            <span className="flex items-center gap-1 font-semibold text-[color:var(--nf-primary)]">
               <MessageCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               {q.answer_count} {q.answer_count === 1 ? 'answer' : 'answers'}
             </span>
@@ -189,7 +189,7 @@ function QuestionCard({ q, onClick }: { q: CommunityQuestion; onClick: () => voi
 
       {/* Read-thread hint — desktop only */}
       <div className="hidden items-center justify-end border-t border-[#f0f6fa] px-5 py-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:flex">
-        <span className="flex items-center gap-1 text-[11px] font-semibold text-[#4B97C9]">
+        <span className="flex items-center gap-1 text-[11px] font-semibold text-[color:var(--nf-primary)]">
           Read thread <ChevronRight className="h-3.5 w-3.5" />
         </span>
       </div>
@@ -234,7 +234,7 @@ function Sidebar({
   return (
     <div className="flex flex-col gap-3">
       {/* Ask CTA */}
-      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4965] to-[#274F73] p-5 shadow-[0_4px_16px_rgba(27,73,101,0.18)]">
+      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[color:var(--nf-heading)] to-[#274F73] p-5 shadow-[0_4px_16px_rgba(27,73,101,0.18)]">
         <h3 className="mb-1 text-[15px] font-bold text-white">Got a question?</h3>
         <p className="mb-4 text-[12px] leading-relaxed text-[#a8cce0]">
           Ask the community — real answers from real users.
@@ -242,7 +242,7 @@ function Sidebar({
         <button
           type="button"
           onClick={onAsk}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-[13px] font-bold text-[#1B4965] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-[13px] font-bold text-[color:var(--nf-heading)] transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" /> Ask a question
         </button>
@@ -250,12 +250,12 @@ function Sidebar({
 
       {/* Stats */}
       <div className="rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
-        <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
-          <TrendingUp className="h-3.5 w-3.5 text-[#4B97C9]" /> Community Stats
+        <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[color:var(--nf-heading)]">
+          <TrendingUp className="h-3.5 w-3.5 text-[color:var(--nf-primary)]" /> Community Stats
         </h3>
         <div className="space-y-2.5">
           {[
-            { label: 'Total questions', value: totalQ, color: 'text-[#1B4965]' },
+            { label: 'Total questions', value: totalQ, color: 'text-[color:var(--nf-heading)]' },
             { label: 'Answered', value: answeredQ, color: 'text-emerald-600' },
             { label: 'Unanswered', value: totalQ - answeredQ, color: 'text-[#94a3b8]' },
           ].map(({ label, value, color }) => (
@@ -267,11 +267,11 @@ function Sidebar({
           <div>
             <div className="mb-1 flex justify-between text-[11px] text-[#94a3b8]">
               <span>Answer rate</span>
-              <span className="font-semibold text-[#1B4965]">{pct}%</span>
+              <span className="font-semibold text-[color:var(--nf-heading)]">{pct}%</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-[#e8eef4]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#4B97C9] to-[#1B4965] transition-all duration-700"
+                className="h-full rounded-full bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] transition-all duration-700"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -282,8 +282,8 @@ function Sidebar({
       {/* Popular Products
       {topProducts.length > 0 && (
         <div className="rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
-          <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
-            <Package className="h-3.5 w-3.5 text-[#4B97C9]" /> Popular Products
+          <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[color:var(--nf-heading)]">
+            <Package className="h-3.5 w-3.5 text-[color:var(--nf-primary)]" /> Popular Products
           </h3>
           <ul className="space-y-1.5">
             {topProducts.map(({ product, count }) => (
@@ -309,13 +309,13 @@ function Sidebar({
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12px] font-semibold text-[#1B4965]">{product.title}</p>
+                    <p className="truncate text-[12px] font-semibold text-[color:var(--nf-heading)]">{product.title}</p>
                     <p className="text-[10px] text-[#94a3b8]">
                       {count} {count === 1 ? 'question' : 'questions'}
                     </p>
                   </div>
                   {selectedProduct === product.id && (
-                    <X className="h-3 w-3 shrink-0 text-[#4B97C9]" />
+                    <X className="h-3 w-3 shrink-0 text-[color:var(--nf-primary)]" />
                   )}
                 </button>
               </li>
@@ -326,13 +326,13 @@ function Sidebar({
 
       {/* Guidelines */}
       <div className="rounded-2xl border border-[#e8eef4] bg-white p-4 shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
-        <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
-          <Users className="h-3.5 w-3.5 text-[#4B97C9]" /> Guidelines
+        <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[color:var(--nf-heading)]">
+          <Users className="h-3.5 w-3.5 text-[color:var(--nf-primary)]" /> Guidelines
         </h3>
         <ul className="space-y-1.5 text-[12px] leading-relaxed text-[#64748b]">
           {['Be kind and respectful', 'Share real experiences', 'Stay on topic (skincare / hair care)', 'No spam or promotions'].map((g) => (
             <li key={g} className="flex items-start gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#4B97C9]" />
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--nf-primary)]" />
               {g}
             </li>
           ))}
@@ -472,18 +472,18 @@ export default function AskCommunityPage() {
 
   return (
     /* ── Outermost: overflow-x-hidden prevents sidebar bleed ── */
-    <div className="min-h-full w-full overflow-x-hidden bg-[#F4F9F9]">
+    <div className="min-h-full w-full overflow-x-hidden bg-[color:var(--nf-surface-soft)]">
 
       {/* ── Page header ──────────────────────────────────────── */}
       <div className="border-b border-[#e8eef4] bg-white shadow-[0_1px_4px_rgba(27,73,101,0.05)]">
         <div className="mx-auto max-w-5xl px-4 py-4 sm:py-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#1B4965] sm:h-9 sm:w-9">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[color:var(--nf-heading)] sm:h-9 sm:w-9">
                 <HelpCircle className="h-4 w-4 text-white sm:h-5 sm:w-5" strokeWidth={2.25} />
               </div>
               <div>
-                <h1 className="text-[18px] font-bold tracking-tight text-[#1a1a1a] sm:text-[22px]">
+                <h1 className="text-[18px] font-bold tracking-tight text-[color:var(--nf-text)] sm:text-[22px]">
                   Ask Community
                 </h1>
                 <p className="hidden text-[12px] text-[#64748b] sm:block">
@@ -495,7 +495,7 @@ export default function AskCommunityPage() {
             <button
               type="button"
               onClick={goAsk}
-              className="hidden shrink-0 items-center gap-2 rounded-xl bg-[#1B4965] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition-all hover:-translate-y-px hover:bg-[#153a52] hover:shadow-md active:translate-y-0 sm:inline-flex"
+              className="hidden shrink-0 items-center gap-2 rounded-xl bg-[color:var(--nf-heading)] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition-all hover:-translate-y-px hover:bg-[#153a52] hover:shadow-md active:translate-y-0 sm:inline-flex"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} /> Ask question
             </button>
@@ -517,7 +517,7 @@ export default function AskCommunityPage() {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search questions…"
-                  className="w-full rounded-xl border border-[#e8eef4] bg-white py-2.5 pl-9 pr-8 text-[13px] text-[#374151] shadow-sm outline-none transition-shadow focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/15 sm:text-[14px]"
+                  className="w-full rounded-xl border border-[#e8eef4] bg-white py-2.5 pl-9 pr-8 text-[13px] text-[#374151] shadow-sm outline-none transition-shadow focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/15 sm:text-[14px]"
                 />
                 {search && (
                   <button
@@ -531,7 +531,7 @@ export default function AskCommunityPage() {
               </div>
               <button
                 type="submit"
-                className="rounded-xl border border-[#e8eef4] bg-white px-3.5 text-[12px] font-semibold text-[#1B4965] shadow-sm hover:bg-[#f8fbfd] sm:px-4 sm:text-[13px]"
+                className="rounded-xl border border-[#e8eef4] bg-white px-3.5 text-[12px] font-semibold text-[color:var(--nf-heading)] shadow-sm hover:bg-[#f8fbfd] sm:px-4 sm:text-[13px]"
               >
                 Search
               </button>
@@ -546,8 +546,8 @@ export default function AskCommunityPage() {
                   onClick={() => setFilter(f)}
                   className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold capitalize transition-colors sm:text-[12px] ${
                     filter === f
-                      ? 'bg-[#1B4965] text-white shadow-sm'
-                      : 'border border-[#e8eef4] bg-white text-[#64748b] hover:border-[#4B97C9]/50 hover:text-[#1B4965]'
+                      ? 'bg-[color:var(--nf-heading)] text-white shadow-sm'
+                      : 'border border-[#e8eef4] bg-white text-[#64748b] hover:border-[#4B97C9]/50 hover:text-[color:var(--nf-heading)]'
                   }`}
                 >
                   {f === 'all' ? 'All topics' : f === 'product' ? '📦 Product' : '✨ Brand'}
@@ -561,8 +561,8 @@ export default function AskCommunityPage() {
                   onClick={() => setSort(opt.id)}
                   className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors sm:text-[12px] ${
                     sort === opt.id
-                      ? 'bg-[#4B97C9]/15 text-[#1B4965]'
-                      : 'text-[#64748b] hover:text-[#1B4965]'
+                      ? 'bg-[#4B97C9]/15 text-[color:var(--nf-heading)]'
+                      : 'text-[#64748b] hover:text-[color:var(--nf-heading)]'
                   }`}
                 >
                   {opt.label}
@@ -579,8 +579,8 @@ export default function AskCommunityPage() {
                     onClick={() => setSelectedProduct(null)}
                     className={`inline-flex h-7 shrink-0 items-center rounded-full px-3 text-[11px] font-semibold transition-colors ${
                       selectedProduct === null
-                        ? 'bg-[#1B4965] text-white'
-                        : 'border border-[#e8eef4] bg-white text-[#64748b] hover:text-[#1B4965]'
+                        ? 'bg-[color:var(--nf-heading)] text-white'
+                        : 'border border-[#e8eef4] bg-white text-[#64748b] hover:text-[color:var(--nf-heading)]'
                     }`}
                   >
                     All products
@@ -592,8 +592,8 @@ export default function AskCommunityPage() {
                       onClick={() => setSelectedProduct(selectedProduct === p.id ? null : p.id)}
                       className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-[11px] font-semibold transition-colors ${
                         selectedProduct === p.id
-                          ? 'bg-[#1B4965] text-white'
-                          : 'border border-[#e8eef4] bg-white text-[#64748b] hover:text-[#1B4965]'
+                          ? 'bg-[color:var(--nf-heading)] text-white'
+                          : 'border border-[#e8eef4] bg-white text-[#64748b] hover:text-[color:var(--nf-heading)]'
                       }`}
                     >
                       {p.list_image && (
@@ -613,7 +613,7 @@ export default function AskCommunityPage() {
             {(search || selectedProduct) && (
               <div className="my-2 flex flex-wrap items-center gap-2 text-[11px]">
                 {search && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#4B97C9]/10 px-2.5 py-1 font-medium text-[#1B4965]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#4B97C9]/10 px-2.5 py-1 font-medium text-[color:var(--nf-heading)]">
                     "{search}"
                     <button type="button" onClick={clearSearch}><X className="h-3 w-3" /></button>
                   </span>
@@ -658,9 +658,9 @@ export default function AskCommunityPage() {
             {!loading && !error && filtered.length === 0 && (
               <div className="mt-3 rounded-2xl border border-dashed border-[#d0e8f5] bg-white px-6 py-14 text-center">
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f0f6fa]">
-                  <MessageCircle className="h-6 w-6 text-[#4B97C9]" />
+                  <MessageCircle className="h-6 w-6 text-[color:var(--nf-primary)]" />
                 </div>
-                <p className="text-[14px] font-semibold text-[#1B4965]">
+                <p className="text-[14px] font-semibold text-[color:var(--nf-heading)]">
                   {sort === 'unanswered' ? 'All questions are answered!' : 'No questions yet'}
                 </p>
                 <p className="mt-1 text-[13px] text-[#94a3b8]">
@@ -670,7 +670,7 @@ export default function AskCommunityPage() {
                   <button
                     type="button"
                     onClick={goAsk}
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#1B4965] px-5 py-2.5 text-[13px] font-semibold text-white"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[color:var(--nf-heading)] px-5 py-2.5 text-[13px] font-semibold text-white"
                   >
                     <Plus className="h-4 w-4" /> Ask a question
                   </button>
@@ -688,7 +688,7 @@ export default function AskCommunityPage() {
                   <button
                     type="button"
                     onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                    className="w-full rounded-2xl border border-[#e8eef4] bg-white py-3.5 text-[13px] font-semibold text-[#1B4965] shadow-sm transition-colors hover:bg-[#f8fbfd]"
+                    className="w-full rounded-2xl border border-[#e8eef4] bg-white py-3.5 text-[13px] font-semibold text-[color:var(--nf-heading)] shadow-sm transition-colors hover:bg-[#f8fbfd]"
                   >
                     Load more ({filtered.length - visibleCount} remaining)
                   </button>
@@ -723,7 +723,7 @@ export default function AskCommunityPage() {
         <button
           type="button"
           onClick={goAsk}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1B4965] py-3 text-[14px] font-bold text-white shadow-sm active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--nf-heading)] py-3 text-[14px] font-bold text-white shadow-sm active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" strokeWidth={2.5} /> Ask a question
         </button>

@@ -79,8 +79,8 @@ export default function BottomNavigation({ routePath }: BottomNavigationProps) {
           bottom: 0;
           left: 0;
           right: 0;
-          background: #ffffff;
-          border-top: 1px solid #e5e7eb;
+          background: var(--nf-bottomnav-bg);
+          border-top: 1px solid var(--nf-bottomnav-border);
           z-index: 40;
           padding-bottom: env(safe-area-inset-bottom);
           box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
@@ -103,7 +103,7 @@ export default function BottomNavigation({ routePath }: BottomNavigationProps) {
           flex: 1;
           padding: 4px 8px;
           text-decoration: none;
-          color: #6b7280;
+          color: var(--nf-bottomnav-icon);
           transition: all 0.2s ease;
           min-width: 0;
           position: relative;
@@ -114,7 +114,7 @@ export default function BottomNavigation({ routePath }: BottomNavigationProps) {
         }
         
         .bottom-nav-item.active {
-          color: #1f2937;
+          color: var(--nf-bottomnav-active);
         }
         
         .bottom-nav-icon {
@@ -142,7 +142,7 @@ export default function BottomNavigation({ routePath }: BottomNavigationProps) {
           position: absolute;
           top: 0;
           right: 8px;
-          background: #ef4444;
+          background: var(--nf-bottomnav-badge);
           color: #ffffff;
           font-size: 10px;
           font-weight: 600;

@@ -29,7 +29,7 @@ export default function JoinUsModal({
         className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl"
         style={{
           backgroundColor: 'var(--color-card-bg, #fff)',
-          color: 'var(--color-text-body, #1a1a1a)',
+          color: 'var(--color-text-body, var(--nf-text))',
         }}
       >
         <button
@@ -57,7 +57,7 @@ export default function JoinUsModal({
             className="flex w-full items-center gap-4 rounded-xl border-2 border-[#1B4965]/20 p-4 text-left transition-all hover:border-[#1B4965]/40 hover:bg-[#1B4965]/5"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1B4965]/10">
-              <Video className="h-6 w-6" style={{ color: '#1B4965' }} />
+              <Video className="h-6 w-6" style={{ color: 'var(--nf-heading)' }} />
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold">Collab</h3>

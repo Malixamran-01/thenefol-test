@@ -354,7 +354,7 @@ function CollabImpl(props: CollabProps = {}) {
     instagram: { label: 'Instagram',  icon: <Instagram className="h-4 w-4" />, placeholder: 'instagram.com/yourhandle',      color: '#E1306C' },
     youtube:   { label: 'YouTube',    icon: <Youtube   className="h-4 w-4" />, placeholder: 'youtube.com/c/yourhandle',       color: '#FF0000' },
     facebook:  { label: 'Facebook',   icon: <Facebook  className="h-4 w-4" />, placeholder: 'facebook.com/yourprofile',       color: '#1877F2' },
-    x:         { label: 'X (Twitter)',icon: <Twitter   className="h-4 w-4" />, placeholder: 'x.com/yourhandle',               color: '#1a1a1a' },
+    x:         { label: 'X (Twitter)',icon: <Twitter   className="h-4 w-4" />, placeholder: 'x.com/yourhandle',               color: 'var(--nf-text)' },
     linkedin:  { label: 'LinkedIn',   icon: <Linkedin  className="h-4 w-4" />, placeholder: 'linkedin.com/in/yourprofile',    color: '#0077B5' },
     telegram:  { label: 'Telegram',   icon: <Send      className="h-4 w-4" />, placeholder: 't.me/yourchannel',               color: '#26A5E4' },
     snapchat:  { label: 'Snapchat',   icon: <Ghost     className="h-4 w-4" />, placeholder: 'snapchat.com/add/yourusername',  color: '#FF6B35' },
@@ -854,14 +854,14 @@ function CollabImpl(props: CollabProps = {}) {
   // ── Not authenticated ──────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--arctic-blue-background, #F4F9F9)' }}>
+      <main className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--arctic-blue-background, var(--nf-surface-soft))' }}>
         <div className="text-center max-w-md">
-          <Clapperboard className="h-10 w-10 mx-auto mb-6" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
-          <h1 className="text-3xl font-light mb-3 tracking-[0.12em]" style={{ fontFamily: 'var(--font-heading-family)', color: '#1a1a1a' }}>Creator Collab</h1>
+          <Clapperboard className="h-10 w-10 mx-auto mb-6" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />
+          <h1 className="text-3xl font-light mb-3 tracking-[0.12em]" style={{ fontFamily: 'var(--font-heading-family)', color: 'var(--nf-text)' }}>Creator Collab</h1>
           <p className="text-sm font-light tracking-wide mb-8" style={{ color: '#888', letterSpacing: '0.04em' }}>Sign in to join our creator program and track your affiliate progress.</p>
           <a href="#/user/login" onClick={() => sessionStorage.setItem('post_login_redirect', '#/user/collab')}
             className="inline-flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-light tracking-widest uppercase transition-opacity hover:opacity-80"
-            style={{ backgroundColor: 'var(--arctic-blue-primary, #4B97C9)', color: '#fff', letterSpacing: '0.1em' }}>
+            style={{ backgroundColor: 'var(--arctic-blue-primary, var(--nf-primary))', color: '#fff', letterSpacing: '0.1em' }}>
             Sign in <ChevronRight className="h-3.5 w-3.5" />
           </a>
         </div>
@@ -870,10 +870,10 @@ function CollabImpl(props: CollabProps = {}) {
   }
 
   return (
-    <main className="min-h-screen pt-14 lg:pt-0" style={{ backgroundColor: 'var(--arctic-blue-background, #F4F9F9)', fontFamily: 'var(--font-body-family)' }}>
+    <main className="min-h-screen pt-14 lg:pt-0" style={{ backgroundColor: 'var(--arctic-blue-background, var(--nf-surface-soft))', fontFamily: 'var(--font-body-family)' }}>
 
       {/* ── Hero (Nefol Social) ─────────────────────────────────────────────── */}
-      <div className="border-b border-[#e8eef4]" style={{ background: 'linear-gradient(180deg, #F4F9F9 0%, #ffffff 100%)' }}>
+      <div className="border-b border-[#e8eef4]" style={{ background: 'linear-gradient(180deg, var(--nf-surface-soft) 0%, #ffffff 100%)' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="rounded-2xl border border-[#e8eef4] bg-white/95 shadow-sm px-6 sm:px-8 py-6 sm:py-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -882,14 +882,14 @@ function CollabImpl(props: CollabProps = {}) {
                   className="flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border border-[#d6eaf8] bg-[#f0f8fd] ring-2 ring-[#e8f4fb]"
                   aria-hidden
                 >
-                  <Clapperboard className="h-5 w-5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+                  <Clapperboard className="h-5 w-5" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />
                 </div>
                 <div>
                   <p className="text-[10px] tracking-[0.2em] uppercase font-semibold mb-1" style={{ color: 'rgba(27, 73, 101, 0.65)' }}>
                     Nefol Social
                   </p>
                   <h1
-                    className="text-2xl sm:text-3xl font-bold tracking-[0.04em] text-[#1B4965]"
+                    className="text-2xl sm:text-3xl font-bold tracking-[0.04em] text-[color:var(--nf-heading)]"
                     style={{ fontFamily: 'var(--font-heading-family)' }}
                   >
                     Creator Program
@@ -906,7 +906,7 @@ function CollabImpl(props: CollabProps = {}) {
                   <span
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium tracking-wide ${
                       affiliateUnlocked
-                        ? 'bg-[#f0f8fd] text-[#1B4965] border border-[#d6eaf8]'
+                        ? 'bg-[#f0f8fd] text-[color:var(--nf-heading)] border border-[#d6eaf8]'
                         : status.status === 'approved'
                           ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
                           : status.status === 'rejected'
@@ -965,8 +965,8 @@ function CollabImpl(props: CollabProps = {}) {
                 onClick={() => setCollabTab(key)}
                 className={`relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all ${
                   collabTab === key
-                    ? 'bg-[#1B4965] text-white shadow-sm'
-                    : 'text-gray-500 hover:bg-[#f4f9fb] hover:text-[#1B4965]'
+                    ? 'bg-[color:var(--nf-heading)] text-white shadow-sm'
+                    : 'text-gray-500 hover:bg-[#f4f9fb] hover:text-[color:var(--nf-heading)]'
                 }`}
               >
                 {label}
@@ -1002,7 +1002,7 @@ function CollabImpl(props: CollabProps = {}) {
                   <Lock className="h-6 w-6" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xl font-bold tracking-wide text-[#1B4965]">
+                  <h2 className="text-xl font-bold tracking-wide text-[color:var(--nf-heading)]">
                     {status.hasApplication ? 'Creator Program suspended' : 'Creator Program access restricted'}
                   </h2>
                   <p className={`mt-2 text-sm leading-relaxed ${status.hasApplication ? 'text-amber-900/90' : 'text-gray-600'}`}>
@@ -1033,7 +1033,7 @@ function CollabImpl(props: CollabProps = {}) {
                         type="button"
                         onClick={submitBlockAppeal}
                         disabled={blockAppealSubmitting}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#1B4965] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--nf-heading)] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
                       >
                         {blockAppealSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                         Submit appeal
@@ -1051,7 +1051,7 @@ function CollabImpl(props: CollabProps = {}) {
               {/* Requirements */}
               <div className="grid grid-cols-3 gap-3 mb-8">
                 {[
-                  { icon: <Clapperboard className="h-4 w-4" />, label: 'Post after joining', color: '#4B97C9' },
+                  { icon: <Clapperboard className="h-4 w-4" />, label: 'Post after joining', color: 'var(--nf-primary)' },
                   { icon: <Zap className="h-4 w-4" />, label: 'Include #nefol', color: '#E1306C' },
                   { icon: <TrendingUp className="h-4 w-4" />, label: '10K views + 500 likes', color: '#10b981' },
                 ].map((r) => (
@@ -1073,12 +1073,12 @@ function CollabImpl(props: CollabProps = {}) {
                   {/* ── Section helper ──────────────────────────────────── */}
                   {/* SECTION: Basic Info */}
                   <div className="space-y-4">
-                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965]">Basic Info <span className="text-red-400 ml-1">required</span></p>
+                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[color:var(--nf-heading)]">Basic Info <span className="text-red-400 ml-1">required</span></p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Full Name</label>
                         <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Your full name" required
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -1105,7 +1105,7 @@ function CollabImpl(props: CollabProps = {}) {
                               aria-expanded={phonePickerOpen}
                               onClick={() => setPhonePickerOpen((o) => !o)}
                               title={selectedPhoneCountry.name}
-                              className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white py-3 pl-3 pr-2 text-left text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+                              className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-white py-3 pl-3 pr-2 text-left text-sm text-gray-900 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20"
                             >
                               <span className="text-xl leading-none select-none" aria-hidden>{isoToFlagEmoji(selectedPhoneCountry.isoCode)}</span>
                               <span className="font-medium tabular-nums">+{selectedPhoneCountry.phonecode}</span>
@@ -1139,7 +1139,7 @@ function CollabImpl(props: CollabProps = {}) {
                             )}
                           </div>
                           <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="WhatsApp number" required
-                            className="flex-1 min-w-0 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                            className="flex-1 min-w-0 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
                       </div>
                     </div>
                     </div>
@@ -1159,7 +1159,7 @@ function CollabImpl(props: CollabProps = {}) {
                             <label className="flex items-center gap-3 px-3 py-2.5 cursor-pointer">
                               <input type="checkbox" checked={isChecked}
                                 onChange={(e) => setPlatforms((p) => ({ ...p, [key]: { ...p[key], checked: e.target.checked } }))}
-                                className="h-4 w-4 rounded accent-[#4B97C9] flex-shrink-0" />
+                                className="h-4 w-4 rounded accent-[color:var(--nf-primary)] flex-shrink-0" />
                               <span className="flex items-center gap-2 text-sm font-medium" style={{ color: isChecked ? cfg.color : '#c0c0c0' }}>
                                 {cfg.icon} {cfg.label}
                               </span>
@@ -1179,7 +1179,7 @@ function CollabImpl(props: CollabProps = {}) {
                                       placeholder={idx === 0 ? cfg.placeholder : `Another ${cfg.label} profile link`}
                                       value={link}
                                       onChange={(e) => setPlatformLink(key, idx, e.target.value)}
-                                      className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-[#4B97C9] transition-all"
+                                      className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-[color:var(--nf-primary)] transition-all"
                                     />
                                     <button type="button" onClick={() => removePlatformLink(key, idx)}
                                       className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors">
@@ -1188,7 +1188,7 @@ function CollabImpl(props: CollabProps = {}) {
                                   </div>
                                 ))}
                                 <button type="button" onClick={() => addPlatformLink(key)}
-                                  className="flex items-center gap-1.5 text-[11px] font-medium text-[#4B97C9] hover:opacity-70 transition-opacity pt-0.5">
+                                  className="flex items-center gap-1.5 text-[11px] font-medium text-[color:var(--nf-primary)] hover:opacity-70 transition-opacity pt-0.5">
                                   <Plus className="h-3 w-3" /> Add another {cfg.label} profile
                                 </button>
                               </div>
@@ -1201,13 +1201,13 @@ function CollabImpl(props: CollabProps = {}) {
 
                   {/* ── SECTION: Personal Details ────────────────────── */}
                   <div className="space-y-4">
-                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965]">Personal Details <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
+                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[color:var(--nf-heading)]">Personal Details <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Date of birth <span className="font-normal text-gray-400">(year optional)</span></label>
                         <div className="grid grid-cols-3 gap-2">
                           <select value={profile.birth_month} onChange={(e) => setProfile((p) => ({ ...p, birth_month: e.target.value }))}
-                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
                             <option value="">Month</option>
                             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -1215,7 +1215,7 @@ function CollabImpl(props: CollabProps = {}) {
                             ))}
                           </select>
                           <select value={profile.birth_day} onChange={(e) => setProfile((p) => ({ ...p, birth_day: e.target.value }))}
-                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
                             <option value="">Day</option>
                             {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
@@ -1223,7 +1223,7 @@ function CollabImpl(props: CollabProps = {}) {
                             ))}
                           </select>
                           <select value={profile.birth_year} onChange={(e) => setProfile((p) => ({ ...p, birth_year: e.target.value }))}
-                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            className="rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}>
                             <option value="">Year (optional)</option>
                             {Array.from({ length: 80 }, (_, i) => new Date().getFullYear() - 15 - i).map((y) => (
@@ -1235,7 +1235,7 @@ function CollabImpl(props: CollabProps = {}) {
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
                         <select value={profile.gender} onChange={(e) => setProfile((p) => ({ ...p, gender: e.target.value }))}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
                           <option value="">Prefer not to say</option>
                           {['Male','Female','Non-binary','Other'].map((g) => <option key={g} value={g.toLowerCase()}>{g}</option>)}
@@ -1244,7 +1244,7 @@ function CollabImpl(props: CollabProps = {}) {
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Marital Status</label>
                         <select value={profile.marital_status} onChange={(e) => setProfile((p) => ({ ...p, marital_status: e.target.value }))}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
                           <option value="">Select</option>
                           {['Single','Married','Divorced','Widowed','Other'].map((s) => <option key={s} value={s.toLowerCase()}>{s}</option>)}
@@ -1254,13 +1254,13 @@ function CollabImpl(props: CollabProps = {}) {
                         <div className="col-span-2">
                           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Anniversary <span className="font-normal text-gray-400">(optional)</span></label>
                           <input type="date" value={profile.anniversary} onChange={(e) => setProfile((p) => ({ ...p, anniversary: e.target.value }))}
-                            className="w-full max-w-sm rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
+                            className="w-full max-w-sm rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all" />
                         </div>
                       )}
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Education</label>
                         <select value={profile.education} onChange={(e) => setProfile((p) => ({ ...p, education: e.target.value, education_branch: '' }))}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
                           <option value="">Select</option>
                           {['High School','Diploma','Bachelor\'s','Master\'s','PhD','Other'].map((e) => <option key={e} value={e.toLowerCase().replace(/'/g, '')}>{e}</option>)}
@@ -1270,7 +1270,7 @@ function CollabImpl(props: CollabProps = {}) {
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Field / branch</label>
                           <select value={profile.education_branch} onChange={(e) => setProfile((p) => ({ ...p, education_branch: e.target.value }))}
-                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
                             <option value="">Select (optional)</option>
                             {educationBranchChoices.map((b) => (
@@ -1282,7 +1282,7 @@ function CollabImpl(props: CollabProps = {}) {
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Occupation</label>
                         <select value={profile.occupation} onChange={(e) => setProfile((p) => ({ ...p, occupation: e.target.value }))}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
                           <option value="">Select</option>
                           {['Student','Full-time Creator','Freelancer','Employee','Business Owner','Other'].map((o) => <option key={o} value={o.toLowerCase().replace(/-/g, '_')}>{o}</option>)}
@@ -1291,7 +1291,7 @@ function CollabImpl(props: CollabProps = {}) {
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Follower Range</label>
                         <select value={profile.followers_range} onChange={(e) => setProfile((p) => ({ ...p, followers_range: e.target.value }))}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
                           <option value="">Select total followers</option>
                           {[['under_1k','Under 1K'],['1k_10k','1K – 10K'],['10k_50k','10K – 50K'],['50k_100k','50K – 100K'],['100k_500k','100K – 500K'],['500k_plus','500K+']].map(([val, label]) => (
@@ -1307,7 +1307,7 @@ function CollabImpl(props: CollabProps = {}) {
                       <div className="flex flex-wrap gap-2">
                         {LANGUAGE_OPTIONS.map((l) => (
                           <button key={l} type="button" onClick={() => toggleChip(languages, setLanguages, l)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${languages.includes(l) ? 'bg-[#4B97C9] text-white border-[#4B97C9]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${languages.includes(l) ? 'bg-[color:var(--nf-primary)] text-white border-[color:var(--nf-primary)]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
                             {l}
                           </button>
                         ))}
@@ -1319,7 +1319,7 @@ function CollabImpl(props: CollabProps = {}) {
 
                   {/* ── SECTION: Creator Profile ─────────────────────── */}
                   <div className="space-y-4">
-                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965]">Creator Profile <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
+                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[color:var(--nf-heading)]">Creator Profile <span className="ml-1 font-normal normal-case text-gray-300">optional</span></p>
                     {/* Niche */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Content Niche</label>
@@ -1349,7 +1349,7 @@ function CollabImpl(props: CollabProps = {}) {
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Short Bio</label>
                       <textarea value={profile.bio} onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
                         placeholder="Tell us about yourself and your content style…" rows={3}
-                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all resize-none" />
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all resize-none" />
                     </div>
                   </div>
 
@@ -1357,7 +1357,7 @@ function CollabImpl(props: CollabProps = {}) {
 
                   {/* ── SECTION: Location ───────────────────────────── */}
                   <div className="space-y-4">
-                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965] flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Location</p>
+                    <p className="text-xs tracking-[0.12em] uppercase font-bold text-[color:var(--nf-heading)] flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Location</p>
                     <div className="grid grid-cols-2 gap-3">
                       {/* Country */}
                       <div className="col-span-2">
@@ -1367,7 +1367,7 @@ function CollabImpl(props: CollabProps = {}) {
                           setSelectedCountryCode(code)
                           setSelectedStateCode('')
                           setAddress((a) => ({ ...a, country: cName, state: '', city: '' }))
-                        }} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none"
+                        }} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none"
                           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}>
                           <option value="">Select Country</option>
                           {allCountries.map((c) => (
@@ -1384,7 +1384,7 @@ function CollabImpl(props: CollabProps = {}) {
                           const sName = countryStates.find((s) => s.isoCode === code)?.name || ''
                           setSelectedStateCode(code)
                           setAddress((a) => ({ ...a, state: sName, city: '' }))
-                        }} className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[#4B97C9] appearance-none disabled:text-gray-400 disabled:bg-gray-50"
+                        }} className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] appearance-none disabled:text-gray-400 disabled:bg-gray-50"
                         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
                         <option value="">{countryStates.length ? 'State / Province' : 'No states available'}</option>
                         {countryStates.map((s) => <option key={s.isoCode} value={s.isoCode}>{s.name}</option>)}
@@ -1395,7 +1395,7 @@ function CollabImpl(props: CollabProps = {}) {
                         value={address.city}
                         disabled={!selectedStateCode}
                         onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-                        className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:border-[#4B97C9] transition-all disabled:text-gray-400 disabled:bg-gray-50"
+                        className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:border-[color:var(--nf-primary)] transition-all disabled:text-gray-400 disabled:bg-gray-50"
                       />
                       {/* Street / house mailing lines (distinct from PIN) */}
                       <div className="col-span-2">
@@ -1404,12 +1404,12 @@ function CollabImpl(props: CollabProps = {}) {
                           placeholder="House / street, locality, landmark…"
                           rows={3}
                           maxLength={500}
-                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all resize-none" />
+                          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20 transition-all resize-none" />
                       </div>
                       {/* Postal code */}
                       <input type="text" placeholder="Postal / ZIP / PIN Code" value={address.pincode}
                         onChange={(e) => setAddress((a) => ({ ...a, pincode: e.target.value }))}
-                        className="col-span-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#4B97C9] transition-all" />
+                        className="col-span-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[color:var(--nf-primary)] transition-all" />
                     </div>
                   </div>
 
@@ -1427,7 +1427,7 @@ function CollabImpl(props: CollabProps = {}) {
 
                   <button type="submit"
                     className="w-full rounded-xl py-3.5 font-semibold text-sm text-white transition-all hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
-                    style={{ background: 'linear-gradient(135deg, #4B97C9, #357aad)' }}>
+                    style={{ background: 'linear-gradient(135deg, var(--nf-primary), #357aad)' }}>
                     <ScrollText className="h-4 w-4" /> Review Terms &amp; Submit
                     </button>
                   </form>
@@ -1460,7 +1460,7 @@ function CollabImpl(props: CollabProps = {}) {
                     type="button"
                     onClick={() => setCollabWorkView('overview')}
                     className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                      collabWorkView === 'overview' ? 'bg-[#1B4965] text-white' : 'text-gray-500 hover:bg-[#f4f9fb]'
+                      collabWorkView === 'overview' ? 'bg-[color:var(--nf-heading)] text-white' : 'text-gray-500 hover:bg-[#f4f9fb]'
                     }`}
                   >
                     Overview
@@ -1469,7 +1469,7 @@ function CollabImpl(props: CollabProps = {}) {
                     type="button"
                     onClick={() => setCollabWorkView('tasks')}
                     className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                      collabWorkView === 'tasks' ? 'bg-[#1B4965] text-white' : 'text-gray-500 hover:bg-[#f4f9fb]'
+                      collabWorkView === 'tasks' ? 'bg-[color:var(--nf-heading)] text-white' : 'text-gray-500 hover:bg-[#f4f9fb]'
                     }`}
                   >
                     Brand tasks
@@ -1490,13 +1490,13 @@ function CollabImpl(props: CollabProps = {}) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm flex items-center gap-5">
                   <div className="relative flex-shrink-0">
-                    <Ring pct={viewsPct} color="#4B97C9" size={72} stroke={6} />
+                    <Ring pct={viewsPct} color="var(--nf-primary)" size={72} stroke={6} />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Eye className="h-5 w-5 text-[#4B97C9]" />
+                      <Eye className="h-5 w-5 text-[color:var(--nf-primary)]" />
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm font-bold uppercase tracking-wide text-[#1B4965] mb-0.5">Views</p>
+                    <p className="text-sm font-bold uppercase tracking-wide text-[color:var(--nf-heading)] mb-0.5">Views</p>
                     <p className="text-2xl font-bold text-gray-900">{totalViews.toLocaleString()}</p>
                     <p className="text-xs text-gray-400">of {AFFILIATE_VIEWS_THRESHOLD.toLocaleString()}</p>
                   </div>
@@ -1509,7 +1509,7 @@ function CollabImpl(props: CollabProps = {}) {
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm font-bold uppercase tracking-wide text-[#1B4965] mb-0.5">Likes</p>
+                    <p className="text-sm font-bold uppercase tracking-wide text-[color:var(--nf-heading)] mb-0.5">Likes</p>
                     <p className="text-2xl font-bold text-gray-900">{totalLikes.toLocaleString()}</p>
                     <p className="text-xs text-gray-400">of {AFFILIATE_LIKES_THRESHOLD.toLocaleString()}</p>
                   </div>
@@ -1519,7 +1519,7 @@ function CollabImpl(props: CollabProps = {}) {
               {/* Unified platform connection strip — same pattern for Instagram + OAuth platforms */}
               {(showInstagramSection || visibleOauthPlatforms.length > 0) && (
                 <div className="bg-white rounded-3xl border border-[#e8f4fb] p-5 sm:p-6 shadow-sm">
-                  <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965]">Platform connections</p>
+                  <p className="text-xs tracking-[0.12em] uppercase font-bold text-[color:var(--nf-heading)]">Platform connections</p>
                   <p className="text-xs text-gray-500 font-light mt-1 mb-4 tracking-wide max-w-2xl">
                     Connect each channel here first. Scroll down to load posts or reels and submit them toward your milestone.
                   </p>
@@ -1540,7 +1540,7 @@ function CollabImpl(props: CollabProps = {}) {
                             <p className="text-sm font-semibold text-gray-800 truncate">@{status.igUsername}</p>
                             <p className="text-xs text-emerald-600 font-medium mt-1">Connected</p>
                             <div className="mt-auto pt-3 flex flex-wrap gap-3">
-                              <a href={`https://www.instagram.com/${status.igUsername}`} target="_blank" rel="noreferrer" className="text-xs text-[#4B97C9] flex items-center gap-1 hover:opacity-80">
+                              <a href={`https://www.instagram.com/${status.igUsername}`} target="_blank" rel="noreferrer" className="text-xs text-[color:var(--nf-primary)] flex items-center gap-1 hover:opacity-80">
                                 <ExternalLink className="h-3 w-3" /> Profile
                               </a>
                               <button type="button" onClick={handleDisconnectInstagram} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Disconnect</button>
@@ -1562,7 +1562,7 @@ function CollabImpl(props: CollabProps = {}) {
                     {visibleOauthPlatforms.map((pkey) => {
                       const meta = PLATFORM_SYNC_META[pkey]
                       const conn = platformConnections[pkey]
-                      const accent = 'var(--arctic-blue-primary, #4B97C9)'
+                      const accent = 'var(--arctic-blue-primary, var(--nf-primary))'
                       return (
                         <div key={pkey} className="rounded-2xl border border-[#e8f4fb] bg-[#fafdfd] p-4 flex flex-col min-h-[168px]">
                           <div className="flex items-start gap-3 mb-3">
@@ -1605,7 +1605,7 @@ function CollabImpl(props: CollabProps = {}) {
               {status.status === 'pending' && (
                 <div className="bg-white rounded-3xl p-6 border border-[#e8f4fb] shadow-sm flex items-start gap-4">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#e8f4fb]" style={{ backgroundColor: '#f0f8fd' }}>
-                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-800 text-sm">Application under review</p>
@@ -1628,9 +1628,9 @@ function CollabImpl(props: CollabProps = {}) {
                       <Instagram className="h-5 w-5 text-white" strokeWidth={2} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965] mb-1">Instagram</p>
+                      <p className="text-xs tracking-[0.12em] uppercase font-bold text-[color:var(--nf-heading)] mb-1">Instagram</p>
                       <h2
-                        className="text-xl font-bold tracking-[0.04em] text-[#1B4965]"
+                        className="text-xl font-bold tracking-[0.04em] text-[color:var(--nf-heading)]"
                         style={{ fontFamily: 'var(--font-heading-family, inherit)' }}
                       >
                         Sync reels
@@ -1648,7 +1648,7 @@ function CollabImpl(props: CollabProps = {}) {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <button onClick={syncReels} disabled={syncing || programSuspended}
                       className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 shadow-sm sm:ml-auto"
-                      style={{ backgroundColor: 'var(--arctic-blue-primary, #4B97C9)' }}>
+                      style={{ backgroundColor: 'var(--arctic-blue-primary, var(--nf-primary))' }}>
                       {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Syncing...</> : <><RefreshCw className="h-4 w-4" /> Sync from Instagram</>}
                           </button>
                   </div>
@@ -1667,7 +1667,7 @@ function CollabImpl(props: CollabProps = {}) {
                           {eligibleCount > 0 && <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium">{eligibleCount} eligible</span>}
                           {ineligibleCount > 0 && <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-medium">{ineligibleCount} ineligible</span>}
                         </div>
-                        <div className="flex gap-3 text-xs font-medium text-[#4B97C9]">
+                        <div className="flex gap-3 text-xs font-medium text-[color:var(--nf-primary)]">
                           <button onClick={() => setSelectedReels(new Set(syncedReels.filter((r) => r.eligible && !r.already_submitted).map((r) => r.media_id)))}>Select all</button>
                           <span className="text-gray-300">|</span>
                           <button onClick={() => setSelectedReels(new Set())} className="text-gray-400">Clear</button>
@@ -1680,7 +1680,7 @@ function CollabImpl(props: CollabProps = {}) {
                           const isDisabled = reel.already_submitted || !reel.eligible
                           return (
                             <div key={reel.media_id} onClick={() => !isDisabled && toggleSelect(reel.media_id)}
-                              className={`relative rounded-2xl overflow-hidden border transition-all ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'} ${isSelected ? 'border-[#4B97C9] ring-2 ring-[#4B97C9]/30' : 'border-gray-100'}`}>
+                              className={`relative rounded-2xl overflow-hidden border transition-all ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'} ${isSelected ? 'border-[color:var(--nf-primary)] ring-2 ring-[#4B97C9]/30' : 'border-gray-100'}`}>
 
                               {/* Thumbnail */}
                               <div className="relative h-32 bg-gray-100">
@@ -1701,7 +1701,7 @@ function CollabImpl(props: CollabProps = {}) {
                                 {/* Checkbox */}
                                 {!isDisabled && (
                                   <div className="absolute top-2 left-2">
-                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-[#4B97C9] border-[#4B97C9]' : 'bg-white/80 border-white/80'}`}>
+                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-[color:var(--nf-primary)] border-[color:var(--nf-primary)]' : 'bg-white/80 border-white/80'}`}>
                                       {isSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
                                     </div>
                                   </div>
@@ -1727,7 +1727,7 @@ function CollabImpl(props: CollabProps = {}) {
                                   </p>
                                 )}
                                 <a href={reel.reel_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                                  className="text-[10px] text-[#4B97C9] flex items-center gap-0.5 mt-1 hover:opacity-80">
+                                  className="text-[10px] text-[color:var(--nf-primary)] flex items-center gap-0.5 mt-1 hover:opacity-80">
                                   <ExternalLink className="h-2.5 w-2.5" /> View on Instagram
                                 </a>
                               </div>
@@ -1780,7 +1780,7 @@ function CollabImpl(props: CollabProps = {}) {
                     const ps = platformStates[key]
                     const eligibleCnt = ps.content.filter((c) => c.eligible && !c.already_submitted).length
                     const ineligibleCnt = ps.content.filter((c) => !c.eligible).length
-                    const accent = 'var(--arctic-blue-primary, #4B97C9)'
+                    const accent = 'var(--arctic-blue-primary, var(--nf-primary))'
                     return (
                       <div key={key} className="bg-white rounded-3xl border border-[#e8eef4] shadow-sm overflow-hidden">
                         <div className="px-6 sm:px-8 py-5 border-b border-[#f0f7fb] flex items-start gap-4">
@@ -1788,8 +1788,8 @@ function CollabImpl(props: CollabProps = {}) {
                             {meta.icon}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs tracking-[0.12em] uppercase font-bold text-[#1B4965] mb-1">{meta.label}</p>
-                            <h3 className="text-xl font-bold tracking-[0.04em] text-[#1B4965]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
+                            <p className="text-xs tracking-[0.12em] uppercase font-bold text-[color:var(--nf-heading)] mb-1">{meta.label}</p>
+                            <h3 className="text-xl font-bold tracking-[0.04em] text-[color:var(--nf-heading)]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
                               Sync {meta.contentLabel.toLowerCase()}
                             </h3>
                             <p className="text-xs text-gray-500 font-light mt-1">{meta.subline}</p>
@@ -1881,7 +1881,7 @@ function CollabImpl(props: CollabProps = {}) {
                                       <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
                                       <div className="absolute top-2 right-2">
                                         {item.already_submitted ? (
-                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#4B97C9] text-white">Submitted</span>
+                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[color:var(--nf-primary)] text-white">Submitted</span>
                                         ) : item.eligible ? (
                                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-600 text-white">Eligible</span>
                                         ) : (
@@ -1989,7 +1989,7 @@ function CollabImpl(props: CollabProps = {}) {
 
                   {submittedReels.some((r) => r.insights_pending) && (
                     <div className="mb-4 flex items-start gap-3 rounded-2xl px-4 py-3 text-xs text-gray-800 border border-[#e8f4fb]" style={{ backgroundColor: '#f0f8fd' }}>
-                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--arctic-blue-primary, #4B97C9)' }} />
+                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--arctic-blue-primary, var(--nf-primary))' }} />
                       <span><strong>{submittedReels.filter((r) => r.insights_pending).length} reel{submittedReels.filter((r) => r.insights_pending).length > 1 ? 's' : ''} still syncing</strong> — metrics update automatically every 8 hours.</span>
                     </div>
                   )}
@@ -2000,10 +2000,10 @@ function CollabImpl(props: CollabProps = {}) {
                       return (
                         <div key={reel.id} className="flex items-center gap-4 rounded-2xl px-4 py-3.5 border"
                           style={{ borderColor: reel.insights_pending ? '#d6eaf8' : eligible ? '#d1fae5' : '#fecaca', backgroundColor: reel.insights_pending ? '#f0f8fd' : eligible ? '#f0fdf4' : '#fef2f2' }}>
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${reel.insights_pending ? 'animate-pulse' : eligible ? 'bg-emerald-500' : 'bg-red-400'}`} style={reel.insights_pending ? { backgroundColor: 'var(--arctic-blue-primary, #4B97C9)' } : undefined} />
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${reel.insights_pending ? 'animate-pulse' : eligible ? 'bg-emerald-500' : 'bg-red-400'}`} style={reel.insights_pending ? { backgroundColor: 'var(--arctic-blue-primary, var(--nf-primary))' } : undefined} />
                           <div className="flex-1 min-w-0">
                             <a href={reel.reel_url} target="_blank" rel="noreferrer"
-                              className="text-xs font-medium text-[#4B97C9] underline truncate block">{reel.reel_url}</a>
+                              className="text-xs font-medium text-[color:var(--nf-primary)] underline truncate block">{reel.reel_url}</a>
                             <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                               {reel.insights_pending
                                 ? <span className="italic" style={{ color: '#357aad' }}>Syncing metrics...</span>
@@ -2053,7 +2053,7 @@ function CollabImpl(props: CollabProps = {}) {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Eligibility rules</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:items-stretch">
                   {[
-                    { icon: <Clapperboard className="h-4 w-4 text-[#4B97C9]" />, title: 'Timing', desc: 'Reel must be posted after your collab approval date', bg: '#eff8ff' },
+                    { icon: <Clapperboard className="h-4 w-4 text-[color:var(--nf-primary)]" />, title: 'Timing', desc: 'Reel must be posted after your collab approval date', bg: '#eff8ff' },
                     { icon: <Zap className="h-4 w-4 text-[#E1306C]" />, title: 'Caption', desc: 'Must include #nefol or #neföl in the caption or hashtags', bg: '#fff0f5' },
                     { icon: <TrendingUp className="h-4 w-4 text-emerald-600" />, title: 'Target', desc: '10,000 views + 500 likes unlocks Affiliate status', bg: '#f0fdf4' },
                   ].map((r) => (
@@ -2135,7 +2135,7 @@ function CollabImpl(props: CollabProps = {}) {
             <div style={{ padding: '28px 28px 20px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                 <div style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#EBF5FB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <ScrollText style={{ width: 20, height: 20, color: '#4B97C9' }} />
+                  <ScrollText style={{ width: 20, height: 20, color: 'var(--nf-primary)' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>Creator Collab Terms &amp; Conditions</h3>
@@ -2156,7 +2156,7 @@ function CollabImpl(props: CollabProps = {}) {
               {/* Section 1 */}
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: '#4B97C9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: 'var(--nf-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>1</span>
                   </div>
                   <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Content Requirements</h4>
@@ -2178,7 +2178,7 @@ function CollabImpl(props: CollabProps = {}) {
               {/* Section 2 */}
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: '#4B97C9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: 'var(--nf-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>2</span>
                   </div>
                   <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Affiliate Milestone</h4>
@@ -2200,7 +2200,7 @@ function CollabImpl(props: CollabProps = {}) {
               {/* Section 3 */}
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: '#4B97C9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: 'var(--nf-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>3</span>
                   </div>
                   <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Account &amp; Data</h4>
@@ -2222,7 +2222,7 @@ function CollabImpl(props: CollabProps = {}) {
               {/* Section 4 */}
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: '#4B97C9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: 'var(--nf-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>4</span>
                   </div>
                   <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Program Rules</h4>
@@ -2244,7 +2244,7 @@ function CollabImpl(props: CollabProps = {}) {
 
               {/* Acceptance note */}
               <div style={{ backgroundColor: '#F0F8FD', borderRadius: 14, padding: '14px 16px', border: '1px solid #D6EAF8' }}>
-                <p style={{ margin: 0, fontSize: 12, color: '#4B97C9', lineHeight: 1.6 }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--nf-primary)', lineHeight: 1.6 }}>
                   By clicking <strong>"I Accept &amp; Submit"</strong> below, you confirm that you have read, understood, and agree to all of the above terms and conditions.
                 </p>
               </div>
@@ -2259,7 +2259,7 @@ function CollabImpl(props: CollabProps = {}) {
                 Cancel
               </button>
               <button onClick={doSubmit}
-                style={{ flex: 2, padding: '12px 0', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #4B97C9, #357aad)', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', letterSpacing: '0.01em' }}>
+                style={{ flex: 2, padding: '12px 0', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, var(--nf-primary), #357aad)', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', letterSpacing: '0.01em' }}>
                 I Accept &amp; Submit
               </button>
             </div>
@@ -2281,10 +2281,10 @@ class CollabErrorBoundary extends Component<{ children: React.ReactNode }, { cra
   render() {
     if (this.state.crashed) {
       return (
-        <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F4F9F9', padding: '24px' }}>
+        <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--nf-surface-soft)', padding: '24px' }}>
           <div style={{ textAlign: 'center', maxWidth: 380 }}>
-            <Clapperboard style={{ width: 40, height: 40, color: '#4B97C9', margin: '0 auto 20px' }} />
-            <h2 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: '1.5rem', color: '#1B4965', marginBottom: 12 }}>
+            <Clapperboard style={{ width: 40, height: 40, color: 'var(--nf-primary)', margin: '0 auto 20px' }} />
+            <h2 style={{ fontFamily: 'var(--font-heading-family)', fontWeight: 300, fontSize: '1.5rem', color: 'var(--nf-heading)', marginBottom: 12 }}>
               Creator Program
             </h2>
             <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
@@ -2292,7 +2292,7 @@ class CollabErrorBoundary extends Component<{ children: React.ReactNode }, { cra
             </p>
             <button
               onClick={() => window.location.reload()}
-              style={{ background: '#4B97C9', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              style={{ background: 'var(--nf-primary)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
             >
               Refresh Page
             </button>

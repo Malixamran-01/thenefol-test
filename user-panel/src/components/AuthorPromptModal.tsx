@@ -36,7 +36,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
 
         {/* Icon */}
         <div className="mb-6 flex justify-center">
-          <div className="rounded-full bg-gradient-to-r from-[#4B97C9] to-[#1B4965] p-4">
+          <div className="rounded-full bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] p-4">
             <PenLine className="h-10 w-10 text-white" />
           </div>
         </div>
@@ -62,7 +62,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
               'Optional: Showcase your products',
             ].map(b => (
               <li key={b} className="flex items-start gap-2">
-                <span className="text-[#4B97C9]">✓</span>
+                <span className="text-[color:var(--nf-primary)]">✓</span>
                 <span>{b}</span>
               </li>
             ))}
@@ -80,7 +80,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
                 target="_blank"
                 rel="noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="font-semibold text-[#4B97C9] underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
+                className="font-semibold text-[color:var(--nf-primary)] underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
               >
                 User Agreement
                 <ExternalLink className="w-3 h-3" />
@@ -91,7 +91,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
                 target="_blank"
                 rel="noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="font-semibold text-[#4B97C9] underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
+                className="font-semibold text-[color:var(--nf-primary)] underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
               >
               Terms &amp; Conditions
                 <ExternalLink className="w-3 h-3" />
@@ -102,7 +102,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
               type="checkbox"
               checked={agreed}
               onChange={e => setAgreed(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9] flex-shrink-0"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[color:var(--nf-primary)] focus:ring-[color:var(--nf-primary)] flex-shrink-0"
             />
           </label>
         </div>
@@ -112,7 +112,7 @@ const AuthorPromptModal: React.FC<AuthorPromptModalProps> = ({ isOpen, onClose }
           <button
             onClick={handleCreateProfile}
             disabled={!agreed}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:opacity-90"
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] px-6 py-3 text-white font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:opacity-90"
           >
             Create Author Profile
             <ChevronRight className="h-5 w-5" />

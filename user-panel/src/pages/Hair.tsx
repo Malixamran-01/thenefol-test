@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { getApiBase } from '../utils/apiBase'
 import { Heart, Package } from 'lucide-react'
-import { useCart } from '../contexts/CartContext'
+import ListingAddToCartButton from '../components/ListingAddToCartButton'
 import PricingDisplay from '../components/PricingDisplay'
 import { getProductRating, getProductReviewCount, hasVerifiedReviews } from '../utils/product_reviews'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
@@ -27,7 +27,6 @@ interface Product {
 }
 
 export default function Hair() {
-  const { addItem } = useCart()
   const [products, setProducts] = useState<Product[]>([])
   const [combos, setCombos] = useState<Product[]>([])
   const [csvProducts, setCsvProducts] = useState<any[]>([])
@@ -101,14 +100,14 @@ export default function Hair() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]" 
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
             Hair Care
           </h1>
-          <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+          <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
             Discover our range of natural hair care products designed to strengthen and nourish your hair.
           </p>
         </div>
@@ -122,17 +121,17 @@ export default function Hair() {
           ) : products.length === 0 ? (
             <div className="col-span-full text-center py-16">
               <div className="rounded-2xl p-12" style={{ backgroundColor: '#D0E8F2' }}>
-                <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'rgb(75,151,201)' }}>
+                <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'var(--nf-primary)' }}>
                   <Heart className="w-12 h-12 text-white" />
                 </div>
-                <h3 className="text-3xl font-bold mb-4" style={{ color: '#1B4965' }}>
+                <h3 className="text-3xl font-bold mb-4" style={{ color: 'var(--nf-heading)' }}>
                   Coming Soon!
                 </h3>
                 <p className="text-xl mb-6" style={{ color: '#9DB4C0' }}>
                   We're working on amazing hair care products for you.
                 </p>
                 <div className="bg-white rounded-lg p-6 inline-block">
-                  <p className="text-lg font-semibold" style={{ color: '#1B4965' }}>
+                  <p className="text-lg font-semibold" style={{ color: 'var(--nf-heading)' }}>
                     🚀 Upcoming Very Soon
                   </p>
                 </div>
@@ -170,7 +169,7 @@ export default function Hair() {
                   </div>
                   <div className="flex flex-col flex-grow px-2">
                     <a href={`#/user/product/${product.slug}`} className="block">
-                      <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-1 line-clamp-2 overflow-hidden hover:opacity-70 transition-opacity cursor-pointer" style={{color: '#1a1a1a', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
+                      <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-1 line-clamp-2 overflow-hidden hover:opacity-70 transition-opacity cursor-pointer" style={{color: 'var(--nf-text)', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
                         {product.title}
                       </h3>
                     </a>
@@ -184,7 +183,7 @@ export default function Hair() {
                                        (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
                                        (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
                       return subtitle ? (
-                        <p className="text-sm text-gray-600 mb-1 line-clamp-2" style={{color: '#666', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
+                        <p className="text-sm text-gray-600 mb-1 line-clamp-2" style={{color: 'var(--nf-text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
                           {subtitle}
                         </p>
                       ) : null
@@ -212,7 +211,8 @@ export default function Hair() {
                           </div>
                         )
                       }
-                      return null
+                      // Same height as the rating row so cards line up
+                      return <div className="mb-2 h-5" aria-hidden="true" />
                     })()}
                     <div className="mt-auto pt-2">
                       <div className="flex items-center justify-between mb-2">
@@ -224,41 +224,7 @@ export default function Hair() {
                         </div>
                       </div>
                       <div className="flex gap-3">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (addItem) {
-                              try {
-                                addItem({
-                                  slug: product.slug,
-                                  title: product.title,
-                                  price: product.price,
-                                  listImage: product.list_image,
-                                  pdpImages: [],
-                                  category: product.category,
-                                  description: product.description
-                                })
-                              } catch (error) {
-                                console.log('Authentication required for cart operation')
-                              }
-                            }
-                          }}
-                          className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900 rounded-xl"
-                          style={{
-                            backgroundColor: 'rgb(75,151,201)',
-                            color: '#FFFFFF',
-                            minHeight: '44px',
-                            letterSpacing: '0.15em'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
-                          }}
-                        >
-                          Add to Cart
-                        </button>
+                        <ListingAddToCartButton product={product} />
                         <a 
                           href={`#/user/product/${product.slug}`}
                           className="flex-1 px-6 py-3 text-slate-900 text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase text-center flex items-center justify-center border border-slate-900 hover:bg-slate-900 hover:text-white rounded-xl"
@@ -285,14 +251,14 @@ export default function Hair() {
               <h2 
                 className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 tracking-[0.15em]" 
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
                 Hair Care Combos
               </h2>
-              <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+              <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                 Complete hair care solutions in curated combo packs. Save more with our specially designed hair care bundles.
               </p>
             </div>
@@ -332,10 +298,10 @@ export default function Hair() {
                   </div>
                   <div className="flex flex-col flex-grow px-2">
                     <div className="flex items-center mb-2">
-                      <Package className="w-4 h-4 mr-2" style={{ color: '#4B97C9' }} />
-                      <span className="text-xs font-medium tracking-wide uppercase" style={{ color: '#4B97C9' }}>COMBO PACK</span>
+                      <Package className="w-4 h-4 mr-2" style={{ color: 'var(--nf-primary)' }} />
+                      <span className="text-xs font-medium tracking-wide uppercase" style={{ color: 'var(--nf-primary)' }}>COMBO PACK</span>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-1 line-clamp-2 overflow-hidden" style={{color: '#1a1a1a', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
+                    <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-1 line-clamp-2 overflow-hidden" style={{color: 'var(--nf-text)', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
                       {combo.title}
                     </h3>
                     {(() => {
@@ -366,7 +332,8 @@ export default function Hair() {
                           </div>
                         )
                       }
-                      return null
+                      // Same height as the rating row so cards line up
+                      return <div className="mb-2 h-5" aria-hidden="true" />
                     })()}
                     <div className="mt-auto pt-2">
                       <div className="flex items-center justify-between mb-2">
@@ -381,41 +348,7 @@ export default function Hair() {
                         </div>
                       </div>
                       <div className="flex gap-3">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (addItem) {
-                              try {
-                                addItem({
-                                  slug: combo.slug,
-                                  title: combo.title,
-                                  price: combo.price || combo.details?.websitePrice || '₹1,299',
-                                  listImage: combo.list_image,
-                                  pdpImages: [],
-                                  category: combo.category,
-                                  description: combo.description || 'Premium hair care combo pack'
-                                })
-                              } catch (error) {
-                                console.log('Authentication required for cart operation')
-                              }
-                            }
-                          }}
-                          className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900 rounded-xl"
-                          style={{
-                            backgroundColor: 'rgb(75,151,201)',
-                            color: '#FFFFFF',
-                            minHeight: '44px',
-                            letterSpacing: '0.15em'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
-                          }}
-                        >
-                          Add to Cart
-                        </button>
+                        <ListingAddToCartButton product={combo} />
                         <a 
                           href={`#/user/product/${combo.slug}`}
                           className="flex-1 px-6 py-3 text-slate-900 text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase text-center flex items-center justify-center border border-slate-900 hover:bg-slate-900 hover:text-white rounded-xl"
@@ -436,7 +369,7 @@ export default function Hair() {
         )}
 
         {/* Call to Action */}
-        <div className="text-center rounded-2xl p-12 text-white" style={{ backgroundColor: 'rgb(75,151,201)' }}>
+        <div className="text-center rounded-2xl p-12 text-white" style={{ backgroundColor: 'var(--nf-primary)' }}>
           <h2 className="text-3xl font-bold mb-4">Ready for Healthy Hair?</h2>
           <p className="text-xl mb-8 opacity-90">
             Transform your hair care routine with Nefol's natural hair care products.
@@ -444,7 +377,7 @@ export default function Hair() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
               href="#/user/shop" 
-              className="inline-block bg-white px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors" style={{ color: '#4B97C9' }}
+              className="inline-block bg-white px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors" style={{ color: 'var(--nf-primary)' }}
             >
               Shop Hair Care
             </a>

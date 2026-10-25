@@ -33,7 +33,7 @@ function showImportFailure(err: unknown) {
     btn.textContent = 'Reload'
     btn.onclick = () => location.reload()
     btn.style.cssText =
-      'margin-top:12px;background:#1B4965;color:#fff;border:0;border-radius:12px;padding:10px 16px;font-weight:600'
+      'margin-top:12px;background:var(--nf-heading);color:#fff;border:0;border-radius:12px;padding:10px 16px;font-weight:600'
     wrap.appendChild(btn)
     rootEl.appendChild(wrap)
   }

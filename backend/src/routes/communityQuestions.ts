@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { Pool } from 'pg'
-import { authenticateToken, sendError, sendSuccess } from '../utils/apiHelpers'
+import { authenticateToken, getStaffContext, sendError, sendSuccess } from '../utils/apiHelpers'
+import { getUserIdFromRequest } from '../utils/authTokens'
 
 const router = Router()
 let pool: Pool
@@ -17,20 +18,15 @@ function parseUserId(req: Request): number | null {
 }
 
 function parseOptionalUserId(req: Request): number | null {
-  const rawAuth = req.headers.authorization
-  const token = rawAuth?.startsWith('Bearer ') ? rawAuth.slice(7).trim() : rawAuth?.trim()
-  if (!token) return null
-  const parts = token.split('_')
-  if (parts.length < 3 || parts[0] !== 'user' || parts[1] !== 'token') return null
-  const n = Number(parts[2])
+  const raw = getUserIdFromRequest(req)
+  if (!raw) return null
+  const n = Number(raw)
   return Number.isFinite(n) ? n : null
 }
 
+/** Staff session attached by the global admin guard (valid staff_… token). */
 function isStaffOrAdmin(req: Request): boolean {
-  const role = String(req.headers['x-user-role'] || '').trim().toLowerCase()
-  if (role === 'admin' || role === 'staff' || role === 'super_admin') return true
-  const perms = String(req.headers['x-user-permissions'] || '')
-  return perms.length > 0 && (role === 'admin' || role === 'staff')
+  return !!getStaffContext(req)
 }
 
 const USER_JOIN = `

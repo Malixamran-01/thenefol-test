@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express'
 import { Pool, PoolClient } from 'pg'
 import { generateUniqueUserId } from '../utils/generateUserId'
+import { getUserIdFromRequest } from '../utils/authTokens'
 import { verifyTurnstileToken } from '../utils/turnstile'
 import {
   assertCollabNotBlockedByAppId,
@@ -252,14 +253,13 @@ export async function ensureCollabSchema(pool: Pool) {
 }
 
 async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUserId: string | null; email: string | null }> {
-  const token = req.headers.authorization?.replace('Bearer ', '').trim() || ''
-  const parts = token.split('_')
+  const sessionUserId = getUserIdFromRequest(req)
 
   let uniqueUserId: string | null = null
   let email: string | null = null
 
-  if (parts.length >= 3 && parts[0] === 'user' && parts[1] === 'token') {
-    const numericId = parts[2]
+  if (sessionUserId) {
+    const numericId = sessionUserId
     const userRes = await pool.query('SELECT id, email, unique_user_id FROM users WHERE id = $1 LIMIT 1', [numericId])
     const row = userRes.rows[0]
     email = row?.email || null
@@ -289,10 +289,8 @@ async function resolveUniqueUserId(pool: Pool, req: Request): Promise<{ uniqueUs
 
 /** Authenticated ecommerce user only — email is always taken from `users`, never from the request body. */
 async function loadCollabApplicantFromSession(pool: Pool, req: Request): Promise<{ uniqueUserId: string | null; email: string } | null> {
-  const token = req.headers.authorization?.replace('Bearer ', '').trim() || ''
-  const parts = token.split('_')
-  if (parts.length < 3 || parts[0] !== 'user' || parts[1] !== 'token') return null
-  const numericId = parts[2]
+  const numericId = getUserIdFromRequest(req)
+  if (!numericId) return null
   const userRes = await pool.query('SELECT id, email, unique_user_id FROM users WHERE id = $1 LIMIT 1', [numericId])
   const row = userRes.rows[0]
   let email = row?.email

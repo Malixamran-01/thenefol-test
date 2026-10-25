@@ -1,6 +1,7 @@
 import express from 'express'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
+import { getUserIdFromRequest } from '../utils/authTokens'
 import { isSocialCrawler } from '../utils/socialCrawler'
 import { createNotification, resolveActor } from './blogNotifications'
 
@@ -11,15 +12,7 @@ export function initBlogActivityRouter(databasePool: Pool) {
   pool = databasePool
 }
 
-const getUserIdFromToken = (req: express.Request): string | null => {
-  const token = req.headers.authorization?.replace('Bearer ', '')
-  if (!token) return null
-  const tokenParts = token.split('_')
-  if (tokenParts.length >= 3 && tokenParts[0] === 'user' && tokenParts[1] === 'token') {
-    return tokenParts[2]
-  }
-  return null
-}
+const getUserIdFromToken = (req: express.Request): string | null => getUserIdFromRequest(req)
 
 function viewerNumericUserId(req: express.Request): number | null {
   const raw = getUserIdFromToken(req)

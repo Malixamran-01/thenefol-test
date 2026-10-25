@@ -298,7 +298,7 @@ export default function ManageAddress() {
       <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <p className="font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>Loading your addresses...</p>
+            <p className="font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>Loading your addresses...</p>
           </div>
         </div>
       </main>
@@ -313,7 +313,7 @@ export default function ManageAddress() {
           <button
             onClick={() => window.location.hash = '#/user/profile'}
             className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Back to Profile</span>
@@ -322,13 +322,13 @@ export default function ManageAddress() {
         
         {/* Header */}
         <div className="text-center mb-12 sm:mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{ backgroundColor: 'rgb(75,151,201)' }}>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{ backgroundColor: 'var(--nf-primary)' }}>
             <MapPin className="w-10 h-10 text-white" />
           </div>
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -337,7 +337,7 @@ export default function ManageAddress() {
           </h1>
           <p 
             className="text-sm sm:text-base font-light tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Manage your delivery addresses
           </p>
@@ -373,15 +373,15 @@ export default function ManageAddress() {
             }}
             disabled={addresses.length >= 5}
             className="flex items-center gap-2 text-white px-6 py-3 rounded-lg font-light tracking-[0.15em] uppercase transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed text-xs"
-            style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(60,120,160)')}
-            onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'rgb(75,151,201)')}
+            style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)')}
+            onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--nf-primary)')}
           >
             <Plus className="w-5 h-5" />
             Add New Address
           </button>
           {addresses.length >= 5 && (
-            <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+            <p className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
               Maximum 5 addresses reached. Delete an address to add a new one.
             </p>
           )}
@@ -394,14 +394,14 @@ export default function ManageAddress() {
               <h3 
                 className="text-xl sm:text-2xl font-light mb-2 tracking-[0.1em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.1em'
                 }}
               >
                 {editAddress ? 'Edit Address' : 'Add New Address'}
               </h3>
-              <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+              <p className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                 Fields marked with <span className="text-red-500 font-semibold">*</span> are required
               </p>
             </div>
@@ -564,7 +564,7 @@ export default function ManageAddress() {
                   checked={addressForm.is_default}
                   onChange={(e) => setAddressForm({ ...addressForm, is_default: e.target.checked })}
                   className="w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  style={{ accentColor: '#4b97c9' }}
+                  style={{ accentColor: 'var(--nf-primary)' }}
                 />
                 <label htmlFor="is_default" className="text-xs font-light uppercase tracking-[0.1em] text-slate-700  cursor-pointer">
                   Make this my default address
@@ -609,15 +609,15 @@ export default function ManageAddress() {
                         checked={addressForm.address_type === type.value}
                         onChange={(e) => setAddressForm({ ...addressForm, address_type: e.target.value as 'house' | 'apartment' | 'business' | 'other', address_label: '' })}
                         className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                        style={{ accentColor: '#4b97c9' }}
+                        style={{ accentColor: 'var(--nf-primary)' }}
                       />
-                      <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{type.label}</span>
+                      <span className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>{type.label}</span>
                     </label>
                   ))}
                 </div>
                 {addressForm.address_type === 'house' && (
                   <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                    <p className="text-xs font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>
+                    <p className="text-xs font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
                       Independent house, villa, or builder floor (6 AM - 11 PM delivery)
                     </p>
                     <div className="mt-2 flex items-center gap-2">
@@ -627,9 +627,9 @@ export default function ManageAddress() {
                         checked={addressForm.is_house_type}
                         onChange={(e) => setAddressForm({ ...addressForm, is_house_type: e.target.checked })}
                         className="w-5 h-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                        style={{ accentColor: '#4b97c9' }}
+                        style={{ accentColor: 'var(--nf-primary)' }}
                       />
-                      <label htmlFor="is_house_type" className="text-xs font-light tracking-wide cursor-pointer" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>
+                      <label htmlFor="is_house_type" className="text-xs font-light tracking-wide cursor-pointer" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>
                         Confirm this is an independent house, villa, or builder floor
                       </label>
                     </div>
@@ -663,7 +663,7 @@ export default function ManageAddress() {
                 </p>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>Saturdays</label>
+                    <label className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>Saturdays</label>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -675,9 +675,9 @@ export default function ManageAddress() {
                             weekend_delivery: { ...addressForm.weekend_delivery, saturday: false } 
                           })}
                           className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                          style={{ accentColor: '#4b97c9' }}
+                          style={{ accentColor: 'var(--nf-primary)' }}
                         />
-                        <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>No</span>
+                        <span className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>No</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -689,14 +689,14 @@ export default function ManageAddress() {
                             weekend_delivery: { ...addressForm.weekend_delivery, saturday: true } 
                           })}
                           className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                          style={{ accentColor: '#4b97c9' }}
+                          style={{ accentColor: 'var(--nf-primary)' }}
                         />
-                        <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>Yes</span>
+                        <span className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>Yes</span>
                       </label>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>Sundays</label>
+                    <label className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>Sundays</label>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -708,9 +708,9 @@ export default function ManageAddress() {
                             weekend_delivery: { ...addressForm.weekend_delivery, sunday: false } 
                           })}
                           className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                          style={{ accentColor: '#4b97c9' }}
+                          style={{ accentColor: 'var(--nf-primary)' }}
                         />
-                        <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>No</span>
+                        <span className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>No</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -722,9 +722,9 @@ export default function ManageAddress() {
                             weekend_delivery: { ...addressForm.weekend_delivery, sunday: true } 
                           })}
                           className="w-5 h-5 bg-white border-2 border-black focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                          style={{ accentColor: '#4b97c9' }}
+                          style={{ accentColor: 'var(--nf-primary)' }}
                         />
-                        <span className="text-sm font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>Yes</span>
+                        <span className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>Yes</span>
                       </label>
                     </div>
                   </div>
@@ -746,9 +746,9 @@ export default function ManageAddress() {
                 <button
                   type="submit"
                   className="flex-1 text-white px-6 py-3 rounded-lg transition-colors font-light tracking-[0.15em] uppercase text-xs"
-                  style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                  style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                 >
                   {editAddress ? 'Update' : 'Save'} Address
                 </button>
@@ -776,7 +776,7 @@ export default function ManageAddress() {
             <h3 
               className="text-xl sm:text-2xl font-light mb-2 tracking-[0.1em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.1em'
               }}
@@ -785,16 +785,16 @@ export default function ManageAddress() {
             </h3>
             <p 
               className="mb-6 font-light tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               Add an address to make checkout faster
             </p>
             <button
               onClick={() => setShowAddForm(true)}
               className="inline-block text-white px-6 py-3 rounded-lg transition-colors font-light tracking-[0.15em] uppercase text-xs"
-              style={{ backgroundColor: 'rgb(75,151,201)', letterSpacing: '0.15em' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)', letterSpacing: '0.15em' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               Add Your First Address
             </button>
@@ -848,7 +848,7 @@ export default function ManageAddress() {
                         )}
                         <p className="text-slate-600 ">{address.city}, {address.state} - {address.zip}</p>
                         {address.country && (
-                          <p className="text-sm font-light tracking-wide" style={{ color: '#666', letterSpacing: '0.05em' }}>{address.country}</p>
+                          <p className="text-sm font-light tracking-wide" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>{address.country}</p>
                         )}
                       </div>
                       {address.phone && (

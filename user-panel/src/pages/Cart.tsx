@@ -91,14 +91,14 @@ export default function Cart() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]" 
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
           >
             Shopping Cart
           </h1>
-          <p className="text-sm sm:text-base font-light tracking-wide" style={{color: '#666', letterSpacing: '0.05em'}}>Review your items and proceed to checkout</p>
+          <p className="text-sm sm:text-base font-light tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>Review your items and proceed to checkout</p>
         </div>
 
         {items.length === 0 ? (
@@ -122,14 +122,14 @@ export default function Cart() {
             <h2 
               className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.1em]" 
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.1em'
               }}
             >
               Your cart is empty
             </h2>
-            <p className="mb-10 text-sm sm:text-base font-light tracking-wide" style={{color: '#666', letterSpacing: '0.05em'}}>Looks like you haven't added any items to your cart yet.</p>
+            <p className="mb-10 text-sm sm:text-base font-light tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>Looks like you haven't added any items to your cart yet.</p>
             <a 
               href="#/user/shop" 
               className="inline-block text-white px-8 py-4 text-xs font-light tracking-[0.15em] uppercase transition-all duration-300 border border-transparent hover:border-slate-900"
@@ -153,7 +153,7 @@ export default function Cart() {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold" style={{color: '#1B4965'}}>
+                  <h2 className="text-xl font-semibold" style={{color: 'var(--nf-heading)'}}>
                     Cart Items ({items.length})
                   </h2>
                   <button
@@ -195,9 +195,14 @@ export default function Cart() {
 
                       {/* Product Details */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold truncate" style={{color: '#1B4965'}}>
+                        <h3 className="text-lg font-semibold truncate" style={{color: 'var(--nf-heading)'}}>
                           {item.title}
                         </h3>
+                        {item.in_stock === false && (
+                          <p className="mt-1 inline-block rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                            Out of stock — remove to continue
+                          </p>
+                        )}
                         <div className="text-slate-600 text-sm">
                           <PricingDisplay 
                             product={item} 
@@ -393,7 +398,7 @@ export default function Cart() {
                         
                         {/* Grand Total */}
                         <hr className="border-slate-200" />
-                        <div className="flex justify-between text-lg font-bold" style={{color: '#1B4965'}}>
+                        <div className="flex justify-between text-lg font-bold" style={{color: 'var(--nf-heading)'}}>
                           <span>Grand Total</span>
                           <span>₹{parseFloat(total.toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
@@ -404,21 +409,31 @@ export default function Cart() {
                 </div>
 
                 <div className="space-y-3">
-                  <a
-                    href="#/user/checkout"
-                    className="block w-full text-white py-3 px-4 rounded-lg font-semibold text-center hover:shadow-lg transition-all duration-300 hover:scale-105"
-                    style={{backgroundColor: 'rgb(75,151,201)'}}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
-                  >
-                    Proceed to Checkout
-                  </a>
+                  {items.some((i) => i.in_stock === false) ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="block w-full cursor-not-allowed rounded-lg bg-gray-100 py-3 px-4 text-center font-semibold text-gray-500"
+                    >
+                      Remove out-of-stock items to checkout
+                    </button>
+                  ) : (
+                    <a
+                      href="#/user/checkout"
+                      className="block w-full text-white py-3 px-4 rounded-lg font-semibold text-center hover:shadow-lg transition-all duration-300 hover:scale-105"
+                      style={{backgroundColor: 'var(--nf-primary)'}}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
+                    >
+                      Proceed to Checkout
+                    </a>
+                  )}
                   <a
                     href="#/user/shop"
                     className="block w-full py-3 px-4 rounded-lg font-semibold text-center transition-colors"
-                    style={{borderColor: 'rgb(75,151,201)', borderWidth: '1px', color: 'rgb(75,151,201)'}}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'; e.currentTarget.style.color = 'white'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'rgb(75,151,201)'; }}
+                    style={{borderColor: 'var(--nf-primary)', borderWidth: '1px', color: 'var(--nf-primary)'}}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--nf-primary)'; e.currentTarget.style.color = 'white'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--nf-primary)'; }}
                   >
                     Continue Shopping
                   </a>

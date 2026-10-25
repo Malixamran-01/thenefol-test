@@ -42,7 +42,7 @@ export default function CMSSection({ section }: CMSSectionProps) {
 // Hero Section Component
 function HeroSection({ content }: { content: any }) {
   return (
-    <section className="relative py-20" style={{background: 'linear-gradient(135deg, #4B97C9 0%, #D0E8F2 50%, #9DB4C0 100%)'}}>
+    <section className="relative py-20" style={{background: 'linear-gradient(135deg, var(--nf-primary) 0%, #D0E8F2 50%, #9DB4C0 100%)'}}>
       <div className="mx-auto max-w-7xl px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="text-left">
@@ -65,7 +65,7 @@ function HeroSection({ content }: { content: any }) {
               <a
                 href={content.buttonLink}
                 className="inline-block px-8 py-4 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg"
-                style={{backgroundColor: '#1B4965'}}
+                style={{backgroundColor: 'var(--nf-heading)'}}
               >
                 {content.buttonText}
               </a>
@@ -89,10 +89,10 @@ function HeroSection({ content }: { content: any }) {
 // Text Section Component
 function TextSection({ content }: { content: any }) {
   return (
-    <section className="py-16" style={{backgroundColor: '#F4F9F9'}}>
+    <section className="py-16" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="mx-auto max-w-7xl px-4">
         {content.title && (
-          <h2 className="text-3xl font-serif mb-4 text-center" style={{color: '#1B4965'}}>
+          <h2 className="text-3xl font-serif mb-4 text-center" style={{color: 'var(--nf-heading)'}}>
             {content.title}
           </h2>
         )}
@@ -115,7 +115,7 @@ function GridSection({ content }: { content: any }) {
       <div className="mx-auto max-w-7xl px-4">
         {content.title && (
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-serif mb-4" style={{color: '#1B4965'}}>
+            <h2 className="text-3xl font-serif mb-4" style={{color: 'var(--nf-heading)'}}>
               {content.title}
             </h2>
           </div>
@@ -137,7 +137,7 @@ function GridSection({ content }: { content: any }) {
                   />
                 </div>
               )}
-              <h3 className="text-sm font-medium tracking-wide" style={{color: '#1B4965'}}>
+              <h3 className="text-sm font-medium tracking-wide" style={{color: 'var(--nf-heading)'}}>
                 {item.name || item.title}
               </h3>
             </div>
@@ -155,11 +155,11 @@ function ListSection({ content }: { content: any }) {
   const regular = items.filter((item: any) => !item.featured)
   
   return (
-    <section className="py-16" style={{backgroundColor: '#F4F9F9'}}>
+    <section className="py-16" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="mx-auto max-w-7xl px-4">
         {content.title && (
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-serif mb-4" style={{color: '#1B4965'}}>
+            <h2 className="text-3xl font-serif mb-4" style={{color: 'var(--nf-heading)'}}>
               {content.title}
             </h2>
             {content.subtitle && (
@@ -189,7 +189,7 @@ function ListSection({ content }: { content: any }) {
                     <span className="text-sm font-light" style={{color: '#9DB4C0'}}>{item.date}</span>
                   </div>
                 )}
-                <h2 className="text-3xl font-serif mb-4" style={{color: '#1B4965'}}>
+                <h2 className="text-3xl font-serif mb-4" style={{color: 'var(--nf-heading)'}}>
                   {item.title}
                 </h2>
                 {item.excerpt && (
@@ -222,7 +222,7 @@ function ListSection({ content }: { content: any }) {
                       <span className="text-sm font-light" style={{color: '#9DB4C0'}}>{item.date}</span>
                     </div>
                   )}
-                  <h3 className="text-xl font-serif mb-3" style={{color: '#1B4965'}}>
+                  <h3 className="text-xl font-serif mb-3" style={{color: 'var(--nf-heading)'}}>
                     {item.title}
                   </h3>
                   {item.excerpt && (
@@ -283,7 +283,7 @@ function FeaturesSection({ content }: { content: any }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature: any, index: number) => (
               <div key={index} className="bg-white rounded-xl p-6 text-center">
-                <h3 className="text-lg font-bold mb-3" style={{color: '#1B4965'}}>
+                <h3 className="text-lg font-bold mb-3" style={{color: 'var(--nf-heading)'}}>
                   {feature.title}
                 </h3>
                 {feature.description && (
@@ -303,16 +303,16 @@ function FeaturesSection({ content }: { content: any }) {
 // CTA Section Component
 function CTASection({ content }: { content: any }) {
   return (
-    <section className="py-16" style={{backgroundColor: '#F4F9F9'}}>
+    <section className="py-16" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="mx-auto max-w-7xl px-4">
         <div className="rounded-xl border border-gray-200 p-8" style={{backgroundColor: '#D0E8F2'}}>
           {content.icon && (
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{backgroundColor: 'rgb(75,151,201)'}}>
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{backgroundColor: 'var(--nf-primary)'}}>
               <span className="text-xl text-white">{content.icon}</span>
             </div>
           )}
           {content.title && (
-            <h3 className="mb-4 text-2xl font-serif" style={{color: '#1B4965'}}>
+            <h3 className="mb-4 text-2xl font-serif" style={{color: 'var(--nf-heading)'}}>
               {content.title}
             </h3>
           )}
@@ -325,8 +325,8 @@ function CTASection({ content }: { content: any }) {
             <div className="space-y-3 mb-6">
               {content.features.map((feature: string, index: number) => (
                 <div key={index} className="flex items-center space-x-2">
-                  <span style={{color: '#4B97C9'}}>✓</span>
-                  <span className="text-sm font-light" style={{color: '#1B4965'}}>{feature}</span>
+                  <span style={{color: 'var(--nf-primary)'}}>✓</span>
+                  <span className="text-sm font-light" style={{color: 'var(--nf-heading)'}}>{feature}</span>
                 </div>
               ))}
             </div>
@@ -335,9 +335,9 @@ function CTASection({ content }: { content: any }) {
             <a 
               href={content.buttonLink} 
               className="inline-block px-8 py-4 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg"
-              style={{backgroundColor: 'rgb(75,151,201)'}}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{backgroundColor: 'var(--nf-primary)'}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               {content.buttonText}
             </a>
@@ -351,11 +351,11 @@ function CTASection({ content }: { content: any }) {
 // Contact Section Component
 function ContactSection({ content }: { content: any }) {
   return (
-    <section className="py-16" style={{backgroundColor: '#F4F9F9'}}>
+    <section className="py-16" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="mx-auto max-w-7xl px-4">
         {content.title && (
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-serif mb-4" style={{color: '#1B4965'}}>
+            <h2 className="text-3xl font-serif mb-4" style={{color: 'var(--nf-heading)'}}>
               {content.title}
             </h2>
             {content.subtitle && (
@@ -370,10 +370,10 @@ function ContactSection({ content }: { content: any }) {
           {/* Office Information */}
           {content.offices && content.offices.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-xl font-semibold mb-4" style={{color: '#1B4965'}}>Office Addresses</h3>
+              <h3 className="text-xl font-semibold mb-4" style={{color: 'var(--nf-heading)'}}>Office Addresses</h3>
               {content.offices.map((office: any, index: number) => (
                 <div key={index} className="rounded-lg border border-gray-200 p-4" style={{backgroundColor: '#D0E8F2'}}>
-                  <h4 className="font-medium mb-2" style={{color: '#1B4965'}}>{office.name}</h4>
+                  <h4 className="font-medium mb-2" style={{color: 'var(--nf-heading)'}}>{office.name}</h4>
                   <p className="font-light whitespace-pre-line" style={{color: '#9DB4C0'}}>
                     {office.address}
                   </p>
@@ -384,14 +384,14 @@ function ContactSection({ content }: { content: any }) {
           
           {/* Contact Details */}
           <div className="space-y-4">
-            <h3 className="text-xl font-semibold mb-4" style={{color: '#1B4965'}}>Contact Details</h3>
+            <h3 className="text-xl font-semibold mb-4" style={{color: 'var(--nf-heading)'}}>Contact Details</h3>
             {content.phone && (
               <div className="flex items-center space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{backgroundColor: '#D0E8F2'}}>
-                  <span style={{color: '#4B97C9'}}>📞</span>
+                  <span style={{color: 'var(--nf-primary)'}}>📞</span>
                 </div>
                 <div>
-                  <p className="font-medium" style={{color: '#1B4965'}}>Phone</p>
+                  <p className="font-medium" style={{color: 'var(--nf-heading)'}}>Phone</p>
                   <p className="font-light" style={{color: '#9DB4C0'}}>{content.phone}</p>
                 </div>
               </div>
@@ -399,10 +399,10 @@ function ContactSection({ content }: { content: any }) {
             {content.email && (
               <div className="flex items-center space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{backgroundColor: '#D0E8F2'}}>
-                  <span style={{color: '#4B97C9'}}>✉️</span>
+                  <span style={{color: 'var(--nf-primary)'}}>✉️</span>
                 </div>
                 <div>
-                  <p className="font-medium" style={{color: '#1B4965'}}>Email</p>
+                  <p className="font-medium" style={{color: 'var(--nf-heading)'}}>Email</p>
                   <p className="font-light" style={{color: '#9DB4C0'}}>{content.email}</p>
                 </div>
               </div>
@@ -410,10 +410,10 @@ function ContactSection({ content }: { content: any }) {
             {content.whatsapp && (
               <div className="flex items-center space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{backgroundColor: '#D0E8F2'}}>
-                  <span style={{color: '#4B97C9'}}>💬</span>
+                  <span style={{color: 'var(--nf-primary)'}}>💬</span>
                 </div>
                 <div>
-                  <p className="font-medium" style={{color: '#1B4965'}}>WhatsApp</p>
+                  <p className="font-medium" style={{color: 'var(--nf-heading)'}}>WhatsApp</p>
                   <p className="font-light" style={{color: '#9DB4C0'}}>{content.whatsapp}</p>
                 </div>
               </div>
@@ -428,7 +428,7 @@ function ContactSection({ content }: { content: any }) {
 // Default Section Component (Fallback)
 function DefaultSection({ content }: { content: any }) {
   return (
-    <section className="py-16" style={{backgroundColor: '#F4F9F9'}}>
+    <section className="py-16" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
       <div className="mx-auto max-w-7xl px-4">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <pre className="whitespace-pre-wrap font-mono text-sm">

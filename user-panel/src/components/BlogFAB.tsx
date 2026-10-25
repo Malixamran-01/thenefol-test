@@ -104,14 +104,14 @@ export default function BlogFAB() {
           onClick={() => setOpen((o) => !o)}
           className="p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 text-white"
           style={{
-            backgroundColor: 'rgb(75,151,201)',
+            backgroundColor: 'var(--nf-primary)',
             transform: open ? 'rotate(45deg)' : 'rotate(0deg)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
+            e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+            e.currentTarget.style.backgroundColor = 'var(--nf-primary)'
           }}
           aria-label={open ? 'Close menu' : 'Open blog menu'}
         >

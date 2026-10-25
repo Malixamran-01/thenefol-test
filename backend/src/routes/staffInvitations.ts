@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { sendError, sendSuccess, validateRequired, withTransaction } from '../utils/apiHelpers'
 import { hashPassword } from '../utils/staffPassword'
 import { sendStaffAdminInvitationEmail } from '../services/emailService'
 import { generateInviteToken, getAdminPanelOrigin, INVITATION_EXPIRY_HOURS } from '../config/superAdmin'
@@ -66,36 +66,31 @@ export async function inviteStaff(pool: Pool, req: Request, res: Response) {
     const token = generateInviteToken()
     const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_HOURS * 3600 * 1000)
 
-    await pool.query('BEGIN')
-    // Roles are assigned later by admin/super admin — never store role_id on invite
-    await pool.query(
-      `INSERT INTO staff_invitations (email, token, invited_by, role_id, expires_at)
-       VALUES (lower($1), $2, $3, NULL, $4)
-       ON CONFLICT (email) DO UPDATE SET
-         token = EXCLUDED.token,
-         invited_by = EXCLUDED.invited_by,
-         role_id = NULL,
-         expires_at = EXCLUDED.expires_at,
-         accepted_at = NULL`,
-      [normalized, token, ctx.staffId, expiresAt]
-    )
-
     const inviteUrl = `${getAdminPanelOrigin()}/loginasadmin/staff-onboarding?token=${encodeURIComponent(token)}`
-    try {
+    // One connection for the whole transaction; the invite row is rolled back if the email fails
+    await withTransaction(pool, async (client) => {
+      // Roles are assigned later by admin/super admin — never store role_id on invite
+      await client.query(
+        `INSERT INTO staff_invitations (email, token, invited_by, role_id, expires_at)
+         VALUES (lower($1), $2, $3, NULL, $4)
+         ON CONFLICT (email) DO UPDATE SET
+           token = EXCLUDED.token,
+           invited_by = EXCLUDED.invited_by,
+           role_id = NULL,
+           expires_at = EXCLUDED.expires_at,
+           accepted_at = NULL`,
+        [normalized, token, ctx.staffId, expiresAt]
+      )
+
       await sendStaffAdminInvitationEmail({
         to: normalized,
         inviteUrl,
         expiresInHours: INVITATION_EXPIRY_HOURS,
       })
-    } catch (mailErr) {
-      await pool.query('ROLLBACK')
-      throw mailErr
-    }
-    await pool.query('COMMIT')
+    })
 
     sendSuccess(res, { message: `Invitation sent to ${normalized}` })
   } catch (err) {
-    await pool.query('ROLLBACK').catch(() => {})
     console.error('inviteStaff error:', err)
     sendError(res, 500, 'Failed to send invitation', err)
   }
@@ -144,33 +139,35 @@ export async function acceptInvitation(pool: Pool, req: Request, res: Response) 
       return sendError(res, 400, 'Name is required')
     }
 
-    await pool.query('BEGIN')
-    const { rows: invRows } = await pool.query(
+    const client = await pool.connect()
+    try {
+    await client.query('BEGIN')
+    const { rows: invRows } = await client.query(
       `SELECT * FROM staff_invitations
        WHERE token = $1 AND accepted_at IS NULL AND expires_at > NOW() FOR UPDATE`,
       [token]
     )
 
     if (invRows.length === 0) {
-      await pool.query('ROLLBACK')
+      await client.query('ROLLBACK')
       return sendError(res, 400, 'Invalid or expired invitation token')
     }
 
     const invitation = invRows[0]
 
-    const { rows: dupe } = await pool.query(
+    const { rows: dupe } = await client.query(
       `SELECT id, password FROM staff_users WHERE lower(email) = lower($1)`,
       [invitation.email]
     )
     if (dupe.length > 0 && dupe[0].password) {
-      await pool.query('ROLLBACK')
+      await client.query('ROLLBACK')
       return sendError(res, 409, 'A staff account with this email already exists')
     }
 
     const hashed = hashPassword(String(password))
     const termsVer = STAFF_TERMS_ACCEPTANCE_VERSION
 
-    const { rows: userRows } = await pool.query(
+    const { rows: userRows } = await client.query(
       `INSERT INTO staff_users (
          email, name, password, is_active, invited_by, invitation_accepted_at,
          phone, date_of_birth, job_title, terms_accepted_at, terms_accepted_version,
@@ -197,15 +194,20 @@ export async function acceptInvitation(pool: Pool, req: Request, res: Response) 
       [invitation.email, displayName, hashed, invitation.invited_by, phoneNorm, dob, jobNorm, termsVer]
     )
 
-    await pool.query(`UPDATE staff_invitations SET accepted_at = NOW() WHERE id = $1`, [invitation.id])
-    await pool.query('COMMIT')
+    await client.query(`UPDATE staff_invitations SET accepted_at = NOW() WHERE id = $1`, [invitation.id])
+    await client.query('COMMIT')
 
     sendSuccess(res, {
       message: 'Account created. An administrator will assign your roles. You can sign in once roles are assigned.',
       staffId: userRows[0].id,
     })
+    } catch (txErr) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw txErr
+    } finally {
+      client.release()
+    }
   } catch (err) {
-    await pool.query('ROLLBACK').catch(() => {})
     console.error('acceptInvitation error:', err)
     sendError(res, 500, 'Failed to complete onboarding', err)
   }

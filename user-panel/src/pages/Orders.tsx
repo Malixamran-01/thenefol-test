@@ -123,9 +123,9 @@ export default function Orders() {
             <a 
               href="#/user/shop" 
               className="inline-block text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-              style={{ backgroundColor: 'rgb(75,151,201)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               Start Shopping
             </a>
@@ -174,10 +174,10 @@ export default function Orders() {
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                   <div className="flex space-x-4">
-                    <button className="hover:underline text-sm font-medium" style={{ color: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}>
+                    <button className="hover:underline text-sm font-medium" style={{ color: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}>
                       Track Order
                     </button>
-                    <button className="hover:underline text-sm font-medium" style={{ color: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}>
+                    <button className="hover:underline text-sm font-medium" style={{ color: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}>
                       View Details
                     </button>
                     {order.status === 'delivered' && (
@@ -186,7 +186,7 @@ export default function Orders() {
                       </button>
                     )}
                   </div>
-                  <button className="text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>
+                  <button className="text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}>
                     Contact Support
                   </button>
                 </div>
@@ -207,18 +207,18 @@ export default function Orders() {
             <a 
               href="#/user/contact" 
               className="inline-block text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-              style={{ backgroundColor: 'rgb(75,151,201)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{ backgroundColor: 'var(--nf-primary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               Contact Support
             </a>
             <a 
               href="#/user/faq" 
               className="inline-block border-2 px-6 py-3 rounded-lg font-semibold transition-colors"
-              style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'; e.currentTarget.style.color = 'white'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'rgb(75,151,201)'; }}
+              style={{ borderColor: 'var(--nf-primary)', color: 'var(--nf-primary)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--nf-primary)'; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--nf-primary)'; }}
             >
               View FAQ
             </a>

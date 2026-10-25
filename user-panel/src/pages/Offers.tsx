@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import PricingDisplay from '../components/PricingDisplay'
 import { getApiBase } from '../utils/apiBase'
+import { isOutOfStock } from '../utils/stock'
 
 interface Promotion {
   id: string
@@ -232,10 +233,18 @@ export default function Offers() {
                           View Details
                         </button>
                         <button
-                          onClick={() => (window.location.hash = '#/user/cart')}
-                          className="flex-1 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+                          onClick={() => {
+                            if (isOutOfStock(product)) return
+                            window.location.hash = `#/user/product/${product.slug}`
+                          }}
+                          disabled={isOutOfStock(product)}
+                          className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                            isOutOfStock(product)
+                              ? 'cursor-not-allowed bg-gray-100 text-gray-500'
+                              : 'bg-slate-900 text-white hover:bg-slate-700'
+                          }`}
                         >
-                          Redeem Offer
+                          {isOutOfStock(product) ? 'Out of stock' : 'Redeem Offer'}
                         </button>
                       </div>
                     </div>
@@ -250,7 +259,7 @@ export default function Offers() {
             <h2 
               className="text-3xl font-semibold mb-3"
               style={{ 
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.05em'
               }}
@@ -260,7 +269,7 @@ export default function Offers() {
             <p 
               className="mt-3"
               style={{ 
-                color: '#666',
+                color: 'var(--nf-text-muted)',
                 fontFamily: 'var(--font-body-family, sans-serif)',
                 lineHeight: '1.6',
                 letterSpacing: '0.02em'
@@ -291,7 +300,7 @@ export default function Offers() {
               <h3 
                 className="text-lg font-semibold"
                 style={{ 
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.03em'
                 }}
@@ -301,7 +310,7 @@ export default function Offers() {
               <p 
                 className="mt-1 text-sm"
                 style={{ 
-                  color: '#666',
+                  color: 'var(--nf-text-muted)',
                   fontFamily: 'var(--font-body-family, sans-serif)',
                   lineHeight: '1.5',
                   letterSpacing: '0.02em'
@@ -314,7 +323,7 @@ export default function Offers() {
               <h3 
                 className="text-lg font-semibold"
                 style={{ 
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.03em'
                 }}
@@ -324,7 +333,7 @@ export default function Offers() {
               <p 
                 className="mt-1 text-sm"
                 style={{ 
-                  color: '#666',
+                  color: 'var(--nf-text-muted)',
                   fontFamily: 'var(--font-body-family, sans-serif)',
                   lineHeight: '1.5',
                   letterSpacing: '0.02em'

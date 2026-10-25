@@ -13,8 +13,8 @@ declare global {
   }
 }
 
-const ACCENT = 'rgb(75, 151, 201)'
-const ACCENT_HOVER = 'rgb(60, 120, 160)'
+const ACCENT = 'var(--nf-primary)'
+const ACCENT_HOVER = 'var(--nf-primary-hover)'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')

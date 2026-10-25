@@ -125,7 +125,7 @@ export default function SocialSneakPeek() {
         <div className="mb-8 sm:mb-10 text-center">
           <h2
             id="community-section-heading"
-            className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-[0.06em] text-[#1B4965]"
+            className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-[0.06em] text-[color:var(--nf-heading)]"
             style={{ fontFamily: 'var(--font-heading-family, inherit)' }}
           >
             Community
@@ -176,7 +176,7 @@ export default function SocialSneakPeek() {
                     aria-label={`Show post ${i + 1} of ${posts.length}`}
                     onClick={() => scrollToSlide(i)}
                     className={`h-1.5 rounded-full transition-all duration-200 ${
-                      i === activeSlide ? 'w-6 bg-[#1B4965]' : 'w-1.5 bg-[#DCE6EE]'
+                      i === activeSlide ? 'w-6 bg-[color:var(--nf-heading)]' : 'w-1.5 bg-[#DCE6EE]'
                     }`}
                   />
                 ))}
@@ -199,7 +199,7 @@ export default function SocialSneakPeek() {
         <div className="mt-8 sm:mt-10 flex justify-center">
           <a
             href="#/user/blog"
-            className="inline-flex items-center gap-2 rounded-full bg-[#1B4965] px-6 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-[#163d54] hover:shadow-lg"
+            className="inline-flex items-center gap-2 rounded-full bg-[color:var(--nf-heading)] px-6 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-[color:var(--nf-heading-hover)] hover:shadow-lg"
           >
             View more
             <ArrowRight className="h-4 w-4" strokeWidth={2.5} />

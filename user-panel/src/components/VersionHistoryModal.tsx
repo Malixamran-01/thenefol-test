@@ -88,7 +88,7 @@ export default function VersionHistoryModal({
                   padding: '12px 16px',
                   borderRadius: '8px',
                   borderLeft: isSelected
-                    ? '3px solid rgb(75,151,201)'
+                    ? '3px solid var(--nf-primary)'
                     : '3px solid transparent',
                   backgroundColor: isSelected
                     ? 'rgba(75,151,201,0.08)'
@@ -201,7 +201,7 @@ export default function VersionHistoryModal({
           <button
             onClick={onClose}
             className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border-2 transition-colors flex-shrink-0"
-            style={{ borderColor: 'rgb(75,151,201)', color: 'rgb(75,151,201)' }}
+            style={{ borderColor: 'var(--nf-primary)', color: 'var(--nf-primary)' }}
             aria-label="Close"
           >
             <X size={16} />
@@ -271,13 +271,13 @@ export default function VersionHistoryModal({
               disabled={!selectedVersionId}
               onClick={handleRestore}
               className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: 'rgb(75,151,201)', color: 'white' }}
+              style={{ backgroundColor: 'var(--nf-primary)', color: 'white' }}
               onMouseEnter={e => {
                 if (!e.currentTarget.disabled)
-                  e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
+                  e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+                e.currentTarget.style.backgroundColor = 'var(--nf-primary)'
               }}
             >
               Restore draft

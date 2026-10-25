@@ -162,7 +162,7 @@ function BuyCollabProductCta({ task, panelOpen }: { task: TaskRow; panelOpen: bo
     }
     return (
       <div className="flex min-h-[40px] items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 text-xs text-slate-500">
-        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#4B97C9]" />
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[color:var(--nf-primary)]" />
         Preparing link…
       </div>
     )
@@ -171,7 +171,7 @@ function BuyCollabProductCta({ task, panelOpen }: { task: TaskRow; panelOpen: bo
   return (
     <a
       href={`#/user/product/${encodeURIComponent(slug)}?collabPurchase=${encodeURIComponent(String(task.purchase_token))}`}
-      className="flex min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border-2 border-[#1B4965] bg-white px-4 text-xs font-semibold text-[#1B4965] shadow-sm transition hover:bg-[#f4f9fc]"
+      className="flex min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border-2 border-[color:var(--nf-heading)] bg-white px-4 text-xs font-semibold text-[color:var(--nf-heading)] shadow-sm transition hover:bg-[#f4f9fc]"
     >
       <ShoppingBag className="h-4 w-4 shrink-0" />
       Buy now (tracked)
@@ -500,7 +500,7 @@ export default function CollabAssignedTasks({
   if (loading && tasks.length === 0) {
     return (
       <div className="flex justify-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin text-[#4B97C9]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[color:var(--nf-primary)]" />
       </div>
     )
   }
@@ -522,11 +522,11 @@ export default function CollabAssignedTasks({
             className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-[#e8f4fb]"
             style={{ background: '#f0f8fd' }}
           >
-            <ClipboardList className="h-5 w-5 text-[#1B4965]" />
+            <ClipboardList className="h-5 w-5 text-[color:var(--nf-heading)]" />
           </div>
           <div>
             <p className="text-[10px] tracking-[0.2em] uppercase font-bold text-gray-500 mb-1">Work system</p>
-            <h2 className="text-xl font-bold tracking-[0.04em] text-[#1B4965]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
+            <h2 className="text-xl font-bold tracking-[0.04em] text-[color:var(--nf-heading)]" style={{ fontFamily: 'var(--font-heading-family, inherit)' }}>
               Brand tasks
             </h2>
             <p className="text-xs text-gray-500 font-light mt-1 max-w-xl">
@@ -543,7 +543,7 @@ export default function CollabAssignedTasks({
             type="button"
             onClick={() => setSection(tab.key)}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-              section === tab.key ? 'bg-[#1B4965] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              section === tab.key ? 'bg-[color:var(--nf-heading)] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             {tab.label}
@@ -667,7 +667,7 @@ export default function CollabAssignedTasks({
                   {productHref && (
                     <a
                       href={productHref}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#4B97C9] hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--nf-primary)] hover:underline"
                     >
                       <ExternalLink className="h-3 w-3" /> Open product page
                     </a>
@@ -717,7 +717,7 @@ export default function CollabAssignedTasks({
                         <p className="mt-1 text-amber-900">{t.product_not_received_note}</p>
                       ) : null}
                       <p className="mt-1 text-[11px] text-amber-900/90">Team notified — start stays locked until this is resolved.</p>
-                      <a href="#/user/contact" className="mt-1.5 inline-block text-[11px] font-semibold text-[#1B4965] underline">
+                      <a href="#/user/contact" className="mt-1.5 inline-block text-[11px] font-semibold text-[color:var(--nf-heading)] underline">
                         Contact support
                       </a>
                     </div>
@@ -780,7 +780,7 @@ export default function CollabAssignedTasks({
                                 <select
                                   value={openId === t.id ? purchaseRetailer : ''}
                                   onChange={(e) => setPurchaseRetailer(e.target.value)}
-                                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 shadow-sm focus:border-[#4B97C9] focus:outline-none focus:ring-1 focus:ring-[#4B97C9]"
+                                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 shadow-sm focus:border-[color:var(--nf-primary)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nf-primary)]"
                                 >
                                   <option value="">Store</option>
                                   <option value="amazon">Amazon</option>
@@ -790,7 +790,7 @@ export default function CollabAssignedTasks({
                                 <input
                                   value={openId === t.id ? purchaseExtRef : ''}
                                   onChange={(e) => setPurchaseExtRef(e.target.value)}
-                                  className="h-10 min-w-0 w-full rounded-lg border border-slate-200 px-2.5 text-xs text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[#4B97C9] focus:outline-none focus:ring-1 focus:ring-[#4B97C9]"
+                                  className="h-10 min-w-0 w-full rounded-lg border border-slate-200 px-2.5 text-xs text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[color:var(--nf-primary)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nf-primary)]"
                                   placeholder="Marketplace order ID"
                                 />
                               </div>
@@ -802,7 +802,7 @@ export default function CollabAssignedTasks({
                                   <input
                                     value={openId === t.id ? purchaseNefolOrder : ''}
                                     onChange={(e) => setPurchaseNefolOrder(e.target.value)}
-                                    className="h-10 w-full rounded-lg border border-slate-200 px-2.5 text-xs text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[#4B97C9] focus:outline-none focus:ring-1 focus:ring-[#4B97C9]"
+                                    className="h-10 w-full rounded-lg border border-slate-200 px-2.5 text-xs text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-[color:var(--nf-primary)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nf-primary)]"
                                     placeholder="Order # if you didn’t use Buy now above"
                                   />
                                 </div>
@@ -857,7 +857,7 @@ export default function CollabAssignedTasks({
                               type="button"
                               title="Confirms you can start — you’ll need order proof saved above when required."
                               onClick={() => void startTask(t)}
-                              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1B4965] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#163a52]"
+                              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[color:var(--nf-heading)] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#163a52]"
                             >
                               <PlayCircle className="h-4 w-4 shrink-0" />
                               {t.product_id && !skipPurchaseGate(t) ? 'Received product · Start' : 'Start task'}
@@ -991,7 +991,7 @@ export default function CollabAssignedTasks({
                         type="button"
                         disabled={submitting}
                         onClick={() => void submitTask(t)}
-                        className="w-full rounded-xl bg-[#1B4965] py-2.5 text-sm font-semibold text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                        className="w-full rounded-xl bg-[color:var(--nf-heading)] py-2.5 text-sm font-semibold text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
                       >
                         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                         Submit completion
@@ -1015,7 +1015,7 @@ export default function CollabAssignedTasks({
                                   href={url.trim()}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="inline-flex items-center gap-1 text-xs text-[#4B97C9] font-medium"
+                                  className="inline-flex items-center gap-1 text-xs text-[color:var(--nf-primary)] font-medium"
                                 >
                                   <ExternalLink className="h-3 w-3" /> {PLATFORM_LABEL[pk] || pk}
                                 </a>
@@ -1030,7 +1030,7 @@ export default function CollabAssignedTasks({
                             href={t.completion_post_url.trim()}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-[#4B97C9] font-medium"
+                            className="inline-flex items-center gap-1 text-xs text-[color:var(--nf-primary)] font-medium"
                           >
                             <ExternalLink className="h-3 w-3" /> View submitted link
                           </a>

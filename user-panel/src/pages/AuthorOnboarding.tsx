@@ -272,7 +272,7 @@ const AuthorOnboarding = () => {
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
-            <div className="rounded-full bg-gradient-to-r from-[#4B97C9] to-[#1B4965] p-3">
+            <div className="rounded-full bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] p-3">
               <PenLine className="h-8 w-8 text-white" />
             </div>
           </div>
@@ -289,18 +289,18 @@ const AuthorOnboarding = () => {
                   className={`
                     flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all
                     ${step.completed || currentStep === step.number
-                      ? 'border-[#4B97C9] bg-[#4B97C9] text-white'
+                      ? 'border-[color:var(--nf-primary)] bg-[color:var(--nf-primary)] text-white'
                       : 'border-gray-300 bg-white text-gray-400'}
                   `}
                 >
                   {step.completed ? <Check className="h-6 w-6" /> : step.icon}
                 </div>
-                <span className={`mt-2 text-xs font-medium ${currentStep === step.number ? 'text-[#4B97C9]' : 'text-gray-500'}`}>
+                <span className={`mt-2 text-xs font-medium ${currentStep === step.number ? 'text-[color:var(--nf-primary)]' : 'text-gray-500'}`}>
                   {step.title}
                 </span>
               </div>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 ${step.completed ? 'bg-[#4B97C9]' : 'bg-gray-300'}`} />
+                <div className={`flex-1 h-0.5 mx-2 ${step.completed ? 'bg-[color:var(--nf-primary)]' : 'bg-gray-300'}`} />
               )}
             </React.Fragment>
           ))}
@@ -334,7 +334,7 @@ const AuthorOnboarding = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                   placeholder="@yourusername"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                   required
                   autoComplete="off"
                 />
@@ -365,7 +365,7 @@ const AuthorOnboarding = () => {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="John Doe"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                   required
                 />
               </div>
@@ -379,7 +379,7 @@ const AuthorOnboarding = () => {
                   value={penName}
                   onChange={(e) => setPenName(e.target.value)}
                   placeholder="J. Doe"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                 />
               </div>
 
@@ -392,7 +392,7 @@ const AuthorOnboarding = () => {
                   value={realName}
                   onChange={(e) => setRealName(e.target.value)}
                   placeholder="Your real name (kept private)"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                 />
               </div>
 
@@ -480,7 +480,7 @@ const AuthorOnboarding = () => {
               <button
                 type="submit"
                 disabled={loading || !usernameOk || usernameAvailability === 'checking'}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? (
                   <>
@@ -511,7 +511,7 @@ const AuthorOnboarding = () => {
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell readers about yourself..."
                   rows={4}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                 />
                 <p className="mt-1 text-xs text-gray-500">Markdown supported</p>
               </div>
@@ -528,7 +528,7 @@ const AuthorOnboarding = () => {
                       onClick={() => toggleCategory(category)}
                       className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         writingCategories.includes(category)
-                          ? 'bg-[#4B97C9] text-white'
+                          ? 'bg-[color:var(--nf-primary)] text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -550,7 +550,7 @@ const AuthorOnboarding = () => {
                       onClick={() => toggleLanguage(language)}
                       className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         writingLanguages.includes(language)
-                          ? 'bg-[#4B97C9] text-white'
+                          ? 'bg-[color:var(--nf-primary)] text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -569,7 +569,7 @@ const AuthorOnboarding = () => {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="City, Country"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                 />
               </div>
 
@@ -584,7 +584,7 @@ const AuthorOnboarding = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {loading ? (
                     <>
@@ -617,7 +617,7 @@ const AuthorOnboarding = () => {
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
                   placeholder="https://yourwebsite.com"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                 />
               </div>
 
@@ -630,7 +630,7 @@ const AuthorOnboarding = () => {
                   value={twitter}
                   onChange={(e) => setTwitter(e.target.value)}
                   placeholder="@yourusername"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                 />
               </div>
 
@@ -643,7 +643,7 @@ const AuthorOnboarding = () => {
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
                   placeholder="@yourusername"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                 />
               </div>
 
@@ -656,7 +656,7 @@ const AuthorOnboarding = () => {
                   value={linkedin}
                   onChange={(e) => setLinkedin(e.target.value)}
                   placeholder="username"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9] focus:ring-opacity-20"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[color:var(--nf-primary)] focus:ring-opacity-20"
                 />
               </div>
 
@@ -666,7 +666,7 @@ const AuthorOnboarding = () => {
                   id="emailVisible"
                   checked={emailVisible}
                   onChange={(e) => setEmailVisible(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9]"
+                  className="h-4 w-4 rounded border-gray-300 text-[color:var(--nf-primary)] focus:ring-[color:var(--nf-primary)]"
                 />
                 <label htmlFor="emailVisible" className="text-sm text-gray-700">
                   Make my email visible on my author profile
@@ -684,7 +684,7 @@ const AuthorOnboarding = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {loading ? (
                     <>
@@ -715,7 +715,7 @@ const AuthorOnboarding = () => {
                     id="allowComments"
                     checked={allowComments}
                     onChange={(e) => setAllowComments(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9]"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[color:var(--nf-primary)] focus:ring-[color:var(--nf-primary)]"
                   />
                   <div>
                     <label htmlFor="allowComments" className="font-medium text-gray-900 cursor-pointer">
@@ -731,7 +731,7 @@ const AuthorOnboarding = () => {
                     id="allowSubscriptions"
                     checked={allowSubscriptions}
                     onChange={(e) => setAllowSubscriptions(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9]"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[color:var(--nf-primary)] focus:ring-[color:var(--nf-primary)]"
                   />
                   <div>
                     <label htmlFor="allowSubscriptions" className="font-medium text-gray-900 cursor-pointer">
@@ -747,7 +747,7 @@ const AuthorOnboarding = () => {
                     id="allowPaidSubscriptions"
                     checked={allowPaidSubscriptions}
                     onChange={(e) => setAllowPaidSubscriptions(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9]"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[color:var(--nf-primary)] focus:ring-[color:var(--nf-primary)]"
                   />
                   <div>
                     <label htmlFor="allowPaidSubscriptions" className="font-medium text-gray-900 cursor-pointer">
@@ -763,7 +763,7 @@ const AuthorOnboarding = () => {
                     id="showProducts"
                     checked={showProducts}
                     onChange={(e) => setShowProducts(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9]"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[color:var(--nf-primary)] focus:ring-[color:var(--nf-primary)]"
                   />
                   <div>
                     <label htmlFor="showProducts" className="font-medium text-gray-900 cursor-pointer">
@@ -785,7 +785,7 @@ const AuthorOnboarding = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {loading ? (
                     <>
@@ -844,28 +844,28 @@ const AuthorOnboarding = () => {
               {/* ── Agreements ── */}
               <div className="text-left space-y-3">
                 <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-[#4B97C9]" />
+                  <Shield className="w-4 h-4 text-[color:var(--nf-primary)]" />
                   Please read and accept all agreements to continue
                 </p>
 
                 {/* 1. Terms & Creator Agreement */}
                 {[{
                   id: 'terms',
-                  icon: <FileText className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  icon: <FileText className="w-4 h-4 text-[color:var(--nf-primary)] flex-shrink-0 mt-0.5" />,
                   label: 'Terms & Creator Agreement',
                   summary: 'I have read and agree to the Nefol Terms & Conditions and the Creator, Collab & Affiliate Program Agreement.',
                   detail: (
                     <ul className="mt-2 space-y-1 text-xs text-gray-600 list-disc pl-4">
                       <li>I will comply with Nefol's content policies and community standards at all times.</li>
                       <li>I understand my author profile may be suspended or removed for policy violations.</li>
-                      <li>I agree to the <a href="#/user/creator-agreement" target="_blank" rel="noreferrer" className="text-[#4B97C9] underline">Creator, Collab &amp; Affiliate Program Agreement</a> and the <a href="#/user/terms-of-service" target="_blank" rel="noreferrer" className="text-[#4B97C9] underline">Nefol Terms &amp; Conditions</a>.</li>
+                      <li>I agree to the <a href="#/user/creator-agreement" target="_blank" rel="noreferrer" className="text-[color:var(--nf-primary)] underline">Creator, Collab &amp; Affiliate Program Agreement</a> and the <a href="#/user/terms-of-service" target="_blank" rel="noreferrer" className="text-[color:var(--nf-primary)] underline">Nefol Terms &amp; Conditions</a>.</li>
                     </ul>
                   ),
                   checked: agreedToTerms,
                   onChange: setAgreedToTerms,
                 }, {
                   id: 'nda',
-                  icon: <Shield className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  icon: <Shield className="w-4 h-4 text-[color:var(--nf-primary)] flex-shrink-0 mt-0.5" />,
                   label: 'Non-Disclosure Agreement (NDA)',
                   summary: 'I agree to keep confidential any internal Nefol information, unreleased products, campaign details, or business data I may access as a creator.',
                   detail: (
@@ -880,7 +880,7 @@ const AuthorOnboarding = () => {
                   onChange: setAgreedNDA,
                 }, {
                   id: 'tasks',
-                  icon: <Briefcase className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  icon: <Briefcase className="w-4 h-4 text-[color:var(--nf-primary)] flex-shrink-0 mt-0.5" />,
                   label: 'Creator Task & Collab Consent',
                   summary: 'I understand that collab tasks assigned to me are voluntary and I consent to Nefol tracking task completion for reward purposes.',
                   detail: (
@@ -896,7 +896,7 @@ const AuthorOnboarding = () => {
                   onChange: setAgreedTasks,
                 }, {
                   id: 'content',
-                  icon: <BookOpen className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  icon: <BookOpen className="w-4 h-4 text-[color:var(--nf-primary)] flex-shrink-0 mt-0.5" />,
                   label: 'Content & Intellectual Property',
                   summary: 'I confirm that content I submit is my original work and I grant Nefol the right to publish, distribute, and promote it on the platform.',
                   detail: (
@@ -911,7 +911,7 @@ const AuthorOnboarding = () => {
                   onChange: setAgreedContent,
                 }, {
                   id: 'community',
-                  icon: <Users className="w-4 h-4 text-[#4B97C9] flex-shrink-0 mt-0.5" />,
+                  icon: <Users className="w-4 h-4 text-[color:var(--nf-primary)] flex-shrink-0 mt-0.5" />,
                   label: 'Community Guidelines',
                   summary: 'I agree to maintain respectful conduct and will not post harmful, misleading, or prohibited content on the Nefol platform.',
                   detail: (
@@ -935,13 +935,13 @@ const AuthorOnboarding = () => {
                           type="checkbox"
                           checked={agreement.checked}
                           onChange={e => agreement.onChange(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#4B97C9] focus:ring-[#4B97C9] flex-shrink-0"
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[color:var(--nf-primary)] focus:ring-[color:var(--nf-primary)] flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             {agreement.icon}
                             <span className="text-sm font-semibold text-gray-800">{agreement.label}</span>
-                            {agreement.checked && <Check className="w-3.5 h-3.5 text-[#4B97C9] ml-auto flex-shrink-0" />}
+                            {agreement.checked && <Check className="w-3.5 h-3.5 text-[color:var(--nf-primary)] ml-auto flex-shrink-0" />}
                           </div>
                           <p className="mt-1 text-xs text-gray-500 leading-relaxed">{agreement.summary}</p>
                         </div>
@@ -949,7 +949,7 @@ const AuthorOnboarding = () => {
                       <button
                         type="button"
                         onClick={() => setExpandedAgreement(expandedAgreement === agreement.id ? null : agreement.id)}
-                        className="mt-2 ml-7 inline-flex items-center gap-1 text-xs text-[#4B97C9] hover:underline"
+                        className="mt-2 ml-7 inline-flex items-center gap-1 text-xs text-[color:var(--nf-primary)] hover:underline"
                       >
                         {expandedAgreement === agreement.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         {expandedAgreement === agreement.id ? 'Hide details' : 'Read full terms'}
@@ -982,7 +982,7 @@ const AuthorOnboarding = () => {
                 <button
                   onClick={handleComplete}
                   disabled={loading || !allAgreed}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#4B97C9] to-[#1B4965] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[color:var(--nf-primary)] to-[color:var(--nf-heading)] px-6 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>

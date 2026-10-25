@@ -242,22 +242,22 @@ export default function Affiliate() {
           <h2 className="mb-8 text-3xl font-bold text-center">How It Works</h2>
           <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
             <div className="text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white mx-auto text-xl font-bold" style={{ backgroundColor: 'rgb(75,151,201)' }}>1</div>
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white mx-auto text-xl font-bold" style={{ backgroundColor: 'var(--nf-primary)' }}>1</div>
               <h3 className="mb-2 text-lg font-semibold">Sign Up</h3>
               <p className="text-slate-600">Complete our simple application form and get approved within 24-48 hours.</p>
             </div>
             <div className="text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white mx-auto text-xl font-bold" style={{ backgroundColor: 'rgb(75,151,201)' }}>2</div>
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white mx-auto text-xl font-bold" style={{ backgroundColor: 'var(--nf-primary)' }}>2</div>
               <h3 className="mb-2 text-lg font-semibold">Get Links</h3>
               <p className="text-slate-600">Access your unique affiliate links and marketing materials from your dashboard.</p>
             </div>
             <div className="text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white mx-auto text-xl font-bold" style={{ backgroundColor: 'rgb(75,151,201)' }}>3</div>
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white mx-auto text-xl font-bold" style={{ backgroundColor: 'var(--nf-primary)' }}>3</div>
               <h3 className="mb-2 text-lg font-semibold">Promote</h3>
               <p className="text-slate-600">Share Nefol products with your audience through your preferred channels.</p>
             </div>
             <div className="text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white mx-auto text-xl font-bold" style={{ backgroundColor: 'rgb(75,151,201)' }}>4</div>
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white mx-auto text-xl font-bold" style={{ backgroundColor: 'var(--nf-primary)' }}>4</div>
               <h3 className="mb-2 text-lg font-semibold">Earn</h3>
               <p className="text-slate-600">Get paid monthly for every sale generated through your affiliate links.</p>
             </div>
@@ -328,7 +328,7 @@ export default function Affiliate() {
             >
               Apply Now
             </button>
-            <button className="rounded-lg border-2 border-white px-8 py-4 font-semibold text-white transition-colors" onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = 'rgb(75,151,201)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'white'; }}>
+            <button className="rounded-lg border-2 border-white px-8 py-4 font-semibold text-white transition-colors" onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = 'var(--nf-primary)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'white'; }}>
               Learn More
             </button>
           </div>
@@ -851,7 +851,7 @@ export default function Affiliate() {
                   onChange={handleInputChange}
                   required
                   className="mt-1 h-5 w-5 bg-white border-2 border-black rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  style={{ accentColor: '#4b97c9' }}
+                  style={{ accentColor: 'var(--nf-primary)' }}
                 />
                 <label htmlFor="agreeTerms" className="text-sm text-slate-600 cursor-pointer">
                   I agree to the <a href="#" className="text-blue-600 hover:underline">Affiliate Program Terms</a> and 
@@ -872,9 +872,9 @@ export default function Affiliate() {
                 <button
                   type="submit"
                   className="flex-1 rounded-lg px-6 py-3 font-semibold text-white transition-colors"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                  style={{ backgroundColor: 'var(--nf-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                 >
                   Submit Application
                 </button>

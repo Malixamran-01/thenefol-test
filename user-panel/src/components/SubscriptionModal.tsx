@@ -137,7 +137,7 @@ export default function SubscriptionModal({
 
         <div className="flex flex-col lg:flex-row min-h-[400px] lg:min-h-[500px]">
             {/* Left Section - Product Image */}
-            <div className="lg:w-1/2 relative overflow-hidden h-64 lg:h-auto" style={{ backgroundColor: '#F4F9F9' }}>
+            <div className="lg:w-1/2 relative overflow-hidden h-64 lg:h-auto" style={{ backgroundColor: 'var(--nf-surface-soft)' }}>
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-blue-100"></div>
               
               {/* Product Image */}
@@ -169,7 +169,7 @@ export default function SubscriptionModal({
             </div>
 
             {/* Right Section - Subscription Form */}
-            <div className="lg:w-1/2 p-4 lg:p-8 flex flex-col justify-center" style={{ backgroundColor: '#1B4965' }}>
+            <div className="lg:w-1/2 p-4 lg:p-8 flex flex-col justify-center" style={{ backgroundColor: 'var(--nf-heading)' }}>
               <div className="max-w-md mx-auto w-full">
                 {/* Logo */}
                 <div className="flex items-center mb-4 lg:mb-6">

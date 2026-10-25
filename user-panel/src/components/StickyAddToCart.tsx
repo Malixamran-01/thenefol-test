@@ -85,10 +85,10 @@ export default function StickyAddToCart({
             />
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm truncate" style={{color: '#1B4965'}}>
+            <h3 className="font-medium text-sm truncate" style={{color: 'var(--nf-heading)'}}>
               {product.title}
             </h3>
-            <p className="text-sm font-semibold mt-1" style={{color: '#4B97C9'}}>
+            <p className="text-sm font-semibold mt-1" style={{color: 'var(--nf-primary)'}}>
               ₹{String(product.price ?? '')}
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function StickyAddToCart({
           disabled={product.inStock === false}
           onClick={handleAddToCart}
           className="sticky-add-to-cart-btn flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 rounded-lg shadow-md hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-          style={{backgroundColor: 'rgb(75,151,201)', minWidth: '160px'}}
+          style={{backgroundColor: 'var(--nf-primary)', minWidth: '160px'}}
         >
           <ShoppingCart className="w-5 h-5" />
           <span>{product.inStock === false ? 'Out of stock' : 'Add to Cart'}</span>

@@ -30,8 +30,8 @@ export default function SortControls({ value, onChange, className = '' }: SortCo
             onClick={() => onChange(opt.id)}
             className={`rounded-full px-4 py-1.5 text-[12px] font-semibold transition-all duration-150 ease-out min-h-[36px] min-w-[56px] ${
               active
-                ? 'bg-white text-[#1B4965] shadow-sm'
-                : 'text-[#64748b] hover:text-[#1B4965]'
+                ? 'bg-white text-[color:var(--nf-heading)] shadow-sm'
+                : 'text-[#64748b] hover:text-[color:var(--nf-heading)]'
             }`}
           >
             {opt.label}

@@ -1,9 +1,77 @@
 // Centralized API utilities to eliminate duplicate code
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import jwt from 'jsonwebtoken'
+import { extractBearerToken, verifyUserToken } from './authTokens'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+/** Minimal shape of a validated staff session (see routes/staff.ts getStaffContextByToken). */
+export type StaffSessionContext = {
+  staffId: number
+  sessionId: number
+  token: string
+  roles: string[]
+  permissions: string[]
+  primaryRole: string
+  isSuperAdmin: boolean
+  layoutPermissions?: string[]
+  pagePermissions?: string[] | null
+}
+
+type StaffContextResolver = (token: string) => Promise<StaffSessionContext | null>
+
+let staffContextResolver: StaffContextResolver | null = null
+
+/** Registered once from index.ts (avoids a circular import with routes/staff.ts). */
+export function registerStaffContextResolver(resolver: StaffContextResolver) {
+  staffContextResolver = resolver
+}
+
+export async function resolveStaffContext(token: string | null | undefined): Promise<StaffSessionContext | null> {
+  if (!token || !token.startsWith('staff_') || !staffContextResolver) return null
+  return staffContextResolver(token)
+}
+
+export function attachStaffContext(req: Request, context: StaffSessionContext) {
+  ;(req as any).staffId = context.staffId
+  ;(req as any).staffSessionId = context.sessionId
+  ;(req as any).staffSessionToken = context.token
+  ;(req as any).userRole = context.primaryRole
+  ;(req as any).userPermissions = context.permissions
+  ;(req as any).staffLayoutPermissions = context.layoutPermissions
+  ;(req as any).staffPagePermissions = context.pagePermissions
+  ;(req as any).staffContext = context
+}
+
+export function getStaffContext(req: Request): StaffSessionContext | undefined {
+  return (req as any).staffContext as StaffSessionContext | undefined
+}
+
+/**
+ * Transitional: the admin panel still sends x-user-role / x-user-permissions. They are only honoured
+ * for requests that already carry a valid staff session. Set STAFF_HEADER_PERMISSIONS_COMPAT=0 once
+ * every staff role has the right permissions assigned in Roles & Permissions.
+ */
+function staffHeaderCompatEnabled(): boolean {
+  return process.env.STAFF_HEADER_PERMISSIONS_COMPAT !== '0'
+}
+
+function headerPermissions(req: Request): string[] {
+  const raw = String(req.headers['x-user-permissions'] || '')
+  return raw.split(',').map(s => s.trim()).filter(Boolean)
+}
+
+/** True when the request has a valid staff session that grants every permission in `perms`. */
+export function staffHasPermissions(req: Request, perms: string[]): boolean {
+  const ctx = getStaffContext(req)
+  if (!ctx) return false
+  if (ctx.isSuperAdmin || ctx.primaryRole === 'admin') return true
+  const granted = Array.isArray(ctx.permissions) ? ctx.permissions : []
+  if (perms.every(p => granted.includes(p))) return true
+  if (staffHeaderCompatEnabled()) {
+    const fromHeader = headerPermissions(req)
+    if (perms.every(p => fromHeader.includes(p))) return true
+  }
+  return false
+}
 
 // Standardized error response
 export function sendError(res: Response, status: number, message: string, error?: any) {
@@ -94,85 +162,61 @@ export async function handleUpdate(
   }
 }
 
-// Authentication middleware
+// Authentication middleware: a valid staff session (staff_… token) or a signed customer token.
 export function authenticateToken(req: Request, res: Response, next: Function) {
-  const rawAuth = req.headers.authorization
-  const token = rawAuth?.startsWith('Bearer ') ? rawAuth.slice(7).trim() : rawAuth?.trim()
-
-  // If admin/staff user via headers, allow through (token validation not needed)
-  const role = String(req.headers['x-user-role'] || '').trim()
-  const permissionsHeader = String(req.headers['x-user-permissions'] || '').trim()
-  if (role && permissionsHeader) {
-    return next()
-  }
-
-  /** Admin JWT (three segments) + role header — some clients omit x-user-permissions */
-  if (token && role === 'admin' && /^[^\s]+\.[^\s]+\.[^\s]+$/.test(token)) {
-    return next()
-  }
+  const token = extractBearerToken(req)
 
   if (!token) {
     return sendError(res, 401, 'No token provided')
   }
 
-  // JWT format (three dot-separated segments) — used by Google auth and new email login
-  if (/^[^\s.]+\.[^\s.]+\.[^\s.]+$/.test(token)) {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId?: string | number; user_id?: string | number }
-      if (!decoded.userId) {
-        return sendError(res, 401, 'Invalid token')
-      }
-      req.userId = String(decoded.userId)
+  if (token.startsWith('staff_')) {
+    const existing = getStaffContext(req)
+    if (existing && existing.token === token) {
       return next()
-    } catch {
-      return sendError(res, 401, 'Invalid or expired token')
     }
+    resolveStaffContext(token)
+      .then((context) => {
+        if (!context) return sendError(res, 401, 'Invalid or expired admin session')
+        attachStaffContext(req, context)
+        next()
+      })
+      .catch((err) => {
+        console.error('Staff session validation failed:', err)
+        sendError(res, 401, 'Invalid or expired admin session')
+      })
+    return
   }
 
-  // Legacy format: user_token_{userId}_{timestamp}
-  const tokenParts = token.split('_')
-  if (tokenParts.length < 3 || tokenParts[0] !== 'user' || tokenParts[1] !== 'token') {
-    return sendError(res, 401, 'Invalid token format')
+  const userId = verifyUserToken(token)
+  if (!userId) {
+    return sendError(res, 401, 'Invalid or expired token')
   }
 
-  req.userId = tokenParts[2]
+  req.userId = userId
   next()
 }
 
-// Simple role/permission checkers (to be wired with real auth later)
 export function requireRole(roles: string[]) {
   return (req: Request, res: Response, next: Function) => {
-    // Prefer role attached by auth layer
-    const role = (req as any).userRole || (req.headers['x-user-role'] as string) || ''
-    if (!role || !roles.includes(role)) {
+    const ctx = getStaffContext(req)
+    if (!ctx) {
       return sendError(res, 403, 'Forbidden')
     }
-    next()
+    if (ctx.isSuperAdmin || roles.includes(ctx.primaryRole) || ctx.roles.some(r => roles.includes(r))) {
+      return next()
+    }
+    if (staffHeaderCompatEnabled()) {
+      const headerRole = String(req.headers['x-user-role'] || '').trim()
+      if (headerRole && roles.includes(headerRole)) return next()
+    }
+    return sendError(res, 403, 'Forbidden')
   }
 }
 
 export function requirePermission(perms: string[]) {
   return (req: Request, res: Response, next: Function) => {
-    // First check headers (admin panel sends these)
-    const role = req.headers['x-user-role'] as string
-    const permissionsHeader = req.headers['x-user-permissions'] as string
-    const headerPerms = permissionsHeader ? permissionsHeader.split(',').map(s => s.trim()).filter(Boolean) : []
-    
-    // If admin/staff user with permissions via headers, check directly
-    if (role && headerPerms.length > 0) {
-      const hasAllPerms = perms.every(perm => headerPerms.includes(perm))
-      if (hasAllPerms) {
-        return next()
-      }
-    }
-    
-    // Otherwise check attached permissions from RBAC
-    const attached = (req as any).userPermissions as string[] | undefined
-    const userPerms = attached && Array.isArray(attached)
-      ? attached
-      : headerPerms
-    const ok = perms.every(perm => userPerms.includes(perm))
-    if (!ok) return sendError(res, 403, 'Forbidden')
+    if (!staffHasPermissions(req, perms)) return sendError(res, 403, 'Forbidden')
     next()
   }
 }

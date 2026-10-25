@@ -57,12 +57,12 @@ export default function Contact() {
     <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -71,7 +71,7 @@ export default function Contact() {
           <button
             onClick={() => window.location.hash = '#/user/profile'}
             className="inline-flex items-center gap-2 font-light tracking-wide transition-colors hover:opacity-70"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Back to Profile</span>
@@ -82,7 +82,7 @@ export default function Contact() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -91,7 +91,7 @@ export default function Contact() {
           </h1>
           <p 
             className="mx-auto max-w-3xl text-sm sm:text-base font-light tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Have a question or comment? Use the form below to send us a message, or contact us by mail.
           </p>
@@ -103,7 +103,7 @@ export default function Contact() {
             <h2 
               className="text-xl sm:text-2xl md:text-3xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -112,7 +112,7 @@ export default function Contact() {
             </h2>
             <p 
               className="mb-6 font-light tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               We'd love to hear from you - please use the form to send us your message or ideas. 
               Or simply pop in for a cup of fresh tea and a cookie:
@@ -134,7 +134,7 @@ export default function Contact() {
               <div>
                 <label 
                   className="mb-2 block text-sm font-light tracking-wide" 
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }} 
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }} 
                   htmlFor="name"
                 >
                   Name
@@ -173,7 +173,7 @@ export default function Contact() {
               <div>
                 <label 
                   className="mb-2 block text-sm font-light tracking-wide" 
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }} 
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }} 
                   htmlFor="email"
                 >
                   Email *
@@ -202,7 +202,7 @@ export default function Contact() {
               <div>
                 <label 
                   className="mb-2 block text-sm font-light tracking-wide" 
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }} 
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }} 
                   htmlFor="message"
                 >
                   Comment *
@@ -244,7 +244,7 @@ export default function Contact() {
             <h2 
               className="text-xl sm:text-2xl md:text-3xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -257,7 +257,7 @@ export default function Contact() {
               <div>
                 <h3 
                   className="mb-4 text-lg font-light tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Contact Details
                 </h3>
@@ -269,7 +269,7 @@ export default function Contact() {
                     <div>
                       <p 
                         className="font-light tracking-wide"
-                        style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                        style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                       >
                         Email
                       </p>
@@ -289,7 +289,7 @@ export default function Contact() {
                     <div>
                       <p 
                         className="font-light tracking-wide"
-                        style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                        style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                       >
                         WhatsApp
                       </p>
@@ -316,7 +316,7 @@ export default function Contact() {
             <h2 
               className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -325,7 +325,7 @@ export default function Contact() {
             </h2>
             <p 
               className="text-sm sm:text-base font-light mb-6 sm:mb-8 max-w-2xl mx-auto tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               Discover our range of natural skincare products and experience the Nefol difference.
             </p>

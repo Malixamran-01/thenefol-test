@@ -140,7 +140,7 @@ function extractTags(post: Post): string[] {
 
 function PostAvatar({ name }: { name: string }) {
   return (
-    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[9px] font-bold text-[#1B4965]">
+    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#c8dff0] text-[9px] font-bold text-[color:var(--nf-heading)]">
       {(name || 'U').slice(0, 2).toUpperCase()}
     </div>
   )
@@ -156,7 +156,7 @@ function AuthorAvatar({ name, avatar, size = 'md' }: { name: string | null; avat
   return src ? (
     <img src={src} alt={name || ''} className={`${sizeClass} flex-shrink-0 rounded-full object-cover ring-2 ring-white`} />
   ) : (
-    <div className={`flex ${sizeClass} flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#c8dff0] to-[#9bc5e0] font-bold text-[#1B4965] ring-2 ring-white`}>
+    <div className={`flex ${sizeClass} flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#c8dff0] to-[#9bc5e0] font-bold text-[color:var(--nf-heading)] ring-2 ring-white`}>
       {initials}
     </div>
   )
@@ -189,13 +189,13 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
         {cats.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {cats.map((c) => (
-              <span key={c} className="rounded-full bg-[#edf4f9] px-2 py-0.5 text-[10px] font-medium text-[#4B97C9]">
+              <span key={c} className="rounded-full bg-[#edf4f9] px-2 py-0.5 text-[10px] font-medium text-[color:var(--nf-primary)]">
                 {c}
               </span>
             ))}
           </div>
         )}
-        <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 group-hover:text-[#1B4965]">
+        <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 group-hover:text-[color:var(--nf-heading)]">
           {stripHtml(post.title)}
         </h3>
         {post.excerpt && (
@@ -207,7 +207,7 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
               <button
                 key={t}
                 onClick={(e) => { e.preventDefault(); onTagClick(t) }}
-                className="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] text-gray-400 transition-colors hover:border-[#4B97C9] hover:text-[#4B97C9]"
+                className="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] text-gray-400 transition-colors hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-primary)]"
               >
                 #{t}
               </button>
@@ -259,7 +259,7 @@ function AuthorCard({
       </a>
       <div className="min-w-0 flex-1">
         <a href={`#/user/author/${author.author_id}`} className="group block">
-          <p className="flex items-center gap-1 truncate text-[13px] font-semibold text-gray-800 group-hover:text-[#1B4965]">
+          <p className="flex items-center gap-1 truncate text-[13px] font-semibold text-gray-800 group-hover:text-[color:var(--nf-heading)]">
             <span className="truncate">{author.author_name}</span>
             {author.is_verified === true ? <AuthorVerifiedBadge size="md" className="shrink-0" /> : null}
           </p>
@@ -284,7 +284,7 @@ function AuthorCard({
         {author.writing_categories && Array.isArray(author.writing_categories) && author.writing_categories.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {author.writing_categories.slice(0, 3).map((c) => (
-              <span key={c} className="rounded-full bg-[#edf4f9] px-2 py-0.5 text-[10px] font-medium text-[#4B97C9]">{c}</span>
+              <span key={c} className="rounded-full bg-[#edf4f9] px-2 py-0.5 text-[10px] font-medium text-[color:var(--nf-primary)]">{c}</span>
             ))}
           </div>
         )}
@@ -296,7 +296,7 @@ function AuthorCard({
           className={`flex-shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
             isFollowing
               ? 'border border-gray-200 bg-white text-gray-500 hover:border-red-200 hover:text-red-500'
-              : 'bg-[#1B4965] text-white hover:bg-[#163d52]'
+              : 'bg-[color:var(--nf-heading)] text-white hover:bg-[#163d52]'
           }`}
         >
           {pending ? '…' : isFollowing ? 'Following' : 'Follow'}
@@ -332,8 +332,8 @@ function TagCloud({
               weight === 2 ? 'text-[11px]' : 'text-[10px] text-gray-400'
             } ${
               active
-                ? 'border-[#1B4965] bg-[#1B4965] text-white'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-[#4B97C9] hover:text-[#4B97C9]'
+                ? 'border-[color:var(--nf-heading)] bg-[color:var(--nf-heading)] text-white'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-primary)]'
             }`}
           >
             #{tag}
@@ -594,8 +594,8 @@ export default function BlogExplorePage() {
 
       {/* ── Header ── */}
       <div className="mb-6 flex items-center gap-2">
-        <Compass strokeWidth={2.75} className="h-7 w-7 text-[#1B4965]" />
-        <h1 className="text-2xl font-bold text-[#1B4965]">Explore</h1>
+        <Compass strokeWidth={2.75} className="h-7 w-7 text-[color:var(--nf-heading)]" />
+        <h1 className="text-2xl font-bold text-[color:var(--nf-heading)]">Explore</h1>
       </div>
 
       {/* ── Search bar ── */}
@@ -606,7 +606,7 @@ export default function BlogExplorePage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search posts, authors, tags…"
-          className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-10 text-sm shadow-sm outline-none ring-0 transition focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+          className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-10 text-sm shadow-sm outline-none ring-0 transition focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20"
         />
         {query && (
           <button
@@ -626,8 +626,8 @@ export default function BlogExplorePage() {
             onClick={() => { setCategory(cat); setActiveTab('posts') }}
             className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition-colors ${
               category === cat
-                ? 'bg-[#1B4965] text-white shadow-sm'
-                : 'border border-gray-200 bg-white text-gray-600 hover:border-[#4B97C9] hover:text-[#4B97C9]'
+                ? 'bg-[color:var(--nf-heading)] text-white shadow-sm'
+                : 'border border-gray-200 bg-white text-gray-600 hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-primary)]'
             }`}
           >
             {cat}
@@ -639,13 +639,13 @@ export default function BlogExplorePage() {
       {hasFilters && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {activeTag && (
-            <span className="flex items-center gap-1 rounded-full bg-[#edf4f9] px-3 py-1 text-[11px] font-medium text-[#1B4965]">
+            <span className="flex items-center gap-1 rounded-full bg-[#edf4f9] px-3 py-1 text-[11px] font-medium text-[color:var(--nf-heading)]">
               <Tag className="h-3 w-3" />#{activeTag}
               <button onClick={() => setActiveTag(null)} className="ml-0.5"><X className="h-3 w-3" /></button>
             </span>
           )}
           {sort !== 'latest' && (
-            <span className="flex items-center gap-1 rounded-full bg-[#edf4f9] px-3 py-1 text-[11px] font-medium text-[#1B4965]">
+            <span className="flex items-center gap-1 rounded-full bg-[#edf4f9] px-3 py-1 text-[11px] font-medium text-[color:var(--nf-heading)]">
               <TrendingUp className="h-3 w-3" />{sort}
               <button onClick={() => setSort('latest')} className="ml-0.5"><X className="h-3 w-3" /></button>
             </span>
@@ -664,7 +664,7 @@ export default function BlogExplorePage() {
             onClick={() => setActiveTab(tab)}
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold capitalize transition-colors ${
               activeTab === tab
-                ? 'bg-white shadow-sm text-[#1B4965]'
+                ? 'bg-white shadow-sm text-[color:var(--nf-heading)]'
                 : 'text-gray-600 hover:text-gray-800'
             }`}
           >
@@ -691,7 +691,7 @@ export default function BlogExplorePage() {
                   key={s}
                   onClick={() => setSort(s)}
                   className={`rounded-lg px-3 py-1 text-[11px] font-medium capitalize transition-colors ${
-                    sort === s ? 'bg-[#1B4965] text-white' : 'text-gray-500 hover:text-gray-700'
+                    sort === s ? 'bg-[color:var(--nf-heading)] text-white' : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   {s}
@@ -705,7 +705,7 @@ export default function BlogExplorePage() {
             <div className="mb-6">
               <div className="mb-3 flex items-center gap-1.5">
                 <TrendingUp className="h-4 w-4 text-amber-500" />
-                <h2 className="text-base font-bold text-[#1B4965]">Trending Now</h2>
+                <h2 className="text-base font-bold text-[color:var(--nf-heading)]">Trending Now</h2>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {trendingPosts.slice(0, 4).map((post) => (
@@ -718,14 +718,14 @@ export default function BlogExplorePage() {
           {/* Main posts grid */}
           {loadingPosts && posts.length === 0 ? (
             <div className="flex justify-center py-12">
-              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
             </div>
           ) : posts.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
               <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
               <p className="font-medium text-gray-400">No posts found</p>
               {hasFilters && (
-                <button onClick={clearFilters} className="mt-2 text-sm text-[#4B97C9] underline">Clear filters</button>
+                <button onClick={clearFilters} className="mt-2 text-sm text-[color:var(--nf-primary)] underline">Clear filters</button>
               )}
             </div>
           ) : (
@@ -740,8 +740,8 @@ export default function BlogExplorePage() {
               {!isSearching && (
                 <>
                   <div className="mb-3 flex items-center gap-1.5">
-                    <Clock className="h-4 w-4 text-[#4B97C9]" />
-                    <h2 className="text-base font-bold text-[#1B4965]">Latest Posts</h2>
+                    <Clock className="h-4 w-4 text-[color:var(--nf-primary)]" />
+                    <h2 className="text-base font-bold text-[color:var(--nf-heading)]">Latest Posts</h2>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {posts.map((post) => (
@@ -755,10 +755,10 @@ export default function BlogExplorePage() {
                   <button
                     onClick={() => fetchPosts(false)}
                     disabled={loadingPosts}
-                    className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:border-[#4B97C9] hover:text-[#4B97C9] disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-primary)] disabled:opacity-50"
                   >
                     {loadingPosts
-                      ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                      ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
                       : <ChevronRight className="h-4 w-4" />}
                     Load more
                   </button>
@@ -785,8 +785,8 @@ export default function BlogExplorePage() {
                 {!hasQuery && suggestedAuthors.length > 0 && (
                   <div className="mb-6">
                     <div className="mb-3 flex items-center gap-1.5">
-                      <UserPlus className="h-4 w-4 text-[#4B97C9]" />
-                      <h2 className="text-base font-bold text-[#1B4965]">
+                      <UserPlus className="h-4 w-4 text-[color:var(--nf-primary)]" />
+                      <h2 className="text-base font-bold text-[color:var(--nf-heading)]">
                         {isAuthenticated ? 'Suggested for you' : 'Popular authors'}
                       </h2>
                     </div>
@@ -808,7 +808,7 @@ export default function BlogExplorePage() {
                   <div className="mb-6">
                     <div className="mb-3 flex items-center gap-1.5">
                       <Clock className="h-4 w-4 text-gray-400" />
-                      <h2 className="text-base font-bold text-[#1B4965]">Searched earlier</h2>
+                      <h2 className="text-base font-bold text-[color:var(--nf-heading)]">Searched earlier</h2>
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {historyAuthors.map((a) => (
@@ -828,14 +828,14 @@ export default function BlogExplorePage() {
                   <>
                     <div className="mb-3 flex items-center gap-1.5">
                       <Users className="h-4 w-4 text-gray-400" />
-                      <h2 className="text-base font-bold text-[#1B4965]">
+                      <h2 className="text-base font-bold text-[color:var(--nf-heading)]">
                         Results for &quot;{debouncedQuery}&quot;
                       </h2>
                     </div>
 
                     {loadingAuthors && authors.length === 0 ? (
                       <div className="flex justify-center py-12">
-                        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
                       </div>
                     ) : authors.length === 0 ? (
                       <div className="flex flex-col items-center py-16 text-center">
@@ -860,10 +860,10 @@ export default function BlogExplorePage() {
                             <button
                               onClick={() => fetchAuthors(false)}
                               disabled={loadingAuthors}
-                              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:border-[#4B97C9] hover:text-[#4B97C9] disabled:opacity-50"
+                              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:border-[color:var(--nf-primary)] hover:text-[color:var(--nf-primary)] disabled:opacity-50"
                             >
                               {loadingAuthors ? (
-                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
                               ) : (
                                 <ChevronRight className="h-4 w-4" />
                               )}
@@ -895,12 +895,12 @@ export default function BlogExplorePage() {
       {activeTab === 'tags' && (
         <>
           <div className="mb-3 flex items-center gap-1.5">
-            <Tag className="h-4 w-4 text-[#4B97C9]" />
-            <h2 className="text-base font-bold text-[#1B4965]">Browse by Tag</h2>
+            <Tag className="h-4 w-4 text-[color:var(--nf-primary)]" />
+            <h2 className="text-base font-bold text-[color:var(--nf-heading)]">Browse by Tag</h2>
           </div>
           {loadingTags ? (
             <div className="flex justify-center py-12">
-              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#4B97C9] border-t-transparent" />
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[color:var(--nf-primary)] border-t-transparent" />
             </div>
           ) : tags.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">

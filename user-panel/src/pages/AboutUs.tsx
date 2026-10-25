@@ -6,12 +6,12 @@ export default function AboutUs() {
     <main className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20">
@@ -20,7 +20,7 @@ export default function AboutUs() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -29,7 +29,7 @@ export default function AboutUs() {
           </h1>
           <p 
             className="text-sm sm:text-base font-light max-w-3xl mx-auto tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Natural beauty products that combine science with herbs, crafted with care and commitment to quality.
           </p>
@@ -43,7 +43,7 @@ export default function AboutUs() {
                 <h2 
                   className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 sm:mb-8 tracking-[0.15em]"
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
@@ -52,7 +52,7 @@ export default function AboutUs() {
                 </h2>
                 <p 
                   className="font-light leading-relaxed mb-6 tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   NEFOL has a series of beauty products that don't have harmful components in them. 
                   NEFOL products are based on the concept of combination with science and herbs. 
@@ -61,7 +61,7 @@ export default function AboutUs() {
                 </p>
                 <p 
                   className="font-light leading-relaxed tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   The concept of providing quality products to society took a long time for research. 
                   NEFOL fulfilled all the global norms and set its standard accordingly.
@@ -112,7 +112,7 @@ export default function AboutUs() {
                 </h3>
                 <p 
                   className="font-light leading-relaxed mb-4 tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   Our signature ingredient, Blue Tea (Aprajita), is a natural powerhouse rich in antioxidants, 
                   anthocyanins, and flavonoids. This beautiful flower has been used in traditional Ayurvedic 
@@ -123,7 +123,7 @@ export default function AboutUs() {
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--arctic-blue-primary)' }}></div>
                     <span 
                       className="font-light tracking-wide"
-                      style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                      style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                     >
                       Natural skin brightening properties
                     </span>
@@ -132,7 +132,7 @@ export default function AboutUs() {
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--arctic-blue-primary)' }}></div>
                     <span 
                       className="font-light tracking-wide"
-                      style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                      style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                     >
                       Anti-inflammatory and soothing effects
                     </span>
@@ -141,7 +141,7 @@ export default function AboutUs() {
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--arctic-blue-primary)' }}></div>
                     <span 
                       className="font-light tracking-wide"
-                      style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                      style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                     >
                       Rich in antioxidants for skin protection
                     </span>
@@ -150,7 +150,7 @@ export default function AboutUs() {
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--arctic-blue-primary)' }}></div>
                     <span 
                       className="font-light tracking-wide"
-                      style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                      style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                     >
                       Supports collagen and skin elasticity
                     </span>
@@ -181,7 +181,7 @@ export default function AboutUs() {
               <h3 
                 className="text-xl sm:text-2xl font-light mb-3 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -190,7 +190,7 @@ export default function AboutUs() {
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 We use only natural, plant-based ingredients without harmful chemicals or synthetic additives.
               </p>
@@ -203,7 +203,7 @@ export default function AboutUs() {
               <h3 
                 className="text-xl sm:text-2xl font-light mb-3 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -212,7 +212,7 @@ export default function AboutUs() {
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 Our products are formulated to be gentle on all skin types, including sensitive skin.
               </p>
@@ -225,7 +225,7 @@ export default function AboutUs() {
               <h3 
                 className="text-xl sm:text-2xl font-light mb-3 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -234,7 +234,7 @@ export default function AboutUs() {
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 Every product undergoes rigorous testing to meet the highest quality standards.
               </p>
@@ -247,7 +247,7 @@ export default function AboutUs() {
               <h3 
                 className="text-xl sm:text-2xl font-light mb-3 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -256,7 +256,7 @@ export default function AboutUs() {
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 We are committed to sustainable practices and environmentally friendly packaging.
               </p>
@@ -269,7 +269,7 @@ export default function AboutUs() {
               <h3 
                 className="text-xl sm:text-2xl font-light mb-3 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -278,7 +278,7 @@ export default function AboutUs() {
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 We support education, health, women's rights, and rural development initiatives.
               </p>
@@ -291,7 +291,7 @@ export default function AboutUs() {
               <h3 
                 className="text-xl sm:text-2xl font-light mb-3 tracking-[0.15em]"
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
@@ -300,7 +300,7 @@ export default function AboutUs() {
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 We combine traditional knowledge with modern science to create effective products.
               </p>
@@ -313,7 +313,7 @@ export default function AboutUs() {
           <h2 
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-8 sm:mb-12 text-center tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -332,7 +332,7 @@ export default function AboutUs() {
                 </div>
                 <p 
                   className="text-sm font-light tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Cruelty-Free
                 </p>
@@ -347,7 +347,7 @@ export default function AboutUs() {
                 </div>
                 <p 
                   className="text-sm font-light tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Paraben-Free
                 </p>
@@ -362,7 +362,7 @@ export default function AboutUs() {
                 </div>
                 <p 
                   className="text-sm font-light tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Made in India
                 </p>
@@ -377,7 +377,7 @@ export default function AboutUs() {
                 </div>
                 <p 
                   className="text-sm font-light tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Chemical-Free
                 </p>
@@ -392,7 +392,7 @@ export default function AboutUs() {
                 </div>
                 <p 
                   className="text-sm font-light tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Vegan
                 </p>
@@ -407,7 +407,7 @@ export default function AboutUs() {
             <h2 
               className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -416,7 +416,7 @@ export default function AboutUs() {
             </h2>
             <p 
               className="text-sm sm:text-base font-light mb-6 sm:mb-8 max-w-2xl mx-auto tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               Experience the power of natural beauty with NEFOL. Discover our range of products 
               and become part of our community committed to natural, effective skincare.

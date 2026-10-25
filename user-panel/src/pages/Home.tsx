@@ -471,17 +471,17 @@ export default function Home() {
     <main className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       {/* Scrolling Text Banner - Between Navbar and Top Media Carousel */}
       {scrollingText && (
-        <section className="relative py-2 overflow-hidden mt-0 sm:mt-2 md:mt-4" style={{ backgroundColor: 'var(--arctic-blue-primary)' }}>
+        <section className="relative py-2 overflow-hidden mt-0 sm:mt-2 md:mt-4" style={{ backgroundColor: 'var(--nf-announcement-bg)' }}>
           <div className="scrolling-text-wrapper">
             <div className="scrolling-text-content">
               <span className="scrolling-text-item">{scrollingText}</span>
@@ -511,7 +511,7 @@ export default function Home() {
               animation: scroll-left-to-right 40s linear infinite;
               font-weight: 600;
               font-size: 0.875rem;
-              color: #ffffff;
+              color: var(--nf-announcement-text);
               text-transform: uppercase;
               letter-spacing: 0.05em;
             }
@@ -655,7 +655,7 @@ export default function Home() {
           <h2 
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-12 sm:mb-16 text-center tracking-[0.15em]" 
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -703,7 +703,7 @@ export default function Home() {
                       aria-label={`Show product ${i + 1} of ${mobileJustLandedProducts.length}`}
                       onClick={() => scrollJustLandedTo(i)}
                       className={`h-1.5 rounded-full transition-all duration-200 ${
-                        i === justLandedSlide ? 'w-6 bg-[#1B4965]' : 'w-1.5 bg-[#DCE6EE]'
+                        i === justLandedSlide ? 'w-6 bg-[color:var(--nf-heading)]' : 'w-1.5 bg-[#DCE6EE]'
                       }`}
                     />
                   ))}
@@ -725,7 +725,7 @@ export default function Home() {
                       }`}
                       style={{
                         backgroundColor: canGoPrevious ? '#fff' : '#e5e7eb',
-                        color: canGoPrevious ? '#1a1a1a' : '#9ca3af',
+                        color: canGoPrevious ? 'var(--nf-text)' : '#9ca3af',
                       }}
                       aria-label="Previous products"
                     >
@@ -741,7 +741,7 @@ export default function Home() {
                       }`}
                       style={{
                         backgroundColor: canGoNext ? '#fff' : '#e5e7eb',
-                        color: canGoNext ? '#1a1a1a' : '#9ca3af',
+                        color: canGoNext ? 'var(--nf-text)' : '#9ca3af',
                       }}
                       aria-label="Next products"
                     >
@@ -777,7 +777,7 @@ export default function Home() {
           <h2 
             className="text-2xl sm:text-3xl md:text-4xl font-light mb-12 sm:mb-16 text-center tracking-[0.15em]" 
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -1071,17 +1071,17 @@ export default function Home() {
                 <h2 
                   className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
                   {nefolCollection.title}
                 </h2>
-                <h3 className="text-base sm:text-lg font-light mb-4 sm:mb-6 tracking-wide" style={{color: '#666', letterSpacing: '0.05em'}}>
+                <h3 className="text-base sm:text-lg font-light mb-4 sm:mb-6 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
                   {nefolCollection.subtitle}
                 </h3>
-                <p className="text-sm sm:text-base font-light mb-8 sm:mb-10 leading-relaxed" style={{color: '#666', letterSpacing: '0.02em'}}>
+                <p className="text-sm sm:text-base font-light mb-8 sm:mb-10 leading-relaxed" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
                   {nefolCollection.description}
                 </p>
                   <button 
@@ -1120,14 +1120,14 @@ export default function Home() {
               <h2 
                 className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}
               >
                 {foreverFavorites.title}
               </h2>
-              <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{color: '#666', letterSpacing: '0.05em'}}>
+              <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
                 {foreverFavorites.description}
               </p>
             </div>
@@ -1192,28 +1192,28 @@ export default function Home() {
                 <h2 
                   className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]" 
                   style={{
-                    color: '#1a1a1a',
+                    color: 'var(--nf-text)',
                     fontFamily: 'var(--font-heading-family)',
                     letterSpacing: '0.15em'
                   }}
                 >
                   {naturalBeauty.title}
                 </h2>
-                <h3 className="text-base sm:text-lg font-light mb-4 sm:mb-6 tracking-wide" style={{color: '#666', letterSpacing: '0.05em'}}>
+                <h3 className="text-base sm:text-lg font-light mb-4 sm:mb-6 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
                   {naturalBeauty.subtitle}
                 </h3>
-                <p className="text-sm sm:text-base font-light mb-8 sm:mb-10 leading-relaxed" style={{color: '#666', letterSpacing: '0.02em'}}>
+                <p className="text-sm sm:text-base font-light mb-8 sm:mb-10 leading-relaxed" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
                   {naturalBeauty.description}
                 </p>
                 <button 
                   onClick={() => window.location.hash = `#/user${naturalBeauty.buttonLink || '/shop'}`}
                   className="px-6 sm:px-8 py-3 text-white font-medium transition-all duration-300 text-xs sm:text-sm tracking-wide uppercase rounded-xl"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
+                  style={{ backgroundColor: 'var(--nf-primary)' }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
+                    e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+                    e.currentTarget.style.backgroundColor = 'var(--nf-primary)'
                   }}
                 >
                   {naturalBeauty.buttonText}
@@ -1258,14 +1258,14 @@ export default function Home() {
             <h2 
               className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
             >
               Our Star Ingredient
             </h2>
-            <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{color: '#666', letterSpacing: '0.05em'}}>
+            <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
               Discover the power of nature's finest ingredients
             </p>
           </div>
@@ -1323,7 +1323,7 @@ export default function Home() {
                     <h3 
                       className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.1em]" 
                       style={{
-                        color: '#1a1a1a',
+                        color: 'var(--nf-text)',
                         fontFamily: 'var(--font-heading-family)',
                         letterSpacing: '0.1em'
                       }}
@@ -1335,7 +1335,7 @@ export default function Home() {
                     </p>
                   </div>
                   
-                  <p className="text-sm sm:text-base font-light leading-relaxed mb-8 tracking-wide" style={{color: '#666', letterSpacing: '0.02em'}}>
+                  <p className="text-sm sm:text-base font-light leading-relaxed mb-8 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
                     Rich in powerful antioxidants such as anthocyanins, flavonoids, and polyphenols, Blue Pea is celebrated for its skin-brightening, anti-inflammatory, and soothing properties. This vibrant flower helps neutralize free radicals and protect the skin from oxidative stress.
                   </p>
                   
@@ -1386,7 +1386,7 @@ export default function Home() {
               <h2 
                 className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
                 style={{
-                  color: '#1a1a1a',
+                  color: 'var(--nf-text)',
                   fontFamily: 'var(--font-heading-family)',
                   letterSpacing: '0.15em'
                 }}

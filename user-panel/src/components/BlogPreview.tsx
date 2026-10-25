@@ -90,9 +90,9 @@ export default function BlogPreview({
         .blog-preview-content ul { list-style: disc; margin-left: 2em; padding-left: 0.5em; }
         .blog-preview-content ol { list-style: decimal; margin-left: 2em; padding-left: 0.5em; }
         .blog-preview-content li { margin: 0.25em 0; padding-left: 0.25em; }
-        .blog-preview-content a { color: #4B97C9; text-decoration: underline; }
+        .blog-preview-content a { color: var(--nf-primary); text-decoration: underline; }
         .blog-preview-content img { max-width: 100%; height: auto; margin: 10px auto; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: block; }
-        .blog-preview-content img:hover { border-color: #4B97C9; }
+        .blog-preview-content img:hover { border-color: var(--nf-primary); }
         .blog-preview-content div[contenteditable="false"] { text-align: center; margin: 20px 0; display: block; width: 100%; }
         .blog-preview-content .youtube-embed-wrapper { text-align: center; margin: 20px auto; display: block; width: 100%; }
         .blog-preview-content .youtube-embed-wrapper iframe { max-width: 100%; width: 560px; height: 315px; border: 0; border-radius: 8px; }
@@ -131,7 +131,7 @@ export default function BlogPreview({
           )}
 
           {/* Title - supports HTML for rich formatting */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-6" style={{ color: '#1B4965' }}>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight mb-6" style={{ color: 'var(--nf-heading)' }}>
             {title && /<[^>]+>/.test(title) ? (
               <span dangerouslySetInnerHTML={{ __html: title }} />
             ) : (

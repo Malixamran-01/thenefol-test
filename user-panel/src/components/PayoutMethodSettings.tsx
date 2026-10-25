@@ -121,7 +121,7 @@ export default function PayoutMethodSettings() {
     <form onSubmit={save} className="space-y-6">
       <p className="text-sm text-gray-600 leading-relaxed">
         When you redeem Nefol coins on the{' '}
-        <a href="#/user/coin-withdrawal" className="font-medium text-[#1B4965] underline">
+        <a href="#/user/coin-withdrawal" className="font-medium text-[color:var(--nf-heading)] underline">
           redeem
         </a>{' '}
         page, payouts are sent to this account. Razorpay or manual processing uses the same details as coin withdrawals.
@@ -132,7 +132,7 @@ export default function PayoutMethodSettings() {
           type="button"
           onClick={() => setMethod('upi')}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            method === 'upi' ? 'bg-white text-[#1B4965] shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            method === 'upi' ? 'bg-white text-[color:var(--nf-heading)] shadow-sm' : 'text-gray-600 hover:text-gray-900'
           }`}
         >
           UPI
@@ -141,7 +141,7 @@ export default function PayoutMethodSettings() {
           type="button"
           onClick={() => setMethod('bank')}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            method === 'bank' ? 'bg-white text-[#1B4965] shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            method === 'bank' ? 'bg-white text-[color:var(--nf-heading)] shadow-sm' : 'text-gray-600 hover:text-gray-900'
           }`}
         >
           Bank account
@@ -158,7 +158,7 @@ export default function PayoutMethodSettings() {
           onChange={(e) => setAccountHolderName(e.target.value)}
           required
           autoComplete="name"
-          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20"
           placeholder="Name as per bank / UPI"
         />
       </div>
@@ -171,7 +171,7 @@ export default function PayoutMethodSettings() {
             value={upiId}
             onChange={(e) => setUpiId(e.target.value)}
             required
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20"
             placeholder="yourname@paytm / ybl / okaxis…"
           />
         </div>
@@ -184,7 +184,7 @@ export default function PayoutMethodSettings() {
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
               required
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20"
               placeholder="e.g. HDFC Bank"
             />
           </div>
@@ -198,7 +198,7 @@ export default function PayoutMethodSettings() {
               onChange={(e) => setAccountNumber(e.target.value)}
               required
               autoComplete="off"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20"
               placeholder="Account number"
             />
           </div>
@@ -210,7 +210,7 @@ export default function PayoutMethodSettings() {
               onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
               required
               maxLength={11}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 font-mono"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20 font-mono"
               placeholder="HDFC0001234"
             />
           </div>
@@ -230,7 +230,7 @@ export default function PayoutMethodSettings() {
       <button
         type="submit"
         disabled={saving}
-        className="w-full sm:w-auto rounded-xl bg-[#1B4965] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#163d54] disabled:opacity-50 inline-flex items-center justify-center gap-2"
+        className="w-full sm:w-auto rounded-xl bg-[color:var(--nf-heading)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[color:var(--nf-heading-hover)] disabled:opacity-50 inline-flex items-center justify-center gap-2"
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         Save payout method

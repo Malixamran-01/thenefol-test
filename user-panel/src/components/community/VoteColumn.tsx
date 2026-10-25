@@ -38,7 +38,7 @@ export default function VoteColumn({
           myVote === 1
             ? 'text-orange-500'
             : myVote === -1
-              ? 'text-[#4B97C9]'
+              ? 'text-[color:var(--nf-primary)]'
               : 'text-[#64748b]'
         }`}
       >
@@ -50,8 +50,8 @@ export default function VoteColumn({
         aria-label="Downvote"
         className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
           myVote === -1
-            ? 'bg-[#edf4f9] text-[#4B97C9]'
-            : 'text-[#94a3b8] hover:bg-[#f0f4f8] hover:text-[#4B97C9]'
+            ? 'bg-[#edf4f9] text-[color:var(--nf-primary)]'
+            : 'text-[#94a3b8] hover:bg-[#f0f4f8] hover:text-[color:var(--nf-primary)]'
         }`}
       >
         <ArrowDown className="h-3.5 w-3.5" strokeWidth={myVote === -1 ? 2.5 : 2} />

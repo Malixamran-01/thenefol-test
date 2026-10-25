@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useProducts } from '../hooks/useProducts'
-import { useCart } from '../contexts/CartContext'
+import ListingAddToCartButton from '../components/ListingAddToCartButton'
 import type { Product } from '../types'
 import PricingDisplay from '../components/PricingDisplay'
 import { getProductRating, getProductReviewCount } from '../utils/product_reviews'
 
 export default function CategoryPage() {
   const { items, loading, error } = useProducts()
-  const cartContext = useCart()
-  const addItem = cartContext?.addItem
   const [category, setCategory] = useState<string>('')
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
 
@@ -97,7 +95,7 @@ export default function CategoryPage() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]" 
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -106,7 +104,7 @@ export default function CategoryPage() {
           </h1>
           <p 
             className="text-sm sm:text-base font-light max-w-2xl mx-auto px-4 tracking-wide" 
-            style={{color: '#666', letterSpacing: '0.05em'}}
+            style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}
           >
             {getCategoryDescription(category)}
           </p>
@@ -154,10 +152,12 @@ export default function CategoryPage() {
                   </div>
                   <div className="flex flex-col flex-grow px-2">
                     <a href={`#/user/product/${product.slug}`} className="block">
-                      <h3 className="text-sm sm:text-base font-light tracking-wide mb-3 line-clamp-2 min-h-[3rem] flex items-start hover:opacity-70 transition-opacity cursor-pointer" style={{color: '#1a1a1a', letterSpacing: '0.05em'}}>
+                      <h3 className="text-sm sm:text-base font-light tracking-wide mb-3 line-clamp-2 min-h-[3rem] flex items-start hover:opacity-70 transition-opacity cursor-pointer" style={{color: 'var(--nf-text)', letterSpacing: '0.05em'}}>
                         {product.title}
                       </h3>
                     </a>
+                    {/* Empty row keeps the same height when a product has no rating, so cards line up */}
+                    {rating <= 0 && <div className="mb-4 h-5" aria-hidden="true" />}
                     {rating > 0 && (
                       <div className="flex items-center mb-4">
                         <div className="flex text-yellow-400">
@@ -183,41 +183,7 @@ export default function CategoryPage() {
                         </div>
                       </div>
                       <div className="flex gap-3">
-                        <button 
-                          onClick={(e) => {
-                            if (addItem) {
-                              try {
-                                addItem(product)
-                                // Show success feedback
-                                const button = e.currentTarget
-                                const originalText = button.textContent
-                                button.textContent = '✓ Added to Cart'
-                                button.style.backgroundColor = 'rgb(75,151,201)'
-                                setTimeout(() => {
-                                  button.textContent = originalText
-                                  button.style.backgroundColor = 'rgb(75,151,201)'
-                                }, 4000) // Increased to 4 seconds for better visibility
-                              } catch (error) {
-                                console.log('Authentication required for cart operation')
-                              }
-                            }
-                          }}
-                          className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900"
-                          style={{
-                            backgroundColor: 'rgb(75,151,201)',
-                            color: '#FFFFFF',
-                            minHeight: '44px',
-                            letterSpacing: '0.15em'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
-                          }}
-                        >
-                          Add to Cart
-                        </button>
+                        <ListingAddToCartButton product={product} className="!rounded-none" />
                         <a 
                           href={`#/user/product/${product.slug}`}
                           className="flex-1 px-6 py-3 text-slate-900 text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase text-center flex items-center justify-center border border-slate-900 hover:bg-slate-900 hover:text-white"

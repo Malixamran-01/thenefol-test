@@ -188,7 +188,7 @@ export default function PrivacySecurity() {
                 className={`w-12 h-6 rounded-full transition-colors ${
                   twoFactorEnabled ? '' : 'bg-slate-300 dark:bg-slate-600'
                 }`}
-                style={twoFactorEnabled ? { backgroundColor: 'rgb(75,151,201)' } : {}}
+                style={twoFactorEnabled ? { backgroundColor: 'var(--nf-primary)' } : {}}
               >
                 <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
                   twoFactorEnabled ? 'translate-x-6' : 'translate-x-0.5'

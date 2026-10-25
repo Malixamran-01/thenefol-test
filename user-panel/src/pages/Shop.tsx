@@ -137,7 +137,7 @@ export default function Shop() {
             <h1 
               className="text-3xl sm:text-4xl md:text-5xl font-light mb-6 tracking-[0.15em]" 
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -147,7 +147,7 @@ export default function Shop() {
             </h1>
             <p 
               className="text-sm sm:text-base font-light max-w-2xl mx-auto px-4 tracking-wide" 
-              style={{color: '#666', letterSpacing: '0.05em'}}
+              style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}
               data-aos="fade-up"
               data-aos-delay="100"
             >
@@ -205,7 +205,7 @@ export default function Shop() {
                     </div>
                     <div className="flex flex-col flex-grow px-2">
                       <a href={`#/user/product/${product.slug}`} className="block">
-                        <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-0.5 line-clamp-2 overflow-hidden hover:opacity-70 transition-opacity cursor-pointer" style={{color: '#1a1a1a', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
+                        <h3 className="text-lg sm:text-xl font-semibold tracking-wide mb-0.5 line-clamp-2 overflow-hidden hover:opacity-70 transition-opacity cursor-pointer" style={{color: 'var(--nf-text)', letterSpacing: '0.05em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxHeight: '3.5rem'}}>
                           {product.title}
                         </h3>
                       </a>
@@ -219,7 +219,7 @@ export default function Shop() {
                                          (product.details && typeof product.details === 'object' ? product.details.subtitle : null) ||
                                          (product.details && typeof product.details === 'string' ? JSON.parse(product.details)?.subtitle : null)
                         return subtitle ? (
-                          <p className="text-sm text-gray-600 mb-1 line-clamp-2" style={{color: '#666', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
+                          <p className="text-sm text-gray-600 mb-1 line-clamp-2" style={{color: 'var(--nf-text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
                             {subtitle}
                           </p>
                         ) : null
@@ -252,7 +252,8 @@ export default function Shop() {
                             </div>
                           )
                         }
-                        return <div className="mb-1.5"></div>
+                        // Same height as the rating row so cards line up
+                        return <div className="mb-1.5 h-5" aria-hidden="true" />
                       })()}
                       <div className="mt-auto pt-0.5">
                         <div className="flex items-center justify-between mb-1.5">
@@ -280,10 +281,10 @@ export default function Shop() {
                                   const button = e.currentTarget
                                   const originalText = button.textContent
                                   button.textContent = '✓ Added to Cart'
-                                  button.style.backgroundColor = 'rgb(75,151,201)'
+                                  button.style.backgroundColor = 'var(--nf-primary)'
                                   setTimeout(() => {
                                     button.textContent = originalText
-                                    button.style.backgroundColor = 'rgb(75,151,201)'
+                                    button.style.backgroundColor = 'var(--nf-primary)'
                                   }, 4000) // Increased to 4 seconds for better visibility
                                 } catch (error) {
                                   console.log('Authentication required for cart operation')
@@ -292,16 +293,16 @@ export default function Shop() {
                             }}
                             className="flex-1 px-6 py-3 text-white text-xs font-light transition-all duration-300 tracking-[0.15em] uppercase border border-transparent hover:border-slate-900 rounded-xl disabled:cursor-not-allowed disabled:opacity-50"
                             style={{
-                              backgroundColor: 'rgb(75,151,201)',
+                              backgroundColor: 'var(--nf-primary)',
                               color: '#FFFFFF',
                               minHeight: '44px',
                               letterSpacing: '0.15em'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'
+                              e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'
+                              e.currentTarget.style.backgroundColor = 'var(--nf-primary)'
                             }}
                           >
                             {product.inStock === false ? 'Out of stock' : 'Add to Cart'}

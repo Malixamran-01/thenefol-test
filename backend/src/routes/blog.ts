@@ -5,9 +5,11 @@ import fs from 'fs'
 import crypto from 'crypto'
 import { joinUploads } from '../config/uploadsRoot'
 import { convertFilesToWebp } from '../utils/toWebp'
+import { toShareableOgImage } from '../utils/ogImage'
 import { v4 as uuidv4 } from 'uuid'
 import { Pool } from 'pg'
 import { authenticateToken } from '../utils/apiHelpers'
+import { getUserIdFromRequest } from '../utils/authTokens'
 import { createNotification, resolveActor } from './blogNotifications'
 import communityQuestionsRouter, { initCommunityQuestionsRouter } from './communityQuestions'
 import { isSocialCrawler } from '../utils/socialCrawler'
@@ -113,15 +115,7 @@ export async function ensureBlogAuxTables(databasePool: Pool): Promise<void> {
   `)
 }
 
-const getUserIdFromToken = (req: express.Request): string | null => {
-  const token = req.headers.authorization?.replace('Bearer ', '')
-  if (!token) return null
-  const tokenParts = token.split('_')
-  if (tokenParts.length >= 3 && tokenParts[0] === 'user' && tokenParts[1] === 'token') {
-    return tokenParts[2]
-  }
-  return null
-}
+const getUserIdFromToken = (req: express.Request): string | null => getUserIdFromRequest(req)
 
 /**
  * `blog_posts.author_name` is denormalized (often copied from `users.name` when the post was saved).
@@ -1742,7 +1736,8 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
     const envOg = (process.env.DEFAULT_OG_IMAGE || '').trim()
     const siteLogo = `${frontendBase}/IMAGES/NEFOL%20icon.png`
     const postOg = pickImage(post.og_image, post.cover_image, post.detail_image)
-    const ogImage = postOg || (envOg ? toAbsolute(envOg) || envOg : siteLogo)
+    // WebP uploads → cached 1200×630 JPEG so WhatsApp/LinkedIn render the preview
+    const ogImage = await toShareableOgImage(postOg || (envOg ? toAbsolute(envOg) || envOg : siteLogo), mediaBase)
     const ogImageSecure = ogImage.startsWith('https://')
       ? ogImage
       : ogImage.replace(/^http:\/\//i, 'https://')
@@ -2233,13 +2228,17 @@ router.put('/admin/posts/:id', async (req, res) => {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
-    // Build dynamic update query
+    // Build dynamic update query (only real blog_posts columns — keys come from the request body)
+    const { rows: columnRows } = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'blog_posts'`
+    )
+    const blogPostColumns = new Set(columnRows.map((r: any) => String(r.column_name)))
     const updateFields = []
     const values = []
     let paramCount = 1
 
-    for (const [key, value] of Object.entries(updates)) {
-      if (key !== 'id' && value !== undefined) {
+    for (const [key, value] of Object.entries(updates || {})) {
+      if (key !== 'id' && key !== 'updated_at' && blogPostColumns.has(key) && value !== undefined) {
         updateFields.push(`${key} = $${paramCount}`)
         values.push(value)
         paramCount++

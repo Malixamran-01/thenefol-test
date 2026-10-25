@@ -287,8 +287,8 @@ export default function CommentTree({
 
       {/* Header */}
       <div className="flex flex-col gap-2 border-b border-[#f0f4f8] bg-[#fafcfd] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#1B4965]">
-          <MessageSquare className="h-3.5 w-3.5 text-[#4B97C9]" aria-hidden />
+        <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[color:var(--nf-heading)]">
+          <MessageSquare className="h-3.5 w-3.5 text-[color:var(--nf-primary)]" aria-hidden />
           {displayCount} {displayCount === 1 ? 'Answer' : 'Answers'}
         </h2>
         <SortControls value={sort} onChange={setSort} />
@@ -304,9 +304,9 @@ export default function CommentTree({
       ) : comments.length === 0 ? (
         <div className="px-4 py-14 text-center">
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#f0f4f8]">
-            <MessageSquare className="h-4 w-4 text-[#4B97C9]" />
+            <MessageSquare className="h-4 w-4 text-[color:var(--nf-primary)]" />
           </div>
-          <p className="text-[14px] font-semibold text-[#1B4965]">No answers yet</p>
+          <p className="text-[14px] font-semibold text-[color:var(--nf-heading)]">No answers yet</p>
           <p className="mt-1 text-[13px] text-[#94a3b8]">Be the first to share what you know.</p>
         </div>
       ) : (
@@ -358,7 +358,7 @@ export default function CommentTree({
               <button
                 type="button"
                 onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                className="w-full min-h-[44px] py-3 text-[13px] font-semibold text-[#1B4965] transition-colors hover:bg-[#f8fbfd]"
+                className="w-full min-h-[44px] py-3 text-[13px] font-semibold text-[color:var(--nf-heading)] transition-colors hover:bg-[#f8fbfd]"
               >
                 Load more ({comments.length - visibleCount} remaining)
               </button>

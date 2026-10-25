@@ -187,7 +187,7 @@ export function BlogPostCard({
           style={{ backgroundImage: `url(${coverImage})` }}
         />
         {post.featured && (
-          <span className="absolute left-3 top-3 z-10 rounded-full bg-[#4B97C9] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
+          <span className="absolute left-3 top-3 z-10 rounded-full bg-[color:var(--nf-primary)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
             Featured
           </span>
         )}

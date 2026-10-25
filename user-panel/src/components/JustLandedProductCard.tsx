@@ -84,8 +84,8 @@ export default function JustLandedProductCard({
           )}
           {isBestSeller && (
             <div
-              className="absolute left-2 top-2 z-10 px-2 py-1 text-xs font-medium text-white"
-              style={{ backgroundColor: 'var(--arctic-blue-primary-dark)' }}
+              className="absolute left-2 top-2 z-10 px-2 py-1 text-xs font-medium"
+              style={{ backgroundColor: 'var(--nf-badge-bg)', color: 'var(--nf-badge-text)' }}
             >
               Best Seller
             </div>
@@ -113,25 +113,21 @@ export default function JustLandedProductCard({
           </p>
         ) : null}
 
-        {rating > 0 ? (
-          <div className="nefol-product-card__rating">
-            <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center' }}>
-              {[...Array(5)].map((_, i) => {
-                const filled = i < Math.round(rating)
-                return (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                  />
-                )
-              })}
-            </div>
-            <span className="ml-1 shrink-0 text-sm text-gray-600">
-              {rating.toFixed(2)} ({reviewCount})
+        {/* Approved customer reviews only. The row keeps its height when empty so cards line up. */}
+        {rating > 0 && reviewCount > 0 ? (
+          <div className="nefol-product-card__rating min-h-[22px]" aria-label={`Rated ${rating.toFixed(1)} out of 5 from ${reviewCount} reviews`}>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-gray-900 ring-1 ring-amber-200">
+              <Star className="h-3.5 w-3.5" style={{ color: 'var(--nf-rating-star)', fill: 'var(--nf-rating-star)' }} aria-hidden="true" />
+              {rating.toFixed(1)}
+            </span>
+            <span className="ml-1.5 shrink-0 text-xs text-gray-500">
+              {reviewCount} review{reviewCount === 1 ? '' : 's'}
             </span>
             {hasVerified && <VerifiedBadge size="sm" className="ml-1.5 shrink-0" />}
           </div>
-        ) : null}
+        ) : (
+          <div className="nefol-product-card__rating min-h-[22px]" aria-hidden="true" />
+        )}
 
         <div className="nefol-product-card__price">
           <PricingDisplay

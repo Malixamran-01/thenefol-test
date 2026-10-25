@@ -449,7 +449,7 @@ export default function Profile() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Please Login</h1>
           <p className="text-slate-600 dark:text-slate-400 mb-6">You need to be logged in to view your profile.</p>
-          <a href="#/user/login" className="inline-block px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>Go to Login</a>
+          <a href="#/user/login" className="inline-block px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}>Go to Login</a>
         </div>
       </main>
     )
@@ -486,7 +486,7 @@ export default function Profile() {
           <h1
             className="text-3xl sm:text-4xl md:text-5xl font-light tracking-[0.15em] mb-6"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -495,7 +495,7 @@ export default function Profile() {
           </h1>
           <p
             className="text-sm sm:text-base font-light tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Manage your profile, orders, and preferences
           </p>
@@ -549,13 +549,13 @@ export default function Profile() {
                     </div>
                   )}
                 </div>
-                <h3 className="text-sm sm:text-base font-light tracking-wide" style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}>{profile.name || 'User'}</h3>
+                <h3 className="text-sm sm:text-base font-light tracking-wide" style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}>{profile.name || 'User'}</h3>
 
                 {profile.unique_user_id && (
                   <p className="text-xs font-light tracking-wide mt-1" style={{ color: '#9ca3af', letterSpacing: '0.05em' }}>User ID: {profile.unique_user_id}</p>
                 )}
-                <p className="text-xs sm:text-sm font-light mt-1" style={{ color: '#1a1a1a' }}>{profile.email || 'No email'}</p>
-                <p className="text-xs font-light" style={{ color: '#1a1a1a' }}>{profile.phone || 'No phone'}</p>
+                <p className="text-xs sm:text-sm font-light mt-1" style={{ color: 'var(--nf-text)' }}>{profile.email || 'No email'}</p>
+                <p className="text-xs font-light" style={{ color: 'var(--nf-text)' }}>{profile.phone || 'No phone'}</p>
               </div>
 
               <nav className="space-y-2">
@@ -641,7 +641,7 @@ export default function Profile() {
                     <h2
                       className="text-2xl sm:text-3xl font-light tracking-[0.1em]"
                       style={{
-                        color: '#1a1a1a',
+                        color: 'var(--nf-text)',
                         fontFamily: 'var(--font-heading-family)',
                         letterSpacing: '0.1em'
                       }}
@@ -903,7 +903,7 @@ export default function Profile() {
                     <h3 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">{formatCoins(0)}</h3>
                     <p className="text-slate-600 dark:text-slate-400 mb-6">Your Nefol Coins Balance</p>
                     <div className="space-y-4 max-w-md mx-auto">
-                      <button className="w-full px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>
+                      <button className="w-full px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}>
                         Earn Coins
                       </button>
                       <button className="w-full px-6 py-3 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
@@ -924,7 +924,7 @@ export default function Profile() {
                       <Package className="h-16 w-16 text-slate-400 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold dark:text-slate-100 mb-2">No Orders Yet</h3>
                       <p className="text-slate-600 dark:text-slate-400 mb-6">Start shopping to see your orders here</p>
-                      <a href="#/user/shop" className="inline-block px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}>
+                      <a href="#/user/shop" className="inline-block px-6 py-3 text-white rounded-lg transition-colors" style={{ backgroundColor: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}>
                         Start Shopping
                       </a>
                     </div>
@@ -972,9 +972,9 @@ export default function Profile() {
                       <button
                         onClick={() => setShowAddCard(true)}
                         className="px-4 py-2 text-white rounded-lg transition-colors"
-                        style={{ backgroundColor: 'rgb(75,151,201)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                        style={{ backgroundColor: 'var(--nf-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                       >
                         Add New Card
                       </button>
@@ -990,9 +990,9 @@ export default function Profile() {
                         <button
                           onClick={() => setShowAddCard(true)}
                           className="px-6 py-3 text-white rounded-lg transition-colors"
-                          style={{ backgroundColor: 'rgb(75,151,201)' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                          style={{ backgroundColor: 'var(--nf-primary)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                         >
                           Add Card
                         </button>
@@ -1037,9 +1037,9 @@ export default function Profile() {
                       <button
                         onClick={() => setShowAddAddress(true)}
                         className="px-4 py-2 text-white rounded-lg transition-colors"
-                        style={{ backgroundColor: 'rgb(75,151,201)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                        style={{ backgroundColor: 'var(--nf-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                       >
                         Add New Address
                       </button>
@@ -1064,7 +1064,7 @@ export default function Profile() {
                       </div>
                       {isAuthenticated && (
                         <div className="flex gap-2">
-                          <button className="px-3 py-1 text-sm" style={{ color: 'rgb(75,151,201)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(60,120,160)'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(75,151,201)'}>Edit</button>
+                          <button className="px-3 py-1 text-sm" style={{ color: 'var(--nf-primary)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--nf-primary-hover)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--nf-primary)'}>Edit</button>
                           <button className="px-3 py-1 text-sm text-red-600 hover:text-red-700">Delete</button>
                         </div>
                       )}
@@ -1131,9 +1131,9 @@ export default function Profile() {
                         <button
                           type="submit"
                           className="w-full px-6 py-3 text-white rounded-lg transition-colors"
-                          style={{ backgroundColor: 'rgb(75,151,201)' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                          style={{ backgroundColor: 'var(--nf-primary)' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                         >
                           Send Message
                         </button>
@@ -1237,9 +1237,9 @@ export default function Profile() {
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2 text-white rounded-lg"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                  style={{ backgroundColor: 'var(--nf-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                 >
                   Add Card
                 </button>
@@ -1324,9 +1324,9 @@ export default function Profile() {
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2 text-white rounded-lg"
-                  style={{ backgroundColor: 'rgb(75,151,201)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                  style={{ backgroundColor: 'var(--nf-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
                 >
                   Add Address
                 </button>

@@ -1,41 +1,52 @@
 import { Router } from 'express'
 import crypto from 'crypto'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
-import Razorpay from 'razorpay'
+import { getRazorpay, isRazorpayConfigured, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET } from '../config/razorpay'
 import { sendPaymentFailedEmail, sendOrderConfirmationEmail, sendInvoicePDFEmail } from '../services/emailService'
+import { deductStockForOrder } from '../services/inventoryBatchService'
 
 const router = Router()
 
-// Get Razorpay credentials
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_live_RigxrHNSReeV37'
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'F9PT2uJbFVQUedEXI3iL59N9'
-
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: RAZORPAY_KEY_ID,
-  key_secret: RAZORPAY_KEY_SECRET
-})
+/** Amount actually owed for an order, in paise (orders.total is the remaining amount after coins). */
+function orderAmountInPaise(order: any): number {
+  return Math.round((Number(order?.total) || 0) * 100)
+}
 
 // Create Razorpay order
 export const createRazorpayOrder = (pool: any) => async (req: any, res: any) => {
   try {
     const { amount, currency = 'INR', order_number, customer_name, customer_email, customer_phone } = req.body
 
-    // Validate required fields
-    if (!amount || amount <= 0) {
-      console.error('Invalid amount provided:', amount)
-      return sendError(res, 400, 'Valid amount is required')
-    }
-
     if (!order_number || typeof order_number !== 'string' || order_number.trim() === '') {
       console.error('Invalid order_number provided:', order_number)
       return sendError(res, 400, 'Valid order_number is required')
     }
 
-    // Validate amount is a number
-    const amountNum = parseFloat(String(amount))
+    // The amount charged always comes from the stored order, never from the client.
+    const { rows: orderRows } = await pool.query(
+      'SELECT id, order_number, total, payment_status FROM orders WHERE order_number = $1',
+      [order_number]
+    )
+    if (orderRows.length === 0) {
+      return sendError(res, 404, `Order not found: ${order_number}`)
+    }
+    const storedOrder = orderRows[0]
+    if (storedOrder.payment_status === 'paid') {
+      return sendError(res, 400, 'This order has already been paid')
+    }
+
+    const amountNum = orderAmountInPaise(storedOrder) / 100
+    const clientAmount = parseFloat(String(amount))
+    if (Number.isFinite(clientAmount) && Math.abs(clientAmount - amountNum) > 1) {
+      console.warn('Razorpay create-order: client amount differs from order total; using order total', {
+        order_number,
+        clientAmount,
+        orderTotal: amountNum,
+      })
+    }
+
     if (isNaN(amountNum) || amountNum <= 0) {
-      console.error('Amount is not a valid positive number:', amount)
+      console.error('Order total is not a valid positive number:', storedOrder.total)
       return sendError(res, 400, 'Amount must be a valid positive number')
     }
 
@@ -52,7 +63,7 @@ export const createRazorpayOrder = (pool: any) => async (req: any, res: any) => 
     }
 
     // Check if Razorpay credentials are configured
-    if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+    if (!isRazorpayConfigured()) {
       console.error('Razorpay credentials not configured')
       return sendError(res, 500, 'Payment gateway not configured')
     }
@@ -92,7 +103,7 @@ export const createRazorpayOrder = (pool: any) => async (req: any, res: any) => 
 
     let order
     try {
-      order = await razorpay.orders.create(options)
+      order = await getRazorpay().orders.create(options)
     } catch (razorpayErr: any) {
       console.error('Razorpay API error:', {
         error: razorpayErr.message,
@@ -131,6 +142,14 @@ export const createRazorpayOrder = (pool: any) => async (req: any, res: any) => 
       order_number,
       amount: order.amount
     })
+
+    // Remember which Razorpay order belongs to this store order (checked again on verify)
+    try {
+      await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS razorpay_order_id TEXT`)
+      await pool.query(`UPDATE orders SET razorpay_order_id = $1, updated_at = now() WHERE id = $2`, [order.id, storedOrder.id])
+    } catch (linkErr: any) {
+      console.error('Failed to store razorpay_order_id on order:', linkErr?.message || linkErr)
+    }
 
     sendSuccess(res, {
       id: order.id,
@@ -172,7 +191,7 @@ export const verifyRazorpayPayment = (pool: any) => async (req: any, res: any) =
     }
 
     // Validate Razorpay credentials
-    if (!RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET.trim() === '') {
+    if (!RAZORPAY_KEY_SECRET) {
       console.error('RAZORPAY_KEY_SECRET not configured')
       return sendError(res, 500, 'Payment gateway not configured')
     }
@@ -231,6 +250,30 @@ export const verifyRazorpayPayment = (pool: any) => async (req: any, res: any) =
       return sendError(res, 404, `Order not found: ${order_number}`)
     }
 
+    // The signature only proves the payment happened — also prove it was for THIS order and the full amount.
+    const storedOrder = orderCheck.rows[0]
+    if (storedOrder.razorpay_order_id !== razorpay_order_id) {
+      try {
+        const rzOrder: any = await getRazorpay().orders.fetch(razorpay_order_id)
+        const belongsToOrder =
+          rzOrder?.notes?.order_number === order_number || rzOrder?.receipt === order_number.substring(0, 40)
+        const paidEnough = Number(rzOrder?.amount) >= orderAmountInPaise(storedOrder) - 100
+        if (!belongsToOrder || !paidEnough) {
+          console.error('Payment does not match order:', {
+            order_number,
+            razorpay_order_id,
+            razorpay_amount: rzOrder?.amount,
+            expected_amount: orderAmountInPaise(storedOrder),
+            belongsToOrder,
+          })
+          return sendError(res, 400, 'Payment verification failed: payment does not match this order')
+        }
+      } catch (fetchErr: any) {
+        console.error('Could not fetch Razorpay order for verification:', fetchErr?.message || fetchErr)
+        return sendError(res, 502, 'Could not confirm the payment with Razorpay. Please contact support with your payment ID.')
+      }
+    }
+
     // Ensure Razorpay columns exist in orders table
     try {
       await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS razorpay_order_id TEXT`)
@@ -280,8 +323,11 @@ export const verifyRazorpayPayment = (pool: any) => async (req: any, res: any) =
     }
 
     console.log('✅ Payment verified successfully for order:', order_number)
-    
+
     const updatedOrder = result.rows[0]
+
+    // Stock deduction for paid online orders (only when INVENTORY_DEDUCT_ON_ORDER=1)
+    await deductStockForOrder(pool, updatedOrder.id)
     
     // After payment is verified: send confirmation emails.
     // Shiprocket shipment is NOT auto-created — admin must confirm and select courier from the admin panel.
@@ -343,7 +389,7 @@ export const razorpayWebhook = (pool: any) => async (req: any, res: any) => {
 
     // Verify webhook signature
     const expectedSignature = crypto
-      .createHmac('sha256', RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', RAZORPAY_WEBHOOK_SECRET)
       .update(webhookBody)
       .digest('hex')
 
@@ -358,13 +404,20 @@ export const razorpayWebhook = (pool: any) => async (req: any, res: any) => {
       const paymentData = req.body.payload.payment.entity
       const orderId = paymentData.notes.order_number
 
-      // Update order status
-      await pool.query(
-        `UPDATE orders SET status = $1, payment_status = $2 WHERE order_number = $3`,
-        ['confirmed', 'paid', orderId]
-      )
-
-      console.log('✅ Payment captured for order:', orderId)
+      // Only mark paid when the captured amount covers the order total
+      const { rows: webhookOrderRows } = await pool.query('SELECT total FROM orders WHERE order_number = $1', [orderId])
+      if (webhookOrderRows.length && Number(paymentData.amount) >= orderAmountInPaise(webhookOrderRows[0]) - 100) {
+        await pool.query(
+          `UPDATE orders SET status = $1, payment_status = $2 WHERE order_number = $3`,
+          ['confirmed', 'paid', orderId]
+        )
+        console.log('✅ Payment captured for order:', orderId)
+      } else {
+        console.error('⚠️ Webhook payment amount does not cover order total; order not marked paid:', {
+          order_number: orderId,
+          amount: paymentData.amount,
+        })
+      }
     }
 
     // Handle payment failure
@@ -427,7 +480,7 @@ export const processRefund = (pool: any) => async (req: any, res: any) => {
 
     validateRequired({ payment_id, amount }, res)
 
-    const refund = await razorpay.payments.refund(payment_id, {
+    const refund = await getRazorpay().payments.refund(payment_id, {
       amount: Math.round(amount * 100), // Convert to paise
       notes: {
         cancellation_id: cancellation_id?.toString(),

@@ -101,7 +101,7 @@ function RepostModal({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Add a note for your audience… (optional)"
-          className="mb-4 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 outline-none transition-colors focus:border-[#4B97C9] focus:ring-2 focus:ring-[#4B97C9]/20 placeholder-gray-400"
+          className="mb-4 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 outline-none transition-colors focus:border-[color:var(--nf-primary)] focus:ring-2 focus:ring-[#4B97C9]/20 placeholder-gray-400"
           rows={3}
           maxLength={500}
         />
@@ -158,7 +158,7 @@ function RepostModal({
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#1B4965] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#163d57] disabled:opacity-60"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[color:var(--nf-heading)] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#163d57] disabled:opacity-60"
           >
             <Repeat2 className="h-4 w-4" />
             {submitting ? 'Reposting…' : 'Repost'}

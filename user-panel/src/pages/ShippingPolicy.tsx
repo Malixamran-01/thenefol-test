@@ -6,12 +6,12 @@ export default function ShippingPolicy() {
     <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
@@ -23,7 +23,7 @@ export default function ShippingPolicy() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -32,7 +32,7 @@ export default function ShippingPolicy() {
           </h1>
           <p 
             className="text-sm sm:text-base font-light max-w-3xl mx-auto tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             At NEFOL, we are committed to ensuring that your experience with our premium cosmetic products 
             is seamless and enjoyable from the moment you place an order to when it arrives at your doorstep.
@@ -44,7 +44,7 @@ export default function ShippingPolicy() {
           <h2 
             className="text-2xl sm:text-3xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -59,14 +59,14 @@ export default function ShippingPolicy() {
                 </div>
                 <h3 
                   className="text-lg font-light tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Processing Time
                 </h3>
               </div>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 All orders are processed within 1-2 business days (excluding weekends and holidays) 
                 after payment confirmation. Orders placed after 12 PM will be processed the following business day.
@@ -80,14 +80,14 @@ export default function ShippingPolicy() {
                 </div>
                 <h3 
                   className="text-lg font-light tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Order Confirmation
                 </h3>
               </div>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 You will receive an email confirmation with your order details as soon as your order is placed.
               </p>
@@ -100,7 +100,7 @@ export default function ShippingPolicy() {
           <h2 
             className="text-2xl sm:text-3xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -111,13 +111,13 @@ export default function ShippingPolicy() {
             <div className="rounded-xl p-4 sm:p-6 border" style={{ backgroundColor: 'var(--arctic-blue-lighter)', borderColor: 'var(--arctic-blue-light)' }}>
               <h3 
                 className="text-lg sm:text-xl font-light mb-2 sm:mb-3 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
               >
                 Standard Shipping
               </h3>
               <p 
                 className="font-light mb-4 tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 Typically takes 3-7 business days within India. Shipping times may vary based on your 
                 location and external conditions.
@@ -131,13 +131,13 @@ export default function ShippingPolicy() {
             <div className="rounded-xl p-4 sm:p-6 border" style={{ backgroundColor: 'var(--arctic-blue-lighter)', borderColor: 'var(--arctic-blue-light)' }}>
               <h3 
                 className="text-lg sm:text-xl font-light mb-2 sm:mb-3 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
               >
                 Express Shipping
               </h3>
               <p 
                 className="font-light mb-4 tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 Available upon request, with an estimated delivery time of 1-3 business days. 
                 Additional charges may apply.
@@ -155,7 +155,7 @@ export default function ShippingPolicy() {
           <h2 
             className="text-2xl sm:text-3xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -167,7 +167,7 @@ export default function ShippingPolicy() {
               <div>
                 <h3 
                   className="text-lg font-light mb-3 tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Standard Shipping
                 </h3>
@@ -176,7 +176,7 @@ export default function ShippingPolicy() {
                     <CheckCircle className="w-5 h-5 mr-2" style={{ color: 'var(--arctic-blue-primary)' }} />
                     <span 
                       className="font-light tracking-wide"
-                      style={{ color: '#666', letterSpacing: '0.05em' }}
+                      style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                     >
                       Free on orders over ₹1999
                     </span>
@@ -185,7 +185,7 @@ export default function ShippingPolicy() {
                     <span className="mr-2" style={{ color: 'var(--arctic-blue-primary)' }}>•</span>
                     <span 
                       className="font-light tracking-wide"
-                      style={{ color: '#666', letterSpacing: '0.05em' }}
+                      style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                     >
                       For orders under ₹599, a flat rate of ₹99 will be applied
                     </span>
@@ -195,13 +195,13 @@ export default function ShippingPolicy() {
               <div>
                 <h3 
                   className="text-lg font-light mb-3 tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   Express Shipping
                 </h3>
                 <p 
                   className="font-light tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   Calculated at checkout based on location and package weight.
                 </p>
@@ -215,7 +215,7 @@ export default function ShippingPolicy() {
           <h2 
             className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -230,7 +230,7 @@ export default function ShippingPolicy() {
               <div>
                 <p 
                   className="font-light leading-relaxed tracking-wide"
-                  style={{ color: '#666', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                 >
                   Once your order has been shipped, you will receive a shipment confirmation email with 
                   a tracking number and a link to track your package.
@@ -245,7 +245,7 @@ export default function ShippingPolicy() {
           <h2 
             className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -256,13 +256,13 @@ export default function ShippingPolicy() {
             <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
               <h3 
                 className="text-lg font-light mb-3 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
               >
                 Availability
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 We offer international shipping to select countries. Please check at checkout if we ship to your destination.
               </p>
@@ -271,13 +271,13 @@ export default function ShippingPolicy() {
             <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
               <h3 
                 className="text-lg font-light mb-3 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
               >
                 Customs Fees
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 Any customs, duties, or taxes imposed by the destination country are the responsibility of the customer.
               </p>
@@ -290,7 +290,7 @@ export default function ShippingPolicy() {
           <h2 
             className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -306,13 +306,13 @@ export default function ShippingPolicy() {
                 <div>
                   <h3 
                     className="text-lg font-light mb-2 tracking-wide"
-                    style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                   >
                     Unforeseen Delays
                   </h3>
                   <p 
                     className="font-light tracking-wide"
-                    style={{ color: '#666', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                   >
                     While we strive to meet all estimated delivery times, NEFOL is not responsible for delays 
                     caused by external factors such as customs clearance, severe weather conditions, or carrier issues.
@@ -329,13 +329,13 @@ export default function ShippingPolicy() {
                 <div>
                   <h3 
                     className="text-lg font-light mb-2 tracking-wide"
-                    style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                   >
                     Lost or Damaged Packages
                   </h3>
                   <p 
                     className="font-light tracking-wide"
-                    style={{ color: '#666', letterSpacing: '0.05em' }}
+                    style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                   >
                     If your package is lost or arrives damaged, please contact us at 
                     <a href="mailto:support@thenefol.com" className="hover:underline ml-1" style={{ color: 'var(--arctic-blue-primary)' }}>
@@ -353,7 +353,7 @@ export default function ShippingPolicy() {
           <h2 
             className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -364,13 +364,13 @@ export default function ShippingPolicy() {
             <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
               <h3 
                 className="text-lg font-light mb-3 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
               >
                 Incorrect Shipping Information
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 Customers are responsible for providing accurate shipping details. Any packages returned 
                 due to incorrect or incomplete addresses will require an additional shipping fee for reshipment.
@@ -380,13 +380,13 @@ export default function ShippingPolicy() {
             <div className="bg-white rounded-xl p-6 shadow-sm border" style={{ borderColor: 'var(--arctic-blue-light)' }}>
               <h3 
                 className="text-lg font-light mb-3 tracking-wide"
-                style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
               >
                 Non-Delivery Areas
               </h3>
               <p 
                 className="font-light tracking-wide"
-                style={{ color: '#666', letterSpacing: '0.05em' }}
+                style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
               >
                 We do not currently ship to restricted areas. Please check with our support team for 
                 specific delivery restrictions.
@@ -401,7 +401,7 @@ export default function ShippingPolicy() {
             <h2 
               className="text-2xl sm:text-3xl font-light mb-4 tracking-[0.15em]"
               style={{
-                color: '#1a1a1a',
+                color: 'var(--nf-text)',
                 fontFamily: 'var(--font-heading-family)',
                 letterSpacing: '0.15em'
               }}
@@ -410,7 +410,7 @@ export default function ShippingPolicy() {
             </h2>
             <p 
               className="text-sm sm:text-base font-light mb-8 tracking-wide max-w-2xl mx-auto"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               For any questions or concerns regarding shipping, please reach out to our customer support team.
             </p>
@@ -450,7 +450,7 @@ export default function ShippingPolicy() {
             </div>
             <p 
               className="mt-6 text-sm sm:text-base font-light tracking-wide"
-              style={{ color: '#666', letterSpacing: '0.05em' }}
+              style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
             >
               Thank you for choosing NEFOL. We look forward to serving you and helping you achieve 
               radiant beauty with our high-quality cosmetic products!

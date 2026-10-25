@@ -71,12 +71,12 @@ export default function FAQ() {
     <main className="min-h-screen bg-white overflow-x-hidden py-12 sm:py-16 md:py-20" style={{ fontFamily: 'var(--font-body-family, Inter, sans-serif)' }}>
       <style>{`
         :root {
-          --arctic-blue-primary: rgb(75,151,201);
-          --arctic-blue-primary-hover: rgb(60,120,160);
-          --arctic-blue-primary-dark: rgb(50,100,140);
-          --arctic-blue-light: #E0F5F5;
-          --arctic-blue-lighter: #F0F9F9;
-          --arctic-blue-background: #F4F9F9;
+          --arctic-blue-primary: var(--nf-primary);
+          --arctic-blue-primary-hover: var(--nf-primary-hover);
+          --arctic-blue-primary-dark: var(--nf-primary-dark);
+          --arctic-blue-light: var(--nf-primary-light);
+          --arctic-blue-lighter: var(--nf-primary-lighter);
+          --arctic-blue-background: var(--nf-surface-soft);
         }
       `}</style>
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
@@ -88,7 +88,7 @@ export default function FAQ() {
           <h1 
             className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 sm:mb-6 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -97,7 +97,7 @@ export default function FAQ() {
           </h1>
           <p 
             className="text-sm sm:text-base font-light max-w-3xl mx-auto tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Find answers to common questions about Nefol products, usage, and policies.
           </p>
@@ -118,14 +118,14 @@ export default function FAQ() {
               >
                 <h3 
                   className="text-sm sm:text-base font-light pr-2 sm:pr-4 tracking-wide"
-                  style={{ color: '#1a1a1a', letterSpacing: '0.05em' }}
+                  style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
                 >
                   {faq.question}
                 </h3>
                 {openItems.includes(index) ? (
                   <ChevronUp className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--arctic-blue-primary)' }} />
                 ) : (
-                  <ChevronDown className="w-5 h-5 flex-shrink-0" style={{ color: '#666' }} />
+                  <ChevronDown className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--nf-text-muted)' }} />
                 )}
               </button>
               
@@ -134,7 +134,7 @@ export default function FAQ() {
                   <div className="border-t pt-3 sm:pt-4" style={{ borderColor: 'var(--arctic-blue-light)' }}>
                     <p 
                       className="text-sm sm:text-base leading-relaxed tracking-wide"
-                      style={{ color: '#666', letterSpacing: '0.05em' }}
+                      style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
                     >
                       {faq.answer}
                     </p>
@@ -150,7 +150,7 @@ export default function FAQ() {
           <h2 
             className="text-xl sm:text-2xl md:text-3xl font-light mb-3 sm:mb-4 tracking-[0.15em]"
             style={{
-              color: '#1a1a1a',
+              color: 'var(--nf-text)',
               fontFamily: 'var(--font-heading-family)',
               letterSpacing: '0.15em'
             }}
@@ -159,7 +159,7 @@ export default function FAQ() {
           </h2>
           <p 
             className="mb-4 sm:mb-6 text-sm sm:text-base tracking-wide"
-            style={{ color: '#666', letterSpacing: '0.05em' }}
+            style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}
           >
             Can't find the answer you're looking for? Our customer support team is here to help!
           </p>

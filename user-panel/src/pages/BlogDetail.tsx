@@ -786,7 +786,7 @@ export default function BlogDetail() {
                 <span className="text-sm font-semibold text-gray-900">
                   {comment.author_name || 'User'}
                   {post?.user_id && String(comment.user_id || '') === String(post.user_id) && (
-                    <span className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}>
+                    <span className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: '#E8F4F8', color: 'var(--nf-heading)' }}>
                       Author
                     </span>
                   )}
@@ -1103,7 +1103,7 @@ export default function BlogDetail() {
 
   if (loading) {
     return (
-      <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
+      <main className="min-h-screen py-10" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
         <div className="mx-auto max-w-4xl px-4">
           <div className="text-center py-12">
             <p style={{color: '#9DB4C0'}}>Loading blog post...</p>
@@ -1115,16 +1115,16 @@ export default function BlogDetail() {
 
   if (error || !post) {
     return (
-      <main className="min-h-screen py-10" style={{backgroundColor: '#F4F9F9'}}>
+      <main className="min-h-screen py-10" style={{backgroundColor: 'var(--nf-surface-soft)'}}>
         <div className="mx-auto max-w-4xl px-4">
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">{error || 'Blog post not found'}</p>
             <button
               onClick={handleBack}
               className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg"
-              style={{backgroundColor: 'rgb(75,151,201)'}}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+              style={{backgroundColor: 'var(--nf-primary)'}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
             >
               <ArrowLeft className="w-4 h-4" />
               {backLabel}
@@ -1139,14 +1139,14 @@ export default function BlogDetail() {
   const readingTime = getReadingTime(post.content || '')
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: '#F4F9F9' }}>
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--nf-surface-soft)' }}>
       <div className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:pt-10">
         {/* Header — back + owner edit */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={handleBack}
             className="inline-flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
-            style={{color: '#1B4965'}}
+            style={{color: 'var(--nf-heading)'}}
           >
             <ArrowLeft className="w-4 h-4" />
             {backLabel}
@@ -1160,7 +1160,7 @@ export default function BlogDetail() {
                   window.location.hash = `#/user/blog/request?edit=${post.id}`
                 }}
                 className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white transition-colors"
-                style={{ backgroundColor: '#1B4965' }}
+                style={{ backgroundColor: 'var(--nf-heading)' }}
               >
                 <Pencil className="h-4 w-4" />
                 Edit post
@@ -1404,7 +1404,7 @@ export default function BlogDetail() {
           <div className="mb-8 pb-6 border-b border-gray-100">
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold" style={{ backgroundColor: '#E8F4F8', color: '#1B4965' }}>
+                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold" style={{ backgroundColor: '#E8F4F8', color: 'var(--nf-heading)' }}>
                   {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
                 </div>
                 <input
@@ -1421,9 +1421,9 @@ export default function BlogDetail() {
                 <button
                   onClick={() => submitComment()}
                   className="rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 transition-colors flex-shrink-0"
-                  style={{ backgroundColor: '#1B4965' }}
+                  style={{ backgroundColor: 'var(--nf-heading)' }}
                   onMouseEnter={(e) => { if (commentText.trim()) e.currentTarget.style.backgroundColor = '#2c5f7d' }}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1B4965'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-heading)'}
                   disabled={!commentText.trim()}
                 >
                   Post
@@ -1435,16 +1435,16 @@ export default function BlogDetail() {
                 <button
                   onClick={() => { window.location.hash = '#/user/login' }}
                   className="rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors flex-shrink-0"
-                  style={{ backgroundColor: '#1B4965' }}
+                  style={{ backgroundColor: 'var(--nf-heading)' }}
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2c5f7d' }}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1B4965'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-heading)'}
                 >
                   Log in
                 </button>
                 <button
                   onClick={() => { window.location.hash = '#/user/signup' }}
                   className="rounded-lg px-4 py-2.5 text-sm font-medium border transition-colors flex-shrink-0"
-                  style={{ borderColor: '#1B4965', color: '#1B4965' }}
+                  style={{ borderColor: 'var(--nf-heading)', color: 'var(--nf-heading)' }}
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#E8F4F8' }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
                 >
@@ -1472,7 +1472,7 @@ export default function BlogDetail() {
           <button
             onClick={goBack}
             className="inline-flex items-center gap-2 px-6 py-3 text-gray-700 font-medium transition-all duration-300 text-sm tracking-wide uppercase shadow-lg rounded-lg hover:opacity-90 border-2"
-            style={{borderColor: '#1B4965', backgroundColor: 'transparent', color: '#1B4965'}}
+            style={{borderColor: 'var(--nf-heading)', backgroundColor: 'transparent', color: 'var(--nf-heading)'}}
           >
             <X className="w-4 h-4" />
             Close

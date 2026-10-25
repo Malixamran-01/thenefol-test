@@ -134,9 +134,9 @@ export default function DeliveryNotification({
               <button
                 onClick={() => setShowReviewForm(true)}
                 className="flex-1 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                style={{ backgroundColor: 'rgb(75,151,201)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(60,120,160)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(75,151,201)'}
+                style={{ backgroundColor: 'var(--nf-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--nf-primary)'}
               >
                 <Star className="h-4 w-4" />
                 Write Review & Earn Points

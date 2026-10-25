@@ -28,6 +28,9 @@ export type CartItem = {
   discounted_price?: string
   original_price?: string
   csvProduct?: unknown
+  /** From GET /api/cart (logged-in carts); unknown for guest carts */
+  in_stock?: boolean
+  inventory_available?: number
 }
 
 type CartContextValue = {
@@ -304,7 +307,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           const message = err instanceof Error ? err.message : 'Failed to add to cart'
           console.error('Failed to add item to cart:', err)
           setError(message)
-          addItemLocally(p, quantity)
+          // Server said no stock: never sneak it into the local cart
+          if (!/out of stock|available|stock/i.test(message)) addItemLocally(p, quantity)
         }
       } else {
         addItemLocally(p, quantity)

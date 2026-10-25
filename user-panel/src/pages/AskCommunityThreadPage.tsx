@@ -14,7 +14,7 @@ function productThumb(url?: string | null): string {
 
 function ThreadSkeleton() {
   return (
-    <div className="min-h-full w-full overflow-x-hidden bg-[#F4F9F9] px-4 pb-32 pt-6">
+    <div className="min-h-full w-full overflow-x-hidden bg-[color:var(--nf-surface-soft)] px-4 pb-32 pt-6">
       <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4">
         <div className="h-4 w-28 animate-pulse rounded-full bg-[#d0e8f5]" />
         <div className="animate-pulse rounded-xl border border-[#e8eef4] bg-white p-5 shadow-sm">
@@ -142,13 +142,13 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
 
   if (error && !question) {
     return (
-      <div className="min-h-full bg-[#F4F9F9] px-4 py-12">
+      <div className="min-h-full bg-[color:var(--nf-surface-soft)] px-4 py-12">
         <div className="mx-auto max-w-2xl rounded-xl border border-red-100 bg-white p-6 shadow-sm">
           <p className="text-[14px] text-red-600">{error}</p>
           <button
             type="button"
             onClick={() => { window.location.hash = '#/user/blog/ask-community' }}
-            className="mt-4 inline-flex min-h-[40px] items-center gap-1.5 text-[13px] font-semibold text-[#1B4965] hover:underline"
+            className="mt-4 inline-flex min-h-[40px] items-center gap-1.5 text-[13px] font-semibold text-[color:var(--nf-heading)] hover:underline"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Ask Community
@@ -164,14 +164,14 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
   const productLabel = question.product_title ?? question.product_name ?? undefined
 
   return (
-    <div className="min-h-full w-full overflow-x-hidden bg-[#F4F9F9] pb-10 pt-4 sm:pt-6">
+    <div className="min-h-full w-full overflow-x-hidden bg-[color:var(--nf-surface-soft)] pb-10 pt-4 sm:pt-6">
       <div className="mx-auto max-w-2xl w-full min-w-0 px-3 sm:px-4">
 
         {/* Back nav */}
         <button
           type="button"
           onClick={() => { window.location.hash = '#/user/blog/ask-community' }}
-          className="mb-4 inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-1 text-[13px] font-semibold text-[#64748b] transition-colors hover:text-[#1B4965]"
+          className="mb-4 inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-1 text-[13px] font-semibold text-[#64748b] transition-colors hover:text-[color:var(--nf-heading)]"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2.5} />
           Ask Community
@@ -180,7 +180,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
         {/* Question card */}
         <article className="mb-3 overflow-hidden rounded-xl border border-[#e8eef4] bg-white shadow-[0_1px_4px_rgba(27,73,101,0.07)]">
           {/* Accent bar */}
-          <div className="h-[3px] bg-gradient-to-r from-[#4B97C9] via-[#1B4965] to-[#4B97C9]" />
+          <div className="h-[3px] bg-gradient-to-r from-[color:var(--nf-primary)] via-[color:var(--nf-heading)] to-[color:var(--nf-primary)]" />
 
           <div className="p-5">
             {/* Topic chip */}
@@ -210,7 +210,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                   {question.product_slug ? (
                     <a
                       href={`#/user/product/${question.product_slug}`}
-                      className="block truncate text-[13px] font-medium leading-snug text-[#4B97C9] hover:underline"
+                      className="block truncate text-[13px] font-medium leading-snug text-[color:var(--nf-primary)] hover:underline"
                       title={productLabel}
                     >
                       {productLabel}
@@ -229,7 +229,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
 
             {editingQuestion ? (
               <div className="space-y-3 rounded-lg border border-[#d0e8f5] bg-[#f8fbfd] p-3">
-                <p className="text-[11px] font-semibold tracking-wide text-[#4B97C9]">Edit your question</p>
+                <p className="text-[11px] font-semibold tracking-wide text-[color:var(--nf-primary)]">Edit your question</p>
                 <div>
                   <label htmlFor="edit-question-title" className="mb-1 block text-[11px] font-semibold text-[#64748b]">
                     Title
@@ -239,7 +239,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value.slice(0, 200))}
                     maxLength={200}
-                    className="w-full rounded-lg border border-[#d0e8f5] bg-white px-3 py-2.5 text-[16px] font-semibold text-[#1a1a1a] outline-none focus:border-[#4B97C9] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)] sm:text-[18px]"
+                    className="w-full rounded-lg border border-[#d0e8f5] bg-white px-3 py-2.5 text-[16px] font-semibold text-[color:var(--nf-text)] outline-none focus:border-[color:var(--nf-primary)] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)] sm:text-[18px]"
                   />
                 </div>
                 <div>
@@ -252,7 +252,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                     onChange={(e) => setEditBody(e.target.value.slice(0, 5000))}
                     rows={5}
                     maxLength={5000}
-                    className="w-full resize-y rounded-lg border border-[#d0e8f5] bg-white px-3 py-2.5 text-[14px] leading-relaxed text-[#374151] outline-none focus:border-[#4B97C9] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)]"
+                    className="w-full resize-y rounded-lg border border-[#d0e8f5] bg-white px-3 py-2.5 text-[14px] leading-relaxed text-[#374151] outline-none focus:border-[color:var(--nf-primary)] focus:ring-[3px] focus:ring-[rgba(75,151,201,0.15)]"
                   />
                 </div>
                 <div className="flex justify-end gap-2">
@@ -260,7 +260,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                     type="button"
                     onClick={cancelEditQuestion}
                     disabled={savingQuestion}
-                    className="min-h-[40px] rounded-lg px-4 text-[13px] font-semibold text-[#64748b] hover:text-[#1B4965]"
+                    className="min-h-[40px] rounded-lg px-4 text-[13px] font-semibold text-[#64748b] hover:text-[color:var(--nf-heading)]"
                   >
                     Cancel
                   </button>
@@ -268,7 +268,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                     type="button"
                     onClick={saveQuestion}
                     disabled={savingQuestion}
-                    className="min-h-[40px] rounded-lg bg-[#1B4965] px-5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#163d52] disabled:opacity-50"
+                    className="min-h-[40px] rounded-lg bg-[color:var(--nf-heading)] px-5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#163d52] disabled:opacity-50"
                   >
                     {savingQuestion ? 'Saving…' : 'Save'}
                   </button>
@@ -276,7 +276,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
               </div>
             ) : (
               <>
-                <h1 className="text-[20px] font-semibold leading-snug tracking-tight text-[#1a1a1a] sm:text-[22px]">
+                <h1 className="text-[20px] font-semibold leading-snug tracking-tight text-[color:var(--nf-text)] sm:text-[22px]">
                   {question.title}
                 </h1>
 
@@ -290,7 +290,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#f0f4f8] pt-3 text-[12px] text-[#94a3b8]">
               <span>
                 Asked by{' '}
-                <span className="font-semibold text-[#1B4965]">{question.author_name}</span>
+                <span className="font-semibold text-[color:var(--nf-heading)]">{question.author_name}</span>
               </span>
               <span className="text-[#e2e8f0]" aria-hidden>·</span>
               <time dateTime={question.created_at}>{formatCommunityTime(question.created_at)}</time>
@@ -304,7 +304,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
                 <button
                   type="button"
                   onClick={startEditQuestion}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#e8eef4] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#64748b] transition-colors hover:border-[#d0e8f5] hover:text-[#1B4965]"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#e8eef4] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#64748b] transition-colors hover:border-[#d0e8f5] hover:text-[color:var(--nf-heading)]"
                 >
                   <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
                   Edit
