@@ -60,7 +60,8 @@ export async function getCart(pool: Pool, req: Request, res: Response) {
       // Ensure MRP is properly extracted and converted to string
       const mrpValue = details.mrp || null
       
-      const line = parseFloat(String(finalPrice)) || 0
+      // Strip ₹ and thousands separators: parseFloat('1,299') would give 1
+      const line = Number(String(finalPrice ?? '').replace(/[^0-9.]/g, '')) || 0
       subtotalForSegment += line * (Number(row.quantity) || 1)
 
       return {

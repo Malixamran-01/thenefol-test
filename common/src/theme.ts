@@ -17,6 +17,8 @@ export type ThemeToken = {
   hint?: string
   kind: ThemeTokenKind
   default: string
+  /** Until changed, this token takes the value of another token (e.g. the logo follows the accent colour). */
+  follows?: string
 }
 
 export type ThemeGroup = {
@@ -27,6 +29,8 @@ export type ThemeGroup = {
 }
 
 const c = (key: string, label: string, def: string, hint?: string): ThemeToken => ({ key, label, kind: 'color', default: def, hint })
+/** Colour token that mirrors `follows` until it is changed itself. */
+const f = (key: string, label: string, follows: string, def: string, hint: string): ThemeToken => ({ ...c(key, label, def, hint), follows })
 
 export const THEME_GROUPS: ThemeGroup[] = [
   {
@@ -56,6 +60,8 @@ export const THEME_GROUPS: ThemeGroup[] = [
     description: 'Top bar with the logo, menu, search, wishlist and cart.',
     tokens: [
       c('header-bg', 'Header background', '#0E2730'),
+      f('logo', 'Logo (NEFöL)', 'primary', '#4B97C9', 'Text logo; follows Primary accent until changed'),
+      f('logo-tagline', 'Logo tagline', 'header-text', '#FFFFFF', '"Natural as the morning dew"; follows Icons & active text'),
       c('header-text', 'Icons & active text', '#FFFFFF'),
       c('header-link', 'Menu links', '#E8F5F7'),
       c('header-border', 'Bottom border', 'rgba(232, 245, 247, 0.16)'),
@@ -135,6 +141,8 @@ export const THEME_GROUPS: ThemeGroup[] = [
     tokens: [
       c('footer-bg', 'Footer background', '#0E2730'),
       c('footer-heading', 'Column headings', '#FFFFFF'),
+      f('footer-logo', 'Footer logo (NEFöL)', 'logo', '#4B97C9', 'Follows the header logo colour until changed'),
+      f('footer-logo-tagline', 'Footer logo tagline', 'footer-heading', '#FFFFFF', 'Follows Column headings until changed'),
       c('footer-text', 'Links & text', '#E8F5F7'),
       c('footer-divider', 'Divider', 'rgba(255, 255, 255, 0.1)'),
     ],
@@ -163,6 +171,8 @@ export const THEME_GROUPS: ThemeGroup[] = [
       c('social-brand-hover', 'Brand dark (hover)', '#163D54'),
       c('social-accent', 'Accent (links, highlights)', '#4B97C9'),
       c('social-accent-hover', 'Accent (hover)', '#3C78A0'),
+      f('social-logo', 'Logo (NEFöL)', 'social-accent', '#4B97C9', 'Sidebar & top bar logo; follows Accent until changed'),
+      f('social-logo-tagline', 'Logo tagline', 'social-brand', '#1B4965', 'Follows Brand dark until changed'),
       c('social-text', 'Body text', '#1A1A1A'),
       c('social-nav-text', 'Sidebar links', '#374151'),
     ],
@@ -211,9 +221,23 @@ export function sanitizeTheme(input: unknown): ThemeValues {
   return out
 }
 
+/**
+ * Every token's effective value: defaults, then saved overrides, then "follows" tokens that weren't
+ * overridden take their source's value (so a preset that changes the accent also recolours the logo).
+ */
+export function resolveTheme(values: ThemeValues): Record<string, string> {
+  const own = sanitizeTheme(values)
+  const merged: Record<string, string> = { ...THEME_DEFAULTS, ...own }
+  // Tokens are listed after the ones they follow, so one pass in order resolves chains (footer-logo → logo → primary)
+  for (const token of ALL_THEME_TOKENS) {
+    if (token.follows && !(token.key in own)) merged[token.key] = merged[token.follows]
+  }
+  return merged
+}
+
 /** CSS custom-property map for a theme (defaults merged with overrides). */
 export function themeToCssVars(values: ThemeValues): Record<string, string> {
-  const merged = { ...THEME_DEFAULTS, ...sanitizeTheme(values) }
+  const merged = resolveTheme(values)
   const vars: Record<string, string> = {}
   for (const token of ALL_THEME_TOKENS) {
     const v = merged[token.key]
@@ -252,7 +276,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       'header-bg': '#FFFFFF', 'header-text': '#4A2329', 'header-link': '#4A2329', 'header-border': '#F1E1E3',
       'announcement-bg': '#9A5763', 'button-primary-bg': '#9A5763', 'button-primary-hover': '#8E4F5A',
       'button-secondary-border': '#4A2329', 'button-secondary-text': '#4A2329', 'input-focus': '#9A5763', 'chat-button': '#9A5763',
-      'badge-bg': '#9A5763', 'footer-bg': '#4A2329', 'footer-text': '#F8E8EA',
+      'badge-bg': '#9A5763', 'footer-bg': '#4A2329', 'footer-text': '#F8E8EA', 'footer-logo': '#F2C4CC',
       'social-bg': '#FBF3F4', 'social-sidebar-bg': '#FBF3F4', 'social-brand': '#4A2329', 'social-brand-hover': '#3A1B20', 'social-accent': '#9A5763', 'social-accent-hover': '#8E4F5A',
     },
   },
@@ -262,7 +286,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     values: {
       primary: '#3F7D58', 'primary-hover': '#32654A', 'primary-dark': '#26503A', 'primary-light': '#E3F1E8', 'primary-lighter': '#F2F8F4',
       heading: '#1E3A2B', 'heading-hover': '#152A1F', 'surface-soft': '#F2F8F4',
-      'header-bg': '#1E3A2B', 'footer-bg': '#1E3A2B', 'announcement-bg': '#3F7D58',
+      'header-bg': '#1E3A2B', 'footer-bg': '#1E3A2B', 'announcement-bg': '#3F7D58', logo: '#9ED3AE',
       'button-primary-bg': '#3F7D58', 'button-primary-hover': '#32654A', 'button-secondary-border': '#1E3A2B', 'button-secondary-text': '#1E3A2B',
       'input-focus': '#3F7D58', 'chat-button': '#3F7D58', 'badge-bg': '#3F7D58',
       'social-bg': '#F2F8F4', 'social-sidebar-bg': '#F2F8F4', 'social-brand': '#1E3A2B', 'social-brand-hover': '#152A1F', 'social-accent': '#3F7D58', 'social-accent-hover': '#32654A',

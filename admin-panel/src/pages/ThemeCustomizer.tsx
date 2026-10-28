@@ -10,6 +10,7 @@ import {
   THEME_PRESETS,
   THEME_SETTING_KEY,
   googleFontsHref,
+  resolveTheme,
   sanitizeTheme,
   themeToCssVars,
   type ThemeToken,
@@ -49,6 +50,8 @@ function contrast(a: string, b: string): number | null {
 const CONTRAST_PAIRS: Array<[string, string, string]> = [
   ['header-link', 'header-bg', 'Header menu links'],
   ['header-text', 'header-bg', 'Header icons'],
+  ['logo', 'header-bg', 'Header logo'],
+  ['footer-logo', 'footer-bg', 'Footer logo'],
   ['announcement-text', 'announcement-bg', 'Announcement bar'],
   ['button-primary-text', 'button-primary-bg', 'Primary buttons'],
   ['footer-text', 'footer-bg', 'Footer links'],
@@ -60,8 +63,7 @@ const CONTRAST_PAIRS: Array<[string, string, string]> = [
 ]
 
 // ---- token row ---------------------------------------------------------------------------------
-function TokenRow({ token, value, onChange }: { token: ThemeToken; value: string; onChange: (v: string | null) => void }) {
-  const changed = value !== token.default
+function TokenRow({ token, value, changed, onChange }: { token: ThemeToken; value: string; changed: boolean; onChange: (v: string | null) => void }) {
   const hex = token.kind === 'color' ? toHex6(value) : null
   return (
     <div className="flex items-center gap-3 py-2">
@@ -126,7 +128,10 @@ function StorePreview() {
     <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm" style={{ background: v('page-bg'), color: v('text'), fontFamily: v('font-body') }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3" style={{ background: v('header-bg'), borderBottom: `1px solid ${v('header-border')}` }}>
-        <span className="text-sm font-semibold tracking-widest" style={{ color: v('header-text'), fontFamily: v('font-heading') }}>NEFOL</span>
+        <span className="inline-flex flex-col items-center leading-none" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 20 }}>
+          <span className="font-medium" style={{ color: v('logo'), letterSpacing: '0.03em' }}>NEFöL</span>
+          <span className="mt-1 font-bold uppercase" style={{ color: v('logo-tagline'), fontSize: '0.255em', letterSpacing: '0.02em' }}>Natural as the morning dew</span>
+        </span>
         <div className="hidden gap-4 text-[10px] uppercase tracking-[0.15em] sm:flex" style={{ color: v('header-link') }}>
           <span>Home</span><span>Collections</span><span>Shop</span><span>Social</span>
         </div>
@@ -317,15 +322,19 @@ export default function ThemeCustomizer() {
     link.href = fontsHref
   }, [fontsHref])
 
-  const merged = useMemo(() => ({ ...THEME_DEFAULTS, ...values }), [values])
+  const merged = useMemo(() => resolveTheme(values), [values])
+  const overridden = useMemo(() => sanitizeTheme(values), [values])
   const previewVars = useMemo(() => themeToCssVars(values) as CSSProperties, [values])
   const dirty = JSON.stringify(sanitizeTheme(values)) !== JSON.stringify(sanitizeTheme(saved))
-  const changedCount = ALL_THEME_TOKENS.filter((t) => merged[t.key] !== t.default).length
+  const isChanged = (t: ThemeToken) => (t.follows ? t.key in overridden : merged[t.key] !== t.default)
+  const changedCount = ALL_THEME_TOKENS.filter(isChanged).length
 
   const setToken = (key: string, value: string | null) => {
     setValues((prev) => {
       const next = { ...prev }
-      if (value === null || value === THEME_DEFAULTS[key]) delete next[key]
+      // A token that follows another stays explicit once set; only "reset" makes it follow again
+      const follows = ALL_THEME_TOKENS.find((t) => t.key === key)?.follows
+      if (value === null || (!follows && value === THEME_DEFAULTS[key])) delete next[key]
       else next[key] = value
       return next
     })
@@ -455,7 +464,7 @@ export default function ThemeCustomizer() {
         )}
         <div className="flex flex-wrap gap-2">
           {THEME_PRESETS.map((p) => {
-            const pv = { ...THEME_DEFAULTS, ...p.values }
+            const pv = resolveTheme(p.values)
             return (
               <button
                 key={p.id}
@@ -513,7 +522,7 @@ export default function ThemeCustomizer() {
           ) : (
             groups.map((g) => {
               const open = q !== '' || openGroup === g.id
-              const groupChanged = g.tokens.filter((t) => merged[t.key] !== t.default).length
+              const groupChanged = g.tokens.filter(isChanged).length
               return (
                 <div key={g.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                   <button
@@ -536,7 +545,7 @@ export default function ThemeCustomizer() {
                   {open && (
                     <div className="divide-y divide-gray-100 border-t border-gray-100 px-4">
                       {g.tokens.map((t) => (
-                        <TokenRow key={t.key} token={t} value={merged[t.key]} onChange={(val) => setToken(t.key, val)} />
+                        <TokenRow key={t.key} token={t} value={merged[t.key]} changed={isChanged(t)} onChange={(val) => setToken(t.key, val)} />
                       ))}
                     </div>
                   )}

@@ -19,6 +19,9 @@
  *  15  Product media: product_images.display_order, poster_url (PDP videos), (product_id, type) index
  *  16  Product review moderation: status pending/approved/rejected, legacy rows marked approved, index
  *  17  CMS settings: table + branding defaults (insert-only) + site_theme storage for Theme Customizer
+ *  18  Shop by Concern: concerns + product_concerns (many-to-many), indexes
+ *  19  Concern collection pages: banner/headline/about/group columns, UV Protection concern
+ *  20  Google reviews: google_reviews_config (encrypted OAuth token, location) + google_reviews
  *
  * Full app schema is applied on backend startup via ensureSchema() in src/utils/schema.ts.
  * This script is safe to re-run (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
@@ -1948,6 +1951,120 @@ async function runMigration() {
     let themeOverrides = 0;
     try { themeOverrides = Object.keys(JSON.parse(theme.rows[0]?.setting_value || '{}')).length; } catch { /* leave 0 */ }
     console.log(`  ✅ cms_settings ready (theme: ${themeOverrides} custom value(s) preserved)`);
+
+    // ── Step 18: Shop by Concern ───────────────────────────────────────────────
+    console.log('📝 Step 18: Shop by Concern — concerns & product_concerns…');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS concerns (
+        id SERIAL PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        image_url TEXT,
+        aliases TEXT[] DEFAULT '{}',
+        sort_order INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        show_in_nav BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS aliases TEXT[] DEFAULT '{}';
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS show_in_nav BOOLEAN DEFAULT true;
+      CREATE TABLE IF NOT EXISTS product_concerns (
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        concern_id INTEGER NOT NULL REFERENCES concerns(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (product_id, concern_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_product_concerns_concern ON product_concerns(concern_id);
+      CREATE INDEX IF NOT EXISTS idx_concerns_active_order ON concerns(is_active, sort_order);
+    `);
+    const concernStats = await pool.query(`
+      SELECT (SELECT COUNT(*)::int FROM concerns) AS concerns,
+             (SELECT COUNT(DISTINCT product_id)::int FROM product_concerns) AS mapped_products
+    `);
+    const cs = concernStats.rows[0];
+    // Starter concerns (Acne, Dullness, Hair fall, …) are inserted by the backend on startup when the table is empty
+    console.log(`  ✅ concerns ready (${cs.concerns} concern(s), ${cs.mapped_products} product(s) mapped)`);
+
+    // ── Step 19: Concern collection pages ─────────────────────────────────────
+    console.log('📝 Step 19: Concern collection pages — banner, headline, about, group…');
+    await pool.query(`
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS concern_group TEXT;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS headline TEXT;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS subheadline TEXT;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS banner_url TEXT;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS banner_mobile_url TEXT;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS about_title TEXT;
+      ALTER TABLE concerns ADD COLUMN IF NOT EXISTS about_body TEXT;
+    `);
+    // Group the starter concerns (Skin / Hair) where no group was chosen yet
+    await pool.query(`
+      UPDATE concerns SET concern_group = 'hair'
+      WHERE concern_group IS NULL AND slug IN ('hair-fall', 'dandruff-scalp', 'dry-frizzy-hair');
+      UPDATE concerns SET concern_group = 'skin'
+      WHERE concern_group IS NULL AND slug IN ('acne-breakouts', 'dullness-pigmentation', 'dryness-hydration', 'anti-ageing',
+                                               'tan-removal', 'oily-skin-pores', 'sensitive-skin', 'uv-protection');
+    `);
+    // "UV Protection" (sunscreen) — added after the first starter set; only when no such concern exists yet
+    await pool.query(`
+      INSERT INTO concerns (slug, name, concern_group, description, aliases, sort_order)
+      SELECT 'uv-protection', 'UV Protection', 'skin', 'Everyday defence against UV rays, sunburn and tanning.',
+             ARRAY['sun protection', 'sunscreen', 'spf', 'suncare', 'sun care', 'uv'],
+             (SELECT COALESCE(MAX(sort_order), 0) + 10 FROM concerns)
+      WHERE NOT EXISTS (SELECT 1 FROM concerns WHERE slug = 'uv-protection' OR lower(name) = 'uv protection');
+      UPDATE concerns SET aliases = array_append(COALESCE(aliases, '{}'), 'skin brightening')
+      WHERE slug = 'dullness-pigmentation' AND NOT ('skin brightening' = ANY(COALESCE(aliases, '{}')));
+    `);
+    console.log('  ✅ concern page fields ready');
+
+    // ── Step 20: Google reviews (Business Profile sync) ──────────────────────
+    console.log('📝 Step 20: Google reviews — config + synced reviews…');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS google_reviews_config (
+        id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        refresh_token_enc TEXT,
+        connected_email TEXT,
+        account_name TEXT,
+        location_name TEXT,
+        location_title TEXT,
+        place_id TEXT,
+        maps_uri TEXT,
+        new_review_uri TEXT,
+        average_rating NUMERIC(2,1),
+        total_reviews INTEGER,
+        last_sync_at TIMESTAMPTZ,
+        last_error TEXT,
+        oauth_state TEXT,
+        oauth_state_expires TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      INSERT INTO google_reviews_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+      CREATE TABLE IF NOT EXISTS google_reviews (
+        id SERIAL PRIMARY KEY,
+        review_id TEXT UNIQUE NOT NULL,
+        location_name TEXT NOT NULL,
+        reviewer_name TEXT,
+        reviewer_photo_url TEXT,
+        is_anonymous BOOLEAN DEFAULT false,
+        rating SMALLINT NOT NULL,
+        comment TEXT,
+        reply TEXT,
+        review_created_at TIMESTAMPTZ,
+        review_updated_at TIMESTAMPTZ,
+        is_visible BOOLEAN NOT NULL DEFAULT false,
+        is_featured BOOLEAN NOT NULL DEFAULT false,
+        admin_override BOOLEAN NOT NULL DEFAULT false,
+        synced_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_google_reviews_public ON google_reviews(location_name, is_visible, is_featured DESC, review_created_at DESC);
+    `);
+    // Connect Google in Admin → Google reviews; reviews sync daily at 03:30 server time
+    console.log('  ✅ google reviews tables ready');
 
     console.log('✅ Migration completed successfully!');
     process.exit(0);

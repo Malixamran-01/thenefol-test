@@ -124,6 +124,9 @@ export function titleForRoute(path: string, cartCount: number): string | null | 
   if (
     p.startsWith('/user/product/') ||
     p.startsWith('/p/') ||
+    // Shop by Concern pages set their title once the concern loads
+    p === '/user/concerns' ||
+    p.startsWith('/user/concern/') ||
     (p.startsWith('/user/author/') && p !== '/user/author/onboarding') ||
     // blog posts and their comment threads (BlogDetail sets the post title)
     (p.startsWith('/user/blog/') && !(p in ROUTE_TITLES))

@@ -16,12 +16,29 @@ import {
   Clapperboard,
   Settings,
   HelpCircle,
+  Store,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { blogActivityAPI } from '../services/api'
 import { authorAPI } from '../services/authorAPI'
 import { getApiBase } from '../utils/apiBase'
-import { BRAND_ICON_SRC } from '../constants/brandAssets'
+import BrandWordmark from './BrandWordmark'
+
+/** NEFöL wordmark + "Social", for the sidebar and the mobile top bar. Size with a font-size class. */
+function SocialLockup({ className = '' }: { className?: string }) {
+  return (
+    <span className={`inline-flex !flex-nowrap items-center gap-[0.45em] ${className}`}>
+      <BrandWordmark variant="social" />
+      <span className="h-[1.15em] w-px flex-shrink-0" style={{ backgroundColor: 'var(--nf-social-logo-tagline)', opacity: 0.25 }} aria-hidden="true" />
+      <span
+        className="text-[0.5em] font-semibold uppercase leading-none tracking-[0.22em]"
+        style={{ color: 'var(--nf-social-logo-tagline)', fontFamily: "'Montserrat', system-ui, sans-serif" }}
+      >
+        Social
+      </span>
+    </span>
+  )
+}
 import AuthorPromptModal from './AuthorPromptModal'
 import {
   getCreatorProgramSidebarEnabled,
@@ -237,38 +254,24 @@ function SidePanelNav({
       {/* ── Logo row (desktop sidebar only) ─────────────────── */}
       {showLogoRow && (
         <div
-          className={`flex h-[60px] flex-shrink-0 items-center overflow-hidden border-b border-gray-200/70 ${
+          className={`flex !flex-nowrap h-[60px] flex-shrink-0 items-center overflow-hidden border-b border-gray-200/70 ${
             collapsed ? 'justify-center px-0' : 'justify-between px-5'
           }`}
         >
           {!collapsed && (
             <a
               href="#/user/blog"
-              className="flex items-center gap-2.5 min-w-0"
+              className="min-w-0"
               onClick={onClose}
               title="NEFOL Social"
             >
-              <img
-                src={BRAND_ICON_SRC}
-                alt="NEFOL"
-                className="brand-social-logo object-contain"
-                onError={(e) => { e.currentTarget.style.display = 'none' }}
-              />
-              <span className="truncate text-[15px] tracking-wide text-[color:var(--nf-heading)] leading-none">
-                <span className="font-bold">NEFOL</span>{' '}
-                <span className="font-semibold opacity-80">Social</span>
-              </span>
+              <SocialLockup className="text-[20px]" />
             </a>
           )}
 
           {collapsed && (
             <a href="#/user/blog" onClick={onClose} title="NEFOL Social">
-              <img
-                src={BRAND_ICON_SRC}
-                alt="NEFOL"
-                className="brand-social-logo object-contain"
-                onError={(e) => { e.currentTarget.style.display = 'none' }}
-              />
+              <BrandWordmark variant="social" tagline={false} className="mr-1 text-[11px]" />
             </a>
           )}
 
@@ -392,16 +395,18 @@ function SidePanelNav({
               title="Back to NEFOL Store"
               className="flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--nf-heading)] text-white shadow-md transition-colors hover:bg-[color:var(--nf-heading-hover)] hover:shadow-lg"
             >
-              <img src={BRAND_ICON_SRC} alt="" className="brand-social-logo--sm object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              <Store className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
             </a>
           ) : (
             <a
               href="#/user/"
               onClick={onClose}
-              className="flex items-center gap-2.5 rounded-lg bg-[color:var(--nf-heading)] px-4 py-3 text-[15px] font-bold text-white shadow-md transition-colors hover:bg-[color:var(--nf-heading-hover)] hover:shadow-lg -mx-1"
+              className="flex !flex-nowrap items-center gap-2.5 rounded-lg bg-[color:var(--nf-heading)] px-4 py-3 text-[15px] font-bold text-white shadow-md transition-colors hover:bg-[color:var(--nf-heading-hover)] hover:shadow-lg -mx-1"
             >
-              <img src={BRAND_ICON_SRC} alt="" className="brand-social-logo--sm flex-shrink-0 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-              Back to NEFOL Store
+              <Store className="h-5 w-5 flex-shrink-0" strokeWidth={2} aria-hidden="true" />
+              <span className="whitespace-nowrap">
+                Back to <BrandWordmark variant="inherit" tagline={false} className="text-[15px]" /> Store
+              </span>
             </a>
           )}
         </div>
@@ -636,17 +641,8 @@ export default function BlogLayout({ children, currentHash }: BlogLayoutProps) {
           <Menu strokeWidth={2.75} className="h-6 w-6" />
         </button>
 
-        <a href="#/user/blog" className="flex items-center gap-2">
-          <img
-            src={BRAND_ICON_SRC}
-            alt="NEFOL"
-            className="brand-social-logo object-contain"
-            onError={(e) => { e.currentTarget.style.display = 'none' }}
-          />
-          <span className="text-[14px] tracking-wide text-[color:var(--nf-heading)] leading-none">
-            <span className="font-bold">NEFOL</span>{' '}
-            <span className="font-semibold opacity-80">Social</span>
-          </span>
+        <a href="#/user/blog" title="NEFOL Social">
+          <SocialLockup className="text-[19px]" />
         </a>
 
         {isAuthenticated ? (

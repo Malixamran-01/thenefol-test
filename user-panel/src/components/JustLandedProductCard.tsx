@@ -4,6 +4,8 @@ import PricingDisplay from './PricingDisplay'
 import VerifiedBadge from './VerifiedBadge'
 import WishlistButton from './WishlistButton'
 import { createImageErrorHandler } from '../utils/imageUtils'
+import CardHoverImage, { hoverImageOf } from './CardHoverImage'
+import ProductCardBadges, { cardBadgesOf } from './ProductCardBadges'
 
 type JustLandedProduct = {
   id?: number
@@ -82,7 +84,9 @@ export default function JustLandedProductCard({
           ) : (
             <span className="nefol-product-card__media-placeholder">No Image</span>
           )}
-          {isBestSeller && (
+          {product.listImage && <CardHoverImage src={hoverImageOf(product, product.listImage)} />}
+          <ProductCardBadges details={product.details} />
+          {isBestSeller && cardBadgesOf(product.details).length === 0 && (
             <div
               className="absolute left-2 top-2 z-10 px-2 py-1 text-xs font-medium"
               style={{ backgroundColor: 'var(--nf-badge-bg)', color: 'var(--nf-badge-text)' }}

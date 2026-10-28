@@ -302,16 +302,8 @@ export default function HomepageLayoutManager() {
         description: 'NATURAL BEAUTY section with image, title, subtitle, description, and button',
         sectionType: 'natural_beauty',
         imageCount: 1
-      },
-      {
-        id: 'whatsappsubscription',
-        name: 'WhatsApp Subscription',
-        type: 'banner',
-        images: [],
-        description: 'WhatsApp subscription modal with image, heading, description, footer text, logo, and logo name',
-        sectionType: 'whatsappsubscription',
-        imageCount: 2 // 0: product image, 1: logo
       }
+      // The WhatsApp subscription popup was removed from the storefront, so it has no editor here
     ]
 
     // Load existing images from CMS

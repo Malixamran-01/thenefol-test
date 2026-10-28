@@ -200,6 +200,8 @@ const Layout = () => {
       items: [
         { name: 'Products', href: '/loginasadmin/products', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/products' },
         { name: 'Reviews', href: '/loginasadmin/product-reviews', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/product-reviews' },
+        { name: 'Google reviews', href: '/loginasadmin/google-reviews', badge: 'NEW', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/google-reviews' },
+        { name: 'Shop by Concern', href: '/loginasadmin/concerns', badge: 'NEW', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/concerns' },
         { name: 'Catalog', href: '/loginasadmin/categories', requiredPermission: NavCatalog.categories, current: location.pathname === '/loginasadmin/categories' },
         {
           name: 'Product collections',

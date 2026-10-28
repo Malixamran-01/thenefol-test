@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import PricingDisplay from '../components/PricingDisplay'
-import { getApiBase } from '../utils/apiBase'
+import { getApiBase, resolveMediaUrl } from '../utils/apiBase'
+import CardHoverImage, { hoverImageOf } from '../components/CardHoverImage'
+import ProductCardBadges from '../components/ProductCardBadges'
 import { isOutOfStock } from '../utils/stock'
 
 interface Promotion {
@@ -218,6 +220,8 @@ export default function Offers() {
                           target.style.display = 'none'
                         }}
                       />
+                      <CardHoverImage src={hoverImageOf(product, null, resolveMediaUrl)} />
+                      <ProductCardBadges details={product.details} />
                     </div>
                     <div className="flex flex-1 flex-col p-5">
                       <h3 className="text-lg font-semibold text-slate-900">{product.title}</h3>

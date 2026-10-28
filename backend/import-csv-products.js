@@ -7,32 +7,60 @@ require('dotenv').config();
 const connectionString = process.env.DATABASE_URL || 'postgresql://nofol_users:Jhx82ndc9g@j@localhost:5432/nefol';
 const pool = new Pool({ connectionString });
 
-// Parse CSV line with proper quote handling
-function parseCSVLine(line) {
-  const result = [];
-  let current = '';
+// Parse the whole CSV (RFC 4180): quoted fields may contain commas, "" and line breaks
+function parseCSVRows(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = [];
+  let row = [];
+  let cur = '';
   let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
+  const endRow = () => {
+    row.push(cur);
+    if (row.some(c => c.trim() !== '')) rows.push(row);
+    row = [];
+    cur = '';
+  };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; } else inQuotes = false;
       } else {
-        inQuotes = !inQuotes;
+        cur += ch;
       }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
+      continue;
     }
+    if (ch === '"') inQuotes = true;
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n') endRow();
+    else if (ch === '\r') { if (text[i + 1] === '\n') i++; endRow(); }
+    else cur += ch;
   }
-  
-  result.push(current.trim());
-  return result;
+  if (cur !== '' || row.length) endRow();
+  return rows;
+}
+
+// "₹1,299.00" / "Rs. 1299" -> "1299.00"; '' when empty or not a number
+function normalizeMoney(raw) {
+  const cleaned = String(raw || '').replace(/₹|rs\.?|inr|\/-|,|\s/gi, '');
+  return /^\d+(\.\d+)?$/.test(cleaned) && Number(cleaned) > 0 ? Number(cleaned).toFixed(2) : '';
+}
+
+// "30%" -> "30"
+function normalizePercent(raw) {
+  const cleaned = String(raw || '').replace(/%|\s/g, '');
+  return /^\d+(\.\d+)?$/.test(cleaned) ? String(Number(cleaned)) : '';
+}
+
+// Same categories as the admin panel dropdown
+function mapCategory(raw) {
+  const c = String(raw || '').toLowerCase().trim();
+  if (!c) return '';
+  if (c.includes('combo') || c.includes('pack')) return 'Combo';
+  if (c.includes('hair')) return 'Hair Care';
+  if (c.includes('face') || c.includes('skin')) return 'Face Care';
+  if (c.includes('body')) return 'Body Care';
+  return String(raw).trim();
 }
 
 // Generate slug from product name
@@ -62,26 +90,24 @@ async function importProducts() {
     }
     
     const raw = fs.readFileSync(csvPath, 'utf8');
-    const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
-    
-    console.log('📊 Total lines in CSV:', lines.length);
-    
-    if (lines.length === 0) {
+    const records = parseCSVRows(raw);
+
+    console.log('📊 Total records in CSV:', records.length);
+
+    if (records.length === 0) {
       console.error('❌ No lines found in CSV');
       process.exit(1);
     }
-    
+
     // Parse headers
-    const headers = parseCSVLine(lines[0]);
+    const headers = records[0].map(h => h.trim());
     console.log('📋 Headers found:', headers.length);
     console.log('🏷️  First few headers:', headers.slice(0, 5).join(', '));
-    
+
     // Parse products
     const products = [];
-    for (let i = 1; i < lines.length; i++) {
-      const parts = parseCSVLine(lines[i]);
-      if (parts.every(p => p.trim() === '')) continue;
-      
+    for (let i = 1; i < records.length; i++) {
+      const parts = records[i];
       const obj = {};
       for (let j = 0; j < headers.length; j++) {
         obj[headers[j]] = (parts[j] ?? '').trim();
@@ -102,12 +128,19 @@ async function importProducts() {
         const slug = product['Slug'] || slugify(productName);
         const brand = product['Brand Name'] || 'NEFOL';
         const sku = product['SKU'] || '';
-        const category = product['Product Category'] || '';
+        const category = mapCategory(product['Product Category']);
         const subCategory = product['Product Sub-Category'] || '';
-        const mrp = product['MRP'] || '0';
-        const websitePrice = product['WEBSITE price'] || '0';
-        const discount = product['discount'] || '0';
-        const listImage = product['Image Links'] ? product['Image Links'].split(',')[0].trim() : '';
+        const mrp = normalizeMoney(product['MRP'] || product['MRP (₹)']);
+        const csvWebsitePrice = normalizeMoney(product['WEBSITE price'] || product['Website Price']);
+        const csvDiscount = normalizePercent(product['discount']);
+        // Website price wins; otherwise derive it from MRP and discount
+        const websitePrice = csvWebsitePrice ||
+          (mrp && csvDiscount ? (Number(mrp) * (1 - Number(csvDiscount) / 100)).toFixed(2) : '');
+        const discount = mrp && websitePrice
+          ? String(Math.round((Number(mrp) - Number(websitePrice)) / Number(mrp) * 1000) / 10)
+          : csvDiscount;
+        const sellingPrice = websitePrice || mrp;
+        const listImage = (product['Image Links'] || '').split(/[\s,]+/).find(Boolean) || '';
         
         // Store all CSV data in details JSON field
         const details = {
@@ -129,10 +162,12 @@ async function importProducts() {
           outerPackaging: product['Outer Packaging Type'] || '',
           netWeight: product['Net Weight (Product Only)'] || '',
           deadWeight: product['Dead Weight (Packaging Only)'] || '',
-          discount: product['discount'] || '',
-          mrp: product['MRP'] || '',
-          websitePrice: product['WEBSITE price'] || '',
-          gst: product['GST %'] || '',
+          discount: discount,
+          discountPercent: discount,
+          mrp: mrp,
+          websitePrice: websitePrice,
+          gst: normalizePercent(product['GST %']),
+          gstPercent: normalizePercent(product['GST %']),
           countryOfOrigin: product['Country of Origin'] || '',
           manufacturer: product['Manufacturer / Packer / Importer'] || '',
           keyIngredients: product['Key Ingredients'] || '',
@@ -152,7 +187,23 @@ async function importProducts() {
           skipped++;
           continue;
         }
-        
+
+        if (!sellingPrice) {
+          console.log(`⚠️  Skipping ${productName}: no valid MRP or website price`);
+          skipped++;
+          continue;
+        }
+
+        if (mrp && websitePrice && Number(websitePrice) > Number(mrp)) {
+          console.log(`⚠️  Skipping ${productName}: website price ₹${websitePrice} is higher than MRP ₹${mrp}`);
+          skipped++;
+          continue;
+        }
+
+        if (csvDiscount && discount && Math.abs(Number(csvDiscount) - Number(discount)) > 0.5) {
+          console.log(`⚠️  ${productName}: discount column says ${csvDiscount}% but prices give ${discount}%; using ${discount}%`);
+        }
+
         // Check if product already exists
         const checkResult = await pool.query(
           'SELECT id FROM products WHERE slug = $1',
@@ -170,7 +221,7 @@ async function importProducts() {
           `, [
             productName,
             category,
-            websitePrice,
+            sellingPrice,
             listImage,
             details.longDescription,
             JSON.stringify(details),
@@ -190,7 +241,7 @@ async function importProducts() {
             slug,
             productName,
             category,
-            websitePrice,
+            sellingPrice,
             listImage,
             details.longDescription,
             JSON.stringify(details),

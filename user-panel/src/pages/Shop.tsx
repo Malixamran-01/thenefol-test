@@ -10,6 +10,8 @@ import { getProductRating, getProductReviewCount, hasVerifiedReviews } from '../
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import VerifiedBadge from '../components/VerifiedBadge'
 import WishlistButton from '../components/WishlistButton'
+import CardHoverImage, { hoverImageOf } from '../components/CardHoverImage'
+import ProductCardBadges from '../components/ProductCardBadges'
 
 export default function Shop() {
   const { items, loading, error } = useProducts()
@@ -196,7 +198,9 @@ export default function Shop() {
                             }}
                           />
                         )}
+                        <CardHoverImage src={hoverImageOf(product, product.listImage)} className="object-cover rounded-xl" />
                       </a>
+                      <ProductCardBadges details={product.details} className="left-3 top-3" />
                       <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
                         <button>
                           <WishlistButton productId={product.id!} />

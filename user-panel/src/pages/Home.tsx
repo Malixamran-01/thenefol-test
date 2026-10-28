@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import SocialSneakPeek from '../components/SocialSneakPeek'
 import JustLandedProductCard from '../components/JustLandedProductCard'
+import GoogleReviewsSection from '../components/GoogleReviewsSection'
 import { api } from '../services/api'
-import SubscriptionModal from '../components/SubscriptionModal'
 import { useCart } from '../contexts/CartContext'
 import { useProducts } from '../hooks/useProducts'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
@@ -19,7 +19,6 @@ export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
   const { addItem } = useCart()
   const homeFetchIdRef = useRef(0)
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [csvProducts, setCsvProducts] = useState<any[]>([])
 
   useEffect(() => {
@@ -103,14 +102,6 @@ export default function Home() {
     description: 'Our premium collection combines the best of nature and science to deliver exceptional results for your skin.',
     buttonText: 'SHOP NOW',
     buttonLink: '/shop'
-  })
-  const [whatsappSubscription, setWhatsappSubscription] = useState({
-    image: '/IMAGES/BANNER%20(1).webp',
-    logo: '',
-    heading: 'Join The NEFOL Circle',
-    description: 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-    footer: 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
-    logoName: 'NEF?L'
   })
   const [foreverFavorites, setForeverFavorites] = useState<any>({
     title: 'FOREVER FAVORITES',
@@ -347,26 +338,6 @@ export default function Home() {
         if (Array.isArray(slugs) && slugs.length > 0) {
           setJustLandedOrderSlugs(slugs.filter((s: unknown) => typeof s === 'string' && s.trim()))
         }
-
-        const whatsappSection = sections.find((s: any) => s.section_type === 'whatsappsubscription')
-        if (whatsappSection?.content) {
-          const c = whatsappSection.content
-          setWhatsappSubscription((prev) => {
-            const next = {
-              image: c.image ? normalizeUrl(c.image) : '/IMAGES/BANNER%20(1).webp',
-              logo: c.logo ? normalizeUrl(c.logo) : '',
-              heading: c.heading || 'Join The NEFOL Circle',
-              description:
-                c.description ||
-                'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
-              footer:
-                c.footer || 'By subscribing, you agree to receive WhatsApp messages from NEFOL.',
-              logoName: c.logoName || 'NEFOL',
-            }
-            if (JSON.stringify(prev) === JSON.stringify(next)) return prev
-            return next
-          })
-        }
       } catch (error) {
         console.error('Failed to fetch CMS sections:', error)
       }
@@ -412,20 +383,6 @@ export default function Home() {
 
     return () => window.clearInterval(id)
   }, [heroImages.length, heroAutoPlay, heroAutoPlayDelay, heroLoop])
-
-  // Subscription modal (appears 5s after landing, only if not dismissed before)
-  useEffect(() => {
-    const hasDismissedSubscription = localStorage.getItem('nefol-subscription-dismissed')
-    if (!hasDismissedSubscription) {
-      const id = window.setTimeout(() => setShowSubscriptionModal(true), 5000)
-      return () => window.clearTimeout(id)
-    }
-  }, [])
-
-  const handleCloseSubscriptionModal = () => {
-    setShowSubscriptionModal(false)
-    localStorage.setItem('nefol-subscription-dismissed', 'true')
-  }
 
   const allFeaturedProducts = useMemo(
     () => sortProductList(products, justLandedOrderSlugs),
@@ -555,7 +512,7 @@ export default function Home() {
       )}
       {/* Top Media Carousel Section - Above Hero Banner */}
       {topMediaImages.length > 0 && (
-        <section className="relative bg-white w-full mt-2 sm:mt-4 md:mt-6" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+        <section className="relative bg-[color:var(--nf-page-bg)] w-full mt-2 sm:mt-4 md:mt-6" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
           <div className="mx-auto w-full py-0 sm:py-2 md:py-4">
             <div className="relative top-media-carousel-container">
               {topMediaImages[topMediaIndex] && (
@@ -602,8 +559,9 @@ export default function Home() {
 
       {/* Hero Banner Section */}
       {heroImages.length > 0 && (
-        <section className="relative w-full bg-white">
-          <div className="mx-auto max-w-7xl px-4 py-4 sm:py-6 md:py-8">
+        <section className="relative w-full" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+          {/* Full width, same as the top media banner above */}
+          <div className="mx-auto w-full py-2 sm:py-4 md:py-6">
             <div className="relative w-full" style={{ 
               aspectRatio: '16/9',
               maxHeight: '80vh',
@@ -879,8 +837,9 @@ export default function Home() {
 
       {/* Complete Kit Banner Section */}
       {completeKitImage && (
-        <section className="py-8 sm:py-12 md:py-16 lg:py-20 bg-white">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <section className="py-8 sm:py-12 md:py-16 lg:py-20" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+          {/* Full width, same as the hero banner */}
+          <div className="mx-auto w-full">
             {/* Desktop Layout - Text Overlay on Image */}
             <div className="hidden md:block relative overflow-hidden complete-kit-container rounded-xl">
               <img 
@@ -1038,16 +997,7 @@ export default function Home() {
 
       {/* Nefol Collection Section */}
       {nefolCollection.image && (
-        <section className="py-12 sm:py-16 md:py-20 bg-white relative overflow-hidden">
-          {/* Curve Effect at top */}
-          <div 
-            className="absolute top-0 left-0 w-full h-12 sm:h-16 md:h-20"
-            style={{
-              background: 'linear-gradient(to bottom, var(--arctic-blue-background) 0%, var(--arctic-blue-background) 50%, white 100%)',
-              clipPath: 'ellipse(100% 100% at 50% 0%)',
-              transform: 'scaleY(-1)'
-            }}
-          />
+        <section className="py-12 sm:py-16 md:py-20 bg-[color:var(--nf-page-bg)] relative overflow-hidden">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-center">
               <div className="relative rounded-xl overflow-hidden w-full">
@@ -1101,20 +1051,12 @@ export default function Home() {
             </div>
           </div>
           
-          {/* Curve Effect at bottom */}
-          <div 
-            className="absolute bottom-0 left-0 w-full h-12 sm:h-16 md:h-20"
-            style={{
-              background: 'linear-gradient(to top, white 0%, white 50%, var(--arctic-blue-background) 100%)',
-              clipPath: 'ellipse(100% 100% at 50% 100%)'
-            }}
-          />
         </section>
       )}
 
       {/* Forever Favorites Section */}
       {(foreverFavorites.luxurySkincare.image || foreverFavorites.naturalBeauty.image) && (
-        <section className="py-12 sm:py-16 md:py-20 bg-white">
+        <section className="py-12 sm:py-16 md:py-20 bg-[color:var(--nf-page-bg)]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12 sm:mb-16">
               <h2 
@@ -1185,7 +1127,7 @@ export default function Home() {
 
       {/* Natural Beauty Section */}
       {naturalBeauty.image && (
-        <section className="py-12 sm:py-16 md:py-20 bg-white">
+        <section className="py-12 sm:py-16 md:py-20 bg-[color:var(--nf-page-bg)]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-center">
               <div className="text-left">
@@ -1243,15 +1185,6 @@ export default function Home() {
 
       {/* Ingredients Section - Blue Pea Featured (like neudeskin's milk) */}
       <section className="py-12 sm:py-16 md:py-20 relative overflow-hidden" style={{ backgroundColor: 'var(--arctic-blue-background)' }}>
-        {/* Curve Effect at top */}
-        <div 
-          className="absolute top-0 left-0 w-full h-16 sm:h-24 md:h-32"
-          style={{
-            background: 'linear-gradient(to bottom, white 0%, white 50%, var(--arctic-blue-background) 100%)',
-            clipPath: 'ellipse(100% 100% at 50% 0%)',
-            transform: 'scaleY(-1)'
-          }}
-        />
         
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-12 sm:mb-16">
@@ -1270,8 +1203,8 @@ export default function Home() {
             </p>
           </div>
           
-          {/* Blue Pea - Featured Ingredient */}
-          <div className="max-w-4xl mx-auto">
+          {/* Blue Pea - Featured Ingredient (full content width, like the other sections) */}
+          <div>
             <div 
               className="bg-white rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
               onClick={() => window.location.hash = '#/user/ingredients'}
@@ -1280,7 +1213,7 @@ export default function Home() {
                       transition: 'all 0.3s ease'
                     }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+              <div className="grid grid-cols-1 md:grid-cols-[5fr_7fr] gap-0">
                 {/* Image Section */}
                 <div className="relative overflow-hidden" style={{ aspectRatio: '1 / 1', minHeight: '300px' }}>
                   <div
@@ -1309,7 +1242,7 @@ export default function Home() {
                 </div>
                 
                 {/* Content Section */}
-                <div className="p-6 sm:p-8 md:p-10 flex flex-col justify-center">
+                <div className="p-6 sm:p-8 md:p-10 lg:p-14 flex flex-col justify-center">
                   <div className="mb-4">
                     <span 
                       className="inline-block px-3 py-1 text-xs sm:text-sm font-medium rounded-full mb-3"
@@ -1368,19 +1301,14 @@ export default function Home() {
           </div>
         </div>
         
-        {/* Curve Effect at bottom */}
-        <div 
-          className="absolute bottom-0 left-0 w-full h-16 sm:h-24 md:h-32"
-          style={{
-            background: 'linear-gradient(to top, white 0%, white 50%, var(--arctic-blue-background) 100%)',
-            clipPath: 'ellipse(100% 100% at 50% 100%)'
-          }}
-        />
       </section>
+
+      {/* Happy customers - Google reviews chosen in Admin → Google reviews (hidden until connected) */}
+      <GoogleReviewsSection />
 
       {/* Marketplace Logos Section - Moved to last before footer */}
       {marketplaceLogos.length > 0 && (
-        <section className="py-12 sm:py-16 md:py-20 bg-white">
+        <section className="py-12 sm:py-16 md:py-20 bg-[color:var(--nf-page-bg)]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12 sm:mb-16">
               <h2 
@@ -1412,18 +1340,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
-      {/* Subscription Modal */}
-      <SubscriptionModal 
-        isOpen={showSubscriptionModal}
-        onClose={handleCloseSubscriptionModal}
-        image={whatsappSubscription.image}
-        logo={whatsappSubscription.logo}
-        logoName={whatsappSubscription.logoName}
-        heading={whatsappSubscription.heading}
-        description={whatsappSubscription.description}
-        footer={whatsappSubscription.footer}
-      />
     </main>
   )
 }

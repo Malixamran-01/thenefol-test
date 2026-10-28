@@ -28,6 +28,9 @@ import { orderPriceCheckMode, validateOrderItemPrices } from './services/orderPr
 import { normalizeOrderItems, deductStockForOrder } from './services/inventoryBatchService'
 import { createUserActivityTables } from './utils/userActivitySchema'
 import * as productRoutes from './routes/products'
+import * as concernRoutes from './routes/concerns'
+import * as googleReviewRoutes from './routes/googleReviews'
+import * as productBulkRoutes from './routes/productBulk'
 import * as variantRoutes from './routes/variants'
 import * as inventoryRoutes from './routes/inventory'
 import * as unifiedSalesRoutes from './routes/unifiedSales'
@@ -1223,6 +1226,32 @@ app.get('/api/admin/community/comments', authenticateToken, (_req, res) => {
 })
 
 // ==================== OPTIMIZED PRODUCTS API ====================
+// ==================== SHOP BY CONCERN ====================
+app.get('/api/concerns', (req, res) => concernRoutes.listConcerns(pool, req, res))
+app.get('/api/concerns/:slug', (req, res) => concernRoutes.getConcernWithProducts(pool, req, res))
+// /api/admin/* is staff-only (adminGuard); product permission matches the catalog pages
+const concernAdmin = [authenticateAndAttach as any, requirePermission(['products:update'])]
+app.get('/api/admin/concerns', ...concernAdmin, (req, res) => concernRoutes.adminListConcerns(pool, req, res))
+app.post('/api/admin/concerns', ...concernAdmin, (req, res) => concernRoutes.adminCreateConcern(pool, req, res))
+app.put('/api/admin/concerns/:id(\\d+)', ...concernAdmin, (req, res) => concernRoutes.adminUpdateConcern(pool, req, res))
+app.delete('/api/admin/concerns/:id(\\d+)', ...concernAdmin, (req, res) => concernRoutes.adminDeleteConcern(pool, req, res))
+app.put('/api/admin/concerns/:id(\\d+)/products', ...concernAdmin, (req, res) => concernRoutes.adminSetConcernProducts(pool, req, res))
+
+// Bulk edit selected products: MRP, discount, card badges, category, concerns (preview first, then apply)
+app.post('/api/admin/products/bulk-update', ...concernAdmin, (req, res) => productBulkRoutes.adminBulkUpdateProducts(pool, req, res, io))
+
+// Google reviews (Business Profile API): public section data, OAuth callback, admin connect/sync/curate
+app.get('/api/google-reviews', (req, res) => googleReviewRoutes.publicGoogleReviews(pool, req, res))
+app.get('/api/google-reviews/oauth/callback', (req, res) => googleReviewRoutes.oauthCallback(pool, req, res))
+app.get('/api/admin/google-reviews/status', ...concernAdmin, (req, res) => googleReviewRoutes.adminStatus(pool, req, res))
+app.post('/api/admin/google-reviews/connect', ...concernAdmin, (req, res) => googleReviewRoutes.adminConnect(pool, req, res))
+app.get('/api/admin/google-reviews/locations', ...concernAdmin, (req, res) => googleReviewRoutes.adminLocations(pool, req, res))
+app.put('/api/admin/google-reviews/location', ...concernAdmin, (req, res) => googleReviewRoutes.adminSelectLocation(pool, req, res))
+app.post('/api/admin/google-reviews/sync', ...concernAdmin, (req, res) => googleReviewRoutes.adminSync(pool, req, res))
+app.post('/api/admin/google-reviews/disconnect', ...concernAdmin, (req, res) => googleReviewRoutes.adminDisconnect(pool, req, res))
+app.get('/api/admin/google-reviews/reviews', ...concernAdmin, (req, res) => googleReviewRoutes.adminListReviews(pool, req, res))
+app.patch('/api/admin/google-reviews/reviews/:id(\\d+)', ...concernAdmin, (req, res) => googleReviewRoutes.adminUpdateReview(pool, req, res))
+
 app.get('/api/products', (req, res) => productRoutes.getProducts(pool, res))
 // Specific routes must come before generic :id route
 app.post('/api/products/:productId/view', (req, res) => recommendationRoutes.trackProductView(pool, req, res))
@@ -5913,7 +5942,13 @@ ensureSchema(pool)
     
     // Seed CMS content
     await seedCMSContent(pool)
-    
+
+    // Shop by Concern tables (+ starter concerns on an empty table)
+    await concernRoutes.ensureConcernTables(pool)
+
+    // Google reviews tables (Business Profile sync)
+    await googleReviewRoutes.ensureGoogleReviewTables(pool)
+
     // Update all products with pricing data
     await updateAllProductsWithPricing(pool)
     
@@ -5941,6 +5976,9 @@ ensureSchema(pool)
   })
 
 let fbSyncLastRun: null | { time: number; result: any } = null
+
+// Google reviews: daily sync from the connected Google Business Profile (no-op until connected)
+cron.schedule('30 3 * * *', () => googleReviewRoutes.scheduledGoogleReviewSync(pool))
 
 // Unified sales: website + marketplace stubs (hourly)
 cron.schedule('0 * * * *', async () => {

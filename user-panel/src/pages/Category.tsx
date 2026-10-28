@@ -4,6 +4,8 @@ import ListingAddToCartButton from '../components/ListingAddToCartButton'
 import type { Product } from '../types'
 import PricingDisplay from '../components/PricingDisplay'
 import { getProductRating, getProductReviewCount } from '../utils/product_reviews'
+import CardHoverImage, { hoverImageOf } from '../components/CardHoverImage'
+import ProductCardBadges from '../components/ProductCardBadges'
 
 export default function CategoryPage() {
   const { items, loading, error } = useProducts()
@@ -138,7 +140,9 @@ export default function CategoryPage() {
                           }}
                         />
                       )}
+                      <CardHoverImage src={hoverImageOf(product, product.listImage)} />
                     </a>
+                    <ProductCardBadges details={product.details} className="left-3 top-3" />
                     <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
                       <button 
                         className="w-9 h-9 bg-white/95 backdrop-blur-sm hover:bg-white rounded-full flex items-center justify-center transition-all duration-300"

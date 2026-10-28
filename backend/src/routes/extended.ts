@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { Server as SocketIOServer } from 'socket.io'
 import { sendError, sendSuccess, authenticateToken } from '../utils/apiHelpers'
+import { parseCSV } from '../utils/csv'
 import { getRazorpay } from '../config/razorpay'
 import { generateAmazonInvoiceHTML } from '../utils/amazonInvoiceTemplate'
 
@@ -18,37 +19,8 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
       }
 
       const raw = fs.readFileSync(csvPath, 'utf8')
-      const lines = raw.split(/\r?\n/).filter((l: string) => l.trim().length > 0)
-      if (lines.length === 0) {
-        return sendSuccess(res, [])
-      }
-
-      const parseCSVLine = (line: string): string[] => {
-        const result: string[] = []
-        let current = ''
-        let inQuotes = false
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i]
-          if (char === '"') {
-            if (inQuotes && line[i + 1] === '"') { current += '"'; i++ } else { inQuotes = !inQuotes }
-          } else if (char === ',' && !inQuotes) {
-            result.push(current.trim()); current = ''
-          } else { current += char }
-        }
-        result.push(current.trim())
-        return result
-      }
-
-      const headers = parseCSVLine(lines[0])
-      const rows: any[] = []
-      for (let i = 1; i < lines.length; i++) {
-        const parts = parseCSVLine(lines[i])
-        if (parts.every(p => p.trim() === '')) continue
-        const obj: any = {}
-        for (let j = 0; j < headers.length; j++) obj[headers[j]] = (parts[j] ?? '').trim()
-        rows.push(obj)
-      }
-      sendSuccess(res, rows)
+      // Quoted cells may span lines, so parse the whole file rather than line by line
+      sendSuccess(res, parseCSV(raw))
     } catch (err) {
       sendError(res, 500, 'Failed to read products CSV', err)
     }

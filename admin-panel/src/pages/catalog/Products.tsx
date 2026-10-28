@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { useToast } from '../../components/ToastProvider'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import { parseCSV, slugify } from '../../utils/csv'
+import ConcernPicker, { loadConcernOptions } from '../../components/ConcernPicker'
+import BulkEditProducts from '../../components/BulkEditProducts'
+import { PRODUCT_CARD_BADGES, cardBadgesOf } from '../../../../common/src/productBadges'
+import { parseCSVRows } from '../../utils/csv'
+import { buildImportPlan, effectiveDiscount, ImportPlan, ImportRow } from '../../utils/productImport'
 import { uploadFile, uploadMedia, isVideoUrl, MAX_VIDEO_BYTES, VIDEO_ACCEPT } from '../../utils/upload'
 import { socketService } from '../../services/socket'
 import { getApiBaseUrl } from '../../utils/apiUrl'
@@ -17,7 +21,11 @@ type Product = {
   list_image: string
   description: string
   details?: any
+  /** Shop by Concern tags (from /api/products) */
+  concerns?: { slug: string; name: string }[]
 }
+
+type ImportResult = { rowNumber: number; title: string; status: 'created' | 'updated' | 'skipped' | 'failed'; message?: string }
 
 export default function Products() {
   return (
@@ -69,7 +77,12 @@ function ProductsManager() {
   const [sortKey, setSortKey] = useState<'title' | 'price' | 'category'>('title')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [editing, setEditing] = useState<Partial<Product> & { id?: number } | null>(null)
-  const [bulkRows, setBulkRows] = useState<Record<string, string>[]>([])
+  const [editConcerns, setEditConcerns] = useState<string[]>([])
+  const [formConcerns, setFormConcerns] = useState<string[]>([])
+  const [importPlan, setImportPlan] = useState<ImportPlan | null>(null)
+  const [importFileName, setImportFileName] = useState('')
+  const [updateExisting, setUpdateExisting] = useState(true)
+  const [importResults, setImportResults] = useState<ImportResult[]>([])
   const [bulkLoading, setBulkLoading] = useState(false)
   const [selected, setSelected] = useState<Product | null>(null)
   const [pdpImages, setPdpImages] = useState<Array<{ id: number; url: string; type?: string; display_order?: number; poster_url?: string | null }>>([])
@@ -273,10 +286,11 @@ function ProductsManager() {
           slug: form.slug,
           title: form.title,
           category: form.category,
-          price: form.price,
+          price: form.details?.websitePrice || form.price || form.details?.mrp,
           listImage: listImageUrl,
           description: form.description,
-          details: form.details
+          details: form.details,
+          concerns: formConcerns
         })
       })
       if (!res.ok) throw new Error('create failed')
@@ -306,6 +320,8 @@ function ProductsManager() {
       setFormMainImage(null)
       setFormPdpImages([])
       setFormPdpVideo(null)
+      setFormConcerns([])
+      loadConcernOptions(true)
     } catch (e) {
       notify('error','Create failed')
     }
@@ -314,6 +330,7 @@ function ProductsManager() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [bulkEditOpen, setBulkEditOpen] = useState(false)
   
   const remove = async (id: number) => {
     try {
@@ -382,9 +399,16 @@ function ProductsManager() {
   }
 
   const startEdit = (product: Product) => {
-    setEditing({ 
-      ...product, 
-      details: product.details || {
+    setEditConcerns((product.concerns || []).map(c => c.name))
+    if (product.details) {
+      // Stored discount can be stale or carry a "%" the number input can't show; derive it from the prices
+      const discount = effectiveDiscount(product.details)
+      setEditing({ ...product, details: { ...product.details, discount, discountPercent: discount } })
+      return
+    }
+    setEditing({
+      ...product,
+      details: {
         sku: '', hsn: '', mrp: '', websitePrice: '', discountPercent: '', brand: '', subtitle: '',
         skinHairType: '', netQuantity: '', unitCount: '', packageContent: '',
         innerPackaging: '', outerPackaging: '', netWeight: '', deadWeight: '',
@@ -410,13 +434,16 @@ function ProductsManager() {
           slug: editing.slug,
           title: editing.title,
           category: editing.category,
-          price: editing.price,
+          // Keep products.price in step with the selling price shown on the storefront
+          price: editing.details?.websitePrice || editing.details?.mrp || editing.price,
           listImage: editing.list_image,
           description: editing.description,
-          details: editing.details
+          details: editing.details,
+          concerns: editConcerns
         })
       })
       if (!res.ok) throw new Error('update failed')
+      loadConcernOptions(true)
       await load()
       setEditing(null)
       notify('success','Product updated')
@@ -449,264 +476,265 @@ function ProductsManager() {
     return next
   }, [items, query, categoryFilter, sortKey, sortDir])
 
+  const existingBySlug = useMemo(() => new Map(items.map(p => [p.slug, p])), [items])
+
+  const rowStatus = (row: ImportRow): { label: string; className: string } => {
+    if (row.errors.length) return { label: 'Error', className: 'bg-red-100 text-red-700' }
+    if (existingBySlug.has(row.slug)) {
+      return updateExisting
+        ? { label: 'Update', className: 'bg-blue-100 text-blue-700' }
+        : { label: 'Skip (exists)', className: 'bg-gray-100 text-gray-600' }
+    }
+    return { label: 'New', className: 'bg-green-100 text-green-700' }
+  }
+
+  const readImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    const file = input.files?.[0]
+    if (!file) return
+    setImportResults([])
+    try {
+      const buf = await file.arrayBuffer()
+      let table: string[][]
+      if (/\.csv$/i.test(file.name)) {
+        let text = new TextDecoder('utf-8').decode(buf)
+        // Excel's plain "CSV (Comma delimited)" is Windows-1252, not UTF-8
+        if (text.includes('�')) text = new TextDecoder('windows-1252').decode(buf)
+        table = parseCSVRows(text)
+      } else {
+        const wb = XLSX.read(buf, { type: 'array' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        // raw: false keeps the text Excel shows ("30%", "₹1,299.00") rather than 0.3 / 1299
+        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false }) as unknown[][]
+        table = aoa.map(r => r.map(c => String(c ?? '')))
+      }
+      setImportPlan(buildImportPlan(table))
+      setImportFileName(file.name)
+    } catch (err) {
+      console.error('Failed to read import file:', err)
+      notify('error', `Could not read ${file.name}`)
+      setImportPlan(null)
+    } finally {
+      input.value = ''
+    }
+  }
+
+  const runImport = async () => {
+    if (!importPlan) return
+    setBulkLoading(true)
+    const results: ImportResult[] = []
+    try {
+      // Fresh list so the create/update decision doesn't rely on a stale table
+      const listRes = await fetch(`${apiBase}/products?_=${Date.now()}`, { cache: 'no-store' })
+      const current: Product[] = listRes.ok ? await listRes.json() : items
+      const bySlug = new Map((Array.isArray(current) ? current : items).map(p => [p.slug, p]))
+
+      for (const row of importPlan.rows) {
+        const base = { rowNumber: row.rowNumber, title: row.title || '(no name)' }
+        if (row.errors.length) {
+          results.push({ ...base, status: 'skipped', message: row.errors.join('; ') })
+          continue
+        }
+        const existing = bySlug.get(row.slug)
+        if (existing && !updateExisting) {
+          results.push({ ...base, status: 'skipped', message: `Product "${row.slug}" already exists` })
+          continue
+        }
+        try {
+          let res: Response
+          if (existing) {
+            const existingDetails = existing.details && typeof existing.details === 'object' ? existing.details : {}
+            // Empty cells keep the current value; pricing keys are always sent so prices stay consistent
+            res = await fetch(`${apiBase}/products/${existing.id}`, {
+              method: 'PUT',
+              headers: authHeaders,
+              body: JSON.stringify({
+                slug: row.slug,
+                title: row.title,
+                price: row.price,
+                details: { ...existingDetails, ...row.details },
+                // Empty Concern cell keeps the product's current concerns
+                ...(row.concerns.length ? { concerns: row.concerns } : {}),
+                ...(row.category ? { category: row.category } : {}),
+                ...(row.listImage ? { listImage: row.listImage } : {}),
+                ...(row.description ? { description: row.description } : {}),
+              })
+            })
+          } else {
+            res = await fetch(`${apiBase}/products`, {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify({
+                slug: row.slug,
+                title: row.title,
+                category: row.category,
+                price: row.price,
+                listImage: row.listImage,
+                description: row.description,
+                details: row.details,
+                ...(row.concerns.length ? { concerns: row.concerns } : {}),
+              })
+            })
+          }
+          if (res.ok) {
+            results.push({ ...base, status: existing ? 'updated' : 'created' })
+          } else {
+            const errorData = await res.json().catch(() => ({}))
+            results.push({ ...base, status: 'failed', message: errorData.error || errorData.message || `HTTP ${res.status}` })
+          }
+        } catch (reqError) {
+          results.push({ ...base, status: 'failed', message: `Network error - ${reqError}` })
+        }
+      }
+
+      await load()
+      setImportPlan(null)
+      const count = (s: ImportResult['status']) => results.filter(r => r.status === s).length
+      const failed = count('failed')
+      notify(failed ? 'error' : 'success', `Import complete: ${count('created')} created, ${count('updated')} updated, ${count('skipped')} skipped, ${failed} failed`)
+    } catch (e) {
+      console.error('Import failed:', e)
+      notify('error', `Import failed: ${e}`)
+    } finally {
+      setImportResults(results)
+      setBulkLoading(false)
+    }
+  }
+
+  const importSummary = useMemo(() => {
+    if (!importPlan) return null
+    const rows = importPlan.rows
+    const withErrors = rows.filter(r => r.errors.length).length
+    const valid = rows.filter(r => !r.errors.length)
+    const updates = valid.filter(r => existingBySlug.has(r.slug)).length
+    return {
+      total: rows.length,
+      withErrors,
+      withWarnings: rows.filter(r => !r.errors.length && r.warnings.length).length,
+      created: valid.length - updates,
+      updates,
+      toImport: valid.length - (updateExisting ? 0 : updates),
+    }
+  }, [importPlan, existingBySlug, updateExisting])
+
   return (
     <>
     <div className="space-y-6">
       <div className="metric-card">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Bulk Import</h2>
         <div className="mb-3 rounded bg-green-50 p-3 text-sm text-green-800">
-          <strong>✅ Enhanced Bulk Import:</strong> CSV import will automatically map all product fields including pricing, GST, packaging, ingredients, and more. First image from Image Links will be used as list image. Remaining fields can be updated manually after import.
+          Upload a <strong>.csv</strong> or <strong>.xlsx</strong> file with a header row (e.g. Product Name, Slug, Product Category, MRP, WEBSITE price, discount, GST %, Image Links…).
+          Prices may include ₹ and commas. When MRP and website price are both given, the discount is calculated from them; with MRP and discount only, the website price is calculated.
+          Rows are matched to existing products by slug. Review the preview before importing; rows with errors are not imported.
         </div>
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <input type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={async (e)=>{
-            const file = e.target.files?.[0]
-            if (!file) return
-            const buf = await file.arrayBuffer()
-            if (file.name.endsWith('.csv')) {
-              let text = new TextDecoder().decode(new Uint8Array(buf))
-              // strip UTF-8 BOM if present
-              if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1)
-              setBulkRows(parseCSV(text))
-            } else {
-              const wb = XLSX.read(buf, { type: 'array' })
-              const ws = wb.Sheets[wb.SheetNames[0]]
-              const arr = XLSX.utils.sheet_to_json(ws) as Record<string, any>[]
-              setBulkRows(arr)
-            }
-          }} />
-          <button disabled={!bulkRows.length || bulkLoading} onClick={async()=>{
-            setBulkLoading(true)
-            try {
-              const tryGet = (row: Record<string, any>, keys: string[]): string => {
-                const entries = Object.entries(row)
-                const found = keys.find(k => entries.some(([rk]) => rk.toLowerCase().replace(/\s+|_|\(|\)/g,'') === k.toLowerCase().replace(/\s+|_|\(|\)/g,'')))
-                if (!found) return ''
-                const matchKey = entries.find(([rk]) => rk.toLowerCase().replace(/\s+|_|\(|\)/g,'') === found.toLowerCase().replace(/\s+|_|\(|\)/g,''))![0]
-                const v = row[matchKey]
-                if (v == null || v === '') return ''
-                return String(v).trim()
-              }
-              
-              // Helper to extract first image from comma-separated list
-              const getFirstImage = (imageLinks: string): string => {
-                if (!imageLinks) return ''
-                const first = imageLinks.split(',')[0].trim()
-                return first || ''
-              }
-              
-              // Map CSV category values to standard dropdown categories
-              const mapCategoryToStandard = (rawCategory: string): string => {
-                if (!rawCategory) return ''
-                const normalized = rawCategory.toLowerCase().trim()
-                
-                // Exact matches first
-                if (normalized === 'face care') return 'Face Care'
-                if (normalized === 'hair care') return 'Hair Care'
-                if (normalized === 'body care') return 'Body Care'
-                if (normalized === 'combo') return 'Combo'
-                
-                // Map various CSV category formats to standard values
-                // Check for combo/pack first (most specific)
-                if (normalized.includes('combo') || normalized.includes('pack')) {
-                  return 'Combo'
-                }
-                // Check for hair (includes "Hair & Skin Care", "Hair Care", etc.)
-                if (normalized.includes('hair')) {
-                  return 'Hair Care'
-                }
-                // Check for face (but not if it's part of "hair & face")
-                if (normalized.includes('face') && !normalized.includes('hair')) {
-                  return 'Face Care'
-                }
-                // Check for body
-                if (normalized.includes('body')) {
-                  return 'Body Care'
-                }
-                
-                // Default: return capitalized version
-                return rawCategory.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
-              }
-              
-              let success = 0
-              let failed = 0
-              const errors: string[] = []
-              const createdSlugs = new Set<string>()
-              
-              for (let i = 0; i < bulkRows.length; i++) {
-                const r = bulkRows[i]
-                
-                // Basic fields
-                const title = tryGet(r, ['product name', 'title', 'producttitle', 'name', 'Product Name'])
-                const baseSlug = tryGet(r, ['slug', 'Slug']) || slugify(title)
-                
-                // Ensure unique slug
-                let slugVal = baseSlug
-                let counter = 1
-                while (createdSlugs.has(slugVal)) {
-                  slugVal = `${baseSlug}-${counter}`
-                  counter++
-                }
-                createdSlugs.add(slugVal)
-                
-                // Get category and map it to standard values
-                const rawCategory = tryGet(r, ['product category', 'category', 'cat', 'Product Category'])
-                const category = mapCategoryToStandard(rawCategory)
-                const mrp = tryGet(r, ['mrp', 'MRP', 'MRP '])
-                const websitePrice = tryGet(r, ['website price', 'websiteprice', 'websiteprice', 'WEBSITE price', 'websitePrice'])
-                const discountPercent = tryGet(r, ['discount', 'discountpercent', 'discount %', 'Discount %', 'discountPercent'])
-                const priceRaw = websitePrice || mrp || tryGet(r, ['price', 'amount'])
-                const description = tryGet(r, ['product description (long)', 'longdescription', 'description', 'desc', 'Product Description (Long)'])
-                const price = priceRaw ? String(priceRaw) : ''
-                
-                // Extract first image from image links
-                const imageLinksStr = tryGet(r, ['image links', 'imagelinks', 'Image Links', 'imageLinks'])
-                const listImage = getFirstImage(imageLinksStr)
-                
-                // Build comprehensive details object from CSV
-                const details: any = {
-                  // Basic Product Info
-                  sku: tryGet(r, ['sku', 'SKU']),
-                  hsn: tryGet(r, ['hsn code', 'hsncode', 'HSN Code', 'hsn']),
-                  brand: tryGet(r, ['brand name', 'brandname', 'Brand Name', 'brand']) || 'NEFOL',
-                  productTitle: tryGet(r, ['product title', 'producttitle', 'Product Title', 'productTitle']),
-                  subtitle: tryGet(r, ['subtitle / tagline', 'subtitle', 'Subtitle / Tagline', 'subtitle']),
-                  
-                  // Category & Type
-                  subCategory: tryGet(r, ['product sub-category', 'subcategory', 'Product Sub-Category', 'subCategory']),
-                  productType: tryGet(r, ['product type', 'producttype', 'Product Type', 'productType']),
-                  skinHairType: tryGet(r, ['skin/hair type', 'skinhairtype', 'Skin/Hair Type', 'skinHairType']),
-                  
-                  // Pricing
-                  mrp: mrp || '',
-                  websitePrice: websitePrice || '',
-                  discountPercent: discountPercent || (mrp && websitePrice ? 
-                    String(Math.round(((parseFloat(mrp) - parseFloat(websitePrice)) / parseFloat(mrp)) * 100)) : ''),
-                  discount: discountPercent || '',
-                  gst: tryGet(r, ['gst %', 'gstpercent', 'GST %', 'gstPercent', 'gst']),
-                  gstPercent: tryGet(r, ['gst %', 'gstpercent', 'GST %', 'gstPercent', 'gst']),
-                  
-                  // Packaging & Quantity
-                  netQuantity: tryGet(r, ['net quantity (content)', 'netquantity', 'Net Quantity (Content)', 'netQuantity']),
-                  unitCount: tryGet(r, ['unit count (pack of)', 'unitcount', 'Unit Count (Pack of)', 'unitCount']),
-                  netWeight: tryGet(r, ['net weight (product only)', 'netweight', 'Net Weight (Product Only)', 'netWeight']),
-                  deadWeight: tryGet(r, ['dead weight (packaging only)', 'deadweight', 'Dead Weight (Packaging Only)', 'deadWeight']),
-                  packageContent: tryGet(r, ['package content details', 'packagecontent', 'Package Content Details', 'packageContent']),
-                  innerPackaging: tryGet(r, ['inner packaging type', 'innerpackaging', 'Inner Packaging Type', 'innerPackaging']),
-                  outerPackaging: tryGet(r, ['outer packaging type', 'outerpackaging', 'Outer Packaging Type', 'outerPackaging']),
-                  
-                  // Manufacturer & Origin
-                  countryOfOrigin: tryGet(r, ['country of origin', 'countryoforigin', 'Country of Origin', 'countryOfOrigin']),
-                  manufacturer: tryGet(r, ['manufacturer / packer / importer', 'manufacturer', 'Manufacturer / Packer / Importer', 'manufacturer']),
-                  
-                  // Product Details
-                  keyIngredients: tryGet(r, ['key ingredients', 'keyingredients', 'Key Ingredients', 'keyIngredients']),
-                  ingredientBenefits: tryGet(r, ['ingredient benefits', 'ingredientbenefits', 'Ingredient Benefits', 'ingredientBenefits']),
-                  howToUse: tryGet(r, ['how to use (steps)', 'howtouse', 'How to Use (Steps)', 'howToUse', 'how to use']),
-                  longDescription: description || tryGet(r, ['product description (long)', 'longdescription', 'Product Description (Long)', 'longDescription']),
-                  bulletHighlights: tryGet(r, ['bullet highlights', 'bullethighlights', 'Bullet Highlights', 'bulletHighlights']),
-                  
-                  // Media & Links
-                  imageLinks: imageLinksStr || '',
-                  videoLinks: tryGet(r, ['video links', 'videolinks', 'Video Links', 'videoLinks']),
-                  
-                  // Additional Information
-                  platformCategoryMapping: tryGet(r, ['platform category mapping', 'platformcategorymapping', 'Platform Category Mapping', 'platformCategoryMapping']),
-                  hazardous: tryGet(r, ['hazardous / fragile (y/n)', 'hazardous', 'Hazardous / Fragile (Y/N)', 'hazardous']),
-                  badges: tryGet(r, ['special attributes (badges)', 'badges', 'Special Attributes (Badges)', 'badges']),
-                }
-                
-                // Remove empty fields to keep details clean
-                Object.keys(details).forEach(key => {
-                  if (details[key] === '' || details[key] === null || details[key] === undefined) {
-                    delete details[key]
-                  }
-                })
-                
-                const payload = { 
-                  slug: slugVal, 
-                  title, 
-                  category, 
-                  price, 
-                  listImage, 
-                  description, 
-                  details 
-                }
-                
-                if (!payload.title || !payload.slug) { 
-                  failed++; 
-                  errors.push(`Row ${i+1}: missing title/slug`); 
-                  continue 
-                }
-                
-                try {
-                  const res = await fetch(`${apiBase}/products`, {
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(payload)
-                  })
-                  
-                  if (res.ok) {
-                    const data = await res.json()
-                    success++
-                    console.log(`Product created: ${data.id} - ${data.title}`)
-                  } else {
-                    const errorData = await res.json().catch(() => ({}))
-                    failed++
-                    const errorMsg = errorData.error || errorData.message || `HTTP ${res.status}`
-                    errors.push(`Row ${i+1}: ${errorMsg}`)
-                    console.error(`Failed to create product:`, errorData)
-                  }
-                } catch (reqError) {
-                  failed++
-                  errors.push(`Row ${i+1}: Network error - ${reqError}`)
-                  console.error(`Network error for row ${i+1}:`, reqError)
-                }
-              }
-              
-              // Wait a bit to ensure database commits are complete
-              console.log(`Import finished. Waiting for database commit...`)
-              await new Promise(resolve => setTimeout(resolve, 500))
-              
-              // Reload products from database
-              console.log('Reloading products from database...')
-              await load()
-              setBulkRows([])
-              
-              const message = `Import complete! Success: ${success}, Failed: ${failed}`
-              notify(failed? 'error':'success', message)
-            } catch (e) {
-              console.error('Import failed:', e)
-              notify('error', `Import failed: ${e}` as any)
-            } finally {
-              setBulkLoading(false)
-            }
-          }} className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">{bulkLoading? 'Importing...' : `Import ${bulkRows.length||''}`}</button>
+          <input type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={readImportFile} />
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={updateExisting} onChange={e => setUpdateExisting(e.target.checked)} />
+            Update existing products (matched by slug)
+          </label>
+          <button
+            disabled={!importSummary?.toImport || bulkLoading || !!importPlan?.fileErrors.length}
+            onClick={runImport}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {bulkLoading ? 'Importing...' : `Import ${importSummary?.toImport || ''}`}
+          </button>
+          {importPlan && !bulkLoading && (
+            <button onClick={() => setImportPlan(null)} className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">Clear</button>
+          )}
         </div>
-        {!!bulkRows.length && (
-          <div className="mt-4 max-h-64 overflow-auto rounded border border-white/10">
-            <table className="w-full text-left text-xs">
-              <thead className="sticky top-0 border-b border-white/10 bg-slate-900 text-white/70">
-                <tr>
-                  <th className="py-2 pr-3">title</th>
-                  <th className="py-2 pr-3">slug</th>
-                  <th className="py-2 pr-3">category</th>
-                  <th className="py-2 pr-3">price</th>
-                  <th className="py-2 pr-3">description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bulkRows.slice(0,50).map((r,idx)=> (
-                  <tr key={idx} className="border-b border-white/5">
-                    <td className="py-1 pr-3">{r.title}</td>
-                    <td className="py-1 pr-3">{r.slug || slugify(r.title||'')}</td>
-                    <td className="py-1 pr-3">{r.category}</td>
-                    <td className="py-1 pr-3">{r.price}</td>
-                    <td className="py-1 pr-3">{r.description}</td>
-                  </tr>
+
+        {importPlan && importSummary && (
+          <div className="mt-4 space-y-3 text-sm">
+            {importPlan.fileErrors.map(msg => (
+              <div key={msg} className="rounded bg-red-50 p-3 text-red-700">{msg}</div>
+            ))}
+            <div className="text-gray-700">
+              <strong>{importFileName}</strong>: {importSummary.total} rows · {importSummary.created} new · {importSummary.updates} existing{!updateExisting && ' (will be skipped)'}
+              {' · '}<span className={importSummary.withErrors ? 'font-semibold text-red-600' : ''}>{importSummary.withErrors} with errors</span>
+              {' · '}<span className={importSummary.withWarnings ? 'font-semibold text-amber-600' : ''}>{importSummary.withWarnings} with warnings</span>
+            </div>
+            <details className="text-xs text-gray-600">
+              <summary className="cursor-pointer">Column mapping ({importPlan.mapping.mapped.length} mapped, {importPlan.mapping.ignored.length} not imported)</summary>
+              <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 md:grid-cols-3">
+                {importPlan.mapping.mapped.map(m => (
+                  <div key={m.header}><span className="text-gray-900">{m.header}</span> → {m.field}</div>
                 ))}
-              </tbody>
-            </table>
-            {bulkRows.length>50 && <div className="p-2 text-center text-xs text-white/60">Showing first 50 of {bulkRows.length}</div>}
+              </div>
+              {importPlan.mapping.ignored.length > 0 && (
+                <div className="mt-2 text-amber-700">Not imported: {importPlan.mapping.ignored.join(', ')}</div>
+              )}
+            </details>
+            <div className="max-h-96 overflow-auto rounded border border-gray-200">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 border-b border-gray-200 bg-gray-50 text-gray-600">
+                  <tr>
+                    <th className="px-2 py-2">Row</th>
+                    <th className="px-2 py-2">Status</th>
+                    <th className="px-2 py-2">Product name</th>
+                    <th className="px-2 py-2">Slug</th>
+                    <th className="px-2 py-2">Category</th>
+                    {importPlan.mapping.fields.concerns != null && <th className="px-2 py-2">Concerns</th>}
+                    <th className="px-2 py-2 text-right">MRP</th>
+                    <th className="px-2 py-2 text-right">Website price</th>
+                    <th className="px-2 py-2 text-right">Discount</th>
+                    <th className="px-2 py-2">Issues</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPlan.rows.map(row => {
+                    const status = rowStatus(row)
+                    return (
+                      <tr key={row.rowNumber} className="border-b border-gray-100 align-top text-gray-800">
+                        <td className="px-2 py-1">{row.rowNumber}</td>
+                        <td className="px-2 py-1"><span className={`whitespace-nowrap rounded px-1.5 py-0.5 ${status.className}`}>{status.label}</span></td>
+                        <td className="max-w-xs truncate px-2 py-1" title={row.title}>{row.title}</td>
+                        <td className="max-w-[12rem] truncate px-2 py-1" title={row.slug}>{row.slug}</td>
+                        <td className="px-2 py-1">{row.category}</td>
+                        {importPlan.mapping.fields.concerns != null && (
+                          <td className="px-2 py-1">
+                            <div className="flex max-w-[14rem] flex-wrap gap-1">
+                              {row.concerns.length
+                                ? row.concerns.map(c => <span key={c} className="whitespace-nowrap rounded bg-teal-50 px-1.5 py-0.5 text-teal-800">{c}</span>)
+                                : <span className="text-gray-400">—</span>}
+                            </div>
+                          </td>
+                        )}
+                        <td className="px-2 py-1 text-right">{row.details.mrp ? `₹${row.details.mrp}` : '—'}</td>
+                        <td className="px-2 py-1 text-right">{row.details.websitePrice ? `₹${row.details.websitePrice}` : '—'}</td>
+                        <td className="px-2 py-1 text-right">{row.details.discountPercent ? `${row.details.discountPercent}%` : '—'}</td>
+                        <td className="px-2 py-1">
+                          {row.errors.map(msg => <div key={msg} className="text-red-600">{msg}</div>)}
+                          {row.warnings.map(msg => <div key={msg} className="text-amber-600">{msg}</div>)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {importResults.length > 0 && !importPlan && (
+          <div className="mt-4 text-sm">
+            <div className="mb-2 text-gray-700">
+              Last import: {importResults.filter(r => r.status === 'created').length} created,{' '}
+              {importResults.filter(r => r.status === 'updated').length} updated,{' '}
+              {importResults.filter(r => r.status === 'skipped').length} skipped,{' '}
+              {importResults.filter(r => r.status === 'failed').length} failed
+              <button onClick={() => setImportResults([])} className="ml-3 text-xs text-blue-600 hover:underline">Dismiss</button>
+            </div>
+            {importResults.some(r => r.status === 'skipped' || r.status === 'failed') && (
+              <ul className="max-h-48 space-y-1 overflow-auto rounded border border-gray-200 p-2 text-xs">
+                {importResults.filter(r => r.status === 'skipped' || r.status === 'failed').map(r => (
+                  <li key={r.rowNumber} className={r.status === 'failed' ? 'text-red-600' : 'text-gray-600'}>
+                    Row {r.rowNumber} ({r.title}): {r.status} - {r.message}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </div>
@@ -727,6 +755,10 @@ function ProductsManager() {
             <option value="Body Care">Body Care</option>
             <option value="Combo">Combo</option>
           </select>
+          <div className="md:col-span-3">
+            <div className="mb-1 text-xs text-white/70">Shop by Concern</div>
+            <ConcernPicker value={formConcerns} onChange={setFormConcerns} dark />
+          </div>
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Price (display)" value={form.price||''} onChange={e=>setForm(prev=>({...prev, price:e.target.value}))} />
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="SKU" value={form.details?.sku||''} onChange={e=>setForm(prev=>({...prev, details: { ...(prev.details||{}), sku:e.target.value }}))} />
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="HSN Code" value={form.details?.hsn||''} onChange={e=>setForm(prev=>({...prev, details: { ...(prev.details||{}), hsn:e.target.value }}))} />
@@ -827,6 +859,12 @@ function ProductsManager() {
                   {selectedProducts.size} selected
                 </span>
                 <button
+                  onClick={() => setBulkEditOpen(true)}
+                  className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-700"
+                >
+                  Bulk edit ({selectedProducts.size})
+                </button>
+                <button
                   onClick={() => setConfirmBulkDelete(true)}
                   className="rounded bg-red-600 px-4 py-2 text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
                   disabled={selectedProducts.size === 0}
@@ -895,7 +933,16 @@ function ProductsManager() {
                     </td>
                     <td className="py-2 pr-4">{p.id}</td>
                     <td className="py-2 pr-4">{p.slug}</td>
-                    <td className="py-2 pr-4">{p.title}</td>
+                    <td className="py-2 pr-4">
+                      {p.title}
+                      {cardBadgesOf(p.details).length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {cardBadgesOf(p.details).map((b) => (
+                            <span key={b.id} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/80">{b.label}</span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
                     <td className="py-2 pr-4">{p.category}</td>
                     <td className="py-2 pr-4">
                       <div className="text-sm">
@@ -1387,6 +1434,34 @@ function ProductsManager() {
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Sub-Category" value={editing.details?.subCategory||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), subCategory:e.target.value}}))} />
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Product Type" value={editing.details?.productType||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), productType:e.target.value}}))} />
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Skin/Hair Type" value={editing.details?.skinHairType||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), skinHairType:e.target.value}}))} />
+                    <div className="md:col-span-3">
+                      <div className="mb-1.5 text-sm font-medium text-gray-700">Shop by Concern</div>
+                      <ConcernPicker value={editConcerns} onChange={setEditConcerns} />
+                    </div>
+                    <div className="md:col-span-3">
+                      <div className="mb-1.5 text-sm font-medium text-gray-700">Product card badges</div>
+                      <div className="flex flex-wrap gap-2">
+                        {PRODUCT_CARD_BADGES.map((badge) => {
+                          const current: string[] = Array.isArray(editing.details?.cardBadges) ? editing.details.cardBadges : []
+                          const on = current.includes(badge.id)
+                          return (
+                            <button
+                              key={badge.id}
+                              type="button"
+                              onClick={() => setEditing(prev => {
+                                const list: string[] = Array.isArray(prev?.details?.cardBadges) ? prev!.details.cardBadges : []
+                                const next = on ? list.filter(id => id !== badge.id) : [...list, badge.id]
+                                return { ...(prev as any), details: { ...(prev?.details || {}), cardBadges: PRODUCT_CARD_BADGES.map(b => b.id).filter(id => next.includes(id)) } }
+                              })}
+                              className={`rounded-full border px-3 py-1 text-xs ${on ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+                              aria-pressed={on}
+                            >
+                              {badge.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1704,6 +1779,15 @@ function ProductsManager() {
       description={`You are about to delete ${selectedProducts.size} product(s). This action cannot be undone.`} 
       confirmText="Delete All" 
     />
+    {bulkEditOpen && (
+      <BulkEditProducts
+        productIds={Array.from(selectedProducts)}
+        apiBase={apiBase}
+        categories={[...new Set(['Face Care', 'Hair Care', 'Body Care', 'Combo', ...items.map((p) => p.category).filter(Boolean)])]}
+        onClose={() => setBulkEditOpen(false)}
+        onApplied={() => { setBulkEditOpen(false); load() }}
+      />
+    )}
     </>
   )
 }

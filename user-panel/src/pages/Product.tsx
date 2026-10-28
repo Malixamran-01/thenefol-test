@@ -74,9 +74,12 @@ export default function ProductPage() {
   const mainImageRef = useRef<HTMLDivElement>(null)
   const [thumbnailScrollIndex, setThumbnailScrollIndex] = useState(0)
   const thumbnailContainerRef = useRef<HTMLDivElement>(null)
-  const [touchStart, setTouchStart] = useState(0)
-  const [touchEnd, setTouchEnd] = useState(0)
   const [galleryImages, setGalleryImages] = useState<string[]>([])
+  const slideTrackRef = useRef<HTMLDivElement>(null)
+  const thumbStripRef = useRef<HTMLDivElement>(null)
+  /** Slide a button/thumbnail/key asked for while the track smooth-scrolls there; passing slides are ignored. */
+  const slideScrollTarget = useRef<number | null>(null)
+  const slideSettleTimer = useRef<number>()
 
   const handleGalleryImageError = useCallback((src: string) => {
     setGalleryImages((prev) => {
@@ -98,6 +101,51 @@ export default function ProductPage() {
     setZoomImageIndex(0)
     setThumbnailScrollIndex(0)
   }, [product?.id, product?.listImage, product?.pdpImages])
+
+  // Swiping the main gallery picks the slide nearest the centre once the scroll settles on it
+  const handleSlideScroll = useCallback(() => {
+    const track = slideTrackRef.current
+    if (!track || !track.clientWidth) return
+    const nearest = () => Math.max(0, Math.min(track.children.length - 1, Math.round(track.scrollLeft / track.clientWidth)))
+    const sync = (index: number) => {
+      setCurrentImageIndex((prev) => (prev === index ? prev : index))
+      setZoomImageIndex(index)
+    }
+    const index = nearest()
+    if (slideScrollTarget.current === null) sync(index)
+    else if (index === slideScrollTarget.current) slideScrollTarget.current = null
+    window.clearTimeout(slideSettleTimer.current)
+    slideSettleTimer.current = window.setTimeout(() => {
+      slideScrollTarget.current = null
+      sync(nearest())
+    }, 150)
+  }, [])
+
+  // Arrows, thumbnails, dots and arrow keys move the swipe track to the chosen slide
+  useEffect(() => {
+    const track = slideTrackRef.current
+    if (!track || !track.clientWidth) return
+    if (Math.round(track.scrollLeft / track.clientWidth) === currentImageIndex) {
+      slideScrollTarget.current = null
+      return
+    }
+    slideScrollTarget.current = currentImageIndex
+    const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    safeElementScrollTo(track, { left: currentImageIndex * track.clientWidth, behavior: smooth ? 'smooth' : 'auto' })
+  }, [currentImageIndex, galleryImages])
+
+  useEffect(() => () => window.clearTimeout(slideSettleTimer.current), [])
+
+  // On phones the thumbnail strip scrolls sideways: keep the active thumbnail in view while swiping
+  useEffect(() => {
+    const strip = thumbStripRef.current
+    const thumb = strip?.children[currentImageIndex] as HTMLElement | undefined
+    if (!strip || !thumb || strip.scrollWidth <= strip.clientWidth) return
+    const stripBox = strip.getBoundingClientRect()
+    const thumbBox = thumb.getBoundingClientRect()
+    const left = strip.scrollLeft + thumbBox.left - stripBox.left - (strip.clientWidth - thumbBox.width) / 2
+    safeElementScrollTo(strip, { left: Math.max(0, left), behavior: 'smooth' })
+  }, [currentImageIndex])
 
   // Browser tab title, description, canonical clean URL and Product structured data for search
   useEffect(() => {
@@ -377,6 +425,7 @@ export default function ProductPage() {
               pdpImages: normalizePdpImages(data.pdp_images, data.list_image),
               mediaPosters: normalizeMediaPosters(data.pdp_media),
               bannerImages: normalizeBannerImages(data.banner_images),
+              concerns: Array.isArray(data.concerns) ? data.concerns : [],
               description: data.description || '',
               details: data.details,
               inventoryAvailable: Number.isFinite(invAvail) ? Math.max(0, invAvail) : 0,
@@ -730,6 +779,7 @@ export default function ProductPage() {
                 .map((m: any) => [toAbs(m.url), toAbs(m.poster)])
             ),
             bannerImages: normalizeBannerImages(data.banner_images),
+              concerns: Array.isArray(data.concerns) ? data.concerns : [],
             description: data.description || '',
             details: data.details
           }
@@ -861,115 +911,99 @@ export default function ProductPage() {
           <div className="grid grid-cols-1 gap-6 sm:gap-8 md:gap-12 lg:grid-cols-2 mb-8 sm:mb-12 md:mb-16 w-full">
             {/* Product Media */}
             <div className="space-y-2 sm:space-y-4 relative">
-              {/* Main Product Image - Carousel style with click to zoom - Mamaearth style */}
-              {(() => {
+              {/* Main media: a native swipe carousel (scroll-snap), so phones and Safari get real swiping and taps on video controls never change the slide */}
+              {galleryImages.length > 0 && (() => {
                 const uniqueImages = galleryImages
                 const currentImage = uniqueImages[currentImageIndex] || ''
                 const currentIsVideo = isVideoUrl(currentImage)
+                const goTo = (index: number) => {
+                  const next = Math.max(0, Math.min(uniqueImages.length - 1, index))
+                  setCurrentImageIndex(next)
+                  setZoomImageIndex(next)
+                }
 
-                const handlePreviousImage = () => {
-                  setCurrentImageIndex(prev => Math.max(0, prev - 1))
-                }
-                
-                const handleNextImage = () => {
-                  setCurrentImageIndex(prev => Math.min(uniqueImages.length - 1, prev + 1))
-                }
-                
-                // Swipe handlers for mobile
-                const handleTouchStart = (e: React.TouchEvent) => {
-                  setTouchStart(e.targetTouches[0].clientX)
-                }
-                
-                const handleTouchMove = (e: React.TouchEvent) => {
-                  setTouchEnd(e.targetTouches[0].clientX)
-                }
-                
-                const handleTouchEnd = () => {
-                  if (!touchStart || !touchEnd) return
-                  const distance = touchStart - touchEnd
-                  const isLeftSwipe = distance > 50
-                  const isRightSwipe = distance < -50
-                  
-                  if (isLeftSwipe && currentImageIndex < uniqueImages.length - 1) {
-                    handleNextImage()
-                  }
-                  if (isRightSwipe && currentImageIndex > 0) {
-                    handlePreviousImage()
-                  }
-                }
-                
-                return currentImage ? (
-                  <div 
+                return (
+                  <div
                     ref={mainImageRef}
-                    className={`aspect-square overflow-hidden rounded-lg border border-gray-200 flex items-center justify-center bg-gray-50 group w-full relative ${currentIsVideo ? '' : 'cursor-zoom-in'}`}
-                    onMouseMove={(e) => {
-                      if (!mainImageRef.current || currentIsVideo) return
+                    className={`aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group w-full relative ${currentIsVideo ? '' : 'md:cursor-zoom-in'}`}
+                    onPointerMove={(e) => {
+                      // Magnifier is for mouse users only; on touch it would stick after a tap
+                      if (e.pointerType !== 'mouse' || !mainImageRef.current || currentIsVideo) return
                       const rect = mainImageRef.current.getBoundingClientRect()
                       const x = ((e.clientX - rect.left) / rect.width) * 100
                       const y = ((e.clientY - rect.top) / rect.height) * 100
                       setHoverZoom({ show: true, x, y })
                     }}
-                    onMouseLeave={() => setHoverZoom({ show: false, x: 0, y: 0 })}
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
+                    onPointerLeave={() => setHoverZoom({ show: false, x: 0, y: 0 })}
                   >
-                    {/* Left Navigation Arrow - Desktop Only (Mamaearth style) */}
+                    <div
+                      ref={slideTrackRef}
+                      onScroll={handleSlideScroll}
+                      className="flex !flex-nowrap h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      style={{ WebkitOverflowScrolling: 'touch' }}
+                      aria-roledescription="carousel"
+                      aria-label={`${product.title} images`}
+                    >
+                      {uniqueImages.map((src, index) => (
+                        <div
+                          key={`${src}-${index}`}
+                          className="relative flex h-full w-full flex-none snap-center snap-always items-center justify-center"
+                          role="group"
+                          aria-roledescription="slide"
+                          aria-label={`${index + 1} of ${uniqueImages.length}`}
+                          aria-hidden={index !== currentImageIndex}
+                        >
+                          {isVideoUrl(src) ? (
+                            <ProductVideo
+                              src={src}
+                              poster={product.mediaPosters?.[src]}
+                              title={product.title}
+                              active={index === currentImageIndex}
+                              className="w-full h-full object-contain max-w-full"
+                              onError={() => handleGalleryImageError(src)}
+                            />
+                          ) : (
+                            <img
+                              src={src}
+                              alt={uniqueImages.length > 1 ? `${product.title} ${index + 1}` : product.title}
+                              className="w-full h-full object-contain max-w-full select-none"
+                              loading={index === 0 ? 'eager' : 'lazy'}
+                              decoding="async"
+                              {...(index === 0 ? { fetchpriority: 'high' } as any : {})}
+                              onClick={() => {
+                                setZoomImageIndex(index)
+                                setShowImageZoom(true)
+                              }}
+                              onError={() => handleGalleryImageError(src)}
+                              draggable={false}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Arrows - Desktop Only (Mamaearth style); phones swipe */}
                     {uniqueImages.length > 1 && currentImageIndex > 0 && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handlePreviousImage()
-                        }}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        type="button"
+                        onClick={() => goTo(currentImageIndex - 1)}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                         aria-label="Previous image"
                       >
                         <ChevronLeft className="w-5 h-5" style={{color: 'var(--nf-primary)'}} />
                       </button>
                     )}
-                    
-                    {currentIsVideo ? (
-                      <ProductVideo
-                        key={currentImage}
-                        src={currentImage}
-                        poster={product.mediaPosters?.[currentImage]}
-                        title={product.title}
-                        className="w-full h-full object-contain max-w-full"
-                        onError={() => handleGalleryImageError(currentImage)}
-                      />
-                    ) : (
-                      <img
-                        src={currentImage}
-                        alt={product.title}
-                        className="w-full h-full object-contain transition-opacity duration-300 max-w-full"
-                        loading={currentImageIndex === 0 ? "eager" : "lazy"}
-                        decoding="async"
-                        {...(currentImageIndex === 0 ? { fetchpriority: 'high' } as any : {})}
-                        onClick={() => {
-                          setZoomImageIndex(currentImageIndex)
-                          setShowImageZoom(true)
-                        }}
-                        onError={() => {
-                          if (currentImage) handleGalleryImageError(currentImage)
-                        }}
-                        draggable={false}
-                      />
-                    )}
-                    
-                    {/* Right Navigation Arrow - Desktop Only (Mamaearth style) */}
                     {uniqueImages.length > 1 && currentImageIndex < uniqueImages.length - 1 && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleNextImage()
-                        }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        type="button"
+                        onClick={() => goTo(currentImageIndex + 1)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-30 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                         aria-label="Next image"
                       >
                         <ChevronRight className="w-5 h-5" style={{color: 'var(--nf-primary)'}} />
                       </button>
                     )}
-                    
+
                     {/* Amazon-style hover zoom lens effect */}
                     {hoverZoom.show && !currentIsVideo && (
                       <div
@@ -990,7 +1024,7 @@ export default function ProductPage() {
                       />
                     )}
                   </div>
-                ) : null
+                )
               })()}
 
               {/* Thumbnail Gallery - Carousel style 1x3 (3 images per row) */}
@@ -1095,6 +1129,7 @@ export default function ProductPage() {
                         }
                       `}</style>
                       <div 
+                        ref={thumbStripRef}
                         className="thumb-scroll-container" 
                         style={{ 
                           width: '100%',
@@ -1251,6 +1286,23 @@ export default function ProductPage() {
                   </div>
                 )}
                 
+                {/* Shop by Concern tags */}
+                {product.concerns && product.concerns.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--nf-text-muted)' }}>Good for</span>
+                    {product.concerns.map((c) => (
+                      <a
+                        key={c.slug}
+                        href={`#/user/concern/${c.slug}`}
+                        className="rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:opacity-80"
+                        style={{ borderColor: 'var(--nf-primary)', color: 'var(--nf-primary)', backgroundColor: 'var(--nf-primary-lighter)' }}
+                      >
+                        {c.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
+
                 {/* nefol-style Rating */}
                 <div className="flex items-center mb-4">
                   <div className="flex items-center">
@@ -2157,6 +2209,7 @@ export default function ProductPage() {
                           autoPlay 
                           muted 
                           loop 
+                          playsInline
                           onError={(e) => {
                             e.currentTarget.style.display = 'none'
                           }}

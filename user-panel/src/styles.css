@@ -125,6 +125,8 @@
   --nf-border: #E5E7EB;
   /* Header & navigation */
   --nf-header-bg: #0E2730;
+  --nf-logo: var(--nf-primary);
+  --nf-logo-tagline: var(--nf-header-text);
   --nf-header-text: #FFFFFF;
   --nf-header-link: #E8F5F7;
   --nf-header-border: rgba(232, 245, 247, 0.16);
@@ -168,6 +170,10 @@
   /* Footer */
   --nf-footer-bg: #0E2730;
   --nf-footer-heading: #FFFFFF;
+  --nf-footer-logo: var(--nf-logo);
+  --nf-footer-logo-tagline: var(--nf-footer-heading);
+  --nf-social-logo: var(--nf-social-accent);
+  --nf-social-logo-tagline: var(--nf-social-brand);
   --nf-footer-text: #E8F5F7;
   --nf-footer-divider: rgba(255, 255, 255, 0.1);
   /* Mobile bottom bar */
@@ -1290,6 +1296,23 @@ video {
   max-height: none;
   object-fit: cover;
   border-radius: 0.75rem;
+}
+
+/* Product cards: second image (first PDP image) shown while the card is hovered (see CardHoverImage) */
+.nf-card-alt {
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+@media (hover: hover) {
+  .nf-hover-card:hover .nf-card-alt {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nf-card-alt {
+    transition: none;
+  }
 }
 
 .nefol-product-card__media-placeholder {

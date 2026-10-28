@@ -7,6 +7,8 @@ import PricingDisplay from './PricingDisplay'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import { getProductRating, getProductReviewCount, hasVerifiedReviews } from '../utils/product_reviews'
 import VerifiedBadge from './VerifiedBadge'
+import CardHoverImage, { hoverImageOf } from './CardHoverImage'
+import ProductCardBadges from './ProductCardBadges'
 
 interface RecentlyViewedProps {
   limit?: number
@@ -215,6 +217,7 @@ export default function RecentlyViewed({
             <a
               key={product.id || product.slug}
               href={`#/user/product/${product.slug}`}
+              data-hover-card
               className="bg-white rounded-lg shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
             >
               {normalizedImageUrl ? (
@@ -233,6 +236,8 @@ export default function RecentlyViewed({
                       }
                     }}
                   />
+                  <CardHoverImage src={hoverImageOf(product, normalizedImageUrl, normalizeImageUrl)} />
+                  <ProductCardBadges details={product.details} />
                 </div>
               ) : (
                 <div className="relative overflow-hidden aspect-square bg-gray-100 flex items-center justify-center">

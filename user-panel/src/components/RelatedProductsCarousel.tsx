@@ -6,6 +6,8 @@ import PricingDisplay from './PricingDisplay'
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import { getProductRating, getProductReviewCount, hasVerifiedReviews } from '../utils/product_reviews'
 import VerifiedBadge from './VerifiedBadge'
+import CardHoverImage, { hoverImageOf } from './CardHoverImage'
+import ProductCardBadges from './ProductCardBadges'
 
 interface RelatedProductsCarouselProps {
   productId: string | number
@@ -197,6 +199,7 @@ export default function RelatedProductsCarousel({
                     window.location.hash = productUrl
                   }
                 }}
+                data-hover-card
                 className="bg-white rounded-lg shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer"
               >
                 {normalizedImageUrl ? (
@@ -215,6 +218,8 @@ export default function RelatedProductsCarousel({
                         }
                       }}
                     />
+                    <CardHoverImage src={hoverImageOf(product, normalizedImageUrl, normalizeImageUrl)} />
+                    <ProductCardBadges details={product.details} />
                   </div>
                 ) : (
                   <div className="relative overflow-hidden aspect-square bg-gray-100 flex items-center justify-center">

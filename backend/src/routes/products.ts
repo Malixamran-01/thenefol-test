@@ -2,11 +2,13 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { handleGetAll, handleCreate, handleUpdate, sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { parseCSV } from '../utils/csv'
 import { isSocialCrawler } from '../utils/socialCrawler'
 import { getUploadsRoot } from '../config/uploadsRoot'
 import { deleteUploadedVideo, VIDEO_EXT_RE } from '../utils/videoOptimize'
 import { toShareableOgImage } from '../utils/ogImage'
 import { normalizeOrderItems, lineQty } from '../services/inventoryBatchService'
+import { parseConcernList, setProductConcerns } from './concerns'
 
 /** Free disk for removed product videos once no other product_images row points at them. */
 async function cleanupRemovedVideos(pool: Pool, removed: Array<{ url: string }>) {
@@ -211,11 +213,15 @@ export const SQL_INVENTORY_AVAILABLE = `
  * Replaces the old double LEFT JOIN, which multiplied pdp × banner rows and ignored display_order.
  */
 const MEDIA_ORDER = 'ORDER BY COALESCE(pi.display_order, pi.id), pi.id'
-const SQL_PRODUCT_IMAGES = `
+/** Listing fields shared by every product endpoint: ordered media + Shop-by-Concern tags. */
+export const SQL_PRODUCT_IMAGES = `
   COALESCE((SELECT json_agg(pi.url ${MEDIA_ORDER}) FROM product_images pi
             WHERE pi.product_id = p.id AND (pi.type = 'pdp' OR pi.type IS NULL)), '[]'::json) AS pdp_images,
   COALESCE((SELECT json_agg(pi.url ${MEDIA_ORDER}) FROM product_images pi
-            WHERE pi.product_id = p.id AND pi.type = 'banner'), '[]'::json) AS banner_images`
+            WHERE pi.product_id = p.id AND pi.type = 'banner'), '[]'::json) AS banner_images,
+  COALESCE((SELECT json_agg(json_build_object('slug', c.slug, 'name', c.name) ORDER BY c.sort_order, c.name)
+            FROM product_concerns pc JOIN concerns c ON c.id = pc.concern_id
+            WHERE pc.product_id = p.id AND c.is_active), '[]'::json) AS concerns`
 /** Single-product endpoints also get poster frames for PDP videos. */
 const SQL_PRODUCT_MEDIA = `${SQL_PRODUCT_IMAGES},
   COALESCE((SELECT json_agg(json_build_object('url', pi.url, 'poster', pi.poster_url) ${MEDIA_ORDER}) FROM product_images pi
@@ -380,10 +386,15 @@ export async function createProduct(pool: Pool, req: Request, res: Response) {
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `, [slug, title, category, price, listImage, description, JSON.stringify(details)])
-    
+
     console.log(`✅ Product created successfully: ID=${rows[0].id}, Title=${rows[0].title}`)
-    
-    sendSuccess(res, rows[0], 201)
+
+    // Shop by Concern: names / slugs from the product form or the CSV "Concern" column
+    const concerns = req.body?.concerns !== undefined
+      ? await setProductConcerns(pool, rows[0].id, parseConcernList(req.body.concerns))
+      : []
+
+    sendSuccess(res, { ...rows[0], concerns }, 201)
   } catch (err: any) {
     console.error(`❌ Failed to create product:`, err)
     if (err?.code === '23505') {
@@ -408,30 +419,37 @@ export async function updateProduct(pool: Pool, req: Request, res: Response, io?
     if (listImage !== undefined) updates.list_image = listImage
     if (description !== undefined) updates.description = description
     if (details !== undefined) updates.details = JSON.stringify(details)
-    
+    // `concerns` omitted → keep the product's current concerns; [] → remove all
+    const hasConcerns = req.body?.concerns !== undefined
+
     const fields = Object.keys(updates)
-    if (fields.length === 0) {
+    if (fields.length === 0 && !hasConcerns) {
       return sendError(res, 400, 'No fields to update')
     }
-    
-    const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(', ')
+
+    const setClause = [...fields.map((field, i) => `${field} = $${i + 2}`), 'updated_at = NOW()'].join(', ')
     const values = [id, ...fields.map(field => updates[field])]
-    
+
     const { rows } = await pool.query(`
-      UPDATE products 
-      SET ${setClause}, updated_at = NOW()
+      UPDATE products
+      SET ${setClause}
       WHERE id = $1
       RETURNING *
     `, values)
-    
+
     if (rows.length === 0) {
       return sendError(res, 404, 'Product not found')
     }
-    
+
+    const concerns = hasConcerns
+      ? await setProductConcerns(pool, rows[0].id, parseConcernList(req.body.concerns))
+      : undefined
+
     // Parse details if it's a JSON string
     const updatedProduct = {
       ...rows[0],
-      details: typeof rows[0].details === 'string' ? JSON.parse(rows[0].details) : rows[0].details
+      details: typeof rows[0].details === 'string' ? JSON.parse(rows[0].details) : rows[0].details,
+      ...(concerns ? { concerns } : {}),
     }
     
     // Broadcast to admin panel
@@ -709,64 +727,9 @@ export async function getProductsCSV(res: Response) {
     console.log('✅ CSV file found, reading content...')
     
     const raw = fs.readFileSync(csvPath, 'utf8')
-    const lines = raw.split(/\r?\n/).filter((l: string) => l.trim().length > 0)
-    
-    console.log('📊 CSV Content Info:')
-    console.log('  Raw content length:', raw.length)
-    console.log('  Total lines:', lines.length)
-    console.log('  First line:', lines[0]?.substring(0, 100) + '...')
-    
-    if (lines.length === 0) {
-      console.warn('❌ No lines found in CSV')
-      return sendSuccess(res, [])
-    }
-    
-    const parseCSVLine = (line: string): string[] => {
-      const result: string[] = []
-      let current = ''
-      let inQuotes = false
-      
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i]
-        
-        if (char === '"') {
-          if (inQuotes && line[i + 1] === '"') {
-            current += '"'
-            i++
-          } else {
-            inQuotes = !inQuotes
-          }
-        } else if (char === ',' && !inQuotes) {
-          result.push(current.trim())
-          current = ''
-        } else {
-          current += char
-        }
-      }
-      
-      result.push(current.trim())
-      return result
-    }
-    
-    const headerLine = lines[0]
-    const headers = parseCSVLine(headerLine)
-    const rows: any[] = []
-    
-    console.log('📋 CSV Parsing Info:')
-    console.log('  Headers count:', headers.length)
-    console.log('  First header:', headers[0])
-    
-    for (let i = 1; i < lines.length; i++) {
-      const parts = parseCSVLine(lines[i])
-      if (parts.every(p => p.trim() === '')) continue
-      
-      const obj: any = {}
-      for (let j = 0; j < headers.length; j++) {
-        obj[headers[j]] = (parts[j] ?? '').trim()
-      }
-      rows.push(obj)
-    }
-    
+    // Quoted cells may span lines, so parse the whole file rather than line by line
+    const rows = parseCSV(raw)
+
     console.log('📦 Final Results:')
     console.log('  Parsed products:', rows.length)
     console.log('  First product:', rows[0]?.['Product Name'])

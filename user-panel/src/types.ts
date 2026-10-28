@@ -9,6 +9,8 @@ export type Product = {
   /** Poster frame per PDP video URL (absolute URLs, same keys as pdpImages). */
   mediaPosters?: Record<string, string>
   bannerImages?: string[]
+  /** Shop by Concern tags, e.g. [{ slug: 'acne-breakouts', name: 'Acne & Breakouts' }] */
+  concerns?: { slug: string; name: string }[]
   description: string
   details?: any
   created_at?: string

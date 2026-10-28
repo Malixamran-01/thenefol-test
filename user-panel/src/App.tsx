@@ -14,7 +14,6 @@ import LiveChatWidget from './components/LiveChatWidget'
 import BlogFAB from './components/BlogFAB'
 import BlogLayout from './components/BlogLayout'
 import SearchButton from './components/SearchButton'
-import PWAInstallPrompt from './components/PWAInstallPrompt'
 import BottomNavigation from './components/BottomNavigation'
 import SwipeNavigation from './components/SwipeNavigation'
 import JoinUsModal from './components/JoinUsModal'
@@ -25,12 +24,14 @@ import { applySiteBranding } from './utils/siteBranding'
 import { setBrandDefaults, setPageMeta, setCanonical, titleForRoute } from './utils/pageMeta'
 import { applyTheme, parseThemeSetting } from './theme/applyTheme'
 import { THEME_SETTING_KEY } from '../../common/src/theme'
-import { BRAND_ICON_SRC, BRAND_LOGO_WIDE_SRC } from './constants/brandAssets'
+import BrandWordmark from './components/BrandWordmark'
 import {
   CREATOR_PROGRAM_BADGES_REFRESH,
 } from './contexts/CreatorProgramBadgeContext'
 import { useHashRouter } from './hooks/useHashRouter'
 import { useStickyNav } from './hooks/useStickyNav'
+import { useConcerns } from './hooks/useConcerns'
+import ConcernThumb from './components/ConcernThumb'
 import { safeWindowScrollTo } from './utils/safeScroll'
 import {
   ROUTE_SHELL_ISOLATION,
@@ -83,6 +84,8 @@ const LoyaltyRewards = lazy(() => import('./pages/LoyaltyRewards'))
 const Combos = lazy(() => import('./pages/Combos'))
 const Cart = lazy(() => import('./pages/Cart'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
+const ConcernPage = lazy(() => import('./pages/ConcernPage'))
+const ConcernsIndexPage = lazy(() => import('./pages/ConcernPage').then((m) => ({ default: m.ConcernsIndexPage })))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'))
 
 const SPLASH_SEEN_KEY = 'nefol_splash_seen'
@@ -139,6 +142,11 @@ function AppContent() {
   // Use separate state for desktop & mobile "Collections" dropdown
   const [showDesktopCollections, setShowDesktopCollections] = useState(false)
   const [showMobileCollections, setShowMobileCollections] = useState(false)
+  const [showDesktopConcerns, setShowDesktopConcerns] = useState(false)
+  const [showMobileConcerns, setShowMobileConcerns] = useState(false)
+  // Shop by Concern menu: only concerns switched on for the menu that have products
+  const { concerns: allConcerns } = useConcerns()
+  const navConcerns = allConcerns.filter((c) => c.show_in_nav && c.product_count > 0)
   const [cartToast, setCartToast] = useState<{ message: string; id: number } | null>(null)
   const desktopCollectionsRef = useRef<HTMLDivElement>(null)
   const { currentPath, currentHash, navigate } = useHashRouter()
@@ -448,7 +456,7 @@ function AppContent() {
               borderBottom: '1px solid var(--nf-header-border)',
             }}
           >
-            <div className={`flex items-center justify-between relative w-full px-4 sm:px-6 md:px-8 lg:px-12 max-w-[1920px] mx-auto transition-[height] duration-300 ease-out ${navCompact ? 'h-14 sm:h-16' : 'h-16 sm:h-20'}`}>
+            <div className={`flex !flex-nowrap items-center justify-between gap-4 lg:gap-6 relative w-full px-4 sm:px-6 md:px-8 lg:px-12 max-w-[1920px] mx-auto transition-[height] duration-300 ease-out ${navCompact ? 'h-14 sm:h-16' : 'h-16 sm:h-20'}`}>
               {/* Mobile/Tablet Layout: Hamburger, Logo (centered), Account */}
               <div className="flex items-center gap-3 md:hidden">
                 {/* Hamburger Menu */}
@@ -473,32 +481,23 @@ function AppContent() {
                   className="flex items-center justify-center md:justify-start"
                   aria-label="Go to homepage"
                 >
-                  <img
-                    src={BRAND_LOGO_WIDE_SRC}
-                    onError={(e) => {
-                      const img = e.currentTarget
-                      if (img.dataset.fallbackApplied) return
-                      img.dataset.fallbackApplied = '1'
-                      img.src = BRAND_ICON_SRC
-                    }}
-                    alt="Nefol logo"
-                    className={`brand-nav-logo w-auto object-contain transition-[height] duration-300 ease-out ${
-                      navCompact ? 'h-12 sm:h-14 md:h-9 lg:h-10' : 'h-16 sm:h-20 md:h-10 lg:h-12'
+                  <BrandWordmark
+                    className={`transition-[font-size] duration-300 ease-out ${
+                      navCompact ? 'text-[22px] sm:text-[24px] md:text-[20px] lg:text-[22px]' : 'text-[26px] sm:text-[28px] md:text-[22px] lg:text-[26px]'
                     }`}
-                    loading="eager"
                   />
                 </a>
               </div>
               
               {/* Main Navigation - Premium Typography */}
               <nav
-                className="hidden items-center gap-6 lg:gap-8 xl:gap-10 2xl:gap-12 md:flex relative flex-wrap justify-center md:justify-start"
+                className="hidden min-w-0 items-center gap-3 lg:gap-5 xl:gap-8 2xl:gap-12 md:flex !flex-nowrap relative justify-center md:justify-start"
                 style={{ maxWidth: '100%', overflow: 'visible' }}
               >
                 <a
                   href="#/user/"
-                  className="text-xs md:text-sm font-light tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
-                  style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
+                  style={{ fontFamily: 'var(--font-heading-family)' }}
                 >
                   Home
                   <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
@@ -522,17 +521,17 @@ function AppContent() {
                   }}
                 >
                   <button 
-                    className="text-xs md:text-sm font-light tracking-[0.15em] uppercase transition-colors duration-300 flex items-center relative whitespace-nowrap group flex-shrink-0"
+                    className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 flex !flex-nowrap items-center relative whitespace-nowrap group flex-shrink-0"
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
                       setShowDesktopCollections((prev) => !prev)
                     }}
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                    style={{ fontFamily: 'var(--font-heading-family)' }}
                   >
                     Collections
                     <svg 
-                      className={`ml-2 w-3 h-3 transform transition-transform duration-300 ${showDesktopCollections ? 'rotate-180' : ''}`} 
+                      className={`hidden lg:block ml-2 w-3 h-3 transform transition-transform duration-300 ${showDesktopCollections ? 'rotate-180' : ''}`} 
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -620,40 +619,92 @@ function AppContent() {
                 
                 <a
                   href="#/user/shop"
-                  className="text-xs md:text-sm font-light tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
-                  style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
+                  style={{ fontFamily: 'var(--font-heading-family)' }}
                 >
                   Shop
                   <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
                 <a
                   href="#/user/ingredients"
-                  className="text-xs md:text-sm font-light tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
-                  style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
+                  style={{ fontFamily: 'var(--font-heading-family)' }}
                 >
                   Ingredients
                   <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
                 <a
                   href="#/user/blog"
-                  className="text-xs md:text-sm font-light tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
-                  style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
+                  style={{ fontFamily: 'var(--font-heading-family)' }}
                 >
                   Social
                   <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
-                <a
-                  href="#/user/contact"
-                  className="text-xs md:text-sm font-light tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
-                  style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)' }}
+                {/* Shop by Concern (in the old Contact Us slot; Contact stays in the footer) */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => { if (window.innerWidth >= 768 && navConcerns.length > 0) setShowDesktopConcerns(true) }}
+                  onMouseLeave={() => { if (window.innerWidth >= 768) setShowDesktopConcerns(false) }}
                 >
-                  Contact Us
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
-                </a>
+                  <a
+                    href="#/user/concerns"
+                    className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 flex !flex-nowrap items-center relative whitespace-nowrap group flex-shrink-0"
+                    onClick={() => setShowDesktopConcerns(false)}
+                    aria-haspopup={navConcerns.length > 0 ? 'true' : undefined}
+                    aria-expanded={navConcerns.length > 0 ? showDesktopConcerns : undefined}
+                    style={{ fontFamily: 'var(--font-heading-family)' }}
+                  >
+                    {/* Short label on tablets so the header stays on one row */}
+                    <span className="lg:hidden">Concerns</span>
+                    <span className="hidden lg:inline">Shop by Concern</span>
+                    {navConcerns.length > 0 && (
+                      <svg className={`hidden lg:block ml-2 w-3 h-3 transform transition-transform duration-300 ${showDesktopConcerns ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                    <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
+                  </a>
+                  {showDesktopConcerns && navConcerns.length > 0 && (
+                    <div className="absolute top-full right-0 pt-3" style={{ zIndex: 9999 }} onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="w-[34rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl shadow-2xl"
+                        style={{ backgroundColor: 'var(--nf-header-bg)', border: '1px solid var(--nf-header-border)', color: 'var(--nf-header-text)' }}
+                      >
+                        <div className="px-6 pb-2 pt-5 text-[11px] uppercase tracking-[0.18em] opacity-60">What would you like to work on?</div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-3 pb-3">
+                          {navConcerns.map((c) => (
+                            <a
+                              key={c.slug}
+                              href={`#/user/concern/${c.slug}`}
+                              className="flex !flex-nowrap items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-black/5"
+                              onClick={() => setShowDesktopConcerns(false)}
+                            >
+                              <ConcernThumb concern={c} className="h-10 w-10" />
+                              <span className="min-w-0">
+                                <span className="block truncate text-[13px] leading-snug">{c.name}</span>
+                                <span className="block text-[11px] opacity-60">{c.product_count} product{c.product_count === 1 ? '' : 's'}</span>
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                        <a
+                          href="#/user/concerns"
+                          className="flex items-center justify-between border-t px-6 py-3 text-[11px] font-medium uppercase tracking-[0.14em] transition-colors hover:bg-black/5"
+                          onClick={() => setShowDesktopConcerns(false)}
+                          style={{ borderColor: 'var(--nf-header-border)', color: 'var(--nf-header-link)' }}
+                        >
+                          <span>Explore all concerns</span>
+                          <span aria-hidden="true">→</span>
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </nav>
               
               {/* Right Side Icons - Desktop: Search, Wishlist, Socials, Cart, Account | Mobile/Tablet: Account, Cart */}
-              <div className="flex items-center gap-3 md:gap-4 lg:gap-6" style={{ color: 'var(--nf-header-link)' }}>
+              <div className="flex !flex-nowrap flex-shrink-0 items-center gap-3 lg:gap-4 xl:gap-6" style={{ color: 'var(--nf-header-link)' }}>
                 {/* Desktop: Search Icon */}
                 <button 
                   onClick={() => {
@@ -850,14 +901,61 @@ function AppContent() {
                   >
                     NEFOL Social
                   </a>
-                  <a 
-                    href="#/user/contact"
-                    className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    Contact Us
-                  </a>
+                  {/* Shop by Concern (in the old Contact Us slot) */}
+                  {navConcerns.length > 0 ? (
+                    <div>
+                      <button
+                        className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 w-full flex items-center justify-between transition-colors duration-300"
+                        style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
+                        aria-expanded={showMobileConcerns}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setShowMobileConcerns((prev) => !prev)
+                        }}
+                      >
+                        Shop by Concern
+                        <svg className={`w-4 h-4 transform transition-transform duration-300 ${showMobileConcerns ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--nf-menu-text)' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {showMobileConcerns && (
+                        <div className="border-b border-slate-100 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="grid grid-cols-2 gap-2">
+                            {navConcerns.map((c) => (
+                              <a
+                                key={c.slug}
+                                href={`#/user/concern/${c.slug}`}
+                                className="flex !flex-nowrap items-center gap-2.5 rounded-lg border px-2.5 py-2"
+                                style={{ borderColor: 'var(--nf-border)', color: 'var(--nf-menu-text)' }}
+                                onClick={() => { setShowMobileMenu(false); setShowMobileConcerns(false) }}
+                              >
+                                <ConcernThumb concern={c} className="h-9 w-9" textClass="text-sm" />
+                                <span className="min-w-0 text-xs leading-tight">{c.name}</span>
+                              </a>
+                            ))}
+                          </div>
+                          <a
+                            href="#/user/concerns"
+                            className="mt-3 block text-xs font-medium tracking-[0.1em] uppercase"
+                            style={{ letterSpacing: '0.1em', color: 'var(--nf-primary)' }}
+                            onClick={() => { setShowMobileMenu(false); setShowMobileConcerns(false) }}
+                          >
+                            Explore all concerns →
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <a
+                      href="#/user/concerns"
+                      className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
+                      style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      Shop by Concern
+                    </a>
+                  )}
                 </nav>
               </div>
             </div>
@@ -875,7 +973,9 @@ function AppContent() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
             {/* Brand Section */}
             <div className="md:col-span-1">
-              <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-light tracking-wide" style={{ color: 'var(--nf-footer-heading)', fontFamily: 'var(--font-heading-family)' }}>NEFOL</h3>
+              <h3 className="mb-3 sm:mb-4">
+                <BrandWordmark variant="footer" className="text-[30px] sm:text-[34px]" />
+              </h3>
               <p className="text-xs sm:text-sm font-light leading-relaxed mb-4" style={{ color: 'var(--nf-footer-text)' }}>Natural and safe skincare for every skin type. Made with love and care.</p>
             </div>
 
@@ -1112,7 +1212,6 @@ function AppContent() {
             )
           })()}
           <SearchButton />
-          <PWAInstallPrompt />
           <BottomNavigation routePath={currentPath} />
           <SwipeNavigation />
         </>
@@ -1334,6 +1433,10 @@ function RouterView({ affiliateId, currentPath, currentHash, navigate }: RouterV
   if (currentPath.startsWith('/user/product/')) return <ProductPage />
   if (currentPath.startsWith('/p/')) return <ProductPage />
   if (currentPath.startsWith('/user/category/')) return <CategoryPage />
+  if (pathWithoutQuery.startsWith('/user/concern/')) {
+    const concernSlug = decodeURIComponent(pathWithoutQuery.slice('/user/concern/'.length).split('/')[0] || '')
+    return <ConcernPage slug={concernSlug} />
+  }
   if (pathWithoutQuery === '/user/blog/edit-image') return RequiredAuth(<ImageEditorPage />)
   if (pathWithoutQuery === '/user/blog/activity') return <BlogLayout currentHash={currentHash}><BlogActivityPage /></BlogLayout>
   if (pathWithoutQuery === '/user/blog/explore') return <BlogLayout currentHash={currentHash}><BlogExplorePage /></BlogLayout>
@@ -1403,6 +1506,7 @@ function RouterView({ affiliateId, currentPath, currentHash, navigate }: RouterV
     case '/user':
       return <Home />
     case '/user/shop': return <Shop />
+    case '/user/concerns': return <ConcernsIndexPage />
     case '/user/skincare': return <Skincare />
     case '/user/ingredients': return <Ingredients />
     case '/user/blog': return <BlogLayout currentHash={currentHash}><Blog /></BlogLayout>

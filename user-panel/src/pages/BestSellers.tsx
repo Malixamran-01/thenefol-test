@@ -4,6 +4,8 @@ import PricingDisplay from '../components/PricingDisplay'
 import { getApiBase } from '../utils/apiBase'
 import { useCart } from '../contexts/CartContext'
 import { isOutOfStock, toCartProduct } from '../utils/stock'
+import CardHoverImage, { hoverImageOf } from '../components/CardHoverImage'
+import ProductCardBadges from '../components/ProductCardBadges'
 
 interface Product {
   in_stock?: boolean
@@ -72,9 +74,11 @@ export default function BestSellers() {
               price: item.product_price || '',
               listImage: toAbs(imageUrl),
               list_image: toAbs(imageUrl),
+              pdpImages: (live?.pdp_images || []).map((u: string) => toAbs(u)),
               total_orders: item.metadata?.total_orders || 0,
               details: {
-                totalOrders: item.metadata?.total_orders || 0
+                totalOrders: item.metadata?.total_orders || 0,
+                cardBadges: live?.details?.cardBadges || []
               },
               order_index: item.order_index || 0
             }
@@ -163,7 +167,9 @@ export default function BestSellers() {
                         target.style.display = 'none'
                       }}
                     />
-                    <span className="absolute left-5 top-5 rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                    <CardHoverImage src={hoverImageOf(product, product.listImage)} />
+                    <ProductCardBadges details={product.details} className="right-5 top-5 items-end" />
+                    <span className="absolute left-5 top-5 z-10 rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
                       Best Seller
                     </span>
                   </div>

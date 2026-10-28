@@ -8,7 +8,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import ToastProvider from './components/ToastProvider'
 import { socketService } from './services/socket'
 import { 
-  Dashboard, Orders, UnifiedSalesDashboard, Customers, Users, Categories, Settings, Products, ProductReviews,
+  Dashboard, Orders, UnifiedSalesDashboard, Customers, Users, Categories, Settings, Products, ProductReviews, GoogleReviews, Concerns,
   Analytics, Marketing, MetaHub, WhatsAppSubscriptions, Discounts, FacebookInstagram, OnlineStore, GoogleYouTube, Forms,
   Invoice, InvoiceSettings, Tax, Returns, Payment, UserProfiles, UserNotifications, LoyaltyProgramManagement,
   StaticPagesManagement, CommunityManagement, CartCheckoutManagement, AffiliateManagement, AffiliateRequests,
@@ -193,6 +193,8 @@ export default function App() {
             {/* ========== PRODUCTS & CATALOG ========== */}
             <Route path="products" element={<Products />} />
             <Route path="product-reviews" element={<ProductReviews />} />
+            <Route path="google-reviews" element={<GoogleReviews />} />
+            <Route path="concerns" element={<Concerns />} />
             <Route path="product-variants" element={<ProductVariants />} />
             <Route path="categories" element={<Categories />} />
             <Route path="product-collections" element={<ProductCollections />} />

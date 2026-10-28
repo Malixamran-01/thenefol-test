@@ -3,6 +3,31 @@ import type { Product } from '../types'
 import { getApiBase, resolveMediaUrl } from '../utils/apiBase'
 import { convertToWebp } from '../utils/imageUtils'
 
+/** API product row (/api/products, /api/concerns/:slug, …) → storefront Product. */
+export function mapProductRow(r: any): Product {
+  const toAbs = (u?: string) => resolveMediaUrl(u)
+  const rawList = toAbs(r.list_image || '')
+  const listImage =
+    rawList && /\.(jpg|jpeg|png|svg)$/i.test(rawList) ? convertToWebp(rawList) : rawList
+  const inv = Number(r.inventory_available ?? 0)
+  const inStock = r.in_stock !== undefined ? !!r.in_stock : inv > 0
+  return {
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    category: r.category,
+    price: r.price,
+    listImage,
+    pdpImages: derivePdpImages(r, toAbs),
+    bannerImages: deriveBannerImages(r, toAbs),
+    description: r.description || '',
+    details: r.details || {},
+    concerns: Array.isArray(r.concerns) ? r.concerns : [],
+    inventoryAvailable: Number.isFinite(inv) ? inv : 0,
+    inStock,
+  }
+}
+
 export function useProducts() {
   const [items, setItems] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -19,30 +44,7 @@ export function useProducts() {
       })
       if (!res.ok) throw new Error('Failed to load products')
       const rows = await res.json()
-      const toAbs = (u?: string) => resolveMediaUrl(u)
-      const mapped: Product[] = (rows || []).map((r: any) => {
-        const rawList = toAbs(r.list_image || '')
-        const listImage =
-          rawList && /\.(jpg|jpeg|png|svg)$/i.test(rawList) ? convertToWebp(rawList) : rawList
-        const pdpImages = derivePdpImages(r, toAbs)
-        const bannerImages = deriveBannerImages(r, toAbs)
-        const inv = Number(r.inventory_available ?? 0)
-        const inStock = r.in_stock !== undefined ? !!r.in_stock : inv > 0
-        return {
-          id: r.id,
-          slug: r.slug,
-          title: r.title,
-          category: r.category,
-          price: r.price,
-          listImage,
-          pdpImages,
-          bannerImages,
-          description: r.description || '',
-          details: r.details || {},
-          inventoryAvailable: Number.isFinite(inv) ? inv : 0,
-          inStock,
-        }
-      }).filter((p: Product) => p.slug && p.title)
+      const mapped: Product[] = (rows || []).map(mapProductRow).filter((p: Product) => p.slug && p.title)
       setItems(mapped)
     } catch (e: any) {
       setError(e?.message || 'Failed to load products')
