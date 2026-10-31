@@ -38,7 +38,7 @@ interface HomepageSection {
   description: string
   sectionType: string // CMS section type
   imageCount: number // How many images this section can hold
-  settings?: HeroBannerSettings // Only for hero banner
+  settings?: HeroBannerSettings // Only for the top media carousel
   isCustom?: boolean // Flag for custom sections
   orderIndex?: number // Display order
 }
@@ -94,7 +94,6 @@ export default function HomepageLayoutManager() {
   const [draggedOverSection, setDraggedOverSection] = useState<string | null>(null)
   const [uploading, setUploading] = useState<Record<string, boolean>>({})
   const [previewMode, setPreviewMode] = useState(false)
-  const [showHeroSettings, setShowHeroSettings] = useState(false)
   const [showTopMediaSettings, setShowTopMediaSettings] = useState(false)
   const [showCreateSection, setShowCreateSection] = useState(false)
   const [showCropper, setShowCropper] = useState(false)
@@ -116,16 +115,6 @@ export default function HomepageLayoutManager() {
     sectionType: '',
     imageCount: 5,
     type: 'gallery' as const
-  })
-  const [heroSettings, setHeroSettings] = useState<HeroBannerSettings>({
-    animationType: 'fade',
-    transitionDuration: 1000,
-    autoPlay: true,
-    autoPlayDelay: 7000,
-    designStyle: 'modern',
-    showDots: true,
-    showArrows: true,
-    loop: true
   })
   const [topMediaSettings, setTopMediaSettings] = useState<HeroBannerSettings>({
     animationType: 'fade',
@@ -177,30 +166,11 @@ export default function HomepageLayoutManager() {
       },
       {
         id: 'top_media_carousel',
-        name: 'Top Media Carousel (Above Hero)',
+        name: 'Top Media Carousel',
         type: 'hero',
         images: [],
-        description: 'Media carousel displayed above Hero Banner - Images and videos with full aspect ratio (up to 30)',
+        description: 'Media carousel at the top of the homepage - Images and videos with full aspect ratio (up to 30)',
         sectionType: 'top_media_carousel',
-        imageCount: 30,
-        settings: {
-          animationType: 'fade',
-          transitionDuration: 1000,
-          autoPlay: true,
-          autoPlayDelay: 7000,
-          designStyle: 'modern',
-          showDots: true,
-          showArrows: true,
-          loop: true
-        }
-      },
-      {
-        id: 'hero_banner',
-        name: 'Hero Banner (Top Slider)',
-        type: 'hero',
-        images: [],
-        description: 'Main banner at the top - Rotating hero images and videos (up to 30)',
-        sectionType: 'hero_banner',
         imageCount: 30,
         settings: {
           animationType: 'fade',
@@ -342,8 +312,8 @@ export default function HomepageLayoutManager() {
               images: padArray([desktopVideo, tabletVideo, mobileVideo], section.imageCount)
             }
           }
-          if ((section.sectionType === 'hero_banner' || section.sectionType === 'top_media_carousel') && cmsSection.content.images) {
-            // Support both images and videos in hero banner and top media carousel
+          if (section.sectionType === 'top_media_carousel' && cmsSection.content.images) {
+            // Support both images and videos in the top media carousel
             const images = Array.isArray(cmsSection.content.images) ? cmsSection.content.images : []
             
             // For top_media_carousel, create mediaItems with metadata
@@ -378,9 +348,6 @@ export default function HomepageLayoutManager() {
               settings: cmsSection.content.settings || section.settings
             }
             // Update settings state if found
-            if (section.sectionType === 'hero_banner' && cmsSection.content.settings) {
-              setHeroSettings(cmsSection.content.settings)
-            }
             if (section.sectionType === 'top_media_carousel' && cmsSection.content.settings) {
               setTopMediaSettings(cmsSection.content.settings)
             }
@@ -663,7 +630,6 @@ export default function HomepageLayoutManager() {
   // Get aspect ratio for section
   const getSectionAspectRatio = (sectionId: string): number | null => {
     const aspectRatios: Record<string, number> = {
-      'hero_banner': 5/4, // 1.25
       'nefol_collection': 16/9, // 1.78
       'natural_beauty': 16/9, // 1.78
       'forever_favorites': 4/3, // 1.33
@@ -953,19 +919,7 @@ export default function HomepageLayoutManager() {
       
       let content: any = {}
       
-      if (section.sectionType === 'hero_banner') {
-        const heroSection = sections.find(s => s.id === 'hero_banner')
-        content = {
-          title: 'Hero Banner',
-          subtitle: 'NATURAL BEAUTY',
-          description: 'infused with premium natural ingredients',
-          buttonText: 'SHOP NOW',
-          buttonLink: '/shop',
-          images: imagesToUse, // Can contain both image and video URLs
-          videos: imagesToUse.filter((url: string) => /\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(url)),
-          settings: heroSection?.settings || heroSettings
-        }
-      } else if (section.sectionType === 'top_media_carousel') {
+      if (section.sectionType === 'top_media_carousel') {
         const topMediaSection = sections.find(s => s.id === 'top_media_carousel')
         // Use updatedMediaItems if provided, otherwise use existing mediaItems, or create from images
         // Convert mediaItems URLs to relative paths
@@ -1304,8 +1258,7 @@ export default function HomepageLayoutManager() {
       // Map of section types to their correct display names
       const sectionNameMap: Record<string, string> = {
         'scrolling_text_banner': 'Scrolling Text Banner',
-        'top_media_carousel': 'Top Media Carousel (Above Hero)',
-        'hero_banner': 'Hero Banner (Top Slider)',
+        'top_media_carousel': 'Top Media Carousel',
         'body_category': 'Body Category',
         'face_category': 'Face Category',
         'hair_category': 'Hair Category',
@@ -1342,26 +1295,6 @@ export default function HomepageLayoutManager() {
     } catch (error) {
       console.error('Failed to save section:', error)
       throw error
-    }
-  }
-
-  // Save hero banner settings
-  const saveHeroSettings = async () => {
-    const heroSection = sections.find(s => s.id === 'hero_banner')
-    if (!heroSection) return
-
-    // Update local state
-    setSections(prev => prev.map(s => 
-      s.id === 'hero_banner' ? { ...s, settings: heroSettings } : s
-    ))
-
-    // Save to CMS
-    try {
-      await saveSectionToCMS('hero_banner', heroSection.images[0] || '', undefined, heroSection.images)
-      notify('success', 'Hero settings saved successfully')
-      setShowHeroSettings(false)
-    } catch (error) {
-      notify('error', 'Failed to save hero settings')
     }
   }
 
@@ -1801,15 +1734,9 @@ export default function HomepageLayoutManager() {
                       </span>
                     )}
                   </h3>
-                  {(section.id === 'hero_banner' || section.id === 'top_media_carousel') && (
+                  {section.id === 'top_media_carousel' && (
                     <button
-                      onClick={() => {
-                        if (section.id === 'hero_banner') {
-                          setShowHeroSettings(!showHeroSettings)
-                        } else {
-                          setShowTopMediaSettings(!showTopMediaSettings)
-                        }
-                      }}
+                      onClick={() => setShowTopMediaSettings(!showTopMediaSettings)}
                       className="p-1.5 hover:bg-gray-100 rounded transition-colors"
                       title="Animation & Design Settings"
                     >
@@ -1861,7 +1788,7 @@ export default function HomepageLayoutManager() {
                 <label className="cursor-pointer">
                   <input
                     type="file"
-                    accept={(section.id === 'hero_banner' || section.id === 'top_media_carousel') ? "image/*,video/*" : "image/*"}
+                    accept={section.id === 'top_media_carousel' ? "image/*,video/*" : "image/*"}
                     multiple={section.imageCount > 1}
                     onChange={(e) => handleFileInput(e, section.id)}
                     className="hidden"
@@ -2334,175 +2261,13 @@ export default function HomepageLayoutManager() {
               </div>
             )}
 
-            {/* Hero Banner Settings Panel */}
-            {section.id === 'hero_banner' && showHeroSettings && (
-              <div className="mb-4 rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3 sm:p-4">
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Palette className="h-5 w-5 shrink-0 text-blue-600" />
-                    <h4 className="font-semibold text-blue-900">Animation & Design Settings</h4>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowHeroSettings(false)}
-                    className="self-end rounded p-1 transition-colors hover:bg-blue-200 sm:self-auto"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Animation Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Animation Type
-                    </label>
-                    <select
-                      value={heroSettings.animationType}
-                      onChange={(e) => setHeroSettings({ ...heroSettings, animationType: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="fade">Fade</option>
-                      <option value="slide">Slide</option>
-                      <option value="zoom">Zoom</option>
-                      <option value="cube">Cube 3D</option>
-                      <option value="flip">Flip</option>
-                      <option value="coverflow">Coverflow</option>
-                      <option value="cards">Cards</option>
-                    </select>
-                  </div>
-
-                  {/* Design Style */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Design Style
-                    </label>
-                    <select
-                      value={heroSettings.designStyle}
-                      onChange={(e) => setHeroSettings({ ...heroSettings, designStyle: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="modern">Modern</option>
-                      <option value="classic">Classic</option>
-                      <option value="minimal">Minimal</option>
-                      <option value="gradient">Gradient</option>
-                      <option value="dark">Dark Theme</option>
-                      <option value="colorful">Colorful</option>
-                    </select>
-                  </div>
-
-                  {/* Transition Duration */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Transition Duration: {heroSettings.transitionDuration}ms
-                    </label>
-                    <input
-                      type="range"
-                      min="300"
-                      max="3000"
-                      step="100"
-                      value={heroSettings.transitionDuration}
-                      onChange={(e) => setHeroSettings({ ...heroSettings, transitionDuration: parseInt(e.target.value) })}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>Fast (300ms)</span>
-                      <span>Slow (3000ms)</span>
-                    </div>
-                  </div>
-
-                  {/* Auto-play Delay */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Auto-play Delay: {heroSettings.autoPlayDelay / 1000}s
-                    </label>
-                    <input
-                      type="range"
-                      min="2000"
-                      max="15000"
-                      step="500"
-                      value={heroSettings.autoPlayDelay}
-                      onChange={(e) => setHeroSettings({ ...heroSettings, autoPlayDelay: parseInt(e.target.value) })}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>2s</span>
-                      <span>15s</span>
-                    </div>
-                  </div>
-
-                  {/* Toggle Options */}
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={heroSettings.autoPlay}
-                        onChange={(e) => setHeroSettings({ ...heroSettings, autoPlay: e.target.checked })}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">Auto-play</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={heroSettings.showDots}
-                        onChange={(e) => setHeroSettings({ ...heroSettings, showDots: e.target.checked })}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">Show Navigation Dots</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={heroSettings.showArrows}
-                        onChange={(e) => setHeroSettings({ ...heroSettings, showArrows: e.target.checked })}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">Show Arrow Buttons</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={heroSettings.loop}
-                        onChange={(e) => setHeroSettings({ ...heroSettings, loop: e.target.checked })}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">Loop Slides</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex justify-end gap-2">
-                  <button
-                    onClick={() => {
-                      const heroSection = sections.find(s => s.id === 'hero_banner')
-                      if (heroSection?.settings) {
-                        setHeroSettings(heroSection.settings)
-                      }
-                      setShowHeroSettings(false)
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveHeroSettings}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                  >
-                    <Save className="w-4 h-4" />
-                    Save Settings
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Drop Zone */}
             {section.id !== 'splash_screen' && (
               section.images.length === 0 ? (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                   <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-600 mb-2">
-                    Drag and drop {(section.id === 'hero_banner' || section.id === 'top_media_carousel') ? 'images or videos' : 'images'} here
+                    Drag and drop {section.id === 'top_media_carousel' ? 'images or videos' : 'images'} here
                   </p>
                   <p className="text-xs text-gray-500">
                     or click the upload button above
@@ -2548,10 +2313,7 @@ export default function HomepageLayoutManager() {
                         <img
                           src={mediaUrl}
                           alt={`${section.name} ${index + 1}`}
-                          className={`w-full object-cover rounded-lg border border-gray-200 ${
-                            section.id === 'hero_banner' ? 'h-40' : 'h-32'
-                          }`}
-                          style={section.id === 'hero_banner' ? { aspectRatio: '5/4' } : {}}
+                          className="h-32 w-full object-cover rounded-lg border border-gray-200"
                         />
                       )}
                       
@@ -2632,7 +2394,7 @@ export default function HomepageLayoutManager() {
                           <label className={`absolute cursor-pointer ${section.id === 'top_media_carousel' ? 'bottom-2 right-2' : 'bottom-2 left-2'}`}>
                             <input
                               type="file"
-                              accept={(section.id === 'hero_banner' || section.id === 'top_media_carousel') ? "image/*,video/*" : "image/*"}
+                              accept={section.id === 'top_media_carousel' ? "image/*,video/*" : "image/*"}
                               onChange={(e) => {
                                 const file = e.target.files?.[0]
                                 if (file) {
@@ -2661,8 +2423,8 @@ export default function HomepageLayoutManager() {
                   <label className="cursor-pointer">
                     <input
                       type="file"
-                      accept={(section.id === 'hero_banner' || section.id === 'top_media_carousel') ? "image/*,video/*" : "image/*"}
-                      multiple={section.id === 'hero_banner' || section.id === 'top_media_carousel'}
+                      accept={section.id === 'top_media_carousel' ? "image/*,video/*" : "image/*"}
+                      multiple={section.id === 'top_media_carousel'}
                       onChange={(e) => handleFileInput(e, section.id)}
                       className="hidden"
                     />
@@ -2693,7 +2455,7 @@ export default function HomepageLayoutManager() {
         <ul className="list-disc list-inside text-sm text-blue-800 space-y-1">
           <li>Drag images or videos from your computer directly onto any section</li>
           <li>Or click the upload icon to browse and select files</li>
-          <li>Top Media Carousel and Hero Banner support up to 30 images and videos</li>
+          <li>Top Media Carousel supports up to 30 images and videos</li>
           <li>Videos should be in MP4, WebM, OGG, MOV, or AVI format (max 100MB)</li>
           <li>Click "Create New Section" to add custom sections to your homepage</li>
           <li>Hover over media to replace or remove them</li>

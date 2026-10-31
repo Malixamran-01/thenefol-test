@@ -7,7 +7,7 @@ import { Pool } from 'pg'
 import { sendError, sendSuccess } from '../utils/apiHelpers'
 
 /** Badge ids shown on storefront product cards (labels live in common/src/productBadges.ts). */
-export const CARD_BADGES = ['bestseller', 'lowest_price', 'sale', 'new', 'limited', 'trending'] as const
+export const CARD_BADGES = ['new_arrival','bestseller', 'lowest_price', 'sale', 'new', 'limited', 'trending'] as const
 
 export type MrpMode = 'set' | 'increase' | 'decrease' | 'increase_percent' | 'decrease_percent'
 

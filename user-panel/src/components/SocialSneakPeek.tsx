@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { blogActivityAPI } from '../services/api'
 import { getApiBase } from '../utils/apiBase'
 import { BlogCardAuthor } from './BlogCardAuthor'
-import { BlogPostCard, type BlogPostCardPost } from './BlogPostCard'
+import { plainTextCardPreview, type BlogPostCardPost } from './BlogPostCard'
 import {
   getCarouselActiveIndex,
   scrollCarouselToIndex,
@@ -39,37 +39,49 @@ function mapPostUrls(post: SneakPost): SneakPost {
   }
 }
 
-function CommunityPostColumn({ post }: { post: SneakPost }) {
-  return (
-    <div className="flex h-full flex-col gap-3">
-      <BlogCardAuthor
-        authorId={post.author_id}
-        authorUniqueUserId={post.author_unique_user_id}
-        authorName={post.author_name ?? 'NEFOL Community'}
-        authorProfileImage={post.author_photo ?? null}
-        authorVerified={post.author_is_verified === true}
-        showFollowButton={false}
-      />
-      <BlogPostCard
-        post={post}
-        initialLikes={post.likes_count ?? 0}
-        initialComments={post.comments_count ?? 0}
-        showActions={false}
-      />
-    </div>
-  )
-}
+const GRID_COLUMNS: Record<number, string> = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }
 
-function CommunityCardsSkeleton({ count }: { count: number }) {
+/** Adapts to its own width: a 16:9 text-and-photo banner when alone, a stacked card beside others. */
+function CommunityStoryCard({ post }: { post: SneakPost }) {
+  const coverImage = post.cover_image || post.images?.[0] || '/IMAGES/default-blog.jpg'
+  const title = plainTextCardPreview(post.title)
+  const excerpt = plainTextCardPreview(post.excerpt)
+
   return (
-    <>
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="flex flex-col gap-3 animate-pulse">
-          <div className="h-5 w-32 rounded bg-[#edf4f9]" />
-          <div className="h-[360px] rounded-2xl bg-[#edf4f9]" />
+    <article className="nefol-story group">
+      <div className="nefol-story__card">
+        <img src={coverImage} alt="" aria-hidden="true" className="nefol-story__backdrop img-fill" loading="lazy" />
+        <div className="nefol-story__media">
+          <img src={coverImage} alt="" className="img-fill" loading="lazy" />
         </div>
-      ))}
-    </>
+        {post.featured && <span className="nefol-story__badge">Featured</span>}
+
+        <div className="nefol-story__body">
+          <h3 className="nefol-story__title">
+            <a href={`#/user/blog/${post.id}`} className="nefol-story__link">{title}</a>
+          </h3>
+          {excerpt && <p className="nefol-story__excerpt">{excerpt}</p>}
+
+          <div className="nefol-story__footer">
+            <div className="nefol-story__author">
+              <BlogCardAuthor
+                authorId={post.author_id}
+                authorUniqueUserId={post.author_unique_user_id}
+                authorName={post.author_name ?? 'NEFOL Community'}
+                authorProfileImage={post.author_photo ?? null}
+                authorVerified={post.author_is_verified === true}
+                showFollowButton={false}
+                onDark
+              />
+            </div>
+            <span className="nefol-story__read" aria-hidden="true">
+              Read story
+              <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+            </span>
+          </div>
+        </div>
+      </div>
+    </article>
   )
 }
 
@@ -136,57 +148,47 @@ export default function SocialSneakPeek() {
         </div>
 
         {loading ? (
-          <>
-            <div className="nefol-horizontal-carousel md:hidden">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="nefol-horizontal-carousel__slide animate-pulse">
-                  <div className="mb-3 h-5 w-32 rounded bg-[#edf4f9]" />
-                  <div className="h-[360px] rounded-2xl bg-[#edf4f9]" />
-                </div>
-              ))}
-            </div>
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <CommunityCardsSkeleton count={3} />
-            </div>
-          </>
+          <div className="nefol-stories h-[360px] animate-pulse rounded-[1.25rem] bg-[#edf4f9] md:aspect-video md:h-auto" />
         ) : posts.length > 0 ? (
           <>
-            {/* Mobile: horizontal swipe carousel */}
-            <div
-              ref={carouselRef}
-              className="nefol-horizontal-carousel md:hidden"
-              aria-label="Featured community posts"
-              onScroll={updateActiveSlide}
-            >
-              {posts.map((post) => (
-                <div key={String(post.id)} className="nefol-horizontal-carousel__slide">
-                  <CommunityPostColumn post={post} />
-                </div>
-              ))}
-            </div>
-
+            {/* Mobile, several posts: horizontal swipe carousel */}
             {posts.length > 1 && (
-              <div className="mt-3 flex justify-center gap-1.5 md:hidden" role="tablist" aria-label="Carousel slides">
-                {posts.map((post, i) => (
-                  <button
-                    key={String(post.id)}
-                    type="button"
-                    role="tab"
-                    aria-selected={i === activeSlide}
-                    aria-label={`Show post ${i + 1} of ${posts.length}`}
-                    onClick={() => scrollToSlide(i)}
-                    className={`h-1.5 rounded-full transition-all duration-200 ${
-                      i === activeSlide ? 'w-6 bg-[color:var(--nf-heading)]' : 'w-1.5 bg-[#DCE6EE]'
-                    }`}
-                  />
-                ))}
-              </div>
+              <>
+                <div
+                  ref={carouselRef}
+                  className="nefol-horizontal-carousel md:hidden"
+                  aria-label="Featured community posts"
+                  onScroll={updateActiveSlide}
+                >
+                  {posts.map((post) => (
+                    <div key={String(post.id)} className="nefol-horizontal-carousel__slide">
+                      <CommunityStoryCard post={post} />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex justify-center gap-1.5 md:hidden" role="tablist" aria-label="Carousel slides">
+                  {posts.map((post, i) => (
+                    <button
+                      key={String(post.id)}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === activeSlide}
+                      aria-label={`Show post ${i + 1} of ${posts.length}`}
+                      onClick={() => scrollToSlide(i)}
+                      className={`h-1.5 rounded-full transition-all duration-200 ${
+                        i === activeSlide ? 'w-6 bg-[color:var(--nf-heading)]' : 'w-1.5 bg-[#DCE6EE]'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
-            {/* Tablet/desktop: same grid as NEFOL Social home */}
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Tablet/desktop, or a single post at any width */}
+            <div className={`${posts.length > 1 ? 'hidden md:grid' : 'grid'} nefol-stories gap-6 lg:gap-8 ${GRID_COLUMNS[posts.length]}`}>
               {posts.map((post) => (
-                <CommunityPostColumn key={String(post.id)} post={post} />
+                <CommunityStoryCard key={String(post.id)} post={post} />
               ))}
             </div>
           </>

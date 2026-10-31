@@ -85,7 +85,6 @@ import * as userRoutes from './routes/users'
 import * as authRoutes from './routes/auth'
 import * as cancellationRoutes from './routes/cancellations'
 import { seedCMSContent } from './utils/seedCMS'
-import { updateAllProductsWithPricing } from './utils/updateAllProducts'
 import cron from 'node-cron'
 import { registerExtendedRoutes } from './routes/extended'
 import { registerDashboardAnalyticsRoutes } from './routes/dashboardAnalytics'
@@ -884,7 +883,6 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
       { loc: `${base}/user/hair`,         changefreq: 'weekly',  priority: '0.85' },
       { loc: `${base}/user/skincare`,     changefreq: 'weekly',  priority: '0.85' },
       { loc: `${base}/user/combos`,       changefreq: 'weekly',  priority: '0.85' },
-      { loc: `${base}/user/new-arrivals`, changefreq: 'weekly',  priority: '0.8'  },
       { loc: `${base}/user/best-sellers`, changefreq: 'weekly',  priority: '0.8'  },
       { loc: `${base}/user/blog`,         changefreq: 'daily',   priority: '0.75' },
       { loc: `${base}/user/ingredients`,  changefreq: 'monthly', priority: '0.7'  },
@@ -4858,7 +4856,6 @@ function generateInvoiceHTML(order: any, companyDetails: any, colors: any, taxSe
     const netQuantity = item.csvProduct?.['Net Quantity (Content)'] || ''
     const netWeight = item.csvProduct?.['Net Weight (Product Only)'] || ''
     const countryOfOrigin = item.csvProduct?.['Country of Origin'] || ''
-    const manufacturer = item.csvProduct?.['Manufacturer / Packer / Importer'] || ''
     
     // Get GST % from CSV if available
     const gstPercent = gstFromCSV || taxRate
@@ -5949,11 +5946,8 @@ ensureSchema(pool)
     // Google reviews tables (Business Profile sync)
     await googleReviewRoutes.ensureGoogleReviewTables(pool)
 
-    // Update all products with pricing data
-    await updateAllProductsWithPricing(pool)
-    
-    // Sample products removed - no longer adding sample products on startup
-    
+    // Startup must never write to products: prices, badges and other product settings belong to the admin panel
+
     const host = process.env.HOST || '0.0.0.0' // Listen on all network interfaces
     // Start cart abandonment cron job
     startCartAbandonmentCron(pool)
@@ -5967,7 +5961,6 @@ ensureSchema(pool)
       console.log(`✅ All routes optimized and centralized`)
       console.log(`🔧 CSV path fixed: ../product description page.csv`)
       console.log(`🌱 CMS content initialized`)
-      console.log(`💰 All products updated with MRP and discounted pricing`)
     })
   })
   .catch((err) => {

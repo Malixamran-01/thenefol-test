@@ -16,6 +16,8 @@ interface BlogCardAuthorProps {
   authorVerified?: boolean
   /** Homepage preview: hide follow (requires signed-in user) */
   showFollowButton?: boolean
+  /** White name, for use on a photo or dark card */
+  onDark?: boolean
 }
 
 export function BlogCardAuthor({
@@ -25,6 +27,7 @@ export function BlogCardAuthor({
   authorProfileImage,
   authorVerified,
   showFollowButton = true,
+  onDark = false,
 }: BlogCardAuthorProps) {
   const { user, isAuthenticated } = useAuth()
   const dispatch = useDispatch()
@@ -147,7 +150,7 @@ export function BlogCardAuthor({
             <User className="h-5 w-5 text-gray-600" />
           )}
         </div>
-        <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: 'var(--nf-heading)' }}>
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: onDark ? '#fff' : 'var(--nf-heading)' }}>
           {authorName || 'Anonymous'}
           {authorVerified ? <AuthorVerifiedBadge size="md" /> : null}
         </span>

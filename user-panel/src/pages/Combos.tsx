@@ -9,6 +9,7 @@ import VerifiedBadge from '../components/VerifiedBadge'
 import { useWishlist } from '../contexts/WishlistContext'
 import { useAuth } from '../contexts/AuthContext'
 import WishlistButton from '../components/WishlistButton'
+import ProductCardBadges from '../components/ProductCardBadges'
 
 
 interface Product {
@@ -136,6 +137,7 @@ export default function Combos() {
                 className="bg-white group overflow-hidden flex flex-col h-full transition-all duration-500"
               >
                 <div className="relative overflow-hidden aspect-square mb-6 rounded-xl">
+                  <ProductCardBadges details={product.details} className="left-3 top-3" />
                   <a href={`#/user/product/${product.slug}`}>
                     {product.list_image && (
                       <img 

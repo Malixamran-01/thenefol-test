@@ -254,7 +254,6 @@ export default function ProductCollections() {
 
   const tabs = [
     { id: 'offers' as CollectionType, label: 'Offers', icon: '🎁' },
-    { id: 'new_arrivals' as CollectionType, label: 'New Arrivals', icon: '🆕' },
     { id: 'best_sellers' as CollectionType, label: 'Best Sellers', icon: '⭐' },
     { id: 'recommendations' as CollectionType, label: 'Recommendations', icon: '💡' },
     { id: 'recommendation_posts' as const, label: 'Recommendation Posts', icon: '📝' },

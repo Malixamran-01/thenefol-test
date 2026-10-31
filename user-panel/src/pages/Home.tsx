@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import SocialSneakPeek from '../components/SocialSneakPeek'
 import JustLandedProductCard from '../components/JustLandedProductCard'
+import NewArrivalsSection from '../components/NewArrivalsSection'
 import GoogleReviewsSection from '../components/GoogleReviewsSection'
 import { api } from '../services/api'
 import { useCart } from '../contexts/CartContext'
@@ -15,6 +16,7 @@ import {
   scrollCarouselToIndex,
 } from '../utils/carouselScroll'
 import { sortProductList } from '../utils/justLandedProducts'
+import { isNewArrival } from '../../../common/src/productBadges'
 export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
   const { addItem } = useCart()
@@ -69,23 +71,6 @@ export default function Home() {
   })
   const [topMediaIndex, setTopMediaIndex] = useState(0)
 
-  const [heroImages, setHeroImages] = useState<string[]>([
-    '/IMAGES/BANNER%20(1).webp',
-    '/IMAGES/BANNER%20(2).webp',
-    '/IMAGES/BANNER%20(3).webp'
-  ])
-  const [heroSettings, setHeroSettings] = useState<any>({
-    animationType: 'fade',
-    transitionDuration: 1000,
-    autoPlay: true,
-    autoPlayDelay: 7000,
-    designStyle: 'modern',
-    showDots: true,
-    showArrows: true,
-    loop: true
-  })
-  const [heroIndex, setHeroIndex] = useState(0)
-
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({
     'Body': '/IMAGES/body.webp',
     'Face': '/IMAGES/face.webp',
@@ -138,9 +123,6 @@ export default function Home() {
   const topMediaAutoPlay = topMediaSettings.autoPlay
   const topMediaAutoPlayDelay = topMediaSettings.autoPlayDelay
   const topMediaLoop = topMediaSettings.loop
-  const heroAutoPlay = heroSettings.autoPlay
-  const heroAutoPlayDelay = heroSettings.autoPlayDelay
-  const heroLoop = heroSettings.loop
 
   // Fetch all data on mount
   useEffect(() => {
@@ -178,34 +160,6 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Failed to fetch top media carousel from CMS:', error)
-      }
-    }
-
-    const runHero = async () => {
-      try {
-        const cmsBase = getCmsApiBase()
-        const response = await fetch(`${cmsBase}/sections/home`)
-        if (!guard() || !response.ok) return
-        const sections = await response.json()
-        const heroSection = sections.find((s: any) => s.section_type === 'hero_banner')
-        if (!heroSection?.content) return
-        const content = heroSection.content
-        if (content.images?.length) {
-          const normalizedImages = content.images.map(normalizeUrl)
-          setHeroImages((prev) =>
-            prev.length === normalizedImages.length && prev.every((u, i) => u === normalizedImages[i])
-              ? prev
-              : normalizedImages
-          )
-        }
-        if (content.settings) {
-          setHeroSettings((prev: typeof heroSettings) => {
-            if (JSON.stringify(prev) === JSON.stringify(content.settings)) return prev
-            return content.settings
-          })
-        }
-      } catch (error) {
-        console.error('Failed to fetch hero banner from CMS:', error)
       }
     }
 
@@ -343,7 +297,7 @@ export default function Home() {
       }
     }
 
-    void Promise.allSettled([runTopMedia(), runHero(), runCms()])
+    void Promise.allSettled([runTopMedia(), runCms()])
     return () => {
       homeFetchIdRef.current += 1
     }
@@ -367,22 +321,7 @@ export default function Home() {
     return () => window.clearInterval(id)
   }, [topMediaImages.length, topMediaAutoPlay, topMediaAutoPlayDelay, topMediaLoop])
 
-  // Auto-rotate hero images
-  useEffect(() => {
-    if (heroImages.length === 0) return
-    if (!heroAutoPlay) return
-
-    const id = window.setInterval(() => {
-      setHeroIndex((prev) => {
-        if (heroLoop) {
-          return (prev + 1) % heroImages.length
-        }
-        return prev < heroImages.length - 1 ? prev + 1 : prev
-      })
-    }, heroAutoPlayDelay || 7000)
-
-    return () => window.clearInterval(id)
-  }, [heroImages.length, heroAutoPlay, heroAutoPlayDelay, heroLoop])
+  const newArrivals = useMemo(() => products.filter((p) => isNewArrival(p.details)), [products])
 
   const allFeaturedProducts = useMemo(
     () => sortProductList(products, justLandedOrderSlugs),
@@ -557,52 +496,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* Hero Banner Section */}
-      {heroImages.length > 0 && (
-        <section className="relative w-full" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
-          {/* Full width, same as the top media banner above */}
-          <div className="mx-auto w-full py-2 sm:py-4 md:py-6">
-            <div className="relative w-full" style={{ 
-              aspectRatio: '16/9',
-              maxHeight: '80vh',
-              minHeight: '300px'
-            }}>
-              {heroImages[heroIndex] && (
-                <>
-                  {/\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(heroImages[heroIndex]) ? (
-                    <video
-                      src={heroImages[heroIndex]}
-                      className="absolute inset-0 w-full h-full object-cover bg-black rounded-xl"
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      preload="auto"
-                      key={heroIndex}
-                      style={{ objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <img 
-                      src={heroImages[heroIndex]} 
-                      alt="Hero Banner"
-                      className="img-fill absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out rounded-xl"
-                      style={{ 
-                        objectFit: 'cover',
-                        opacity: 1,
-                        transition: `opacity ${heroSettings.transitionDuration || 1000}ms ease-in-out`,
-                      }}
-                      key={heroIndex}
-                      loading="eager"
-                      fetchPriority="high"
-                      onError={createImageErrorHandler(heroImages[heroIndex])}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* New Arrivals - products badged New Arrival in Admin → Products */}
+      <NewArrivalsSection products={newArrivals} csvProducts={csvProducts} reviewStats={reviewStats} />
 
       {/* Community - featured blog posts */}
       <SocialSneakPeek />

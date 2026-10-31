@@ -4,6 +4,7 @@ import { useWishlist } from '../contexts/WishlistContext'
 import { getApiBase } from '../utils/apiBase'
 import { isOutOfStock, toCartProduct } from '../utils/stock'
 import { userSocketService } from '../services/socket'
+import ProductCardBadges from '../components/ProductCardBadges'
 import { Heart, Star, ShoppingCart, Filter, SortAsc, SortDesc, X, Clock, TrendingUp, Search as SearchIcon, SlidersHorizontal } from 'lucide-react'
 
 interface SearchResult {
@@ -657,6 +658,7 @@ export default function SearchPage() {
                       {product.category}
                     </div>
                   )}
+                  <ProductCardBadges details={product.details} className="left-3 top-10" />
                 </div>
                 
                 <div className="p-6">

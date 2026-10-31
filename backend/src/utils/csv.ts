@@ -43,3 +43,13 @@ export function parseCSV(text: string): Record<string, string>[] {
     return obj
   })
 }
+
+/** Prices and the manufacturer live in the catalogue, so the storefront's description CSV must not supply them. */
+const CATALOGUE_ONLY_COLUMNS = /^(mrp|website ?price|discount|manufacturer)/i
+
+/** The product description CSV as served to the storefront. */
+export function parseProductDescriptionCSV(text: string): Record<string, string>[] {
+  return parseCSV(text).map(row =>
+    Object.fromEntries(Object.entries(row).filter(([header]) => !CATALOGUE_ONLY_COLUMNS.test(header)))
+  )
+}

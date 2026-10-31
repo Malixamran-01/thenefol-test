@@ -6,7 +6,7 @@ import ConcernPicker, { loadConcernOptions } from '../../components/ConcernPicke
 import BulkEditProducts from '../../components/BulkEditProducts'
 import { PRODUCT_CARD_BADGES, cardBadgesOf } from '../../../../common/src/productBadges'
 import { parseCSVRows } from '../../utils/csv'
-import { buildImportPlan, effectiveDiscount, ImportPlan, ImportRow } from '../../utils/productImport'
+import { buildImportPlan, effectiveDiscount, ImportPlan, ImportRow, pricingForExisting } from '../../utils/productImport'
 import { uploadFile, uploadMedia, isVideoUrl, MAX_VIDEO_BYTES, VIDEO_ACCEPT } from '../../utils/upload'
 import { socketService } from '../../services/socket'
 import { getApiBaseUrl } from '../../utils/apiUrl'
@@ -95,7 +95,7 @@ function ProductsManager() {
       sku: '', hsn: '', mrp: '', websitePrice: '', discountPercent: '', brand: '', subtitle: '',
       skinHairType: '', netQuantity: '', unitCount: '', packageContent: '',
       innerPackaging: '', outerPackaging: '', netWeight: '', deadWeight: '',
-      gstPercent: '', countryOfOrigin: '', manufacturer: '', keyIngredients: '',
+      gstPercent: '', countryOfOrigin: '', keyIngredients: '',
       ingredientBenefits: '', howToUse: '', longDescription: '', bulletHighlights: '',
       imageLinks: '', videoLinks: '', platformCategoryMapping: '', hazardous: '', badges: ''
     }
@@ -412,7 +412,7 @@ function ProductsManager() {
         sku: '', hsn: '', mrp: '', websitePrice: '', discountPercent: '', brand: '', subtitle: '',
         skinHairType: '', netQuantity: '', unitCount: '', packageContent: '',
         innerPackaging: '', outerPackaging: '', netWeight: '', deadWeight: '',
-        gstPercent: '', countryOfOrigin: '', manufacturer: '', keyIngredients: '',
+        gstPercent: '', countryOfOrigin: '', keyIngredients: '',
         ingredientBenefits: '', howToUse: '', longDescription: '', bulletHighlights: '',
         imageLinks: '', videoLinks: '', platformCategoryMapping: '', hazardous: '', badges: ''
       }
@@ -544,15 +544,16 @@ function ProductsManager() {
           let res: Response
           if (existing) {
             const existingDetails = existing.details && typeof existing.details === 'object' ? existing.details : {}
-            // Empty cells keep the current value; pricing keys are always sent so prices stay consistent
+            const pricing = pricingForExisting(existingDetails, row.mrp!)
+            // Empty cells keep the current value, and the new MRP keeps the product's discount %
             res = await fetch(`${apiBase}/products/${existing.id}`, {
               method: 'PUT',
               headers: authHeaders,
               body: JSON.stringify({
                 slug: row.slug,
                 title: row.title,
-                price: row.price,
-                details: { ...existingDetails, ...row.details },
+                price: pricing.price,
+                details: { ...existingDetails, ...row.details, ...pricing.details },
                 // Empty Concern cell keeps the product's current concerns
                 ...(row.concerns.length ? { concerns: row.concerns } : {}),
                 ...(row.category ? { category: row.category } : {}),
@@ -623,8 +624,8 @@ function ProductsManager() {
       <div className="metric-card">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Bulk Import</h2>
         <div className="mb-3 rounded bg-green-50 p-3 text-sm text-green-800">
-          Upload a <strong>.csv</strong> or <strong>.xlsx</strong> file with a header row (e.g. Product Name, Slug, Product Category, MRP, WEBSITE price, discount, GST %, Image Links…).
-          Prices may include ₹ and commas. When MRP and website price are both given, the discount is calculated from them; with MRP and discount only, the website price is calculated.
+          Upload a <strong>.csv</strong> or <strong>.xlsx</strong> file with a header row (e.g. Product Name, Slug, Product Category, MRP, GST %, Image Links…).
+          Files only set the MRP, which may include ₹ and commas. Set discounts with Bulk Edit: new products sell at MRP until then, and existing products keep their discount % on the new MRP.
           Rows are matched to existing products by slug. Review the preview before importing; rows with errors are not imported.
         </div>
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -685,6 +686,8 @@ function ProductsManager() {
                 <tbody>
                   {importPlan.rows.map(row => {
                     const status = rowStatus(row)
+                    const existing = existingBySlug.get(row.slug)
+                    const pricing = existing && row.mrp ? pricingForExisting(existing.details, row.mrp).details : row.details
                     return (
                       <tr key={row.rowNumber} className="border-b border-gray-100 align-top text-gray-800">
                         <td className="px-2 py-1">{row.rowNumber}</td>
@@ -701,9 +704,9 @@ function ProductsManager() {
                             </div>
                           </td>
                         )}
-                        <td className="px-2 py-1 text-right">{row.details.mrp ? `₹${row.details.mrp}` : '—'}</td>
-                        <td className="px-2 py-1 text-right">{row.details.websitePrice ? `₹${row.details.websitePrice}` : '—'}</td>
-                        <td className="px-2 py-1 text-right">{row.details.discountPercent ? `${row.details.discountPercent}%` : '—'}</td>
+                        <td className="px-2 py-1 text-right">{pricing.mrp ? `₹${pricing.mrp}` : '—'}</td>
+                        <td className="px-2 py-1 text-right">{pricing.websitePrice ? `₹${pricing.websitePrice}` : '—'}</td>
+                        <td className="px-2 py-1 text-right">{pricing.discountPercent ? `${pricing.discountPercent}%` : '—'}</td>
                         <td className="px-2 py-1">
                           {row.errors.map(msg => <div key={msg} className="text-red-600">{msg}</div>)}
                           {row.warnings.map(msg => <div key={msg} className="text-amber-600">{msg}</div>)}
@@ -773,7 +776,7 @@ function ProductsManager() {
                     websitePrice: discountedPrice.toFixed(2)
                   }}));
                 } else {
-                  setForm(prev=>({...prev, details: { ...(prev.details||{}), mrp: mrp }}));
+                  setForm(prev=>({...prev, details: { ...(prev.details||{}), mrp: mrp, websitePrice: mrp }}));
                 }
               }} />
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Discount %" type="number" min="0" max="100" value={form.details?.discountPercent||''} onChange={e=>{
@@ -787,7 +790,7 @@ function ProductsManager() {
                     websitePrice: discountedPrice.toFixed(2)
                   }}));
                 } else {
-                  setForm(prev=>({...prev, details: { ...(prev.details||{}), discountPercent: discountPercent }}));
+                  setForm(prev=>({...prev, details: { ...(prev.details||{}), discountPercent: discountPercent, websitePrice: mrp || '' }}));
                 }
               }} />
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Website Price (Discounted)" value={form.details?.websitePrice||''} onChange={e=>{
@@ -1461,6 +1464,7 @@ function ProductsManager() {
                           )
                         })}
                       </div>
+                      <p className="mt-1.5 text-xs text-gray-500">New Arrival also features the product in the New Arrivals section on the homepage.</p>
                     </div>
                   </div>
                 </div>
@@ -1487,7 +1491,7 @@ function ProductsManager() {
                               websitePrice: discountedPrice.toFixed(2)
                             }}));
                           } else {
-                            setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), mrp: mrp }}));
+                            setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), mrp: mrp, websitePrice: mrp }}));
                           }
                         }} 
                       />
@@ -1516,10 +1520,11 @@ function ProductsManager() {
                             setEditing(prev=>({...(prev as any), details: { 
                               ...(prev?.details||{}), 
                               discount: discountPercent,
-                              discountPercent: discountPercent
+                              discountPercent: discountPercent,
+                              websitePrice: mrp || ''
                             }}));
                           }
-                        }} 
+                        }}
                       />
                     </div>
                     <div>
@@ -1585,12 +1590,11 @@ function ProductsManager() {
                   </div>
                 </div>
 
-                {/* Manufacturer & Origin */}
+                {/* Origin */}
                 <div className="border-b border-gray-200 pb-4 mb-4">
-                  <h4 className="text-base font-semibold text-gray-800 mb-4">Manufacturer & Origin</h4>
+                  <h4 className="text-base font-semibold text-gray-800 mb-4">Origin</h4>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Country of Origin" value={editing.details?.countryOfOrigin||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), countryOfOrigin:e.target.value}}))} />
-                    <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Manufacturer / Packer / Importer" value={editing.details?.manufacturer||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), manufacturer:e.target.value}}))} />
                   </div>
                 </div>
 

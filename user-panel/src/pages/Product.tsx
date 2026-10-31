@@ -528,7 +528,6 @@ export default function ProductPage() {
                     'website price': dbDetails.websitePrice || '',
                     'GST %': dbDetails.gstPercent || dbDetails.gst || '',
                     'Country of Origin': dbDetails.countryOfOrigin || '',
-                    'Manufacturer / Packer / Importer': dbDetails.manufacturer || '',
                     'Key Ingredients': dbDetails.keyIngredients || '',
                     'Ingredient Benefits': dbDetails.ingredientBenefits || '',
                     'How to Use (Steps)': dbDetails.howToUse || '',
@@ -1900,12 +1899,6 @@ export default function ProductPage() {
                                 <div className="flex justify-between">
                                   <span className="text-gray-500">Country of Origin:</span>
                                   <span className="font-medium">{getValue('Country of Origin', 'countryOfOrigin')}</span>
-                                </div>
-                              )}
-                              {getValue('Manufacturer / Packer / Importer', 'manufacturer') && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-500">Manufacturer:</span>
-                                  <span className="font-medium">{getValue('Manufacturer / Packer / Importer', 'manufacturer')}</span>
                                 </div>
                               )}
                               {(csvProduct?.['discount'] || dbDetails?.discount) && (

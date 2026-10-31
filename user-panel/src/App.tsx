@@ -483,7 +483,7 @@ function AppContent() {
                 >
                   <BrandWordmark
                     className={`transition-[font-size] duration-300 ease-out ${
-                      navCompact ? 'text-[22px] sm:text-[24px] md:text-[20px] lg:text-[22px]' : 'text-[26px] sm:text-[28px] md:text-[22px] lg:text-[26px]'
+                      navCompact ? 'text-[24px] sm:text-[26px] md:text-[20px] lg:text-[24px]' : 'text-[28px] sm:text-[30px] md:text-[22px] lg:text-[28px]'
                     }`}
                   />
                 </a>
@@ -503,6 +503,15 @@ function AppContent() {
                   <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                 </a>
                 
+                <a
+                  href="#/user/shop"
+                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
+                  style={{ fontFamily: 'var(--font-heading-family)' }}
+                >
+                  Shop
+                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
+                </a>
+
                 {/* Collections Dropdown - Desktop */}
                 <div 
                   ref={desktopCollectionsRef}
@@ -617,31 +626,7 @@ function AppContent() {
                   )}
                 </div>
                 
-                <a
-                  href="#/user/shop"
-                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
-                  style={{ fontFamily: 'var(--font-heading-family)' }}
-                >
-                  Shop
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
-                </a>
-                <a
-                  href="#/user/ingredients"
-                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
-                  style={{ fontFamily: 'var(--font-heading-family)' }}
-                >
-                  Ingredients
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
-                </a>
-                <a
-                  href="#/user/blog"
-                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
-                  style={{ fontFamily: 'var(--font-heading-family)' }}
-                >
-                  Social
-                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
-                </a>
-                {/* Shop by Concern (in the old Contact Us slot; Contact stays in the footer) */}
+                {/* Shop by Concern (Contact stays in the footer) */}
                 <div
                   className="relative"
                   onMouseEnter={() => { if (window.innerWidth >= 768 && navConcerns.length > 0) setShowDesktopConcerns(true) }}
@@ -666,7 +651,7 @@ function AppContent() {
                     <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
                   </a>
                   {showDesktopConcerns && navConcerns.length > 0 && (
-                    <div className="absolute top-full right-0 pt-3" style={{ zIndex: 9999 }} onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-3" style={{ zIndex: 9999 }} onClick={(e) => e.stopPropagation()}>
                       <div
                         className="w-[34rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl shadow-2xl"
                         style={{ backgroundColor: 'var(--nf-header-bg)', border: '1px solid var(--nf-header-border)', color: 'var(--nf-header-text)' }}
@@ -701,6 +686,22 @@ function AppContent() {
                     </div>
                   )}
                 </div>
+                <a
+                  href="#/user/ingredients"
+                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
+                  style={{ fontFamily: 'var(--font-heading-family)' }}
+                >
+                  Ingredients
+                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
+                </a>
+                <a
+                  href="#/user/blog"
+                  className="text-[11px] lg:text-xs xl:text-sm font-light tracking-[0.08em] xl:tracking-[0.15em] uppercase transition-colors duration-300 relative group whitespace-nowrap flex-shrink-0"
+                  style={{ fontFamily: 'var(--font-heading-family)' }}
+                >
+                  Social
+                  <span className="absolute -bottom-1 left-0 w-0 h-px transition-all duration-500 group-hover:w-full" style={{ backgroundColor: 'var(--nf-header-link)' }}></span>
+                </a>
               </nav>
               
               {/* Right Side Icons - Desktop: Search, Wishlist, Socials, Cart, Account | Mobile/Tablet: Account, Cart */}
@@ -803,6 +804,14 @@ function AppContent() {
                   >
                     Home
                   </a>
+                  <a
+                    href="#/user/shop"
+                    className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Shop
+                  </a>
                   <div>
                     <button
                       className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 w-full flex items-center justify-between transition-colors duration-300"
@@ -877,31 +886,7 @@ function AppContent() {
                       </div>
                     )}
                   </div>
-                  <a 
-                    href="#/user/shop"
-                    className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    Shop
-                  </a>
-                  <a 
-                    href="#/user/ingredients"
-                    className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    Ingredients
-                  </a>
-                  <a 
-                    href="#/user/blog"
-                    className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
-                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    NEFOL Social
-                  </a>
-                  {/* Shop by Concern (in the old Contact Us slot) */}
+                  {/* Shop by Concern */}
                   {navConcerns.length > 0 ? (
                     <div>
                       <button
@@ -956,6 +941,22 @@ function AppContent() {
                       Shop by Concern
                     </a>
                   )}
+                  <a
+                    href="#/user/ingredients"
+                    className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Ingredients
+                  </a>
+                  <a
+                    href="#/user/blog"
+                    className="py-4 text-sm font-light tracking-[0.15em] uppercase border-b border-slate-100 transition-colors duration-300"
+                    style={{ letterSpacing: '0.15em', fontFamily: 'var(--font-heading-family)', color: 'var(--nf-menu-text)' }}
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    NEFOL Social
+                  </a>
                 </nav>
               </div>
             </div>
@@ -985,7 +986,6 @@ function AppContent() {
               <ul className="space-y-2">
                 <li><a href="#/user/" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Home</a></li>
                 <li><a href="#/user/offers" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Offers</a></li>
-                <li><a href="#/user/new-arrivals" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>New Arrivals</a></li>
                 <li><a href="#/user/face" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Face</a></li>
                 <li><a href="#/user/body" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Body</a></li>
                 <li><a href="#/user/hair" className="text-xs sm:text-sm font-light transition-colors hover:opacity-80" style={{ color: 'var(--nf-footer-text)' }}>Hair</a></li>
@@ -1204,12 +1204,13 @@ function AppContent() {
           {(() => {
             const isBlogPage = currentPath === '/user/blog' || currentPath.startsWith('/user/blog/')
             const isBlogRequestForm = currentPath === '/user/blog/request'
-            return (
+            // The chat only opens from the blog menu; elsewhere it would start a session nobody can reach
+            return isBlogPage && !isBlogRequestForm && !nefolSocialBanned ? (
               <>
-                {isBlogPage && !isBlogRequestForm && !nefolSocialBanned && <BlogFAB />}
-                <LiveChatWidget hideButton={isBlogPage} />
+                <BlogFAB />
+                <LiveChatWidget />
               </>
-            )
+            ) : null
           })()}
           <SearchButton />
           <BottomNavigation routePath={currentPath} />
@@ -1245,7 +1246,6 @@ const Reports = lazy(() => import('./pages/Reports'))
 const Checkout = lazy(() => import('./pages/Checkout'))
 const Confirmation = lazy(() => import('./pages/Confirmation'))
 const OffersPage = lazy(() => import('./pages/Offers'))
-const NewArrivalsPage = lazy(() => import('./pages/NewArrivals'))
 const BestSellersPage = lazy(() => import('./pages/BestSellers'))
 const GiftingPage = lazy(() => import('./pages/Gifting'))
 const StoreLocatorPage = lazy(() => import('./pages/StoreLocator'))
@@ -1569,7 +1569,6 @@ function RouterView({ affiliateId, currentPath, currentHash, navigate }: RouterV
     case '/user/search': return <SearchPage />
     case '/user/reset-password': return <ResetPasswordPage />
     case '/user/offers': return <OffersPage />
-    case '/user/new-arrivals': return <NewArrivalsPage />
     case '/user/best-sellers': return <BestSellersPage />
     case '/user/store-locator': return <StoreLocatorPage />
     case '/user/shade-finder': return <ShadeFinderPage />

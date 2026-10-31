@@ -14,11 +14,8 @@ interface LiveChatMessage {
   timestamp: string
 }
 
-interface LiveChatWidgetProps {
-  hideButton?: boolean
-}
-
-export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetProps) {
+/** Support chat panel. Opened by the `open-live-chat` window event (Support in the blog menu). */
+export default function LiveChatWidget() {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [session, setSession] = useState<any>(null)
@@ -241,19 +238,7 @@ export default function LiveChatWidget({ hideButton = false }: LiveChatWidgetPro
     }
   }
 
-  if (!open) {
-    if (hideButton) return null
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow text-white"
-        style={{ backgroundColor: 'var(--nf-chat-button)' }}
-        aria-label="Open live chat"
-      >
-        <MessageCircle className="h-6 w-6 md:h-7 md:w-7" />
-      </button>
-    )
-  }
+  if (!open) return null
 
   return (
     <>

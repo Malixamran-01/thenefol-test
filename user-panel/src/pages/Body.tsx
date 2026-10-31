@@ -7,6 +7,7 @@ import { getProductRating, getProductReviewCount, hasVerifiedReviews } from '../
 import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import VerifiedBadge from '../components/VerifiedBadge'
 import WishlistButton from '../components/WishlistButton'
+import ProductCardBadges from '../components/ProductCardBadges'
 
 interface Product {
   id?: number
@@ -146,6 +147,7 @@ export default function Body() {
                   className="bg-white group overflow-hidden flex flex-col h-full transition-all duration-500"
                 >
                   <div className="relative overflow-hidden aspect-square mb-6 rounded-xl">
+                    <ProductCardBadges details={product.details} className="left-3 top-3" />
                     <a href={`#/user/product/${product.slug}`}>
                       {product.list_image && (
                         <img 
@@ -270,6 +272,7 @@ export default function Body() {
                   className="bg-white group overflow-hidden flex flex-col h-full transition-all duration-500"
                 >
                   <div className="relative overflow-hidden aspect-square mb-6 rounded-xl">
+                    <ProductCardBadges details={combo.details} className="left-3 top-3" />
                     <a href={`#/user/product/${combo.slug}`}>
                       {combo.list_image && (
                         <img 

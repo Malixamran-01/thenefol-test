@@ -4,6 +4,7 @@ import { useProducts } from '../hooks/useProducts'
 import { useCart } from '../contexts/CartContext'
 import { isOutOfStock } from '../utils/stock'
 import type { Product } from '../types'
+import ProductCardBadges from '../components/ProductCardBadges'
 import { Heart, Star, ShoppingCart, Filter, SortAsc, SortDesc, X, Clock, TrendingUp } from 'lucide-react'
 
 interface SearchProps {
@@ -648,6 +649,7 @@ export default function Search({ addToWishlist }: SearchProps) {
                       {product.category}
                     </div>
                   )}
+                  <ProductCardBadges details={product.details} className="left-3 top-10" />
                 </div>
                 
                 <div className="p-6">

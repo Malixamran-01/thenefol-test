@@ -4,7 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { Server as SocketIOServer } from 'socket.io'
 import { sendError, sendSuccess, authenticateToken } from '../utils/apiHelpers'
-import { parseCSV } from '../utils/csv'
+import { parseProductDescriptionCSV } from '../utils/csv'
 import { getRazorpay } from '../config/razorpay'
 import { generateAmazonInvoiceHTML } from '../utils/amazonInvoiceTemplate'
 
@@ -20,7 +20,7 @@ export function registerExtendedRoutes(app: express.Express, pool: Pool, io: Soc
 
       const raw = fs.readFileSync(csvPath, 'utf8')
       // Quoted cells may span lines, so parse the whole file rather than line by line
-      sendSuccess(res, parseCSV(raw))
+      sendSuccess(res, parseProductDescriptionCSV(raw))
     } catch (err) {
       sendError(res, 500, 'Failed to read products CSV', err)
     }

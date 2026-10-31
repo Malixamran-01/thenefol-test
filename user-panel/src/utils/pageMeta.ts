@@ -60,7 +60,6 @@ const ROUTE_TITLES: Record<string, string> = {
   '/user/combos': 'Combos & Kits',
   '/user/gifting': 'Gifting',
   '/user/offers': 'Offers',
-  '/user/new-arrivals': 'New Arrivals',
   '/user/best-sellers': 'Best Sellers',
   '/user/ingredients': 'Our Ingredients',
   '/user/blue-tea-benefits': 'Blue Tea Benefits',

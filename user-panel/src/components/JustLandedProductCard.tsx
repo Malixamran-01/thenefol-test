@@ -16,7 +16,7 @@ type JustLandedProduct = {
   [key: string]: unknown
 }
 
-type ReviewStatsMap = Record<string, { average_rating?: number; review_count?: number; verified_count?: number }>
+export type ReviewStatsMap = Record<string, { average_rating?: number; review_count?: number; verified_count?: number }>
 
 const TITLE_MAX_CHARS = 52
 const DESC_MAX_CHARS = 68
@@ -28,7 +28,7 @@ function truncateWithEllipsis(text: string, max: number): string {
   return `${normalized.slice(0, max).trimEnd()}…`
 }
 
-function getSubtitle(product: JustLandedProduct, csvProducts: any[]): string | null {
+export function getSubtitle(product: JustLandedProduct, csvProducts: any[]): string | null {
   const csvMatch = csvProducts.find((csv: any) => {
     const csvSlug = csv['Slug'] || csv['Product Name']?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || ''
     return csvSlug === product.slug

@@ -2,7 +2,7 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { handleGetAll, handleCreate, handleUpdate, sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
-import { parseCSV } from '../utils/csv'
+import { parseProductDescriptionCSV } from '../utils/csv'
 import { isSocialCrawler } from '../utils/socialCrawler'
 import { getUploadsRoot } from '../config/uploadsRoot'
 import { deleteUploadedVideo, VIDEO_EXT_RE } from '../utils/videoOptimize'
@@ -728,7 +728,7 @@ export async function getProductsCSV(res: Response) {
     
     const raw = fs.readFileSync(csvPath, 'utf8')
     // Quoted cells may span lines, so parse the whole file rather than line by line
-    const rows = parseCSV(raw)
+    const rows = parseProductDescriptionCSV(raw)
 
     console.log('📦 Final Results:')
     console.log('  Parsed products:', rows.length)

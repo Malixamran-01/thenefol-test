@@ -738,7 +738,6 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           'Dead Weight (Packaging Only)': csvProduct['Dead Weight (Packaging Only)'],
           'GST %': csvProduct['GST %'],
           'Country of Origin': csvProduct['Country of Origin'],
-          'Manufacturer / Packer / Importer': csvProduct['Manufacturer / Packer / Importer'],
           'Key Ingredients': csvProduct['Key Ingredients'],
           'Ingredient Benefits': csvProduct['Ingredient Benefits'],
           'How to Use (Steps)': csvProduct['How to Use (Steps)'],

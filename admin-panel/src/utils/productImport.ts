@@ -3,6 +3,7 @@ import { slugify } from './csv'
 /**
  * Bulk product import: maps spreadsheet columns to product fields, normalizes prices and
  * percentages, and validates each row so problems show in the preview instead of the catalog.
+ * Files only carry the MRP; discounts are set in the admin panel (Bulk Edit or the product form).
  */
 
 export const STANDARD_CATEGORIES = ['Face Care', 'Hair Care', 'Body Care', 'Combo']
@@ -34,12 +35,9 @@ const FIELD_ALIASES: Record<string, string[]> = {
   deadWeight: ['deadweightpackagingonly', 'deadweight'],
   dimensions: ['productdimentionincm', 'productdimensionincm', 'productdimensions', 'dimensions'],
   shelfLife: ['shelflifeexpiry', 'shelflife'],
-  discount: ['discount', 'discountpercent', 'discountpercentage'],
   mrp: ['mrp', 'mrprs', 'mrpinr'],
-  websitePrice: ['websiteprice', 'sellingprice', 'basesellingprice', 'saleprice', 'offerprice', 'discountedprice', 'price'],
   gst: ['gst', 'gstpercent', 'gstrate'],
   countryOfOrigin: ['countryoforigin', 'origin'],
-  manufacturer: ['manufacturerpackerimporter', 'manufacturer'],
   keyIngredients: ['keyingredients', 'ingredients'],
   ingredientBenefits: ['ingredientbenefits'],
   howToUse: ['howtousesteps', 'howtouse'],
@@ -56,7 +54,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
 const TEXT_DETAIL_FIELDS = [
   'sku', 'hsn', 'brand', 'productTitle', 'subtitle', 'subCategory', 'productType', 'skinHairType',
   'netQuantity', 'unitCount', 'grossWeight', 'netWeight', 'deadWeight', 'dimensions', 'shelfLife',
-  'packageContent', 'innerPackaging', 'outerPackaging', 'countryOfOrigin', 'manufacturer',
+  'packageContent', 'innerPackaging', 'outerPackaging', 'countryOfOrigin',
   'keyIngredients', 'ingredientBenefits', 'howToUse', 'longDescription', 'bulletHighlights',
   'imageLinks', 'videoLinks', 'platformCategoryMapping', 'hazardous', 'badges',
 ]
@@ -128,6 +126,17 @@ export function effectiveDiscount(details: any): string {
   return stored != null ? formatPercent(stored) : ''
 }
 
+/** Pricing for a re-imported product: the new MRP with the product's current discount % still applied. */
+export function pricingForExisting(details: any, mrp: number) {
+  const discount = Number(effectiveDiscount(details)) || 0
+  const websitePrice = discount > 0 ? Math.round(mrp * (1 - discount / 100)) : mrp
+  const discountPercent = discount > 0 ? formatPercent(discountFromPrices(mrp, websitePrice)) : ''
+  return {
+    price: formatMoney(websitePrice),
+    details: { mrp: formatMoney(mrp), websitePrice: formatMoney(websitePrice), discountPercent, discount: discountPercent },
+  }
+}
+
 export function mapCategoryToStandard(rawCategory: string): string {
   const normalized = rawCategory.toLowerCase().trim()
   if (!normalized) return ''
@@ -148,7 +157,7 @@ export type ImportRow = {
   title: string
   slug: string
   category: string
-  /** Selling price stored in products.price */
+  /** Selling price stored in products.price: the MRP until a discount is applied */
   price: string
   listImage: string
   description: string
@@ -156,8 +165,6 @@ export type ImportRow = {
   /** Shop-by-Concern names from the "Concern" column (empty when the file has no such column) */
   concerns: string[]
   mrp?: number
-  websitePrice?: number
-  discount?: number
   errors: string[]
   warnings: string[]
 }
@@ -175,9 +182,7 @@ export function buildImportPlan(table: string[][]): ImportPlan {
   const mapping = mapColumns(header)
   const fileErrors: string[] = []
   if (mapping.fields.title == null) fileErrors.push('No product name column found (expected "Product Name" or "Title").')
-  if (mapping.fields.mrp == null && mapping.fields.websitePrice == null) {
-    fileErrors.push('No price column found (expected "MRP" and/or "Website Price").')
-  }
+  if (mapping.fields.mrp == null) fileErrors.push('No MRP column found (expected "MRP").')
 
   const seenSlugs = new Map<string, number>()
   const rows = body.map((cells, i) => {
@@ -219,45 +224,11 @@ function buildRow(cells: string[], headerCount: number, mapping: ColumnMapping, 
 
   // ---- Pricing ----
   const mrpP = parseMoney(get('mrp'))
-  const wpP = parseMoney(get('websitePrice'))
-  const discP = parsePercent(get('discount'))
   if (mrpP.error) errors.push(`MRP: ${mrpP.error}`)
-  if (wpP.error) errors.push(`Website price: ${wpP.error}`)
-  if (discP.error) errors.push(`Discount: ${discP.error}`)
-  if (discP.fromFraction) warnings.push(`Discount ${get('discount')} read as ${formatPercent(discP.value!)}%`)
+  else if (mrpP.value == null) errors.push('Missing MRP')
+  else if (mrpP.value === 0) errors.push('MRP is 0')
+  const mrp = mrpP.value || undefined
 
-  let mrp = mrpP.value
-  let websitePrice = wpP.value
-  let discount = discP.value
-
-  if (mrp === 0) { errors.push('MRP is 0'); mrp = undefined }
-  if (websitePrice === 0) { errors.push('Website price is 0'); websitePrice = undefined }
-  if (discount != null && (discount < 0 || discount >= 100)) {
-    errors.push(`Discount ${formatPercent(discount)}% must be between 0 and 100`)
-    discount = undefined
-  }
-
-  if (!mrpP.error && !wpP.error) {
-    if (mrp != null && websitePrice != null) {
-      if (websitePrice > mrp) errors.push(`Website price ₹${formatMoney(websitePrice)} is higher than MRP ₹${formatMoney(mrp)}`)
-      const implied = discountFromPrices(mrp, websitePrice)
-      if (discount != null && Math.abs(discount - implied) > 0.5) {
-        warnings.push(`Discount column says ${formatPercent(discount)}% but MRP/website price give ${formatPercent(implied)}%; using ${formatPercent(implied)}%`)
-      }
-      discount = implied
-    } else if (mrp != null && discount != null) {
-      websitePrice = round2(mrp * (1 - discount / 100))
-    } else if (mrp != null) {
-      discount = undefined
-    } else if (websitePrice != null) {
-      warnings.push('No MRP; the product will show without a strike-through price')
-      discount = undefined
-    } else if (!errors.some(e => e.startsWith('MRP') || e.startsWith('Website price'))) {
-      errors.push('No price: MRP and website price are both empty')
-    }
-  }
-
-  const sellingPrice = websitePrice ?? mrp
   const gstP = parsePercent(get('gst'))
   if (gstP.error) warnings.push(`GST: ${gstP.error}`)
 
@@ -267,11 +238,11 @@ function buildRow(cells: string[], headerCount: number, mapping: ColumnMapping, 
     if (v) details[field] = v
   }
   if (!details.brand) details.brand = 'NEFOL'
-  // Pricing keys are always present so an update clears stale values from an earlier import
+  // A new product sells at MRP until a discount is applied; existing products use pricingForExisting
   details.mrp = mrp != null ? formatMoney(mrp) : ''
-  details.websitePrice = websitePrice != null ? formatMoney(websitePrice) : ''
-  details.discountPercent = discount != null ? formatPercent(discount) : ''
-  details.discount = details.discountPercent
+  details.websitePrice = details.mrp
+  details.discountPercent = ''
+  details.discount = ''
   if (gstP.value != null) {
     details.gst = formatPercent(gstP.value)
     details.gstPercent = details.gst
@@ -288,14 +259,12 @@ function buildRow(cells: string[], headerCount: number, mapping: ColumnMapping, 
     title,
     slug,
     category,
-    price: sellingPrice != null ? formatMoney(sellingPrice) : '',
+    price: details.mrp,
     listImage,
     description: details.longDescription || '',
     details,
     concerns,
     mrp,
-    websitePrice,
-    discount,
     errors,
     warnings,
   }

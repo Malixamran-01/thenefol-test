@@ -1418,6 +1418,471 @@ video {
   background-color: var(--nf-button-primary-hover);
 }
 
+/*
+ * Homepage New Arrivals. White-background packshots multiply onto a dew-tinted tile whose lower edge
+ * bulges like a hanging drop. NewArrivalsSection sets each card's column span from the product count;
+ * the cards then adapt to their own width through container queries.
+ */
+.nefol-arrivals {
+  padding-block: 2.5rem;
+  background: linear-gradient(
+    180deg,
+    var(--nf-page-bg) 0%,
+    var(--nf-primary-lighter) 28%,
+    var(--nf-primary-lighter) 72%,
+    var(--nf-page-bg) 100%
+  );
+}
+
+.nefol-arrivals__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.875rem;
+}
+
+.nefol-arrival {
+  grid-column: span var(--arrival-span);
+  min-width: 0;
+  container-type: inline-size;
+}
+
+@media (min-width: 768px) {
+  .nefol-arrivals {
+    padding-block: 4rem;
+  }
+
+  .nefol-arrivals__grid {
+    gap: 1.5rem;
+  }
+
+  .nefol-arrival {
+    grid-column: span var(--arrival-span-md);
+  }
+}
+
+.nefol-arrival__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--nf-card-bg);
+  box-shadow: 0 14px 32px -20px color-mix(in srgb, var(--nf-heading) 45%, transparent);
+  transition: box-shadow 0.4s ease;
+}
+
+.nefol-arrival__media {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 0 0 50% 50% / 0 0 10cqw 10cqw;
+  background: radial-gradient(80% 75% at 50% 40%, var(--nf-primary-lighter), var(--nf-primary-light));
+}
+
+.nefol-arrival__media img {
+  position: absolute;
+  /* Narrow cards: the photo starts below the badge and wishlist button */
+  inset: 17% 9% 6%;
+  width: 82%;
+  height: 77%;
+  object-fit: contain;
+  /* Lifts near-white photo backgrounds to white so they multiply away; the mask feathers what is left */
+  filter: brightness(1.03);
+  mix-blend-mode: multiply;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(transparent, #000 7%, #000 93%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  transition: transform 0.6s ease;
+}
+
+.nefol-arrival__body {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0.25rem;
+  padding: clamp(0.75rem, 5cqw, 1.75rem);
+}
+
+.nefol-arrival__title {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-family: var(--font-heading-family);
+  font-size: clamp(1rem, 4.6cqw, 1.75rem);
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.03em;
+  color: var(--nf-card-title);
+}
+
+.nefol-arrival__desc {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: clamp(0.75rem, 3cqw, 0.9375rem);
+  font-weight: 300;
+  line-height: 1.45;
+  color: var(--nf-card-desc);
+}
+
+.nefol-arrival__buy {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0.625rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+.nefol-arrival__buy button {
+  flex: 0 0 auto;
+  width: 100%;
+  padding-inline: 0.5rem;
+}
+
+@container (min-width: 440px) {
+  .nefol-arrival__media {
+    aspect-ratio: 4 / 3;
+    border-bottom-left-radius: 50% 8cqw;
+    border-bottom-right-radius: 50% 8cqw;
+  }
+
+  .nefol-arrival__media img {
+    inset: 6% 7% 9%;
+    width: 86%;
+    height: 85%;
+  }
+
+  .nefol-arrival__buy {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nefol-arrival__buy button {
+    width: auto;
+    padding-inline: 2rem;
+  }
+}
+
+/* A single arrival runs the full width: tile on the left, bulging into the details */
+@container (min-width: 680px) {
+  .nefol-arrival__card {
+    flex-direction: row;
+  }
+
+  .nefol-arrival__media {
+    flex: 0 0 50%;
+    aspect-ratio: 5 / 4;
+    border-radius: 0 6cqw 6cqw 0 / 0 50% 50% 0;
+  }
+
+  .nefol-arrival__body {
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2.5rem 3.5rem;
+  }
+
+  .nefol-arrival__title {
+    font-size: 2rem;
+  }
+
+  .nefol-arrival__buy {
+    margin-top: 1rem;
+  }
+}
+
+@media (hover: hover) {
+  .nefol-arrival:hover .nefol-arrival__card {
+    box-shadow: 0 18px 40px -20px color-mix(in srgb, var(--nf-heading) 60%, transparent);
+  }
+
+  .nefol-arrival:hover .nefol-arrival__media img {
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nefol-arrival__card,
+  .nefol-arrival__media img {
+    transition: none;
+  }
+
+  .nefol-arrival:hover .nefol-arrival__media img {
+    transform: none;
+  }
+}
+
+/*
+ * Homepage community stories. The cover appears twice: blurred as the card's backdrop and sharp, fading
+ * into it, so text sits on the photo's own colours and never on its subject. A wide card (a single story)
+ * is a 16:9 banner with text on the left; narrower cards stack. The title link covers the whole card.
+ */
+.nefol-stories {
+  /* Page containers have no maximum width here, and 16:9 would outgrow the screen on large monitors */
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+}
+
+.nefol-story {
+  height: 100%;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.nefol-story__card {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--nf-heading);
+  color: #fff;
+  box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--nf-heading) 70%, transparent);
+  transition: box-shadow 0.4s ease;
+}
+
+.nefol-story__card .nefol-story__backdrop {
+  position: absolute;
+  inset: -12%;
+  z-index: -2;
+  width: 124%;
+  max-width: none;
+  height: 124%;
+  object-fit: cover;
+  filter: blur(36px) saturate(1.25);
+}
+
+/* Keeps white text readable however light the photo is */
+.nefol-story__card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--nf-heading) 68%, transparent);
+}
+
+.nefol-story__media {
+  position: relative;
+  z-index: -1;
+  flex: 0 0 auto;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(#000 70%, transparent);
+  mask-image: linear-gradient(#000 70%, transparent);
+}
+
+.nefol-story__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Portrait covers are cropped hard here; faces tend to sit in the upper part */
+  object-position: 50% 30%;
+  transition: transform 0.6s ease;
+}
+
+.nefol-story__badge {
+  position: absolute;
+  top: 0.875rem;
+  left: 0.875rem;
+  z-index: 2;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: var(--nf-primary);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nefol-story__body {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0.375rem;
+  padding: 0.25rem clamp(1rem, 5cqw, 1.5rem) clamp(1rem, 5cqw, 1.5rem);
+}
+
+.nefol-story__title {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  font-family: var(--font-heading-family);
+  font-size: clamp(1.0625rem, 4.6cqw, 1.5rem);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  color: #fff;
+}
+
+.nefol-story__link {
+  color: inherit;
+}
+
+.nefol-story__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.nefol-story__link:focus-visible {
+  outline: none;
+}
+
+.nefol-story__link:focus-visible::after {
+  outline: 2px solid #fff;
+  outline-offset: -5px;
+  border-radius: 1.25rem;
+}
+
+.nefol-story__excerpt {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: clamp(0.8125rem, 3cqw, 0.9375rem);
+  font-weight: 300;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.nefol-story__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: auto;
+  padding-top: 0.875rem;
+}
+
+/* Above the card-wide title link, so the author stays clickable */
+.nefol-story__author {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+
+.nefol-story__read {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.nefol-story__read svg {
+  transition: transform 0.3s ease;
+}
+
+@container (min-width: 700px) {
+  .nefol-story__card {
+    display: block;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .nefol-story__media {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 64%;
+    aspect-ratio: auto;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 36%);
+    mask-image: linear-gradient(90deg, transparent, #000 36%);
+  }
+
+  .nefol-story__badge {
+    top: 1.5rem;
+    left: 1.5rem;
+  }
+
+  .nefol-story__body {
+    justify-content: center;
+    width: 42%;
+    height: 100%;
+    gap: 0.875rem;
+    padding: 2rem 1.5rem 2rem clamp(2rem, 5.5cqw, 4.5rem);
+  }
+
+  .nefol-story__title {
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    font-size: clamp(1.625rem, 3.3cqw, 2.625rem);
+    line-height: 1.18;
+  }
+
+  .nefol-story__excerpt {
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    font-size: clamp(0.875rem, 1.4cqw, 1.0625rem);
+  }
+
+  .nefol-story__footer {
+    justify-content: flex-start;
+    gap: 0.75rem 1.5rem;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (hover: hover) {
+  .nefol-story:hover .nefol-story__card {
+    box-shadow: 0 24px 48px -24px color-mix(in srgb, var(--nf-heading) 85%, transparent);
+  }
+
+  .nefol-story:hover .nefol-story__media img {
+    transform: scale(1.03);
+  }
+
+  .nefol-story:hover .nefol-story__read svg {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nefol-story__card,
+  .nefol-story__media img,
+  .nefol-story__read svg {
+    transition: none;
+  }
+
+  .nefol-story:hover .nefol-story__media img,
+  .nefol-story:hover .nefol-story__read svg {
+    transform: none;
+  }
+}
+
 /* Text overflow prevention */
 h1, h2, h3, h4, h5, h6, p, span, div {
   word-wrap: break-word;

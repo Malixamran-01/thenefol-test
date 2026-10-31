@@ -612,12 +612,6 @@ export default function Confirmation() {
                                 <span className="dark:text-slate-100">{item.csvProduct['GST %']}%</span>
                               </div>
                             )}
-                            {item.csvProduct['Manufacturer / Packer / Importer'] && (
-                              <div className="sm:col-span-2">
-                                <span className="font-medium text-slate-600 dark:text-slate-400">Manufacturer: </span>
-                                <span className="dark:text-slate-100">{item.csvProduct['Manufacturer / Packer / Importer']}</span>
-                              </div>
-                            )}
                             {item.csvProduct['Key Ingredients'] && (
                               <div className="sm:col-span-2">
                                 <span className="font-medium text-slate-600 dark:text-slate-400">Key Ingredients: </span>

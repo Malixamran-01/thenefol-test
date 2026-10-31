@@ -32,20 +32,6 @@ export async function seedCMSContent(pool: Pool) {
     const homeSections = [
       {
         page_slug: 'home',
-        section_type: 'hero_banner',
-        title: 'Hero Banner',
-        content: {
-          title: 'ELEVATE YOUR SKIN WITH',
-          subtitle: 'NATURAL BEAUTY',
-          description: 'infused with premium natural ingredients',
-          buttonText: 'SHOP NOW',
-          buttonLink: '/shop',
-          images: ['/IMAGES/BANNER (1).jpg', '/IMAGES/BANNER (2).jpg', '/IMAGES/BANNER (3).jpg']
-        },
-        order_index: 0
-      },
-      {
-        page_slug: 'home',
         section_type: 'shop_categories',
         title: 'Shop by Category',
         content: {
