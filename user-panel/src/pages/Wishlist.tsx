@@ -150,74 +150,91 @@ export default function Wishlist() {
             </a>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow border border-slate-100 group"
-              >
-                {/* Product Image */}
-                <a href={`#/user/product/${item.slug}`}>
-                  <div className="relative bg-gray-50 overflow-hidden">
-                    <img
-                      src={item.list_image || ''}
-                      alt={item.title}
-                      className="w-full h-64 sm:h-80 object-cover rounded-t-xl transition-transform duration-300 group-hover:scale-105"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                      }}
-                    />
-                  </div>
-                </a>
-
-                {/* Product Info */}
-                <div className="p-5">
-                  <a href={`#/user/product/${item.slug}`}>
-                    <h3 
-                      className="text-lg font-light mb-2 line-clamp-2 transition-colors hover:opacity-70 tracking-wide"
-                      style={{ color: 'var(--nf-text)', letterSpacing: '0.05em' }}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-5 sm:gap-6">
+            {items.map((item) => {
+              const outOfStock = isOutOfStock(item)
+              const adding = movingToCart === item.id
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col min-w-0 rounded-2xl overflow-hidden border transition-shadow hover:shadow-md group"
+                  style={{ backgroundColor: 'var(--nf-card-bg, #fff)', borderColor: 'rgba(17, 24, 39, 0.08)' }}
+                >
+                  {/* Product image — square frame, whole product visible (never cropped) */}
+                  <div className="relative">
+                    <a
+                      href={`#/user/product/${item.slug}`}
+                      className="block aspect-square overflow-hidden bg-white"
                     >
-                      {item.title}
-                    </h3>
-                  </a>
-
-                  <div className="flex items-center justify-between mb-4">
-                    <span 
-                      className="text-2xl font-light"
-                      style={{ color: 'var(--nf-text)' }}
-                    >
-                      ₹{item.price}
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2">
+                      {item.list_image && (
+                        <img
+                          src={item.list_image}
+                          alt={item.title}
+                          loading="lazy"
+                          className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            ;(e.target as HTMLImageElement).style.display = 'none'
+                          }}
+                        />
+                      )}
+                    </a>
                     <button
-                      onClick={() => handleAddToCart(item)}
-                      disabled={movingToCart === item.id || isOutOfStock(item)}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:cursor-not-allowed text-xs font-light tracking-[0.1em] uppercase ${
-                        isOutOfStock(item)
-                          ? 'bg-gray-100 text-gray-500'
-                          : 'bg-[color:var(--nf-primary)] text-white hover:bg-[color:var(--nf-primary-hover)] disabled:opacity-50'
-                      }`}
-                      style={{ letterSpacing: '0.1em' }}
-                    >
-                      <ShoppingCart className="h-4 w-4" />
-                      {isOutOfStock(item) ? 'Out of stock' : movingToCart === item.id ? 'Adding...' : 'Add to Cart'}
-                    </button>
-                    <button
+                      type="button"
                       onClick={() => handleRemoveFromWishlist(item.product_id)}
-                      className="px-4 py-2 rounded-lg transition-colors hover:opacity-80"
-                      style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+                      className="absolute top-2 right-2 sm:top-3 sm:right-3 flex items-center justify-center w-9 h-9 rounded-full bg-white shadow-sm transition-colors hover:bg-red-50"
+                      style={{ color: '#b91c1c' }}
                       title="Remove from wishlist"
+                      aria-label={`Remove ${item.title} from wishlist`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
+
+                  {/* Product info */}
+                  <div className="flex flex-col flex-1 p-3 sm:p-5">
+                    <a href={`#/user/product/${item.slug}`} className="block">
+                      <h3
+                        className="text-sm sm:text-base leading-snug line-clamp-2 transition-opacity hover:opacity-70"
+                        style={{
+                          color: 'var(--nf-card-title, var(--nf-text))',
+                          fontFamily: 'var(--font-heading-family)',
+                          letterSpacing: '0.01em',
+                        }}
+                      >
+                        {item.title}
+                      </h3>
+                    </a>
+
+                    <p className="mt-1.5 text-base sm:text-lg font-medium" style={{ color: 'var(--nf-text)' }}>
+                      ₹{item.price}
+                    </p>
+
+                    <div className="mt-auto pt-3">
+                    <button
+                      type="button"
+                      onClick={() => handleAddToCart(item)}
+                      disabled={adding || outOfStock}
+                      className={`w-full flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg text-[11px] sm:text-xs font-medium uppercase whitespace-nowrap transition-colors disabled:cursor-not-allowed ${
+                        outOfStock ? 'bg-gray-100 text-gray-500' : 'disabled:opacity-60'
+                      }`}
+                      style={{
+                        letterSpacing: '0.08em',
+                        ...(outOfStock
+                          ? {}
+                          : {
+                              backgroundColor: 'var(--nf-button-primary-bg, var(--nf-primary))',
+                              color: 'var(--nf-button-primary-text, #fff)',
+                            }),
+                      }}
+                    >
+                      <ShoppingCart className="h-4 w-4 shrink-0" />
+                      {outOfStock ? 'Out of stock' : adding ? 'Adding…' : 'Add to Cart'}
+                    </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
