@@ -39,6 +39,7 @@ import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
 import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
+import { blogPostHref } from '../utils/blogShareUrls'
 
 const stripHtml = (html: string | null | undefined) => {
   if (!html) return ''
@@ -64,6 +65,7 @@ interface Stats {
 }
 interface Post {
   id: number; title: string; excerpt: string | null; cover_image: string | null
+  slug?: string | null
   status: string; featured: boolean; categories: any; views_count: number
   likes_count: number; comments_count: number; reposts_count: number
   created_at: string; updated_at: string
@@ -755,7 +757,7 @@ function CreatorDashboardImpl() {
                     const img = resolveImg(post.cover_image)
                     const ranks = ['bg-amber-400 text-white','bg-slate-300 text-slate-700','bg-orange-300 text-white','bg-gray-100 text-gray-500','bg-gray-100 text-gray-500']
                     return (
-                      <a key={post.id} href={`#/user/blog/${post.id}`}
+                      <a key={post.id} href={blogPostHref(post)}
                         className="group flex items-center gap-3 rounded-xl border border-[#f0f4f7] bg-white px-4 py-3 shadow-sm transition hover:border-[#cce0f0] hover:shadow">
                         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${ranks[i]}`}>{i + 1}</span>
                         {img ? (
@@ -921,7 +923,7 @@ function CreatorDashboardImpl() {
                   {postsToShow.map(post => {
                     const img = resolveImg(post.cover_image)
                     return (
-                      <a key={post.id} href={`#/user/blog/${post.id}`}
+                      <a key={post.id} href={blogPostHref(post)}
                         className="group flex items-center gap-3 rounded-xl border border-[#f0f4f7] bg-white px-4 py-3 shadow-sm transition hover:border-[#cce0f0] hover:shadow">
                         {img ? (
                           <img src={img} alt="" className="h-10 w-14 shrink-0 rounded-lg object-cover" />

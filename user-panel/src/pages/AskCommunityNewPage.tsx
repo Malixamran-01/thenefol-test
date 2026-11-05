@@ -3,6 +3,7 @@ import { ArrowLeft, Package, Search, Sparkles } from 'lucide-react'
 import { productsAPI, type Product } from '../services/api'
 import { communityAPI, type CommunityTopicType } from '../services/communityAPI'
 import { encodeMediaUrl, getApiBase } from '../utils/apiBase'
+import { questionHref } from '../utils/questionUrls'
 
 function productThumb(url?: string | null): string {
   if (!url) return ''
@@ -95,7 +96,7 @@ export default function AskCommunityNewPage() {
         title: title.trim(),
         body: body.trim(),
       })
-      window.location.hash = `#/user/blog/ask-community/${created.id}`
+      window.location.hash = questionHref(created)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to post question')
     } finally {

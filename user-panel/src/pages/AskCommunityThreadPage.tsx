@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext'
 import CommentTree from '../components/community/CommentTree'
 import AnswerPillComposer from '../components/community/AnswerPillComposer'
 import { formatCommunityTime } from '../utils/communityTime'
+import { questionCanonicalUrl, questionHref } from '../utils/questionUrls'
+import { setCanonical, setPageMeta } from '../utils/pageMeta'
 
 function productThumb(url?: string | null): string {
   if (!url) return ''
@@ -36,7 +38,8 @@ function ThreadSkeleton() {
   )
 }
 
-export default function AskCommunityThreadPage({ questionId }: { questionId: number }) {
+/** `questionRef` is the URL segment: the question's title slug, a renamed slug, or its numeric ID. */
+export default function AskCommunityThreadPage({ questionRef }: { questionRef: string }) {
   const { isAuthenticated, user } = useAuth()
   const [question, setQuestion] = useState<CommunityQuestion | null>(null)
   const [loading, setLoading] = useState(true)
@@ -53,18 +56,47 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
     setLoading(true)
     setError(null)
     try {
-      const data = await communityAPI.getQuestion(questionId)
+      let ref = questionRef
+      try {
+        ref = decodeURIComponent(questionRef)
+      } catch {
+        /* keep raw */
+      }
+      const data = await communityAPI.getQuestion(ref)
       setQuestion(data.question)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load thread')
     } finally {
       setLoading(false)
     }
-  }, [questionId])
+  }, [questionRef])
 
   useEffect(() => {
     loadQuestion()
   }, [loadQuestion])
+
+  // Tab title, description and a clean /questions/<slug> canonical (a `#/…` URL reads as the homepage to Google)
+  useEffect(() => {
+    if (!question) return
+    setPageMeta(`${question.title} | Community Question`, question.body)
+    setCanonical(questionCanonicalUrl(question))
+  }, [question?.id, question?.slug, question?.title, question?.body])
+
+  useEffect(() => () => setCanonical(null), [])
+
+  // Old /q/<id> or renamed-slug links → show the current title slug in the address bar
+  useEffect(() => {
+    if (!question?.id) return
+    const hash = window.location.hash || ''
+    const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?')) : ''
+    const target = `${questionHref(question)}${hashQuery}`
+    if (hash === target) return
+    try {
+      window.history.replaceState(window.history.state, '', `/${window.location.search}${target}`)
+    } catch {
+      /* ignore */
+    }
+  }, [question?.id, question?.slug])
 
   const requireAuth = (): boolean => {
     if (isAuthenticated) return true
@@ -126,7 +158,8 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
     setError(null)
 
     try {
-      await communityAPI.createAnswer({ question_id: questionId, content: text })
+      if (!question) return
+      await communityAPI.createAnswer({ question_id: question.id, content: text })
       setAnswerText('')
       setQuestion((q) => (q ? { ...q, answer_count: q.answer_count + 1 } : q))
       setTreeRefresh((k) => k + 1)
@@ -338,7 +371,7 @@ export default function AskCommunityThreadPage({ questionId }: { questionId: num
 
         {/* Comment tree */}
         <CommentTree
-          questionId={questionId}
+          questionId={question.id}
           answerCount={question.answer_count}
           questionAuthorId={question.user_id}
           currentUser={currentUser}

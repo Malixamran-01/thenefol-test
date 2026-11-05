@@ -21,8 +21,29 @@ import { useProductReviewStats } from '../hooks/useProductReviewStats'
 import { pixelEvents, formatProductData } from '../utils/metaPixel'
 import { calculatePurchaseCoins } from '../utils/points'
 import { safeElementScrollTo } from '../utils/safeScroll'
-import { INGREDIENT_IMAGE_MAP } from '../constants/ingredientImageMap'
+import { getIngredientTiles, splitBenefitSegments, splitIngredientList, type IngredientTile } from '../constants/ingredientImageMap'
 import PopularQuestions from '../components/PopularQuestions'
+
+/**
+ * Key ingredients from the product CSV (or the product's saved details). `names` and
+ * `benefits` are the full lists, shown as text in the Description section. `tiles` holds only
+ * the hard-coded ingredients (those with an image), which get picture tiles on the page.
+ */
+function getKeyIngredients(csvProduct: any, product: any): { names: string[]; benefits: string[]; tiles: IngredientTile[] } {
+  let details: any = product?.details
+  if (typeof details === 'string') {
+    try { details = JSON.parse(details) } catch { details = null }
+  }
+  const names = splitIngredientList(csvProduct?.['Key Ingredients'] || details?.keyIngredients)
+  const benefitsText = String(csvProduct?.['Ingredient Benefits'] || details?.ingredientBenefits || '')
+  return { names, benefits: splitBenefitSegments(benefitsText), tiles: getIngredientTiles(names, benefitsText) }
+}
+
+/** Hide an ingredient tile whose image fails to load instead of showing a text placeholder. */
+const hideIngredientTile = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const tile = e.currentTarget.closest('[data-ingredient-tile]') as HTMLElement | null
+  if (tile) tile.style.display = 'none'
+}
 
 // CSV data cache - shared across all product page instances
 let csvDataCache: any[] | null = null
@@ -1712,6 +1733,29 @@ export default function ProductPage() {
                       <p className="mb-4">
                         {csvProduct?.['Product Description (Long)'] || csvProduct?.['Long Description'] || product.description || 'Premium natural skincare product designed for optimal skin health and radiance.'}
                       </p>
+                      {(() => {
+                        // Full ingredient list as text, including the ones without a picture tile
+                        const { names, benefits } = getKeyIngredients(csvProduct, product)
+                        if (names.length === 0) return null
+                        return (
+                          <>
+                            <div className="mb-4">
+                              <h4 className="font-semibold text-gray-900 mb-2">Key Ingredients</h4>
+                              <p>{names.join(', ')}</p>
+                            </div>
+                            {benefits.length > 0 && (
+                              <div className="mb-4">
+                                <h4 className="font-semibold text-gray-900 mb-2">Ingredient Benefits</h4>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {benefits.map((line, index) => (
+                                    <li key={`desc-benefit-${index}`}>{line}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
                       {csvProduct?.['Subtitle / Tagline'] && (
                         <div className="mb-4">
                           <h4 className="font-semibold text-gray-900 mb-2">Key Features</h4>
@@ -2039,56 +2083,18 @@ export default function ProductPage() {
 
           {/* Key Ingredients Section with Images - Prominent Display */}
           {(() => {
-            // Get ingredients from CSV or database details
-            const keyIngredients = csvProduct?.['Key Ingredients'] || 
-              (product?.details && typeof product.details === 'object' ? product.details.keyIngredients : null) ||
-              (product?.details && typeof product.details === 'string' ? JSON.parse(product.details)?.keyIngredients : null)
-            
-            const ingredientBenefits = csvProduct?.['Ingredient Benefits'] || 
-              (product?.details && typeof product.details === 'object' ? product.details.ingredientBenefits : null) ||
-              (product?.details && typeof product.details === 'string' ? JSON.parse(product.details)?.ingredientBenefits : null)
-            
-            if (!keyIngredients) return null
-            
-            const ingredients = (typeof keyIngredients === 'string' ? keyIngredients.split(',').map((ing: string) => ing.trim()).filter((ing: string) => ing) : [])
-            const benefits = ingredientBenefits ? (typeof ingredientBenefits === 'string' ? ingredientBenefits.split(',').map((benefit: string) => benefit.trim()).filter((benefit: string) => benefit) : []) : []
-            
-            const ingredientBenefitMap: { [key: string]: string } = {}
-            ingredients.forEach((ingredient: string, index: number) => {
-              if (benefits[index]) {
-                ingredientBenefitMap[ingredient] = benefits[index]
-              }
-            })
-            
+            // Only ingredients with a hard-coded image get a tile; the rest stay in the Description text
+            const ingredients = getKeyIngredients(csvProduct, product).tiles
             if (ingredients.length === 0) return null
-            
-            // Helper function to get ingredient image
-            const apiBase = getApiBase()
-            const base = apiBase.replace('/api', '')
+
+            const base = getApiBase().replace('/api', '')
             const toAbs = (u: string) => {
               if (!u) return ''
               if (u.startsWith('http://') || u.startsWith('https://')) return u
               const path = u.startsWith('/') ? u : `/${u}`
               return `${base}${path}`
             }
-            
-            const getIngredientImage = (ingredientName: string): string | null => {
-              let normalized = ingredientName.trim().toLowerCase()
-              normalized = normalized.replace(/\([^)]*\)/g, '').trim()
 
-              if (INGREDIENT_IMAGE_MAP[normalized]) {
-                return toAbs(INGREDIENT_IMAGE_MAP[normalized])
-              }
-
-              for (const [key, image] of Object.entries(INGREDIENT_IMAGE_MAP)) {
-                if (normalized.includes(key) || key.includes(normalized)) {
-                  return toAbs(image)
-                }
-              }
-
-              return null
-            }
-            
             return (
               <section className="py-6 sm:py-8 md:py-12 lg:py-16 bg-white w-full overflow-x-visible border-t border-gray-200 mt-8">
                 <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 w-full">
@@ -2098,40 +2104,26 @@ export default function ProductPage() {
                   </div>
                   
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4 lg:gap-6 xl:gap-8 w-full">
-                    {ingredients.map((ingredient: string, index: number) => {
-                      const imagePath = getIngredientImage(ingredient)
-                      const benefit = ingredientBenefitMap[ingredient] || ''
-                      
+                    {ingredients.map(({ name: ingredient, benefit, image }, index) => {
                       return (
-                        <div 
-                          key={`ingredient-img-${index}`} 
+                        <div
+                          key={`ingredient-img-${index}`}
+                          data-ingredient-tile
                           className="flex flex-col items-center text-center space-y-1 sm:space-y-2 md:space-y-3 group cursor-pointer w-full"
                           onClick={() => {
                             window.location.hash = '#/user/ingredients'
                           }}
                         >
-                          {imagePath ? (
-                            <div className="relative w-full aspect-square rounded-md sm:rounded-lg overflow-hidden bg-gray-50 border border-gray-200 sm:border-2 group-hover:border-blue-400 transition-all duration-300 shadow-sm group-hover:shadow-md">
-                              <img 
-                                src={imagePath} 
-                                alt={ingredient}
-                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                loading="lazy"
-                                decoding="async"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none'
-                                  const parent = e.currentTarget.parentElement
-                                  if (parent) {
-                                    parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-gray-400 text-[10px] sm:text-xs md:text-sm px-1 text-center">${ingredient}</div>`
-                                  }
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-full aspect-square rounded-md sm:rounded-lg bg-gray-100 border border-gray-200 sm:border-2 flex items-center justify-center group-hover:border-blue-400 transition-all duration-300">
-                              <span className="text-gray-500 text-[10px] sm:text-xs md:text-sm font-medium px-1 text-center break-words leading-tight">{ingredient}</span>
-                            </div>
-                          )}
+                          <div className="relative w-full aspect-square rounded-md sm:rounded-lg overflow-hidden bg-gray-50 border border-gray-200 sm:border-2 group-hover:border-blue-400 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                            <img
+                              src={toAbs(image)}
+                              alt={ingredient}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                              loading="lazy"
+                              decoding="async"
+                              onError={hideIngredientTile}
+                            />
+                          </div>
                           <div className="space-y-0.5 sm:space-y-1 w-full px-0.5 sm:px-1">
                             <h3 className="text-[10px] sm:text-xs md:text-sm lg:text-base font-semibold text-gray-900 break-words leading-tight">{ingredient}</h3>
                             {benefit && (
@@ -2150,35 +2142,6 @@ export default function ProductPage() {
 
           {/* Popular Questions from Ask Community */}
           {product?.id && <PopularQuestions productId={product.id} />}
-
-          {/* Key Ingredients Text List (Keep existing for reference) */}
-          {csvProduct?.['Key Ingredients'] && (() => {
-            const ingredients = csvProduct['Key Ingredients'].split(',').map((ing: string) => ing.trim()).filter((ing: string) => ing)
-            const ingredientBenefits = csvProduct['Ingredient Benefits'] ? csvProduct['Ingredient Benefits'].split(',').map((benefit: string) => benefit.trim()).filter((benefit: string) => benefit) : []
-            const ingredientBenefitMap: { [key: string]: string } = {}
-            ingredients.forEach((ingredient: string, index: number) => {
-              if (ingredientBenefits[index]) {
-                ingredientBenefitMap[ingredient] = ingredientBenefits[index]
-              }
-            })
-            
-            return (
-              <div className="bg-gray-50 px-4 py-3 rounded-md border border-gray-200">
-                <div className="text-sm font-semibold text-gray-900 mb-2">KEY INGREDIENTS</div>
-                <div className="space-y-2">
-                  {ingredients.map((ingredient: string, index: number) => {
-                    const benefit = ingredientBenefitMap[ingredient] || ''
-                    return (
-                      <div key={`ingredient-${index}`} className="text-sm">
-                        <span className="font-medium text-gray-900">{ingredient.trim()}</span>
-                        {benefit && <span className="text-gray-600">: {benefit}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })()}
 
           {/* Mid-Page Promotional Banner - Full Width like Navigation - All Banners Displayed */}
           {product.bannerImages && product.bannerImages.length > 0 && (
@@ -2229,98 +2192,42 @@ export default function ProductPage() {
           {/* Mid-Page Ingredients Section */}
           {csvProduct?.['Key Ingredients'] && (() => {
             const apiBase = getApiBase()
-            const toAbs = (u?: string) => {
+            const toAbs = (u?: string | null) => {
               if (!u || typeof u !== 'string') return ''
               if (/^https?:\/\//i.test(u)) return u
               const base = apiBase.replace(/\/$/, '')
               const path = u.startsWith('/') ? u : `/${u}`
               return `${base}${path}`
             }
-            
-            // Map ingredient names to their images
-            const getIngredientImage = (ingredientName: string): string | null => {
-              let normalized = ingredientName.trim().toLowerCase()
-              normalized = normalized.replace(/\([^)]*\)/g, '').trim()
 
-              if (INGREDIENT_IMAGE_MAP[normalized]) {
-                return toAbs(INGREDIENT_IMAGE_MAP[normalized])
-              }
+            // Only ingredients with a hard-coded image get a tile; the rest stay in the Description text
+            const ingredients = getKeyIngredients(csvProduct, product).tiles
+            if (ingredients.length === 0) return null
 
-              for (const [key, image] of Object.entries(INGREDIENT_IMAGE_MAP)) {
-                if (normalized.includes(key) || key.includes(normalized)) {
-                  return toAbs(image)
-                }
-              }
-
-              const originalNormalized = ingredientName.trim().toLowerCase()
-              for (const [key, image] of Object.entries(INGREDIENT_IMAGE_MAP)) {
-                if (originalNormalized.includes(key)) {
-                  return toAbs(image)
-                }
-              }
-
-              return null
-            }
-            
-            const ingredients = csvProduct['Key Ingredients'].split(',').map((ing: string) => ing.trim()).filter((ing: string) => ing)
-            const ingredientBenefits = csvProduct['Ingredient Benefits'] ? csvProduct['Ingredient Benefits'].split(',').map((benefit: string) => benefit.trim()).filter((benefit: string) => benefit) : []
-            
-            // Create a map of ingredient to benefit
-            const ingredientBenefitMap: { [key: string]: string } = {}
-            ingredients.forEach((ingredient: string, index: number) => {
-              if (ingredientBenefits[index]) {
-                ingredientBenefitMap[ingredient] = ingredientBenefits[index]
-              }
-            })
-            
             return (
               <section className="py-6 sm:py-8 md:py-12 lg:py-16 bg-gray-50 w-full overflow-x-visible">
                 <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 w-full">
                   <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 text-center mb-4 sm:mb-6 md:mb-8 lg:mb-12 px-2">INGREDIENTS</h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6 w-full">
-                    {ingredients.map((ingredient: string, index: number) => {
-                      const imageUrl = getIngredientImage(ingredient)
-                      const benefit = ingredientBenefitMap[ingredient] || ''
+                    {ingredients.map(({ name: ingredient, benefit, image }, index) => {
                       return (
-                        <div key={`ingredient-${index}-${ingredient.substring(0, 10)}`} className="text-center w-full">
+                        <div key={`ingredient-${index}-${ingredient.substring(0, 10)}`} data-ingredient-tile className="text-center w-full">
                           <div className="w-16 sm:w-20 md:w-24 lg:w-28 mx-auto mb-2 sm:mb-3 md:mb-4 bg-white rounded-full shadow-md overflow-hidden relative" style={{ aspectRatio: '1 / 1', borderRadius: '50%', flexShrink: 0 }}>
-                            {imageUrl ? (
-                              <img 
-                                src={imageUrl} 
-                                alt={ingredient}
-                                className="absolute inset-0 object-cover rounded-full"
-                                style={{ 
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'cover',
-                                  objectPosition: 'center',
-                                  borderRadius: '50%'
-                                }}
-                                loading="lazy"
-                                decoding="async"
-                                onError={(e) => {
-                                  // Fallback to icon if image fails
-                                  const target = e.target as HTMLImageElement
-                                  target.style.display = 'none'
-                                  const parent = target.parentElement
-                                  if (parent) {
-                                    parent.innerHTML = `
-                                      <div class="w-full h-full bg-green-100 rounded-full flex items-center justify-center">
-                                        <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
-                                        </svg>
-                                      </div>
-                                    `
-                                  }
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-green-100 rounded-full flex items-center justify-center">
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            )}
+                            <img
+                              src={toAbs(image)}
+                              alt={ingredient}
+                              className="absolute inset-0 object-cover rounded-full"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                objectPosition: 'center',
+                                borderRadius: '50%'
+                              }}
+                              loading="lazy"
+                              decoding="async"
+                              onError={hideIngredientTile}
+                            />
                           </div>
                           <h3 className="font-semibold text-gray-900 text-[10px] sm:text-xs md:text-sm lg:text-base px-1 sm:px-2 break-words mb-0.5 sm:mb-1 leading-tight">{ingredient.trim()}</h3>
                           {benefit && (
@@ -2651,18 +2558,23 @@ function ReviewModal({ product, user, onClose, onSuccess }: {
       return
     }
 
-    setIsSubmitting(true)
-
     if (!product.id) {
       setError('Product ID is missing')
       return
     }
+    if (!user?.email) {
+      setError('Please add an email address to your account to post a review.')
+      return
+    }
+
+    setIsSubmitting(true)
 
     try {
       await api.reviews.createProductReview({
         product_id: product.id,
-        customer_email: user?.email || '',
-        customer_name: user?.name || '',
+        customer_email: user.email,
+        // The API requires a name; accounts created without one fall back to the email's first part
+        customer_name: user.name?.trim() || user.email.split('@')[0],
         rating,
         title: title.trim() || undefined,
         review_text: reviewText.trim() || undefined,

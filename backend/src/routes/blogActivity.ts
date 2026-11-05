@@ -1704,7 +1704,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
 
     // ── All posts with per-post engagement ────────────────────────────────────
     const { rows: posts } = await pool.query(
-      `SELECT p.id, p.title, p.excerpt, p.cover_image, p.status, p.featured,
+      `SELECT p.id, p.slug, p.title, p.excerpt, p.cover_image, p.status, p.featured,
               p.categories, p.views_count, COALESCE(p.reads_count, 0)::int AS reads_count,
               p.created_at, p.updated_at,
               (SELECT COUNT(*)::int FROM blog_post_likes  WHERE post_id = p.id)                AS likes_count,

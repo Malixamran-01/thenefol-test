@@ -392,10 +392,10 @@ export default function ConcernPage({ slug }: { slug: string }) {
                 Products for this concern are coming soon. <a href="#/user/shop" className="font-medium underline" style={{ color: 'var(--nf-primary)' }}>Shop all products</a>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
                 {sorted.map((p, i) => (
                   // globalIndex past the homepage "Best Seller" range: no best-seller badge on concern pages
-                  <JustLandedProductCard key={p.slug} product={p as any} globalIndex={1000 + i} csvProducts={[]} reviewStats={reviewStats} eagerImage={i < 4} />
+                  <JustLandedProductCard key={p.slug} product={p as any} globalIndex={1000 + i} csvProducts={[]} reviewStats={reviewStats} eagerImage={i < 4} layout="grid" />
                 ))}
               </div>
             )}

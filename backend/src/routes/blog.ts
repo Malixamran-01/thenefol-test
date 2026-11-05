@@ -13,6 +13,7 @@ import { getUserIdFromRequest } from '../utils/authTokens'
 import { createNotification, resolveActor } from './blogNotifications'
 import communityQuestionsRouter, { initCommunityQuestionsRouter } from './communityQuestions'
 import { isSocialCrawler } from '../utils/socialCrawler'
+import { ensureBlogSlugs, ensureQuestionSlugs, syncBlogPostSlug, resolveBlogPostRef, blogPostUrlSegment } from '../utils/blogSlug'
 
 const DRAFT_SAVE_RATE_LIMIT_MS = 30_000
 const VERSION_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes - create version snapshot
@@ -113,6 +114,9 @@ export async function ensureBlogAuxTables(databasePool: Pool): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS blog_reposts_unique_idx
       ON blog_reposts (user_id, post_id, COALESCE(comment_id, -1))
   `)
+  // SEO slugs (/blog/<title-slug>, /questions/<title-slug>) — adds the columns and backfills existing rows
+  await ensureBlogSlugs(databasePool)
+  await ensureQuestionSlugs(databasePool)
 }
 
 const getUserIdFromToken = (req: express.Request): string | null => getUserIdFromRequest(req)
@@ -539,12 +543,20 @@ router.post('/request', upload.fields([
       String(allow_comments).toLowerCase() === 'false' ? false : true
     ])
 
+    let slug: string | null = null
+    try {
+      slug = await syncBlogPostSlug(pool, Number(rows[0].id))
+    } catch (err) {
+      console.error('Failed to assign blog slug:', err)
+    }
+
     // Send email notification to admin (placeholder)
     console.log(`📧 New blog request from ${author_name}: ${title}`)
 
     res.json({
       message: 'Blog request submitted successfully',
-      requestId: rows[0].id
+      requestId: rows[0].id,
+      slug
     })
   } catch (error) {
     console.error('Error submitting blog request:', error)
@@ -1678,45 +1690,116 @@ router.get('/tags', async (req, res) => {
   }
 })
 
-// Server-rendered meta page for social crawlers (WhatsApp, Facebook, etc.)
-// Crawlers don't run JS - they need meta tags in the initial HTML
+/** Strip active content from approved post HTML so it can be served as static, crawlable markup. */
+function renderBlogContentForCrawlers(content: string, mediaBase: string, altText: string): string {
+  const raw = String(content || '')
+  if (!raw.trim()) return ''
+  const abs = (u: string) => (u.startsWith('/') ? `${mediaBase}${u}` : u)
+
+  if (!/<[a-z][\s\S]*>/i.test(raw)) {
+    return raw
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) =>
+        /^\/uploads\/[^\s]+\.(?:jpe?g|png|gif|webp|svg)$/i.test(line)
+          ? `<figure><img src="${escapeHtml(abs(line))}" alt="${escapeHtml(altText)}" loading="lazy"></figure>`
+          : `<p>${escapeHtml(line)}</p>`
+      )
+      .join('\n')
+  }
+
+  let html = raw
+    .replace(/<(script|style|iframe|object|embed|form|noscript|template|svg|math|button|input|select|textarea)\b[\s\S]*?<\/\1\s*>/gi, '')
+    .replace(/<\/?(script|style|iframe|object|embed|form|noscript|template|svg|math|button|input|select|textarea|link|meta|base)\b[^>]*>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\s(style|class|contenteditable|data-[\w-]+)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\s(href|src)\s*=\s*(["'])\s*(?:javascript|vbscript|data):[^"']*\2/gi, '')
+    .replace(/\ssrc\s*=\s*(["'])(\/uploads\/[^"']+)\1/gi, (_m, q, p) => ` src=${q}${mediaBase}${p}${q}`)
+    .replace(/\shref\s*=\s*(["'])(\/[^"']*)\1/gi, (_m, q, p) => ` href=${q}${mediaBase}${p}${q}`)
+  // Every image needs alt text for accessibility + image search
+  html = html.replace(/<img\b(?![^>]*\balt\s*=)([^>]*)>/gi, `<img alt="${escapeHtml(altText)}"$1>`)
+  return html
+}
+
+function toIsoDate(v: unknown): string | undefined {
+  if (!v) return undefined
+  const d = v instanceof Date ? v : new Date(String(v))
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString()
+}
+
+function parseJsonArrayField(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean)
+  if (typeof v === 'string' && v.trim()) {
+    try {
+      const a = JSON.parse(v)
+      if (Array.isArray(a)) return a.map((x) => String(x).trim()).filter(Boolean)
+    } catch {
+      return v.split(/[,;]/).map((x) => x.trim()).filter(Boolean)
+    }
+  }
+  return []
+}
+
+/**
+ * Server-rendered article for search engines, link-preview bots and AI agents (GPTBot, ClaudeBot,
+ * PerplexityBot, …). None of them run the hash-routed SPA, so this page carries the full post body,
+ * the canonical `/blog/<slug>` URL and structured data. Humans are redirected into the SPA.
+ */
 export async function serveBlogMetaPage(req: express.Request, res: express.Response) {
   try {
     if (!pool) {
       return res.status(500).send('Server error')
     }
-    const id = req.params.id
-
-    // Humans reloading /blog/:id must get the SPA, not this meta stub (nginx serves index.html; fallback redirect)
-    if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
-      const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
-      const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
-      const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
-      const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
-      return res.redirect(302, `${frontendBase}/#/user/blog/${id}`)
-    }
-
-    const { rows } = await pool.query(
-      `
-      SELECT p.id, p.title, p.excerpt, p.meta_title, p.meta_description, p.og_title, p.og_description, p.og_image,
-             p.cover_image, p.detail_image, p.canonical_url, p.author_name, p.created_at, p.updated_at,
-             authprof.ap_display_name, authprof.ap_pen_name, authprof.ap_username
-      FROM blog_posts p
-      ${SQL_AUTHOR_PROFILE_LATERAL}
-      WHERE p.id = $1 AND p.status = 'approved' AND p.is_active = true AND p.is_archived = false AND p.is_deleted = false
-    `,
-      [id]
-    )
-    if (rows.length === 0) {
-      return res.status(404).send('Blog post not found')
-    }
-    const post = rows[0] as any
-    const authorDisplayName = resolvePublicAuthorName(post)
     const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
     const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
     const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
     const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
     const mediaBase = (process.env.PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || frontendBase
+    const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : ''
+
+    const ref = await resolveBlogPostRef(pool, req.params.id)
+    const segment = ref ? blogPostUrlSegment(ref) : encodeURIComponent(String(req.params.id || ''))
+
+    // Humans reloading /blog/:slug must get the SPA, not this page (nginx serves index.html; this is the fallback)
+    if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
+      return res.redirect(302, `${frontendBase}/${qs}#/user/blog/${segment}`)
+    }
+
+    if (!ref) {
+      res.setHeader('X-Robots-Tag', 'noindex')
+      return res.status(404).send('Blog post not found')
+    }
+
+    // Old numeric / retired-slug URLs → permanent redirect to the canonical slug URL
+    let requested = String(req.params.id || '').replace(/\/+$/, '')
+    try {
+      requested = decodeURIComponent(requested)
+    } catch {
+      /* keep raw */
+    }
+    if (ref.slug && requested !== ref.slug) {
+      return res.redirect(301, `${frontendBase}/blog/${segment}${qs}`)
+    }
+
+    const { rows } = await pool.query(
+      `
+      SELECT p.id, p.slug, p.title, p.excerpt, p.content, p.meta_title, p.meta_description, p.meta_keywords,
+             p.og_title, p.og_description, p.og_image, p.cover_image, p.detail_image, p.categories,
+             p.author_name, p.user_id, p.created_at, p.updated_at,
+             authprof.ap_display_name, authprof.ap_pen_name, authprof.ap_username
+      FROM blog_posts p
+      ${SQL_AUTHOR_PROFILE_LATERAL}
+      WHERE p.id = $1 AND p.status = 'approved' AND p.is_active = true AND p.is_archived = false AND p.is_deleted = false
+    `,
+      [ref.id]
+    )
+    if (rows.length === 0) {
+      res.setHeader('X-Robots-Tag', 'noindex')
+      return res.status(404).send('Blog post not found')
+    }
+    const post = rows[0] as any
+    const authorDisplayName = resolvePublicAuthorName(post)
 
     const toAbsolute = (url: string | null | undefined) => {
       if (!url || !String(url).trim()) return ''
@@ -1741,60 +1824,154 @@ export async function serveBlogMetaPage(req: express.Request, res: express.Respo
     const ogImageSecure = ogImage.startsWith('https://')
       ? ogImage
       : ogImage.replace(/^http:\/\//i, 'https://')
+    const heroImage = pickImage(post.cover_image, post.detail_image, post.og_image)
 
-    const title = post.og_title || post.meta_title || post.title
-    const description = (post.og_description || post.meta_description || post.excerpt || '')
-      .replace(/<[^>]*>/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 200)
-    const pageUrl = `${frontendBase}/blog/${id}`
-    const spaUrl = `${frontendBase}/#/user/blog/${id}`
-    const redirectBlock = ''
+    const stripTags = (s: string) => String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    const headline = stripTags(post.title) || 'NEFOL Blog'
+    const title = stripTags(post.meta_title || post.title) || headline
+    const ogTitle = stripTags(post.og_title || post.meta_title || post.title) || headline
+    const description = stripTags(post.meta_description || post.og_description || post.excerpt || '').slice(0, 200)
+    const ogDescription = stripTags(post.og_description || post.meta_description || post.excerpt || '').slice(0, 200)
+    const keywords = parseJsonArrayField(post.meta_keywords)
+    const categories = parseJsonArrayField(post.categories)
+    const published = toIsoDate(post.created_at)
+    const modified = toIsoDate(post.updated_at) || published
+    const bodyHtml = renderBlogContentForCrawlers(post.content, mediaBase, headline)
+    const wordCount = stripTags(bodyHtml).split(' ').filter(Boolean).length
+
+    const pageUrl = `${frontendBase}/blog/${segment}`
+    const spaUrl = `${frontendBase}/#/user/blog/${segment}`
+    const blogIndexUrl = `${frontendBase}/user/blog`
+    const authorRef = post.ap_username || post.user_id
+    const authorUrl = authorRef ? `${frontendBase}/author/${encodeURIComponent(String(authorRef))}` : ''
+
+    // Internal links to other posts (crawl depth + topical context for agents)
+    const { rows: related } = await pool.query(
+      `SELECT id, slug, title FROM blog_posts
+       WHERE id <> $1 AND status = 'approved' AND is_active = true AND is_archived = false AND is_deleted = false
+       ORDER BY created_at DESC LIMIT 6`,
+      [post.id]
+    )
+
+    const images = [heroImage, ogImageSecure].filter((v, i, a) => v && a.indexOf(v) === i)
+    const jsonLd = [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: headline.slice(0, 110),
+        description,
+        image: images,
+        url: pageUrl,
+        author: {
+          '@type': 'Person',
+          name: authorDisplayName || 'NEFOL',
+          ...(authorUrl ? { url: authorUrl } : {}),
+        },
+        publisher: {
+          '@type': 'Organization',
+          name: 'NEFOL',
+          url: frontendBase,
+          logo: { '@type': 'ImageObject', url: siteLogo },
+        },
+        datePublished: published,
+        dateModified: modified,
+        mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
+        ...(keywords.length ? { keywords: keywords.join(', ') } : {}),
+        ...(categories.length ? { articleSection: categories[0] } : {}),
+        wordCount,
+        inLanguage: 'en',
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${frontendBase}/` },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: blogIndexUrl },
+          { '@type': 'ListItem', position: 3, name: headline, item: pageUrl },
+        ],
+      },
+    ]
+    // Keep `</script>` inside post text from closing the JSON-LD block
+    const jsonLdSafe = JSON.stringify(jsonLd).replace(/</g, '\\u003c')
+
+    const displayDate = published
+      ? new Date(published).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+      : ''
+    const authorHtml = authorUrl
+      ? `<a href="${escapeHtml(authorUrl)}" rel="author">${escapeHtml(authorDisplayName)}</a>`
+      : escapeHtml(authorDisplayName)
+    const relatedHtml = related.length
+      ? `<aside>
+    <h2>More from the NEFOL Blog</h2>
+    <ul>
+      ${related
+        .map((r: any) => `<li><a href="${escapeHtml(`${frontendBase}/blog/${blogPostUrlSegment(r)}`)}">${escapeHtml(stripTags(r.title))}</a></li>`)
+        .join('\n      ')}
+    </ul>
+  </aside>`
+      : ''
 
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)}</title>
+  <title>${escapeHtml(title)} | NEFOL Blog</title>
   <meta name="description" content="${escapeHtml(description)}">
+  ${keywords.length ? `<meta name="keywords" content="${escapeHtml(keywords.join(', '))}">` : ''}
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="author" content="${escapeHtml(authorDisplayName)}">
+  <link rel="canonical" href="${escapeHtml(pageUrl)}">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="${escapeHtml(title)}">
-  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:title" content="${escapeHtml(ogTitle)}">
+  <meta property="og:description" content="${escapeHtml(ogDescription)}">
   <meta property="og:url" content="${escapeHtml(pageUrl)}">
   <meta property="og:site_name" content="NEFOL">
   <meta property="og:image" content="${escapeHtml(ogImageSecure)}">
   <meta property="og:image:secure_url" content="${escapeHtml(ogImageSecure)}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="article:published_time" content="${post.created_at}">
-  <meta property="article:modified_time" content="${post.updated_at || post.created_at}">
+  <meta property="og:image:alt" content="${escapeHtml(headline)}">
+  ${published ? `<meta property="article:published_time" content="${published}">` : ''}
+  ${modified ? `<meta property="article:modified_time" content="${modified}">` : ''}
   <meta property="article:author" content="${escapeHtml(authorDisplayName)}">
+  ${categories.map((c) => `<meta property="article:section" content="${escapeHtml(c)}">`).join('\n  ')}
+  ${keywords.map((k) => `<meta property="article:tag" content="${escapeHtml(k)}">`).join('\n  ')}
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${escapeHtml(title)}">
-  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:title" content="${escapeHtml(ogTitle)}">
+  <meta name="twitter:description" content="${escapeHtml(ogDescription)}">
   <meta name="twitter:image" content="${escapeHtml(ogImageSecure)}">
-  <link rel="canonical" href="${escapeHtml(pageUrl)}">
-  <script type="application/ld+json">${JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: title,
-    description: description,
-    image: ogImageSecure,
-    author: { '@type': 'Person', name: authorDisplayName || 'Unknown' },
-    datePublished: post.created_at,
-    dateModified: post.updated_at || post.created_at,
-    mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl }
-  })}</script>
-  ${redirectBlock}
+  <script type="application/ld+json">${jsonLdSafe}</script>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.75;color:#1f2937;max-width:760px;margin:0 auto;padding:16px}
+    img{max-width:100%;height:auto}
+    .meta{color:#6b7280;font-size:.9rem}
+  </style>
 </head>
 <body>
-  <p><a href="${escapeHtml(spaUrl)}">${escapeHtml(title)}</a> on NEFOL</p>
+  <header>
+    <nav aria-label="Breadcrumb"><a href="${escapeHtml(frontendBase)}/">NEFOL</a> › <a href="${escapeHtml(blogIndexUrl)}">Blog</a></nav>
+  </header>
+  <main>
+    <article>
+      <h1>${escapeHtml(headline)}</h1>
+      <p class="meta">By ${authorHtml}${published ? ` · <time datetime="${published}">${escapeHtml(displayDate)}</time>` : ''}${categories.length ? ` · ${categories.map((c) => escapeHtml(c)).join(', ')}` : ''}</p>
+      ${heroImage ? `<figure><img src="${escapeHtml(heroImage)}" alt="${escapeHtml(headline)}"></figure>` : ''}
+      ${post.excerpt ? `<p><strong>${escapeHtml(stripTags(post.excerpt))}</strong></p>` : ''}
+      <div>
+${bodyHtml}
+      </div>
+      ${keywords.length ? `<p class="meta">Tags: ${keywords.map((k) => escapeHtml(k)).join(', ')}</p>` : ''}
+      <p><a href="${escapeHtml(spaUrl)}">Read and join the discussion on NEFOL</a></p>
+    </article>
+  </main>
+  ${relatedHtml}
+  <footer><p><a href="${escapeHtml(blogIndexUrl)}">All articles</a> · <a href="${escapeHtml(frontendBase)}/user/shop">Shop NEFOL</a></p></footer>
 </body>
 </html>`
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.setHeader('Cache-Control', 'public, max-age=300')
+    res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large')
     res.send(html)
   } catch (err) {
     console.error('Blog meta page error:', err)
@@ -1818,6 +1995,12 @@ router.get('/posts/:id', async (req, res) => {
       return res.status(500).json({ message: 'Database not initialized' })
     }
 
+    // Accepts the SEO slug, a retired slug, or the numeric ID
+    const ref = await resolveBlogPostRef(pool, req.params.id)
+    if (!ref) {
+      return res.status(404).json({ message: 'Blog post not found' })
+    }
+
     const { rows } = await pool.query(
       `
       SELECT p.*, u.unique_user_id as author_unique_user_id, u.profile_photo,
@@ -1837,7 +2020,7 @@ router.get('/posts/:id', async (req, res) => {
         AND p.is_archived = false
         AND p.is_deleted = false
     `,
-      [req.params.id]
+      [ref.id]
     )
 
     if (rows.length === 0) {
@@ -2152,6 +2335,12 @@ router.post('/admin/posts/:id/approve-revision', async (req, res) => {
     if (updated.length === 0) {
       return res.status(404).json({ message: 'Failed to merge revision' })
     }
+    // Title may have changed — keep the slug in step (old slug keeps redirecting)
+    try {
+      updated[0].slug = await syncBlogPostSlug(pool, Number(updated[0].id))
+    } catch (err) {
+      console.error('Failed to sync blog slug after revision:', err)
+    }
 
     await createNotification({
       pool,
@@ -2238,7 +2427,8 @@ router.put('/admin/posts/:id', async (req, res) => {
     let paramCount = 1
 
     for (const [key, value] of Object.entries(updates || {})) {
-      if (key !== 'id' && key !== 'updated_at' && blogPostColumns.has(key) && value !== undefined) {
+      // slug is derived from the title (see syncBlogPostSlug), never set directly
+      if (key !== 'id' && key !== 'updated_at' && key !== 'slug' && blogPostColumns.has(key) && value !== undefined) {
         updateFields.push(`${key} = $${paramCount}`)
         values.push(value)
         paramCount++
@@ -2261,6 +2451,14 @@ router.put('/admin/posts/:id', async (req, res) => {
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Blog post not found' })
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates || {}, 'title')) {
+      try {
+        rows[0].slug = await syncBlogPostSlug(pool, Number(rows[0].id))
+      } catch (err) {
+        console.error('Failed to sync blog slug after admin edit:', err)
+      }
     }
 
     res.json({
@@ -3102,7 +3300,7 @@ router.get('/bookmarks', authenticateToken, async (req, res) => {
     `)
     const userId = req.userId
     const { rows } = await pool.query(
-      `SELECT p.id, p.title, p.excerpt, p.cover_image, p.detail_image,
+      `SELECT p.id, p.slug, p.title, p.excerpt, p.cover_image, p.detail_image,
               p.created_at, p.updated_at, p.featured, p.categories,
               p.author_name, p.author_email, p.user_id AS author_user_id,
               COALESCE(ap.display_name, ap.pen_name, ap.username, p.author_name) AS resolved_author_name,

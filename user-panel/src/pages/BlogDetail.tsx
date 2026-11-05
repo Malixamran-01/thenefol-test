@@ -12,6 +12,8 @@ import { safeElementScrollIntoView } from '../utils/safeScroll'
 
 interface BlogPost {
   id: string
+  /** SEO URL slug from the title (`/blog/<slug>`) */
+  slug?: string | null
   title: string
   excerpt: string
   content: string
@@ -299,8 +301,8 @@ export default function BlogDetail() {
     const description = post.meta_description || stripHtmlStr(post.excerpt || '')
     const ogTitle = stripHtmlStr(post.og_title || post.meta_title || post.title)
     const ogDescription = post.og_description || description
-    const { appUrl } = getBlogShareUrls(post.id)
-    const canonicalUrl = appUrl
+    // Clean /blog/<slug> URL — a `#/…` canonical is read by Google as the homepage
+    const { canonicalUrl } = getBlogShareUrls(post)
     const ogImage =
       absoluteBlogMediaUrl(post.og_image) ||
       absoluteBlogMediaUrl(post.cover_image) ||
@@ -360,16 +362,18 @@ export default function BlogDetail() {
     }
   }, [post])
 
-  // Keep address bar in sync with the same short share link users copy/send
+  // Old /blog/<id> or renamed-slug links → show the current title slug in the address bar
   useEffect(() => {
     if (!post?.id) return
-    const { appUrl } = getBlogShareUrls(post.id)
+    const { appUrl } = getBlogShareUrls(post)
+    const hash = window.location.hash || ''
+    const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?')) : ''
     try {
-      window.history.replaceState(window.history.state, '', appUrl)
+      window.history.replaceState(window.history.state, '', `${appUrl}${hashQuery}`)
     } catch {
       /* ignore */
     }
-  }, [post?.id])
+  }, [post?.id, post?.slug])
 
   const processContentImages = (content: string, apiBase: string, postImages: string[] = []): string => {
     if (!content) return content
@@ -1024,8 +1028,8 @@ export default function BlogDetail() {
     return []
   }
 
-  /** Hybrid /blog/:id#/user/blog/:id — crawlers use path; SPA keeps hash (VPS production). */
-  const getShareLink = () => (post ? getBlogShareLink(post.id) : '')
+  /** Clean /blog/<slug> link — crawlers get server-rendered HTML; browsers land in the SPA. */
+  const getShareLink = () => (post ? getBlogShareLink(post) : '')
 
   const handleShare = async () => {
     if (!post) return

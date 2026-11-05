@@ -1446,11 +1446,12 @@ function RouterView({ affiliateId, currentPath, currentHash, navigate }: RouterV
   if (pathWithoutQuery === '/user/blog/ask-community/new') {
     return RequiredAuth(<BlogLayout currentHash={currentHash}><AskCommunityNewPage /></BlogLayout>)
   }
-  const askCommunityThreadMatch = pathWithoutQuery.match(/^\/user\/blog\/ask-community\/(\d+)$/)
+  // Thread by title slug (/questions/<slug>) or legacy numeric ID
+  const askCommunityThreadMatch = pathWithoutQuery.match(/^\/user\/blog\/ask-community\/([^/]+)$/)
   if (askCommunityThreadMatch) {
     return (
       <BlogLayout currentHash={currentHash}>
-        <AskCommunityThreadPage questionId={Number(askCommunityThreadMatch[1])} />
+        <AskCommunityThreadPage key={askCommunityThreadMatch[1]} questionRef={askCommunityThreadMatch[1]} />
       </BlogLayout>
     )
   }

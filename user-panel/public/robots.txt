@@ -1,5 +1,28 @@
+# Search engines, AI search/answer engines and AI agents browsing on a user's behalf are welcome.
+# They are listed in this same group so they follow exactly the same rules as everyone else.
+# Blog articles (/blog/<title-slug>) are served as full server-rendered HTML to these bots,
+# and /llms.txt lists every public article and product for AI agents.
 User-agent: *
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Applebot
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: OAI-SearchBot
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Amazonbot
+User-agent: meta-externalagent
+User-agent: DuckAssistBot
+User-agent: MistralAI-User
 Allow: /
+Allow: /blog/
+Allow: /llms.txt
 
 # Allow public API endpoints needed to render pages
 Allow: /api/products

@@ -56,3 +56,39 @@ export async function toShareableOgImage(imageUrl: string, mediaBase: string): P
     return imageUrl
   }
 }
+
+const EMAIL_IMG_SIZE = 240 // 2× the 120px max it is shown at
+
+/**
+ * Email-safe product thumbnail: Outlook and several webmail clients can't render WebP, and full-size
+ * uploads are slow on mobile data. Local uploads become a cached 240×240 JPEG on white under
+ * `<UPLOADS_DIR>/email/`; anything else is returned as an absolute URL unchanged.
+ */
+export async function toEmailImage(imageUrl: string | null | undefined, mediaBase: string): Promise<string> {
+  const base = mediaBase.replace(/\/$/, '')
+  const raw = String(imageUrl || '').trim()
+  if (!raw) return ''
+  const absolute = /^https?:\/\//i.test(raw) ? raw : `${base}${raw.startsWith('/') ? '' : '/'}${raw}`
+  const src = localUploadPath(raw)
+  if (!src) return absolute
+  try {
+    const stat = fs.statSync(src)
+    const key = crypto.createHash('sha1').update(`email:${src}:${stat.mtimeMs}:${stat.size}`).digest('hex').slice(0, 20)
+    const outDir = path.join(getUploadsRoot(), 'email')
+    const outFile = path.join(outDir, `${key}.jpg`)
+    if (!fs.existsSync(outFile)) {
+      fs.mkdirSync(outDir, { recursive: true })
+      const tmp = `${outFile}.${process.pid}.tmp`
+      await sharp(src)
+        .resize(EMAIL_IMG_SIZE, EMAIL_IMG_SIZE, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+        .flatten({ background: '#ffffff' })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toFile(tmp)
+      fs.renameSync(tmp, outFile)
+    }
+    return `${base}/uploads/email/${key}.jpg`
+  } catch (err) {
+    console.warn('[email] could not build JPEG thumbnail for', imageUrl, err)
+    return absolute
+  }
+}

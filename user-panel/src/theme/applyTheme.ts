@@ -1,6 +1,7 @@
 import {
   THEME_STORAGE_KEY,
   googleFontsHref,
+  resolveTheme,
   sanitizeTheme,
   themeToCssVars,
   type ThemeValues,
@@ -15,6 +16,19 @@ export function applyTheme(values: ThemeValues | null | undefined, { persist = t
   const root = document.documentElement
   for (const [name, value] of Object.entries(themeToCssVars(clean))) {
     root.style.setProperty(name, value)
+  }
+
+  // Mobile browsers (Safari, Chrome on Android) tint their toolbar / status bar from theme-color —
+  // keep it on the header colour so it never shows a stale accent above the navbar.
+  const headerBg = resolveTheme(clean)['header-bg']
+  if (headerBg) {
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null
+    if (!meta) {
+      meta = document.createElement('meta')
+      meta.name = 'theme-color'
+      document.head.appendChild(meta)
+    }
+    if (meta.content !== headerBg) meta.content = headerBg
   }
 
   const href = googleFontsHref(clean)

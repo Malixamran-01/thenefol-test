@@ -119,7 +119,6 @@ const ROUTE_TITLES: Record<string, string> = {
 export function titleForRoute(path: string, cartCount: number): string | null | undefined {
   const p = path.split('?')[0].replace(/\/+$/, '') || '/user'
   if (p === '/user' || p === '/user/product' || p === '/') return null
-  if (/^\/user\/blog\/ask-community\/\d+/.test(p)) return 'Community Question'
   if (
     p.startsWith('/user/product/') ||
     p.startsWith('/p/') ||

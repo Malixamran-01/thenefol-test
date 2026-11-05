@@ -54,6 +54,7 @@ import * as posRoutes from './routes/pos'
 import * as cartRoutes from './routes/cart'
 import createCMSRouter, { initCMSTables } from './routes/cms'
 import blogRouter, { initBlogRouter, ensureBlogAuxTables, serveBlogMetaPage, cleanupOldDrafts } from './routes/blog'
+import { resolveBlogPostRef, blogPostUrlSegment, questionUrlSegment } from './utils/blogSlug'
 import blogActivityRouter, { initBlogActivityRouter, serveAuthorMetaPage } from './routes/blogActivity'
 import blogNotificationsRouter, { initBlogNotificationsRouter } from './routes/blogNotifications'
 import communityQuestionsRouter, { initCommunityQuestionsRouter, serveQuestionMetaPage } from './routes/communityQuestions'
@@ -855,6 +856,8 @@ app.get('/', async (req, res) => {
 app.get('/blog/:id', serveBlogMetaPage)
 app.get('/author/:id', serveAuthorMetaPage)
 app.get('/product/:slug', (req, res) => productRoutes.serveProductMetaPage(pool, req, res))
+// Community questions: canonical /questions/<title-slug>; legacy /q/<id> 301s there for bots
+app.get('/questions/:id', serveQuestionMetaPage)
 app.get('/q/:id', serveQuestionMetaPage)
 
 // ── Dynamic sitemap.xml ───────────────────────────────────────────────────────
@@ -887,6 +890,7 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
       { loc: `${base}/user/blog`,         changefreq: 'daily',   priority: '0.75' },
       { loc: `${base}/user/ingredients`,  changefreq: 'monthly', priority: '0.7'  },
       { loc: `${base}/user/community`,    changefreq: 'daily',   priority: '0.65' },
+      { loc: `${base}/user/blog/ask-community`, changefreq: 'daily', priority: '0.65' },
       { loc: `${base}/user/about`,        changefreq: 'monthly', priority: '0.6'  },
       { loc: `${base}/user/contact`,      changefreq: 'monthly', priority: '0.5'  },
       { loc: `${base}/user/faq`,          changefreq: 'monthly', priority: '0.5'  },
@@ -919,26 +923,33 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
   </url>`
     }).join('\n')
 
-    // Blog posts — actual updated_at from DB
+    // Blog posts — SEO slug URLs (/blog/<title-slug>) with actual updated_at + cover image
     const { rows: blogRows } = await pool.query(`
-      SELECT id, updated_at
+      SELECT id, slug, title, cover_image, og_image, updated_at
       FROM blog_posts
       WHERE status = 'approved' AND is_active = true AND is_deleted = false AND is_archived = false
       ORDER BY updated_at DESC
       LIMIT 5000
     `)
+    const xmlEsc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const blogUrls = blogRows.map((r: any) => {
       const lastmod = toDate(r.updated_at)
+      const imgUrl = toAbsImg(r.cover_image || r.og_image)
+      const imgBlock = imgUrl ? `
+    <image:image>
+      <image:loc>${xmlEsc(imgUrl)}</image:loc>
+      <image:title>${xmlEsc(String(r.title || '').replace(/<[^>]*>/g, ''))}</image:title>
+    </image:image>` : ''
       return `  <url>
-    <loc>${base}/blog/${r.id}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}
+    <loc>${base}/blog/${xmlEsc(blogPostUrlSegment(r))}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}
     <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
+    <priority>0.75</priority>${imgBlock}
   </url>`
     }).join('\n')
 
-    // Community questions — actual created_at / updated_at from DB
+    // Community questions — SEO slug URLs; lastmod includes new answers (last_activity_at)
     const { rows: qRows } = await pool.query(`
-      SELECT id, COALESCE(updated_at, created_at) AS modified_at
+      SELECT id, slug, GREATEST(COALESCE(updated_at, created_at), COALESCE(last_activity_at, created_at)) AS modified_at
       FROM community_questions
       ORDER BY modified_at DESC
       LIMIT 5000
@@ -946,7 +957,7 @@ app.get('/sitemap.xml', async (req: Request, res: Response) => {
     const questionUrls = qRows.map((r: any) => {
       const lastmod = toDate(r.modified_at)
       return `  <url>
-    <loc>${base}/q/${r.id}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}
+    <loc>${base}/questions/${xmlEsc(questionUrlSegment(r))}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}
     <changefreq>weekly</changefreq>
     <priority>0.65</priority>
   </url>`
@@ -970,6 +981,63 @@ ${questionUrls}
   }
 })
 
+// ── llms.txt — plain-text site map for AI agents (https://llmstxt.org) ───────
+app.get('/llms.txt', async (_req: Request, res: Response) => {
+  try {
+    const base = 'https://thenefol.com'
+    const clean = (s: unknown) => String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    const { rows: posts } = await pool.query(`
+      SELECT id, slug, title, excerpt, meta_description
+      FROM blog_posts
+      WHERE status = 'approved' AND is_active = true AND is_deleted = false AND is_archived = false
+      ORDER BY created_at DESC
+      LIMIT 300
+    `)
+    const { rows: products } = await pool.query(`
+      SELECT slug, title FROM products WHERE slug IS NOT NULL AND slug != '' ORDER BY updated_at DESC LIMIT 300
+    `)
+    const { rows: questions } = await pool.query(`
+      SELECT id, slug, title, answer_count FROM community_questions
+      ORDER BY COALESCE(last_activity_at, created_at) DESC LIMIT 300
+    `)
+    const lines = [
+      '# NEFOL',
+      '',
+      '> NEFOL is a skincare, haircare and body-care brand. This file lists the public pages AI agents can read; every URL below returns server-rendered HTML.',
+      '',
+      '## Key pages',
+      `- [Shop all products](${base}/user/shop)`,
+      `- [Blog](${base}/user/blog): skincare guides, routines and ingredient explainers`,
+      `- [Ask the Community](${base}/user/blog/ask-community): customer questions and answers about NEFOL products`,
+      `- [Ingredients](${base}/user/ingredients)`,
+      `- [FAQ](${base}/user/faq)`,
+      `- [Sitemap](${base}/sitemap.xml)`,
+      '',
+      '## Blog articles',
+      ...posts.map((p: any) => {
+        const desc = clean(p.meta_description || p.excerpt).slice(0, 160)
+        return `- [${clean(p.title)}](${base}/blog/${blogPostUrlSegment(p)})${desc ? `: ${desc}` : ''}`
+      }),
+      '',
+      '## Community questions',
+      ...questions.map((q: any) => {
+        const n = Number(q.answer_count) || 0
+        return `- [${clean(q.title)}](${base}/questions/${questionUrlSegment(q)}): ${n} ${n === 1 ? 'answer' : 'answers'}`
+      }),
+      '',
+      '## Products',
+      ...products.map((p: any) => `- [${clean(p.title)}](${base}/product/${encodeURIComponent(p.slug)})`),
+      '',
+    ]
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.setHeader('Cache-Control', 'public, max-age=3600')
+    res.send(lines.join('\n'))
+  } catch (err) {
+    console.error('llms.txt error:', err)
+    if (!res.headersSent) res.status(500).send('llms.txt generation failed')
+  }
+})
+
 // ── Short share URLs (/p/:slug  /b/:id  /a/:id) ──────────────────────────────
 // Crawlers get full OG meta HTML; humans get a 302 to the SPA hash route.
 import { isSocialCrawler } from './utils/socialCrawler'
@@ -982,11 +1050,17 @@ app.get('/p/:slug', (req: Request, res: Response) => {
   return productRoutes.serveProductMetaPage(pool, req, res)
 })
 
-app.get('/b/:id', (req: Request, res: Response) => {
+app.get('/b/:id', async (req: Request, res: Response) => {
   if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
     const base = (process.env.FRONTEND_URL || `${(req.headers['x-forwarded-proto'] as string) || 'https'}://${(req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'}`).replace(/\/$/, '')
-    return res.redirect(302, `${base}/#/user/blog/${req.params.id}`)
+    let segment = encodeURIComponent(req.params.id)
+    try {
+      const ref = await resolveBlogPostRef(pool, req.params.id)
+      if (ref) segment = blogPostUrlSegment(ref)
+    } catch { /* fall back to the raw id */ }
+    return res.redirect(302, `${base}/#/user/blog/${segment}`)
   }
+  // Crawlers: serveBlogMetaPage 301s to the canonical /blog/<slug>
   return serveBlogMetaPage(req, res)
 })
 
@@ -2423,7 +2497,9 @@ app.post('/api/product-reviews', async (req, res) => {
         status,
         is_verified
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9,
+        -- $2 is cast explicitly: it is also compared as text below, and an untyped parameter
+        -- used as both integer and text fails with "inconsistent types deduced for parameter $2"
+        $1, $2::integer, $3, $4, $5, $6, $7, $8, $9,
         -- Held for moderation: only shown on the storefront after an admin approves it
         false, 'pending',
         -- "Verified buyer" when the reviewer's email has an order containing this product
@@ -2433,7 +2509,7 @@ app.post('/api/product-reviews', async (req, res) => {
             CASE WHEN jsonb_typeof(o.items) = 'array' THEN o.items ELSE '[]'::jsonb END
           ) AS line
           WHERE lower(o.customer_email) = lower($3)
-            AND COALESCE(line->>'product_id', line->>'id') = $2::text
+            AND COALESCE(line->>'product_id', line->>'id') = ($2::integer)::text
             AND o.status NOT IN ('cancelled', 'failed', 'payment_failed')
         )
       )

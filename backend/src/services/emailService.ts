@@ -1,174 +1,384 @@
 // Email Service — All Email Automation Events
+//
+// Design notes (email-client safe):
+// - Table layout + inline styles; bulletproof buttons that render in Outlook.
+// - No CSS gradients, emoji heroes or white-on-colour headlines: Gmail's dark mode inverts those
+//   unpredictably. Content sits on a white card with dark text, which inverts cleanly.
+// - Midnight Gold theme (common/src/theme.ts): midnight header band with the NEFöL text wordmark,
+//   gold accents, midnight buttons. The wordmark is live text, so it shows even with images off.
+// - Product photos are converted to cached JPEG thumbnails (Outlook can't show WebP).
 import { transporter, getAdminEmail } from '../utils/email'
 import { Pool } from 'pg'
 import { generateInvoicePDF } from '../utils/pdfGenerator'
+import { toEmailImage } from '../utils/ogImage'
 
-const SITE_URL     = 'https://thenefol.com'
-const LOGO_URL     = 'https://thenefol.com/IMAGES/NEFOL%20wide%20white.png'
-const BRAND_DARK   = '#0f172a'   // near-black navy for header
-const BRAND_ACCENT = '#7c3aed'   // rich violet
-const BRAND_GOLD   = '#f59e0b'   // amber accent
-const TEXT_DARK    = '#1e293b'
-const TEXT_MID     = '#475569'
-const TEXT_LIGHT   = '#94a3b8'
-const BG_PAGE      = '#f1f5f9'
+const SITE_URL   = 'https://thenefol.com'
+const MEDIA_BASE = (process.env.PUBLIC_MEDIA_URL || SITE_URL).replace(/\/$/, '')
+const COMPANY    = 'Nefol Aesthetics Private Limited'
+const INSTAGRAM  = 'https://www.instagram.com/nefol_official'
+
+// Palette — the storefront's Midnight Gold theme (common/src/theme.ts)
+const MIDNIGHT     = '#111827'   // header band, buttons, headings
+const GOLD         = '#B08D57'   // wordmark, rules, dots (decorative: 3:1 on white)
+const GOLD_DEEP    = '#7A5E36'   // gold for text on white: links, labels, prices (AA)
+const ACCENT       = GOLD_DEEP
+const WARN         = '#b45309'   // amber, AA contrast with white text
+const DANGER       = '#b91c1c'
+const INFO         = MIDNIGHT    // neutral status labels ("Shipped") stay on-theme
+const TEXT_DARK    = '#111827'
+const TEXT_MID     = '#4b5563'
+const TEXT_LIGHT   = '#6b7280'
+const BG_PAGE      = '#F5F1EA'
 const BG_CARD      = '#ffffff'
-const BG_SUBTLE    = '#f8fafc'
-const BORDER       = '#e2e8f0'
+const BG_SUBTLE    = '#FAF6EF'
+const BORDER       = '#ECE4D6'
+const FONT         = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif`
+const HEADING_FONT = `'Playfair Display',Georgia,'Times New Roman',serif`
+const BRAND_FONT   = `'Montserrat','Helvetica Neue',Helvetica,Arial,sans-serif`
 
-// ─── Layout helpers ──────────────────────────────────────────────────────────
+type Tone = 'gold' | 'amber' | 'red' | 'blue' | 'slate'
+const TONE: Record<Tone, string> = {
+  gold: GOLD_DEEP,
+  amber: WARN,
+  red: DANGER,
+  blue: INFO,
+  slate: TEXT_MID,
+}
 
-function shell(preheader: string, headerHtml: string, bodyHtml: string, footerExtra = ''): string {
+const URLS = {
+  home: SITE_URL,
+  shop: `${SITE_URL}/#/user/shop`,
+  cart: `${SITE_URL}/#/user/cart`,
+  checkout: `${SITE_URL}/#/user/checkout`,
+  orders: `${SITE_URL}/#/user/orders`,
+  account: `${SITE_URL}/#/user/account`,
+  login: `${SITE_URL}/#/user/login`,
+  contact: `${SITE_URL}/#/user/contact`,
+  privacy: `${SITE_URL}/#/user/privacy-policy`,
+  affiliate: `${SITE_URL}/#/user/affiliate`,
+  product: (slug: string) => `${SITE_URL}/product/${encodeURIComponent(slug)}`,
+}
+
+// ─── Small utils ─────────────────────────────────────────────────────────────
+
+function esc(v: unknown): string {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+const toNum = (v: any) => { const n = parseFloat(String(v ?? 0)); return isNaN(n) ? 0 : n }
+const inr = (v: any) => `₹${toNum(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const firstNameOf = (name: unknown) => esc(String(name || 'there').trim().split(/\s+/)[0] || 'there')
+
+// ─── Layout ──────────────────────────────────────────────────────────────────
+
+/** NEFöL text logo with its tagline, as in the storefront header (BrandWordmark.tsx). */
+function wordmark(size: number, color: string, taglineColor: string, tagline = true): string {
+  return `<a href="${URLS.home}" style="text-decoration:none;display:inline-block;">
+    <span style="display:block;font-family:${BRAND_FONT};font-size:${size}px;font-weight:500;line-height:1;letter-spacing:0.03em;color:${color};white-space:nowrap;">NEF&ouml;L</span>
+    ${tagline ? `<span style="display:block;margin-top:${Math.round(size * 0.22)}px;font-family:${BRAND_FONT};font-size:${Math.max(8, Math.round(size * 0.255))}px;font-weight:700;line-height:1.2;letter-spacing:0.02em;text-transform:uppercase;color:${taglineColor};white-space:nowrap;">Natural as the morning dew</span>` : ''}
+  </a>`
+}
+
+type ShellOptions = {
+  /** Small print under the footer, e.g. why the reader got this email. */
+  reason?: string
+}
+
+function shell(preheader: string, headerHtml: string, bodyHtml: string, footerExtra = '', opts: ShellOptions = {}): string {
+  const year = new Date().getFullYear()
+  const support = getAdminEmail()
+  const reason = opts.reason ?? "You're receiving this email because of activity on your NEFOL account."
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <meta name="color-scheme" content="light">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
   <title>NEFOL</title>
+  <!--[if !mso]><!-->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+  <!--<![endif]-->
+  <style>
+    body { margin:0 !important; padding:0 !important; width:100% !important; -webkit-text-size-adjust:100%; }
+    img { border:0; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+    a { color:${ACCENT}; }
+    @media only screen and (max-width:620px) {
+      .em-px { padding-left:22px !important; padding-right:22px !important; }
+      .em-h1 { font-size:24px !important; }
+      .em-stack { display:block !important; width:100% !important; padding:6px 0 !important; }
+      .em-thumb, .em-thumb img { width:64px !important; height:64px !important; }
+    }
+    @media (prefers-color-scheme: dark) {
+      .em-page { background:#0b0f17 !important; }
+      .em-card { background:#161c28 !important; border-color:#273041 !important; }
+      .em-subtle { background:#1d2431 !important; border-color:#273041 !important; }
+      .em-text { color:#ece7dd !important; }
+      .em-muted { color:#b5ad9f !important; }
+      .em-head { background:#111827 !important; }
+      .em-btn { background:${GOLD} !important; }
+      .em-btn a { color:#111827 !important; }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:${BG_PAGE};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
-  <!-- preheader -->
-  <span style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
+<body class="em-page" style="margin:0;padding:0;background:${BG_PAGE};font-family:${FONT};-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:${BG_PAGE};">${esc(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
 
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG_PAGE};padding:32px 0 48px;">
-    <tr><td align="center" style="padding:0 16px;">
+  <table role="presentation" class="em-page" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BG_PAGE}" style="background:${BG_PAGE};">
+    <tr><td align="center" style="padding:28px 12px 40px;">
 
-      <!-- Card -->
-      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:${BG_CARD};border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.10);">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+        <tr><td class="em-card" bgcolor="${BG_CARD}" style="background:${BG_CARD};border:1px solid ${BORDER};border-radius:14px;overflow:hidden;">
 
-        <!-- Logo bar -->
-        <tr>
-          <td style="background:${BRAND_DARK};padding:20px 40px;text-align:center;">
-            <a href="${SITE_URL}" style="text-decoration:none;">
-              <span style="display:inline-block;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:5px;text-transform:uppercase;line-height:1;">NEFOL</span>
-            </a>
-          </td>
-        </tr>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <!-- Header: NEFöL wordmark on midnight, as in the storefront header -->
+            <tr>
+              <td class="em-head" align="center" bgcolor="${MIDNIGHT}" style="padding:30px 24px 26px;background:${MIDNIGHT};">
+                ${wordmark(40, GOLD, '#FFFFFF')}
+              </td>
+            </tr>
+            <tr><td height="3" bgcolor="${GOLD}" style="height:3px;background:${GOLD};font-size:0;line-height:0;">&nbsp;</td></tr>
 
-        <!-- Hero banner -->
-        ${headerHtml}
+            <!-- Hero -->
+            ${headerHtml}
 
-        <!-- Body -->
-        <tr>
-          <td style="padding:36px 40px;color:${TEXT_DARK};font-size:15px;line-height:1.75;">
-            ${bodyHtml}
-          </td>
-        </tr>
+            <!-- Body -->
+            <tr>
+              <td class="em-px em-text" style="padding:8px 40px 36px;color:${TEXT_DARK};font-family:${FONT};font-size:15px;line-height:1.7;">
+                ${bodyHtml}
+              </td>
+            </tr>
+          </table>
+
+        </td></tr>
 
         <!-- Footer -->
         <tr>
-          <td style="background:${BG_SUBTLE};padding:24px 40px;text-align:center;border-top:1px solid ${BORDER};">
-            ${footerExtra ? `<div style="margin-bottom:14px;">${footerExtra}</div>` : ''}
-            <p style="margin:0 0 6px;font-size:13px;color:${TEXT_MID};">Questions? Email us at <a href="mailto:${getAdminEmail()}" style="color:${BRAND_ACCENT};text-decoration:none;font-weight:600;">${getAdminEmail()}</a></p>
-            <p style="margin:0 0 10px;font-size:12px;color:${TEXT_LIGHT};">
-              <a href="${SITE_URL}" style="color:${TEXT_LIGHT};text-decoration:none;">thenefol.com</a>
-              &nbsp;&bull;&nbsp;
-              <a href="${SITE_URL}/#/privacy" style="color:${TEXT_LIGHT};text-decoration:none;">Privacy</a>
-              &nbsp;&bull;&nbsp;
-              <a href="${SITE_URL}/#/user/orders" style="color:${TEXT_LIGHT};text-decoration:none;">My Orders</a>
+          <td align="center" style="padding:28px 24px 0;font-family:${FONT};">
+            ${footerExtra ? `<div class="em-muted" style="margin:0 0 16px;font-size:13px;color:${TEXT_MID};">${footerExtra}</div>` : ''}
+            <div style="margin:0 0 16px;">${wordmark(22, GOLD_DEEP, TEXT_MID)}</div>
+            <p style="margin:0 0 14px;font-size:13px;line-height:1.8;">
+              <a href="${URLS.shop}" style="color:${TEXT_MID};text-decoration:none;font-weight:600;">Shop</a>
+              <span class="em-muted" style="color:${TEXT_LIGHT};">&nbsp;&middot;&nbsp;</span>
+              <a href="${URLS.orders}" style="color:${TEXT_MID};text-decoration:none;font-weight:600;">My orders</a>
+              <span class="em-muted" style="color:${TEXT_LIGHT};">&nbsp;&middot;&nbsp;</span>
+              <a href="${URLS.contact}" style="color:${TEXT_MID};text-decoration:none;font-weight:600;">Help</a>
+              <span class="em-muted" style="color:${TEXT_LIGHT};">&nbsp;&middot;&nbsp;</span>
+              <a href="${INSTAGRAM}" style="color:${TEXT_MID};text-decoration:none;font-weight:600;">Instagram</a>
             </p>
-            <p style="margin:0;font-size:11px;color:${TEXT_LIGHT};">&copy; ${new Date().getFullYear()} NEFOL Beauty. All rights reserved.</p>
+            <p class="em-muted" style="margin:0 0 6px;font-size:12px;line-height:1.6;color:${TEXT_LIGHT};">
+              Questions? Reply to this email or write to <a href="mailto:${support}" style="color:${ACCENT};text-decoration:none;">${support}</a>
+            </p>
+            ${reason ? `<p class="em-muted" style="margin:0 0 6px;font-size:12px;line-height:1.6;color:${TEXT_LIGHT};">${reason}</p>` : ''}
+            <p class="em-muted" style="margin:0;font-size:11px;line-height:1.6;color:${TEXT_LIGHT};">
+              &copy; ${year} ${COMPANY} &nbsp;&middot;&nbsp; <a href="${URLS.privacy}" style="color:${TEXT_LIGHT};">Privacy policy</a>
+            </p>
           </td>
         </tr>
-
       </table>
+
     </td></tr>
   </table>
 </body>
 </html>`
 }
 
-function heroBanner(bg: string, emoji: string, title: string, subtitle = ''): string {
+/** Title block under the logo: small coloured label, headline, optional supporting line. */
+function hero(tone: Tone, eyebrow: string, title: string, subtitle = ''): string {
   return `<tr>
-    <td style="background:${bg};padding:36px 40px 32px;text-align:center;">
-      <div style="font-size:42px;margin-bottom:12px;line-height:1;">${emoji}</div>
-      <h1 style="margin:0 0 8px;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">${title}</h1>
-      ${subtitle ? `<p style="margin:0;font-size:15px;color:rgba(255,255,255,0.82);">${subtitle}</p>` : ''}
+    <td class="em-px" style="padding:28px 40px 8px;font-family:${FONT};">
+      <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${TONE[tone]};">${eyebrow}</p>
+      <h1 class="em-h1 em-text" style="margin:0 0 10px;font-family:${HEADING_FONT};font-size:30px;line-height:1.25;font-weight:600;letter-spacing:0;color:${TEXT_DARK};">${title}</h1>
+      ${subtitle ? `<p class="em-muted" style="margin:0;font-size:16px;line-height:1.55;color:${TEXT_MID};">${subtitle}</p>` : ''}
     </td>
   </tr>`
 }
 
-function btn(href: string, label: string, bg = BRAND_ACCENT): string {
-  return `<div style="text-align:center;margin:28px 0;">
-    <a href="${href}" style="display:inline-block;background:${bg};color:#ffffff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:0.2px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">${label}</a>
-  </div>`
+/** Bulletproof button (renders in Outlook, survives image blocking). */
+function btn(href: string, label: string, bg = MIDNIGHT): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 8px;">
+    <tr>
+      <td class="${bg === MIDNIGHT ? 'em-btn' : ''}" align="center" bgcolor="${bg}" style="background:${bg};border-radius:8px;">
+        <a href="${href}" target="_blank" style="display:inline-block;padding:15px 32px;font-family:${FONT};font-size:14px;font-weight:600;line-height:1;letter-spacing:0.06em;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:8px;">${label}</a>
+      </td>
+    </tr>
+  </table>`
 }
 
-function infoBox(html: string, accent = BRAND_ACCENT): string {
-  return `<div style="background:${BG_SUBTLE};border-left:4px solid ${accent};border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;font-size:14px;color:${TEXT_DARK};">${html}</div>`
+/** Secondary text link under a button. */
+function textLink(href: string, label: string): string {
+  return `<p style="margin:12px 0 0;font-size:14px;"><a href="${href}" style="color:${ACCENT};font-weight:600;text-decoration:none;">${label} &rarr;</a></p>`
+}
+
+function infoBox(html: string, accent = GOLD): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;">
+    <tr>
+      <td class="em-subtle em-text" bgcolor="${BG_SUBTLE}" style="background:${BG_SUBTLE};border-left:3px solid ${accent};border-radius:0 8px 8px 0;padding:16px 20px;font-size:14px;line-height:1.65;color:${TEXT_DARK};">${html}</td>
+    </tr>
+  </table>`
+}
+
+function panel(html: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+    <tr>
+      <td class="em-subtle" bgcolor="${BG_SUBTLE}" style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:10px;padding:18px 22px;">${html}</td>
+    </tr>
+  </table>`
+}
+
+function sectionTitle(text: string, top = 28): string {
+  return `<p class="em-muted" style="margin:${top}px 0 4px;font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:${TEXT_MID};">${text}</p>`
 }
 
 function divider(): string {
-  return `<div style="border-top:1px solid ${BORDER};margin:24px 0;"></div>`
+  return `<div style="border-top:1px solid ${BORDER};margin:28px 0;font-size:0;line-height:0;">&nbsp;</div>`
 }
 
-function badge(text: string, bg = BRAND_ACCENT): string {
-  return `<span style="display:inline-block;background:${bg};color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:50px;letter-spacing:0.5px;text-transform:uppercase;">${text}</span>`
+function badge(text: string, bg = ACCENT): string {
+  return `<span style="display:inline-block;background:${bg};color:#ffffff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:50px;letter-spacing:0.6px;text-transform:uppercase;">${text}</span>`
 }
 
-// ─── Fetch fresh product images from DB to enrich order items ────────────────
+/** Two-column label/value grid inside a panel. */
+function metaGrid(cells: Array<[string, string]>): string {
+  const cell = ([label, value]: [string, string]) => `
+    <td class="em-stack" width="50%" style="width:50%;vertical-align:top;padding:6px 8px 6px 0;">
+      <p class="em-muted" style="margin:0 0 3px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${TEXT_LIGHT};">${label}</p>
+      <p class="em-text" style="margin:0;font-size:15px;font-weight:600;color:${TEXT_DARK};">${value}</p>
+    </td>`
+  const rows: string[] = []
+  for (let i = 0; i < cells.length; i += 2) {
+    rows.push(`<tr>${cell(cells[i])}${cells[i + 1] ? cell(cells[i + 1]) : '<td class="em-stack"></td>'}</tr>`)
+  }
+  return panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows.join('')}</table>`)
+}
 
+/** Large one-time code. */
+function codeBlock(label: string, code: string, note = '', tone: Tone = 'gold'): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0;">
+    <tr>
+      <td class="em-subtle" align="center" bgcolor="${BG_SUBTLE}" style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:12px;padding:26px 20px;">
+        <p class="em-muted" style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${TEXT_LIGHT};">${label}</p>
+        <p style="margin:0;font-family:'SFMono-Regular',Menlo,Consolas,'Courier New',monospace;font-size:36px;font-weight:700;letter-spacing:10px;color:${TONE[tone]};line-height:1.2;">${esc(code)}</p>
+        ${note ? `<p class="em-muted" style="margin:12px 0 0;font-size:13px;color:${TEXT_MID};">${note}</p>` : ''}
+      </td>
+    </tr>
+  </table>`
+}
+
+/** Numbered list of next steps. */
+function steps(items: string[]): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0;">
+    ${items.map((s, i) => `<tr>
+      <td style="width:34px;vertical-align:top;padding:6px 12px 6px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td align="center" bgcolor="${ACCENT}" style="width:24px;height:24px;border-radius:12px;background:${ACCENT};color:#ffffff;font-size:12px;font-weight:700;line-height:24px;">${i + 1}</td>
+        </tr></table>
+      </td>
+      <td class="em-text" style="vertical-align:top;padding:7px 0;font-size:14px;line-height:1.55;color:${TEXT_DARK};">${s}</td>
+    </tr>`).join('')}
+  </table>`
+}
+
+/** Three short reassurance points (cart / welcome emails). */
+function perks(items: Array<[string, string]>): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;">
+    <tr>
+      ${items.map(([title, text]) => `<td class="em-stack" width="${Math.floor(100 / items.length)}%" style="vertical-align:top;padding:0 10px 0 0;">
+        <p class="em-text" style="margin:0 0 2px;font-size:13px;font-weight:700;color:${TEXT_DARK};"><span style="color:${GOLD};">&#9679;</span>&nbsp; ${title}</p>
+        <p class="em-muted" style="margin:0;padding-left:16px;font-size:12px;line-height:1.5;color:${TEXT_MID};">${text}</p>
+      </td>`).join('')}
+    </tr>
+  </table>`
+}
+
+// ─── Product images ──────────────────────────────────────────────────────────
+
+const rawItemImage = (item: any): string =>
+  item?.listImage || item?.list_image || item?.image || item?.product?.listImage || item?.product?.list_image || ''
+
+/** Fill in missing product images from the DB (by slug, then product id). */
 async function enrichItemImages(pool: Pool, items: any[]): Promise<any[]> {
   if (!items.length) return items
-  const slugs = items.map((i: any) => i.slug).filter(Boolean)
-  if (!slugs.length) return items
+  const missing = items.filter((i) => !rawItemImage(i))
+  if (!missing.length) return items
+  const slugs = missing.map((i: any) => i.slug || i.product?.slug).filter(Boolean)
+  const ids = missing.map((i: any) => Number(i.product_id ?? i.productId ?? i.product?.id)).filter((n) => Number.isFinite(n) && n > 0)
+  if (!slugs.length && !ids.length) return items
   try {
     const { rows } = await pool.query(
-      'SELECT slug, list_image FROM products WHERE slug = ANY($1::text[])',
-      [slugs]
+      'SELECT id, slug, list_image FROM products WHERE slug = ANY($1::text[]) OR id = ANY($2::int[])',
+      [slugs, ids]
     )
-    const imgMap: Record<string, string> = {}
+    const bySlug: Record<string, any> = {}
+    const byId: Record<number, any> = {}
     for (const row of rows) {
-      if (row.list_image) imgMap[row.slug] = row.list_image
+      if (row.slug) bySlug[row.slug] = row
+      byId[Number(row.id)] = row
     }
     return items.map((item: any) => {
-      const existing = item.listImage || item.list_image || item.image || ''
-      if (existing) return item
-      const fresh = item.slug ? imgMap[item.slug] : ''
-      return fresh ? { ...item, image: fresh } : item
+      if (rawItemImage(item)) return item
+      const hit = bySlug[item.slug || item.product?.slug] || byId[Number(item.product_id ?? item.productId ?? item.product?.id)]
+      return hit?.list_image ? { ...item, image: hit.list_image, slug: item.slug || hit.slug } : item
     })
   } catch {
     return items
   }
 }
 
-// ─── Order item row with product image ───────────────────────────────────────
+/** Resolve every item's image to an email-safe absolute JPEG URL (stored on `_emailImage`). */
+async function prepareEmailItems(items: any[], pool?: Pool): Promise<any[]> {
+  const list = pool ? await enrichItemImages(pool, items) : items
+  return Promise.all(
+    list.map(async (item) => {
+      let img = ''
+      try {
+        img = await toEmailImage(rawItemImage(item), MEDIA_BASE)
+      } catch {
+        img = ''
+      }
+      return { ...item, _emailImage: img }
+    })
+  )
+}
+
+function parseItems(raw: unknown): any[] {
+  if (Array.isArray(raw)) return raw
+  try { return JSON.parse(String(raw || '[]')) } catch { return [] }
+}
+
+// ─── Order item rows ─────────────────────────────────────────────────────────
 
 function orderItemRow(item: any): string {
-  const toNum = (v: any) => { const n = parseFloat(String(v ?? 0)); return isNaN(n) ? 0 : n }
   const price = toNum(item.price)
   const qty   = toNum(item.quantity) || 1
-  const lineTotal = (price * qty).toFixed(2)
-  const name  = item.title || item.name || 'Product'
-  const rawImg = item.listImage || item.list_image || item.image || ''
-  const img   = rawImg && !/^https?:\/\//i.test(rawImg)
-    ? `${SITE_URL}${rawImg.startsWith('/') ? '' : '/'}${rawImg}`
-    : rawImg
-  const slug  = item.slug || ''
+  const name  = esc(item.title || item.name || item.product?.title || 'Product')
+  const img   = item._emailImage || ''
+  const slug  = item.slug || item.product?.slug || ''
+  const productUrl = slug ? URLS.product(slug) : URLS.shop
 
-  const initial = (name.charAt(0) || 'N').toUpperCase()
-  // Purple background table shows through when img is blocked; initial letter used when no image at all
-  const imgCell = img
-    ? `<table width="80" height="80" cellpadding="0" cellspacing="0" border="0" style="width:80px;height:80px;border-radius:8px;border:1px solid ${BORDER};background:#e8e0f7;"><tr><td style="padding:0;border-radius:8px;"><img src="${img}" alt="${initial}" width="80" height="80" style="width:80px;height:80px;object-fit:cover;border-radius:8px;display:block;" /></td></tr></table>`
-    : `<table width="80" height="80" cellpadding="0" cellspacing="0" border="0" style="width:80px;height:80px;border-radius:8px;border:1px solid ${BORDER};background:#e8e0f7;"><tr><td align="center" valign="middle" style="font-size:28px;font-weight:900;color:${BRAND_ACCENT};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1;border-radius:8px;">${initial}</td></tr></table>`
-
-  const productUrl = slug ? `${SITE_URL}/#/products/${slug}` : SITE_URL
+  const thumb = img
+    ? `<img src="${esc(img)}" width="80" height="80" alt="${name}" style="display:block;width:80px;height:80px;border:0;border-radius:8px;object-fit:cover;background:#ffffff;">`
+    : `<table role="presentation" width="80" height="80" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" bgcolor="${BG_SUBTLE}" style="width:80px;height:80px;border-radius:8px;background:${BG_SUBTLE};border:1px solid ${BORDER};font-family:${HEADING_FONT};font-size:30px;line-height:80px;color:${GOLD};">${esc(String(item?.title || item?.name || 'N').trim().charAt(0).toUpperCase() || 'N')}</td></tr></table>`
 
   return `<tr>
-    <td style="padding:16px 0;border-bottom:1px solid ${BORDER};vertical-align:top;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <td style="padding:16px 0;border-bottom:1px solid ${BORDER};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="width:88px;vertical-align:top;padding-right:16px;">
-            <a href="${productUrl}" style="text-decoration:none;">${imgCell}</a>
+          <td class="em-thumb" width="80" style="width:80px;vertical-align:top;">
+            <a href="${productUrl}" style="text-decoration:none;display:block;border:1px solid ${BORDER};border-radius:9px;">${thumb}</a>
           </td>
-          <td style="vertical-align:top;">
-            <a href="${productUrl}" style="font-size:15px;font-weight:600;color:${TEXT_DARK};text-decoration:none;display:block;margin-bottom:4px;">${name}</a>
-            ${item.variant ? `<p style="margin:0 0 4px;font-size:13px;color:${TEXT_MID};">${item.variant}</p>` : ''}
-            <p style="margin:0;font-size:13px;color:${TEXT_MID};">Qty: <strong>${qty}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;Unit price: <strong>₹${price.toFixed(2)}</strong></p>
+          <td style="vertical-align:top;padding:2px 12px 0 16px;">
+            <a class="em-text" href="${productUrl}" style="display:block;margin:0 0 4px;font-size:15px;font-weight:600;line-height:1.4;color:${TEXT_DARK};text-decoration:none;">${name}</a>
+            ${item.variant ? `<p class="em-muted" style="margin:0 0 4px;font-size:13px;color:${TEXT_MID};">${esc(item.variant)}</p>` : ''}
+            <p class="em-muted" style="margin:0;font-size:13px;color:${TEXT_MID};">Qty ${qty} &nbsp;&middot;&nbsp; ${inr(price)} each</p>
           </td>
-          <td style="vertical-align:top;text-align:right;white-space:nowrap;padding-left:12px;">
-            <span style="font-size:16px;font-weight:700;color:${TEXT_DARK};">₹${lineTotal}</span>
+          <td align="right" style="vertical-align:top;padding-top:2px;white-space:nowrap;">
+            <span class="em-text" style="font-size:15px;font-weight:700;color:${TEXT_DARK};">${inr(price * qty)}</span>
           </td>
         </tr>
       </table>
@@ -176,31 +386,35 @@ function orderItemRow(item: any): string {
   </tr>`
 }
 
+function itemsTable(items: any[]): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${items.map(orderItemRow).join('')}</table>`
+}
+
 function orderTotalsTable(order: any): string {
-  const toNum = (v: any) => { const n = parseFloat(String(v ?? 0)); return isNaN(n) ? 0 : n }
   const subtotal  = toNum(order.subtotal)
   const shipping  = toNum(order.shipping)
   const discount  = toNum(order.discount_amount)
   const segDisc   = toNum(order.segment_discount)
   const coinsUsed = toNum(order.coins_used)
   const total     = toNum(order.total)
+  const isCOD     = order.payment_method === 'cod'
 
-  const row = (label: string, value: string, bold = false, color = TEXT_DARK) =>
+  const row = (label: string, value: string, color = TEXT_DARK) =>
     `<tr>
-      <td style="padding:6px 0;font-size:14px;color:${TEXT_MID};">${label}</td>
-      <td style="padding:6px 0;font-size:14px;font-weight:${bold ? '700' : '400'};color:${color};text-align:right;">${value}</td>
+      <td class="em-muted" style="padding:5px 0;font-size:14px;color:${TEXT_MID};">${label}</td>
+      <td class="em-text" align="right" style="padding:5px 0;font-size:14px;color:${color};">${value}</td>
     </tr>`
 
-  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;">
-    ${row('Subtotal', `₹${subtotal.toFixed(2)}`)}
-    ${row('Shipping', shipping > 0 ? `₹${shipping.toFixed(2)}` : '<span style="color:#16a34a;font-weight:600;">Free</span>')}
-    ${discount  > 0 ? row('Discount (coupon)', `−₹${discount.toFixed(2)}`, false, '#16a34a') : ''}
-    ${segDisc   > 0 ? row('Member discount',   `−₹${segDisc.toFixed(2)}`,  false, '#16a34a') : ''}
-    ${coinsUsed > 0 ? row(`Nefol Coins (${coinsUsed} coins)`, `−₹${(coinsUsed / 10).toFixed(2)}`, false, BRAND_GOLD) : ''}
-    <tr><td colspan="2" style="padding:6px 0;"><div style="border-top:2px solid ${BRAND_ACCENT};"></div></td></tr>
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    ${row('Subtotal', inr(subtotal))}
+    ${row('Shipping', shipping > 0 ? inr(shipping) : `<span style="color:${ACCENT};font-weight:600;">Free</span>`)}
+    ${discount  > 0 ? row('Coupon discount', `&minus;${inr(discount)}`, ACCENT) : ''}
+    ${segDisc   > 0 ? row('Member discount', `&minus;${inr(segDisc)}`, ACCENT) : ''}
+    ${coinsUsed > 0 ? row(`NEFOL Coins (${coinsUsed})`, `&minus;${inr(coinsUsed / 10)}`, ACCENT) : ''}
+    <tr><td colspan="2" style="padding:8px 0 0;"><div style="border-top:1px solid ${BORDER};font-size:0;line-height:0;">&nbsp;</div></td></tr>
     <tr>
-      <td style="padding:10px 0;font-size:17px;font-weight:800;color:${TEXT_DARK};">Total Paid</td>
-      <td style="padding:10px 0;font-size:20px;font-weight:800;color:${BRAND_ACCENT};text-align:right;">₹${total.toFixed(2)}</td>
+      <td class="em-text" style="padding:10px 0 0;font-size:16px;font-weight:700;color:${TEXT_DARK};">${isCOD ? 'Total to pay' : 'Total paid'}</td>
+      <td class="em-text" align="right" style="padding:10px 0 0;font-size:18px;font-weight:700;color:${TEXT_DARK};">${inr(total)}</td>
     </tr>
   </table>`
 }
@@ -208,69 +422,89 @@ function orderTotalsTable(order: any): string {
 function shippingAddressBlock(addr: any): string {
   if (!addr) return ''
   const a = typeof addr === 'string' ? (() => { try { return JSON.parse(addr) } catch { return {} } })() : addr
-  const name    = a.name || `${a.firstName || ''} ${a.lastName || ''}`.trim()
-  const street  = [a.address || a.street, a.apartment || a.area].filter(Boolean).join(', ')
+  const name     = a.name || `${a.firstName || ''} ${a.lastName || ''}`.trim()
+  const street   = [a.address || a.street, a.apartment || a.area].filter(Boolean).join(', ')
   const cityLine = [a.city, a.state, a.zip || a.pincode].filter(Boolean).join(', ')
-  const phone   = a.phone || ''
+  const phone    = a.phone || ''
 
-  return `<div style="font-size:14px;color:${TEXT_DARK};line-height:1.8;">
-    ${name    ? `<strong>${name}</strong><br>` : ''}
-    ${street  ? `${street}<br>` : ''}
-    ${cityLine ? `${cityLine}<br>` : ''}
-    ${a.country || 'India'}${phone ? `<br>📞 ${phone}` : ''}
-  </div>`
+  return `<p class="em-text" style="margin:0;font-size:14px;line-height:1.75;color:${TEXT_DARK};">
+    ${name     ? `<strong>${esc(name)}</strong><br>` : ''}
+    ${street   ? `${esc(street)}<br>` : ''}
+    ${cityLine ? `${esc(cityLine)}<br>` : ''}
+    ${esc(a.country || 'India')}${phone ? `<br>Phone: ${esc(phone)}` : ''}
+  </p>`
+}
+
+/** Order progress tracker for status emails. */
+function orderProgress(status: string): string {
+  const stages = [
+    { key: 'confirmed', label: 'Confirmed' },
+    { key: 'shipped', label: 'Shipped' },
+    { key: 'out_for_delivery', label: 'Out for delivery' },
+    { key: 'delivered', label: 'Delivered' },
+  ]
+  const current = Math.max(0, stages.findIndex((s) => s.key === status))
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px;">
+    <tr>
+      ${stages.map((s, i) => {
+        const done = i <= current
+        const color = done ? GOLD : '#E5DDCF'
+        return `<td width="25%" align="center" style="width:25%;vertical-align:top;padding:0 2px;">
+          <div style="height:4px;border-radius:2px;background:${color};font-size:0;line-height:0;">&nbsp;</div>
+          <p class="${done ? 'em-text' : 'em-muted'}" style="margin:8px 0 0;font-size:12px;font-weight:${i === current ? 700 : 500};color:${done ? TEXT_DARK : TEXT_LIGHT};">${s.label}</p>
+        </td>`
+      }).join('')}
+    </tr>
+  </table>`
+}
+
+function signOff(team = 'Team NEFOL'): string {
+  return `<p class="em-text" style="margin:24px 0 0;font-size:15px;color:${TEXT_DARK};">Warm regards,<br><strong>${team}</strong></p>`
+}
+
+// ─── OTP (shared with routes/otp.ts) ─────────────────────────────────────────
+
+/** Branded OTP email. `minutes` is how long the code stays valid. */
+export function buildOtpEmailHtml(userName: string | null | undefined, otp: string, minutes: number): string {
+  return shell(
+    `Your NEFOL verification code is ${otp}`,
+    hero('gold', 'Verification', 'Your verification code', 'Enter this code to continue.'),
+    `<p style="margin-top:0;">Hi <strong>${firstNameOf(userName)}</strong>,</p>
+     <p>Use the code below to verify your NEFOL account. It expires in <strong>${minutes} minute${minutes === 1 ? '' : 's'}</strong>.</p>
+     ${codeBlock('Verification code', otp)}
+     ${infoBox('<strong>Keep this code private.</strong> NEFOL will never ask you for this code by phone, chat or email.', WARN)}
+     <p class="em-muted" style="font-size:13px;color:${TEXT_LIGHT};">If you didn't request this code, you can safely ignore this email.</p>`
+  )
 }
 
 // ─── 1. Welcome / Sign-up ────────────────────────────────────────────────────
 
 export async function sendWelcomeEmail(userEmail: string, userName: string): Promise<void> {
   try {
-    const firstName = (userName || 'there').split(' ')[0]
+    const firstName = firstNameOf(userName)
     const html = shell(
-      `Welcome to NEFOL, ${firstName}! Your account is ready.`,
-      heroBanner(
-        `linear-gradient(135deg, ${BRAND_ACCENT} 0%, #4f46e5 100%)`,
-        '🌿',
-        `Welcome to NEFOL, ${firstName}!`,
-        'Your skincare journey starts now.'
-      ),
-      `<p style="font-size:16px;margin-top:0;">Hi <strong>${firstName}</strong>,</p>
-       <p>We're so excited to have you here. Your NEFOL account is all set — you're now part of a community that believes in honest, clean skincare made with real ingredients.</p>
+      `Welcome to NEFOL, ${firstName}. Your account is ready.`,
+      hero('gold', 'Welcome', `Welcome to NEFOL, ${firstName}`, 'Your account is ready. Here is what you can do next.'),
+      `<p style="margin-top:0;">Hi <strong>${firstName}</strong>,</p>
+       <p>Thank you for joining NEFOL. We make skincare, haircare and body care with ingredients you can recognise, and we're glad to have you with us.</p>
 
-       <div style="background:linear-gradient(135deg,#faf5ff,#ede9fe);border-radius:12px;padding:24px 28px;margin:24px 0;text-align:center;">
-         <p style="margin:0 0 6px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${BRAND_ACCENT};">What's waiting for you</p>
-         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
-           <tr>
-             <td style="text-align:center;padding:8px;vertical-align:top;width:33%;">
-               <div style="font-size:28px;margin-bottom:8px;">🛍️</div>
-               <p style="margin:0;font-size:13px;font-weight:600;color:${TEXT_DARK};">Shop Premium</p>
-               <p style="margin:4px 0 0;font-size:12px;color:${TEXT_MID};">100% natural skincare</p>
-             </td>
-             <td style="text-align:center;padding:8px;vertical-align:top;width:33%;">
-               <div style="font-size:28px;margin-bottom:8px;">🪙</div>
-               <p style="margin:0;font-size:13px;font-weight:600;color:${TEXT_DARK};">Earn Coins</p>
-               <p style="margin:4px 0 0;font-size:12px;color:${TEXT_MID};">5% back on every order</p>
-             </td>
-             <td style="text-align:center;padding:8px;vertical-align:top;width:33%;">
-               <div style="font-size:28px;margin-bottom:8px;">🤝</div>
-               <p style="margin:0;font-size:13px;font-weight:600;color:${TEXT_DARK};">Refer & Earn</p>
-               <p style="margin:4px 0 0;font-size:12px;color:${TEXT_MID};">Share with friends</p>
-             </td>
-           </tr>
-         </table>
-       </div>
+       ${perks([
+         ['Shop the range', 'Face, hair and body care made with natural ingredients.'],
+         ['Earn NEFOL Coins', 'Get coins back on every order and use them at checkout.'],
+         ['Refer friends', 'Share NEFOL and earn rewards when they shop.'],
+       ])}
 
-       ${btn(`${SITE_URL}`, 'Start Shopping →')}
+       ${btn(URLS.shop, 'Start shopping')}
 
-       <p style="font-size:13px;color:${TEXT_MID};text-align:center;margin-top:-8px;">Use code <strong>WELCOME10</strong> on your first order for a special surprise 🎁</p>
-       ${divider()}
-       <p style="font-size:14px;color:${TEXT_MID};">Need help? Just reply to this email — our team is always here.</p>
-       <p style="font-size:14px;color:${TEXT_DARK};">With love,<br><strong>Team NEFOL 🌿</strong></p>`
+       ${infoBox(`Use code <strong>WELCOME10</strong> on your first order.`)}
+
+       <p class="em-muted" style="font-size:14px;color:${TEXT_MID};">Need help choosing products? Just reply to this email and our team will get back to you.</p>
+       ${signOff()}`
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: `Welcome to NEFOL, ${firstName}! 🌿 Your account is ready`,
+      subject: `Welcome to NEFOL, ${firstName} — your account is ready`,
       html
     })
     console.log(`✅ Welcome email sent: ${userEmail}`)
@@ -285,16 +519,11 @@ export async function sendVerificationEmail(userEmail: string, otp: string): Pro
   try {
     const html = shell(
       `Your NEFOL verification code is ${otp}`,
-      heroBanner('#0f172a', '🔐', 'Verify Your Email', 'One quick step to secure your account'),
-      `<p>Use the code below to verify your NEFOL account. This code expires in <strong>10 minutes</strong>.</p>
-
-       <div style="background:${BG_SUBTLE};border:2px dashed ${BRAND_ACCENT};border-radius:12px;padding:28px;text-align:center;margin:28px 0;">
-         <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:${TEXT_LIGHT};">Verification Code</p>
-         <div style="font-size:44px;font-weight:800;letter-spacing:14px;color:${BRAND_ACCENT};font-family:'Courier New',Courier,monospace;line-height:1;">${otp}</div>
-       </div>
-
-       <p style="font-size:14px;color:${TEXT_MID};">⚠️ <strong>Never share this code with anyone</strong> — NEFOL will never ask for it via phone or chat.</p>
-       <p style="font-size:13px;color:${TEXT_LIGHT};">If you didn't request this, you can safely ignore this email.</p>`
+      hero('gold', 'Verify your email', 'Confirm your email address', 'One quick step to secure your account.'),
+      `<p style="margin-top:0;">Use the code below to verify your NEFOL account. This code expires in <strong>10 minutes</strong>.</p>
+       ${codeBlock('Verification code', otp)}
+       ${infoBox('<strong>Keep this code private.</strong> NEFOL will never ask you for this code by phone, chat or email.', WARN)}
+       <p class="em-muted" style="font-size:13px;color:${TEXT_LIGHT};">If you didn't create a NEFOL account, you can safely ignore this email.</p>`
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
@@ -312,21 +541,19 @@ export async function sendVerificationEmail(userEmail: string, otp: string): Pro
 
 export async function sendPasswordResetEmail(userEmail: string, userName: string, resetLink: string): Promise<void> {
   try {
-    const firstName = (userName || 'there').split(' ')[0]
+    const firstName = firstNameOf(userName)
     const html = shell(
       'Reset your NEFOL password',
-      heroBanner(BRAND_DARK, '🔑', 'Password Reset', 'We received a request to reset your password'),
-      `<p>Hi <strong>${firstName}</strong>,</p>
-       <p>Click the button below to set a new password for your NEFOL account. This link is valid for <strong>15 minutes</strong> and can only be used once.</p>
+      hero('slate', 'Account', 'Reset your password', 'We received a request to reset the password for your account.'),
+      `<p style="margin-top:0;">Hi <strong>${firstName}</strong>,</p>
+       <p>Click the button below to choose a new password. The link is valid for <strong>15 minutes</strong> and can be used once.</p>
 
-       ${btn(resetLink, 'Reset My Password')}
+       ${btn(resetLink, 'Reset password')}
 
-       <p style="font-size:13px;color:${TEXT_MID};text-align:center;margin-top:-12px;">Or paste this link in your browser:</p>
-       <p style="font-size:12px;color:${TEXT_LIGHT};word-break:break-all;background:${BG_SUBTLE};padding:12px 16px;border-radius:6px;border:1px solid ${BORDER};">${resetLink}</p>
+       <p class="em-muted" style="margin:18px 0 6px;font-size:13px;color:${TEXT_MID};">If the button doesn't work, copy this link into your browser:</p>
+       <p class="em-subtle" style="margin:0;font-size:12px;line-height:1.5;color:${TEXT_MID};word-break:break-all;background:${BG_SUBTLE};padding:12px 14px;border-radius:6px;border:1px solid ${BORDER};">${esc(resetLink)}</p>
 
-       ${infoBox(`<strong>Didn't request this?</strong> Your password hasn't changed. You can safely ignore this email. If you're concerned, <a href="${SITE_URL}/#/contact" style="color:${BRAND_ACCENT};">contact our support team</a>.`, '#dc2626')}
-
-       <p style="font-size:13px;color:${TEXT_LIGHT};">For security, NEFOL never asks for your password over email or chat.</p>`
+       ${infoBox(`<strong>Didn't ask for this?</strong> Your password hasn't changed and you can ignore this email. If you're worried about your account, <a href="${URLS.contact}" style="color:${ACCENT};font-weight:600;">contact our support team</a>.`, WARN)}`
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
@@ -347,15 +574,12 @@ export async function sendPasswordResetConfirmationEmail(userEmail: string): Pro
   try {
     const html = shell(
       'Your NEFOL password was changed',
-      heroBanner('#16a34a', '✅', 'Password Changed', 'Your account password was updated successfully'),
-      `<p>This is a confirmation that the password for your NEFOL account was just changed.</p>
-       <p style="font-size:14px;color:${TEXT_MID};">If <strong>you made this change</strong>, no further action is needed. Sign in with your new password.</p>
+      hero('gold', 'Security', 'Your password was changed', 'Your account password was updated successfully.'),
+      `<p style="margin-top:0;">This confirms that the password for your NEFOL account was just changed. If you made this change, there's nothing else to do.</p>
 
-       ${btn(`${SITE_URL}/#/user/login`, 'Sign In to NEFOL', '#16a34a')}
+       ${btn(URLS.login, 'Sign in to NEFOL')}
 
-       ${infoBox(`<strong>Didn't change your password?</strong> Someone may have access to your account. <a href="${SITE_URL}/#/user/forgot-password" style="color:#dc2626;font-weight:600;">Reset your password immediately</a> and contact us at ${getAdminEmail()}.`, '#dc2626')}
-
-       <p style="font-size:13px;color:${TEXT_LIGHT};">NEFOL never stores or emails your actual password.</p>`
+       ${infoBox(`<strong>Didn't change your password?</strong> Someone else may have access to your account. Reset your password from the <a href="${URLS.login}" style="color:${DANGER};font-weight:600;">sign-in page</a> right away and let us know at ${getAdminEmail()}.`, DANGER)}`
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
@@ -377,22 +601,19 @@ export async function sendLoginAlertEmail(
   deviceInfo: string | undefined
 ): Promise<void> {
   try {
+    const when = `${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} IST`
     const html = shell(
-      'New login detected on your NEFOL account',
-      heroBanner('#0f172a', '🛡️', 'New Login Detected', 'Someone signed in to your account'),
-      `<p>A new sign-in to your NEFOL account was detected.</p>
+      'New sign-in to your NEFOL account',
+      hero('blue', 'Security', 'New sign-in to your account', 'We noticed a new sign-in to your NEFOL account.'),
+      `${metaGrid([
+         ['Time', esc(when)],
+         ['Device', esc(deviceInfo || 'Unknown device')],
+         ['IP address', esc(ipAddress || 'Unknown')],
+       ])}
 
-       ${infoBox(`
-         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-           <tr><td style="padding:4px 0;font-size:14px;width:120px;color:${TEXT_MID};">🕐 Time</td><td style="font-size:14px;color:${TEXT_DARK};font-weight:600;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</td></tr>
-           <tr><td style="padding:4px 0;font-size:14px;color:${TEXT_MID};">📱 Device</td><td style="font-size:14px;color:${TEXT_DARK};font-weight:600;">${deviceInfo || 'Unknown device'}</td></tr>
-           <tr><td style="padding:4px 0;font-size:14px;color:${TEXT_MID};">🌐 IP</td><td style="font-size:14px;color:${TEXT_DARK};font-weight:600;">${ipAddress || 'Unknown'}</td></tr>
-         </table>
-       `)}
+       <p>If this was you, you're all set. If you don't recognise this sign-in, secure your account now.</p>
 
-       <p style="font-size:14px;color:${TEXT_MID};">If this was you — great, you're all set! If not, secure your account immediately.</p>
-
-       ${btn(`${SITE_URL}/#/user/account`, 'Review My Account', '#dc2626')}`
+       ${btn(URLS.account, 'Review account activity', DANGER)}`
     )
     await transporter.sendMail({
       from: `"NEFOL Security" <${getAdminEmail()}>`,
@@ -412,17 +633,17 @@ export async function sendAccountSecurityAlertEmail(userEmail: string, action: s
   try {
     const html = shell(
       'Security alert on your NEFOL account',
-      heroBanner('#dc2626', '⚠️', 'Security Alert', 'An important change was made to your account'),
-      `<p>The following change was made to your NEFOL account:</p>
-       ${infoBox(`<p style="margin:0;font-size:15px;font-weight:600;">${action || 'Account security change'}</p>`, '#dc2626')}
-       <p style="font-size:14px;color:${TEXT_MID};">If this was you — you're all set. If not, please take action below immediately.</p>
-       ${btn(`${SITE_URL}/#/user/account`, 'Secure My Account', '#dc2626')}
-       <p style="font-size:13px;color:${TEXT_LIGHT};">For urgent help, email us directly at ${getAdminEmail()}</p>`
+      hero('red', 'Security alert', 'A change was made to your account', 'Please review the details below.'),
+      `<p style="margin-top:0;">The following change was made to your NEFOL account:</p>
+       ${infoBox(`<p style="margin:0;font-size:15px;font-weight:600;">${esc(action || 'Account security change')}</p>`, DANGER)}
+       <p>If this was you, no action is needed. If not, secure your account immediately.</p>
+       ${btn(URLS.account, 'Secure my account', DANGER)}
+       <p class="em-muted" style="font-size:13px;color:${TEXT_LIGHT};">For urgent help, email us at ${getAdminEmail()}.</p>`
     )
     await transporter.sendMail({
       from: `"NEFOL Security" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: '⚠️ Security alert on your NEFOL account',
+      subject: 'Security alert on your NEFOL account',
       html
     })
     console.log(`✅ Security alert email sent: ${userEmail}`)
@@ -435,11 +656,7 @@ export async function sendAccountSecurityAlertEmail(userEmail: string, action: s
 
 export async function sendOrderConfirmationEmail(order: any, sendToAdmin = false, pool?: Pool): Promise<void> {
   try {
-    const rawItems: any[] = Array.isArray(order.items) ? order.items : (() => {
-      try { return JSON.parse(order.items || '[]') } catch { return [] }
-    })()
-
-    const items = pool ? await enrichItemImages(pool, rawItems) : rawItems
+    const items = await prepareEmailItems(parseItems(order.items), pool)
 
     const shippingAddr = (() => {
       try {
@@ -450,102 +667,74 @@ export async function sendOrderConfirmationEmail(order: any, sendToAdmin = false
     })()
 
     const paymentLabel: Record<string, string> = {
-      razorpay: 'Online Payment (Razorpay)',
-      'coins+razorpay': 'Coins + Online Payment',
-      cod: 'Cash on Delivery',
-      coins: 'Nefol Coins',
+      razorpay: 'Online payment',
+      'coins+razorpay': 'NEFOL Coins + online payment',
+      cod: 'Cash on delivery',
+      coins: 'NEFOL Coins',
     }
-    const pmLabel = paymentLabel[order.payment_method] || order.payment_method || 'Online Payment'
+    const pmLabel = paymentLabel[order.payment_method] || order.payment_method || 'Online payment'
 
     const isCOD = order.payment_method === 'cod'
-    const itemsHtml = items.map(orderItemRow).join('')
+    const orderNo = esc(order.order_number)
     const orderDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', {
       day: 'numeric', month: 'long', year: 'numeric'
     })
 
     const customerBody = `
-      <p style="font-size:16px;margin-top:0;">Hi <strong>${(order.customer_name || 'there').split(' ')[0]}</strong>, 👋</p>
-      <p style="font-size:15px;">Your order has been ${isCOD ? 'placed' : 'confirmed and paid'} — thank you for shopping with NEFOL! 🎉</p>
+      <p style="margin-top:0;">Hi <strong>${firstNameOf(order.customer_name)}</strong>,</p>
+      <p>${isCOD
+        ? "We've received your order and it's being prepared. You'll pay when it arrives."
+        : "We've received your payment and your order is being prepared."} We'll email you again as soon as it ships.</p>
 
-      <!-- Order meta -->
-      <div style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:10px;padding:18px 22px;margin:20px 0;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td style="padding:4px 0;font-size:13px;color:${TEXT_MID};width:50%;vertical-align:top;">
-              <span style="font-weight:700;color:${TEXT_DARK};display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Order Number</span>
-              <span style="font-size:16px;font-weight:800;color:${BRAND_ACCENT};">${order.order_number}</span>
-            </td>
-            <td style="padding:4px 0;font-size:13px;color:${TEXT_MID};vertical-align:top;">
-              <span style="font-weight:700;color:${TEXT_DARK};display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Order Date</span>
-              <span style="font-size:14px;font-weight:600;color:${TEXT_DARK};">${orderDate}</span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0 4px;font-size:13px;color:${TEXT_MID};vertical-align:top;">
-              <span style="font-weight:700;color:${TEXT_DARK};display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Payment</span>
-              <span style="font-size:14px;font-weight:600;color:${TEXT_DARK};">${pmLabel}</span>
-            </td>
-            <td style="padding:10px 0 4px;font-size:13px;color:${TEXT_MID};vertical-align:top;">
-              <span style="font-weight:700;color:${TEXT_DARK};display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Status</span>
-              ${badge(isCOD ? 'Pending COD' : 'Paid', isCOD ? BRAND_GOLD : '#16a34a')}
-            </td>
-          </tr>
-        </table>
-      </div>
+      ${metaGrid([
+        ['Order number', `<span style="color:${ACCENT};">${orderNo}</span>`],
+        ['Order date', esc(orderDate)],
+        ['Payment', esc(pmLabel)],
+        ['Status', badge(isCOD ? 'Pay on delivery' : 'Paid', isCOD ? WARN : ACCENT)],
+      ])}
 
-      <!-- Items -->
-      <h3 style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${TEXT_MID};margin:28px 0 0;">Your Items</h3>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        ${itemsHtml}
-      </table>
+      ${sectionTitle('Your items')}
+      ${itemsTable(items)}
 
-      <!-- Totals -->
-      <div style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:10px;padding:18px 22px;margin:20px 0;">
-        ${orderTotalsTable(order)}
-      </div>
+      ${panel(orderTotalsTable(order))}
 
-      <!-- Shipping address -->
-      <h3 style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${TEXT_MID};margin:28px 0 12px;">Shipping To</h3>
-      <div style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:10px;padding:18px 22px;">
-        ${shippingAddressBlock(shippingAddr)}
-      </div>
+      ${sectionTitle('Shipping to', 8)}
+      ${panel(shippingAddressBlock(shippingAddr))}
 
-      ${btn(`${SITE_URL}/#/user/orders`, 'Track My Order')}
+      ${isCOD ? infoBox(`Please keep <strong>${inr(order.total)}</strong> ready at the time of delivery.`, WARN) : ''}
 
-      ${isCOD ? infoBox(`<strong>COD Reminder:</strong> Please keep the exact amount of ₹${parseFloat(order.total || 0).toFixed(2)} ready at the time of delivery.`, BRAND_GOLD) : ''}
-
-      ${divider()}
-      <p style="font-size:14px;color:${TEXT_MID};">We'll send you a shipping confirmation once your order is dispatched. Thank you for choosing NEFOL! 🌿</p>
+      ${btn(URLS.orders, 'Track my order')}
+      ${signOff()}
     `
 
     const adminBody = `
-      <p>New order received on NEFOL.</p>
-      ${infoBox(`
-        <p style="margin:0 0 6px;font-size:14px;"><strong>Order:</strong> ${order.order_number}</p>
-        <p style="margin:0 0 6px;font-size:14px;"><strong>Customer:</strong> ${order.customer_name} (${order.customer_email})</p>
-        <p style="margin:0 0 6px;font-size:14px;"><strong>Payment:</strong> ${pmLabel}</p>
-        <p style="margin:0;font-size:14px;"><strong>Total:</strong> ₹${parseFloat(order.total || 0).toFixed(2)}</p>
-      `)}
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        ${itemsHtml}
-      </table>
-      ${btn(`${SITE_URL}/loginasadmin/orders`, 'View in Admin Panel', BRAND_DARK)}
+      <p style="margin-top:0;">A new order was placed on thenefol.com.</p>
+      ${metaGrid([
+        ['Order', orderNo],
+        ['Total', inr(order.total)],
+        ['Customer', `${esc(order.customer_name)}<br><span style="font-weight:400;font-size:13px;color:${TEXT_MID};">${esc(order.customer_email)}</span>`],
+        ['Payment', esc(pmLabel)],
+      ])}
+      ${sectionTitle('Items')}
+      ${itemsTable(items)}
+      ${btn(`${SITE_URL}/loginasadmin/orders`, 'Open in admin panel', MIDNIGHT)}
     `
 
     const recipient = sendToAdmin ? getAdminEmail() : order.customer_email
     const subject = sendToAdmin
-      ? `[New Order] ${order.order_number} — ${order.customer_name} (₹${parseFloat(order.total || 0).toFixed(2)})`
-      : `Order Confirmed ✅ — ${order.order_number}`
+      ? `[New Order] ${order.order_number} — ${order.customer_name} (₹${toNum(order.total).toFixed(2)})`
+      : `Your NEFOL order ${order.order_number} is confirmed`
 
     const html = shell(
-      sendToAdmin ? `New order ${order.order_number} from ${order.customer_name}` : `Your NEFOL order ${order.order_number} is confirmed!`,
-      heroBanner(
-        isCOD ? `linear-gradient(135deg, ${BRAND_GOLD} 0%, #d97706 100%)` : `linear-gradient(135deg, #16a34a 0%, #15803d 100%)`,
-        isCOD ? '📦' : '✅',
-        sendToAdmin ? 'New Order Received' : (isCOD ? 'Order Placed!' : 'Order Confirmed!'),
-        sendToAdmin ? `Order #${order.order_number}` : (isCOD ? 'Your order is being prepared.' : 'Payment received. We\'re on it!')
-      ),
-      sendToAdmin ? adminBody : customerBody
+      sendToAdmin
+        ? `New order ${order.order_number} from ${order.customer_name}`
+        : `Thank you for your order. Order ${order.order_number} is confirmed.`,
+      sendToAdmin
+        ? hero('slate', 'New order', `Order ${orderNo}`, `${esc(order.customer_name)} · ${inr(order.total)}`)
+        : hero(isCOD ? 'amber' : 'gold', isCOD ? 'Order placed' : 'Order confirmed', 'Thank you for your order', `Order ${orderNo} · ${esc(orderDate)}`),
+      sendToAdmin ? adminBody : customerBody,
+      '',
+      sendToAdmin ? { reason: 'Internal notification for NEFOL staff.' } : {}
     )
 
     await transporter.sendMail({
@@ -569,31 +758,30 @@ export async function sendPaymentFailedEmail(
   errorMessage?: string
 ): Promise<void> {
   try {
-    const firstName = (userName || 'there').split(' ')[0]
+    const firstName = firstNameOf(userName)
     const html = shell(
-      `Payment failed for order ${orderNumber}`,
-      heroBanner('#dc2626', '❌', 'Payment Failed', `We couldn't process your payment for order ${orderNumber}`),
-      `<p>Hi <strong>${firstName}</strong>,</p>
-       <p>Unfortunately we couldn't process your payment. Don't worry — your cart items are still saved.</p>
+      `Payment for order ${orderNumber} didn't go through`,
+      hero('red', 'Payment unsuccessful', "We couldn't complete your payment", `Order ${esc(orderNumber)}`),
+      `<p style="margin-top:0;">Hi <strong>${firstName}</strong>,</p>
+       <p>Your payment didn't go through, so this order hasn't been completed yet. Your items are still saved and you can try again.</p>
 
-       ${errorMessage ? infoBox(`<strong>Reason:</strong> ${errorMessage}`, '#dc2626') : ''}
+       ${errorMessage ? infoBox(`<strong>Reason:</strong> ${esc(errorMessage)}`, DANGER) : ''}
 
-       <p style="font-size:14px;color:${TEXT_MID};">Common reasons payments fail:</p>
-       <ul style="font-size:14px;color:${TEXT_MID};line-height:2;padding-left:20px;">
-         <li>Insufficient balance in the account</li>
-         <li>Bank declined the transaction</li>
-         <li>Incorrect card/UPI details entered</li>
-         <li>Session timed out before payment</li>
+       ${sectionTitle('Common reasons', 18)}
+       <ul class="em-muted" style="margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.9;color:${TEXT_MID};">
+         <li>Insufficient balance or a daily limit was reached</li>
+         <li>The bank declined the transaction</li>
+         <li>Card or UPI details were entered incorrectly</li>
+         <li>The payment session timed out</li>
        </ul>
 
-       ${btn(`${SITE_URL}/#/user/orders`, 'Retry Payment')}
-       ${divider()}
-       <p style="font-size:14px;color:${TEXT_MID};">If the issue persists, please contact your bank or reach us at <a href="mailto:${getAdminEmail()}" style="color:${BRAND_ACCENT};">${getAdminEmail()}</a>.</p>`
+       ${btn(URLS.orders, 'Try payment again')}
+       <p class="em-muted" style="font-size:14px;color:${TEXT_MID};">If money was deducted for a failed payment, it is normally reversed to your account automatically. Still need help? Write to <a href="mailto:${getAdminEmail()}" style="color:${ACCENT};">${getAdminEmail()}</a>.</p>`
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: `Payment failed — Order ${orderNumber}`,
+      subject: `Payment unsuccessful — Order ${orderNumber}`,
       html
     })
     console.log(`✅ Payment failed email sent: ${userEmail}`)
@@ -607,78 +795,74 @@ export async function sendPaymentFailedEmail(
 export async function sendOrderStatusUpdateEmail(order: any): Promise<void> {
   try {
     const status = (order.status || '').toLowerCase()
+    const orderNo = esc(order.order_number)
 
-    const statusConfig: Record<string, { emoji: string; title: string; sub: string; bg: string; body: string }> = {
+    const statusConfig: Record<string, { tone: Tone; eyebrow: string; title: string; sub: string; body: string; subject: string }> = {
       shipped: {
-        emoji: '🚚',
-        title: 'Your Order Has Shipped!',
-        sub: `Order ${order.order_number} is on its way`,
-        bg: `linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)`,
-        body: `<p>Great news! Your NEFOL order has been dispatched and is headed your way.</p>`
+        tone: 'blue',
+        eyebrow: 'Shipped',
+        title: 'Your order is on its way',
+        sub: `Order ${orderNo} has left our warehouse.`,
+        body: `<p>Good news — your NEFOL order has been handed to our delivery partner.</p>`,
+        subject: 'Your order has shipped',
       },
       out_for_delivery: {
-        emoji: '🛵',
-        title: 'Out for Delivery!',
-        sub: 'Expect it today',
-        bg: `linear-gradient(135deg, ${BRAND_GOLD} 0%, #d97706 100%)`,
-        body: `<p>Your NEFOL order is <strong>out for delivery</strong> and should reach you today. Please keep your phone handy!</p>`
+        tone: 'amber',
+        eyebrow: 'Out for delivery',
+        title: 'Arriving today',
+        sub: `Order ${orderNo} is out for delivery.`,
+        body: `<p>Your order is out for delivery and should reach you today. Please keep your phone nearby so the courier can reach you.</p>`,
+        subject: 'Your order is out for delivery',
       },
       delivered: {
-        emoji: '🎉',
-        title: 'Order Delivered!',
-        sub: 'Enjoy your NEFOL products',
-        bg: `linear-gradient(135deg, #16a34a 0%, #15803d 100%)`,
-        body: `<p>Your order has been delivered! We hope you love your new NEFOL products. 🌿</p>
-               <p style="font-size:14px;color:${TEXT_MID};">Share your experience — leave a review and help others discover what works for them.</p>
-               ${btn(`${SITE_URL}/#/products`, 'Leave a Review', '#16a34a')}`
-      }
+        tone: 'gold',
+        eyebrow: 'Delivered',
+        title: 'Your order has arrived',
+        sub: `Order ${orderNo} was delivered.`,
+        body: `<p>Your order has been delivered. We hope you love your new NEFOL products.</p>
+               <p class="em-muted" style="color:${TEXT_MID};">Once you've tried them, a quick review helps other customers choose what's right for them.</p>`,
+        subject: 'Your order has been delivered',
+      },
     }
 
     const cfg = statusConfig[status] || {
-      emoji: '📦',
-      title: 'Order Update',
-      sub: `Status: ${order.status}`,
-      bg: `linear-gradient(135deg, ${BRAND_ACCENT} 0%, #4f46e5 100%)`,
-      body: `<p>Your order status has been updated to <strong>${order.status}</strong>.</p>`
+      tone: 'slate' as Tone,
+      eyebrow: 'Order update',
+      title: 'Your order has been updated',
+      sub: `Order ${orderNo}`,
+      body: `<p>The status of your order is now <strong>${esc(order.status)}</strong>.</p>`,
+      subject: 'Order update',
     }
 
-    const trackingBlock = (order.tracking || order.tracking_number)
-      ? infoBox(`
-          <p style="margin:0 0 8px;font-size:14px;"><strong>Tracking Number:</strong> ${order.tracking || order.tracking_number}</p>
-          <p style="margin:0 0 8px;font-size:14px;"><strong>Courier:</strong> ${order.courier_name || order.courier || 'Partner Courier'}</p>
-          ${order.tracking_url ? `<p style="margin:0;font-size:14px;"><a href="${order.tracking_url}" style="color:${BRAND_ACCENT};font-weight:700;">Track Live →</a></p>` : ''}
-        `, '#0ea5e9')
+    const tracking = order.tracking || order.tracking_number
+    const trackingBlock = tracking
+      ? metaGrid([
+          ['Tracking number', esc(tracking)],
+          ['Courier', esc(order.courier_name || order.courier || 'Delivery partner')],
+        ]) + (order.tracking_url ? textLink(order.tracking_url, 'Track your parcel live') : '')
       : ''
 
-    const items: any[] = Array.isArray(order.items) ? order.items : (() => {
-      try { return JSON.parse(order.items || '[]') } catch { return [] }
-    })()
+    const items = await prepareEmailItems(parseItems(order.items))
+    const showProgress = ['shipped', 'out_for_delivery', 'delivered'].includes(status)
 
     const html = shell(
-      cfg.title,
-      heroBanner(cfg.bg, cfg.emoji, cfg.title, cfg.sub),
-      `<p>Hi <strong>${(order.customer_name || 'there').split(' ')[0]}</strong>,</p>
+      `${cfg.title} — order ${order.order_number}`,
+      hero(cfg.tone, cfg.eyebrow, cfg.title, cfg.sub),
+      `<p style="margin-top:0;">Hi <strong>${firstNameOf(order.customer_name)}</strong>,</p>
        ${cfg.body}
-
-       ${infoBox(`<p style="margin:0 0 6px;font-size:14px;"><strong>Order:</strong> ${order.order_number}</p>
-                  <p style="margin:0;font-size:14px;"><strong>Status:</strong> ${order.status}</p>`)}
-
+       ${showProgress ? orderProgress(status) : ''}
        ${trackingBlock}
 
-       ${items.length > 0 ? `
-         <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${TEXT_MID};margin:24px 0 0;">Items in This Order</h3>
-         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-           ${items.map(orderItemRow).join('')}
-         </table>` : ''}
+       ${items.length > 0 ? `${sectionTitle('In this order')}${itemsTable(items)}` : ''}
 
-       ${btn(`${SITE_URL}/#/user/orders`, 'View Order Details')}
-       <p style="font-size:14px;color:${TEXT_MID};">Thank you for shopping with NEFOL! 🌿</p>`
+       ${status === 'delivered' ? btn(URLS.orders, 'Review your products') : btn(URLS.orders, 'View order details')}
+       ${signOff()}`
     )
 
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
       to: order.customer_email,
-      subject: `${cfg.emoji} ${cfg.title} — Order ${order.order_number}`,
+      subject: `${cfg.subject} — Order ${order.order_number}`,
       html
     })
     console.log(`✅ Order status email sent: ${order.customer_email}`)
@@ -701,28 +885,40 @@ export async function sendCartAddedEmail(
   userEmail: string,
   userName: string,
   productName: string,
-  productPrice: number
+  productPrice: number,
+  product?: { slug?: string | null; image?: string | null; quantity?: number }
 ): Promise<void> {
   try {
-    const firstName = (userName || 'there').split(' ')[0]
+    const firstName = firstNameOf(userName)
+    const [item] = await prepareEmailItems([{
+      title: productName,
+      price: productPrice,
+      quantity: product?.quantity || 1,
+      image: product?.image || '',
+      slug: product?.slug || '',
+    }])
     const html = shell(
-      `${productName} is waiting in your cart`,
-      heroBanner(`linear-gradient(135deg, ${BRAND_ACCENT} 0%, #4f46e5 100%)`, '🛒', 'Item in Your Cart', productName),
-      `<p>Hi <strong>${firstName}</strong>,</p>
-       <p><strong>${productName}</strong> is sitting in your cart, waiting for you!</p>
+      `${productName} is still in your cart`,
+      hero('gold', 'Saved in your cart', `${esc(productName)} is waiting for you`, 'Pick up right where you left off.'),
+      `<p style="margin-top:0;">Hi <strong>${firstName}</strong>,</p>
+       <p>You added this to your cart on NEFOL. It's saved and ready whenever you are.</p>
 
-       ${infoBox(`
-         <p style="margin:0 0 6px;font-size:15px;font-weight:700;">${productName}</p>
-         <p style="margin:0;font-size:17px;font-weight:800;color:${BRAND_ACCENT};">₹${productPrice.toFixed(2)}</p>
-       `)}
+       ${itemsTable([item])}
 
-       ${btn(`${SITE_URL}/#/user/checkout`, 'Complete My Purchase')}
-       <p style="font-size:13px;color:${TEXT_LIGHT};text-align:center;margin-top:-12px;">Stock is limited — grab yours before it's gone!</p>`
+       ${btn(URLS.cart, 'Go to my cart')}
+
+       ${perks([
+         ['Secure payments', 'UPI, cards and net banking.'],
+         ['Cash on delivery', 'Pay when your order arrives.'],
+         ['NEFOL Coins', 'Earn coins on every order.'],
+       ])}`,
+      '',
+      { reason: "You're receiving this because you added an item to your cart on thenefol.com." }
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: `You left ${productName} in your cart 🛒`,
+      subject: `${productName} is still in your cart`,
       html
     })
     console.log(`✅ Cart reminder email sent: ${userEmail}`)
@@ -733,42 +929,57 @@ export async function sendCartAddedEmail(
 
 // ─── 11. Cart Abandonment ─────────────────────────────────────────────────────
 
-export async function sendCartAbandonmentEmail(userEmail: string, userName: string, cartItems: any[]): Promise<void> {
+export async function sendCartAbandonmentEmail(userEmail: string, userName: string, cartItems: any[], pool?: Pool): Promise<void> {
   try {
-    const firstName = (userName || 'there').split(' ')[0]
-    const total = cartItems.reduce((s, i) => s + ((i.product?.price || i.price || 0) * (i.quantity || 1)), 0)
-
-    const itemsHtml = cartItems.map(i => orderItemRow({
+    const firstName = firstNameOf(userName)
+    const mapped = cartItems.map((i) => ({
       title: i.product?.title || i.title,
       price: i.product?.price || i.price || 0,
       quantity: i.quantity || 1,
-      listImage: i.product?.listImage || i.listImage || i.image || '',
-      slug: i.product?.slug || i.slug || ''
-    })).join('')
+      listImage: i.product?.listImage || i.product?.list_image || i.listImage || i.list_image || i.image || '',
+      slug: i.product?.slug || i.slug || '',
+      product_id: i.product?.id ?? i.product_id,
+      variant: i.variant_name || i.variant || undefined,
+    }))
+    const items = await prepareEmailItems(mapped, pool)
+    const count = items.reduce((s, i) => s + (toNum(i.quantity) || 1), 0)
+    const total = items.reduce((s, i) => s + toNum(i.price) * (toNum(i.quantity) || 1), 0)
 
     const html = shell(
-      `You left ${cartItems.length} item(s) in your NEFOL cart`,
-      heroBanner(`linear-gradient(135deg, ${BRAND_GOLD} 0%, #d97706 100%)`, '⏰', 'Still Thinking?', 'Your cart is waiting for you'),
-      `<p>Hi <strong>${firstName}</strong>,</p>
-       <p>You left some great products in your cart. Complete your order before they sell out!</p>
+      `Your NEFOL cart is saved — ${count} item${count === 1 ? '' : 's'} waiting for you.`,
+      hero('gold', 'Your cart', 'You left something behind', "We've saved your items so you can finish your order anytime."),
+      `<p style="margin-top:0;">Hi <strong>${firstName}</strong>,</p>
+       <p>The products you picked are still in your cart. Whenever you're ready, you can check out in a few taps.</p>
 
-       <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${TEXT_MID};margin:24px 0 0;">Your Cart</h3>
-       <table width="100%" cellpadding="0" cellspacing="0" border="0">
-         ${itemsHtml}
+       ${sectionTitle(`In your cart (${count})`)}
+       ${itemsTable(items)}
+
+       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;">
+         <tr>
+           <td class="em-muted" style="font-size:14px;color:${TEXT_MID};">Subtotal</td>
+           <td class="em-text" align="right" style="font-size:18px;font-weight:700;color:${TEXT_DARK};">${inr(total)}</td>
+         </tr>
+         <tr>
+           <td colspan="2" class="em-muted" style="padding-top:4px;font-size:12px;color:${TEXT_LIGHT};">Shipping, coupons and NEFOL Coins are applied at checkout.</td>
+         </tr>
        </table>
 
-       <div style="text-align:right;padding:12px 0;">
-         <span style="font-size:13px;color:${TEXT_MID};">Cart Total: </span>
-         <span style="font-size:18px;font-weight:800;color:${BRAND_ACCENT};">₹${total.toFixed(2)}</span>
-       </div>
+       ${btn(URLS.cart, 'Return to my cart')}
 
-       ${btn(`${SITE_URL}/#/user/checkout`, 'Complete My Purchase', BRAND_GOLD)}
-       <p style="font-size:13px;color:${TEXT_LIGHT};text-align:center;margin-top:-12px;">Stock is limited — don't miss out!</p>`
+       ${perks([
+         ['Secure payments', 'UPI, cards and net banking.'],
+         ['Cash on delivery', 'Pay when your order arrives.'],
+         ['NEFOL Coins', 'Earn coins on every order.'],
+       ])}
+
+       <p class="em-muted" style="margin-top:26px;font-size:14px;color:${TEXT_MID};">Not sure which product suits you? Reply to this email and our team will help you choose.</p>`,
+      '',
+      { reason: "You're receiving this because you left items in your cart on thenefol.com." }
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: `⏰ Still thinking? Your NEFOL cart is waiting`,
+      subject: `${firstName}, your NEFOL cart is saved`,
       html
     })
     console.log(`✅ Cart abandonment email sent: ${userEmail}`)
@@ -784,27 +995,24 @@ export async function sendSubscriptionActivatedEmail(
   plan: { name?: string; price?: number; interval?: string } | any
 ): Promise<void> {
   try {
-    const planName = plan?.name || 'your plan'
-    const priceText = typeof plan?.price === 'number' ? `₹${plan.price.toFixed(2)}` : ''
-    const intervalText = plan?.interval ? ` / ${plan.interval}` : ''
+    const planName = esc(plan?.name || 'your plan')
+    const priceText = typeof plan?.price === 'number' ? inr(plan.price) : ''
+    const intervalText = plan?.interval ? ` / ${esc(plan.interval)}` : ''
 
     const html = shell(
       `Your NEFOL subscription is active`,
-      heroBanner(`linear-gradient(135deg, #16a34a 0%, #15803d 100%)`, '✅', 'Subscription Active!', `Welcome to ${planName}`),
-      `<p>Your <strong>${planName}</strong> subscription is now active. Here's what you get:</p>
+      hero('gold', 'Subscription', 'Your subscription is active', `Welcome to ${planName}.`),
+      `<p style="margin-top:0;">Your <strong>${planName}</strong> subscription is now active.</p>
 
-       ${priceText ? infoBox(`
-         <p style="margin:0 0 4px;font-size:14px;"><strong>Plan:</strong> ${planName}</p>
-         <p style="margin:0;font-size:16px;font-weight:800;color:${BRAND_ACCENT};">${priceText}${intervalText}</p>
-       `, '#16a34a') : ''}
+       ${priceText ? metaGrid([['Plan', planName], ['Price', `${priceText}${intervalText}`]]) : ''}
 
-       ${btn(`${SITE_URL}/#/user/subscriptions`, 'Manage My Subscription', '#16a34a')}
-       <p style="font-size:13px;color:${TEXT_MID};">You can cancel or change your plan at any time from your account.</p>`
+       ${btn(URLS.account, 'Manage subscription')}
+       <p class="em-muted" style="font-size:13px;color:${TEXT_MID};">You can change or cancel your plan at any time from your account.</p>`
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: `Your ${planName} subscription is active ✅`,
+      subject: `Your ${plan?.name || 'NEFOL'} subscription is active`,
       html
     })
     console.log(`✅ Subscription activated email sent: ${userEmail}`)
@@ -821,27 +1029,28 @@ export async function sendSubscriptionReminderOrCancelledEmail(
   type: 'expiring' | 'cancelled' | string
 ): Promise<void> {
   try {
-    const planName = plan?.name || 'your subscription'
+    const rawName = plan?.name || 'your subscription'
+    const planName = esc(rawName)
     const isExpiring = type === 'expiring'
 
     const html = shell(
-      isExpiring ? `Your NEFOL subscription is ending soon` : `Your NEFOL subscription was cancelled`,
-      heroBanner(
-        isExpiring ? `linear-gradient(135deg,${BRAND_GOLD},#d97706)` : `linear-gradient(135deg,#64748b,#475569)`,
-        isExpiring ? '⚠️' : '🔕',
-        isExpiring ? 'Subscription Ending Soon' : 'Subscription Cancelled',
+      isExpiring ? `Your NEFOL subscription ends soon` : `Your NEFOL subscription was cancelled`,
+      hero(
+        isExpiring ? 'amber' : 'slate',
+        'Subscription',
+        isExpiring ? 'Your subscription ends soon' : 'Your subscription was cancelled',
         planName
       ),
-      `<p>${isExpiring
-        ? `Your <strong>${planName}</strong> is ending soon. Renew now to keep your benefits uninterrupted.`
-        : `Your <strong>${planName}</strong> has been cancelled. You'll retain access until the end of the current billing period.`
+      `<p style="margin-top:0;">${isExpiring
+        ? `Your <strong>${planName}</strong> is ending soon. Renew now to keep your benefits without a break.`
+        : `Your <strong>${planName}</strong> has been cancelled. You'll keep access until the end of the current billing period.`
       }</p>
-      ${btn(`${SITE_URL}/#/user/subscriptions`, isExpiring ? 'Renew Now' : 'View Plans', isExpiring ? BRAND_GOLD : BRAND_ACCENT)}`
+      ${btn(URLS.account, isExpiring ? 'Renew now' : 'View plans', isExpiring ? WARN : ACCENT)}`
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: isExpiring ? `Your ${planName} ends soon — renew now` : `Your ${planName} has been cancelled`,
+      subject: isExpiring ? `Your ${rawName} ends soon — renew now` : `Your ${rawName} has been cancelled`,
       html
     })
     console.log(`✅ Subscription ${type} email sent: ${userEmail}`)
@@ -857,41 +1066,28 @@ export async function sendAffiliateApplicationSubmittedEmail(
   userName: string
 ): Promise<void> {
   try {
-    const firstName = (userName || 'there').split(' ')[0]
+    const firstName = firstNameOf(userName)
     const html = shell(
       `We received your NEFOL affiliate application`,
-      heroBanner(
-        `linear-gradient(135deg, ${BRAND_ACCENT} 0%, #4f46e5 100%)`,
-        '📩',
-        'Application Received!',
-        'Thank you for your interest in NEFOL Affiliates'
-      ),
-      `<p>Hi <strong>${firstName}</strong>,</p>
-       <p>Thank you for applying to the <strong>NEFOL Affiliate Program</strong>! We've received your application and our team will review it shortly.</p>
+      hero('gold', 'Affiliate program', 'Application received', 'Thank you for your interest in partnering with NEFOL.'),
+      `<p style="margin-top:0;">Hi <strong>${firstName}</strong>,</p>
+       <p>Thank you for applying to the <strong>NEFOL Affiliate Program</strong>. We've received your application and our team will review it shortly.</p>
 
-       <div style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:12px;padding:22px 26px;margin:24px 0;">
-         <p style="margin:0 0 14px;font-size:14px;font-weight:700;color:${BRAND_ACCENT};">What happens next?</p>
-         <table cellpadding="0" cellspacing="0" border="0" width="100%">
-           ${['Our team reviews your application (24–48 hrs)',
-              'You receive an approval email with your verification code',
-              'Start sharing your unique link and earning commissions',
-              'Track earnings in your affiliate dashboard'].map((s, i) => `
-           <tr>
-             <td style="width:32px;vertical-align:top;padding:4px 12px 4px 0;">
-               <div style="width:24px;height:24px;border-radius:50%;background:${BRAND_ACCENT};color:#fff;font-size:12px;font-weight:800;text-align:center;line-height:24px;">${i + 1}</div>
-             </td>
-             <td style="font-size:14px;color:${TEXT_DARK};padding:4px 0;">${s}</td>
-           </tr>`).join('')}
-         </table>
-       </div>
+       ${sectionTitle('What happens next', 22)}
+       ${steps([
+         'Our team reviews your application (usually within 24–48 hours).',
+         'If approved, you receive an email with your verification code.',
+         'Verify your account and get your unique referral link.',
+         'Share your link and track your earnings in the affiliate dashboard.',
+       ])}
 
-       <p style="font-size:14px;color:${TEXT_MID};">Please check your inbox (and spam folder) for our decision email. We typically respond within 24–48 hours.</p>
-       <p style="font-size:14px;color:${TEXT_DARK};">Excited to potentially have you on board!<br><strong>Team NEFOL 🌿</strong></p>`
+       <p class="em-muted" style="margin-top:22px;font-size:14px;color:${TEXT_MID};">Keep an eye on your inbox (and spam folder) for our decision.</p>
+       ${signOff('Team NEFOL Affiliates')}`
     )
     await transporter.sendMail({
       from: `"NEFOL Affiliates" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: '📩 Your NEFOL affiliate application has been received',
+      subject: 'We received your NEFOL affiliate application',
       html
     })
     console.log(`✅ Affiliate application email sent: ${userEmail}`)
@@ -908,52 +1104,32 @@ export async function sendAffiliateCodeEmail(
   verificationCode: string
 ): Promise<void> {
   try {
-    const firstName = (userName || 'there').split(' ')[0]
+    const firstName = firstNameOf(userName)
     const html = shell(
-      `Congratulations ${firstName}! You're approved as a NEFOL Affiliate`,
-      heroBanner(
-        `linear-gradient(135deg, #16a34a 0%, #15803d 100%)`,
-        '🎉',
-        `Congratulations, ${firstName}!`,
-        'Your NEFOL Affiliate account is approved'
-      ),
-      `<p>Hi <strong>${firstName}</strong>,</p>
-       <p>Welcome to the <strong>NEFOL Affiliate Program</strong>! Your application has been approved — here's your one-time verification code to activate your dashboard.</p>
+      `You're approved as a NEFOL affiliate`,
+      hero('gold', 'Affiliate program', `You're approved, ${firstName}`, 'Your NEFOL affiliate account is ready to activate.'),
+      `<p style="margin-top:0;">Hi <strong>${firstName}</strong>,</p>
+       <p>Welcome to the <strong>NEFOL Affiliate Program</strong>. Use the one-time code below to activate your affiliate dashboard.</p>
 
-       <!-- Code block -->
-       <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:14px;padding:28px;text-align:center;margin:28px 0;">
-         <p style="margin:0 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#15803d;">Your Verification Code</p>
-         <div style="font-size:40px;font-weight:900;letter-spacing:12px;color:#16a34a;font-family:'Courier New',Courier,monospace;line-height:1.1;">${verificationCode}</div>
-         <p style="margin:12px 0 0;font-size:13px;color:#15803d;">Enter this code in your affiliate dashboard to verify your account.</p>
-       </div>
+       ${codeBlock('Your verification code', verificationCode, 'Enter this code in your affiliate dashboard.')}
 
-       <div style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:12px;padding:20px 24px;margin:20px 0;">
-         <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:${TEXT_DARK};">🚀 Getting started</p>
-         <table cellpadding="0" cellspacing="0" border="0" width="100%">
-           ${[
-             ['🔗', 'Verify your account using the code above'],
-             ['🌐', 'Get your unique affiliate referral link'],
-             ['📢', 'Share it with your audience'],
-             ['💰', 'Earn commissions on every successful referral'],
-             ['📊', 'Track all earnings in your dashboard'],
-           ].map(([icon, text]) => `
-           <tr>
-             <td style="width:28px;font-size:18px;padding:4px 10px 4px 0;vertical-align:top;">${icon}</td>
-             <td style="font-size:14px;color:${TEXT_DARK};padding:4px 0;">${text}</td>
-           </tr>`).join('')}
-         </table>
-       </div>
+       ${sectionTitle('Getting started', 8)}
+       ${steps([
+         'Verify your account with the code above.',
+         'Copy your unique referral link from the dashboard.',
+         'Share it with your audience.',
+         'Earn commission on every successful referral and track it in real time.',
+       ])}
 
-       ${btn(`${SITE_URL}/#/user/affiliate`, 'Go to Affiliate Dashboard', '#16a34a')}
+       ${btn(URLS.affiliate, 'Open affiliate dashboard')}
 
-       ${infoBox(`<strong>⚠️ Keep this code private.</strong> This one-time code is linked to your account. Never share it publicly.`, '#dc2626')}
-
-       <p style="font-size:14px;color:${TEXT_DARK};">Welcome to the family! 🌿<br><strong>Team NEFOL</strong></p>`
+       ${infoBox('<strong>Keep this code private.</strong> It is linked to your account and can only be used once.', WARN)}
+       ${signOff('Team NEFOL Affiliates')}`
     )
     await transporter.sendMail({
       from: `"NEFOL Affiliates" <${getAdminEmail()}>`,
       to: userEmail,
-      subject: `🎉 You're approved! Your NEFOL affiliate verification code`,
+      subject: `You're approved — your NEFOL affiliate verification code`,
       html
     })
     console.log(`✅ Affiliate approval email sent: ${userEmail}`)
@@ -973,11 +1149,7 @@ export async function sendInvoicePDFEmail(
     const pdfBuffer = await generateInvoicePDF(pool, order, baseUrl)
     const invoiceFileName = `Invoice-${order.invoice_number || order.order_number || order.id}.pdf`
 
-    const rawItems: any[] = Array.isArray(order.items) ? order.items : (() => {
-      try { return JSON.parse(order.items || '[]') } catch { return [] }
-    })()
-
-    const items = await enrichItemImages(pool, rawItems)
+    const items = await prepareEmailItems(parseItems(order.items), pool)
 
     const orderDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', {
       day: 'numeric', month: 'long', year: 'numeric'
@@ -985,52 +1157,30 @@ export async function sendInvoicePDFEmail(
 
     const html = shell(
       `Your NEFOL invoice for order ${order.order_number}`,
-      heroBanner(BRAND_DARK, '🧾', 'Your Invoice', `Order ${order.order_number}`),
-      `<p>Hi <strong>${(order.customer_name || 'there').split(' ')[0]}</strong>,</p>
-       <p>Thank you for your order! Your invoice is attached as a PDF. Here's a summary:</p>
+      hero('slate', 'Invoice', 'Your invoice is attached', `Order ${esc(order.order_number)}`),
+      `<p style="margin-top:0;">Hi <strong>${firstNameOf(order.customer_name)}</strong>,</p>
+       <p>Thank you for your order. Your invoice is attached to this email as a PDF. Here's a summary:</p>
 
-       <div style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:10px;padding:18px 22px;margin:20px 0;">
-         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-           <tr>
-             <td style="font-size:13px;color:${TEXT_MID};width:50%;vertical-align:top;padding:4px 0;">
-               <span style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Order Number</span>
-               <span style="font-size:15px;font-weight:800;color:${BRAND_ACCENT};">${order.order_number}</span>
-             </td>
-             <td style="font-size:13px;color:${TEXT_MID};vertical-align:top;padding:4px 0;">
-               <span style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Invoice Number</span>
-               <span style="font-size:15px;font-weight:700;color:${TEXT_DARK};">${order.invoice_number || '—'}</span>
-             </td>
-           </tr>
-           <tr>
-             <td style="font-size:13px;color:${TEXT_MID};vertical-align:top;padding:12px 0 4px;">
-               <span style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Order Date</span>
-               <span style="font-size:14px;font-weight:600;color:${TEXT_DARK};">${orderDate}</span>
-             </td>
-             <td style="font-size:13px;color:${TEXT_MID};vertical-align:top;padding:12px 0 4px;">
-               <span style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Amount Paid</span>
-               <span style="font-size:18px;font-weight:900;color:${BRAND_ACCENT};">₹${parseFloat(order.total || 0).toFixed(2)}</span>
-             </td>
-           </tr>
-         </table>
-       </div>
+       ${metaGrid([
+         ['Order number', `<span style="color:${ACCENT};">${esc(order.order_number)}</span>`],
+         ['Invoice number', esc(order.invoice_number || '—')],
+         ['Order date', esc(orderDate)],
+         ['Amount', inr(order.total)],
+       ])}
 
        ${items.length > 0 ? `
-         <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${TEXT_MID};margin:24px 0 0;">Items</h3>
-         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-           ${items.map(orderItemRow).join('')}
-         </table>
-         <div style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:10px;padding:18px 22px;margin:16px 0;">
-           ${orderTotalsTable(order)}
-         </div>` : ''}
+         ${sectionTitle('Items')}
+         ${itemsTable(items)}
+         ${panel(orderTotalsTable(order))}` : ''}
 
-       ${btn(`${SITE_URL}/#/user/orders`, 'View Order Details')}
-       <p style="font-size:14px;color:${TEXT_MID};">Your invoice PDF is attached. Keep it for your records. 🌿</p>`
+       ${btn(URLS.orders, 'View order details')}
+       <p class="em-muted" style="font-size:14px;color:${TEXT_MID};">Please keep the attached invoice for your records.</p>`
     )
 
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,
       to: order.customer_email,
-      subject: `🧾 Invoice — Order ${order.order_number}`,
+      subject: `Your invoice — Order ${order.order_number}`,
       html,
       attachments: [{ filename: invoiceFileName, content: pdfBuffer, contentType: 'application/pdf' }]
     })
@@ -1058,22 +1208,22 @@ export async function sendStaffAdminInvitationEmail({
   try {
     const html = shell(
       `You're invited to join the NEFOL admin panel`,
-      heroBanner(BRAND_DARK, '🔐', "You're Invited!", 'Join the NEFOL Admin Team'),
-      `<p>You've been invited to join the <strong>NEFOL Admin Panel</strong> as a staff member.</p>
-       <p>Click the button below to complete your onboarding — confirm your details, accept the staff agreement, and set your password.</p>
+      hero('slate', 'Team invitation', "You're invited to the NEFOL admin panel", 'Complete your onboarding to get started.'),
+      `<p style="margin-top:0;">You've been invited to join the <strong>NEFOL admin panel</strong> as a staff member.</p>
+       <p>Use the button below to confirm your details, accept the staff agreement and set your password.</p>
 
-       ${btn(inviteUrl, 'Complete My Onboarding')}
+       ${btn(inviteUrl, 'Complete onboarding', MIDNIGHT)}
 
-       ${infoBox(`
-         <p style="margin:0 0 10px;font-size:14px;font-weight:700;">After onboarding you will:</p>
-         <ul style="margin:0;padding-left:18px;font-size:14px;color:${TEXT_MID};line-height:2;">
-           <li>Receive your role and permissions from an administrator</li>
-           <li>Be able to log in to the admin panel immediately</li>
-           <li>Have access to features set by your admin</li>
-         </ul>
-       `)}
+       ${sectionTitle('After onboarding', 22)}
+       ${steps([
+         'An administrator assigns your role and permissions.',
+         'You can sign in to the admin panel straight away.',
+         'You see the tools your role gives you access to.',
+       ])}
 
-       <p style="font-size:13px;color:${TEXT_LIGHT};">This invitation expires in <strong>${expiresInHours} hours</strong>. If you weren't expecting this email, you can safely ignore it.</p>`
+       <p class="em-muted" style="margin-top:22px;font-size:13px;color:${TEXT_LIGHT};">This invitation expires in <strong>${expiresInHours} hours</strong>. If you weren't expecting it, you can safely ignore this email.</p>`,
+      '',
+      { reason: 'You received this because a NEFOL administrator invited this email address.' }
     )
     await transporter.sendMail({
       from: `"NEFOL" <${getAdminEmail()}>`,

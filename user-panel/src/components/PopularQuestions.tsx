@@ -3,6 +3,7 @@ import { communityAPI } from '../services/communityAPI'
 import type { CommunityQuestion } from '../types/community'
 import { MessageCircle, ChevronRight, HelpCircle, ArrowRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { questionHref } from '../utils/questionUrls'
 
 interface Props {
   productId: number
@@ -39,8 +40,8 @@ export default function PopularQuestions({ productId }: Props) {
     window.location.hash = `#/user/blog/ask-community/new?product_id=${productId}`
   }
 
-  const openThread = (id: number) => {
-    window.location.hash = `#/user/blog/ask-community/${id}`
+  const openThread = (q: { id: number; slug?: string | null }) => {
+    window.location.hash = questionHref(q)
   }
 
   return (
@@ -76,7 +77,7 @@ export default function PopularQuestions({ productId }: Props) {
             <button
               key={q.id}
               type="button"
-              onClick={() => openThread(q.id)}
+              onClick={() => openThread(q)}
               className="group w-full text-left rounded-2xl border border-gray-200 bg-white px-4 sm:px-5 py-4 shadow-sm hover:border-[color:var(--nf-primary)] hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-start justify-between gap-3">

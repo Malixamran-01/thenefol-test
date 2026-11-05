@@ -89,6 +89,7 @@ interface AuthorDetailResponse {
   }
   recent_posts: Array<{
     id: number
+    slug?: string | null
     title: string
     status: string
     featured: boolean
@@ -850,7 +851,7 @@ export default function AuthorManagement() {
                               {p.is_deleted ? ' · trashed' : ''} · #{p.id}
                             </span>
                             <a
-                              href={`${USER_ORIGIN}/#/user/blog/${p.id}`}
+                              href={`${USER_ORIGIN}/blog/${p.slug ? encodeURIComponent(p.slug) : p.id}`}
                               target="_blank"
                               rel="noreferrer"
                               className="text-[#1B4965] underline"

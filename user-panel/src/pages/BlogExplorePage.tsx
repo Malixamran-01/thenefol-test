@@ -25,6 +25,7 @@ import { blogActivityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBase } from '../utils/apiBase'
 import { BLOG_CATEGORY_OPTIONS } from '../constants/blogCategories'
+import { blogPostHref } from '../utils/blogShareUrls'
 
 const stripHtml = (html: string) => {
   if (!html) return ''
@@ -37,6 +38,7 @@ const stripHtml = (html: string) => {
 
 interface Post {
   id: string
+  slug?: string | null
   title: string
   excerpt: string
   cover_image?: string | null
@@ -172,7 +174,7 @@ function PostCard({ post, onTagClick }: { post: Post; onTagClick: (tag: string) 
 
   return (
     <a
-      href={`#/user/blog/${post.id}`}
+      href={blogPostHref(post)}
       className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
     >
       {imgSrc && (

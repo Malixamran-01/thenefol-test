@@ -19,7 +19,12 @@ function normalizeCleanLandingToHash(): void {
   if (!pathname || pathname === '/' || pathname === '/index.html') return
   const clean = pathname.replace(/\/+$/, '')
   const m = clean.match(/^\/(product|blog|author)\/(.+)$/i)
-  const route = m ? `/user/${m[1].toLowerCase()}/${m[2]}` : clean
+  const q = clean.match(/^\/(?:questions|q)\/([^/]+)$/i)
+  const route = m
+    ? `/user/${m[1].toLowerCase()}/${m[2]}`
+    : q
+      ? `/user/blog/ask-community/${q[1]}`
+      : clean
   history.replaceState(history.state, '', `/${search}#${route}`)
 }
 normalizeCleanLandingToHash()

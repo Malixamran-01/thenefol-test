@@ -26,6 +26,8 @@ export interface Comment {
 
 export interface CommunityQuestion {
   id: number
+  /** SEO URL slug from the title (`/questions/<slug>`) */
+  slug?: string | null
   user_id: number
   topic_type: 'product' | 'brand'
   product_id: number | null

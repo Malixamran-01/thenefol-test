@@ -8,6 +8,7 @@ import {
   getCarouselActiveIndex,
   scrollCarouselToIndex,
 } from '../utils/carouselScroll'
+import { blogPostHref } from '../utils/blogShareUrls'
 
 interface SneakPost extends BlogPostCardPost {
   author_name?: string | null
@@ -58,7 +59,7 @@ function CommunityStoryCard({ post }: { post: SneakPost }) {
 
         <div className="nefol-story__body">
           <h3 className="nefol-story__title">
-            <a href={`#/user/blog/${post.id}`} className="nefol-story__link">{title}</a>
+            <a href={blogPostHref(post)} className="nefol-story__link">{title}</a>
           </h3>
           {excerpt && <p className="nefol-story__excerpt">{excerpt}</p>}
 

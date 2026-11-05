@@ -12,6 +12,7 @@ import { Request, Response } from 'express'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
 import { WhatsAppService } from '../services/whatsappService'
 import { transporter, getAdminEmail } from '../utils/email'
+import { buildOtpEmailHtml } from '../services/emailService'
 import { generateAndSendOtp, verifyOtp, maskOTP } from '../services/otpService'
 
 /**
@@ -78,30 +79,13 @@ export async function sendOTP(pool: Pool, req: Request, res: Response) {
         const userResult = await pool.query('SELECT name FROM users WHERE email = $1', [emailAddr])
         const userName = userResult.rows[0]?.name || 'User'
         
-        const emailHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><title>OTP Verification</title></head>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: #667eea; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-              <h1 style="color: #fff; margin: 0;">OTP Verification</h1>
-            </div>
-            <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-              <p style="font-size: 16px;">Hi ${userName},</p>
-              <p style="font-size: 16px;">Your verification code is:</p>
-              <div style="background: #fff; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
-                <h2 style="color: #667eea; font-size: 32px; margin: 0; letter-spacing: 5px;">${otp}</h2>
-              </div>
-              <p style="font-size: 14px; color: #666;">This code will expire in ${Math.ceil(parseInt(process.env.OTP_TTL_SECONDS || '300') / 60)} minutes.</p>
-            </div>
-          </body>
-          </html>
-        `
+        const otpMinutes = Math.ceil(parseInt(process.env.OTP_TTL_SECONDS || '300') / 60)
+        const emailHtml = buildOtpEmailHtml(userName, otp, otpMinutes)
         
         await transporter.sendMail({
-          from: `"Thenefol" <${getAdminEmail()}>`,
+          from: `"NEFOL" <${getAdminEmail()}>`,
           to: emailAddr,
-          subject: 'OTP Verification - Thenefol',
+          subject: `${otp} is your NEFOL verification code`,
           html: emailHtml
         })
       } catch (err: any) {

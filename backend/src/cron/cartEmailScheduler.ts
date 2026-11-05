@@ -48,12 +48,23 @@ export function startCartEmailSchedulerCron(pool: Pool): void {
           `, [emailData.user_id])
           
           if (parseInt(cartItems.rows[0].count) > 0) {
+            // Product photo + link for the email (pending rows only store the name)
+            const { rows: productRows } = await pool.query(
+              `SELECT p.slug, p.list_image, c.quantity
+               FROM cart c JOIN products p ON p.id = c.product_id
+               WHERE c.user_id = $1 AND p.title = $2
+               LIMIT 1`,
+              [emailData.user_id, emailData.product_name]
+            ).catch(() => ({ rows: [] as any[] }))
+            const product = productRows[0]
+
             // Send the email
             await sendCartAddedEmail(
               emailData.user_email,
               emailData.user_name,
               emailData.product_name,
-              parseFloat(emailData.product_price.toString())
+              parseFloat(emailData.product_price.toString()),
+              product ? { slug: product.slug, image: product.list_image, quantity: Number(product.quantity) || 1 } : undefined
             )
             
             // Mark as sent

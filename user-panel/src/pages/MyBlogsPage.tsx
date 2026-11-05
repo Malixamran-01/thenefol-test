@@ -6,6 +6,7 @@ import { blogActivityAPI } from '../services/api'
 import { authorAPI } from '../services/authorAPI'
 import { clearLocalDraft, getLocalDraft } from '../utils/blogDraft'
 import AuthorPromptModal from '../components/AuthorPromptModal'
+import { blogPostHref } from '../utils/blogShareUrls'
 
 const stripHtml = (html: string) => {
   if (!html) return ''
@@ -16,6 +17,7 @@ const stripHtml = (html: string) => {
 
 interface BlogPost {
   id: string
+  slug?: string | null
   title: string
   excerpt: string
   author_name: string
@@ -213,7 +215,7 @@ export default function MyBlogsPage() {
                 >
                   <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 items-center">
                     <a
-                      href={`#/user/blog/${post.id}`}
+                      href={blogPostHref(post)}
                       className="flex flex-1 gap-4 min-w-0 min-h-0"
                     >
                       <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100">
@@ -279,7 +281,7 @@ export default function MyBlogsPage() {
                         </button>
                       )}
                       <a
-                        href={`#/user/blog/${post.id}`}
+                        href={blogPostHref(post)}
                         className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-0"
                         aria-label="View post"
                       >

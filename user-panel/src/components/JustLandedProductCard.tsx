@@ -53,12 +53,15 @@ export default function JustLandedProductCard({
   csvProducts,
   reviewStats,
   eagerImage = false,
+  layout = 'carousel',
 }: {
   product: JustLandedProduct
   globalIndex: number
   csvProducts: any[]
   reviewStats: ReviewStatsMap
   eagerImage?: boolean
+  /** 'grid' when the card sits in a multi-column grid (2 per row on phones): compact type, wrapping price row */
+  layout?: 'carousel' | 'grid'
 }) {
   const slug = product.slug || ''
   const dbStats = reviewStats[slug]
@@ -71,7 +74,7 @@ export default function JustLandedProductCard({
   const subtitle = subtitleRaw ? truncateWithEllipsis(subtitleRaw, DESC_MAX_CHARS) : null
 
   return (
-    <article className="nefol-product-card group">
+    <article className={`nefol-product-card group${layout === 'grid' ? ' nefol-product-card--grid' : ''}`}>
       <a href={`#/user/product/${product.slug}`} className="block shrink-0">
         <div className="nefol-product-card__media">
           {product.listImage ? (

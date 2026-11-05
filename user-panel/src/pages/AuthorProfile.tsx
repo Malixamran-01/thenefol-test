@@ -37,6 +37,7 @@ import { blogActivityAPI, uploadAuthorProfileImage, uploadAuthorCoverImage } fro
 import { setFollowStatus } from '../store/followSlice'
 import type { RootState } from '../store'
 import { AuthorVerifiedBadge } from '../components/AuthorVerifiedBadge'
+import { blogPostHref } from '../utils/blogShareUrls'
 
 interface AuthorSeedData {
   id: string | number
@@ -86,6 +87,7 @@ interface AuthorProfileData {
 
 interface BlogPost {
   id: string
+  slug?: string | null
   title: string
   excerpt: string
   content: string
@@ -1647,7 +1649,7 @@ export default function AuthorProfile() {
                             </div>
 
                             <a
-                              href={`#/user/blog/${post.id}`}
+                              href={blogPostHref(post)}
                               className="inline-flex items-center gap-1 rounded-lg bg-[color:var(--nf-heading)] px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#0f2f42]"
                             >
                               Read post

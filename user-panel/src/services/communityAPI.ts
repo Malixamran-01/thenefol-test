@@ -68,8 +68,9 @@ export const communityAPI = {
     return parseJson(response)
   },
 
-  async getQuestion(id: number): Promise<{ question: CommunityQuestion; answers: Comment[] }> {
-    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${id}`, {
+  /** `ref` is the question's title slug or numeric ID. */
+  async getQuestion(ref: number | string): Promise<{ question: CommunityQuestion; answers: Comment[] }> {
+    const response = await fetch(`${getApiBaseUrl()}${COMMUNITY_PREFIX}/questions/${encodeURIComponent(String(ref))}`, {
       headers: getAuthHeaders(),
     })
     const data = await parseJson<{ question: CommunityQuestion; answers: Record<string, unknown>[] }>(response)

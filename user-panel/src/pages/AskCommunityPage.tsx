@@ -17,6 +17,7 @@ import { communityAPI, type CommunityQuestion, type CommunityTopicType } from '.
 import { productsAPI, type Product } from '../services/api'
 import { encodeMediaUrl, getApiBase } from '../utils/apiBase'
 import { useAuth } from '../contexts/AuthContext'
+import { questionHref } from '../utils/questionUrls'
 
 /* ─── helpers ─────────────────────────────────────────────── */
 
@@ -459,8 +460,8 @@ export default function AskCommunityPage() {
     window.location.hash = '#/user/blog/ask-community/new'
   }
 
-  const openThread = (id: number) => {
-    window.location.hash = `#/user/blog/ask-community/${id}`
+  const openThread = (q: { id: number; slug?: string | null }) => {
+    window.location.hash = questionHref(q)
   }
 
   const productChips = useMemo(() => {
@@ -682,7 +683,7 @@ export default function AskCommunityPage() {
             {!loading && !error && visible.length > 0 && (
               <div className="mt-3 min-w-0 space-y-2.5 sm:space-y-3">
                 {visible.map((q) => (
-                  <QuestionCard key={q.id} q={q} onClick={() => openThread(q.id)} />
+                  <QuestionCard key={q.id} q={q} onClick={() => openThread(q)} />
                 ))}
                 {hasMore && (
                   <button

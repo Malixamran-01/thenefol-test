@@ -58,11 +58,13 @@ export function startCartAbandonmentCron(pool: Pool): void {
               p.title,
               p.price,
               p.slug,
+              p.list_image,
               jsonb_build_object(
                 'id', p.id,
                 'title', p.title,
                 'price', p.price,
-                'slug', p.slug
+                'slug', p.slug,
+                'list_image', p.list_image
               ) as product
             FROM cart c
             INNER JOIN products p ON c.product_id = p.id
@@ -103,7 +105,8 @@ export function startCartAbandonmentCron(pool: Pool): void {
                   await sendCartAbandonmentEmail(
                     cart.email,
                     cart.name || 'Customer',
-                    cartItems.rows
+                    cartItems.rows,
+                    pool
                   )
                   console.log(`✅ Cart abandonment email sent to user ${cart.user_id} (${cart.email})`)
                 } catch (emailErr: any) {

@@ -236,7 +236,7 @@ export async function getAdminAuthor(pool: Pool | null, req: Request, res: Respo
       blogSummary.drafts = dRows[0]?.c ?? 0
 
       const { rows: rp } = await pool.query(
-        `SELECT id, title, status, featured, created_at, updated_at,
+        `SELECT id, slug, title, status, featured, created_at, updated_at,
                 COALESCE(is_deleted, false) AS is_deleted,
                 views_count, reads_count
          FROM blog_posts

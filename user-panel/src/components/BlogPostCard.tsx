@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Heart, MessageCircle, Bookmark } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { RepostButton } from './RepostButton'
+import { blogPostHref } from '../utils/blogShareUrls'
 
 export interface BlogPostCardPost {
   id: string
+  slug?: string | null
   title: string
   excerpt: string
   cover_image?: string
@@ -177,7 +179,7 @@ export function BlogPostCard({
 
   return (
     <a
-      href={`#/user/blog/${post.id}`}
+      href={blogPostHref(post)}
       className="group flex h-[360px] flex-col overflow-hidden rounded-2xl bg-gray-900 shadow-sm transition-all duration-300 hover:shadow-lg cursor-pointer"
       style={{ textDecoration: 'none' }}
     >

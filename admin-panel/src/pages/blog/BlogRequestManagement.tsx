@@ -25,6 +25,7 @@ import { getApiBaseUrl } from '../../utils/apiUrl'
 /** Row from GET /blog/admin/posts (+ joined counts) */
 interface AdminBlogPost {
   id: number
+  slug?: string | null
   title: string
   content: string
   excerpt: string
@@ -277,9 +278,10 @@ function estimateReadMinutes(html: string): number {
   return Math.max(1, Math.ceil(words / 200))
 }
 
-function userBlogPostUrl(postId: number): string {
+/** Public SEO URL of a post: /blog/<title-slug> (falls back to the numeric ID). */
+function userBlogPostUrl(post: { id: number; slug?: string | null }): string {
   const origin = (import.meta.env.VITE_USER_APP_ORIGIN as string | undefined)?.replace(/\/$/, '') || 'https://thenefol.com'
-  return `${origin}/#/user/blog/${postId}`
+  return `${origin}/blog/${post.slug ? encodeURIComponent(post.slug) : post.id}`
 }
 
 export default function BlogRequestManagement() {
@@ -874,7 +876,7 @@ export default function BlogRequestManagement() {
                       </button>
                         {post.status === 'approved' && !post.is_deleted && (
                           <a
-                            href={userBlogPostUrl(post.id)}
+                            href={userBlogPostUrl(post)}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
@@ -1025,7 +1027,7 @@ export default function BlogRequestManagement() {
                 <AdminBlogPreview
                   apiBase={API_BASE}
                   post={selected.revision_pending ? mergePendingRevision(selected) : selected}
-                  onOpenLive={() => window.open(userBlogPostUrl(selected.id), '_blank')}
+                  onOpenLive={() => window.open(userBlogPostUrl(selected), '_blank')}
                 />
               )}
               {panelTab === 'seo' && (

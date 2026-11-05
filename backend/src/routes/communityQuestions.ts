@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import { Pool } from 'pg'
 import { authenticateToken, getStaffContext, sendError, sendSuccess } from '../utils/apiHelpers'
 import { getUserIdFromRequest } from '../utils/authTokens'
+import { syncQuestionSlug, resolveQuestionRef, questionUrlSegment } from '../utils/blogSlug'
 
 const router = Router()
 let pool: Pool
@@ -68,6 +69,8 @@ export interface CommentNode extends CommentRow {
 function mapQuestionRow(row: Record<string, unknown>) {
   return {
     id: row.id,
+    /** SEO URL slug from the title (`/questions/<slug>`) */
+    slug: row.slug ?? null,
     user_id: row.user_id,
     topic_type: row.topic_type,
     product_id: row.product_id,
@@ -354,11 +357,12 @@ router.get('/questions/:id/answers', async (req: Request, res: Response) => {
   }
 })
 
-// Single thread (question + full tree — legacy/admin)
+// Single thread (question + full tree — legacy/admin). Accepts the SEO slug, a retired slug, or the ID.
 router.get('/questions/:id', async (req: Request, res: Response) => {
   try {
-    const questionId = Number(req.params.id)
-    if (!Number.isFinite(questionId)) return sendError(res, 400, 'Invalid question id')
+    const ref = await resolveQuestionRef(pool, req.params.id)
+    if (!ref) return sendError(res, 404, 'Question not found')
+    const questionId = ref.id
 
     const sort = String(req.query.sort || 'top')
     const viewerUserId = parseOptionalUserId(req)
@@ -430,6 +434,12 @@ router.post('/questions', authenticateToken, async (req: Request, res: Response)
       [userId, topicType, productId, titleStr, bodyStr]
     )
 
+    try {
+      rows[0].slug = await syncQuestionSlug(pool, Number(rows[0].id))
+    } catch (err) {
+      console.error('Failed to assign question slug:', err)
+    }
+
     sendSuccess(res, mapQuestionRow(rows[0] as Record<string, unknown>), 201)
   } catch (err) {
     sendError(res, 500, 'Failed to create question', err)
@@ -462,6 +472,8 @@ router.patch('/questions/:id', authenticateToken, async (req: Request, res: Resp
     )
 
     if (!rows.length) return sendError(res, 404, 'Question not found or not yours')
+    // Title may have changed — keep the slug in step (old slug keeps redirecting)
+    await syncQuestionSlug(pool, questionId).catch((err) => console.error('Failed to sync question slug:', err))
 
     const { rows: qRows } = await pool.query(
       `
@@ -759,6 +771,7 @@ router.patch('/questions/:id/admin', authenticateToken, async (req: Request, res
       [questionId, titleStr, bodyStr]
     )
     if (!rows.length) return sendError(res, 404, 'Question not found')
+    await syncQuestionSlug(pool, questionId).catch((err) => console.error('Failed to sync question slug:', err))
 
     const { rows: qRows } = await pool.query(
       `SELECT cq.*, COALESCE(ap.display_name, u.name, 'Member') AS author_name,
@@ -887,39 +900,156 @@ function escapeHtmlQ(s: string) {
     .replace(/'/g, '&#39;')
 }
 
+/**
+ * Server-rendered Q&A thread for search engines, link-preview bots and AI agents — none of them run the
+ * hash-routed SPA. Canonical URL is `/questions/<title-slug>`; legacy `/q/<id>` and retired slugs 301 to it.
+ * Humans are redirected into the SPA thread page.
+ */
 export async function serveQuestionMetaPage(req: ExpressRequest, res: ExpressResponse) {
   try {
-    const id = req.params.id
     const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
     const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'thenefol.com'
     const baseUrl = `${protocol}://${host}`.replace(/\/$/, '')
     const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '') || baseUrl
+    const mediaBase = (process.env.PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || frontendBase
+    const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : ''
+
+    const ref = await resolveQuestionRef(pool, req.params.id)
+    const segment = ref ? questionUrlSegment(ref) : encodeURIComponent(String(req.params.id || ''))
 
     if (!isSocialCrawler(req.headers['user-agent'] as string | undefined)) {
-      return res.redirect(302, `${frontendBase}/#/user/blog/ask-community/${id}`)
+      return res.redirect(302, `${frontendBase}/${qs}#/user/blog/ask-community/${segment}`)
+    }
+
+    if (!ref) {
+      res.setHeader('X-Robots-Tag', 'noindex')
+      return res.status(404).send('Question not found')
+    }
+
+    // Legacy /q/<id>, numeric or retired-slug URLs → permanent redirect to /questions/<slug>
+    let requested = String(req.params.id || '').replace(/\/+$/, '')
+    try {
+      requested = decodeURIComponent(requested)
+    } catch {
+      /* keep raw */
+    }
+    const onCanonicalPath = req.path.startsWith('/questions/')
+    if (!onCanonicalPath || (ref.slug && requested !== ref.slug)) {
+      return res.redirect(301, `${frontendBase}/questions/${segment}${qs}`)
     }
 
     const { rows } = await pool.query(
-      `SELECT cq.id, cq.title, cq.body, cq.created_at,
-              p.title AS product_title, p.slug AS product_slug
+      `SELECT cq.id, cq.slug, cq.title, cq.body, cq.topic_type, cq.answer_count, cq.created_at, cq.updated_at,
+              COALESCE(ap.display_name, u.name, 'Member') AS author_name,
+              p.title AS product_title, p.slug AS product_slug, p.list_image AS product_list_image
        FROM community_questions cq
+       ${USER_JOIN}
        LEFT JOIN products p ON p.id = cq.product_id
-       WHERE cq.id = $1 AND (cq.is_deleted = false OR cq.is_deleted IS NULL)`,
-      [id]
+       WHERE cq.id = $1`,
+      [ref.id]
     )
-    if (rows.length === 0) return res.status(404).send('Question not found')
-
+    if (rows.length === 0) {
+      res.setHeader('X-Robots-Tag', 'noindex')
+      return res.status(404).send('Question not found')
+    }
     const q = rows[0] as any
-    const title = `${q.title} | NEFOL Community`
-    const bodyText = String(q.body || '')
-      .replace(/<[^>]*>/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 200)
-    const description = bodyText || `Community discussion on NEFOL: ${q.title}`
-    const pageUrl = `${frontendBase}/q/${id}`
-    const spaUrl = `${frontendBase}/#/user/blog/ask-community/${id}`
+
+    // Visible answers, best first: verified, then most liked, then oldest
+    const { rows: answers } = await pool.query(
+      `SELECT ca.id, ca.body, ca.depth, ca.parent_id, ca.is_verified, ca.likes_count, ca.created_at,
+              COALESCE(ap.display_name, u.name, 'Member') AS author_name
+       FROM community_answers ca
+       ${ANSWER_USER_JOIN}
+       WHERE ca.question_id = $1 AND ca.is_deleted = false
+       ORDER BY ca.is_verified DESC, ca.likes_count DESC, ca.created_at ASC
+       LIMIT 50`,
+      [ref.id]
+    )
+    const topLevel = answers.filter((a: any) => a.parent_id == null)
+    const replyCount = answers.length - topLevel.length
+
+    const plain = (s: unknown) => String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    const iso = (v: unknown) => {
+      if (!v) return undefined
+      const d = v instanceof Date ? v : new Date(String(v))
+      return Number.isNaN(d.getTime()) ? undefined : d.toISOString()
+    }
+    const paragraphs = (s: unknown) =>
+      String(s || '')
+        .replace(/<[^>]*>/g, ' ')
+        .split(/\n+/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((l) => `<p>${escapeHtmlQ(l)}</p>`)
+        .join('\n')
+
+    const questionText = plain(q.title)
+    const bodyText = plain(q.body)
+    const topAnswer = topLevel[0] ? plain(topLevel[0].body) : ''
+    const description = (bodyText || topAnswer || `Community discussion on NEFOL: ${questionText}`).slice(0, 200)
+    const title = `${questionText} | NEFOL Community`
+    const pageUrl = `${frontendBase}/questions/${segment}`
+    const spaUrl = `${frontendBase}/#/user/blog/ask-community/${segment}`
+    const communityUrl = `${frontendBase}/user/blog/ask-community`
     const siteLogo = `${frontendBase}/IMAGES/NEFOL%20icon.png`
+    const productUrl = q.product_slug ? `${frontendBase}/product/${encodeURIComponent(q.product_slug)}` : ''
+    const productImage = q.product_list_image
+      ? (String(q.product_list_image).startsWith('http') ? String(q.product_list_image) : `${mediaBase}${String(q.product_list_image).startsWith('/') ? '' : '/'}${q.product_list_image}`)
+      : ''
+    const ogImage = productImage || siteLogo
+    const published = iso(q.created_at)
+    const modified = iso(q.updated_at) || published
+
+    const toAnswerLd = (a: any) => ({
+      '@type': 'Answer',
+      text: plain(a.body),
+      dateCreated: iso(a.created_at),
+      upvoteCount: Number(a.likes_count) || 0,
+      url: `${pageUrl}#answer-${a.id}`,
+      author: { '@type': 'Person', name: plain(a.author_name) || 'Member' },
+    })
+    const accepted = topLevel.find((a: any) => a.is_verified)
+    const suggested = topLevel.filter((a: any) => a !== accepted).slice(0, 10)
+
+    const jsonLd = [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'QAPage',
+        url: pageUrl,
+        mainEntity: {
+          '@type': 'Question',
+          name: questionText,
+          text: bodyText || questionText,
+          answerCount: topLevel.length,
+          dateCreated: published,
+          author: { '@type': 'Person', name: plain(q.author_name) || 'Member' },
+          ...(accepted ? { acceptedAnswer: toAnswerLd(accepted) } : {}),
+          ...(suggested.length ? { suggestedAnswer: suggested.map(toAnswerLd) } : {}),
+          ...(productUrl ? { about: { '@type': 'Product', name: plain(q.product_title), url: productUrl } } : {}),
+        },
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${frontendBase}/` },
+          { '@type': 'ListItem', position: 2, name: 'Ask the Community', item: communityUrl },
+          { '@type': 'ListItem', position: 3, name: questionText, item: pageUrl },
+        ],
+      },
+    ]
+    const jsonLdSafe = JSON.stringify(jsonLd).replace(/</g, '\\u003c')
+
+    const answerHtml = answers
+      .map((a: any) => {
+        const indent = Math.min(Number(a.depth) || 0, 4)
+        const when = iso(a.created_at)
+        return `<article id="answer-${a.id}"${indent ? ` style="margin-left:${indent * 20}px"` : ''}>
+        <p class="meta">${escapeHtmlQ(plain(a.author_name) || 'Member')}${a.is_verified ? ' · <strong>Verified answer</strong>' : ''}${when ? ` · <time datetime="${when}">${when.slice(0, 10)}</time>` : ''}${Number(a.likes_count) ? ` · ${Number(a.likes_count)} helpful` : ''}</p>
+        ${paragraphs(a.body)}
+      </article>`
+      })
+      .join('\n      ')
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -928,40 +1058,47 @@ export async function serveQuestionMetaPage(req: ExpressRequest, res: ExpressRes
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtmlQ(title)}</title>
   <meta name="description" content="${escapeHtmlQ(description)}">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <link rel="canonical" href="${escapeHtmlQ(pageUrl)}">
   <meta property="og:type" content="article">
   <meta property="og:title" content="${escapeHtmlQ(title)}">
   <meta property="og:description" content="${escapeHtmlQ(description)}">
   <meta property="og:url" content="${escapeHtmlQ(pageUrl)}">
   <meta property="og:site_name" content="NEFOL">
-  <meta property="og:image" content="${escapeHtmlQ(siteLogo)}">
+  <meta property="og:image" content="${escapeHtmlQ(ogImage)}">
+  ${published ? `<meta property="article:published_time" content="${published}">` : ''}
+  ${modified ? `<meta property="article:modified_time" content="${modified}">` : ''}
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="${escapeHtmlQ(title)}">
   <meta name="twitter:description" content="${escapeHtmlQ(description)}">
-  <link rel="canonical" href="${escapeHtmlQ(pageUrl)}">
-  <script type="application/ld+json">${JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'QAPage',
-    name: q.title,
-    description,
-    url: pageUrl,
-    datePublished: q.created_at,
-    mainEntity: {
-      '@type': 'Question',
-      name: q.title,
-      text: bodyText,
-      dateCreated: q.created_at,
-      answerCount: 0,
-    }
-  })}</script>
+  <meta name="twitter:image" content="${escapeHtmlQ(ogImage)}">
+  <script type="application/ld+json">${jsonLdSafe}</script>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.7;color:#1f2937;max-width:760px;margin:0 auto;padding:16px}
+    .meta{color:#6b7280;font-size:.9rem;margin-bottom:.25rem}
+    article{border-top:1px solid #e5e7eb;padding-top:.5rem}
+  </style>
 </head>
 <body>
-  <h1>${escapeHtmlQ(q.title)}</h1>
-  ${q.body ? `<p>${escapeHtmlQ(bodyText)}</p>` : ''}
-  <p><a href="${escapeHtmlQ(spaUrl)}">View full discussion on NEFOL</a></p>
+  <header>
+    <nav aria-label="Breadcrumb"><a href="${escapeHtmlQ(frontendBase)}/">NEFOL</a> › <a href="${escapeHtmlQ(communityUrl)}">Ask the Community</a></nav>
+  </header>
+  <main>
+    <h1>${escapeHtmlQ(questionText)}</h1>
+    <p class="meta">Asked by ${escapeHtmlQ(plain(q.author_name) || 'Member')}${published ? ` · <time datetime="${published}">${published.slice(0, 10)}</time>` : ''}${productUrl ? ` · About <a href="${escapeHtmlQ(productUrl)}">${escapeHtmlQ(plain(q.product_title))}</a>` : ''}</p>
+    ${paragraphs(q.body)}
+    <section>
+      <h2>${topLevel.length} ${topLevel.length === 1 ? 'answer' : 'answers'}${replyCount ? ` and ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}` : ''}</h2>
+      ${answerHtml || '<p>No answers yet.</p>'}
+    </section>
+    <p><a href="${escapeHtmlQ(spaUrl)}">Answer this question on NEFOL</a></p>
+  </main>
+  <footer><p><a href="${escapeHtmlQ(communityUrl)}">More community questions</a> · <a href="${escapeHtmlQ(frontendBase)}/user/blog">NEFOL Blog</a> · <a href="${escapeHtmlQ(frontendBase)}/user/shop">Shop NEFOL</a></p></footer>
 </body>
 </html>`
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.setHeader('Cache-Control', 'public, max-age=300')
+    res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large')
     res.send(html)
   } catch (err) {
     console.error('Question meta page error:', err)
