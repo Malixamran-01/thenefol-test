@@ -93,8 +93,6 @@ export default function ProductPage() {
   const hasLoaded = useRef(false)
   const [hoverZoom, setHoverZoom] = useState({ show: false, x: 0, y: 0 })
   const mainImageRef = useRef<HTMLDivElement>(null)
-  const [thumbnailScrollIndex, setThumbnailScrollIndex] = useState(0)
-  const thumbnailContainerRef = useRef<HTMLDivElement>(null)
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const slideTrackRef = useRef<HTMLDivElement>(null)
   const thumbStripRef = useRef<HTMLDivElement>(null)
@@ -120,7 +118,6 @@ export default function ProductPage() {
     setGalleryImages(buildProductGalleryImages(product))
     setCurrentImageIndex(0)
     setZoomImageIndex(0)
-    setThumbnailScrollIndex(0)
   }, [product?.id, product?.listImage, product?.pdpImages])
 
   // Swiping the main gallery picks the slide nearest the centre once the scroll settles on it
@@ -156,6 +153,30 @@ export default function ProductPage() {
   }, [currentImageIndex, galleryImages])
 
   useEffect(() => () => window.clearTimeout(slideSettleTimer.current), [])
+
+  // The rating under the title, and rating links on product cards, jump to Customer Reviews
+  const scrollToReviews = useCallback(() => {
+    const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    document.getElementById('reviews')?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+  }, [])
+
+  useEffect(() => {
+    if (!product?.slug || !/[?&]section=reviews\b/.test(window.location.hash)) return
+    // After the route's scroll-to-top; again a moment later in case images above shifted the
+    // page — unless the shopper has started scrolling themselves
+    let userScrolled = false
+    const stop = () => { userScrolled = true }
+    window.addEventListener('wheel', stop, { passive: true })
+    window.addEventListener('touchmove', stop, { passive: true })
+    const first = window.setTimeout(scrollToReviews, 350)
+    const again = window.setTimeout(() => { if (!userScrolled) scrollToReviews() }, 1200)
+    return () => {
+      window.clearTimeout(first)
+      window.clearTimeout(again)
+      window.removeEventListener('wheel', stop)
+      window.removeEventListener('touchmove', stop)
+    }
+  }, [product?.slug, scrollToReviews])
 
   // On phones the thumbnail strip scrolls sideways: keep the active thumbnail in view while swiping
   useEffect(() => {
@@ -465,7 +486,6 @@ export default function ProductPage() {
             // Reset image index when product changes
             setCurrentImageIndex(0)
             setZoomImageIndex(0)
-            setThumbnailScrollIndex(0)
             
             // Track product view (non-blocking)
             if (item.id) {
@@ -960,7 +980,9 @@ export default function ProductPage() {
                       ref={slideTrackRef}
                       onScroll={handleSlideScroll}
                       className="flex !flex-nowrap h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                      style={{ WebkitOverflowScrolling: 'touch' }}
+                      // touch-action: the browser pans sideways/vertically itself (and still pinch-zooms) without waiting on JS
+                      style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y pinch-zoom' }}
+                      data-swipe-ignore
                       aria-roledescription="carousel"
                       aria-label={`${product.title} images`}
                     >
@@ -1047,215 +1069,95 @@ export default function ProductPage() {
                 )
               })()}
 
-              {/* Thumbnail Gallery - Carousel style 1x3 (3 images per row) */}
-              {(() => {
-                const uniqueImages = galleryImages
-                
-                const imagesToShow = 3 // Show exactly 3 images at a time
-                const thumbnailSize = 130 // Increased size: 130px × 130px
-                const thumbnailGap = 12 // Gap between thumbnails
-                const containerWidth = (thumbnailSize * imagesToShow) + (thumbnailGap * (imagesToShow - 1)) // Width for 3 images
-                
-                const maxScrollIndex = Math.max(0, uniqueImages.length - imagesToShow)
-                const canScrollLeft = thumbnailScrollIndex > 0
-                const canScrollRight = thumbnailScrollIndex < maxScrollIndex
-                
-                const handleThumbnailScroll = (direction: 'left' | 'right') => {
-                  if (direction === 'left' && canScrollLeft) {
-                    const newIndex = Math.max(0, thumbnailScrollIndex - 1)
-                    setThumbnailScrollIndex(newIndex)
-                    // Scroll container
-                    if (thumbnailContainerRef.current) {
-                      const container = thumbnailContainerRef.current
-                      const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
-                      safeElementScrollTo(container, {
-                        left: scrollPosition,
-                        behavior: 'smooth',
-                      })
-                    }
-                  } else if (direction === 'right' && canScrollRight) {
-                    const newIndex = Math.min(maxScrollIndex, thumbnailScrollIndex + 1)
-                    setThumbnailScrollIndex(newIndex)
-                    // Scroll container
-                    if (thumbnailContainerRef.current) {
-                      const container = thumbnailContainerRef.current
-                      const scrollPosition = newIndex * (thumbnailSize + thumbnailGap)
-                      safeElementScrollTo(container, {
-                        left: scrollPosition,
-                        behavior: 'smooth',
-                      })
-                    }
-                  }
-                }
-                
-                return uniqueImages.length > 1 && (
-                  <div className="w-full relative">
-                    {/* Left Navigation Button - Mobile Only */}
-                    {uniqueImages.length > imagesToShow && (
+              {/* Thumbnails: a swipeable row on phones (no arrows: swipe it), wrapping rows on larger screens */}
+              {galleryImages.length > 1 && (
+                <div className="w-full">
+                  <div
+                    ref={thumbStripRef}
+                    className="nf-thumb-strip"
+                    data-swipe-ignore
+                    aria-label={`${product.title} thumbnails`}
+                  >
+                    {galleryImages.map((src, index) => (
                       <button
-                        onClick={() => handleThumbnailScroll('left')}
-                        className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 sm:hidden ${
-                          canScrollLeft ? 'opacity-100 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
-                        }`}
-                        aria-label="Previous thumbnails"
-                        disabled={!canScrollLeft}
-                      >
-                        <ChevronLeft className="w-5 h-5" style={{color: 'var(--nf-primary)'}} />
-                      </button>
-                    )}
-                    
-                    {/* Container with fixed width to show exactly 3 images */}
-                    <div 
-                      ref={thumbnailContainerRef}
-                      className="overflow-hidden pb-2 sm:overflow-x-visible relative"
-                      style={{ 
-                        width: '100%',
-                        maxWidth: '100%',
-                        scrollbarWidth: 'none',
-                        msOverflowStyle: 'none',
-                        scrollBehavior: 'smooth'
-                      }}
-                    >
-                      <style>{`
-                        .thumb-scroll-container {
-                          display: flex;
-                          gap: ${thumbnailGap}px;
-                          overflow-x: auto;
-                          scrollbar-width: none;
-                          -ms-overflow-style: none;
-                          scroll-behavior: smooth;
-                        }
-                        .thumb-scroll-container::-webkit-scrollbar {
-                          display: none;
-                        }
-                        @media (max-width: 640px) {
-                          .thumb-scroll-container {
-                            scroll-snap-type: x mandatory;
-                            -webkit-overflow-scrolling: touch;
-                            width: 100%;
-                            overflow-x: auto;
-                            padding: 0;
-                          }
-                          .thumb-scroll-container > button {
-                            scroll-snap-align: start;
-                            flex-shrink: 0;
-                          }
-                        }
-                        @media (min-width: 641px) {
-                          .thumb-scroll-container {
-                            overflow-x: visible;
-                            flex-wrap: wrap;
-                          }
-                        }
-                      `}</style>
-                      <div 
-                        ref={thumbStripRef}
-                        className="thumb-scroll-container" 
-                        style={{ 
-                          width: '100%',
-                          maxWidth: '100%'
+                        key={`${src}-${index}`}
+                        type="button"
+                        onClick={() => {
+                          setCurrentImageIndex(index)
+                          setZoomImageIndex(index)
                         }}
+                        className={`nf-thumb relative aspect-square overflow-hidden rounded-lg border-2 transition-[border-color,opacity] duration-200 cursor-pointer ${
+                          index === currentImageIndex
+                            ? 'border-gray-900 opacity-100'
+                            : 'border-gray-200 hover:border-gray-400 opacity-75 hover:opacity-100'
+                        }`}
+                        aria-label={`Show image ${index + 1} of ${galleryImages.length}`}
+                        aria-current={index === currentImageIndex ? 'true' : undefined}
                       >
-                        {uniqueImages.map((src, index) => (
-                          <button
-                            key={`${src}-${index}`}
-                            onClick={() => {
-                              setCurrentImageIndex(index)
-                              setZoomImageIndex(index)
-                            }}
-                            className={`relative flex-shrink-0 aspect-square overflow-hidden rounded-lg border-2 transition-all duration-200 cursor-pointer ${
-                              index === currentImageIndex
-                                ? 'border-gray-900 ring-2 ring-gray-300 opacity-100 scale-105' 
-                                : 'border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100'
-                            }`}
-                            style={{ 
-                              width: `${thumbnailSize}px`, 
-                              height: `${thumbnailSize}px`,
-                              minWidth: `${thumbnailSize}px`,
-                              marginBottom: '10px'
-                            }}
-                            role="group"
-                            aria-label={`${index + 1} / ${uniqueImages.length}`}
-                          >
-                            {isVideoUrl(src) ? (
-                              <>
-                                {product.mediaPosters?.[src] ? (
-                                  <img
-                                    src={product.mediaPosters[src]}
-                                    alt={`${product.title} video`}
-                                    className="h-full w-full object-cover"
-                                    loading="lazy"
-                                    decoding="async"
-                                  />
-                                ) : (
-                                  // No poster: fetch only metadata + first frame, never the whole clip
-                                  <video
-                                    src={`${src}#t=0.1`}
-                                    className="h-full w-full object-cover"
-                                    muted
-                                    playsInline
-                                    preload="metadata"
-                                    onError={() => handleGalleryImageError(src)}
-                                  />
-                                )}
-                                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
-                                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow">
-                                    <svg className="ml-0.5 h-4 w-4" viewBox="0 0 24 24" fill="var(--nf-primary)" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-                                  </span>
-                                </span>
-                              </>
-                            ) : (
-                              <img 
-                                src={src} 
-                                alt={`${product.title} ${index + 1}`} 
-                                className="h-full w-full object-cover image-slider"
+                        {isVideoUrl(src) ? (
+                          <>
+                            {product.mediaPosters?.[src] ? (
+                              <img
+                                src={product.mediaPosters[src]}
+                                alt=""
+                                className="h-full w-full object-cover"
                                 loading="lazy"
                                 decoding="async"
+                                draggable={false}
+                              />
+                            ) : (
+                              // No poster: fetch only metadata + first frame, never the whole clip
+                              <video
+                                src={`${src}#t=0.1`}
+                                className="h-full w-full object-cover"
+                                muted
+                                playsInline
+                                preload="metadata"
                                 onError={() => handleGalleryImageError(src)}
                               />
                             )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Right Navigation Button - Mobile Only */}
-                    {uniqueImages.length > imagesToShow && (
-                      <button
-                        onClick={() => handleThumbnailScroll('right')}
-                        className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 sm:hidden ${
-                          canScrollRight ? 'opacity-100 hover:scale-110 cursor-pointer' : 'opacity-0 pointer-events-none'
-                        }`}
-                        aria-label="Next thumbnails"
-                        disabled={!canScrollRight}
-                      >
-                        <ChevronRight className="w-5 h-5" style={{color: 'var(--nf-primary)'}} />
-                      </button>
-                    )}
-                    
-                    {/* Dot Indicators - Mamaearth Style */}
-                    {uniqueImages.length > 1 && (
-                      <div className="flex justify-center gap-2 mt-3 sm:mt-4">
-                        {uniqueImages.map((_, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => {
-                              setCurrentImageIndex(idx)
-                              setZoomImageIndex(idx)
-                            }}
-                            className={`transition-all duration-300 rounded-full touch-manipulation ${
-                              idx === currentImageIndex 
-                                ? 'w-8 h-2 bg-gray-900' 
-                                : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
-                            }`}
-                            aria-label={`Go to image ${idx + 1}`}
+                            <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow">
+                                <svg className="ml-0.5 h-4 w-4" viewBox="0 0 24 24" fill="var(--nf-primary)" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                              </span>
+                            </span>
+                          </>
+                        ) : (
+                          <img
+                            src={src}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            draggable={false}
+                            onError={() => handleGalleryImageError(src)}
                           />
-                        ))}
-                      </div>
-                    )}
+                        )}
+                      </button>
+                    ))}
                   </div>
-                )
-              })()}
+
+                  {/* Dot Indicators */}
+                  <div className="flex justify-center gap-2 mt-3 sm:mt-4">
+                    {galleryImages.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setCurrentImageIndex(idx)
+                          setZoomImageIndex(idx)
+                        }}
+                        className={`transition-all duration-300 rounded-full touch-manipulation ${
+                          idx === currentImageIndex
+                            ? 'w-8 h-2 bg-gray-900'
+                            : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        aria-label={`Go to image ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Product Info */}
@@ -1323,8 +1225,13 @@ export default function ProductPage() {
                   </div>
                 )}
 
-                {/* nefol-style Rating */}
-                <div className="flex items-center mb-4">
+                {/* nefol-style Rating — tap to jump to Customer Reviews */}
+                <button
+                  type="button"
+                  onClick={scrollToReviews}
+                  className="flex items-center mb-4 rounded-md text-left hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  aria-label={`Rated ${overallRating > 0 ? overallRating.toFixed(2) : '0'} out of 5 from ${reviewCount || 0} reviews. See reviews`}
+                >
                   <div className="flex items-center">
                     <span className="text-2xl font-bold text-gray-900 mr-2">{overallRating > 0 ? overallRating.toFixed(2) : '4.7'}</span>
                     <div className="flex items-center">
@@ -1340,8 +1247,8 @@ export default function ProductPage() {
                     </div>
                   </div>
                   <span className="ml-2 text-sm text-gray-600">Rating</span>
-                  <span className="ml-2 text-sm text-gray-500">{reviewCount || 0} review{(reviewCount || 0) !== 1 ? 's' : ''}</span>
-                </div>
+                  <span className="ml-2 text-sm text-gray-500 underline underline-offset-2">{reviewCount || 0} review{(reviewCount || 0) !== 1 ? 's' : ''}</span>
+                </button>
               </div>
 
               {/* Quantity Section */}
@@ -1718,7 +1625,7 @@ export default function ProductPage() {
                     </svg>
               </button>
                   {expandedSections.description && (
-                    <div className="pb-4 text-sm text-gray-600">
+                    <div className="nf-justify pb-4 text-sm text-gray-600" lang="en">
                       {/* Bullet Highlights */}
                       {csvProduct?.['Bullet Highlights (Short Desc.)'] && (
                         <div className="mb-4">
@@ -2067,15 +1974,18 @@ export default function ProductPage() {
                 )}
               </div>
                       
-              {/* Plant Powered Science Badge */}
+              {/* Plant Powered Science Badge — colours follow the active theme (Admin → Theme) */}
               <div className="flex items-center justify-center mt-6">
-                <div className="flex items-center space-x-2 px-4 py-2 bg-green-100 rounded-full">
-                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <div
+                  className="flex items-center space-x-2 px-4 py-2 rounded-full"
+                  style={{ backgroundColor: 'var(--nf-primary-light)', boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--nf-primary) 25%, transparent)' }}
+                >
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--nf-primary)' }}>
+                    <svg className="w-4 h-4" style={{ color: 'var(--nf-on-primary)' }} fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  <span className="text-sm font-semibold text-green-800">Nature's Finest, Blended with Care</span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--nf-primary-dark)' }}>Nature's Finest, Blended with Care</span>
                 </div>
               </div>
             </div>
@@ -2382,8 +2292,8 @@ export default function ProductPage() {
             <RecentlyViewed limit={8} />
           </Suspense>
 
-          {/* Customer Reviews Section */}
-          <section className="border-t border-gray-200 pt-12 mb-16">
+          {/* Customer Reviews Section (rating links on cards open #/user/product/<slug>?section=reviews) */}
+          <section id="reviews" className="border-t border-gray-200 pt-12 mb-16" style={{ scrollMarginTop: '80px' }}>
             <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">Customer Reviews</h2>
             
             <div className="flex items-center justify-between mb-8">

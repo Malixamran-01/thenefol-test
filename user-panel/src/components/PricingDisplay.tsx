@@ -18,14 +18,21 @@ interface PricingDisplayProps {
   className?: string
   showDiscount?: boolean
   inline?: boolean // New prop to control whether to use inline elements
+  /** One line for narrow cards: price, struck-out MRP and discount, sized by the card's width */
+  compact?: boolean
 }
+
+/** ₹479 for whole rupees, ₹479.50 otherwise */
+const shortRupees = (n: number) =>
+  `₹${n.toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`
 
 export function PricingDisplay({ 
   product, 
   csvProduct, 
   className = '', 
   showDiscount = true,
-  inline = false
+  inline = false,
+  compact = false
 }: PricingDisplayProps) {
   // Priority: Admin panel data > CSV data > fallback
   const adminMrp = product?.details?.mrp
@@ -51,9 +58,24 @@ export function PricingDisplay({
   // Show discounted pricing if we have both MRP and website price and they're different
   const hasDiscount = websitePrice && websitePrice !== mrp && cleanWebsitePrice < cleanMrp && cleanWebsitePrice > 0
   
+  if (compact) {
+    const discountPercent = hasDiscount ? Math.round(((cleanMrp - cleanWebsitePrice) / cleanMrp) * 100) : 0
+    return (
+      <div className={`nf-price-line ${className}`}>
+        <span className="nf-price-line__now">{shortRupees(hasDiscount ? cleanWebsitePrice : cleanMrp)}</span>
+        {hasDiscount && showDiscount && (
+          <>
+            <span className="nf-price-line__mrp"><span className="sr-only">MRP </span>{shortRupees(cleanMrp)}</span>
+            {discountPercent > 0 && <span className="nf-price-line__off">{discountPercent}% OFF</span>}
+          </>
+        )}
+      </div>
+    )
+  }
+
   if (hasDiscount && showDiscount) {
     const discountPercent = Math.round(((cleanMrp - cleanWebsitePrice) / cleanMrp) * 100)
-    
+
     return (
       <div className={`flex flex-col gap-1 ${className}`}>
         <div className="flex items-center gap-2 flex-wrap">

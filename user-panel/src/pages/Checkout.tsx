@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useCart, parsePrice, roundPrice, formatPrice } from '../contexts/CartContext'
+import { POPUP_COUPON_KEY } from '../../../common/src/discountPopup'
+import { useCart, parsePrice, roundPrice, formatPrice, computeCartGst } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
 import { CreditCard, Smartphone, Wallet, Coins, MapPin, CheckCircle } from 'lucide-react'
@@ -43,7 +44,6 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   // Safely access cart properties with fallbacks
   const items = cartContext?.items || []
   const subtotal = cartContext?.subtotal || 0
-  const tax = cartContext?.tax || 0
   const total = cartContext?.total || 0
   const segmentDiscountAmount = cartContext?.segmentDiscountAmount ?? 0
   const segmentPricing = cartContext?.segmentPricing ?? null
@@ -60,7 +60,14 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
   const [totalCoins, setTotalCoins] = useState(0) // Total coins available (loyalty + affiliate)
   const [coinsToUse, setCoinsToUse] = useState(0) // Coins user wants to use
   const [useCoins, setUseCoins] = useState(false) // Whether user wants to use coins
-  const [discountCode, setDiscountCode] = useState('')
+  // Pre-filled with the code from the site's discount popup, if the visitor copied it this visit
+  const [discountCode, setDiscountCode] = useState(() => {
+    try {
+      return sessionStorage.getItem(POPUP_COUPON_KEY) || ''
+    } catch {
+      return ''
+    }
+  })
   const [appliedDiscount, setAppliedDiscount] = useState<any>(null)
   const [csvProducts, setCsvProducts] = useState<any>({}) // Store CSV product data by slug
 
@@ -552,72 +559,10 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
 
   const shipping = 0
   
-  // Calculate tax from MRP (tax-inclusive pricing)
-  // Extract tax from price for each product based on category
-  // GST is already included in MRP, so we extract it for display purposes only
-  const calculateTax = () => {
-    if (buySlug) {
-      // For single item checkout
-      const item = orderItems[0]
-      if (!item) return 0
-      const itemPrice = parsePrice(item.price) // MRP which includes tax
-      const category = (item.category || '').toLowerCase()
-      const taxRate = category.includes('hair') ? 0.05 : 0.18
-      
-      // Extract tax from tax-inclusive MRP
-      // basePrice = taxInclusivePrice / (1 + taxRate)
-      // tax = taxInclusivePrice - basePrice
-      const basePrice = itemPrice / (1 + taxRate)
-      const itemTax = itemPrice - basePrice
-      
-      return roundPrice(itemTax * (item.quantity || 1))
-    }
-    
-    // For cart checkout - calculate GST for each product separately
-    return orderItems.reduce((total, item: any) => {
-      const itemPrice = parsePrice(item.price) // MRP which includes tax
-      const category = (item.category || '').toLowerCase()
-      const taxRate = category.includes('hair') ? 0.05 : 0.18
-      
-      // Extract tax from tax-inclusive MRP
-      const basePrice = itemPrice / (1 + taxRate)
-      const itemTax = itemPrice - basePrice
-      
-      return total + roundPrice(itemTax * (item.quantity || 1))
-    }, 0)
-  }
-  
-  // Calculate GST breakdown by rate (for display)
-  const calculateGstBreakdown = () => {
-    const breakdown: { rate: number; amount: number; items: string[] }[] = []
-    
-    orderItems.forEach((item: any) => {
-      const itemPrice = parsePrice(item.price)
-      const category = (item.category || '').toLowerCase()
-      const taxRate = category.includes('hair') ? 0.05 : 0.18
-      
-      const basePrice = itemPrice / (1 + taxRate)
-      const itemTax = itemPrice - basePrice
-      const totalItemTax = roundPrice(itemTax * (item.quantity || 1))
-      
-      const existing = breakdown.find(b => b.rate === taxRate)
-      if (existing) {
-        existing.amount += totalItemTax
-        existing.items.push(item.title || item.slug)
-      } else {
-        breakdown.push({
-          rate: taxRate,
-          amount: totalItemTax,
-          items: [item.title || item.slug]
-        })
-      }
-    })
-    
-    return breakdown.map(b => ({
-      ...b,
-      amount: roundPrice(b.amount)
-    }))
-  }
+  // GST is included in the prices (GST-inclusive). It is backed out per item at that product's
+  // own admin-set rate and shown as one total; the backend recomputes the same figure for the order.
+  const gstRateFor = cartContext?.gstRateFor
+  const calculateTax = () => (gstRateFor ? computeCartGst(orderItems, gstRateFor) : 0)
   
   // Calculate MRP total and product discount
   const calculateMrpTotal = () => {
@@ -691,8 +636,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
     }, 0)
   }
 
-  const calculatedTax = roundPrice(calculateTax())
-  const gstBreakdown = calculateGstBreakdown()
+  const calculatedTax = calculateTax()
   const discountAmount = calculateDiscountAmount() // Coupon code discount
   const mrpTotal = calculateMrpTotal()
   const productDiscount = calculateProductDiscount()
@@ -828,7 +772,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         items: enrichedItems,
         subtotal: roundPrice(calcSubtotal),
         shipping: roundPrice(shipping),
-        tax: roundPrice(calculatedTax),
+        tax: calculatedTax, // informational: the backend recomputes GST itself
         total: roundPrice(grandTotal), // This is remaining amount after coins
         payment_method: useCoins && coinsToUse > 0 ? 'coins+razorpay' : 'razorpay',
         payment_type: paymentType,
@@ -1184,7 +1128,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
           items: enrichedItems,
           subtotal: roundPrice(calcSubtotal),
           shipping: roundPrice(shipping),
-          tax: roundPrice(calculatedTax),
+          tax: calculatedTax, // informational: the backend recomputes GST itself
           total: roundPrice(grandTotal), // Will be 0 when fully paid with coins
           payment_method: 'coins', // Fully paid with coins
           payment_type: 'prepaid', // Coins are prepaid
@@ -1294,7 +1238,7 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
         items: enrichedItems,
         subtotal: roundPrice(calcSubtotal),
         shipping: roundPrice(shipping),
-        tax: roundPrice(calculatedTax),
+        tax: calculatedTax, // informational: the backend recomputes GST itself
         total: roundPrice(grandTotal),
         payment_method: useCoins && (coinsToUse / 10) >= finalSubtotal ? 'coins' : selectedPayment,
         payment_type: isCOD ? 'cod' : (useCoins && (coinsToUse / 10) >= finalSubtotal ? 'prepaid' : paymentType),
@@ -1450,17 +1394,13 @@ export default function Checkout({ affiliateId }: CheckoutProps) {
                   </div>
                 )}
                 
-                {/* 6. GST (Included in MRP - shown for transparency) - Amount shown inline */}
-                {gstBreakdown.length > 0 && (
-                  <div className="space-y-1">
-                    {gstBreakdown.map((gst, idx) => (
-                      <div key={idx} className="flex justify-between">
-                        <span className="text-gray-600">
-                          GST ({Math.round(gst.rate * 100)}%) - ₹{formatPrice(roundPrice(gst.amount))}
-                          <span className="text-xs ml-1">(Inclusive)</span>
-                        </span>
-                      </div>
-                    ))}
+                {/* 6. GST (included in prices) — one total line, each product at its own rate */}
+                {calculatedTax > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      GST <span className="text-xs ml-1">(Inclusive)</span>
+                    </span>
+                    <span className="text-gray-600">₹{formatPrice(calculatedTax)}</span>
                   </div>
                 )}
                 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import React, { Fragment, useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import SocialSneakPeek from '../components/SocialSneakPeek'
 import JustLandedProductCard from '../components/JustLandedProductCard'
@@ -17,6 +17,7 @@ import {
 } from '../utils/carouselScroll'
 import { sortProductList } from '../utils/justLandedProducts'
 import { isNewArrival } from '../../../common/src/productBadges'
+import { announcementLoop, parseAnnouncements } from '../../../common/src/announcements'
 export default function Home() {
   const { items: products, loading: productsLoading } = useProducts()
   const { addItem } = useCart()
@@ -56,7 +57,7 @@ export default function Home() {
   const { stats: reviewStats } = useProductReviewStats(productSlugs)
 
   // CMS Sections State
-  const [scrollingText, setScrollingText] = useState<string>('')
+  const [announcements, setAnnouncements] = useState<string[]>([])
   const [justLandedOrderSlugs, setJustLandedOrderSlugs] = useState<string[] | null>(null)
   const [topMediaImages, setTopMediaImages] = useState<string[]>([])
   const [topMediaSettings, setTopMediaSettings] = useState<any>({
@@ -281,10 +282,9 @@ export default function Home() {
         }
 
         const scrollingTextSection = sections.find((s: any) => s.section_type === 'scrolling_text_banner')
-        if (scrollingTextSection?.content?.text) {
-          setScrollingText((prev) =>
-            prev === scrollingTextSection.content.text ? prev : scrollingTextSection.content.text
-          )
+        if (scrollingTextSection) {
+          const next = parseAnnouncements(scrollingTextSection.content)
+          setAnnouncements((prev) => (prev.join('|') === next.join('|') ? prev : next))
         }
 
         const justLandedSection = sections.find((s: any) => s.section_type === 'just_landed_products')
@@ -376,21 +376,25 @@ export default function Home() {
         }
       `}</style>
       {/* Scrolling Text Banner - Between Navbar and Top Media Carousel */}
-      {scrollingText && (
-        <section className="relative py-2 overflow-hidden mt-0 sm:mt-2 md:mt-4" style={{ backgroundColor: 'var(--nf-announcement-bg)' }}>
-          <div className="scrolling-text-wrapper">
-            <div className="scrolling-text-content">
-              <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ✦ </span>
-              <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ✦ </span>
-              <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ✦ </span>
-              <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ✦ </span>
-              <span className="scrolling-text-item">{scrollingText}</span>
-              <span className="scrolling-text-separator"> ✦ </span>
-              <span className="scrolling-text-item">{scrollingText}</span>
+      {announcements.length > 0 && (() => {
+        // Messages in order, separated by ✦, starting again after the last one. The half is
+        // rendered twice and the strip moves by exactly one half, so the loop is seamless.
+        const half = announcementLoop(announcements)
+        const chars = half.reduce((n, m) => n + m.length, 0)
+        const duration = `${Math.max(20, Math.round(chars * 0.28))}s`
+        return (
+        <section className="relative py-2 overflow-hidden mt-0 sm:mt-2 md:mt-4" style={{ backgroundColor: 'var(--nf-announcement-bg)' }} aria-label="Announcements">
+          <p className="sr-only">{announcements.join('. ')}</p>
+          <div className="scrolling-text-wrapper" aria-hidden="true">
+            <div className="scrolling-text-content" style={{ animationDuration: duration }}>
+              {[0, 1].map((copy) =>
+                half.map((message, i) => (
+                  <Fragment key={`${copy}-${i}`}>
+                    <span className="scrolling-text-item">{message}</span>
+                    <span className="scrolling-text-separator">✦</span>
+                  </Fragment>
+                ))
+              )}
             </div>
           </div>
           <style>{`
@@ -448,11 +452,12 @@ export default function Home() {
             }
           `}</style>
         </section>
-      )}
+        )
+      })()}
       {/* Top Media Carousel Section - Above Hero Banner */}
       {topMediaImages.length > 0 && (
-        <section className="relative bg-[color:var(--nf-page-bg)] w-full mt-2 sm:mt-4 md:mt-6" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
-          <div className="mx-auto w-full py-0 sm:py-2 md:py-4">
+        <section className="relative bg-[color:var(--nf-page-bg)] w-full mt-2 sm:mt-3 md:mt-4" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+          <div className="nf-banner-shell mx-auto w-full">
             <div className="relative top-media-carousel-container">
               {topMediaImages[topMediaIndex] && (
                 <>
@@ -503,21 +508,14 @@ export default function Home() {
       <SocialSneakPeek />
 
       {/* What's Just Landed Section - neudeskin.com style */}
-      <section className="py-8 sm:py-12 md:py-16">
+      <section className="nf-section">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 
-            className="text-2xl sm:text-3xl md:text-4xl font-light mb-12 sm:mb-16 text-center tracking-[0.15em]" 
-            style={{
-              color: 'var(--nf-text)',
-              fontFamily: 'var(--font-heading-family)',
-              letterSpacing: '0.15em'
-            }}
-          >
-            What's Just Landed
-          </h2>
+          <div className="nf-section-head">
+            <h2 className="nf-section-title">What's Just Landed</h2>
+          </div>
           
           {productsLoading ? (
-            <div className="text-center py-12">
+            <div className="text-center py-8">
               <p className="text-gray-500">Loading products...</p>
             </div>
           ) : null}
@@ -618,37 +616,26 @@ export default function Home() {
               </div>
           </>
         ) : !productsLoading ? (
-          <div className="mx-auto max-w-7xl px-4 text-center py-12 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl px-4 text-center py-8 sm:px-6 lg:px-8">
             <p className="text-gray-500">No products available</p>
           </div>
         ) : null}
       </section>
 
       {/* Shop by Category Section */}
-      <section className="py-12 sm:py-16 md:py-20 relative overflow-hidden" style={{ background: 'var(--arctic-blue-background)' }}>
+      <section className="nf-section relative overflow-hidden" style={{ background: 'var(--arctic-blue-background)' }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 
-            className="text-2xl sm:text-3xl md:text-4xl font-light mb-12 sm:mb-16 text-center tracking-[0.15em]" 
-            style={{
-              color: 'var(--nf-text)',
-              fontFamily: 'var(--font-heading-family)',
-              letterSpacing: '0.15em'
-            }}
-          >
-            Shop by Category
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-5 sm:gap-6 md:gap-8">
+          <div className="nf-section-head">
+            <h2 className="nf-section-title">Shop by Category</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-5 sm:gap-6">
             {/* Body */}
             <div
               className="group cursor-pointer flex flex-col items-center"
               onClick={() => window.location.hash = '#/user/body'}
             >
               <div
-                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
-                style={{
-                  background: 'transparent',
-                  boxShadow: 'none',
-                }}
+                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-1.5 shadow-sm group-hover:shadow-md"
               >
                 <img
                   src={categoryImages['Body'] || '/IMAGES/body.webp'}
@@ -657,7 +644,7 @@ export default function Home() {
                   onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
-              <h3 className="mt-4 text-sm sm:text-base font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Body</h3>
+              <h3 className="mt-3 text-xs sm:text-sm font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Body</h3>
             </div>
 
             {/* Face */}
@@ -666,11 +653,7 @@ export default function Home() {
               onClick={() => window.location.hash = '#/user/face'}
             >
               <div
-                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
-                style={{
-                  background: 'transparent',
-                  boxShadow: 'none',
-                }}
+                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-1.5 shadow-sm group-hover:shadow-md"
               >
                 <img
                   src={categoryImages['Face'] || '/IMAGES/face.webp'}
@@ -679,7 +662,7 @@ export default function Home() {
                   onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
-              <h3 className="mt-4 text-sm sm:text-base font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Face</h3>
+              <h3 className="mt-3 text-xs sm:text-sm font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Face</h3>
             </div>
 
             {/* Hair */}
@@ -688,11 +671,7 @@ export default function Home() {
               onClick={() => window.location.hash = '#/user/hair'}
             >
               <div
-                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
-                style={{
-                  background: 'transparent',
-                  boxShadow: 'none',
-                }}
+                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-1.5 shadow-sm group-hover:shadow-md"
               >
                 <img
                   src={categoryImages['Hair'] || '/IMAGES/hair.webp'}
@@ -701,7 +680,7 @@ export default function Home() {
                   onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
-              <h3 className="mt-4 text-sm sm:text-base font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Hair</h3>
+              <h3 className="mt-3 text-xs sm:text-sm font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Hair</h3>
             </div>
 
             {/* Combos */}
@@ -710,11 +689,7 @@ export default function Home() {
               onClick={() => window.location.hash = '#/user/combos'}
             >
               <div
-                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-2"
-                style={{
-                  background: 'transparent',
-                  boxShadow: 'none',
-                }}
+                className="relative w-full max-w-[200px] sm:max-w-[240px] md:max-w-[290px] aspect-square overflow-hidden rounded-3xl transition-all duration-500 group-hover:-translate-y-1.5 shadow-sm group-hover:shadow-md"
               >
                 <img
                   src={categoryImages['Combos'] || '/IMAGES/combo.webp'}
@@ -723,7 +698,7 @@ export default function Home() {
                   onError={(e) => { e.currentTarget.style.display = 'none' }}
                 />
               </div>
-              <h3 className="mt-4 text-sm sm:text-base font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Combos</h3>
+              <h3 className="mt-3 text-xs sm:text-sm font-medium tracking-widest uppercase" style={{ color: '#2a2a2a', letterSpacing: '0.12em' }}>Combos</h3>
             </div>
           </div>
         </div>
@@ -732,9 +707,9 @@ export default function Home() {
 
       {/* Complete Kit Banner Section */}
       {completeKitImage && (
-        <section className="py-8 sm:py-12 md:py-16 lg:py-20" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+        <section className="nf-section" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
           {/* Full width, same as the hero banner */}
-          <div className="mx-auto w-full">
+          <div className="nf-banner-shell mx-auto w-full">
             {/* Desktop Layout - Text Overlay on Image */}
             <div className="hidden md:block relative overflow-hidden complete-kit-container rounded-xl">
               <img 
@@ -776,7 +751,7 @@ export default function Home() {
             
             {/* Mobile Layout - Image First, Then Text and Button Below */}
             <div className="md:hidden">
-              <div className="relative overflow-hidden rounded-xl mb-4" style={{ height: '250px' }}>
+              <div className="relative overflow-hidden rounded-xl mb-3" style={{ height: '220px' }}>
                 <img 
                   src={completeKitImage} 
                   alt="Complete Kit" 
@@ -796,7 +771,7 @@ export default function Home() {
                 >
                   THE COMPLETE KIT
                 </h2>
-                <p className="text-sm text-slate-600 mb-6 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full NEFOL experience in one curated bundle</p>
+                <p className="text-sm text-slate-600 mb-4 font-light tracking-wide" style={{letterSpacing: '0.05em'}}>Get the full NEFOL experience in one curated bundle</p>
                 <button
                   onClick={() => window.location.hash = '#/user/combos'}
                   className="px-6 py-3 text-white font-medium tracking-wide uppercase transition-colors duration-200 rounded-xl"
@@ -844,8 +819,8 @@ export default function Home() {
             /* Tablet - Medium height */
             @media (min-width: 641px) and (max-width: 1024px) {
               .complete-kit-container {
-                height: 350px;
-                min-height: 350px;
+                height: 320px;
+                min-height: 320px;
               }
               
               .complete-kit-title {
@@ -867,8 +842,8 @@ export default function Home() {
             /* Desktop - Full size */
             @media (min-width: 1025px) {
               .complete-kit-container {
-                height: 500px;
-                min-height: 500px;
+                height: 440px;
+                min-height: 440px;
               }
               
               .complete-kit-title {
@@ -892,9 +867,9 @@ export default function Home() {
 
       {/* Nefol Collection Section */}
       {nefolCollection.image && (
-        <section className="py-12 sm:py-16 md:py-20 bg-[color:var(--nf-page-bg)] relative overflow-hidden">
+        <section className="nf-section bg-[color:var(--nf-page-bg)] relative overflow-hidden">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
               <div className="relative rounded-xl overflow-hidden w-full">
                 <img 
                   src={nefolCollection.image}
@@ -913,20 +888,11 @@ export default function Home() {
                 />
               </div>
               <div className="text-left">
-                <h2 
-                  className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]" 
-                  style={{
-                    color: 'var(--nf-text)',
-                    fontFamily: 'var(--font-heading-family)',
-                    letterSpacing: '0.15em'
-                  }}
-                >
-                  {nefolCollection.title}
-                </h2>
-                <h3 className="text-base sm:text-lg font-light mb-4 sm:mb-6 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
+                <h2 className="nf-section-title nf-section-title--left mb-4">{nefolCollection.title}</h2>
+                <h3 className="text-base sm:text-lg font-light mb-2 sm:mb-3 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
                   {nefolCollection.subtitle}
                 </h3>
-                <p className="text-sm sm:text-base font-light mb-8 sm:mb-10 leading-relaxed" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
+                <p className="text-sm sm:text-base font-light mb-5 sm:mb-6 leading-relaxed" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
                   {nefolCollection.description}
                 </p>
                   <button 
@@ -951,37 +917,26 @@ export default function Home() {
 
       {/* Forever Favorites Section */}
       {(foreverFavorites.luxurySkincare.image || foreverFavorites.naturalBeauty.image) && (
-        <section className="py-12 sm:py-16 md:py-20 bg-[color:var(--nf-page-bg)]">
+        <section className="nf-section bg-[color:var(--nf-page-bg)]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 
-                className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
-                style={{
-                  color: 'var(--nf-text)',
-                  fontFamily: 'var(--font-heading-family)',
-                  letterSpacing: '0.15em'
-                }}
-              >
-                {foreverFavorites.title}
-              </h2>
-              <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
-                {foreverFavorites.description}
-              </p>
+            <div className="nf-section-head">
+              <h2 className="nf-section-title">{foreverFavorites.title}</h2>
+              {foreverFavorites.description && <p className="nf-section-sub">{foreverFavorites.description}</p>}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               {foreverFavorites.luxurySkincare.image && (
-                <div className="relative group cursor-pointer" onClick={() => window.location.hash = '#/user/shop'}>
+                <div className="relative group cursor-pointer overflow-hidden rounded-xl" onClick={() => window.location.hash = '#/user/shop'}>
                   <img 
                     src={foreverFavorites.luxurySkincare.image}
                     alt="Luxury Skincare"
-                    className="w-full h-64 sm:h-80 object-cover rounded-xl transition-transform duration-300 group-hover:scale-105"
+                    className="w-full h-52 sm:h-64 lg:h-72 object-cover rounded-xl transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none'
                     }}
                   />
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-x-0 bottom-0 flex items-end bg-gradient-to-t from-black/50 via-black/10 to-transparent p-4 pt-16 sm:p-5 sm:pt-16">
                     <h3 
-                      className="text-white text-lg sm:text-xl font-light tracking-[0.15em]" 
+                      className="text-white text-base sm:text-lg font-light tracking-[0.15em]" 
                       style={{
                         fontFamily: 'var(--font-heading-family)',
                         letterSpacing: '0.15em'
@@ -993,18 +948,18 @@ export default function Home() {
                 </div>
               )}
               {foreverFavorites.naturalBeauty.image && (
-                <div className="relative group cursor-pointer" onClick={() => window.location.hash = '#/user/shop'}>
+                <div className="relative group cursor-pointer overflow-hidden rounded-xl" onClick={() => window.location.hash = '#/user/shop'}>
                   <img 
                     src={foreverFavorites.naturalBeauty.image}
                     alt="Natural Beauty"
-                    className="w-full h-64 sm:h-80 object-cover rounded-xl transition-transform duration-300 group-hover:scale-105"
+                    className="w-full h-52 sm:h-64 lg:h-72 object-cover rounded-xl transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none'
                     }}
                   />
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-x-0 bottom-0 flex items-end bg-gradient-to-t from-black/50 via-black/10 to-transparent p-4 pt-16 sm:p-5 sm:pt-16">
                     <h3 
-                      className="text-white text-lg sm:text-xl font-light tracking-[0.15em]" 
+                      className="text-white text-base sm:text-lg font-light tracking-[0.15em]" 
                       style={{
                         fontFamily: 'var(--font-heading-family)',
                         letterSpacing: '0.15em'
@@ -1022,24 +977,15 @@ export default function Home() {
 
       {/* Natural Beauty Section */}
       {naturalBeauty.image && (
-        <section className="py-12 sm:py-16 md:py-20 bg-[color:var(--nf-page-bg)]">
+        <section className="nf-section bg-[color:var(--nf-page-bg)]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
               <div className="text-left">
-                <h2 
-                  className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.15em]" 
-                  style={{
-                    color: 'var(--nf-text)',
-                    fontFamily: 'var(--font-heading-family)',
-                    letterSpacing: '0.15em'
-                  }}
-                >
-                  {naturalBeauty.title}
-                </h2>
-                <h3 className="text-base sm:text-lg font-light mb-4 sm:mb-6 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
+                <h2 className="nf-section-title nf-section-title--left mb-4">{naturalBeauty.title}</h2>
+                <h3 className="text-base sm:text-lg font-light mb-2 sm:mb-3 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
                   {naturalBeauty.subtitle}
                 </h3>
-                <p className="text-sm sm:text-base font-light mb-8 sm:mb-10 leading-relaxed" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
+                <p className="text-sm sm:text-base font-light mb-5 sm:mb-6 leading-relaxed" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
                   {naturalBeauty.description}
                 </p>
                 <button 
@@ -1079,23 +1025,11 @@ export default function Home() {
       )}
 
       {/* Ingredients Section - Blue Pea Featured (like neudeskin's milk) */}
-      <section className="py-12 sm:py-16 md:py-20 relative overflow-hidden" style={{ backgroundColor: 'var(--arctic-blue-background)' }}>
-        
+      <section className="nf-section relative overflow-hidden" style={{ backgroundColor: 'var(--arctic-blue-background)' }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 
-              className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
-              style={{
-                color: 'var(--nf-text)',
-                fontFamily: 'var(--font-heading-family)',
-                letterSpacing: '0.15em'
-              }}
-            >
-              Our Star Ingredient
-            </h2>
-            <p className="text-sm sm:text-base font-light max-w-2xl mx-auto tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.05em'}}>
-              Discover the power of nature's finest ingredients
-            </p>
+          <div className="nf-section-head">
+            <h2 className="nf-section-title">Our Star Ingredient</h2>
+            <p className="nf-section-sub">Discover the power of nature's finest ingredients</p>
           </div>
           
           {/* Blue Pea - Featured Ingredient (full content width, like the other sections) */}
@@ -1110,7 +1044,7 @@ export default function Home() {
             >
               <div className="grid grid-cols-1 md:grid-cols-[5fr_7fr] gap-0">
                 {/* Image Section */}
-                <div className="relative overflow-hidden" style={{ aspectRatio: '1 / 1', minHeight: '300px' }}>
+                <div className="relative overflow-hidden" style={{ aspectRatio: '1 / 1', minHeight: '260px' }}>
                   <div
                     className="absolute inset-0 flex items-center justify-center"
                       style={{
@@ -1137,8 +1071,8 @@ export default function Home() {
                 </div>
                 
                 {/* Content Section */}
-                <div className="p-6 sm:p-8 md:p-10 lg:p-14 flex flex-col justify-center">
-                  <div className="mb-4">
+                <div className="p-5 sm:p-7 lg:p-10 flex flex-col justify-center">
+                  <div className="mb-3">
                     <span 
                       className="inline-block px-3 py-1 text-xs sm:text-sm font-medium rounded-full mb-3"
                       style={{ 
@@ -1149,7 +1083,7 @@ export default function Home() {
                       STAR INGREDIENT
                     </span>
                     <h3 
-                      className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 sm:mb-6 tracking-[0.1em]" 
+                      className="text-xl sm:text-2xl lg:text-3xl font-light mb-2 sm:mb-3 tracking-[0.1em]" 
                       style={{
                         color: 'var(--nf-text)',
                         fontFamily: 'var(--font-heading-family)',
@@ -1158,16 +1092,16 @@ export default function Home() {
                     >
                       Blue Pea (Tag as Aprajita, Butterfly Pea Flower, Blue Pea Flower)
                     </h3>
-                    <p className="text-xs sm:text-sm italic mb-6 font-light tracking-wide" style={{color: '#999', letterSpacing: '0.05em'}}>
+                    <p className="text-xs sm:text-sm italic font-light tracking-wide" style={{color: '#999', letterSpacing: '0.05em'}}>
                       Aprajita ? Shankhpushpi
                     </p>
                   </div>
                   
-                  <p className="text-sm sm:text-base font-light leading-relaxed mb-8 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
+                  <p className="text-sm sm:text-base font-light leading-relaxed mb-5 tracking-wide" style={{color: 'var(--nf-text-muted)', letterSpacing: '0.02em'}}>
                     Rich in powerful antioxidants such as anthocyanins, flavonoids, and polyphenols, Blue Pea is celebrated for its skin-brightening, anti-inflammatory, and soothing properties. This vibrant flower helps neutralize free radicals and protect the skin from oxidative stress.
                   </p>
                   
-                  <div className="flex flex-wrap gap-2 mb-6">
+                  <div className="flex flex-wrap gap-2 mb-5">
                     <span className="px-3 py-1 text-xs rounded-full" style={{ backgroundColor: 'var(--arctic-blue-lighter)', color: 'var(--arctic-blue-primary-dark)' }}>Antioxidant</span>
                     <span className="px-3 py-1 text-xs rounded-full" style={{ backgroundColor: 'var(--arctic-blue-lighter)', color: 'var(--arctic-blue-primary-dark)' }}>Brightening</span>
                     <span className="px-3 py-1 text-xs rounded-full" style={{ backgroundColor: 'var(--arctic-blue-lighter)', color: 'var(--arctic-blue-primary-dark)' }}>Anti-Inflammatory</span>
@@ -1203,22 +1137,13 @@ export default function Home() {
 
       {/* Marketplace Logos Section - Moved to last before footer */}
       {marketplaceLogos.length > 0 && (
-        <section className="py-12 sm:py-16 md:py-20 bg-[color:var(--nf-page-bg)]">
+        <section className="nf-section bg-[color:var(--nf-page-bg)]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 
-                className="text-2xl sm:text-3xl md:text-4xl font-light mb-6 tracking-[0.15em]" 
-                style={{
-                  color: 'var(--nf-text)',
-                  fontFamily: 'var(--font-heading-family)',
-                  letterSpacing: '0.15em'
-                }}
-              >
-                Also Available On
-              </h2>
+            <div className="nf-section-head">
+              <h2 className="nf-section-title">Also Available On</h2>
             </div>
             <div className="relative overflow-hidden w-full">
-              <div className="flex items-center justify-center gap-8 sm:gap-12 md:gap-16 flex-wrap">
+              <div className="flex items-center justify-center gap-x-8 gap-y-5 sm:gap-x-12 flex-wrap">
                 {marketplaceLogos.map((logo, idx) => (
                   <img 
                     key={`logo-${idx}`}

@@ -564,24 +564,8 @@ export default function OrderDetails() {
                     return sum
                   }, 0)
                   
-                  // Calculate GST breakdown
-                  const gstBreakdown: { rate: number; amount: number }[] = []
-                  order.items.forEach((item: any) => {
-                    const itemPrice = parsePrice(item.price || item.unit_price || '0')
-                    const category = (item.category || '').toLowerCase()
-                    const taxRate = category.includes('hair') ? 0.05 : 0.18
-                    const basePrice = itemPrice / (1 + taxRate)
-                    const itemTax = itemPrice - basePrice
-                    const quantity = item.quantity || item.qty || 1
-                    const totalItemTax = roundPrice(itemTax * quantity)
-                    
-                    const existingGst = gstBreakdown.find(g => g.rate === taxRate)
-                    if (existingGst) {
-                      existingGst.amount += totalItemTax
-                    } else {
-                      gstBreakdown.push({ rate: taxRate, amount: totalItemTax })
-                    }
-                  })
+                  // GST as stored on the order (worked out by the backend from each product's own rate)
+                  const gstTotal = Number(order.tax) || 0
                   
                   const discountAmount = order.discount_amount || 0
                   const coinsDiscount = order.coins_used ? roundPrice(order.coins_used / 10) : 0
@@ -633,18 +617,14 @@ export default function OrderDetails() {
                         </span>
                       </div>
                       
-                      {/* 6. GST (Included in MRP - shown for transparency) */}
-                      {gstBreakdown.length > 0 && (
-                        <div className="space-y-1">
-                          {gstBreakdown.map((gst, idx) => (
-                            <div key={idx} className="flex justify-between">
-                              <span className="text-gray-600">
-                                GST ({Math.round(gst.rate * 100)}%) 
-                                <span className="text-xs ml-1">(Inclusive)</span>
-                              </span>
-                              <span className="text-black">₹{formatPrice(roundPrice(gst.amount))}</span>
-                            </div>
-                          ))}
+                      {/* 6. GST (included in prices) — one total line */}
+                      {gstTotal > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">
+                            GST
+                            <span className="text-xs ml-1">(Inclusive)</span>
+                          </span>
+                          <span className="text-black">₹{formatPrice(gstTotal)}</span>
                         </div>
                       )}
                       

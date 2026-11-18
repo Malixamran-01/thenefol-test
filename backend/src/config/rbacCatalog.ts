@@ -1,7 +1,9 @@
 /**
  * Single source of truth for: sidebar nav permissions, role templates, and seed/upsert lists.
  * Keep `admin-panel/src/config/rbacNav.ts` in sync (same nav codes + template ids).
+ * Page-level codes (`nav:<section>:<page>`) come from `adminNavCatalog.ts`.
  */
+import { ADMIN_PAGE_CODES, ADMIN_PAGE_PERMISSIONS } from './adminNavCatalog'
 
 /** Business / API permissions (pre-existing) */
 export const BUSINESS_PERMISSION_CODES = [
@@ -25,6 +27,9 @@ export const BUSINESS_PERMISSION_CODES = [
   'pos:update',
   'discounts:read',
   'notifications:read',
+  /** Product reviews and Google reviews moderation */
+  'reviews:read',
+  'reviews:update',
   /** Staff / RBAC administration */
   'staff:invite',
   'staff:manage',
@@ -59,18 +64,14 @@ export const NAV_PERMISSION_CODES = [
 ] as const
 
 /**
- * Optional granular keys under “Products & catalog” — if user has only some of these, only those
- * sidebar lines appear. Having `nav:catalog` still grants the whole block (backward compatible).
+ * Page-level codes for every multi-page sidebar section: holding one shows just that page.
+ * The section's `nav:*` code still grants the whole section (backward compatible).
  */
-export const NAV_CATALOG_FINE: { code: string; label: string }[] = [
-  { code: 'nav:catalog:products', label: 'Products' },
-  { code: 'nav:catalog:categories', label: 'Catalog (categories)' },
-  { code: 'nav:catalog:collections', label: 'Product collections' },
-  { code: 'nav:catalog:variants', label: 'Product variants' },
-  { code: 'nav:catalog:inventory', label: 'Inventory' },
-  { code: 'nav:catalog:warehouses', label: 'Warehouses' },
-  { code: 'nav:catalog:discounts', label: 'Discounts' },
-]
+export const NAV_PAGE_FINE = ADMIN_PAGE_PERMISSIONS
+
+/** Products & catalog lines (kept as its own export for older clients of the permission catalog). */
+export const NAV_CATALOG_FINE: { code: string; label: string }[] =
+  ADMIN_PAGE_PERMISSIONS.find((s) => s.navCode === 'nav:catalog')?.pages ?? []
 
 export const NAV_CATALOG_FINE_CODES = NAV_CATALOG_FINE.map((x) => x.code)
 
@@ -138,7 +139,15 @@ export const DIVISION_BUNDLES: {
       'products:update',
       'discounts:read',
       'inventory:read',
+      'reviews:read',
+      'reviews:update',
     ],
+  },
+  {
+    id: 'div_reviews',
+    label: 'Reviews moderation',
+    description: 'Product reviews and Google reviews only — no product editing',
+    permissionCodes: ['nav:catalog:reviews', 'nav:catalog:google_reviews', 'reviews:read', 'reviews:update'],
   },
   {
     id: 'div_catalog_nav_only',
@@ -220,9 +229,7 @@ export const DIVISION_BUNDLES: {
 ]
 
 export const ALL_RBAC_SEED_CODES: string[] = [
-  ...BUSINESS_PERMISSION_CODES,
-  ...NAV_PERMISSION_CODES,
-  ...NAV_CATALOG_FINE_CODES,
+  ...new Set<string>([...BUSINESS_PERMISSION_CODES, ...NAV_PERMISSION_CODES, ...ADMIN_PAGE_CODES]),
 ]
 
 export type PermissionDivisionGroup = {
@@ -234,13 +241,13 @@ export type PermissionDivisionGroup = {
 
 export const NAV_DIVISION_GROUPS: PermissionDivisionGroup[] = [
   { id: 'overview', label: 'Overview (home dashboard)', description: 'Main admin dashboard', permissionCode: 'nav:overview' },
-  { id: 'store', label: 'Store & homepage', description: 'Online store & homepage layout', permissionCode: 'nav:store' },
+  { id: 'store', label: 'Store & homepage', description: 'Online store, homepage layout, discount popup, theme', permissionCode: 'nav:store' },
   { id: 'channels', label: 'Sales channels', description: 'Marketplaces (Amazon, Flipkart, etc.) & Facebook Shop', permissionCode: 'nav:channels' },
   { id: 'meta', label: 'Meta (Business & Ads)', description: 'Meta hub, ads, catalog', permissionCode: 'nav:meta' },
   { id: 'google', label: 'Google & YouTube', description: 'Search & YouTube integrations', permissionCode: 'nav:google' },
   { id: 'facebook', label: 'Facebook & Instagram', description: 'Organic social integrations', permissionCode: 'nav:facebook' },
   { id: 'loyalty', label: 'Loyalty & cashback', description: 'Loyalty program & cashback', permissionCode: 'nav:loyalty' },
-  { id: 'catalog', label: 'Products & catalog', description: 'Products, catalog, collections, inventory, discounts', permissionCode: 'nav:catalog' },
+  { id: 'catalog', label: 'Products & catalog', description: 'Products, reviews, Shop by Concern, catalog, collections, inventory, warehouses, discounts', permissionCode: 'nav:catalog' },
   { id: 'sales', label: 'Sales & e-commerce', description: 'Orders, unified sales, shipments, POS, cart', permissionCode: 'nav:sales' },
   { id: 'content', label: 'Content & CMS', description: 'CMS, blog, video, static pages', permissionCode: 'nav:content' },
   { id: 'crm', label: 'Customer & CRM', description: 'Customers, users, WhatsApp, journeys', permissionCode: 'nav:crm' },
@@ -296,7 +303,15 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       'returns:update',
       'marketing:read',
       'discounts:read',
+      'reviews:read',
+      'reviews:update',
     ],
+  },
+  {
+    id: 'reviews_moderator',
+    name: 'Reviews moderator',
+    description: 'Approve, hide and reply to product and Google reviews. Nothing else.',
+    permissionCodes: ['nav:overview', 'nav:catalog:reviews', 'nav:catalog:google_reviews', 'reviews:read', 'reviews:update'],
   },
   {
     id: 'marketing_ads',

@@ -133,19 +133,13 @@ export default function SocialSneakPeek() {
   }
 
   return (
-    <section className="py-8 sm:py-12 md:py-16 bg-white" aria-labelledby="community-section-heading">
+    <section className="nf-section bg-white" aria-labelledby="community-section-heading">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 sm:mb-10 text-center">
-          <h2
-            id="community-section-heading"
-            className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-[0.06em] text-[color:var(--nf-heading)]"
-            style={{ fontFamily: 'var(--font-heading-family, inherit)' }}
-          >
+        <div className="nf-section-head">
+          <h2 id="community-section-heading" className="nf-section-title">
             Community
           </h2>
-          <p className="mt-2 max-w-lg mx-auto text-sm sm:text-base text-gray-500">
-            Featured stories from our users.
-          </p>
+          <p className="nf-section-sub">Featured stories from our users.</p>
         </div>
 
         {loading ? (
@@ -199,7 +193,7 @@ export default function SocialSneakPeek() {
           </p>
         )}
 
-        <div className="mt-8 sm:mt-10 flex justify-center">
+        <div className="mt-6 flex justify-center">
           <a
             href="#/user/blog"
             className="inline-flex items-center gap-2 rounded-full bg-[color:var(--nf-heading)] px-6 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-[color:var(--nf-heading-hover)] hover:shadow-lg"

@@ -1,5 +1,38 @@
-// Amazon-style invoice template generator
+// Seller tax invoice, laid out as a 4 × 6 inch label for thermal label printers
 import { getStateCode, numberToWords } from './invoiceUtils'
+import { DEFAULT_GST_RATE, gstFromInclusive, parseGstRate, splitSlabs, type GstSlab } from '../services/gstCalc'
+
+/**
+ * GST rate of an order line. Orders placed since per-product GST store the rate in force at
+ * order time on each item (gst_rate), so the invoice stays correct after a rate changes.
+ * Older orders fall back to the CSV 'GST %' they were placed with, then the invoice setting.
+ */
+export function invoiceItemGstRate(item: any, taxSettings: any): number {
+  return (
+    parseGstRate(item?.gst_rate) ??
+    parseGstRate(item?.csvProduct?.['GST %']) ??
+    parseGstRate(taxSettings?.rate) ??
+    DEFAULT_GST_RATE
+  )
+}
+
+/** Taxable value + GST of an order line (prices are GST-inclusive). */
+export function invoiceItemGst(item: any, taxSettings: any): { rate: number; taxable: number; gst: number } {
+  const rate = invoiceItemGstRate(item, taxSettings)
+  const storedTaxable = Number(item?.taxable_value)
+  const storedGst = Number(item?.gst_amount)
+  if (item?.gst_rate != null && Number.isFinite(storedTaxable) && Number.isFinite(storedGst)) {
+    return { rate, taxable: storedTaxable, gst: storedGst }
+  }
+  const unitPrice = parseFloat(item?.price || item?.unitPrice || item?.mrp || 0) || 0
+  const quantity = parseInt(item?.quantity || 1) || 1
+  return { rate, ...gstFromInclusive(unitPrice * quantity, rate) }
+}
+
+/** Escape text placed into the invoice HTML (product names, addresses, settings). */
+function esc(v: unknown): string {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
+}
 
 export function generateAmazonInvoiceHTML(
   order: any,
@@ -20,132 +53,164 @@ export function generateAmazonInvoiceHTML(
     let totalTaxAmount = 0
     let totalAmount = 0
     let totalDiscount = 0
+    const isCGST = taxSettings.type === 'CGST+SGST'
+    const slabs = new Map<number, GstSlab>()
+    const addToSlab = (rate: number, taxable: number, gst: number) => {
+      const slab = slabs.get(rate) || { rate, taxable: 0, gst: 0 }
+      slab.taxable += taxable
+      slab.gst += gst
+      slabs.set(rate, slab)
+    }
     
-    // Build itemized table rows
+    const money = (n: number) => `${currency}${(Number(n) || 0).toFixed(2)}`
+    const fmtRate = (r: number) => `${Number.isInteger(r) ? r : r.toFixed(2)}%`
+
+    // Build itemized table rows (compact: the CGST/SGST or IGST split is in the GST summary below)
     const invoiceItems = items.map((item: any, index: number) => {
       const unitPrice = parseFloat(item.price || item.unitPrice || item.mrp || 0)
       const quantity = parseInt(item.quantity || 1)
       const discount = parseFloat(item.discount || 0)
-      const gstFromCSV = item.csvProduct?.['GST %']
-      const taxRatePercent = gstFromCSV ? parseFloat(gstFromCSV) : parseFloat(taxSettings.rate || 18)
-      const taxRate = taxRatePercent / 100
-      
-      // MRP is tax-inclusive, so extract base price and tax
-      const basePricePerUnit = unitPrice / (1 + taxRate)
-      const taxPerUnit = unitPrice - basePricePerUnit
-      
-      const netAmount = basePricePerUnit * quantity
-      const itemTax = taxPerUnit * quantity
+      // MRP is tax-inclusive: back GST out at this item's own rate
+      const line = invoiceItemGst(item, taxSettings)
+      const taxRatePercent = line.rate
+      const netAmount = line.taxable
+      const itemTax = line.gst
       const itemTotal = unitPrice * quantity
+      addToSlab(taxRatePercent, netAmount, itemTax)
       const itemDiscount = discount
       const itemTotalAfterDiscount = itemTotal - itemDiscount
-      
+
       totalNetAmount += netAmount
       totalTaxAmount += itemTax
       totalAmount += itemTotalAfterDiscount
       totalDiscount += itemDiscount
-      
-      const hsnCode = item.csvProduct?.['HSN Code'] || item.hsn || '-'
-      const sku = item.csvProduct?.['SKU'] || item.code || item.sku || item.id || 'N/A'
+
+      const hsnCode = item.csvProduct?.['HSN Code'] || item.hsn || ''
+      const sku = item.csvProduct?.['SKU'] || item.code || item.sku || ''
       const productName = item.name || item.productName || item.title || 'Product'
-      const brand = item.csvProduct?.['Brand Name'] || 'NEFOL'
-      
-      // Determine tax type (CGST+SGST or IGST)
-      const isCGST = taxSettings.type === 'CGST+SGST'
-      const cgstRate = isCGST ? taxRatePercent / 2 : 0
-      const sgstRate = isCGST ? taxRatePercent / 2 : 0
-      const igstRate = !isCGST ? taxRatePercent : 0
-      const cgstAmount = isCGST ? itemTax / 2 : 0
-      const sgstAmount = isCGST ? itemTax / 2 : 0
-      const igstAmount = !isCGST ? itemTax : 0
-      
+      const sub = [sku && esc(sku), hsnCode && `HSN ${esc(hsnCode)}`].filter(Boolean).join(' · ')
+
       return `
-        <tr>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">${index + 1}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; font-size: 12px;">
-            <div style="font-weight: bold; margin-bottom: 4px;">${productName}</div>
-            <div style="font-size: 11px; color: #666;">${sku}${brand !== 'NEFOL' ? ` | ${brand}` : ''}</div>
+        <tr class="item">
+          <td class="text-center">${index + 1}</td>
+          <td>
+            <div class="item-name">${esc(productName)}</div>
+            ${sub ? `<div class="sub">${sub}</div>` : ''}
+            ${itemDiscount > 0 ? `<div class="sub">Discount −${money(itemDiscount)}</div>` : ''}
           </td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-size: 12px;">${currency}${basePricePerUnit.toFixed(2)}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">${quantity}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-size: 12px;">${currency}${netAmount.toFixed(2)}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">${taxRatePercent.toFixed(2)}%</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">
-            ${isCGST ? `CGST ${cgstRate.toFixed(2)}%<br/>SGST ${sgstRate.toFixed(2)}%` : `IGST ${igstRate.toFixed(2)}%`}
-          </td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-size: 12px;">
-            ${isCGST ? `${currency}${cgstAmount.toFixed(2)}<br/>${currency}${sgstAmount.toFixed(2)}` : `${currency}${igstAmount.toFixed(2)}`}
-          </td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-size: 12px; font-weight: bold;">${currency}${itemTotalAfterDiscount.toFixed(2)}</td>
-        </tr>
-      `
+          <td class="text-center">${quantity}</td>
+          <td class="text-right">${money(netAmount)}</td>
+          <td class="text-right">${fmtRate(taxRatePercent)}<div class="sub">${money(itemTax)}</div></td>
+          <td class="text-right strong">${money(itemTotalAfterDiscount)}</td>
+        </tr>`
     }).join('')
-    
+
     // Calculate shipping tax if applicable
     const shippingCharges = parseFloat(order.shipping || 0)
     let shippingTax = 0
     if (shippingCharges > 0) {
-      const shippingTaxRate = parseFloat(taxSettings.rate || 18) / 100
-      const shippingBase = shippingCharges / (1 + shippingTaxRate)
-      shippingTax = shippingCharges - shippingBase
+      // Shipping is GST-inclusive at the invoice-settings rate
+      const shippingRate = parseGstRate(taxSettings.rate) ?? DEFAULT_GST_RATE
+      const s = gstFromInclusive(shippingCharges, shippingRate)
+      shippingTax = s.gst
       totalTaxAmount += shippingTax
+      addToSlab(shippingRate, s.taxable, s.gst)
     }
-    
+
+    // GST summary by rate (taxable value + GST per slab, split CGST/SGST or IGST)
+    const slabRows = splitSlabs(
+      [...slabs.values()]
+        .map((s) => ({ rate: s.rate, taxable: Math.round(s.taxable * 100) / 100, gst: Math.round(s.gst * 100) / 100 }))
+        .sort((a, b) => a.rate - b.rate),
+      isCGST
+    )
+    const slabTotals = slabRows.reduce(
+      (t, s) => ({ taxable: t.taxable + s.taxable, cgst: t.cgst + s.cgst, sgst: t.sgst + s.sgst, igst: t.igst + s.igst, gst: t.gst + s.gst }),
+      { taxable: 0, cgst: 0, sgst: 0, igst: 0, gst: 0 }
+    )
+    const gstSummaryHtml = `
+    <table class="gst-summary">
+      <thead>
+        <tr>
+          <th class="text-left">GST Rate</th>
+          <th class="text-right">Taxable</th>
+          ${isCGST ? '<th class="text-right">CGST</th><th class="text-right">SGST</th>' : '<th class="text-right">IGST</th>'}
+          <th class="text-right">Total GST</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${slabRows.map((s) => `
+        <tr>
+          <td class="text-left">${fmtRate(s.rate)}${isCGST ? ` (${fmtRate(s.rate / 2)} + ${fmtRate(s.rate / 2)})` : ''}</td>
+          <td class="text-right">${money(s.taxable)}</td>
+          ${isCGST ? `<td class="text-right">${money(s.cgst)}</td><td class="text-right">${money(s.sgst)}</td>` : `<td class="text-right">${money(s.igst)}</td>`}
+          <td class="text-right">${money(s.gst)}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td class="text-left">TOTAL</td>
+          <td class="text-right">${money(slabTotals.taxable)}</td>
+          ${isCGST ? `<td class="text-right">${money(slabTotals.cgst)}</td><td class="text-right">${money(slabTotals.sgst)}</td>` : `<td class="text-right">${money(slabTotals.igst)}</td>`}
+          <td class="text-right">${money(slabTotals.gst)}</td>
+        </tr>
+      </tfoot>
+    </table>`
+
     // Get order-level discounts (coupon codes and coins)
     const orderDiscountAmount = parseFloat(order.discount_amount || 0)
     const orderDiscountCode = order.discount_code || null
     const coinsUsed = parseFloat(order.coins_used || 0)
     const coinsDiscount = coinsUsed / 10 // 1 rupee = 10 coins
-    
+
     // Calculate final total after order-level discounts
     const subtotalBeforeDiscounts = totalAmount + shippingCharges
     const finalTotal = Math.max(0, subtotalBeforeDiscounts - orderDiscountAmount - coinsDiscount)
     const amountInWords = numberToWords(Math.round(finalTotal))
-    
-    // Format dates
+
     const formatDate = (date: string) => {
       const d = new Date(date)
-      return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })
     }
-    
-    // Format addresses with state codes
-    const formatAddress = (addr: any, isBilling: boolean = false) => {
+
+    const parseAddr = (a: any) => {
+      if (!a) return null
+      if (typeof a === 'string') {
+        try { return JSON.parse(a) } catch { return a }
+      }
+      return a
+    }
+
+    // Compact address block for the label
+    const formatAddress = (addr: any) => {
       if (!addr) return 'N/A'
-      if (typeof addr === 'string') return addr
-      
+      if (typeof addr === 'string') return esc(addr)
       const name = `${addr.firstName || addr.first_name || order.customer_name || ''} ${addr.lastName || addr.last_name || ''}`.trim()
-      const company = addr.company || ''
-      const address = addr.address || addr.street || ''
-      const apartment = addr.apartment || ''
-      const city = addr.city || ''
       const state = addr.state || ''
-      const zip = addr.zip || ''
-      const country = addr.country || 'India'
       const stateCode = getStateCode(state)
-      
-      let formatted = name
-      if (company) formatted += `<br/>${company}`
-      if (address) formatted += `<br/>${address}`
-      if (apartment) formatted += `<br/>${apartment}`
-      formatted += `<br/>${city}, ${state} ${zip}`
-      formatted += `<br/>${country}`
-      if (stateCode) formatted += `<br/>State/UT Code: ${stateCode}`
-      
-      return formatted
+      const lines = [
+        name && `<strong>${esc(name)}</strong>`,
+        addr.company && esc(addr.company),
+        [addr.address || addr.street, addr.apartment].filter(Boolean).map(esc).join(', '),
+        [addr.city, state].filter(Boolean).map(esc).join(', ') + (addr.zip || addr.pincode ? ` – ${esc(addr.zip || addr.pincode)}` : ''),
+        [stateCode && `State code ${esc(stateCode)}`, addr.phone && `Ph ${esc(addr.phone)}`].filter(Boolean).join(' · '),
+      ]
+      return lines.filter(Boolean).join('<br/>')
     }
-    
-    const shippingAddr = order.shipping_address
-    const billingAddr = order.billing_address || order.shipping_address
+
+    const shippingAddr = parseAddr(order.shipping_address)
+    const billingAddr = parseAddr(order.billing_address) || shippingAddr
+    const sameAddress = !order.billing_address || JSON.stringify(billingAddr) === JSON.stringify(shippingAddr)
     const shippingState = shippingAddr?.state || ''
     const billingState = billingAddr?.state || ''
     const placeOfSupply = shippingState || billingState
-    const placeOfDelivery = shippingState || billingState
-    
+    const placeOfSupplyCode = getStateCode(placeOfSupply)
+
     // Invoice number
     const invoiceNumber = order.invoice_number || order.order_number
     const invoiceDate = formatDate(order.created_at)
     const orderDate = formatDate(order.created_at)
-    
+
     // Seller information from company details
     const sellerName = companyDetails.companyName || 'Nefol'
     const sellerAddress = companyDetails.companyAddress || ''
@@ -153,267 +218,219 @@ export function generateAmazonInvoiceHTML(
     const sellerEmail = companyDetails.companyEmail || ''
     const sellerGST = companyDetails.gstNumber || ''
     const sellerPAN = companyDetails.panNumber || ''
-    const sellerBank = companyDetails.bankName || ''
-    const sellerAccount = companyDetails.accountNumber || ''
-    const sellerIFSC = companyDetails.ifscCode || ''
-    
+
+    const meta: [string, string][] = [
+      ['Invoice No', esc(invoiceNumber || 'N/A')],
+      ['Invoice Date', invoiceDate],
+      ['Order No', esc(order.order_number || 'N/A')],
+      ['Order Date', orderDate],
+      ['Place of Supply', placeOfSupply ? `${esc(placeOfSupply)}${placeOfSupplyCode ? ` (${esc(placeOfSupplyCode)})` : ''}` : 'N/A'],
+      ['Payment', esc(order.payment_method === 'cod' || order.cod ? 'Cash on Delivery' : order.payment_method ? 'Prepaid' : '—')],
+    ]
+
     return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tax Invoice - ${invoiceNumber}</title>
+  <title>Tax Invoice - ${esc(invoiceNumber)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <style>
+    /* 4 × 6 inch label (standard thermal label printers), portrait.
+       Colours: the storefront's Midnight Gold theme (common/src/theme.ts), same as the order emails. */
+    @page { size: 4in 6in; margin: 0; }
+    :root {
+      --midnight: #111827;     /* header band, grand total */
+      --gold: #B08D57;         /* wordmark, rules */
+      --gold-deep: #7A5E36;    /* gold for small text on white (readable) */
+      --ink: #111827;
+      --ink-mid: #4B5563;
+      --rule: #B08D57;
+      --rule-soft: #ECE4D6;
+      --wash: #FAF6EF;
+      --band-text: #E5E7EB;
+      --page-bg: #F5F1EA;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; font-size: 11px; }
-    .invoice-container { max-width: 210mm; margin: 0 auto; background: white; padding: 10mm; min-height: 297mm; max-height: 297mm; overflow: hidden; }
-    .print-button { 
-      position: fixed; 
-      top: 20px; 
-      right: 20px; 
-      background: #232f3e; 
-      color: white; 
-      padding: 12px 24px; 
-      border: none; 
-      border-radius: 4px; 
-      cursor: pointer; 
-      font-size: 14px; 
-      font-weight: bold;
-      z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    html, body { background: var(--page-bg); }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 7pt; line-height: 1.25; color: var(--ink); padding: 24px 0; }
+    .label { width: 4in; min-height: 6in; margin: 0 auto; background: #fff; padding: 0.1in 0.12in 0.08in; box-shadow: 0 4px 18px rgba(17,24,39,0.16); }
+
+    .print-button {
+      position: fixed; bottom: 16px; right: 16px; z-index: 1000;
+      background: var(--midnight); color: var(--gold); border: 1px solid var(--gold); border-radius: 6px;
+      padding: 10px 18px; font: 600 13px Arial, sans-serif; cursor: pointer; letter-spacing: 0.03em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     }
-    .print-button:hover { background: #37475a; }
-    @media print {
-      body { background: white; padding: 0; }
-      .print-button { display: none; }
-      .invoice-container { 
-        max-width: 210mm; 
-        margin: 0; 
-        padding: 10mm; 
-        box-shadow: none;
-        page-break-after: avoid;
-      }
-      @page { 
-        size: A4; 
-        margin: 0;
-        size: 210mm 297mm;
-      }
-      .invoice-container { 
-        max-width: 210mm; 
-        margin: 0; 
-        padding: 10mm; 
-        box-shadow: none;
-        page-break-after: avoid;
-        page-break-inside: avoid;
-        height: 277mm;
-        overflow: hidden;
-      }
-      * { 
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-    }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-    .logo-section { flex: 1; }
-    .logo { ${logoUrl ? `background: url('${logoUrl}') center/contain no-repeat;` : 'background: #232f3e; color: white;'} width: 120px; height: 50px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; }
-    .invoice-title { flex: 1; text-align: right; font-size: 12px; font-weight: bold; color: #333; }
-    .seller-section { margin-bottom: 12px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
-    .seller-title { font-weight: bold; font-size: 11px; margin-bottom: 6px; color: #333; }
-    .seller-info { font-size: 10px; line-height: 1.5; color: #333; }
-    .address-section { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-    .address-box { padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
-    .address-title { font-weight: bold; font-size: 11px; margin-bottom: 6px; color: #333; }
-    .address-content { font-size: 10px; line-height: 1.6; color: #333; }
-    .order-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
-    .info-item { font-size: 10px; }
-    .info-label { font-weight: bold; color: #333; }
-    .info-value { color: #333; margin-top: 2px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 9px; }
-    th { background: #232f3e; color: white; padding: 6px 4px; text-align: left; font-weight: bold; border: 1px solid #ddd; font-size: 9px; }
-    td { padding: 5px 4px; border: 1px solid #ddd; color: #333; font-size: 9px; }
+    .print-button:hover { background: #1F2937; }
+
+    /* Brand band — midnight with the gold NEFöL wordmark, as on the storefront and emails */
+    .brand-band { display: flex; align-items: center; justify-content: space-between; background: var(--midnight); color: #fff; border-radius: 4px; border-bottom: 2px solid var(--gold); padding: 5px 9px; }
+    .wordmark { display: inline-flex; flex-direction: column; align-items: center; line-height: 1; font-family: 'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size: 19pt; }
+    .wordmark .mark { font-weight: 500; letter-spacing: 0.03em; color: var(--gold); white-space: nowrap; }
+    .wordmark .mark .o { letter-spacing: 0.01em; }
+    .wordmark .tagline { margin-top: 0.22em; font-size: 0.255em; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--band-text); white-space: nowrap; }
+    .doc-title { text-align: right; }
+    .doc-title .t { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 10pt; font-weight: 700; letter-spacing: 0.06em; color: #fff; }
+    .doc-title .s { font-size: 6pt; color: var(--gold); margin-top: 2px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    .meta { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 3px 8px; margin: 4px 0 0; padding: 4px 0; border-bottom: 1px solid var(--rule); }
+    .meta .k { font-size: 5.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gold-deep); }
+    .meta .v { font-weight: 700; font-size: 7pt; word-break: break-word; }
+    .meta .wide { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 6px; }
+
+    .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--rule); }
+    .parties.three { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .party h4 { font-size: 5.5pt; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 2px; color: var(--gold-deep); }
+    .party p { font-size: 6.3pt; line-height: 1.3; word-break: break-word; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
+    th { font-size: 5.5pt; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px; border-bottom: 1px solid var(--rule); text-align: left; color: var(--midnight); }
+    td { font-size: 6.6pt; padding: 2px; vertical-align: top; }
+    .items { margin-top: 2px; }
+    .items tr.item td { border-bottom: 0.5px solid var(--rule-soft); }
+    .item-name { font-weight: 700; }
+    .sub { font-size: 5.6pt; color: var(--ink-mid); font-weight: 400; }
+    .text-left { text-align: left; }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
-    .summary-section { margin-top: 12px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
-    .summary-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #ddd; font-size: 10px; }
-    .summary-label { font-weight: 500; color: #333; }
-    .summary-value { font-weight: bold; color: #333; }
-    .grand-total { background: #232f3e; color: white; padding: 10px; margin-top: 10px; display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; }
-    .amount-words { margin-top: 10px; padding: 8px; background: #fff; border: 1px solid #ddd; font-size: 10px; font-weight: bold; color: #333; }
-    .footer { margin-top: 15px; padding-top: 12px; border-top: 2px solid #333; }
-    .signature-section { margin-top: 15px; }
-    .signature-box { text-align: right; }
-    .signature-photo { max-width: 120px; max-height: 60px; border: 1px solid #ddd; margin-bottom: 6px; }
-    .signature-text { font-weight: bold; font-size: 10px; color: #333; }
-    .reverse-charge { margin-top: 12px; font-size: 10px; color: #333; }
-    .footer-note { margin-top: 12px; font-size: 9px; color: #666; line-height: 1.5; }
-    .page-number { text-align: right; margin-top: 12px; font-size: 9px; color: #666; }
-  </style>
-  <script>
-    function printInvoice() {
-      window.print();
+    .strong { font-weight: 700; }
+
+    .section-title { font-size: 5.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; margin: 4px 0 0; color: var(--gold-deep); }
+    .gst-summary { background: var(--wash); }
+    .gst-summary th, .gst-summary td { font-size: 6pt; padding: 1.5px 3px; }
+    .gst-summary tbody td { border-bottom: 0.5px solid var(--rule-soft); }
+    .gst-summary tfoot td { font-weight: 700; border-top: 1px solid var(--rule); }
+
+    .summary { display: flex; gap: 8px; align-items: flex-end; margin-top: 4px; }
+    .words { flex: 1; font-size: 6pt; line-height: 1.3; }
+    .words strong { color: var(--gold-deep); }
+    .totals { width: 56%; }
+    .totals .row { display: flex; justify-content: space-between; padding: 1px 0; font-size: 6.6pt; }
+    .grand { display: flex; justify-content: space-between; align-items: center; background: var(--midnight); color: #fff; padding: 4px 7px; margin-top: 2px; border-radius: 3px; border-left: 3px solid var(--gold); font-size: 9pt; font-weight: 700; }
+    .grand .amt { color: var(--gold); }
+
+    .footer { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; margin-top: 5px; padding-top: 4px; border-top: 1px solid var(--rule); }
+    .footer .notes { font-size: 5.6pt; line-height: 1.3; color: var(--ink-mid); flex: 1; }
+    .sign { text-align: right; font-size: 6pt; min-width: 1.3in; }
+    .sign img { max-width: 1in; max-height: 0.32in; display: block; margin: 2px 0 2px auto; }
+    .sign .line { margin-top: 0.2in; font-weight: 700; font-family: 'Playfair Display', Georgia, serif; }
+    .sign img + .line { margin-top: 0; }
+
+    @media print {
+      html, body { background: #fff; padding: 0; }
+      .print-button { display: none; }
+      .label { margin: 0; box-shadow: none; min-height: auto; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      /* Thermal label printers print black only: gold would come out as grainy dots, so the
+         label prints black-and-white. The PDF (html.color-print) keeps the Midnight Gold colours. */
+      html:not(.color-print) {
+        --midnight: #000; --gold: #fff; --gold-deep: #000; --ink: #000; --ink-mid: #222;
+        --rule: #000; --rule-soft: #999; --wash: #fff; --band-text: #fff;
+      }
+      html:not(.color-print) .brand-band { border-bottom-color: #000; }
+      html:not(.color-print) .grand { border-left-color: #000; }
     }
-    // Auto-print on load (optional - can be removed if not desired)
-    // window.addEventListener('load', function() {
-    //   setTimeout(function() {
-    //     window.print();
-    //   }, 500);
-    // });
-  </script>
+  </style>
 </head>
 <body>
-  <button class="print-button" onclick="printInvoice()">🖨️ Print Invoice</button>
-  <div class="invoice-container">
-    <!-- Header -->
-    <div class="header">
-      <div class="logo-section">
-        <div class="logo">${logoUrl ? '' : companyDetails.companyName || 'NEFOL'}</div>
+  <button class="print-button" onclick="window.print()">🖨️ Print 4×6 label</button>
+  <div class="label">
+    <div class="brand-band">
+      <div class="wordmark" aria-label="NEFOL">
+        <span class="mark">NEF<span class="o">ö</span>L</span>
+        <span class="tagline">Natural as the morning dew</span>
       </div>
-      <div class="invoice-title">
-        Tax Invoice/Bill of Supply/Cash Memo<br/>
-        (Original for Recipient)
-      </div>
-    </div>
-    
-    <!-- Seller Information -->
-    <div class="seller-section">
-      <div class="seller-title">Sold By:</div>
-      <div class="seller-info">
-        <strong>${sellerName}</strong><br/>
-        ${sellerAddress ? `${sellerAddress}<br/>` : ''}
-        ${sellerPhone ? `Phone: ${sellerPhone}<br/>` : ''}
-        ${sellerEmail ? `Email: ${sellerEmail}<br/>` : ''}
-        ${sellerPAN ? `PAN No: ${sellerPAN}<br/>` : ''}
-        ${sellerGST ? `GST Registration No: ${sellerGST}` : ''}
+      <div class="doc-title">
+        <div class="t">TAX INVOICE</div>
+        <div class="s">Original for Recipient</div>
       </div>
     </div>
-    
-    <!-- Addresses -->
-    <div class="address-section">
-      <div class="address-box">
-        <div class="address-title">Billing Address:</div>
-        <div class="address-content">${formatAddress(billingAddr, true)}</div>
-      </div>
-      <div class="address-box">
-        <div class="address-title">Shipping Address:</div>
-        <div class="address-content">${formatAddress(shippingAddr, false)}</div>
-      </div>
+
+    <div class="meta">
+      ${meta.map(([k, v]) => `<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}
+      ${shipmentInfo?.awb_code ? `<div class="wide"><span class="k">AWB</span><span class="v">${esc(shipmentInfo.awb_code)}</span></div>` : ''}
     </div>
-    
-    <!-- Order Information -->
-    <div class="order-info">
-      <div class="info-item">
-        <div class="info-label">Order Number:</div>
-        <div class="info-value">${order.order_number || 'N/A'}</div>
+
+    <div class="parties${sameAddress ? '' : ' three'}">
+      <div class="party">
+        <h4>Sold by</h4>
+        <p>
+          <strong>${esc(sellerName)}</strong>
+          ${sellerAddress ? `<br/>${esc(sellerAddress)}` : ''}
+          ${sellerGST || sellerPAN ? `<br/>${[sellerGST && `GSTIN <strong>${esc(sellerGST)}</strong>`, sellerPAN && `PAN ${esc(sellerPAN)}`].filter(Boolean).join(' · ')}` : ''}
+          ${sellerPhone || sellerEmail ? `<br/>${[sellerPhone, sellerEmail].filter(Boolean).map(esc).join(' · ')}` : ''}
+        </p>
       </div>
-      <div class="info-item">
-        <div class="info-label">Order Date:</div>
-        <div class="info-value">${orderDate}</div>
+      ${sameAddress ? `
+      <div class="party">
+        <h4>Bill &amp; Ship to</h4>
+        <p>${formatAddress(shippingAddr)}</p>
+      </div>` : `
+      <div class="party">
+        <h4>Bill to</h4>
+        <p>${formatAddress(billingAddr)}</p>
       </div>
-      <div class="info-item">
-        <div class="info-label">Invoice Number:</div>
-        <div class="info-value">${invoiceNumber}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Invoice Date:</div>
-        <div class="info-value">${invoiceDate}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Place of Supply:</div>
-        <div class="info-value">${placeOfSupply || 'N/A'}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Place of Delivery:</div>
-        <div class="info-value">${placeOfDelivery || 'N/A'}</div>
-      </div>
+      <div class="party">
+        <h4>Ship to</h4>
+        <p>${formatAddress(shippingAddr)}</p>
+      </div>`}
     </div>
-    
-    <!-- Itemized Table -->
-    <table>
+
+    <table class="items">
       <thead>
         <tr>
-          <th class="text-center">Sl. No</th>
-          <th>Description</th>
-          <th class="text-right">Unit Price</th>
-          <th class="text-center">Qty</th>
-          <th class="text-right">Net Amount</th>
-          <th class="text-center">Tax Rate</th>
-          <th class="text-center">Tax Type</th>
-          <th class="text-right">Tax Amount</th>
-          <th class="text-right">Total Amount</th>
+          <th class="text-center" style="width: 6%">#</th>
+          <th>Item</th>
+          <th class="text-center" style="width: 8%">Qty</th>
+          <th class="text-right" style="width: 17%">Taxable</th>
+          <th class="text-right" style="width: 14%">GST</th>
+          <th class="text-right" style="width: 18%">Amount</th>
         </tr>
       </thead>
       <tbody>
         ${invoiceItems}
+        ${shippingCharges > 0 ? `
+        <tr class="item">
+          <td></td>
+          <td><div class="item-name">Shipping</div></td>
+          <td></td>
+          <td class="text-right">${money(shippingCharges - shippingTax)}</td>
+          <td class="text-right"><div class="sub">${money(shippingTax)}</div></td>
+          <td class="text-right strong">${money(shippingCharges)}</td>
+        </tr>` : ''}
       </tbody>
-      <tfoot>
-        <tr style="background: #f0f0f0; font-weight: bold;">
-          <td colspan="4" class="text-right" style="padding: 10px;">SUBTOTAL</td>
-          <td class="text-right" style="padding: 10px;">${currency}${totalNetAmount.toFixed(2)}</td>
-          <td></td>
-          <td></td>
-          <td class="text-right" style="padding: 10px;">${currency}${totalTaxAmount.toFixed(2)}</td>
-          <td class="text-right" style="padding: 10px;">${currency}${(totalAmount + shippingCharges).toFixed(2)}</td>
-        </tr>
-      </tfoot>
     </table>
-    
-    <!-- Summary -->
-    <div class="summary-section">
-      <div class="summary-row">
-        <div class="summary-label">Subtotal (Items + Shipping):</div>
-        <div class="summary-value">${currency}${(totalAmount + shippingCharges).toFixed(2)}</div>
-      </div>
-      ${orderDiscountCode && orderDiscountAmount > 0 ? `
-      <div class="summary-row" style="color: #dc2626;">
-        <div class="summary-label">Coupon Discount (${orderDiscountCode}):</div>
-        <div class="summary-value" style="color: #dc2626;">-${currency}${orderDiscountAmount.toFixed(2)}</div>
-      </div>
-      ` : ''}
-      ${coinsUsed > 0 ? `
-      <div class="summary-row" style="color: #dc2626;">
-        <div class="summary-label">Nefol Coins Discount (${coinsUsed} coins):</div>
-        <div class="summary-value" style="color: #dc2626;">-${currency}${coinsDiscount.toFixed(2)}</div>
-      </div>
-      ` : ''}
-      <div class="summary-row" style="border-top: 2px solid #333; margin-top: 8px; padding-top: 8px; font-weight: bold; font-size: 12px;">
-        <div class="summary-label">Grand Total:</div>
-        <div class="summary-value">${currency}${finalTotal.toFixed(2)}</div>
-      </div>
-      <div class="summary-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
-        <div class="summary-label">Amount in Words:</div>
-        <div class="summary-value">${amountInWords}</div>
-      </div>
-      ${shipmentInfo?.awb_code ? `
-      <div class="summary-row" style="border-top: 1px solid #ddd; margin-top: 8px; padding-top: 8px;">
-        <div class="summary-label">AWB Code:</div>
-        <div class="summary-value"><strong>${shipmentInfo.awb_code}</strong></div>
-      </div>
-      ` : ''}
-      ${shipmentInfo?.tracking_url ? `
-      <div class="summary-row">
-        <div class="summary-label">Tracking:</div>
-        <div class="summary-value"><a href="${shipmentInfo.tracking_url}" target="_blank" style="color: #0066cc; text-decoration: none;">Track Shipment →</a></div>
-      </div>
-      ` : ''}
+
+    <div class="section-title">GST Summary by Rate</div>
+    ${gstSummaryHtml}
+
+    <div class="summary">
+    <div class="words"><strong>Amount in words:</strong><br/>${esc(amountInWords)}</div>
+    <div class="totals">
+      <div class="row"><span>Subtotal (incl. GST)</span><span>${money(subtotalBeforeDiscounts)}</span></div>
+      ${orderDiscountCode && orderDiscountAmount > 0 ? `<div class="row"><span>Coupon (${esc(orderDiscountCode)})</span><span>−${money(orderDiscountAmount)}</span></div>` : ''}
+      ${!orderDiscountCode && orderDiscountAmount > 0 ? `<div class="row"><span>Discount</span><span>−${money(orderDiscountAmount)}</span></div>` : ''}
+      ${coinsUsed > 0 ? `<div class="row"><span>Nefol Coins (${coinsUsed})</span><span>−${money(coinsDiscount)}</span></div>` : ''}
+      <div class="grand"><span>Grand Total</span><span class="amt">${money(finalTotal)}</span></div>
     </div>
-    
-    <!-- Footer -->
+    </div>
+
     <div class="footer">
-      <div class="signature-section">
-        <div class="signature-box">
-          ${signatoryPhotoUrl ? `<img src="${signatoryPhotoUrl}" alt="Signature" class="signature-photo" />` : ''}
-          <div class="signature-text">For ${sellerName}:</div>
-          <div class="signature-text" style="margin-top: 40px;">${signature || 'Authorized Signatory'}</div>
-        </div>
+      <div class="notes">
+        Tax payable under reverse charge: No<br/>
+        ${esc(terms || 'Thank you for shopping with NEFOL.')}
       </div>
-      <div class="reverse-charge">
-        <strong>Whether tax is payable under reverse charge - No</strong>
+      <div class="sign">
+        For ${esc(sellerName)}
+        ${signatoryPhotoUrl ? `<img src="${esc(signatoryPhotoUrl)}" alt="Signature" />` : ''}
+        <div class="line">${esc(signature || 'Authorised Signatory')}</div>
       </div>
-      <div class="footer-note">
-        ${terms || 'Thank you for doing business with us.'}
-      </div>
-      <div class="page-number">Page 1 of 1</div>
     </div>
   </div>
 </body>

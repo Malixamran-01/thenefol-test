@@ -18,6 +18,7 @@ import {
   AdminManagement
 } from './pages'
 import ThemeCustomizer from './pages/ThemeCustomizer'
+import DiscountPopupManager from './pages/DiscountPopupManager'
 import UserDetail from './pages/users/UserDetail'
 import Shipments from './pages/sales/Shipments'
 import OrderDetails from './pages/sales/OrderDetails'
@@ -263,6 +264,7 @@ export default function App() {
             <Route path="static-pages" element={<StaticPagesManagement />} />
             <Route path="community-management" element={<CommunityManagement />} />
             <Route path="homepage-layout" element={<HomepageLayoutManager />} />
+            <Route path="discount-popup" element={<DiscountPopupManager />} />
             <Route path="theme" element={<ThemeCustomizer />} />
             <Route path="blog-requests" element={<BlogRequestManagement />} />
             <Route path="ask-community" element={<AskCommunityAdmin />} />

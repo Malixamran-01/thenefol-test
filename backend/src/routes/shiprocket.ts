@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
 import { sendError, sendSuccess, validateRequired } from '../utils/apiHelpers'
+import { resolveWarehouse } from './pickupWarehouses'
 
 function getBaseUrl() {
   return process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external'
@@ -132,9 +133,10 @@ export async function getPickupLocations(pool: Pool) {
     }
     
     const data: any = await resp.json()
-    // Shiprocket returns locations in different possible structures
-    // Try data.data first (most common), then data, then empty array
-    const locations = data?.data || data || []
+    // Shiprocket returns { data: { shipping_address: [...] } }; older shapes are a bare array
+    const locations = Array.isArray(data?.data?.shipping_address)
+      ? data.data.shipping_address
+      : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
     
     if (Array.isArray(locations) && locations.length > 0) {
       console.log(`✅ Found ${locations.length} pickup location(s) via API`)
@@ -1177,14 +1179,12 @@ export async function getCourierServiceabilityForOrder(pool: Pool, req: Request,
     if (!token) return sendError(res, 400, 'Shiprocket credentials not configured')
 
     // Get pickup location to obtain its pincode
-    const pickupLocations = await getPickupLocations(pool)
+    // Rates depend on where the parcel leaves from: the warehouse picked in admin (?pickup=name),
+    // otherwise the default warehouse
+    const warehouse = await resolveWarehouse(pool, (req.query as any)?.pickup || null)
+    if (typeof warehouse === 'string') return sendError(res, 400, warehouse)
     let pickupPincode = '226010' // fallback: Lucknow pincode
-    if (pickupLocations && pickupLocations.length > 0) {
-      const loc = pickupLocations.find((l: any) =>
-        l.pickup_location === 'Home' || l.pickup_location?.toLowerCase() === 'home'
-      ) || pickupLocations[0]
-      pickupPincode = loc?.pin_code || loc?.pincode || loc?.pickup_pincode || pickupPincode
-    }
+    if (warehouse?.pin_code) pickupPincode = warehouse.pin_code
 
     const isCod = order.cod === true || order.payment_method === 'cod' || order.payment_type === 'cod'
     const base = getBaseUrl()
@@ -1208,9 +1208,69 @@ export async function getCourierServiceabilityForOrder(pool: Pool, req: Request,
       is_surface: c.is_surface,
     }))
 
-    sendSuccess(res, { couriers: normalised, pickup_pincode: pickupPincode, delivery_pincode: deliveryPincode })
+    sendSuccess(res, { couriers: normalised, pickup_pincode: pickupPincode, delivery_pincode: deliveryPincode, pickup_location: warehouse?.name || null })
   } catch (err: any) {
     sendError(res, 500, 'Failed to fetch courier serviceability', err)
+  }
+}
+
+/** Pickup location names from Shiprocket's list (objects with pickup_location, or plain strings). */
+export function pickupLocationNames(list: any): string[] {
+  if (!Array.isArray(list)) return []
+  return list
+    .map((l) => (typeof l === 'string' ? l : l?.pickup_location))
+    .filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+}
+
+/** A valid pickup location other than the one just rejected, preferring one called "Home". */
+export function choosePickupLocation(valid: string[], rejected: string): string | null {
+  const others = valid.filter((n) => n !== rejected)
+  return others.find((n) => n.trim().toLowerCase() === 'home') || others[0] || null
+}
+
+/** Shiprocket's own explanation from an error body (message plus field-level errors). */
+export function shiprocketMessage(data: any): string {
+  if (!data || typeof data !== 'object') return typeof data === 'string' ? data : ''
+  const parts: string[] = []
+  const msg = data.message || data.error || data?.response?.message || data?.data?.message
+  if (msg) parts.push(String(msg))
+  const errors = data.errors || data?.data?.errors
+  if (errors && typeof errors === 'object') {
+    for (const [field, v] of Object.entries(errors)) {
+      parts.push(`${field}: ${Array.isArray(v) ? v.join(', ') : String(v)}`)
+    }
+  }
+  const awbErr = data?.response?.data?.awb_assign_error
+  if (awbErr) parts.push(String(awbErr))
+  return parts.join(' — ')
+}
+
+/**
+ * Look up an order already in Shiprocket by our order number (channel_order_id).
+ * Shiprocket answers a repeated create for the same order number without a new shipment,
+ * so the existing one has to be found instead.
+ */
+export async function findShiprocketShipment(base: string, token: string, channelOrderId: string) {
+  try {
+    const resp = await fetch(`${base}/orders?search=${encodeURIComponent(channelOrderId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!resp.ok) return null
+    const data: any = await resp.json()
+    const list: any[] = Array.isArray(data?.data) ? data.data : []
+    const match = list.find((o) => String(o?.channel_order_id) === String(channelOrderId))
+    if (!match) return null
+    const shipment = Array.isArray(match.shipments) ? match.shipments[0] : match.shipments
+    const shipmentId = shipment?.id || match.shipment_id || null
+    if (!shipmentId) return null
+    return {
+      shipmentId: String(shipmentId),
+      awbCode: (shipment?.awb || shipment?.awb_code || match.awb_code || null) as string | null,
+      status: (match.status || null) as string | null,
+    }
+  } catch (err: any) {
+    console.error('Shiprocket order lookup failed:', err?.message || err)
+    return null
   }
 }
 
@@ -1218,7 +1278,7 @@ export async function getCourierServiceabilityForOrder(pool: Pool, req: Request,
 export async function confirmAndCreateShipmentWithCourier(pool: Pool, req: Request, res: Response) {
   try {
     const { orderId } = req.params as any
-    const { courier_id } = req.body || {}
+    const { courier_id, pickup_location: requestedPickup } = req.body || {}
 
     if (!courier_id) return sendError(res, 400, 'courier_id is required')
 
@@ -1254,14 +1314,11 @@ export async function confirmAndCreateShipmentWithCourier(pool: Pool, req: Reque
       return clean.length > 10 ? clean.slice(-10) : clean
     }
 
-    const pickupLocations = await getPickupLocations(pool)
-    let pickupLocation = 'Home'
-    if (pickupLocations && pickupLocations.length > 0) {
-      const loc = pickupLocations.find((l: any) =>
-        l.pickup_location === 'Home' || l.pickup_location?.toLowerCase() === 'home'
-      ) || pickupLocations[0]
-      pickupLocation = loc?.pickup_location || 'Home'
-    }
+    // The warehouse picked when confirming; without one, the default warehouse
+    const warehouse = await resolveWarehouse(pool, requestedPickup || null)
+    if (typeof warehouse === 'string') return sendError(res, 400, warehouse)
+    const pickupLocation = warehouse?.name || 'Home'
+    const pickupChosen = !!(requestedPickup && String(requestedPickup).trim())
 
     const shipmentPayload: any = {
       order_id: order.order_number || `ORDER-${order.id}`,
@@ -1309,52 +1366,84 @@ export async function confirmAndCreateShipmentWithCourier(pool: Pool, req: Reque
     const base = getBaseUrl()
 
     // Step 1: Create order in Shiprocket
-    const createResp = await fetch(`${base}/orders/create/adhoc`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(shipmentPayload),
-    })
-    const createData: any = await createResp.json()
+    const createOrder = async () => {
+      const resp = await fetch(`${base}/orders/create/adhoc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(shipmentPayload),
+      })
+      const data: any = await resp.json().catch(() => ({}))
+      console.log(`📦 Shiprocket create order (${resp.status}, pickup "${shipmentPayload.pickup_location}") for ${shipmentPayload.order_id}:`, JSON.stringify(data))
+      return { createResp: resp, createData: data }
+    }
+    let { createResp, createData } = await createOrder()
 
-    if (!createResp.ok) {
-      console.error('Shiprocket create order error:', createData)
-      return sendError(res, 400, 'Failed to create order in Shiprocket', createData)
+    // "Wrong Pickup location entered": Shiprocket lists the account's valid locations in
+    // data.data — retry once with one of those. Not when the admin picked the warehouse: then
+    // the error is shown rather than shipping from somewhere else.
+    if (!pickupChosen && /pickup location/i.test(String(createData?.message || ''))) {
+      const valid = pickupLocationNames(createData?.data?.data ?? createData?.data)
+      const retryWith = choosePickupLocation(valid, shipmentPayload.pickup_location)
+      if (retryWith) {
+        console.log(`⚠️ Pickup location "${shipmentPayload.pickup_location}" rejected; valid: ${JSON.stringify(valid)}; retrying with "${retryWith}"`)
+        shipmentPayload.pickup_location = retryWith
+        ;({ createResp, createData } = await createOrder())
+      }
     }
 
-    const shipmentId = createData?.shipment_id || createData?.data?.shipment_id || createData?.order_id || null
+    // Only a real shipment id counts. Shiprocket's own order_id is a different number and
+    // cannot be used to assign a courier, so it is no longer used as a stand-in.
+    let shipmentId: string | null = createData?.shipment_id || createData?.data?.shipment_id || null
+    let existingAwb: string | null = null
 
     if (!shipmentId) {
-      return sendError(res, 400, 'Shiprocket did not return a shipment_id', createData)
+      // Most often the order number is already in Shiprocket (an earlier attempt, or a
+      // shipment created by hand in the Shiprocket panel): pick up that shipment instead.
+      const found = await findShiprocketShipment(base, token, shipmentPayload.order_id)
+      if (found && !/cancel/i.test(found.status || '')) {
+        shipmentId = found.shipmentId
+        existingAwb = found.awbCode
+        console.log(`ℹ️ Order ${shipmentPayload.order_id} already in Shiprocket, using shipment ${shipmentId}`)
+      } else {
+        const reason = shiprocketMessage(createData) ||
+          (found ? `order ${shipmentPayload.order_id} is cancelled in Shiprocket` : `HTTP ${createResp.status}, no shipment returned`)
+        console.error('Shiprocket create order error:', createData)
+        return sendError(res, 400, `Shiprocket could not create the shipment: ${reason}`, createData)
+      }
     }
 
-    // Step 2: Assign courier and generate AWB
-    const awbResp = await fetch(`${base}/courier/assign/awb`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ shipment_id: String(shipmentId), courier_id: String(courier_id) }),
-    })
-    const awbData: any = await awbResp.json()
-    const awbCode = awbData?.response?.data?.awb_code || awbData?.awb_code || null
-
-    if (!awbResp.ok || !awbCode) {
-      console.error('AWB assignment error:', awbData)
-      // Still save the shipment even if AWB failed — admin can retry AWB separately
+    // Step 2: Assign courier and generate AWB (skip if Shiprocket already has one)
+    let awbCode: string | null = existingAwb
+    let awbError: string | null = null
+    if (!awbCode) {
+      const awbResp = await fetch(`${base}/courier/assign/awb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ shipment_id: String(shipmentId), courier_id: String(courier_id) }),
+      })
+      const awbData: any = await awbResp.json().catch(() => ({}))
+      awbCode = awbData?.response?.data?.awb_code || awbData?.awb_code || null
+      if (!awbResp.ok || !awbCode) {
+        // Still save the shipment even if AWB failed — admin can retry AWB separately
+        awbError = shiprocketMessage(awbData) || `HTTP ${awbResp.status}`
+        console.error('AWB assignment error:', awbData)
+      }
     }
 
     // Step 3: Save to DB and update order status to 'confirmed'
     let savedRow: any
     if (existing.length === 0) {
       const { rows } = await pool.query(
-        `INSERT INTO shiprocket_shipments (order_id, shipment_id, tracking_url, status, awb_code, label_url, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
-        [order.id, String(shipmentId), createData?.tracking_url || null, createData?.status || 'pending', awbCode, createData?.label_url || null]
+        `INSERT INTO shiprocket_shipments (order_id, shipment_id, tracking_url, status, awb_code, label_url, pickup_location, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING *`,
+        [order.id, String(shipmentId), createData?.tracking_url || null, createData?.status || 'pending', awbCode, createData?.label_url || null, shipmentPayload.pickup_location]
       )
       savedRow = rows[0]
     } else {
       const { rows } = await pool.query(
-        `UPDATE shiprocket_shipments SET shipment_id=$1, tracking_url=$2, status=$3, awb_code=$4, label_url=$5, updated_at=NOW()
+        `UPDATE shiprocket_shipments SET shipment_id=$1, tracking_url=$2, status=$3, awb_code=$4, label_url=$5, pickup_location=$7, updated_at=NOW()
          WHERE order_id=$6 RETURNING *`,
-        [String(shipmentId), createData?.tracking_url || null, createData?.status || 'pending', awbCode, createData?.label_url || null, order.id]
+        [String(shipmentId), createData?.tracking_url || null, createData?.status || 'pending', awbCode, createData?.label_url || null, order.id, shipmentPayload.pickup_location]
       )
       savedRow = rows[0]
     }
@@ -1367,10 +1456,10 @@ export async function confirmAndCreateShipmentWithCourier(pool: Pool, req: Reque
     await pool.query(
       `INSERT INTO order_status_history (order_id, old_status, new_status, note, created_at)
        VALUES ($1, $2, 'confirmed', $3, NOW())`,
-      [order.id, order.status, `Shipment confirmed with courier_id=${courier_id}, AWB=${awbCode || 'pending'}`]
+      [order.id, order.status, `Shipment confirmed with courier_id=${courier_id}, pickup=${shipmentPayload.pickup_location}, AWB=${awbCode || 'pending'}`]
     )
 
-    sendSuccess(res, { ...savedRow, awb_code: awbCode, shiprocket_response: createData }, 201)
+    sendSuccess(res, { ...savedRow, awb_code: awbCode, awb_error: awbError, shiprocket_response: createData }, 201)
   } catch (err: any) {
     console.error('confirmAndCreateShipmentWithCourier error:', err)
     sendError(res, 500, 'Failed to confirm and create shipment', err)

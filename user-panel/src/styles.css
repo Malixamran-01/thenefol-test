@@ -1477,7 +1477,7 @@ video {
  * the cards then adapt to their own width through container queries.
  */
 .nefol-arrivals {
-  padding-block: 2.5rem;
+  padding-block: 2rem;
   background: linear-gradient(
     180deg,
     var(--nf-page-bg) 0%,
@@ -1501,7 +1501,7 @@ video {
 
 @media (min-width: 768px) {
   .nefol-arrivals {
-    padding-block: 4rem;
+    padding-block: 3rem;
   }
 
   .nefol-arrivals__grid {
@@ -1605,6 +1605,84 @@ video {
   flex: 0 0 auto;
   width: 100%;
   padding-inline: 0.5rem;
+}
+
+/* Product page thumbnails: a native swipe row on phones, wrapping rows from 640px.
+   The padding leaves room around the selected frame so the strip never crops it. */
+.nf-thumb-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: 4px 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-padding-inline: 2px;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y pinch-zoom;
+  scrollbar-width: none;
+}
+
+.nf-thumb-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.nf-thumb {
+  flex: 0 0 auto;
+  /* About 3⅓ thumbnails in view, so the next one peeks in and the row reads as swipeable */
+  width: calc((100% - 30px) / 3.3);
+  max-width: 130px;
+  scroll-snap-align: start;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 640px) {
+  .nf-thumb-strip {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .nf-thumb {
+    width: 130px;
+  }
+}
+
+/* Price, struck-out MRP and discount on one line (PricingDisplay compact), scaled to the card */
+.nf-price-line {
+  display: flex;
+  align-items: center;
+  /* Stays on one line for normal prices; only an unusually long price on a very narrow phone
+     lets the discount badge drop below rather than spill out of the card */
+  flex-wrap: wrap;
+  gap: 0.2em 0.35em;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: clamp(0.75rem, 5cqw, 1.125rem);
+  line-height: 1.2;
+}
+
+.nf-price-line__now {
+  font-size: 1.15em;
+  font-weight: 700;
+  color: var(--nf-price);
+}
+
+.nf-price-line__mrp {
+  font-size: 0.78em;
+  text-decoration: line-through;
+  color: var(--nf-price-mrp);
+}
+
+.nf-price-line__off {
+  flex-shrink: 0;
+  padding: 0.15em 0.4em;
+  border-radius: 0.3em;
+  font-size: 0.68em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--nf-discount-text);
+  background-color: var(--nf-discount-bg);
 }
 
 @container (min-width: 440px) {
@@ -2373,4 +2451,114 @@ body.filerobot-editor-open div[style*="position:fixed"] input {
 body.filerobot-editor-open [class*="Input"] > *,
 body.filerobot-editor-open [class*="Field"] > * {
   min-width: 0;
+}
+/*
+ * Homepage section rhythm. One compact spacing scale shared by every homepage section so stacked
+ * sections sit close together, with a small dew-drop accent under each title to separate them.
+ */
+.nf-section {
+  padding-block: 2rem;
+}
+
+.nf-section-head {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.nf-section-title {
+  margin: 0;
+  font-family: var(--font-heading-family);
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: 0.15em;
+  color: var(--nf-text);
+}
+
+.nf-section-title::after {
+  content: '';
+  display: block;
+  width: 3rem;
+  height: 2px;
+  margin: 0.75rem auto 0;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, var(--nf-primary), transparent);
+}
+
+.nf-section-title--left::after {
+  margin-left: 0;
+  background: linear-gradient(90deg, var(--nf-primary), transparent);
+}
+
+.nf-section-sub {
+  max-width: 36rem;
+  margin: 0.625rem auto 0;
+  font-size: 0.875rem;
+  font-weight: 300;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+  color: var(--nf-text-muted);
+}
+
+@media (min-width: 640px) {
+  .nf-section {
+    padding-block: 2.5rem;
+  }
+
+  .nf-section-head {
+    margin-bottom: 2rem;
+  }
+
+  .nf-section-title {
+    font-size: 1.75rem;
+  }
+
+  .nf-section-sub {
+    font-size: 0.9375rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .nf-section {
+    padding-block: 3rem;
+  }
+
+  .nf-section-title {
+    font-size: 2rem;
+  }
+}
+
+/* Discount popup image: explicit heights (aspect-ratio collapses inside the scrolling sheet) */
+.nf-popup-media { height: min(34vh, 62vw); }
+@media (min-width: 640px) {
+  .nf-popup-media { height: 250px; }
+  .nf-popup-media--side { height: auto; min-height: 460px; }
+}
+
+/* Justified long-form text (PDP description). Hyphenation keeps narrow lines from opening wide gaps. */
+.nf-justify p,
+.nf-justify li {
+  text-align: justify;
+  text-justify: inter-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+/* Full-width homepage banners (hero carousel, Complete Kit): half the usual page gutter */
+.mx-auto.nf-banner-shell {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+@media (min-width: 640px) {
+  .mx-auto.nf-banner-shell {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+@media (min-width: 1024px) {
+  .mx-auto.nf-banner-shell {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }

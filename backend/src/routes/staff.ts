@@ -13,8 +13,11 @@ import {
   DIVISION_BUNDLES,
   NAV_CATALOG_FINE,
   NAV_DIVISION_GROUPS,
+  NAV_PAGE_FINE,
   ROLE_TEMPLATES,
 } from '../config/rbacCatalog'
+import { ADMIN_NAV } from '../config/adminNavCatalog'
+import { syncRbacPermissionCodes } from '../services/rbacSync'
 
 export { hashPassword, verifyPassword }
 
@@ -883,78 +886,18 @@ export async function listStaffWithLayoutPermissions(pool: Pool, req: Request, r
 // Get all available admin panel pages
 export async function listAdminPanelPages(pool: Pool, req: Request, res: Response) {
   try {
-    // Return a predefined list of all admin panel pages
-    const pages = [
-      { path: '/loginasadmin/dashboard', name: 'Dashboard', section: 'Dashboard' },
-      { path: '/loginasadmin/store', name: 'Online Store', section: 'Dashboard' },
-      { path: '/loginasadmin/homepage-layout', name: 'Homepage Layout', section: 'Dashboard' },
-      { path: '/loginasadmin/product-collections', name: 'Product Collections', section: 'Dashboard' },
-      { path: '/loginasadmin/marketplaces', name: 'Marketplaces', section: 'Dashboard' },
-      { path: '/loginasadmin/fb-shop', name: 'FB Shop Integration', section: 'Dashboard' },
-      { path: '/loginasadmin/meta', name: 'Meta (Business & Ads)', section: 'Dashboard' },
-      { path: '/loginasadmin/google', name: 'Google & YouTube', section: 'Dashboard' },
-      { path: '/loginasadmin/facebook', name: 'Facebook & Instagram', section: 'Dashboard' },
-      { path: '/loginasadmin/loyalty-program', name: 'Loyalty Program', section: 'Dashboard' },
-      { path: '/loginasadmin/cashback', name: 'Cashback System', section: 'Dashboard' },
-      { path: '/loginasadmin/products', name: 'Products', section: 'Products & Catalog' },
-      { path: '/loginasadmin/categories', name: 'Categories', section: 'Products & Catalog' },
-      { path: '/loginasadmin/product-variants', name: 'Product Variants', section: 'Products & Catalog' },
-      { path: '/loginasadmin/inventory', name: 'Inventory', section: 'Products & Catalog' },
-      { path: '/loginasadmin/warehouses', name: 'Warehouses', section: 'Products & Catalog' },
-      { path: '/loginasadmin/orders', name: 'Orders', section: 'Sales & Orders' },
-      { path: '/loginasadmin/shipments', name: 'Shipments', section: 'Sales & Orders' },
-      { path: '/loginasadmin/returns', name: 'Returns', section: 'Sales & Orders' },
-      { path: '/loginasadmin/pos', name: 'POS System', section: 'Sales & Orders' },
-      { path: '/loginasadmin/cms', name: 'CMS', section: 'Content & CMS' },
-      { path: '/loginasadmin/blog-requests', name: 'Blog Requests', section: 'Content & CMS' },
-      { path: '/loginasadmin/author-management', name: 'Author Management', section: 'Content & CMS' },
-      { path: '/loginasadmin/video-manager', name: 'Video Manager', section: 'Content & CMS' },
-      { path: '/loginasadmin/static-pages', name: 'Static Pages', section: 'Content & CMS' },
-      { path: '/loginasadmin/community-management', name: 'Community Management', section: 'Content & CMS' },
-      { path: '/loginasadmin/customers', name: 'Customers', section: 'Customer & CRM' },
-      { path: '/loginasadmin/users', name: 'Users', section: 'Customer & CRM' },
-      { path: '/loginasadmin/user-profiles', name: 'User Profiles', section: 'Customer & CRM' },
-      { path: '/loginasadmin/user-notifications', name: 'User Notifications', section: 'Customer & CRM' },
-      { path: '/loginasadmin/customer-segmentation', name: 'Customer Segmentation', section: 'Customer & CRM' },
-      { path: '/loginasadmin/custom-audience', name: 'Custom Audience', section: 'Customer & CRM' },
-      { path: '/loginasadmin/whatsapp-subscriptions', name: 'WhatsApp Subscriptions', section: 'Customer & CRM' },
-      { path: '/loginasadmin/whatsapp-chat', name: 'WhatsApp Chat', section: 'Customer & CRM' },
-      { path: '/loginasadmin/whatsapp-management', name: 'WhatsApp Management', section: 'Customer & CRM' },
-      { path: '/loginasadmin/whatsapp-notifications', name: 'WhatsApp Notifications', section: 'Customer & CRM' },
-      { path: '/loginasadmin/journey-funnel', name: 'Journey Funnel', section: 'Customer & CRM' },
-      { path: '/loginasadmin/journey-tracking', name: 'Journey Tracking', section: 'Customer & CRM' },
-      { path: '/loginasadmin/live-chat', name: 'Live Chat', section: 'Customer & CRM' },
-      { path: '/loginasadmin/invoices', name: 'Invoices', section: 'Finance & Payments' },
-      { path: '/loginasadmin/invoice-settings', name: 'Invoice Settings', section: 'Finance & Payments' },
-      { path: '/loginasadmin/payment', name: 'Payment', section: 'Finance & Payments' },
-      { path: '/loginasadmin/payment-options', name: 'Payment Options', section: 'Finance & Payments' },
-      { path: '/loginasadmin/tax', name: 'Tax', section: 'Finance & Payments' },
-      { path: '/loginasadmin/marketing', name: 'Marketing', section: 'Marketing' },
-      { path: '/loginasadmin/discounts', name: 'Discounts', section: 'Marketing' },
-      { path: '/loginasadmin/affiliate-program', name: 'Affiliate Program', section: 'Affiliate & Monetization' },
-      { path: '/loginasadmin/affiliate-requests', name: 'Affiliate Requests', section: 'Affiliate & Monetization' },
-      { path: '/loginasadmin/coin-withdrawals', name: 'Coin Withdrawals', section: 'Affiliate & Monetization' },
-      { path: '/loginasadmin/loyalty-program-management', name: 'Loyalty Program Management', section: 'Affiliate & Monetization' },
-      { path: '/loginasadmin/analytics', name: 'Analytics', section: 'Analytics & Insights' },
-      { path: '/loginasadmin/advanced-analytics', name: 'Advanced Analytics', section: 'Analytics & Insights' },
-      { path: '/loginasadmin/actionable-analytics', name: 'Actionable Analytics', section: 'Analytics & Insights' },
-      { path: '/loginasadmin/system/audit-logs', name: 'Audit Logs', section: 'Analytics & Insights' },
+    // Every sidebar page (same list the admin sidebar uses), then tools reachable only by URL
+    const sidebarPages = ADMIN_NAV.flatMap((section) =>
+      section.pages.map((page) => ({ path: page.path, name: page.label, section: section.label }))
+    )
+    const extraPages = [
       { path: '/loginasadmin/ai-box', name: 'AI Box', section: 'AI Tools' },
       { path: '/loginasadmin/ai-personalization', name: 'AI Personalization', section: 'AI Tools' },
       { path: '/loginasadmin/workflow-automation', name: 'Workflow Automation', section: 'Automation & Workflows' },
       { path: '/loginasadmin/api-manager', name: 'API Manager', section: 'Automation & Workflows' },
       { path: '/loginasadmin/omni-channel', name: 'Omni Channel', section: 'Automation & Workflows' },
-      { path: '/loginasadmin/cart-checkout', name: 'Cart & Checkout', section: 'E-Commerce' },
-      { path: '/loginasadmin/forms', name: 'Forms', section: 'Forms & Communication' },
-      { path: '/loginasadmin/form-builder', name: 'Form Builder', section: 'Forms & Communication' },
-      { path: '/loginasadmin/form-submissions', name: 'Form Submissions', section: 'Forms & Communication' },
-      { path: '/loginasadmin/contact-messages', name: 'Contact Messages', section: 'Forms & Communication' },
-      { path: '/loginasadmin/system/alerts', name: 'Alert Settings', section: 'Forms & Communication' },
-      { path: '/loginasadmin/system/staff', name: 'Staff Accounts', section: 'Team & Access' },
-      { path: '/loginasadmin/system/admin-management', name: 'Admin Management', section: 'Team & Access' },
-      { path: '/loginasadmin/system/roles', name: 'Roles & Permissions', section: 'Team & Access' },
-      { path: '/loginasadmin/account-security', name: 'Account Security', section: 'Team & Access' },
     ]
+    const pages = [...sidebarPages, ...extraPages]
     sendSuccess(res, pages)
   } catch (err) {
     sendError(res, 500, 'Failed to list admin panel pages', err)
@@ -1003,6 +946,7 @@ export async function getPermissionCatalog(pool: Pool, req: Request, res: Respon
     sendSuccess(res, {
       navDivisions: NAV_DIVISION_GROUPS,
       navCatalogFine: NAV_CATALOG_FINE,
+      navPageFine: NAV_PAGE_FINE,
       divisionBundles: DIVISION_BUNDLES,
       businessPermissionCodes: BUSINESS_PERMISSION_CODES,
       templates: ROLE_TEMPLATES,
@@ -1015,14 +959,7 @@ export async function getPermissionCatalog(pool: Pool, req: Request, res: Respon
 /** Idempotent: insert all known permission rows (codes) from rbac catalog. */
 export async function syncRbacCatalogPermissions(pool: Pool, req: Request, res: Response) {
   try {
-    let n = 0
-    for (const code of ALL_RBAC_SEED_CODES) {
-      const r = await pool.query(
-        `insert into permissions (code) values ($1) on conflict (code) do nothing returning id`,
-        [code]
-      )
-      if (r.rowCount) n += 1
-    }
+    const n = await syncRbacPermissionCodes(pool)
     sendSuccess(res, { ok: true, knownCodes: ALL_RBAC_SEED_CODES.length, newlyInserted: n })
   } catch (err) {
     sendError(res, 500, 'Failed to sync RBAC permissions', err)

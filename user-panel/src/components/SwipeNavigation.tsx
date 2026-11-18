@@ -7,7 +7,29 @@ interface SwipeNavigationProps {
   minSwipeDistance?: number
 }
 
-export default function SwipeNavigation({ 
+/**
+ * True when a touch starts on something that handles sideways swipes itself: an image
+ * carousel, a thumbnail strip, any horizontally scrollable row, or an element marked
+ * `data-swipe-ignore` / `.swipe-disabled`. Swiping those must scroll them, never change page.
+ */
+export function startsInHorizontalScroller(target: EventTarget | null): boolean {
+  let el = target instanceof Element ? target : null
+  while (el && el !== document.body && el !== document.documentElement) {
+    if (
+      el.matches('[data-swipe-ignore], .swipe-disabled, [aria-roledescription="carousel"], input[type="range"]')
+    ) {
+      return true
+    }
+    if (el.scrollWidth > el.clientWidth + 1) {
+      const overflowX = getComputedStyle(el).overflowX
+      if (overflowX === 'auto' || overflowX === 'scroll') return true
+    }
+    el = el.parentElement
+  }
+  return false
+}
+
+export default function SwipeNavigation({
   enabled = true, 
   threshold = 50,
   minSwipeDistance = 100 
@@ -72,6 +94,12 @@ export default function SwipeNavigation({
     }
 
     const handleTouchStart = (e: TouchEvent) => {
+      isSwipeActive.current = false
+      touchStartX.current = null
+      touchStartY.current = null
+      // Pinch-zoom, or a swipe on a carousel / scrollable row: leave it to the browser
+      if (e.touches.length !== 1 || startsInHorizontalScroller(e.target)) return
+
       // Don't interfere with scrolling or other interactions
       const target = e.target as HTMLElement
       if (
@@ -102,13 +130,9 @@ export default function SwipeNavigation({
       // If vertical scroll is more than horizontal, it's a scroll, not a swipe
       if (deltaY > deltaX) {
         isSwipeActive.current = false
-        return
       }
-
-      // Prevent default scrolling if it's a horizontal swipe
-      if (deltaX > threshold) {
-        e.preventDefault()
-      }
+      // Never preventDefault here: blocking the browser's own scrolling made swipes stutter
+      // and fought native gestures on Android and Safari
     }
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -177,7 +201,7 @@ export default function SwipeNavigation({
 
     // Add event listeners with passive: false for preventDefault to work
     document.addEventListener('touchstart', handleTouchStart, { passive: true })
-    document.addEventListener('touchmove', handleTouchMove, { passive: false })
+    document.addEventListener('touchmove', handleTouchMove, { passive: true })
     document.addEventListener('touchend', handleTouchEnd, { passive: true })
 
     return () => {

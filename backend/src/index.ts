@@ -17,6 +17,7 @@ import {
   authenticateToken,
   requireRole,
   requirePermission,
+  requireAnyPermission,
   sendError,
   sendSuccess,
   registerStaffContextResolver,
@@ -25,6 +26,8 @@ import {
 } from './utils/apiHelpers'
 import { createAdminGuard } from './middleware/adminGuard'
 import { orderPriceCheckMode, validateOrderItemPrices } from './services/orderPricing'
+import { applyDueGstSchedules, priceOrderGst } from './services/productGst'
+import * as gstScheduleRoutes from './routes/gstSchedules'
 import { normalizeOrderItems, deductStockForOrder } from './services/inventoryBatchService'
 import { createUserActivityTables } from './utils/userActivitySchema'
 import * as productRoutes from './routes/products'
@@ -35,6 +38,7 @@ import * as variantRoutes from './routes/variants'
 import * as inventoryRoutes from './routes/inventory'
 import * as unifiedSalesRoutes from './routes/unifiedSales'
 import * as shiprocketRoutes from './routes/shiprocket'
+import * as pickupWarehouseRoutes from './routes/pickupWarehouses'
 import * as amazonRoutes from './routes/amazon'
 import * as flipkartRoutes from './routes/flipkart'
 import * as facebookRoutes from './routes/facebook'
@@ -1303,6 +1307,8 @@ app.get('/api/concerns', (req, res) => concernRoutes.listConcerns(pool, req, res
 app.get('/api/concerns/:slug', (req, res) => concernRoutes.getConcernWithProducts(pool, req, res))
 // /api/admin/* is staff-only (adminGuard); product permission matches the catalog pages
 const concernAdmin = [authenticateAndAttach as any, requirePermission(['products:update'])]
+// Reviews: a reviews moderator (reviews:update) or anyone who edits products
+const reviewAdmin = [authenticateAndAttach as any, requireAnyPermission(['reviews:update', 'products:update'])]
 app.get('/api/admin/concerns', ...concernAdmin, (req, res) => concernRoutes.adminListConcerns(pool, req, res))
 app.post('/api/admin/concerns', ...concernAdmin, (req, res) => concernRoutes.adminCreateConcern(pool, req, res))
 app.put('/api/admin/concerns/:id(\\d+)', ...concernAdmin, (req, res) => concernRoutes.adminUpdateConcern(pool, req, res))
@@ -1311,18 +1317,22 @@ app.put('/api/admin/concerns/:id(\\d+)/products', ...concernAdmin, (req, res) =>
 
 // Bulk edit selected products: MRP, discount, card badges, category, concerns (preview first, then apply)
 app.post('/api/admin/products/bulk-update', ...concernAdmin, (req, res) => productBulkRoutes.adminBulkUpdateProducts(pool, req, res, io))
+// Per-product GST: storefront rate lookup + admin scheduled changes (created via bulk edit)
+app.get('/api/gst/rates', (req, res) => gstScheduleRoutes.getGstRates(pool, req, res))
+app.get('/api/admin/gst-schedules', ...concernAdmin, (req, res) => gstScheduleRoutes.adminListGstSchedules(pool, req, res))
+app.post('/api/admin/gst-schedules/cancel', ...concernAdmin, (req, res) => gstScheduleRoutes.adminCancelGstSchedules(pool, req, res))
 
 // Google reviews (Business Profile API): public section data, OAuth callback, admin connect/sync/curate
 app.get('/api/google-reviews', (req, res) => googleReviewRoutes.publicGoogleReviews(pool, req, res))
 app.get('/api/google-reviews/oauth/callback', (req, res) => googleReviewRoutes.oauthCallback(pool, req, res))
-app.get('/api/admin/google-reviews/status', ...concernAdmin, (req, res) => googleReviewRoutes.adminStatus(pool, req, res))
-app.post('/api/admin/google-reviews/connect', ...concernAdmin, (req, res) => googleReviewRoutes.adminConnect(pool, req, res))
-app.get('/api/admin/google-reviews/locations', ...concernAdmin, (req, res) => googleReviewRoutes.adminLocations(pool, req, res))
-app.put('/api/admin/google-reviews/location', ...concernAdmin, (req, res) => googleReviewRoutes.adminSelectLocation(pool, req, res))
-app.post('/api/admin/google-reviews/sync', ...concernAdmin, (req, res) => googleReviewRoutes.adminSync(pool, req, res))
-app.post('/api/admin/google-reviews/disconnect', ...concernAdmin, (req, res) => googleReviewRoutes.adminDisconnect(pool, req, res))
-app.get('/api/admin/google-reviews/reviews', ...concernAdmin, (req, res) => googleReviewRoutes.adminListReviews(pool, req, res))
-app.patch('/api/admin/google-reviews/reviews/:id(\\d+)', ...concernAdmin, (req, res) => googleReviewRoutes.adminUpdateReview(pool, req, res))
+app.get('/api/admin/google-reviews/status', ...reviewAdmin, (req, res) => googleReviewRoutes.adminStatus(pool, req, res))
+app.post('/api/admin/google-reviews/connect', ...reviewAdmin, (req, res) => googleReviewRoutes.adminConnect(pool, req, res))
+app.get('/api/admin/google-reviews/locations', ...reviewAdmin, (req, res) => googleReviewRoutes.adminLocations(pool, req, res))
+app.put('/api/admin/google-reviews/location', ...reviewAdmin, (req, res) => googleReviewRoutes.adminSelectLocation(pool, req, res))
+app.post('/api/admin/google-reviews/sync', ...reviewAdmin, (req, res) => googleReviewRoutes.adminSync(pool, req, res))
+app.post('/api/admin/google-reviews/disconnect', ...reviewAdmin, (req, res) => googleReviewRoutes.adminDisconnect(pool, req, res))
+app.get('/api/admin/google-reviews/reviews', ...reviewAdmin, (req, res) => googleReviewRoutes.adminListReviews(pool, req, res))
+app.patch('/api/admin/google-reviews/reviews/:id(\\d+)', ...reviewAdmin, (req, res) => googleReviewRoutes.adminUpdateReview(pool, req, res))
 
 app.get('/api/products', (req, res) => productRoutes.getProducts(pool, res))
 // Specific routes must come before generic :id route
@@ -1431,6 +1441,12 @@ app.post('/api/shiprocket/orders/:orderId/awb', authenticateAndAttach as any, re
 app.get('/api/shiprocket/orders/:orderId/track', authenticateAndAttach as any, requirePermission(['orders:read']), (req, res) => shiprocketRoutes.trackShipment(pool, req, res))
 app.get('/api/shiprocket/orders/:orderId/courier-serviceability', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => shiprocketRoutes.getCourierServiceabilityForOrder(pool, req, res))
 app.post('/api/shiprocket/orders/:orderId/confirm-and-ship', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => shiprocketRoutes.confirmAndCreateShipmentWithCourier(pool, req, res))
+// Pickup warehouses (each is also registered as a Shiprocket pickup location)
+app.get('/api/admin/warehouses', authenticateAndAttach as any, requirePermission(['orders:update']), (req, res) => pickupWarehouseRoutes.getWarehouses(pool, req, res))
+app.post('/api/admin/warehouses', authenticateAndAttach as any, requirePermission(['shipping:update']), (req, res) => pickupWarehouseRoutes.createWarehouse(pool, req, res))
+app.post('/api/admin/warehouses/default', authenticateAndAttach as any, requirePermission(['shipping:update']), (req, res) => pickupWarehouseRoutes.setDefaultWarehouse(pool, req, res))
+app.post('/api/admin/warehouses/:id/sync', authenticateAndAttach as any, requirePermission(['shipping:update']), (req, res) => pickupWarehouseRoutes.syncWarehouse(pool, req, res))
+app.delete('/api/admin/warehouses/:id', authenticateAndAttach as any, requirePermission(['shipping:update']), (req, res) => pickupWarehouseRoutes.deleteWarehouse(pool, req, res))
 // Public endpoint for checking delivery serviceability (for product pages)
 app.get('/api/public/shiprocket/serviceability', async (req, res) => {
   try {
@@ -2547,7 +2563,7 @@ app.post('/api/product-reviews', async (req, res) => {
 // /api/admin/* already requires a staff session (adminGuard).
 const REVIEW_STATUSES = ['pending', 'approved', 'rejected'] as const
 
-app.get('/api/admin/product-reviews', authenticateAndAttach as any, requirePermission(['products:update']), async (req, res) => {
+app.get('/api/admin/product-reviews', authenticateAndAttach as any, requireAnyPermission(['reviews:update', 'products:update']), async (req, res) => {
   try {
     const status = String(req.query.status || 'pending')
     const q = String(req.query.q || '').trim()
@@ -2560,10 +2576,13 @@ app.get('/api/admin/product-reviews', authenticateAndAttach as any, requirePermi
       // Legacy rows have status NULL and were live → treat as approved
       params.push(status)
       where.push(`COALESCE(pr.status, CASE WHEN pr.is_approved THEN 'approved' ELSE 'pending' END) = $${params.length}`)
+    } else if (status === 'unlinked') {
+      // Reviews whose product was deleted (kept so they can be relinked)
+      where.push('pr.product_id IS NULL')
     }
     if (q) {
       params.push(`%${q}%`)
-      where.push(`(pr.customer_name ILIKE $${params.length} OR pr.customer_email ILIKE $${params.length} OR pr.title ILIKE $${params.length} OR pr.review_text ILIKE $${params.length} OR p.title ILIKE $${params.length})`)
+      where.push(`(pr.customer_name ILIKE $${params.length} OR pr.customer_email ILIKE $${params.length} OR pr.title ILIKE $${params.length} OR pr.review_text ILIKE $${params.length} OR p.title ILIKE $${params.length} OR pr.product_title ILIKE $${params.length} OR pr.product_sku ILIKE $${params.length})`)
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
 
@@ -2572,7 +2591,8 @@ app.get('/api/admin/product-reviews', authenticateAndAttach as any, requirePermi
         `SELECT pr.id, pr.product_id, pr.order_id, pr.customer_name, pr.customer_email, pr.rating, pr.title,
                 COALESCE(NULLIF(pr.review_text, ''), pr.comment) AS review_text, pr.images, pr.is_verified, pr.is_featured,
                 COALESCE(pr.status, CASE WHEN pr.is_approved THEN 'approved' ELSE 'pending' END) AS status,
-                pr.created_at, p.title AS product_title, p.slug AS product_slug, p.list_image AS product_image
+                pr.created_at, COALESCE(p.title, pr.product_title) AS product_title, COALESCE(p.slug, pr.product_slug) AS product_slug,
+                p.list_image AS product_image, pr.product_sku, pr.unlinked_at
          FROM product_reviews pr
          LEFT JOIN products p ON p.id = pr.product_id
          ${whereSql}
@@ -2581,19 +2601,92 @@ app.get('/api/admin/product-reviews', authenticateAndAttach as any, requirePermi
         params
       ),
       pool.query(
-        `SELECT COALESCE(status, CASE WHEN is_approved THEN 'approved' ELSE 'pending' END) AS status, COUNT(*)::int AS count
+        `SELECT COALESCE(status, CASE WHEN is_approved THEN 'approved' ELSE 'pending' END) AS status, COUNT(*)::int AS count,
+                COUNT(*) FILTER (WHERE product_id IS NULL)::int AS unlinked
          FROM product_reviews GROUP BY 1`
       ),
     ])
-    const countMap: Record<string, number> = { pending: 0, approved: 0, rejected: 0 }
-    counts.rows.forEach((r: any) => { countMap[r.status] = r.count })
+    const countMap: Record<string, number> = { pending: 0, approved: 0, rejected: 0, unlinked: 0 }
+    counts.rows.forEach((r: any) => {
+      countMap[r.status] = r.count
+      countMap.unlinked += r.unlinked
+    })
     sendSuccess(res, { reviews: list.rows, counts: countMap })
   } catch (err) {
     sendError(res, 500, 'Failed to fetch reviews', err)
   }
 })
 
-app.patch('/api/admin/product-reviews/:id', authenticateAndAttach as any, requirePermission(['products:update']), async (req, res) => {
+// Unlinked reviews grouped by the product they came from, with a suggested current product to move them to
+app.get('/api/admin/product-reviews/unlinked-groups', authenticateAndAttach as any, requireAnyPermission(['reviews:update', 'products:update']), async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      WITH g AS (
+        SELECT pr.product_slug, pr.product_sku, pr.product_title,
+               COUNT(*)::int AS review_count,
+               COUNT(*) FILTER (WHERE COALESCE(pr.status, CASE WHEN pr.is_approved THEN 'approved' ELSE 'pending' END) = 'approved')::int AS approved_count,
+               ROUND(AVG(pr.rating)::numeric, 2)::float AS average_rating,
+               MAX(pr.unlinked_at) AS unlinked_at,
+               array_agg(pr.id ORDER BY pr.created_at DESC) AS review_ids
+        FROM product_reviews pr
+        WHERE pr.product_id IS NULL
+        GROUP BY pr.product_slug, pr.product_sku, pr.product_title
+      )
+      SELECT g.*, s.id AS suggested_product_id, s.title AS suggested_product_title,
+             s.slug AS suggested_product_slug, s.match AS suggested_match
+      FROM g
+      LEFT JOIN LATERAL (
+        SELECT p.id, p.title, p.slug,
+               CASE WHEN g.product_sku IS NOT NULL AND lower(btrim(p.details->>'sku')) = lower(g.product_sku) THEN 'sku'
+                    WHEN p.slug = g.product_slug THEN 'slug'
+                    ELSE 'name' END AS match
+        FROM products p
+        WHERE (g.product_sku IS NOT NULL AND lower(btrim(p.details->>'sku')) = lower(g.product_sku))
+           OR p.slug = g.product_slug
+           OR lower(btrim(p.title)) = lower(btrim(g.product_title))
+        ORDER BY (g.product_sku IS NOT NULL AND lower(btrim(p.details->>'sku')) = lower(g.product_sku)) DESC,
+                 (p.slug = g.product_slug) DESC, p.id DESC
+        LIMIT 1
+      ) s ON true
+      ORDER BY g.unlinked_at DESC NULLS LAST, g.review_count DESC
+    `)
+    sendSuccess(res, rows)
+  } catch (err) {
+    sendError(res, 500, 'Failed to fetch unlinked reviews', err)
+  }
+})
+
+// Move reviews (unlinked or not) onto a product
+app.post('/api/admin/product-reviews/relink', authenticateAndAttach as any, requireAnyPermission(['reviews:update', 'products:update']), async (req, res) => {
+  try {
+    const productId = Number(req.body?.product_id)
+    const reviewIds = Array.isArray(req.body?.review_ids)
+      ? [...new Set(req.body.review_ids.map(Number).filter((n: number) => Number.isInteger(n) && n > 0))]
+      : []
+    if (!Number.isInteger(productId) || productId <= 0) return sendError(res, 400, 'product_id is required')
+    if (reviewIds.length === 0) return sendError(res, 400, 'review_ids must be a non-empty array')
+
+    const product = await pool.query('SELECT id FROM products WHERE id = $1', [productId])
+    if (product.rows.length === 0) return sendError(res, 404, 'Product not found')
+
+    const { rows } = await pool.query(
+      `WITH prev AS (SELECT id, product_id FROM product_reviews WHERE id = ANY($2::int[]) FOR UPDATE)
+       UPDATE product_reviews pr SET product_id = $1, updated_at = now()
+       FROM prev WHERE pr.id = prev.id
+       RETURNING pr.id, prev.product_id AS previous_product_id`,
+      [productId, reviewIds]
+    )
+    // Storefront listeners refresh the review lists of every product that changed
+    const touched = new Set<number>([productId])
+    rows.forEach((r: any) => { if (r.previous_product_id) touched.add(r.previous_product_id) })
+    touched.forEach((id) => broadcastToUsers('product-reviews-updated', { product_id: id, status: 'relinked' }))
+    sendSuccess(res, { relinked: rows.length, product_id: productId })
+  } catch (err) {
+    sendError(res, 500, 'Failed to relink reviews', err)
+  }
+})
+
+app.patch('/api/admin/product-reviews/:id', authenticateAndAttach as any, requireAnyPermission(['reviews:update', 'products:update']), async (req, res) => {
   try {
     const { status, is_featured } = req.body || {}
     const sets: string[] = []
@@ -2621,7 +2714,7 @@ app.patch('/api/admin/product-reviews/:id', authenticateAndAttach as any, requir
   }
 })
 
-app.delete('/api/admin/product-reviews/:id', authenticateAndAttach as any, requirePermission(['products:update']), async (req, res) => {
+app.delete('/api/admin/product-reviews/:id', authenticateAndAttach as any, requireAnyPermission(['reviews:update', 'products:update']), async (req, res) => {
   try {
     const { rows } = await pool.query('DELETE FROM product_reviews WHERE id = $1 RETURNING id, product_id', [req.params.id])
     if (rows.length === 0) return sendError(res, 404, 'Review not found')
@@ -3777,7 +3870,7 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       items,
       subtotal,
       shipping = 0,
-      tax = 0,
+      // `tax` from the client is ignored: GST is recomputed below from each product's own rate
       total,
       payment_method,
       payment_type,
@@ -3907,6 +4000,11 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       }
     }
 
+    // GST is worked out here from each product's rate in force now (prices are GST-inclusive, so
+    // it doesn't change the total). Each item keeps its rate + amounts for the invoice.
+    const { items: gstItems, summary: gstSummary } = await priceOrderGst(pool, items)
+    const tax = gstSummary.gst
+
     // Import order number generation utilities
     const { generateOrderNumber, generateNewInvoiceNumber } = await import('./utils/invoiceUtils')
     
@@ -3928,7 +4026,7 @@ app.post('/api/orders', allowOrderCreation as any, async (req, res) => {
       customer_email, 
       JSON.stringify(shipping_address), 
       billing_address ? JSON.stringify(billing_address) : null,
-      JSON.stringify(items), 
+      JSON.stringify(gstItems), 
       subtotal, 
       shipping, 
       tax, 
@@ -6091,6 +6189,20 @@ cron.schedule('*/30 * * * *', async () => {
     }
   } catch (err) {
     console.error('Low stock check failed', err)
+  }
+})
+
+// Scheduled GST changes (admin bulk edit): write due rates into the products every minute.
+// Rate lookups already honour a change from its effective moment; this keeps products.details current.
+cron.schedule('* * * * *', async () => {
+  try {
+    const n = await applyDueGstSchedules(pool)
+    if (n > 0) {
+      console.log(`🧾 Applied scheduled GST change to ${n} product(s)`)
+      io.to('all-users').emit('products-updated', { bulk: true, gst: true })
+    }
+  } catch (err: any) {
+    if (err?.code !== '42P01') console.error('Scheduled GST changes failed', err)
   }
 })
 

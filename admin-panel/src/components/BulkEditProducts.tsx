@@ -3,13 +3,18 @@ import { AlertTriangle, ArrowRight, Loader2, X } from 'lucide-react'
 import { useToast } from './ToastProvider'
 import ConcernPicker from './ConcernPicker'
 import { PRODUCT_CARD_BADGES } from '../../../common/src/productBadges'
+import { GST_RATE_CHOICES, parseGstRate } from '../../../common/src/gst'
+import { formatIst, isoToIstLocal, istLocalToIso, istMidnightInDays } from '../../../common/src/istTime'
 
 type MrpMode = '' | 'set' | 'increase' | 'decrease' | 'increase_percent' | 'decrease_percent'
 type DiscountMode = '' | 'percent' | 'price' | 'remove'
 type BadgeAction = '' | 'add' | 'remove'
+type GstMode = '' | 'now' | 'schedule'
 
-type Snapshot = { mrp: number | null; websitePrice: number | null; discount: number; badges: string[]; category: string }
-type Result = { id: number; title: string; ok: true; before: Snapshot; after: Snapshot } | { id: number; title: string; ok: false; reason: string }
+type Snapshot = { mrp: number | null; websitePrice: number | null; discount: number; badges: string[]; category: string; gst: number | null }
+type Result =
+  | { id: number; title: string; ok: true; before: Snapshot; after: Snapshot; scheduledGst?: { rate: number; effectiveAt: string } | null }
+  | { id: number; title: string; ok: false; reason: string }
 
 const MRP_MODES: Array<{ value: MrpMode; label: string; unit?: '₹' | '%' }> = [
   { value: '', label: 'No change' },
@@ -27,6 +32,7 @@ const DISCOUNT_MODES: Array<{ value: DiscountMode; label: string; unit?: '₹' |
   { value: 'remove', label: 'Remove discount (sell at MRP)' },
 ]
 
+const pct = (n: number | null | undefined) => (n == null ? '–' : `${n}%`)
 const rupees = (n: number | null) => (n == null ? '–' : `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`)
 const badgeLabel = (id: string) => PRODUCT_CARD_BADGES.find((b) => b.id === id)?.label || id
 
@@ -50,6 +56,10 @@ export default function BulkEditProducts({
   const [discountValue, setDiscountValue] = useState('')
   const [badges, setBadges] = useState<Record<string, BadgeAction>>({})
   const [category, setCategory] = useState('')
+  const [gstMode, setGstMode] = useState<GstMode>('')
+  const [gstRate, setGstRate] = useState('')
+  // Default: 12:00 AM IST two days from now (a typical "effective from" date for a rate notification)
+  const [gstAt, setGstAt] = useState(() => isoToIstLocal(istMidnightInDays(2)))
   const [concernsAdd, setConcernsAdd] = useState<string[]>([])
   const [concernsRemove, setConcernsRemove] = useState<string[]>([])
   const [preview, setPreview] = useState<Result[] | null>(null)
@@ -64,11 +74,18 @@ export default function BulkEditProducts({
     if (add.length || remove.length) o.badges = { add, remove }
     if (category) o.category = category
     if (concernsAdd.length || concernsRemove.length) o.concerns = { add: concernsAdd, remove: concernsRemove }
+    if (gstMode) o.gst = gstMode === 'schedule' ? { rate: Number(gstRate), effectiveAt: istLocalToIso(gstAt) } : { rate: Number(gstRate) }
     return o
-  }, [mrpMode, mrpValue, discountMode, discountValue, badges, category, concernsAdd, concernsRemove])
+  }, [mrpMode, mrpValue, discountMode, discountValue, badges, category, concernsAdd, concernsRemove, gstMode, gstRate, gstAt])
 
   const hasChanges = Object.keys(ops).length > 0
-  const missingValue = (mrpMode && !(Number(mrpValue) > 0)) || (discountMode && discountMode !== 'remove' && !(Number(discountValue) > 0))
+  const gstAtIso = gstMode === 'schedule' ? istLocalToIso(gstAt) : null
+  const gstAtInPast = !!gstAtIso && new Date(gstAtIso).getTime() <= Date.now()
+  const missingValue =
+    (mrpMode && !(Number(mrpValue) > 0)) ||
+    (discountMode && discountMode !== 'remove' && !(Number(discountValue) > 0)) ||
+    (gstMode && (gstRate.trim() === '' || parseGstRate(gstRate) == null)) ||
+    (gstMode === 'schedule' && (!gstAtIso || gstAtInPast))
 
   const run = async (dryRun: boolean) => {
     setBusy(dryRun ? 'preview' : 'apply')
@@ -143,6 +160,64 @@ export default function BulkEditProducts({
             </fieldset>
           </div>
 
+          {/* GST */}
+          <fieldset className="rounded-lg border border-gray-200 p-4">
+            <legend className="px-1 text-sm font-medium">GST rate</legend>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <select value={gstMode} onChange={(e) => edit(setGstMode)(e.target.value as GstMode)} className="w-full rounded border border-gray-300 px-3 py-2 text-sm">
+                <option value="">No change</option>
+                <option value="now">Change now</option>
+                <option value="schedule">Schedule a change</option>
+              </select>
+              {gstMode && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="0" max="100" step="any" value={gstRate}
+                    onChange={(e) => edit(setGstRate)(e.target.value)}
+                    placeholder="New rate" className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <span className="text-sm text-gray-500">%</span>
+                </div>
+              )}
+              {gstMode === 'schedule' && (
+                <input
+                  type="datetime-local" value={gstAt} onChange={(e) => edit(setGstAt)(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Effective from (IST)"
+                />
+              )}
+            </div>
+            {gstMode && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {GST_RATE_CHOICES.map((r) => (
+                  <button key={r} type="button" onClick={() => edit(setGstRate)(String(r))}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs ${gstRate === String(r) ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}`}>
+                    {r}%
+                  </button>
+                ))}
+                {gstMode === 'schedule' && (
+                  <>
+                    <span className="ml-2 text-xs text-gray-400">|</span>
+                    {[1, 2, 7].map((d) => (
+                      <button key={d} type="button" onClick={() => edit(setGstAt)(isoToIstLocal(istMidnightInDays(d)))}
+                        className="rounded-full border border-gray-300 px-2.5 py-0.5 text-xs text-gray-600 hover:bg-gray-100">
+                        12:00 AM {d === 1 ? 'tonight' : `in ${d} days`}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+            <p className="mt-2 text-xs text-gray-500">
+              {gstMode === 'schedule'
+                ? gstAtIso
+                  ? gstAtInPast
+                    ? 'That time has already passed. Choose a future time, or use "Change now".'
+                    : `Takes effect ${formatIst(gstAtIso)} (India Standard Time). Until then products keep their current rate. Pending changes can be cancelled from "Scheduled GST" on the Products page.`
+                  : 'Choose the date and time (IST) the new rate takes effect.'
+                : 'Prices stay the same (they include GST); only the GST worked out in the cart and on invoices changes.'}
+            </p>
+          </fieldset>
+
           {/* Badges */}
           <fieldset className="rounded-lg border border-gray-200 p-4">
             <legend className="px-1 text-sm font-medium">Product card badges</legend>
@@ -202,6 +277,7 @@ export default function BulkEditProducts({
                       <th className="px-3 py-2 text-left">Product</th>
                       <th className="px-3 py-2 text-left">MRP</th>
                       <th className="px-3 py-2 text-left">Selling price</th>
+                      <th className="px-3 py-2 text-left">GST</th>
                       <th className="px-3 py-2 text-left">Badges</th>
                     </tr>
                   </thead>
@@ -216,10 +292,20 @@ export default function BulkEditProducts({
                               <Change from={rupees(r.before.websitePrice)} to={rupees(r.after.websitePrice)} />
                               {r.after.discount > 0 && <span className="ml-1 text-xs text-green-700">{r.after.discount}% off</span>}
                             </td>
+                            <td className="whitespace-nowrap px-3 py-2">
+                              {r.scheduledGst ? (
+                                <span>
+                                  <Change from={pct(r.before.gst)} to={pct(r.scheduledGst.rate)} />
+                                  <span className="block text-xs text-gray-500">from {formatIst(r.scheduledGst.effectiveAt)}</span>
+                                </span>
+                              ) : (
+                                <Change from={pct(r.before.gst)} to={pct(r.after.gst)} />
+                              )}
+                            </td>
                             <td className="px-3 py-2 text-xs">{r.after.badges.length ? r.after.badges.map(badgeLabel).join(', ') : '–'}</td>
                           </>
                         ) : (
-                          <td colSpan={3} className="px-3 py-2 text-xs text-amber-700"><AlertTriangle className="mr-1 inline h-3.5 w-3.5" />Skipped: {r.reason}</td>
+                          <td colSpan={4} className="px-3 py-2 text-xs text-amber-700"><AlertTriangle className="mr-1 inline h-3.5 w-3.5" />Skipped: {r.reason}</td>
                         )}
                       </tr>
                     ))}

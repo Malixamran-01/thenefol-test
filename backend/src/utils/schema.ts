@@ -1,5 +1,8 @@
 // Database schema management utility
 import { Pool } from 'pg'
+import { ensureGstScheduleTable } from '../services/productGst'
+import { ensureWarehouseTable } from '../routes/pickupWarehouses'
+import { syncRbacPermissionCodes } from '../services/rbacSync'
 
 export async function ensureSchema(pool: Pool) {
   // Create tables first
@@ -1873,7 +1876,8 @@ export async function ensureSchema(pool: Pool) {
     create table if not exists product_reviews (
       id serial primary key,
       order_id integer references orders(id) on delete set null,
-      product_id integer references products(id) on delete cascade,
+      -- set null (not cascade): deleting a product keeps its reviews so they can be relinked
+      product_id integer references products(id) on delete set null,
       customer_email text not null,
       customer_name text not null,
       rating integer not null check (rating between 1 and 5),
@@ -2530,6 +2534,14 @@ export async function ensureSchema(pool: Pool) {
       END IF;
     END $$;
   `)
+
+  await ensureReviewProductLinking(pool)
+
+  // Scheduled per-product GST changes (admin bulk edit); same DDL as migrate.js step 21
+  await ensureGstScheduleTable(pool)
+  await ensureWarehouseTable(pool)
+  // New admin page / review permissions; roles that could open a page before keep it
+  await syncRbacPermissionCodes(pool)
   
   // Add missing price column to cart_events table
   await pool.query(`
@@ -3106,4 +3118,105 @@ export async function ensureSchema(pool: Pool) {
   console.log('✅ Order Cancellations and Refunds tables created')
   console.log('✅ Product Collections and Recommendation Posts tables created')
   console.log('✅ Integration tables (Google, Social, AI) created successfully')
+}
+/**
+ * Reviews outlive their product: deleting a product unlinks its reviews (product_id → NULL)
+ * instead of deleting them, and each review keeps a snapshot of the product's slug, SKU and
+ * title. When a product with the same SKU (or the same slug) is created or updated later,
+ * the unlinked reviews attach to it automatically. Anything left over can be relinked by hand
+ * from the admin Product Reviews page ("Unlinked" tab).
+ */
+async function ensureReviewProductLinking(pool: Pool) {
+  await pool.query(`
+    ALTER TABLE product_reviews ADD COLUMN IF NOT EXISTS product_slug text;
+    ALTER TABLE product_reviews ADD COLUMN IF NOT EXISTS product_sku text;
+    ALTER TABLE product_reviews ADD COLUMN IF NOT EXISTS product_title text;
+    ALTER TABLE product_reviews ADD COLUMN IF NOT EXISTS unlinked_at timestamptz;
+
+    -- ON DELETE CASCADE → ON DELETE SET NULL (older databases were created with cascade)
+    DO $$
+    DECLARE r record;
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint c
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+        WHERE c.conrelid = 'product_reviews'::regclass AND c.contype = 'f'
+          AND c.confrelid = 'products'::regclass AND a.attname = 'product_id' AND c.confdeltype = 'n'
+      ) THEN
+        FOR r IN
+          SELECT c.conname FROM pg_constraint c
+          JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+          WHERE c.conrelid = 'product_reviews'::regclass AND c.contype = 'f'
+            AND c.confrelid = 'products'::regclass AND a.attname = 'product_id'
+        LOOP
+          EXECUTE format('ALTER TABLE product_reviews DROP CONSTRAINT %I', r.conname);
+        END LOOP;
+        -- A row pointing at a product that no longer exists would block the new constraint
+        UPDATE product_reviews pr SET product_id = NULL, unlinked_at = COALESCE(unlinked_at, now())
+         WHERE pr.product_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM products p WHERE p.id = pr.product_id);
+        ALTER TABLE product_reviews ADD CONSTRAINT product_reviews_product_id_fkey
+          FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL;
+      END IF;
+    END $$;
+
+    -- Snapshot of the linked product, kept current so it is accurate at the moment a product is deleted
+    UPDATE product_reviews pr
+       SET product_slug = p.slug, product_sku = NULLIF(btrim(p.details->>'sku'), ''), product_title = p.title
+      FROM products p
+     WHERE p.id = pr.product_id
+       AND (pr.product_slug IS DISTINCT FROM p.slug
+         OR pr.product_sku IS DISTINCT FROM NULLIF(btrim(p.details->>'sku'), '')
+         OR pr.product_title IS DISTINCT FROM p.title);
+
+    CREATE INDEX IF NOT EXISTS idx_product_reviews_unlinked_sku ON product_reviews (lower(product_sku)) WHERE product_id IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_product_reviews_unlinked_slug ON product_reviews (product_slug) WHERE product_id IS NULL;
+
+    -- Review side: fill the snapshot whenever a review is (re)linked; stamp unlinked_at when it loses its product
+    CREATE OR REPLACE FUNCTION product_reviews_capture_product() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.product_id IS NOT NULL THEN
+        SELECT p.slug, NULLIF(btrim(p.details->>'sku'), ''), p.title
+          INTO NEW.product_slug, NEW.product_sku, NEW.product_title
+          FROM products p WHERE p.id = NEW.product_id;
+        NEW.unlinked_at := NULL;
+      ELSIF TG_OP = 'UPDATE' AND OLD.product_id IS NOT NULL THEN
+        NEW.unlinked_at := now();
+      END IF;
+      RETURN NEW;
+    END $$ LANGUAGE plpgsql SET search_path = public;
+
+    DROP TRIGGER IF EXISTS trg_product_reviews_capture_product ON product_reviews;
+    CREATE TRIGGER trg_product_reviews_capture_product
+      BEFORE INSERT OR UPDATE OF product_id ON product_reviews
+      FOR EACH ROW EXECUTE PROCEDURE product_reviews_capture_product();
+
+    -- Product side: keep snapshots current, and pull back unlinked reviews that belong to this product
+    CREATE OR REPLACE FUNCTION products_sync_review_links() RETURNS trigger AS $$
+    DECLARE
+      new_sku text := NULLIF(btrim(NEW.details->>'sku'), '');
+    BEGIN
+      IF TG_OP = 'UPDATE' THEN
+        UPDATE product_reviews
+           SET product_slug = NEW.slug, product_sku = new_sku, product_title = NEW.title
+         WHERE product_id = NEW.id
+           AND (product_slug IS DISTINCT FROM NEW.slug
+             OR product_sku IS DISTINCT FROM new_sku
+             OR product_title IS DISTINCT FROM NEW.title);
+      END IF;
+
+      -- Same SKU wins; a slug match counts only when the SKUs don't contradict each other
+      UPDATE product_reviews
+         SET product_id = NEW.id
+       WHERE product_id IS NULL
+         AND ((new_sku IS NOT NULL AND lower(product_sku) = lower(new_sku))
+           OR (product_slug = NEW.slug
+               AND (product_sku IS NULL OR new_sku IS NULL OR lower(product_sku) = lower(new_sku))));
+      RETURN NULL;
+    END $$ LANGUAGE plpgsql SET search_path = public;
+
+    DROP TRIGGER IF EXISTS trg_products_sync_review_links ON products;
+    CREATE TRIGGER trg_products_sync_review_links
+      AFTER INSERT OR UPDATE OF slug, title, details ON products
+      FOR EACH ROW EXECUTE PROCEDURE products_sync_review_links();
+  `)
 }

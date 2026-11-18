@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import DiscountPopup from './components/DiscountPopup'
 import { Menu, X, Instagram, Facebook, Youtube, Linkedin } from 'lucide-react'
-import SplashScreen from './components/SplashScreen'
 import CartIcon from './components/CartIcon'
 import ProfileAvatar from './components/ProfileAvatar'
 import { useCart } from './contexts/CartContext'
@@ -88,49 +88,11 @@ const ConcernPage = lazy(() => import('./pages/ConcernPage'))
 const ConcernsIndexPage = lazy(() => import('./pages/ConcernPage').then((m) => ({ default: m.ConcernsIndexPage })))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'))
 
-const SPLASH_SEEN_KEY = 'nefol_splash_seen'
-
-/**
- * Brand splash only on the first homepage visit of a browser session. Never on deep links —
- * a product QR scan or shared link should open the page immediately.
- */
-function shouldShowSplash(): boolean {
-  if (typeof window === 'undefined') return false
-  const hash = window.location.hash || ''
-  const path = window.location.pathname || '/'
-  const isHomeLanding =
-    (path === '/' || path === '/index.html') && (hash === '' || hash === '#' || hash === '#/' || /^#\/user\/?(\?.*)?$/.test(hash))
-  if (!isHomeLanding) return false
-  try {
-    if (sessionStorage.getItem(SPLASH_SEEN_KEY)) return false
-  } catch {
-    /* storage blocked (private mode) — show it, harmless */
-  }
-  return true
-}
-
-function markSplashSeen() {
-  try {
-    sessionStorage.setItem(SPLASH_SEEN_KEY, '1')
-  } catch {
-    /* ignore */
-  }
-}
-
 function AppContent() {
   const { items: cartItems } = useCart()
   const { items: wishlistItems } = useWishlist()
   const { user, isAuthenticated, logout } = useAuth()
   const { blocked: nefolSocialBanned } = useNefolSocialBan()
-  const isIOSSafari = (() => {
-    if (typeof window === 'undefined') return false
-    const ua = window.navigator.userAgent
-    const iOS = /iPhone|iPad|iPod/i.test(ua)
-    const webkit = /WebKit/i.test(ua)
-    const notChrome = !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)
-    return iOS && webkit && notChrome
-  })()
-  const [showSplash, setShowSplash] = useState(() => !isIOSSafari && shouldShowSplash())
   const [showSearch, setShowSearch] = useState(false)
   const [showJoinUs, setShowJoinUs] = useState(false)
   const [affiliateUnlocked, setAffiliateUnlocked] = useState(false)
@@ -381,11 +343,6 @@ function AppContent() {
     }
   }, [showDesktopCollections])
 
-  const handleSplashComplete = () => {
-    markSplashSeen()
-    setShowSplash(false)
-  }
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
@@ -414,7 +371,7 @@ function AppContent() {
   )
 
   /** Page background behind every section: store = page bg (white), Nefol Social = its own bg */
-  const useSocialShellBg = !showSplash && isBlogLayoutRoute
+  const useSocialShellBg = isBlogLayoutRoute
   const appShellStyle = {
     backgroundColor: useSocialShellBg ? 'var(--nf-social-bg)' : 'var(--nf-page-bg)',
     color: useSocialShellBg ? 'var(--nf-social-text)' : 'var(--nf-text)',
@@ -433,10 +390,8 @@ function AppContent() {
   }
 
   return (
-    <div className={`min-h-screen w-full overflow-x-hidden ${showSplash ? 'overflow-hidden h-screen' : ''} ${useSocialShellBg ? 'nf-scope-social' : ''}`} style={appShellStyle}>
-      {showSplash ? (
-        <SplashScreen onComplete={handleSplashComplete} />
-      ) : isEditorPage ? (
+    <div className={`min-h-screen w-full overflow-x-hidden ${useSocialShellBg ? 'nf-scope-social' : ''}`} style={appShellStyle}>
+      {isEditorPage ? (
         routerWithSuspense
       ) : isBlogLayoutRoute ? (
         /* ── Blog section: side panel layout, no e-commerce chrome ── */
@@ -1215,6 +1170,7 @@ function AppContent() {
           <SearchButton />
           <BottomNavigation routePath={currentPath} />
           <SwipeNavigation />
+          <DiscountPopup />
         </>
       )}
     </div>

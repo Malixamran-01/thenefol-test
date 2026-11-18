@@ -29,7 +29,8 @@ import {
 import NotificationBell from '../components/NotificationBell'
 import { useAuth } from '../contexts/AuthContext'
 import { getApiBaseUrl } from '../utils/apiUrl'
-import { Nav, NAV_CATALOG_FINE_CODES, NavCatalog } from '../config/rbacNav'
+import { Nav } from '../config/rbacNav'
+import { findAdminPage } from '../../../common/src/adminNav'
 import { socketService } from '../services/socket'
 
 interface NavigationSection {
@@ -37,8 +38,6 @@ interface NavigationSection {
   SectionIcon: LucideIcon
   /** RBAC: `nav:*` code from rbac catalog; sidebar row hidden if missing (admins see all). */
   requiredPermission: string
-  /** If set, section is visible when the user has any of these permissions (e.g. parent or fine-grained). */
-  requiredAnyOf?: string[]
   items: NavigationItem[]
   defaultOpen?: boolean
 }
@@ -49,7 +48,7 @@ interface NavigationItem {
   description?: string
   badge?: string
   current?: boolean
-  /** Optional `nav:*` code for this line (e.g. `nav:catalog:products`). Parent `nav:catalog` still grants all lines. */
+  /** Overrides the page code from common/src/adminNav.ts. The section's `nav:*` code still grants every line. */
   requiredPermission?: string
 }
 
@@ -68,25 +67,15 @@ const Layout = () => {
   const { user, logout, hasPermission, hasRole } = useAuth()
   const canNav = (code: string) => hasRole('admin') || hasPermission(code)
 
-  const canAccessSection = (s: NavigationSection) => {
-    if (hasRole('admin')) return true
-    if (s.requiredAnyOf?.length) return s.requiredAnyOf.some((code) => hasPermission(code))
-    return canNav(s.requiredPermission)
+  /** Whole section (`nav:*`) or this page's own code — see common/src/adminNav.ts */
+  const canAccessItem = (section: NavigationSection, item: NavigationItem) => {
+    if (hasRole('admin') || canNav(section.requiredPermission)) return true
+    const code = item.requiredPermission ?? findAdminPage(item.href)?.page.code
+    return !!code && hasPermission(code)
   }
 
-  const canAccessCatalogItem = (item: NavigationItem) => {
-    if (hasRole('admin')) return true
-    if (hasPermission(Nav.catalog)) return true
-    if (item.requiredPermission) return hasPermission(item.requiredPermission)
-    return false
-  }
-
-  const getVisibleItems = (section: NavigationSection): NavigationItem[] => {
-    if (section.title === 'Products & catalog') {
-      return section.items.filter((item) => canAccessCatalogItem(item))
-    }
-    return section.items
-  }
+  const getVisibleItems = (section: NavigationSection): NavigationItem[] =>
+    section.items.filter((item) => canAccessItem(section, item))
 
   // Fetch pending collab count for sidebar badge
   useEffect(() => {
@@ -195,30 +184,29 @@ const Layout = () => {
       title: 'Products & catalog',
       SectionIcon: Package,
       requiredPermission: Nav.catalog,
-      requiredAnyOf: [Nav.catalog, ...NAV_CATALOG_FINE_CODES],
       defaultOpen: true,
       items: [
-        { name: 'Products', href: '/loginasadmin/products', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/products' },
-        { name: 'Reviews', href: '/loginasadmin/product-reviews', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/product-reviews' },
-        { name: 'Google reviews', href: '/loginasadmin/google-reviews', badge: 'NEW', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/google-reviews' },
-        { name: 'Shop by Concern', href: '/loginasadmin/concerns', badge: 'NEW', requiredPermission: NavCatalog.products, current: location.pathname === '/loginasadmin/concerns' },
-        { name: 'Catalog', href: '/loginasadmin/categories', requiredPermission: NavCatalog.categories, current: location.pathname === '/loginasadmin/categories' },
+        { name: 'Products', href: '/loginasadmin/products', current: location.pathname === '/loginasadmin/products' },
+        { name: 'Reviews', href: '/loginasadmin/product-reviews', current: location.pathname === '/loginasadmin/product-reviews' },
+        { name: 'Google reviews', href: '/loginasadmin/google-reviews', badge: 'NEW', current: location.pathname === '/loginasadmin/google-reviews' },
+        { name: 'Shop by Concern', href: '/loginasadmin/concerns', badge: 'NEW', current: location.pathname === '/loginasadmin/concerns' },
+        { name: 'Catalog', href: '/loginasadmin/categories', current: location.pathname === '/loginasadmin/categories' },
         {
           name: 'Product collections',
           href: '/loginasadmin/product-collections',
           badge: 'NEW',
-          requiredPermission: NavCatalog.collections,
+         
           current: location.pathname === '/loginasadmin/product-collections',
         },
         {
           name: 'Product variants',
           href: '/loginasadmin/product-variants',
-          requiredPermission: NavCatalog.variants,
+         
           current: location.pathname === '/loginasadmin/product-variants',
         },
-        { name: 'Inventory', href: '/loginasadmin/inventory', requiredPermission: NavCatalog.inventory, current: location.pathname === '/loginasadmin/inventory' },
-        { name: 'Warehouses', href: '/loginasadmin/warehouses', requiredPermission: NavCatalog.warehouses, current: location.pathname === '/loginasadmin/warehouses' },
-        { name: 'Discounts', href: '/loginasadmin/discounts', requiredPermission: NavCatalog.discounts, current: location.pathname === '/loginasadmin/discounts' },
+        { name: 'Inventory', href: '/loginasadmin/inventory', current: location.pathname === '/loginasadmin/inventory' },
+        { name: 'Warehouses', href: '/loginasadmin/warehouses', current: location.pathname === '/loginasadmin/warehouses' },
+        { name: 'Discounts', href: '/loginasadmin/discounts', current: location.pathname === '/loginasadmin/discounts' },
       ],
     },
 
@@ -343,6 +331,7 @@ const Layout = () => {
       items: [
         { name: 'Online store', href: '/loginasadmin/store', current: location.pathname === '/loginasadmin/store' },
         { name: 'Homepage layout', href: '/loginasadmin/homepage-layout', badge: 'NEW', current: location.pathname === '/loginasadmin/homepage-layout' },
+        { name: 'Discount popup', href: '/loginasadmin/discount-popup', badge: 'NEW', current: location.pathname === '/loginasadmin/discount-popup' },
         { name: 'Theme customizer', href: '/loginasadmin/theme', badge: 'NEW', current: location.pathname === '/loginasadmin/theme' },
       ],
     },
@@ -407,7 +396,6 @@ const Layout = () => {
   ]
 
   const filteredNavigationSections = navigationSections
-    .filter((s) => canAccessSection(s))
     .map((s) => ({ ...s, items: getVisibleItems(s) }))
     .filter((s) => s.items.length > 0)
 

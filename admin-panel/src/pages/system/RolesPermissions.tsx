@@ -6,11 +6,14 @@ type Role = { id: number; name: string }
 type Permission = { id: number; code: string; description?: string | null }
 type NavDivision = { id: string; label: string; description: string; permissionCode: string }
 type NavCatalogFineRow = { code: string; label: string }
+type NavPageGroup = { section: string; sectionLabel: string; navCode: string; pages: NavCatalogFineRow[] }
 type DivisionBundle = { id: string; label: string; description: string; permissionCodes: string[] }
 type RoleTemplate = { id: string; name: string; description: string; permissionCodes: string[] }
 type Catalog = {
   navDivisions: NavDivision[]
   navCatalogFine?: NavCatalogFineRow[]
+  /** Page-level codes for every section (newer backends) */
+  navPageFine?: NavPageGroup[]
   divisionBundles?: DivisionBundle[]
   businessPermissionCodes: readonly string[]
   templates: RoleTemplate[]
@@ -71,8 +74,10 @@ function PermSection({
   )
 }
 
-function PermRow({ code, description, checked, onChange }: {
+function PermRow({ code, description, checked, onChange, disabled = false }: {
   code: string; description?: string; checked: boolean; onChange: () => void
+  /** Shown as granted by something else (e.g. the whole section) and not clickable */
+  disabled?: boolean
 }) {
   const [hov, setHov] = useState(false)
   return (
@@ -80,7 +85,8 @@ function PermRow({ code, description, checked, onChange }: {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 16px', cursor: 'pointer',
+        display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 16px', cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
         borderBottom: '1px solid var(--brand-border, #f1f5f9)',
         background: checked ? 'rgba(14,165,233,0.04)' : hov ? 'var(--brand-highlight, #fafafa)' : 'transparent',
         transition: 'background 0.1s',
@@ -98,7 +104,7 @@ function PermRow({ code, description, checked, onChange }: {
           </svg>
         )}
       </div>
-      <input type="checkbox" checked={checked} onChange={onChange} style={{ display: 'none' }} aria-label={code} />
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={onChange} style={{ display: 'none' }} aria-label={code} />
       <div>
         <code style={{ fontSize: 12, fontFamily: 'ui-monospace, "Cascadia Code", monospace', color: 'var(--text-secondary)', letterSpacing: '0.01em' }}>{code}</code>
         {description && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1, lineHeight: 1.5 }}>{description}</div>}
@@ -193,8 +199,16 @@ export default function RolesPermissions() {
   }, [perms])
 
   const navCodes = useMemo(() => catalog?.navDivisions?.map(d => d.permissionCode) ?? [], [catalog])
-  const catalogFineCodes = useMemo(() => catalog?.navCatalogFine?.map(r => r.code) ?? [], [catalog])
-  const navBlockSet = useMemo(() => new Set([...navCodes, ...catalogFineCodes]), [navCodes, catalogFineCodes])
+  // Older backends only send the catalog lines; show them as one group
+  const pageGroups = useMemo<NavPageGroup[]>(() => {
+    if (catalog?.navPageFine?.length) return catalog.navPageFine
+    if (catalog?.navCatalogFine?.length) {
+      return [{ section: 'catalog', sectionLabel: 'Products & catalog', navCode: 'nav:catalog', pages: catalog.navCatalogFine }]
+    }
+    return []
+  }, [catalog])
+  const pageFineCodes = useMemo(() => pageGroups.flatMap(g => g.pages.map(p => p.code)), [pageGroups])
+  const navBlockSet = useMemo(() => new Set([...navCodes, ...pageFineCodes]), [navCodes, pageFineCodes])
   const apiPerms = useMemo(() => perms.filter(p => !navBlockSet.has(p.code)).sort((a, b) => a.code.localeCompare(b.code)), [perms, navBlockSet])
 
   const permCountForRole = useCallback((roleId: number) =>
@@ -577,25 +591,42 @@ export default function RolesPermissions() {
                     })}
                   </PermSection>
 
-                  {/* Catalog fine */}
-                  {catalogFineCodes.length > 0 && (
-                    <PermSection
-                      title="Catalog lines"
-                      subtitle="Granular control over Products & catalog sidebar items — nav:catalog grants all"
-                      sectionKey="catalog"
-                      open={openSections.has('catalog')}
-                      onToggle={toggleSection}
-                      activeCount={catalogFineCodes.filter(c => { const p = permsByCode[c]; return p && matrix[PERM_KEY(selectedRole.id, p.id)] }).length}
-                      totalCount={catalogFineCodes.length}
-                    >
-                      {catalogFineCodes.map(code => {
-                        const p = permsByCode[code]
-                        const label = catalog?.navCatalogFine?.find(x => x.code === code)?.label
-                        if (!p) return <MissingPerm key={code} code={code} />
-                        return <PermRow key={p.id} code={p.code} description={label} checked={!!matrix[PERM_KEY(selectedRole.id, p.id)]} onChange={() => toggle(selectedRole.id, p.id)} />
-                      })}
-                    </PermSection>
-                  )}
+                  {/* Page-level access, one group per sidebar section */}
+                  {pageGroups.map(group => {
+                    const codes = group.pages.map(pg => pg.code)
+                    const sectionPerm = permsByCode[group.navCode]
+                    const sectionOn = !!(sectionPerm && matrix[PERM_KEY(selectedRole.id, sectionPerm.id)])
+                    const key = `pages:${group.section}`
+                    return (
+                      <PermSection
+                        key={key}
+                        title={`${group.sectionLabel} — pages`}
+                        subtitle={sectionOn
+                          ? `${group.navCode} is on, so every page here is already visible`
+                          : `Pick single pages, or turn on ${group.navCode} for the whole section`}
+                        sectionKey={key}
+                        open={openSections.has(key)}
+                        onToggle={toggleSection}
+                        activeCount={sectionOn ? codes.length : codes.filter(c => { const p = permsByCode[c]; return p && matrix[PERM_KEY(selectedRole.id, p.id)] }).length}
+                        totalCount={codes.length}
+                      >
+                        {group.pages.map(pg => {
+                          const p = permsByCode[pg.code]
+                          if (!p) return <MissingPerm key={pg.code} code={pg.code} />
+                          return (
+                            <PermRow
+                              key={p.id}
+                              code={p.code}
+                              description={sectionOn ? `${pg.label} (granted by ${group.navCode})` : pg.label}
+                              checked={sectionOn || !!matrix[PERM_KEY(selectedRole.id, p.id)]}
+                              disabled={sectionOn}
+                              onChange={() => toggle(selectedRole.id, p.id)}
+                            />
+                          )
+                        })}
+                      </PermSection>
+                    )
+                  })}
 
                   {/* API permissions */}
                   <PermSection

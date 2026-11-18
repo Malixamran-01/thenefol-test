@@ -221,6 +221,14 @@ export function requirePermission(perms: string[]) {
   }
 }
 
+/** Passes when the staff member holds at least one of `perms`. */
+export function requireAnyPermission(perms: string[]) {
+  return (req: Request, res: Response, next: Function) => {
+    if (perms.some((p) => staffHasPermissions(req, [p]))) return next()
+    return sendError(res, 403, 'Forbidden')
+  }
+}
+
 // CSV parsing utility
 export function parseCSVLine(line: string): string[] {
   const result: string[] = []

@@ -22,6 +22,8 @@
  *  18  Shop by Concern: concerns + product_concerns (many-to-many), indexes
  *  19  Concern collection pages: banner/headline/about/group columns, UV Protection concern
  *  20  Google reviews: google_reviews_config (encrypted OAuth token, location) + google_reviews
+ *  21  Per-product GST: product_gst_schedules (scheduled rate changes from admin bulk edit)
+ *  22  Pickup warehouses: pickup_warehouses (+ shiprocket_shipments.pickup_location)
  *
  * Full app schema is applied on backend startup via ensureSchema() in src/utils/schema.ts.
  * This script is safe to re-run (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
@@ -1881,7 +1883,7 @@ async function runMigration() {
       CREATE TABLE IF NOT EXISTS product_reviews (
         id SERIAL PRIMARY KEY,
         order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
-        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
         customer_email TEXT NOT NULL,
         customer_name TEXT NOT NULL,
         rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
@@ -2065,6 +2067,74 @@ async function runMigration() {
     `);
     // Connect Google in Admin → Google reviews; reviews sync daily at 03:30 server time
     console.log('  ✅ google reviews tables ready');
+
+    // ── Step 21: Per-product GST & scheduled GST changes ──────────────────────
+    // Each product's rate lives in products.details.gst (admin product form). Admin bulk edit can
+    // schedule a new rate for a future moment; checkout honours it from that moment and a
+    // once-a-minute job copies it into the product. Same DDL as GST_SCHEDULE_DDL in
+    // src/services/productGst.ts.
+    console.log('📝 Step 21: Per-product GST — product_gst_schedules…');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS product_gst_schedules (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        gst_rate NUMERIC(5,2) NOT NULL CHECK (gst_rate >= 0 AND gst_rate <= 100),
+        effective_at TIMESTAMPTZ NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'cancelled')),
+        previous_rate NUMERIC(5,2),
+        batch_id TEXT,
+        created_by INTEGER,
+        created_by_name TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        applied_at TIMESTAMPTZ,
+        cancelled_at TIMESTAMPTZ,
+        cancelled_by_name TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_product_gst_schedules_pending
+        ON product_gst_schedules (product_id, effective_at) WHERE status = 'pending';
+      CREATE INDEX IF NOT EXISTS idx_product_gst_schedules_due
+        ON product_gst_schedules (effective_at) WHERE status = 'pending';
+    `);
+    const gstStats = await pool.query(`
+      SELECT (SELECT COUNT(*)::int FROM products
+               WHERE NULLIF(COALESCE(details->>'gst', details->>'gstPercent', details->>'GST %'), '') IS NULL) AS without_rate,
+             (SELECT COUNT(*)::int FROM product_gst_schedules WHERE status = 'pending') AS pending
+    `);
+    const gs = gstStats.rows[0];
+    // Products without a rate are charged the default 18% (DEFAULT_GST_RATE) — set them in Admin → Products
+    console.log(`  ✅ GST schedules ready (${gs.pending} pending change(s); ${gs.without_rate} product(s) without a GST rate)`);
+
+    // ── Step 22: Pickup warehouses ────────────────────────────────────────────
+    // Named pickup addresses chosen when confirming a Shiprocket shipment. Each is also
+    // registered in Shiprocket (pickup_location = name). Same DDL as WAREHOUSE_DDL in
+    // src/routes/warehouses.ts.
+    console.log('📝 Step 22: Pickup warehouses…');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS pickup_warehouses (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        contact_name TEXT NOT NULL DEFAULT '',
+        phone TEXT NOT NULL DEFAULT '',
+        email TEXT NOT NULL DEFAULT '',
+        address TEXT NOT NULL DEFAULT '',
+        address_2 TEXT NOT NULL DEFAULT '',
+        city TEXT NOT NULL DEFAULT '',
+        state TEXT NOT NULL DEFAULT '',
+        country TEXT NOT NULL DEFAULT 'India',
+        pin_code TEXT NOT NULL DEFAULT '',
+        is_default BOOLEAN NOT NULL DEFAULT false,
+        shiprocket_status TEXT NOT NULL DEFAULT 'pending' CHECK (shiprocket_status IN ('pending', 'synced', 'failed')),
+        shiprocket_error TEXT,
+        shiprocket_pickup_id TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pickup_warehouses_name ON pickup_warehouses (LOWER(name));
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pickup_warehouses_one_default ON pickup_warehouses (is_default) WHERE is_default;
+      ALTER TABLE IF EXISTS shiprocket_shipments ADD COLUMN IF NOT EXISTS pickup_location TEXT;
+    `);
+    // Add warehouses in Admin → Shipments → Warehouses; locations already in Shiprocket show up there too
+    console.log('  ✅ pickup_warehouses ready');
 
     console.log('✅ Migration completed successfully!');
     process.exit(0);

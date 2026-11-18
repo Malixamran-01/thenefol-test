@@ -14,6 +14,8 @@ import { computeSegmentDiscountAmount } from '../utils/segmentPricing'
 import { deferStateWork } from '../utils/deferStateWork'
 import { useAuth } from './AuthContext'
 import { userSocketService } from '../services/socket'
+import { useGstRates } from '../hooks/useGstRates'
+import { DEFAULT_GST_RATE, computeGst } from '../../../common/src/gst'
 
 export type CartItem = {
   id?: number
@@ -43,7 +45,10 @@ type CartContextValue = {
   clear: () => Promise<void>
   refreshCart: () => Promise<void>
   subtotal: number
+  /** Total GST included in the cart's (GST-inclusive) prices, each item at its product's own rate */
   tax: number
+  /** GST % in force now for a product (admin-set per product; default when not set) */
+  gstRateFor: (productId?: number | null) => number
   total: number
   coinsEarned: number
   segmentPricing: CartSegmentPricing | null
@@ -61,6 +66,7 @@ const CART_CONTEXT_DEFAULT: CartContextValue = {
   refreshCart: async () => {},
   subtotal: 0,
   tax: 0,
+  gstRateFor: () => DEFAULT_GST_RATE,
   total: 0,
   coinsEarned: 0,
   segmentPricing: null,
@@ -422,18 +428,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [items]
   )
 
-  const tax = useMemo(() => {
-    return roundPrice(
-      items.reduce((totalTax, item) => {
-        const itemPrice = parsePrice(item.price)
-        const category = (item.category || '').toLowerCase()
-        const taxRate = category.includes('hair') ? 0.05 : 0.18
-        const basePrice = itemPrice / (1 + taxRate)
-        const itemTax = itemPrice - basePrice
-        return totalTax + itemTax * item.quantity
-      }, 0)
-    )
-  }, [items])
+  const productIds = useMemo(() => items.map((i) => Number(i.product_id)), [items])
+  const gstRates = useGstRates(productIds)
+  const gstRateFor = useCallback(
+    (productId?: number | null) => (productId != null && gstRates[Number(productId)] != null ? gstRates[Number(productId)] : DEFAULT_GST_RATE),
+    [gstRates]
+  )
+
+  // Prices are GST-inclusive: GST is backed out per item at that product's own rate
+  const tax = useMemo(
+    () => computeCartGst(items, gstRateFor),
+    [items, gstRateFor]
+  )
 
   const total = useMemo(() => roundPrice(subtotal), [subtotal])
 
@@ -457,6 +463,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       refreshCart,
       subtotal,
       tax,
+      gstRateFor,
       total,
       coinsEarned,
       segmentPricing,
@@ -473,6 +480,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       refreshCart,
       subtotal,
       tax,
+      gstRateFor,
       total,
       coinsEarned,
       segmentPricing,
@@ -489,6 +497,16 @@ export function useCart(): CartContextValue {
     throw new Error('useCart must be used within CartProvider')
   }
   return ctx
+}
+
+/** Total GST (to the paisa) in GST-inclusive cart lines; same maths as the backend order. */
+export function computeCartGst(
+  lines: Array<{ product_id?: number | null; price: string; quantity?: number }>,
+  rateFor: (productId?: number | null) => number
+): number {
+  return computeGst(
+    lines.map((l) => ({ unitPrice: parsePrice(l.price), quantity: l.quantity || 1, rate: rateFor(l.product_id) }))
+  ).gst
 }
 
 export function parsePrice(input: string): number {

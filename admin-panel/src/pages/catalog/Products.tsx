@@ -4,9 +4,10 @@ import { useToast } from '../../components/ToastProvider'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import ConcernPicker, { loadConcernOptions } from '../../components/ConcernPicker'
 import BulkEditProducts from '../../components/BulkEditProducts'
+import ScheduledGstChanges from '../../components/ScheduledGstChanges'
 import { PRODUCT_CARD_BADGES, cardBadgesOf } from '../../../../common/src/productBadges'
 import { parseCSVRows } from '../../utils/csv'
-import { buildImportPlan, effectiveDiscount, ImportPlan, ImportRow, pricingForExisting } from '../../utils/productImport'
+import { buildImportPlan, effectiveDiscount, ImportMatch, ImportPlan, ImportRow, matchImportRows, pricingForExisting } from '../../utils/productImport'
 import { uploadFile, uploadMedia, isVideoUrl, MAX_VIDEO_BYTES, VIDEO_ACCEPT } from '../../utils/upload'
 import { socketService } from '../../services/socket'
 import { getApiBaseUrl } from '../../utils/apiUrl'
@@ -331,6 +332,7 @@ function ProductsManager() {
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [bulkEditOpen, setBulkEditOpen] = useState(false)
+  const [gstSchedulesOpen, setGstSchedulesOpen] = useState(false)
   
   const remove = async (id: number) => {
     try {
@@ -476,13 +478,18 @@ function ProductsManager() {
     return next
   }, [items, query, categoryFilter, sortKey, sortDir])
 
-  const existingBySlug = useMemo(() => new Map(items.map(p => [p.slug, p])), [items])
+  // Which existing product each import row updates (slug first, then SKU)
+  const importMatches = useMemo(
+    () => (importPlan ? matchImportRows(importPlan.rows, items) : new Map<number, ImportMatch<Product>>()),
+    [importPlan, items]
+  )
 
   const rowStatus = (row: ImportRow): { label: string; className: string } => {
-    if (row.errors.length) return { label: 'Error', className: 'bg-red-100 text-red-700' }
-    if (existingBySlug.has(row.slug)) {
+    const match = importMatches.get(row.rowNumber)
+    if (row.errors.length || match?.error) return { label: 'Error', className: 'bg-red-100 text-red-700' }
+    if (match?.product) {
       return updateExisting
-        ? { label: 'Update', className: 'bg-blue-100 text-blue-700' }
+        ? { label: match.by === 'sku' ? 'Update (SKU)' : 'Update', className: 'bg-blue-100 text-blue-700' }
         : { label: 'Skip (exists)', className: 'bg-gray-100 text-gray-600' }
     }
     return { label: 'New', className: 'bg-green-100 text-green-700' }
@@ -527,17 +534,18 @@ function ProductsManager() {
       // Fresh list so the create/update decision doesn't rely on a stale table
       const listRes = await fetch(`${apiBase}/products?_=${Date.now()}`, { cache: 'no-store' })
       const current: Product[] = listRes.ok ? await listRes.json() : items
-      const bySlug = new Map((Array.isArray(current) ? current : items).map(p => [p.slug, p]))
+      const matches = matchImportRows(importPlan.rows, Array.isArray(current) ? current : items)
 
       for (const row of importPlan.rows) {
         const base = { rowNumber: row.rowNumber, title: row.title || '(no name)' }
-        if (row.errors.length) {
-          results.push({ ...base, status: 'skipped', message: row.errors.join('; ') })
+        const match = matches.get(row.rowNumber)
+        if (row.errors.length || match?.error) {
+          results.push({ ...base, status: 'skipped', message: [...row.errors, match?.error].filter(Boolean).join('; ') })
           continue
         }
-        const existing = bySlug.get(row.slug)
+        const existing = match?.product
         if (existing && !updateExisting) {
-          results.push({ ...base, status: 'skipped', message: `Product "${row.slug}" already exists` })
+          results.push({ ...base, status: 'skipped', message: `Product "${existing.slug}" already exists` })
           continue
         }
         try {
@@ -550,7 +558,7 @@ function ProductsManager() {
               method: 'PUT',
               headers: authHeaders,
               body: JSON.stringify({
-                slug: row.slug,
+                slug: match!.slug,
                 title: row.title,
                 price: pricing.price,
                 details: { ...existingDetails, ...row.details, ...pricing.details },
@@ -605,9 +613,10 @@ function ProductsManager() {
   const importSummary = useMemo(() => {
     if (!importPlan) return null
     const rows = importPlan.rows
-    const withErrors = rows.filter(r => r.errors.length).length
-    const valid = rows.filter(r => !r.errors.length)
-    const updates = valid.filter(r => existingBySlug.has(r.slug)).length
+    const hasError = (r: ImportRow) => r.errors.length > 0 || !!importMatches.get(r.rowNumber)?.error
+    const withErrors = rows.filter(hasError).length
+    const valid = rows.filter(r => !hasError(r))
+    const updates = valid.filter(r => importMatches.get(r.rowNumber)?.product).length
     return {
       total: rows.length,
       withErrors,
@@ -616,7 +625,7 @@ function ProductsManager() {
       updates,
       toImport: valid.length - (updateExisting ? 0 : updates),
     }
-  }, [importPlan, existingBySlug, updateExisting])
+  }, [importPlan, importMatches, updateExisting])
 
   return (
     <>
@@ -626,13 +635,13 @@ function ProductsManager() {
         <div className="mb-3 rounded bg-green-50 p-3 text-sm text-green-800">
           Upload a <strong>.csv</strong> or <strong>.xlsx</strong> file with a header row (e.g. Product Name, Slug, Product Category, MRP, GST %, Image Links…).
           Files only set the MRP, which may include ₹ and commas. Set discounts with Bulk Edit: new products sell at MRP until then, and existing products keep their discount % on the new MRP.
-          Rows are matched to existing products by slug. Review the preview before importing; rows with errors are not imported.
+          Rows are matched to existing products by slug, then by SKU, so renaming a product updates it instead of creating a duplicate. Review the preview before importing; rows with errors are not imported.
         </div>
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <input type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={readImportFile} />
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input type="checkbox" checked={updateExisting} onChange={e => setUpdateExisting(e.target.checked)} />
-            Update existing products (matched by slug)
+            Update existing products (matched by slug or SKU)
           </label>
           <button
             disabled={!importSummary?.toImport || bulkLoading || !!importPlan?.fileErrors.length}
@@ -686,14 +695,15 @@ function ProductsManager() {
                 <tbody>
                   {importPlan.rows.map(row => {
                     const status = rowStatus(row)
-                    const existing = existingBySlug.get(row.slug)
+                    const match = importMatches.get(row.rowNumber)
+                    const existing = match?.product
                     const pricing = existing && row.mrp ? pricingForExisting(existing.details, row.mrp).details : row.details
                     return (
                       <tr key={row.rowNumber} className="border-b border-gray-100 align-top text-gray-800">
                         <td className="px-2 py-1">{row.rowNumber}</td>
                         <td className="px-2 py-1"><span className={`whitespace-nowrap rounded px-1.5 py-0.5 ${status.className}`}>{status.label}</span></td>
                         <td className="max-w-xs truncate px-2 py-1" title={row.title}>{row.title}</td>
-                        <td className="max-w-[12rem] truncate px-2 py-1" title={row.slug}>{row.slug}</td>
+                        <td className="max-w-[12rem] truncate px-2 py-1" title={match?.slug ?? row.slug}>{match?.slug ?? row.slug}</td>
                         <td className="px-2 py-1">{row.category}</td>
                         {importPlan.mapping.fields.concerns != null && (
                           <td className="px-2 py-1">
@@ -709,7 +719,9 @@ function ProductsManager() {
                         <td className="px-2 py-1 text-right">{pricing.discountPercent ? `${pricing.discountPercent}%` : '—'}</td>
                         <td className="px-2 py-1">
                           {row.errors.map(msg => <div key={msg} className="text-red-600">{msg}</div>)}
+                          {match?.error && <div className="text-red-600">{match.error}</div>}
                           {row.warnings.map(msg => <div key={msg} className="text-amber-600">{msg}</div>)}
+                          {match?.notes.map(msg => <div key={msg} className="text-blue-700">{msg}</div>)}
                         </td>
                       </tr>
                     )
@@ -765,6 +777,7 @@ function ProductsManager() {
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Price (display)" value={form.price||''} onChange={e=>setForm(prev=>({...prev, price:e.target.value}))} />
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="SKU" value={form.details?.sku||''} onChange={e=>setForm(prev=>({...prev, details: { ...(prev.details||{}), sku:e.target.value }}))} />
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="HSN Code" value={form.details?.hsn||''} onChange={e=>setForm(prev=>({...prev, details: { ...(prev.details||{}), hsn:e.target.value }}))} />
+              <input type="number" min="0" max="100" step="any" title="GST rate charged on this product (prices include GST)" className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="GST % (e.g. 5 or 18)" value={form.details?.gst||''} onChange={e=>setForm(prev=>({...prev, details: { ...(prev.details||{}), gst:e.target.value, gstPercent:e.target.value, 'GST %':e.target.value }}))} />
               <input className="rounded bg-white/10 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="MRP" value={form.details?.mrp||''} onChange={e=>{
                 const mrp = e.target.value;
                 const discountPercent = form.details?.discountPercent;
@@ -856,6 +869,13 @@ function ProductsManager() {
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold">Products</h2>
+            <button
+              onClick={() => setGstSchedulesOpen(true)}
+              className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10"
+              title="GST rate changes scheduled from Bulk edit"
+            >
+              Scheduled GST
+            </button>
             {selectedProducts.size > 0 && (
               <>
                 <span className="text-sm text-white/70">
@@ -1554,7 +1574,7 @@ function ProductsManager() {
                         }} 
                       />
                     </div>
-                    <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="GST %" value={editing.details?.gst||''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), gst:e.target.value}}))} />
+                    <input className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="GST %" value={editing.details?.gst ?? editing.details?.gstPercent ?? editing.details?.['GST %'] ?? ''} onChange={e=>setEditing(prev=>({...(prev as any), details: { ...(prev?.details||{}), gst:e.target.value, gstPercent:e.target.value, 'GST %':e.target.value}}))} />
                   </div>
                   {editing.details?.mrp && editing.details?.websitePrice && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
@@ -1791,6 +1811,9 @@ function ProductsManager() {
         onClose={() => setBulkEditOpen(false)}
         onApplied={() => { setBulkEditOpen(false); load() }}
       />
+    )}
+    {gstSchedulesOpen && (
+      <ScheduledGstChanges apiBase={apiBase} onClose={() => setGstSchedulesOpen(false)} onChanged={() => load()} />
     )}
     </>
   )

@@ -1,10 +1,13 @@
-// Bulk edit for the product catalogue: MRP, discount / selling price, card badges, category, concerns.
+// Bulk edit for the product catalogue: MRP, discount / selling price, GST rate (now or scheduled),
+// card badges, category, concerns.
 // Prices are kept consistent with the single-product form: details.mrp, details.websitePrice,
 // details.discountPercent (+ legacy details.discount) and the products.price column, which checkout
 // uses together with details.websitePrice (see services/orderPricing.ts).
 import { Request, Response } from 'express'
 import { Pool } from 'pg'
-import { sendError, sendSuccess } from '../utils/apiHelpers'
+import { getStaffContext, sendError, sendSuccess } from '../utils/apiHelpers'
+import { parseGstRate, productGstRate } from '../services/gstCalc'
+import { insertGstSchedules, parseEffectiveAt } from '../services/productGst'
 
 /** Badge ids shown on storefront product cards (labels live in common/src/productBadges.ts). */
 export const CARD_BADGES = ['new_arrival','bestseller', 'lowest_price', 'sale', 'new', 'limited', 'trending'] as const
@@ -17,14 +20,27 @@ export type BulkOps = {
   badges?: { add: string[]; remove: string[] }
   category?: string
   concerns?: { add: string[]; remove: string[] }
+  /** New GST rate; with effectiveAt it is stored as a pending change instead of applied now */
+  gst?: { rate: number; effectiveAt?: Date }
 }
 
 type ProductRow = { id: number; title: string; price: string | null; category: string | null; details: any }
 
-type PriceSnapshot = { mrp: number | null; websitePrice: number | null; discount: number; badges: string[]; category: string }
+type PriceSnapshot = { mrp: number | null; websitePrice: number | null; discount: number; badges: string[]; category: string; gst: number | null }
 
 export type BulkChange =
-  | { id: number; title: string; ok: true; before: PriceSnapshot; after: PriceSnapshot; details: Record<string, any>; price: string | null; category: string }
+  | {
+      id: number
+      title: string
+      ok: true
+      before: PriceSnapshot
+      after: PriceSnapshot
+      details: Record<string, any>
+      price: string | null
+      category: string
+      /** Pending GST change to store (scheduled bulk edits) */
+      scheduledGst?: { rate: number; effectiveAt: string }
+    }
   | { id: number; title: string; ok: false; reason: string }
 
 const MAX_PRODUCTS = 1000
@@ -42,8 +58,17 @@ const badgeList = (v: unknown): string[] =>
   Array.isArray(v) ? CARD_BADGES.filter((b) => v.includes(b)) : []
 
 /** Validate the request's operations; returns null when there is nothing (valid) to do. */
-export function sanitizeOps(raw: any): BulkOps | string | null {
+export function sanitizeOps(raw: any, now: Date = new Date()): BulkOps | string | null {
   const ops: BulkOps = {}
+  if (raw?.gst) {
+    const rate = parseGstRate(raw.gst.rate)
+    if (rate == null) return 'Enter a GST rate between 0 and 100'
+    if (raw.gst.effectiveAt) {
+      const at = parseEffectiveAt(raw.gst.effectiveAt, now)
+      if (typeof at === 'string') return at
+      ops.gst = { rate, effectiveAt: at }
+    } else ops.gst = { rate }
+  }
   if (raw?.mrp) {
     const mode = raw.mrp.mode as MrpMode
     const value = Number(raw.mrp.value)
@@ -79,7 +104,7 @@ export function sanitizeOps(raw: any): BulkOps | string | null {
 
 function snapshot(mrp: number | null, websitePrice: number | null, details: any, category: string): PriceSnapshot {
   const discount = mrp && websitePrice != null && websitePrice <= mrp ? round1(((mrp - websitePrice) / mrp) * 100) : 0
-  return { mrp, websitePrice, discount, badges: badgeList(details?.cardBadges), category }
+  return { mrp, websitePrice, discount, badges: badgeList(details?.cardBadges), category, gst: productGstRate(details) }
 }
 
 /** Work out one product's new values (pure; used for the preview and for the update). */
@@ -142,6 +167,20 @@ export function computeChange(product: ProductRow, ops: BulkOps): BulkChange {
     details.cardBadges = CARD_BADGES.filter((b) => set.has(b))
   }
 
+  let scheduledGst: { rate: number; effectiveAt: string } | undefined
+  if (ops.gst) {
+    if (ops.gst.effectiveAt) {
+      // Stored as a pending change; the product keeps its current rate until then
+      scheduledGst = { rate: ops.gst.rate, effectiveAt: ops.gst.effectiveAt.toISOString() }
+    } else {
+      // Same keys as PATCH /api/products/:id/gst so every reader sees the new rate
+      const r = String(ops.gst.rate)
+      details.gst = r
+      details.gstPercent = r
+      details['GST %'] = r
+    }
+  }
+
   const nextCategory = ops.category ?? category
   const price = pricesChange && websitePrice != null ? fmtMoney(websitePrice) : product.price
   return {
@@ -152,6 +191,7 @@ export function computeChange(product: ProductRow, ops: BulkOps): BulkChange {
     details,
     price,
     category: nextCategory,
+    ...(scheduledGst ? { scheduledGst } : {}),
   }
 }
 
@@ -176,7 +216,9 @@ export async function adminBulkUpdateProducts(pool: Pool, req: Request, res: Res
       [ids]
     )
     const changes = rows.map((p) => computeChange(p, ops))
-    const summary = changes.map((c) => (c.ok ? { id: c.id, title: c.title, ok: true, before: c.before, after: c.after } : c))
+    const summary = changes.map((c) =>
+      c.ok ? { id: c.id, title: c.title, ok: true, before: c.before, after: c.after, scheduledGst: c.scheduledGst ?? null } : c
+    )
     if (dryRun) return sendSuccess(res, { dryRun: true, results: summary })
 
     const ok = changes.filter((c): c is Extract<BulkChange, { ok: true }> => c.ok)
@@ -187,6 +229,20 @@ export async function adminBulkUpdateProducts(pool: Pool, req: Request, res: Res
         await client.query(
           'UPDATE products SET details = $2::jsonb, price = $3, category = $4, updated_at = NOW() WHERE id = $1',
           [c.id, JSON.stringify(c.details), c.price, c.category]
+        )
+      }
+      if (ops.gst?.effectiveAt && ok.length) {
+        const staffId = getStaffContext(req)?.staffId ?? null
+        const staffName = staffId
+          ? (await client.query('SELECT name, email FROM staff_users WHERE id = $1', [staffId]).catch(() => ({ rows: [] as any[] }))).rows[0]
+          : null
+        await insertGstSchedules(
+          client,
+          ok.map((c) => ({ productId: c.id, previousRate: c.before.gst })),
+          ops.gst.rate,
+          ops.gst.effectiveAt,
+          { id: staffId, name: staffName?.name || staffName?.email || null },
+          `bulk-${Date.now()}`
         )
       }
       if (ops.concerns && ok.length) {

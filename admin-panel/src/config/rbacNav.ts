@@ -22,15 +22,7 @@ export const Nav = {
   settings: 'nav:settings',
 } as const
 
-/** Granular “Products & catalog” lines — any one shows that sidebar row without `nav:catalog`. */
-export const NavCatalog = {
-  products: 'nav:catalog:products',
-  categories: 'nav:catalog:categories',
-  collections: 'nav:catalog:collections',
-  variants: 'nav:catalog:variants',
-  inventory: 'nav:catalog:inventory',
-  warehouses: 'nav:catalog:warehouses',
-  discounts: 'nav:catalog:discounts',
-} as const
-
-export const NAV_CATALOG_FINE_CODES: string[] = Object.values(NavCatalog)
+/**
+ * Page-level codes (`nav:<section>:<page>`, e.g. `nav:catalog:reviews`) for every sidebar page
+ * live in `common/src/adminNav.ts`, shared with the backend's permission catalog.
+ */

@@ -155,6 +155,9 @@ export default function OrderDetails() {
   const [loadingCouriers, setLoadingCouriers] = useState(false)
   const [showCourierPanel, setShowCourierPanel] = useState(false)
   const [confirmingShipment, setConfirmingShipment] = useState(false)
+  // Pickup warehouse (Shiprocket pickup location) chosen when confirming
+  const [warehouses, setWarehouses] = useState<{ name: string; city: string; pin_code: string; is_default: boolean; in_shiprocket: boolean; phone_verified: boolean | null }[]>([])
+  const [selectedPickup, setSelectedPickup] = useState('')
 
   const apiBase = getApiBaseUrl()
   const authHeaders = useMemo(() => {
@@ -255,13 +258,26 @@ export default function OrderDetails() {
     }
   }
 
-  const fetchCourierOptions = async () => {
+  // Courier rates depend on the pickup warehouse, so they are reloaded when it changes
+  const fetchCourierOptions = async (pickup?: string) => {
     if (!order) return
     setLoadingCouriers(true)
     setCourierOptions([])
     setSelectedCourierId('')
     try {
-      const res = await fetch(`${apiBase}/shiprocket/orders/${order.id}/courier-serviceability`, { headers: authHeaders })
+      let pickupName = pickup ?? selectedPickup
+      if (!warehouses.length) {
+        const wr = await fetch(`${apiBase}/admin/warehouses`, { headers: authHeaders })
+        const wd = await wr.json().catch(() => ({}))
+        if (wr.ok) {
+          const usable = (wd.warehouses || []).filter((w: any) => w.in_shiprocket)
+          setWarehouses(usable)
+          if (!pickupName) pickupName = wd.default_name || usable[0]?.name || ''
+        }
+      }
+      setSelectedPickup(pickupName)
+      const q = pickupName ? `?pickup=${encodeURIComponent(pickupName)}` : ''
+      const res = await fetch(`${apiBase}/shiprocket/orders/${order.id}/courier-serviceability${q}`, { headers: authHeaders })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to fetch couriers')
       setCourierOptions(data?.couriers || [])
@@ -279,11 +295,12 @@ export default function OrderDetails() {
     try {
       const res = await fetch(`${apiBase}/shiprocket/orders/${order.id}/confirm-and-ship`, {
         method: 'POST', headers: authHeaders,
-        body: JSON.stringify({ courier_id: selectedCourierId }),
+        body: JSON.stringify({ courier_id: selectedCourierId, pickup_location: selectedPickup || undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to confirm')
-      notify('success', `Shipment confirmed! AWB: ${data?.awb_code || 'pending'}`)
+      if (data?.awb_code) notify('success', `Shipment confirmed! AWB: ${data.awb_code}`)
+      else notify('error', `Shipment created, but the courier was not assigned${data?.awb_error ? `: ${data.awb_error}` : ''}. Retry with "Generate AWB & Label".`)
       setShowCourierPanel(false); setCourierOptions([]); setSelectedCourierId('')
       await load()
     } catch (e: any) {
@@ -662,6 +679,7 @@ export default function OrderDetails() {
                       </div>
                     )}
                     {shipmentInfo.status && <p className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>Status: {shipmentInfo.status}</p>}
+                    {shipmentInfo.pickup_location && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Pickup from: {shipmentInfo.pickup_location}</p>}
                   </div>
                 )}
 
@@ -680,7 +698,29 @@ export default function OrderDetails() {
                       <span>Select Courier Partner</span>
                       <button onClick={() => setShowCourierPanel(false)} style={{ color: 'var(--text-muted)' }}>✕</button>
                     </div>
-                    {courierOptions.length === 0 ? (
+                    {warehouses.length > 0 && (
+                      <div className="px-3 py-2.5 space-y-1.5" style={{ borderBottom: '1px solid var(--brand-border)' }}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Pickup from</p>
+                        {warehouses.map(w => (
+                          <label key={w.name} className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+                            <input
+                              type="radio" name="pickup-warehouse" value={w.name}
+                              checked={selectedPickup === w.name}
+                              disabled={loadingCouriers || confirmingShipment}
+                              onChange={() => fetchCourierOptions(w.name)}
+                              className="flex-shrink-0 accent-[var(--brand-accent)]"
+                            />
+                            <span className="font-medium">{w.name}</span>
+                            <span style={{ color: 'var(--text-muted)' }}>{[w.city, w.pin_code].filter(Boolean).join(' ')}</span>
+                            {w.is_default && <span className="text-[10px]" style={{ color: 'var(--brand-accent)' }}>default</span>}
+                            {w.phone_verified === false && <span className="text-[10px] text-amber-600">phone unverified</span>}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {loadingCouriers ? (
+                      <p className="p-3 text-xs" style={{ color: 'var(--text-muted)' }}>Loading couriers…</p>
+                    ) : courierOptions.length === 0 ? (
                       <p className="p-3 text-xs" style={{ color: 'var(--text-muted)' }}>No couriers available for this pincode.</p>
                     ) : (
                       <div className="max-h-60 overflow-y-auto divide-y" style={{ borderColor: 'var(--brand-border)' } as any}>
@@ -726,7 +766,7 @@ export default function OrderDetails() {
                 <div className="space-y-2">
                   {!hasShipment && (
                     <button
-                      onClick={fetchCourierOptions}
+                      onClick={() => fetchCourierOptions()}
                       disabled={loadingCouriers || showCourierPanel}
                       className="w-full py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"
                       style={{ background: 'var(--brand-accent)' }}

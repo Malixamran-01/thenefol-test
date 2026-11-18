@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseCSVRows } from './csv'
-import { buildImportPlan, effectiveDiscount, parseMoney, parsePercent, pricingForExisting } from './productImport'
+import { buildImportPlan, effectiveDiscount, matchImportRows, parseMoney, parsePercent, pricingForExisting } from './productImport'
 
 const plan = (csv: string) => buildImportPlan(parseCSVRows(csv))
 
@@ -91,5 +91,54 @@ describe('effectiveDiscount', () => {
   it('prefers the discount implied by the prices over a stale stored value', () => {
     expect(effectiveDiscount({ mrp: '1299.0', websitePrice: '815.0', discount: '30%' })).toBe('37.3')
     expect(effectiveDiscount({ mrp: '789', discountPercent: '30%' })).toBe('30')
+  })
+})
+
+describe('matchImportRows', () => {
+  const products = [
+    { id: 1, slug: 'vitamin-c-serum', title: 'Vitamin C Serum', details: { sku: 'NF-SER-01' } },
+    { id: 2, slug: 'hair-oil', title: 'Hair Oil', details: { sku: 'NF-OIL-01' } },
+    { id: 3, slug: 'combo-a', title: 'Combo A', details: { sku: 'DUP' } },
+    { id: 4, slug: 'combo-b', title: 'Combo B', details: { sku: 'DUP' } },
+  ]
+
+  it('matches by slug first', () => {
+    const { rows } = plan('Product Name,SKU,MRP\nVitamin C Serum,NF-SER-01,499\n')
+    const m = matchImportRows(rows, products).get(2)!
+    expect(m).toMatchObject({ by: 'slug', slug: 'vitamin-c-serum' })
+    expect(m.product?.id).toBe(1)
+  })
+
+  it('matches a renamed product by SKU and keeps its slug', () => {
+    const { rows } = plan('Product Name,SKU,MRP\nBrightening Vitamin C Serum, nf-ser-01 ,499\n')
+    const m = matchImportRows(rows, products).get(2)!
+    expect(m.product?.id).toBe(1)
+    expect(m).toMatchObject({ by: 'sku', slug: 'vitamin-c-serum' })
+  })
+
+  it('uses the Slug column when a SKU match should change the slug', () => {
+    const { rows } = plan('Product Name,Slug,SKU,MRP\nSerum,new-serum,NF-SER-01,499\n')
+    const m = matchImportRows(rows, products).get(2)!
+    expect(m).toMatchObject({ by: 'sku', slug: 'new-serum' })
+  })
+
+  it('creates a new product when nothing matches or the SKU is ambiguous', () => {
+    const { rows } = plan('Product Name,SKU,MRP\nFace Wash,NF-FW-01,299\nCombo C,DUP,999\n')
+    const matches = matchImportRows(rows, products)
+    expect(matches.get(2)!.product).toBeNull()
+    expect(matches.get(3)!.product).toBeNull()
+    expect(matches.get(3)!.notes[0]).toMatch(/2 existing products/)
+  })
+
+  it('refuses two rows that update the same product', () => {
+    const { rows } = plan('Product Name,SKU,MRP\nHair Oil,X,299\nRenamed Hair Oil,NF-OIL-01,299\n')
+    const matches = matchImportRows(rows, products)
+    expect(matches.get(2)!.product?.id).toBe(2)
+    expect(matches.get(3)!.error).toMatch(/same product as row 2/)
+  })
+
+  it('warns about duplicate SKUs within the file', () => {
+    const { rows } = plan('Product Name,SKU,MRP\nA,S1,1\nB,s1,1\n')
+    expect(rows[1].warnings).toContain('Duplicate SKU "s1" (also on row 2)')
   })
 })

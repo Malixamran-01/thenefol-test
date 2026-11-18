@@ -156,6 +156,8 @@ export type ImportRow = {
   rowNumber: number
   title: string
   slug: string
+  /** True when the slug came from a Slug column; false when it was built from the product name */
+  slugFromFile: boolean
   category: string
   /** Selling price stored in products.price: the MRP until a discount is applied */
   price: string
@@ -185,12 +187,19 @@ export function buildImportPlan(table: string[][]): ImportPlan {
   if (mapping.fields.mrp == null) fileErrors.push('No MRP column found (expected "MRP").')
 
   const seenSlugs = new Map<string, number>()
+  const seenSkus = new Map<string, number>()
   const rows = body.map((cells, i) => {
     const row = buildRow(cells, header.length, mapping, i + 2)
     if (row.slug) {
       const first = seenSlugs.get(row.slug)
       if (first != null) row.errors.push(`Duplicate slug "${row.slug}" (also on row ${first})`)
       else seenSlugs.set(row.slug, row.rowNumber)
+    }
+    const sku = skuKey(row.details.sku)
+    if (sku) {
+      const first = seenSkus.get(sku)
+      if (first != null) row.warnings.push(`Duplicate SKU "${row.details.sku}" (also on row ${first})`)
+      else seenSkus.set(sku, row.rowNumber)
     }
     return row
   })
@@ -212,6 +221,7 @@ function buildRow(cells: string[], headerCount: number, mapping: ColumnMapping, 
   }
 
   const title = get('title').replace(/\s+/g, ' ')
+  const slugFromFile = !!slugify(get('slug'))
   const slug = slugify(get('slug') || title)
   if (!title) errors.push('Missing product name')
   else if (!slug) errors.push('Could not build a slug from the product name')
@@ -258,6 +268,7 @@ function buildRow(cells: string[], headerCount: number, mapping: ColumnMapping, 
     rowNumber,
     title,
     slug,
+    slugFromFile,
     category,
     price: details.mrp,
     listImage,
@@ -268,4 +279,79 @@ function buildRow(cells: string[], headerCount: number, mapping: ColumnMapping, 
     errors,
     warnings,
   }
+}
+
+/** SKUs compare case-insensitively and ignore surrounding spaces */
+function skuKey(sku: unknown) {
+  return String(sku ?? '').trim().toLowerCase()
+}
+
+type ExistingProduct = { id: number; slug: string; title?: string; details?: any }
+
+export type ImportMatch<P extends ExistingProduct> = {
+  /** Existing product the row updates; null creates a new product */
+  product: P | null
+  by: 'slug' | 'sku' | null
+  /** Slug to save. A SKU match keeps the product's current slug unless the file has a Slug column. */
+  slug: string
+  /** Shown as warnings in the preview */
+  notes: string[]
+  /** The row cannot be imported */
+  error?: string
+}
+
+/**
+ * Decides which existing product each row updates: same slug first, then same SKU.
+ * Matching by SKU means renaming a product in the file updates it in place instead of creating
+ * a duplicate, so the product keeps its id (and with it its reviews, orders and images).
+ */
+export function matchImportRows<P extends ExistingProduct>(rows: ImportRow[], products: P[]): Map<number, ImportMatch<P>> {
+  const bySlug = new Map(products.map(p => [p.slug, p]))
+  const bySku = new Map<string, P[]>()
+  for (const p of products) {
+    const key = skuKey(p.details?.sku)
+    if (key) bySku.set(key, [...(bySku.get(key) || []), p])
+  }
+  const name = (p: P) => p.title || p.slug
+
+  const claimed = new Map<number, number>() // product id → row number that updates it
+  const result = new Map<number, ImportMatch<P>>()
+  for (const row of rows) {
+    const notes: string[] = []
+    if (row.errors.length) {
+      result.set(row.rowNumber, { product: null, by: null, slug: row.slug, notes })
+      continue
+    }
+    const sku = skuKey(row.details.sku)
+    const skuHits = sku ? bySku.get(sku) || [] : []
+    let product: P | null = bySlug.get(row.slug) || null
+    let by: ImportMatch<P>['by'] = product ? 'slug' : null
+    let slug = row.slug
+
+    if (product) {
+      if (skuHits.length && !skuHits.includes(product)) {
+        notes.push(`SKU "${row.details.sku}" belongs to "${name(skuHits[0])}", but the slug matches "${name(product)}"; the slug match is updated`)
+      }
+    } else if (skuHits.length === 1) {
+      product = skuHits[0]
+      by = 'sku'
+      if (!row.slugFromFile) slug = product.slug
+      notes.push(slug === product.slug
+        ? `Matched "${name(product)}" by SKU; keeps slug "${product.slug}"`
+        : `Matched "${name(product)}" by SKU; slug changes from "${product.slug}" to "${slug}"`)
+    } else if (skuHits.length > 1) {
+      notes.push(`SKU "${row.details.sku}" is on ${skuHits.length} existing products, so it was not used for matching`)
+    }
+
+    if (product) {
+      const first = claimed.get(product.id)
+      if (first != null) {
+        result.set(row.rowNumber, { product, by, slug, notes, error: `Updates the same product as row ${first} ("${name(product)}")` })
+        continue
+      }
+      claimed.set(product.id, row.rowNumber)
+    }
+    result.set(row.rowNumber, { product, by, slug, notes })
+  }
+  return result
 }

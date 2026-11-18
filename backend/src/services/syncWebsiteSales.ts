@@ -32,9 +32,9 @@ function addressParts(addr: unknown): { city: string | null; state: string | nul
   return { city, state }
 }
 
-/** Item GST % as stored by checkout (csvProduct['GST %'] or taxRate), else null */
+/** Item GST %: gst_rate stamped by the backend at order time (per-product GST), else what older checkouts stored */
 function itemRatePct(it: any): number | null {
-  const raw = it?.csvProduct?.['GST %'] ?? it?.taxRate ?? it?.gst_rate ?? it?.gstRate
+  const raw = it?.gst_rate ?? it?.csvProduct?.['GST %'] ?? it?.taxRate ?? it?.gstRate
   const n = parseFloat(String(raw ?? ''))
   if (!Number.isFinite(n) || n < 0) return null
   return n > 0 && n < 1 ? n * 100 : n

@@ -4,10 +4,12 @@ import { socketService } from '../../services/socket'
 import { getApiBaseUrl } from '../../utils/apiUrl'
 
 type ReviewStatus = 'pending' | 'approved' | 'rejected'
+type TabKey = ReviewStatus | 'all' | 'unlinked'
 
 type Review = {
   id: number
-  product_id: number
+  /** null when the product was deleted; the review waits on the Unlinked tab */
+  product_id: number | null
   order_id: number | null
   customer_name: string
   customer_email: string
@@ -22,13 +24,34 @@ type Review = {
   product_title: string | null
   product_slug: string | null
   product_image: string | null
+  product_sku: string | null
+  unlinked_at: string | null
 }
 
-const TABS: Array<{ key: ReviewStatus | 'all'; label: string }> = [
+/** Unlinked reviews grouped by the product they were left behind by */
+type UnlinkedGroup = {
+  product_slug: string | null
+  product_sku: string | null
+  product_title: string | null
+  review_count: number
+  approved_count: number
+  average_rating: number
+  unlinked_at: string | null
+  review_ids: number[]
+  suggested_product_id: number | null
+  suggested_product_title: string | null
+  suggested_product_slug: string | null
+  suggested_match: 'sku' | 'slug' | 'name' | null
+}
+
+type ProductOption = { id: number; title: string; slug: string; details?: { sku?: string } }
+
+const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'pending', label: 'Pending' },
   { key: 'approved', label: 'Approved' },
   { key: 'rejected', label: 'Rejected' },
   { key: 'all', label: 'All' },
+  { key: 'unlinked', label: 'Unlinked' },
 ]
 
 const STATUS_STYLES: Record<ReviewStatus, string> = {
@@ -52,10 +75,12 @@ function Stars({ value }: { value: number }) {
 export default function ProductReviews() {
   const { notify } = useToast()
   const apiBase = getApiBaseUrl()
-  const [tab, setTab] = useState<ReviewStatus | 'all'>('pending')
+  const [tab, setTab] = useState<TabKey>('pending')
   const [query, setQuery] = useState('')
   const [reviews, setReviews] = useState<Review[]>([])
-  const [counts, setCounts] = useState<Record<ReviewStatus, number>>({ pending: 0, approved: 0, rejected: 0 })
+  const [counts, setCounts] = useState<Record<ReviewStatus | 'unlinked', number>>({ pending: 0, approved: 0, rejected: 0, unlinked: 0 })
+  const [groups, setGroups] = useState<UnlinkedGroup[]>([])
+  const [products, setProducts] = useState<ProductOption[]>([])
   const [loading, setLoading] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
 
@@ -85,7 +110,13 @@ export default function ProductReviews() {
       if (!res.ok) throw new Error(res.status === 401 ? 'Admin session required' : `HTTP ${res.status}`)
       const data = await res.json()
       setReviews(Array.isArray(data?.reviews) ? data.reviews : [])
-      if (data?.counts) setCounts(data.counts)
+      if (data?.counts) setCounts((prev) => ({ ...prev, ...data.counts }))
+      if (tab === 'unlinked') {
+        const g = await fetch(`${apiBase}/admin/product-reviews/unlinked-groups`, { headers })
+        if (!g.ok) throw new Error(`HTTP ${g.status}`)
+        const groupData = await g.json()
+        setGroups(Array.isArray(groupData) ? groupData : [])
+      }
     } catch (err) {
       notify('error', `Failed to load reviews: ${(err as Error).message}`)
     } finally {
@@ -97,6 +128,30 @@ export default function ProductReviews() {
     const t = setTimeout(load, query ? 300 : 0)
     return () => clearTimeout(t)
   }, [load, query])
+
+  // Product list for the relink picker, loaded the first time the Unlinked tab opens
+  useEffect(() => {
+    if (tab !== 'unlinked' || products.length) return
+    fetch(`${apiBase}/products?_=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => setProducts(Array.isArray(list) ? [...list].sort((a, b) => String(a.title).localeCompare(String(b.title))) : []))
+      .catch(() => notify('error', 'Failed to load products'))
+  }, [tab, products.length, apiBase, notify])
+
+  const relink = async (reviewIds: number[], product: ProductOption) => {
+    const res = await fetch(`${apiBase}/admin/product-reviews/relink`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ review_ids: reviewIds, product_id: product.id }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err?.error || err?.message || `HTTP ${res.status}`)
+    }
+    const data = await res.json()
+    notify('success', `Moved ${data?.relinked ?? reviewIds.length} review(s) to "${product.title}"`)
+    await load()
+  }
 
   // New storefront reviews arrive in real time
   useEffect(() => {
@@ -151,6 +206,7 @@ export default function ProductReviews() {
           </h1>
           <p className="text-sm font-light tracking-wide" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
             New customer reviews wait here until you approve them. Only approved reviews appear on the storefront.
+            Reviews of a deleted product are kept on the Unlinked tab and come back automatically when a product with the same SKU or slug is uploaded.
           </p>
         </div>
       </div>
@@ -159,6 +215,7 @@ export default function ProductReviews() {
         <div className="flex flex-wrap gap-2" role="tablist">
           {TABS.map((t) => {
             const count = t.key === 'all' ? counts.pending + counts.approved + counts.rejected : counts[t.key]
+            const highlight = (t.key === 'pending' || t.key === 'unlinked') && count > 0
             const active = tab === t.key
             return (
               <button
@@ -169,7 +226,7 @@ export default function ProductReviews() {
                 className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${active ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
               >
                 {t.label}
-                <span className={`ml-2 rounded-full px-1.5 text-xs ${active ? 'bg-white/20' : t.key === 'pending' && count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
+                <span className={`ml-2 rounded-full px-1.5 text-xs ${active ? 'bg-white/20' : highlight ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
                   {count}
                 </span>
               </button>
@@ -185,7 +242,27 @@ export default function ProductReviews() {
         />
       </div>
 
-      {loading && reviews.length === 0 ? (
+      {tab === 'unlinked' ? (
+        loading && groups.length === 0 ? (
+          <div className="metric-card text-sm text-gray-500">Loading unlinked reviews…</div>
+        ) : groups.length === 0 ? (
+          <div className="metric-card text-sm text-gray-500">No unlinked reviews. Every review belongs to a current product.</div>
+        ) : (
+          <div className="space-y-4">
+            {groups
+              .filter((g) => !query.trim() || g.review_ids.some((id) => reviews.some((r) => r.id === id)))
+              .map((g) => (
+                <UnlinkedGroupCard
+                  key={g.review_ids.join(',')}
+                  group={g}
+                  reviews={reviews.filter((r) => g.review_ids.includes(r.id))}
+                  products={products}
+                  onRelink={relink}
+                />
+              ))}
+          </div>
+        )
+      ) : loading && reviews.length === 0 ? (
         <div className="metric-card text-sm text-gray-500">Loading reviews…</div>
       ) : reviews.length === 0 ? (
         <div className="metric-card text-sm text-gray-500">
@@ -205,6 +282,11 @@ export default function ProductReviews() {
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-gray-900" title={r.product_title || ''}>{r.product_title || `Product #${r.product_id}`}</div>
                     <span className={`mt-1 inline-block rounded border px-2 py-0.5 text-xs capitalize ${STATUS_STYLES[r.status]}`}>{r.status}</span>
+                    {r.product_id == null && (
+                      <button onClick={() => setTab('unlinked')} className="mt-1 ml-1 inline-block rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800 hover:bg-amber-100" title="The product was deleted. Open the Unlinked tab to move this review.">
+                        Unlinked
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -260,6 +342,125 @@ export default function ProductReviews() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function UnlinkedGroupCard({
+  group,
+  reviews,
+  products,
+  onRelink,
+}: {
+  group: UnlinkedGroup
+  reviews: Review[]
+  products: ProductOption[]
+  onRelink: (reviewIds: number[], product: ProductOption) => Promise<void>
+}) {
+  const [productId, setProductId] = useState<string>(group.suggested_product_id ? String(group.suggested_product_id) : '')
+  const [filter, setFilter] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const options = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    const list = q
+      ? products.filter((p) => [p.title, p.slug, p.details?.sku].some((v) => String(v || '').toLowerCase().includes(q)))
+      : products
+    // Keep the selected product in the list even when the filter hides it
+    const selected = products.find((p) => String(p.id) === productId)
+    return selected && !list.includes(selected) ? [selected, ...list] : list
+  }, [products, filter, productId])
+
+  const target = products.find((p) => String(p.id) === productId)
+  const matchLabel = { sku: 'same SKU', slug: 'same slug', name: 'same product name' } as const
+
+  const submit = async () => {
+    if (!target) return
+    setBusy(true)
+    setError('')
+    try {
+      await onRelink(group.review_ids, target)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="metric-card">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs uppercase tracking-wide text-gray-500">Deleted product</div>
+          <div className="truncate text-base font-medium text-gray-900" title={group.product_title || ''}>
+            {group.product_title || group.product_slug || 'Unknown product'}
+          </div>
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+            {group.product_slug && <span>Slug: <span className="text-gray-700">{group.product_slug}</span></span>}
+            <span>SKU: <span className="text-gray-700">{group.product_sku || '—'}</span></span>
+            {group.unlinked_at && <span>Deleted {new Date(group.unlinked_at).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</span>}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-700">
+            <Stars value={Math.round(group.average_rating)} />
+            <span>{Number(group.average_rating).toFixed(1)}</span>
+            <span className="text-gray-400">·</span>
+            <span>{group.review_count} review{group.review_count === 1 ? '' : 's'} ({group.approved_count} approved)</span>
+          </div>
+          {reviews.length > 0 && (
+            <details className="mt-3 text-sm">
+              <summary className="cursor-pointer text-gray-600">Show reviews</summary>
+              <ul className="mt-2 space-y-2">
+                {reviews.map((r) => (
+                  <li key={r.id} className="rounded border border-gray-100 p-2">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      <Stars value={r.rating} />
+                      <span className="text-gray-800">{r.customer_name}</span>
+                      <span className={`rounded border px-1.5 py-0.5 capitalize ${STATUS_STYLES[r.status]}`}>{r.status}</span>
+                    </div>
+                    {r.title && <div className="mt-1 font-medium text-gray-900">{r.title}</div>}
+                    {r.review_text && <p className="mt-0.5 line-clamp-3 text-gray-700">{r.review_text}</p>}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+
+        <div className="w-full space-y-2 lg:w-80 lg:flex-shrink-0">
+          <label className="block text-xs font-medium text-gray-600" htmlFor={`relink-${group.review_ids[0]}`}>Move these reviews to</label>
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter by name, slug or SKU"
+            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+          />
+          <select
+            id={`relink-${group.review_ids[0]}`}
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--arctic-blue-primary)]"
+          >
+            <option value="">{products.length ? 'Choose a product…' : 'Loading products…'}</option>
+            {options.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}{p.details?.sku ? ` (${p.details.sku})` : ''}
+              </option>
+            ))}
+          </select>
+          {group.suggested_product_id != null && String(group.suggested_product_id) === productId && group.suggested_match && (
+            <div className="text-xs text-blue-700">Suggested: {matchLabel[group.suggested_match]}</div>
+          )}
+          <button
+            disabled={!target || busy}
+            onClick={submit}
+            className="w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {busy ? 'Moving…' : `Move ${group.review_count} review${group.review_count === 1 ? '' : 's'}`}
+          </button>
+          {error && <div className="text-xs text-red-600">{error}</div>}
+        </div>
+      </div>
     </div>
   )
 }

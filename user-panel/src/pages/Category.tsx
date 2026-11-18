@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ReviewsLink from '../components/ReviewsLink'
 import { useProducts } from '../hooks/useProducts'
 import ListingAddToCartButton from '../components/ListingAddToCartButton'
 import type { Product } from '../types'
@@ -164,7 +165,7 @@ export default function CategoryPage() {
                     {rating <= 0 && <div className="mb-4 h-5" aria-hidden="true" />}
                     {rating > 0 && (
                       <div className="flex items-center mb-4">
-                        <div className="flex text-yellow-400">
+                        <ReviewsLink slug={product.slug} className="inline-flex items-center" label={`Rated ${rating.toFixed(1)} out of 5 from ${reviewCount} reviews. See reviews`}><div className="flex text-yellow-400">
                           {[...Array(5)].map((_, i) => {
                             const filled = i < Math.round(rating)
                             return (
@@ -174,7 +175,7 @@ export default function CategoryPage() {
                             )
                           })}
                         </div>
-                        <span className="text-xs sm:text-sm ml-2 font-light" style={{color: '#999'}}>{rating.toFixed(1)} ({reviewCount})</span>
+                        <span className="text-xs sm:text-sm ml-2 font-light" style={{color: '#999'}}>{rating.toFixed(1)} ({reviewCount})</span></ReviewsLink>
                       </div>
                     )}
                     <div className="mt-auto pt-2">

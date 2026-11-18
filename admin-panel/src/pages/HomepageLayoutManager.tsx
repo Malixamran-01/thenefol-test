@@ -6,6 +6,7 @@ import { configService } from '../services/config'
 import ImageCropper from '../components/ImageCropper'
 import VideoCropper from '../components/VideoCropper'
 import JustLandedOrderEditor from '../components/JustLandedOrderEditor'
+import { MAX_ANNOUNCEMENTS, announcementContent, parseAnnouncements } from '../../../common/src/announcements'
 import {
   buildDefaultSlugOrder,
   type CatalogProductRow,
@@ -126,7 +127,8 @@ export default function HomepageLayoutManager() {
     showArrows: true,
     loop: true
   })
-  const [scrollingText, setScrollingText] = useState<string>('')
+  // Announcement strip messages, shown in order separated by ✦ (empty fields are skipped)
+  const [announcementFields, setAnnouncementFields] = useState<string[]>(['', '', ''])
   const [whatsappSubscriptionText, setWhatsappSubscriptionText] = useState({
     heading: 'Join The NEFOL Circle',
     description: 'Stay ahead with exclusive style drops, member-only offers, and insider fashion updates.',
@@ -155,15 +157,7 @@ export default function HomepageLayoutManager() {
         sectionType: 'scrolling_text_banner',
         imageCount: 0
       },
-      {
-        id: 'splash_screen',
-        name: 'Splash Screen Videos',
-        type: 'banner',
-        images: ['', '', ''],
-        description: 'Upload device-specific splash screen videos (Desktop 16:9, Tablet 4:3, Mobile 9:16)',
-        sectionType: 'splash_screen',
-        imageCount: 3
-      },
+      // The storefront no longer plays a splash video on load, so it has no section here.
       {
         id: 'top_media_carousel',
         name: 'Top Media Carousel',
@@ -386,9 +380,11 @@ export default function HomepageLayoutManager() {
               return { ...section, images: [normalizeUrl(cat.image)] }
             }
           }
-          if (section.sectionType === 'scrolling_text_banner' && cmsSection.content.text) {
-            setScrollingText(cmsSection.content.text)
-            return { ...section, description: cmsSection.content.text }
+          if (section.sectionType === 'scrolling_text_banner') {
+            const saved = parseAnnouncements(cmsSection.content)
+            // Always offer at least three fields to fill in
+            setAnnouncementFields([...saved, ...Array(Math.max(0, 3 - saved.length)).fill('')])
+            if (saved.length) return { ...section, description: saved.join(' ✦ ') }
           }
           if (section.sectionType === 'commitments' && cmsSection.content.images) {
             return { ...section, images: cmsSection.content.images }
@@ -949,9 +945,7 @@ export default function HomepageLayoutManager() {
           settings: topMediaSection?.settings || topMediaSettings
         }
       } else if (section.sectionType === 'scrolling_text_banner') {
-        content = {
-          text: scrollingText || ''
-        }
+        content = announcementContent(announcementFields)
       } else if (section.sectionType === 'shop_categories') {
         // Need to fetch existing categories and update the specific one
         const cmsResponse = await fetch(`${API_BASE}/cms/sections/home`)
@@ -1804,19 +1798,55 @@ export default function HomepageLayoutManager() {
             {/* Scrolling Text Banner Input */}
             {section.id === 'scrolling_text_banner' && (
               <div className="mt-4 rounded-lg border border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50 p-3 sm:p-4">
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Scrolling Text (Offers, Promotions, etc.)
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Announcement messages (offers, promotions, etc.)
                 </label>
-                <textarea
-                  value={scrollingText}
-                  onChange={(e) => setScrollingText(e.target.value)}
-                  placeholder="Enter text to display in the scrolling banner. You can add multiple items separated by commas or new lines. Example: 'Free Shipping on Orders Above ₹500', 'Buy 2 Get 1 Free', 'New Arrivals - Shop Now!'"
-                  className="min-h-[100px] w-full min-w-0 resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500 sm:px-4 sm:py-3"
-                  rows={4}
-                />
+                <p className="mb-3 text-xs leading-relaxed text-gray-500">
+                  Each message is shown in order on one line, separated by ✦, and the strip starts again after the last one.
+                  Empty fields are skipped; with only one message it simply repeats.
+                </p>
+                <div className="space-y-2">
+                  {announcementFields.map((value, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-5 shrink-0 text-right text-xs font-medium text-gray-400">{i + 1}</span>
+                      <input
+                        type="text"
+                        value={value}
+                        maxLength={120}
+                        onChange={(e) => setAnnouncementFields((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                        placeholder={['e.g. Get upto 45% off on combos', 'e.g. Free shipping on orders above ₹499', 'e.g. New arrivals – shop now'][i] || 'Another message'}
+                        className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAnnouncementFields((prev) => (prev.length > 1 ? prev.filter((_, j) => j !== i) : ['']))}
+                        className="shrink-0 rounded p-2 text-gray-400 hover:bg-white hover:text-red-600"
+                        aria-label={`Remove message ${i + 1}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {announcementFields.length < MAX_ANNOUNCEMENTS && (
+                  <button
+                    type="button"
+                    onClick={() => setAnnouncementFields((prev) => [...prev, ''])}
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-yellow-700 hover:text-yellow-800"
+                  >
+                    <Plus className="h-4 w-4" /> Add message
+                  </button>
+                )}
+                {parseAnnouncements({ messages: announcementFields }).length > 0 && (
+                  <div className="mt-3 overflow-hidden rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white">
+                    <span className="block truncate">
+                      {parseAnnouncements({ messages: announcementFields }).join('  ✦  ')}  ✦  …
+                    </span>
+                  </div>
+                )}
                 <div className="mt-3 flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="min-w-0 flex-1 text-xs leading-relaxed text-gray-500">
-                    This text will scroll continuously 24/7 on the homepage
+                    The strip scrolls continuously on the homepage
                   </p>
                   <button
                     type="button"

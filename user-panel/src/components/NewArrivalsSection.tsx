@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import ReviewsLink from './ReviewsLink'
 import { Star } from 'lucide-react'
 import ListingAddToCartButton from './ListingAddToCartButton'
 import PricingDisplay from './PricingDisplay'
@@ -37,17 +38,11 @@ export default function NewArrivalsSection({
   return (
     <section className="nefol-arrivals" aria-labelledby="new-arrivals-heading">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="mb-8 text-center sm:mb-12">
-          <h2
-            id="new-arrivals-heading"
-            className="mb-3 text-2xl font-light tracking-[0.15em] sm:text-3xl md:text-4xl"
-            style={{ color: 'var(--nf-text)', fontFamily: 'var(--font-heading-family)', letterSpacing: '0.15em' }}
-          >
+        <header className="nf-section-head">
+          <h2 id="new-arrivals-heading" className="nf-section-title">
             New Arrivals
           </h2>
-          <p className="text-sm font-light tracking-wide sm:text-base" style={{ color: 'var(--nf-text-muted)', letterSpacing: '0.05em' }}>
-            Our newest formulas, natural as the morning dew.
-          </p>
+          <p className="nf-section-sub">Our newest formulas, natural as the morning dew.</p>
         </header>
 
         <div className="nefol-arrivals__grid">
@@ -92,21 +87,23 @@ export default function NewArrivalsSection({
                     {subtitle && <p className="nefol-arrival__desc" title={subtitle}>{subtitle}</p>}
 
                     {rating > 0 && reviewCount > 0 && (
-                      <div className="nefol-product-card__rating" aria-label={`Rated ${rating.toFixed(1)} out of 5 from ${reviewCount} reviews`}>
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-gray-900 ring-1 ring-amber-200">
-                          <Star className="h-3.5 w-3.5" style={{ color: 'var(--nf-rating-star)', fill: 'var(--nf-rating-star)' }} aria-hidden="true" />
-                          {rating.toFixed(1)}
-                        </span>
-                        <span className="ml-1.5 shrink-0 text-xs text-gray-500">
-                          {reviewCount} review{reviewCount === 1 ? '' : 's'}
-                        </span>
+                      <div className="nefol-product-card__rating">
+                        <ReviewsLink slug={product.slug} className="inline-flex shrink-0 items-center" label={`Rated ${rating.toFixed(1)} out of 5 from ${reviewCount} reviews. See reviews`}>
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-gray-900 ring-1 ring-amber-200">
+                            <Star className="h-3.5 w-3.5" style={{ color: 'var(--nf-rating-star)', fill: 'var(--nf-rating-star)' }} aria-hidden="true" />
+                            {rating.toFixed(1)}
+                          </span>
+                          <span className="ml-1.5 shrink-0 text-xs text-gray-500 underline-offset-2 hover:underline">
+                            {reviewCount} review{reviewCount === 1 ? '' : 's'}
+                          </span>
+                        </ReviewsLink>
                         {(stats?.verified_count ?? 0) > 0 && <VerifiedBadge size="sm" className="ml-1.5 shrink-0" />}
                       </div>
                     )}
 
                     <div className="nefol-arrival__buy">
                       <PricingDisplay
-                        className="text-sm sm:text-base"
+                        compact
                         product={product as { price?: string; details?: { mrp?: string; websitePrice?: string } }}
                       />
                       <ListingAddToCartButton product={product} />

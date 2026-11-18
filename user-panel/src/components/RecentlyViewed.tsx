@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import ReviewsLink from './ReviewsLink'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { getApiBase } from '../utils/apiBase'
 import { getHeaders, getSessionId } from '../utils/session'
@@ -261,7 +262,7 @@ export default function RecentlyViewed({
                   if (rating > 0) {
                     return (
                       <div className="flex items-center mb-2">
-                        <div className="flex text-yellow-400">
+                        <ReviewsLink slug={slug} nested className="inline-flex items-center" label={`Rated ${rating.toFixed(1)} out of 5 from ${reviewCount} reviews. See reviews`}><div className="flex text-yellow-400">
                           {[...Array(5)].map((_, i) => {
                             const filled = i < Math.round(rating)
                             return (
@@ -271,7 +272,7 @@ export default function RecentlyViewed({
                             )
                           })}
                         </div>
-                        <span className="text-xs ml-1 font-light" style={{color: '#999'}}>{rating.toFixed(1)} ({reviewCount})</span>
+                        <span className="text-xs ml-1 font-light" style={{color: '#999'}}>{rating.toFixed(1)} ({reviewCount})</span></ReviewsLink>
                         {hasVerified && (
                           <VerifiedBadge size="sm" className="ml-1" />
                         )}

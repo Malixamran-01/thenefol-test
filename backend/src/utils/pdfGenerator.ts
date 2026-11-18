@@ -133,15 +133,17 @@ export async function generateInvoicePDF(
     })
 
     // Generate PDF
+    // The PDF keeps the Midnight Gold colours (the template prints black-and-white for thermal
+    // label printers unless <html> has the color-print class)
+    await page.evaluate("document.documentElement.classList.add('color-print')")
+
+    // 4 × 6 inch label, matching the invoice template's @page size
     const pdfBuffer = await page.pdf({
-      format: 'A4',
+      width: '4in',
+      height: '6in',
       printBackground: true,
-      margin: {
-        top: '20mm',
-        right: '15mm',
-        bottom: '20mm',
-        left: '15mm'
-      }
+      preferCSSPageSize: true,
+      margin: { top: '0', right: '0', bottom: '0', left: '0' }
     })
 
     await browser.close()

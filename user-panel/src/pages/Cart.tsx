@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react'
-import { ShoppingCart, Trash2, Lock } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Heart, Trash2, Lock } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
+import { useWishlist } from '../contexts/WishlistContext'
+import { useAuth } from '../contexts/AuthContext'
 import { parsePrice, roundPrice } from '../contexts/CartContext'
 import PricingDisplay from '../components/PricingDisplay'
 import AuthGuard from '../components/AuthGuard'
@@ -37,6 +39,31 @@ export default function Cart() {
     }
   }
 
+  // Move to wishlist: save the product to the wishlist, then take it out of the cart
+  const { addToWishlist, isInWishlist } = useWishlist()
+  const { isAuthenticated } = useAuth()
+  const [movingKey, setMovingKey] = useState<number | null>(null)
+  const [moveNotice, setMoveNotice] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const handleMoveToWishlist = async (item: { id?: number; product_id: number; title: string }) => {
+    if (!isAuthenticated) {
+      window.location.hash = '#/user/login'
+      return
+    }
+    const key = item.id || item.product_id
+    setMovingKey(key)
+    setMoveNotice(null)
+    try {
+      if (!isInWishlist(item.product_id)) await addToWishlist(item.product_id)
+      if (removeItem) await removeItem(key)
+      setMoveNotice({ ok: true, text: `${item.title} moved to your wishlist` })
+    } catch (err) {
+      setMoveNotice({ ok: false, text: err instanceof Error ? err.message : 'Could not move this item to your wishlist' })
+    } finally {
+      setMovingKey(null)
+    }
+  }
+
   const handleClearCart = async () => {
     if (window.confirm('Are you sure you want to clear your entire cart?')) {
       if (clear) await clear()
@@ -54,26 +81,6 @@ export default function Cart() {
     const numericPrice = parsePrice(price)
     const rounded = parseFloat(numericPrice.toFixed(2))
     return `₹${rounded.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }
-
-  const calculateItemTax = (price: string, quantity: number, category?: string) => {
-    const itemPrice = parsePrice(price) // MRP which includes tax
-    const categoryLower = (category || '').toLowerCase()
-    const taxRate = categoryLower.includes('hair') ? 0.05 : 0.18
-    
-    // Extract tax from tax-inclusive MRP
-    // basePrice = taxInclusivePrice / (1 + taxRate)
-    // tax = taxInclusivePrice - basePrice
-    const basePrice = itemPrice / (1 + taxRate)
-    const itemTax = itemPrice - basePrice
-    const roundedTax = parseFloat((itemTax * quantity).toFixed(2))
-    
-    return `₹${roundedTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }
-
-  const getTaxRateText = (category?: string) => {
-    const categoryLower = (category || '').toLowerCase()
-    return categoryLower.includes('hair') ? '5%' : '18%'
   }
 
   const calculateItemTotal = (price: string, quantity: number) => {
@@ -104,22 +111,7 @@ export default function Cart() {
         {items.length === 0 ? (
           /* Empty Cart */
           <div className="text-center py-16">
-            <div className="mb-6">
-              <img 
-                src="/IMAGES/BANNER (2).webp"
-                alt="Empty Cart" 
-                className="w-32 h-32 mx-auto rounded-lg object-cover shadow-lg"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.style.display = 'none'
-                  target.nextElementSibling?.classList.remove('hidden')
-                }}
-              />
-              <div className="hidden w-32 h-32 mx-auto bg-slate-100 rounded-lg shadow-lg flex items-center justify-center">
-                <ShoppingCart className="h-16 w-16 text-slate-400" />
-              </div>
-            </div>
-            <h2 
+            <h2
               className="text-2xl sm:text-3xl font-light mb-6 tracking-[0.1em]" 
               style={{
                 color: 'var(--nf-text)',
@@ -178,6 +170,20 @@ export default function Cart() {
                     </div>
                   )}
                   
+                  {moveNotice && (
+                    <div
+                      role="status"
+                      className={`mb-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${moveNotice.ok ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-red-200 bg-red-50 text-red-700'}`}
+                    >
+                      <span>{moveNotice.text}</span>
+                      {moveNotice.ok && (
+                        <a href="#/user/wishlist" className="shrink-0 font-semibold underline underline-offset-2" style={{ color: 'var(--nf-heading)' }}>
+                          View wishlist
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   {items.map((item) => (
                     <div key={item.id || `${item.slug}-${item.product_id}`} className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 p-3 sm:p-4 border border-slate-200 rounded-lg hover:shadow-md transition-shadow">
                       {/* Product Image */}
@@ -214,9 +220,18 @@ export default function Cart() {
                         <p className="text-slate-600 text-sm">
                           Total: {calculateItemTotal(item.price, item.quantity)}
                         </p>
-                        <p className="text-slate-600 text-sm">
-                          GST ({getTaxRateText(item.category)}): {calculateItemTax(item.price, item.quantity, item.category)}
-                        </p>
+                        {item.product_id ? (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveToWishlist(item)}
+                            disabled={movingKey === (item.id || item.product_id)}
+                            className="mt-1.5 inline-flex items-center gap-1.5 text-sm font-medium underline-offset-2 hover:underline disabled:opacity-50"
+                            style={{ color: 'var(--nf-heading)' }}
+                          >
+                            <Heart className="h-4 w-4" aria-hidden="true" />
+                            {movingKey === (item.id || item.product_id) ? 'Moving…' : 'Move to wishlist'}
+                          </button>
+                        ) : null}
                       </div>
 
                       {/* Quantity Controls */}
@@ -325,15 +340,6 @@ export default function Cart() {
                     }, 0)
                     
                     const shipping = 0
-                    const calculatedTax = items.reduce((totalTax, item) => {
-                      const itemPrice = parsePrice(item.price)
-                      const category = (item.category || '').toLowerCase()
-                      const taxRate = category.includes('hair') ? 0.05 : 0.18
-                      const basePrice = itemPrice / (1 + taxRate)
-                      const itemTax = itemPrice - basePrice
-                      return totalTax + roundPrice(itemTax * item.quantity)
-                    }, 0)
-                    
                     return (
                       <>
                         {/* MRP Total */}
@@ -364,37 +370,11 @@ export default function Cart() {
                           </span>
                         </div>
                         
-                        {/* GST breakdown by category */}
-                        {items.some(item => (item.category || '').toLowerCase().includes('hair')) && (
-                          <div className="flex justify-between text-slate-600">
-                            <span>GST (5% - Hair Products, Inclusive)</span>
-                            <span>₹{parseFloat((items.reduce((sum, item) => {
-                              const category = (item.category || '').toLowerCase()
-                              if (category.includes('hair')) {
-                                const itemPrice = parsePrice(item.price)
-                                const basePrice = itemPrice / 1.05
-                                const itemTax = itemPrice - basePrice
-                                return sum + (itemTax * item.quantity)
-                              }
-                              return sum
-                            }, 0)).toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        )}
-                        {items.some(item => !(item.category || '').toLowerCase().includes('hair')) && (
-                          <div className="flex justify-between text-slate-600">
-                            <span>GST (18% - Other Products, Inclusive)</span>
-                            <span>₹{parseFloat((items.reduce((sum, item) => {
-                              const category = (item.category || '').toLowerCase()
-                              if (!category.includes('hair')) {
-                                const itemPrice = parsePrice(item.price)
-                                const basePrice = itemPrice / 1.18
-                                const itemTax = itemPrice - basePrice
-                                return sum + (itemTax * item.quantity)
-                              }
-                              return sum
-                            }, 0)).toFixed(2)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        )}
+                        {/* GST: one total line (each product at its own admin-set rate, already included in prices) */}
+                        <div className="flex justify-between text-slate-600">
+                          <span>GST (Inclusive)</span>
+                          <span>₹{tax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
                         
                         {/* Grand Total */}
                         <hr className="border-slate-200" />

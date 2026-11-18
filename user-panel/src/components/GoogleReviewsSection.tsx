@@ -21,7 +21,6 @@ type Payload = {
 }
 
 const LONG_REVIEW = 220
-const headingFont = { fontFamily: 'var(--font-heading-family)' }
 
 /** Google's "G" mark, used to attribute the reviews. */
 function GoogleG({ className = 'h-5 w-5' }: { className?: string }) {
@@ -141,15 +140,15 @@ export default function GoogleReviewsSection() {
   if (!data || data.reviews.length === 0) return null
 
   return (
-    <section className="py-12 sm:py-16 md:py-20" style={{ backgroundColor: 'var(--nf-page-bg)' }} aria-labelledby="happy-customers-title">
+    <section className="nf-section" style={{ backgroundColor: 'var(--nf-page-bg)' }} aria-labelledby="happy-customers-title">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--nf-primary)' }}>Happy customers</p>
-          <h2 id="happy-customers-title" className="mt-3 text-2xl font-light tracking-[0.15em] sm:text-3xl md:text-4xl" style={{ color: 'var(--nf-text)', ...headingFont }}>
+        <div className="nf-section-head">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--nf-primary)' }}>Happy customers</p>
+          <h2 id="happy-customers-title" className="nf-section-title">
             Loved by our customers
           </h2>
           {data.rating != null && (
-            <div className="mt-5 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border px-5 py-2.5" style={{ borderColor: 'var(--nf-border)', backgroundColor: 'var(--nf-card-bg)' }}>
+            <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border px-5 py-2.5" style={{ borderColor: 'var(--nf-border)', backgroundColor: 'var(--nf-card-bg)' }}>
               <GoogleG className="h-5 w-5" />
               <span className="text-lg font-semibold" style={{ color: 'var(--nf-heading)' }}>{data.rating.toFixed(1)}</span>
               <StarRow value={data.rating} />
@@ -160,7 +159,7 @@ export default function GoogleReviewsSection() {
           )}
         </div>
 
-        <div className="relative mt-10">
+        <div className="relative">
           <div
             ref={trackRef}
             onScroll={updateEdges}
@@ -197,7 +196,7 @@ export default function GoogleReviewsSection() {
         </div>
 
         {(data.mapsUrl || data.writeReviewUrl) && (
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             {data.mapsUrl && (
               <a
                 href={data.mapsUrl}
